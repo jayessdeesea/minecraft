@@ -7,11 +7,21 @@ import io.netty.buffer.ByteBuf;
  * single JSON string - we don't parse it here (no JSON library dependency in this module); the
  * caller decides what it needs from the response.
  */
-public record StatusResponsePacket(String json) {
+public record StatusResponsePacket(String json) implements Packet {
 
     public static final int PACKET_ID = 0x00;
 
     public static StatusResponsePacket decode(ByteBuf in) {
         return new StatusResponsePacket(ProtocolCodec.readString(in));
+    }
+
+    @Override
+    public int packetId() {
+        return PACKET_ID;
+    }
+
+    @Override
+    public void encode(ByteBuf out) {
+        ProtocolCodec.writeString(out, json);
     }
 }

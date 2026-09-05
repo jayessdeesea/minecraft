@@ -10,7 +10,7 @@ import java.util.UUID;
  * decode - we only need identity, and the frame is already isolated by the length prefix, so
  * leaving trailing bytes unread is harmless.
  */
-public record LoginSuccessPacket(UUID uuid, String username) {
+public record LoginSuccessPacket(UUID uuid, String username) implements Packet {
 
     public static final int PACKET_ID = 0x02;
 
@@ -18,5 +18,16 @@ public record LoginSuccessPacket(UUID uuid, String username) {
         UUID uuid = ProtocolCodec.readUuid(in);
         String username = ProtocolCodec.readString(in);
         return new LoginSuccessPacket(uuid, username);
+    }
+
+    @Override
+    public int packetId() {
+        return PACKET_ID;
+    }
+
+    @Override
+    public void encode(ByteBuf out) {
+        ProtocolCodec.writeUuid(out, uuid);
+        ProtocolCodec.writeString(out, username);
     }
 }

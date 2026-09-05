@@ -9,12 +9,11 @@ import java.io.ByteArrayOutputStream;
 import java.util.zip.Deflater;
 
 /**
- * Prepends the VarInt length prefix (docs/protocol-spec.md § 2.1/2.2) to an already-assembled
- * packet body (Packet ID + Data). Callers just write a complete body and flush it; this is the
- * only handler on the outbound side that knows about the length prefix, and (once
- * {@link #setCompressionThreshold} has been called) the Data Length field and zlib compression.
+ * Applies docs/protocol-spec.md § 2.2's Data Length field and zlib compression once
+ * {@link #setCompressionThreshold} has been set. Before that, every outbound body passes through
+ * with no Data Length field at all - that's {@link FrameEncoder}'s plain § 2.1 structure.
  */
-public final class VarIntFrameEncoder extends MessageToByteEncoder<ByteBuf> {
+public final class CompressionEncoder extends MessageToByteEncoder<ByteBuf> {
 
     private volatile int compressionThreshold = -1;
 
@@ -25,25 +24,17 @@ public final class VarIntFrameEncoder extends MessageToByteEncoder<ByteBuf> {
     @Override
     protected void encode(ChannelHandlerContext ctx, ByteBuf msg, ByteBuf out) {
         if (compressionThreshold < 0) {
-            ProtocolCodec.writeVarInt(out, msg.readableBytes());
             out.writeBytes(msg);
             return;
         }
 
         int dataLength = msg.readableBytes();
-        ByteBuf body = ctx.alloc().buffer();
-        try {
-            if (dataLength < compressionThreshold) {
-                ProtocolCodec.writeVarInt(body, 0);
-                body.writeBytes(msg);
-            } else {
-                ProtocolCodec.writeVarInt(body, dataLength);
-                body.writeBytes(compress(msg));
-            }
-            ProtocolCodec.writeVarInt(out, body.readableBytes());
-            out.writeBytes(body);
-        } finally {
-            body.release();
+        if (dataLength < compressionThreshold) {
+            ProtocolCodec.writeVarInt(out, 0);
+            out.writeBytes(msg);
+        } else {
+            ProtocolCodec.writeVarInt(out, dataLength);
+            out.writeBytes(compress(msg));
         }
     }
 

@@ -234,7 +234,20 @@ section (§ 3.5) written against real traffic the same way this one was, not att
 
 ### 3.5 Play
 Main gameplay state — the large majority of packet types live here. Specified incrementally, per
-packet, as we implement the features that need them; not enumerated in this document.
+packet, as we implement the features that need them; not enumerated in this document as a whole.
+
+**One packet confirmed so far**, the same by-content method as Configuration's:
+
+| ID | Packet | How it was identified |
+|---|---|---|
+| `0x31` | Login (play) | first Play packet; a 4-byte Int near the start matched the server console's own "logged in with entity id N" exactly, and several other fields matched server.properties (`max-players`, `view-distance`, `simulation-distance`, `gamemode`) |
+
+Fields decoded: entity ID, hardcore flag, the 3 dimension names, max players, view/simulation
+distance, reduced-debug-info/respawn-screen/limited-crafting flags, dimension type + name, hashed
+seed, game mode + previous game mode, debug/flat flags, has-death-location flag. Trailing fields
+(portal cooldown and later) aren't decoded yet - see `PlayLoginPacket`'s javadoc. This seeds
+`PlayState` (in the `protocol` package), the start of a world-model layer that will grow one
+confirmed field at a time, the same way this table will grow one confirmed packet at a time.
 
 ## 4. Compression
 
@@ -258,6 +271,24 @@ even the ones that end up with `Data Length = 0`.
 - Enforce a maximum compressed **and** maximum decompressed size per packet — an attacker-supplied
   Data Length with a small compressed payload that inflates to gigabytes ("compression bomb") must
   be rejected, not decompressed and then discarded
+- **On violation: terminate the connection, never skip-and-continue.** This applies even though a
+  compression-bomb frame's exact byte extent is already known (the outer frame length told us) and
+  skipping *could* be done without desyncing the stream. We still don't, for two reasons: (1) if
+  we skip it, we're left missing whatever it was carrying while the server assumes we have it — an
+  unverified, silently-degraded state, which is exactly the kind of thing to avoid; (2) if the cap
+  turns out to be wrong (a legitimately large packet, not an attack), the fix is to raise the cap
+  deliberately once that's understood, not to add a path that quietly absorbs whatever exceeds it.
+  See AGENTS.md's no-fallbacks tenet.
+- An **oversized raw frame length** (before compression or packet type is even known) has no safe
+  skip option at all, not just an undesirable one: our length-prefixed framing has no
+  resynchronization mechanism (unlike, say, newline-delimited text, where you can scan forward for
+  the next boundary). Guessing how many bytes to discard risks desyncing the entire rest of the
+  connection — every later packet would be silently misinterpreted rather than cleanly failing.
+  Terminate immediately.
+- This is different from an **unrecognized packet ID** (`UnknownPacket`, § 3.4): that's a known,
+  catalogued gap in *our* implementation, not a violated invariant, and it's provably safe to skip
+  (the frame decoder already isolated its exact bytes — no guessing) and loud (logged). Continuing
+  past that is legitimate; continuing past a guard violation above is not.
 
 ## 5. Encryption
 
@@ -316,7 +347,15 @@ packet structure — only the bytes after it are.
 
 - Validate every length field (VarInt lengths, String lengths, array lengths) against a sane
   maximum **before** allocating or reading based on it
-- Enforce the compression guardrails in § 4.3
+- Enforce the compression guardrails in § 4.3, including their termination policy — never
+  skip-and-continue past a violated guard, only past a known-and-tracked gap (§ 3.4)
+- **Nested or wide structures aren't caught by a single count cap alone**, and nothing we've
+  implemented yet actually recurses (no NBT yet) — but the tenet to apply once something does: a
+  per-level count cap (`ProtocolCodec.readVarIntCount`) doesn't stop many individually-small
+  counts from multiplying into something enormous (map of map of map, or a long list of long
+  lists). The real defense is a **cumulative element/depth budget tracked across the whole
+  packet's decode**, not just each level in isolation — and exceeding that budget terminates the
+  connection too, same as any other guard violation, not a partial-decode-and-truncate.
 - Use `SecureRandom` for the verify token and the client's shared secret — never `Random`
 - Rate-limit packets per connection; a hostile or buggy peer sending packets far faster than the
   protocol expects should be disconnected, not processed indefinitely

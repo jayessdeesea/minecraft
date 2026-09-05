@@ -7,10 +7,16 @@ import io.netty.buffer.ByteBuf;
  * opaque Long the server echoes back unchanged. Same wire shape serverbound (Ping Request) and
  * clientbound (Pong Response), so one type covers both rather than two identical classes.
  */
-public record PingPongPacket(long payload) {
+public record PingPongPacket(long payload) implements Packet {
 
     public static final int PACKET_ID = 0x01;
 
+    @Override
+    public int packetId() {
+        return PACKET_ID;
+    }
+
+    @Override
     public void encode(ByteBuf out) {
         out.writeLong(payload);
     }

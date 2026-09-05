@@ -19,12 +19,20 @@ ScoutBot[/127.0.0.1:59369] logged in with entity id 19 at (4.5, 81.0, 42.5)
 ScoutBot joined the game
 ```
 See `MinecraftClient.observeJoin` and docs/protocol-spec.md § 3.4 for how the Configuration
-packet IDs were derived empirically rather than from a written spec. What this *isn't* yet: a
-persistent connection. `JoinClientHandler` disconnects a couple of seconds after reaching Play
-without responding to anything (no Keep Alive, no movement) — it's a diagnostic tool that proves
-the join sequence works, not a Soldier. `command`, `command-ai`, and `bot` are still
-`package-info.java` placeholders; Play's actual packet catalog (needed for a bot that does
-anything once joined) isn't implemented.
+packet IDs were derived empirically rather than from a written spec.
+
+The pipeline now splits connection mechanics into two handlers per AGENTS.md's "Protocol pipeline
+architecture" section: `SessionStateManager` owns the state machine and never sends anything;
+`JoinClientHandler`/`StatusClientHandler` send every reply and hold no state of their own. One
+Play packet is decoded for real now too — `PlayLoginPacket` (0x31, "Login (play)"), seeding a
+small `PlayState` (entity ID, dimension, game mode), confirmed live against the server's own
+"logged in with entity id N" log line each run.
+
+What this *isn't* yet: a persistent connection. `JoinClientHandler` disconnects a couple of
+seconds after reaching Play without responding to anything else (no Keep Alive, no movement) —
+it's a diagnostic tool that proves the join sequence works, not a Soldier. `command`, `command-ai`,
+and `bot` are still `package-info.java` placeholders; the rest of Play's packet catalog (needed
+for a bot that does anything once joined) isn't implemented.
 
 ## Prerequisites
 
@@ -107,10 +115,13 @@ javadoc in `protocol/src/test/java/.../StatusPingLiveIT.java`).
 mvn -pl protocol test -Dtest=JoinObservationLiveIT
 ```
 
-Logs in as `ScoutBot`, drives the full join sequence through Play, prints every Configuration/Play
-packet ID/length/hex it observed, then disconnects after ~1 second of quiet. Check the server's
-own console/log for `ScoutBot joined the game` to confirm it from the server's side too. Same
-`*IT` naming reasoning as step 3 — needs a live server, so `mvn verify` skips it by default.
+Logs in as `ScoutBot`, drives the full join sequence through Play, prints every unrecognized
+Configuration/Play packet ID/length/hex it observed (once per distinct kind — Play alone sends
+hundreds of the same unrecognized IDs per second), then disconnects: after ~1 second of quiet
+during Login/Configuration (a genuine pause), or a fixed ~2 second window once Play is reached
+(Play is continuous — there's no quiet gap to wait for there). Check the server's own console/log
+for `ScoutBot joined the game` to confirm it from the server's side too. Same `*IT` naming
+reasoning as step 3 — needs a live server, so `mvn verify` skips it by default.
 
 ## 5. Run a bot that stays connected and does something (not yet possible)
 

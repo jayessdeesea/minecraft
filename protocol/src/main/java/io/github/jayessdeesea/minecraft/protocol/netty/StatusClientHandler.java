@@ -2,10 +2,10 @@ package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.StatusResult;
 import io.github.jayessdeesea.minecraft.protocol.packet.HandshakePacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.github.jayessdeesea.minecraft.protocol.packet.PingPongPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.ProtocolCodec;
+import io.github.jayessdeesea.minecraft.protocol.packet.StatusRequestPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.StatusResponsePacket;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import org.apache.logging.log4j.LogManager;
@@ -14,16 +14,15 @@ import org.apache.logging.log4j.Logger;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Drives Handshake -&gt; Status Request -&gt; Status Response -&gt; Ping Request -&gt; Pong Response
- * (docs/protocol-spec.md § 3.2) on a freshly connected channel, then completes {@code result} and
- * closes the connection.
+ * Control handler for a Status-only connection: sends Handshake -&gt; Status Request -&gt; (once
+ * Status Response arrives) Ping Request, and completes {@code result} on the Pong Response
+ * (docs/protocol-spec.md § 3.2). {@link SessionStateManager}, earlier in the pipeline, owns the
+ * HANDSHAKE -&gt; STATUS transition and unknown-packet logging - this class holds no state of its
+ * own beyond the in-flight JSON it's waiting to pair with a round-trip time.
  */
-public final class StatusClientHandler extends SimpleChannelInboundHandler<ByteBuf> {
+public final class StatusClientHandler extends SimpleChannelInboundHandler<Packet> {
 
     private static final Logger LOG = LogManager.getLogger(StatusClientHandler.class);
-
-    /** Status Request (docs/protocol-spec.md § 3.2) has an empty body; only its ID matters. */
-    private static final int STATUS_REQUEST_PACKET_ID = 0x00;
 
     private final int protocolVersion;
     private final String host;
@@ -41,30 +40,30 @@ public final class StatusClientHandler extends SimpleChannelInboundHandler<ByteB
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
-        PacketWriter.write(ctx, HandshakePacket.PACKET_ID, buf ->
-                new HandshakePacket(protocolVersion, host, port, HandshakePacket.NEXT_STATE_STATUS).encode(buf));
-        PacketWriter.write(ctx, STATUS_REQUEST_PACKET_ID, buf -> { });
+        ctx.writeAndFlush(new HandshakePacket(protocolVersion, host, port, HandshakePacket.NEXT_STATE_STATUS));
+        ctx.pipeline().get(SessionStateManager.class).transitionTo(ctx, ProtocolState.STATUS);
+        ctx.writeAndFlush(new StatusRequestPacket());
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, ByteBuf frame) {
-        int packetId = ProtocolCodec.readVarInt(frame);
-        if (packetId == StatusResponsePacket.PACKET_ID && statusJson == null) {
-            statusJson = StatusResponsePacket.decode(frame).json();
-            long sentAtNanos = System.nanoTime();
-            PacketWriter.write(ctx, PingPongPacket.PACKET_ID, buf -> new PingPongPacket(sentAtNanos).encode(buf));
-        } else if (packetId == PingPongPacket.PACKET_ID) {
-            long sentAtNanos = PingPongPacket.decode(frame).payload();
-            long roundTripMillis = (System.nanoTime() - sentAtNanos) / 1_000_000;
+    protected void channelRead0(ChannelHandlerContext ctx, Packet packet) {
+        if (packet instanceof StatusResponsePacket response && statusJson == null) {
+            statusJson = response.json();
+            ctx.writeAndFlush(new PingPongPacket(System.nanoTime()));
+        } else if (packet instanceof PingPongPacket pong) {
+            long roundTripMillis = (System.nanoTime() - pong.payload()) / 1_000_000;
             result.complete(new StatusResult(statusJson, roundTripMillis));
             ctx.close();
         } else {
-            LOG.warn("Unexpected packet ID {} in Status state", packetId);
+            LOG.warn("Unhandled recognized packet {}", packet);
         }
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        // See JoinClientHandler's exceptionCaught for why this is always logged, not just handed
+        // to the future.
+        LOG.error("Connection failed, disconnecting: {}", cause.getMessage(), cause);
         result.completeExceptionally(cause);
         ctx.close();
     }

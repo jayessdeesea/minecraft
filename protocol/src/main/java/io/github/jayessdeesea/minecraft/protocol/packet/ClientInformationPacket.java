@@ -18,7 +18,7 @@ public record ClientInformationPacket(
         int mainHand,
         boolean enableTextFiltering,
         boolean allowServerListings,
-        int particleStatus) {
+        int particleStatus) implements Packet {
 
     public static final int PACKET_ID = 0x00;
 
@@ -26,6 +26,12 @@ public record ClientInformationPacket(
         return new ClientInformationPacket("en_us", (byte) 10, 0, true, 0x7F, 1, false, true, 0);
     }
 
+    @Override
+    public int packetId() {
+        return PACKET_ID;
+    }
+
+    @Override
     public void encode(ByteBuf out) {
         ProtocolCodec.writeString(out, locale);
         out.writeByte(viewDistance);

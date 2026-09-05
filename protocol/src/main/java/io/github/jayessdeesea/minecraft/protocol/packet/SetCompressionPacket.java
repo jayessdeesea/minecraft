@@ -7,11 +7,21 @@ import io.netty.buffer.ByteBuf;
  * the server has a non-negative compression threshold configured (our dev server does:
  * {@code network-compression-threshold=256} in server.properties).
  */
-public record SetCompressionPacket(int threshold) {
+public record SetCompressionPacket(int threshold) implements Packet {
 
     public static final int PACKET_ID = 0x03;
 
     public static SetCompressionPacket decode(ByteBuf in) {
         return new SetCompressionPacket(ProtocolCodec.readVarInt(in));
+    }
+
+    @Override
+    public int packetId() {
+        return PACKET_ID;
+    }
+
+    @Override
+    public void encode(ByteBuf out) {
+        ProtocolCodec.writeVarInt(out, threshold);
     }
 }

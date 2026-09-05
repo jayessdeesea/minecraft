@@ -1,12 +1,19 @@
 package io.github.jayessdeesea.minecraft.protocol;
 
+import io.github.jayessdeesea.minecraft.protocol.netty.CompressionDecoder;
+import io.github.jayessdeesea.minecraft.protocol.netty.CompressionEncoder;
+import io.github.jayessdeesea.minecraft.protocol.netty.FrameDecoder;
+import io.github.jayessdeesea.minecraft.protocol.netty.FrameEncoder;
 import io.github.jayessdeesea.minecraft.protocol.netty.JoinClientHandler;
+import io.github.jayessdeesea.minecraft.protocol.netty.MarshallingDecoder;
+import io.github.jayessdeesea.minecraft.protocol.netty.MarshallingEncoder;
+import io.github.jayessdeesea.minecraft.protocol.netty.SessionStateManager;
 import io.github.jayessdeesea.minecraft.protocol.netty.StatusClientHandler;
-import io.github.jayessdeesea.minecraft.protocol.netty.VarIntFrameDecoder;
-import io.github.jayessdeesea.minecraft.protocol.netty.VarIntFrameEncoder;
+import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -33,10 +40,8 @@ public final class MinecraftClient {
      */
     public static CompletableFuture<StatusResult> pingStatus(String host, int port) {
         CompletableFuture<StatusResult> result = new CompletableFuture<>();
-        return connect(host, port, result, channel -> channel.pipeline()
-                .addLast(new VarIntFrameDecoder())
-                .addLast(new VarIntFrameEncoder())
-                .addLast(new StatusClientHandler(ProtocolVersion.CURRENT, host, port, result)));
+        return connect(host, port, result, channel -> addPipeline(channel,
+                new StatusClientHandler(ProtocolVersion.CURRENT, host, port, result)));
     }
 
     /**
@@ -48,10 +53,31 @@ public final class MinecraftClient {
      */
     public static CompletableFuture<List<ObservedPacket>> observeJoin(String host, int port, String username) {
         CompletableFuture<List<ObservedPacket>> result = new CompletableFuture<>();
-        return connect(host, port, result, channel -> channel.pipeline()
-                .addLast(new VarIntFrameDecoder())
-                .addLast(new VarIntFrameEncoder())
-                .addLast(new JoinClientHandler(ProtocolVersion.CURRENT, host, port, username, result)));
+        return connect(host, port, result, channel -> addPipeline(channel,
+                new JoinClientHandler(ProtocolVersion.CURRENT, host, port, username, result)));
+    }
+
+    /**
+     * Wires the shared wire-mechanics chain (docs/protocol-spec.md § 2/§ 3) ahead of whichever
+     * control handler owns the actual connection: framing, then compression (initially a
+     * passthrough - see {@link CompressionDecoder}), then marshalling (initially
+     * {@code HandshakeMarshaller} - see {@link MarshallingDecoder}), then {@link SessionStateManager}
+     * (owns the FSM, observes everything, sends nothing), then the control handler (sends every
+     * reply, holds no state of its own). Registration order here is what makes the outbound
+     * direction come out correct too: Netty runs outbound handlers in the reverse of their
+     * registration order, so a packet the control handler writes flows marshaller -&gt; compressor
+     * -&gt; framer -&gt; socket, the mirror of how inbound bytes arrive.
+     */
+    private static void addPipeline(SocketChannel channel, SimpleChannelInboundHandler<Packet> controlHandler) {
+        channel.pipeline()
+                .addLast(new FrameDecoder())
+                .addLast(new FrameEncoder())
+                .addLast(new CompressionDecoder())
+                .addLast(new CompressionEncoder())
+                .addLast(new MarshallingDecoder())
+                .addLast(new MarshallingEncoder())
+                .addLast(new SessionStateManager())
+                .addLast(controlHandler);
     }
 
     /**

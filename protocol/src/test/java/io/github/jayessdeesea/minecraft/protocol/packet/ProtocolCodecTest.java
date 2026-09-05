@@ -68,6 +68,29 @@ class ProtocolCodecTest {
         assertThrows(IllegalArgumentException.class, () -> ProtocolCodec.writeString(buf, tooLong));
     }
 
+    @Test
+    void readVarIntCountAcceptsValuesWithinRange() {
+        ByteBuf buf = Unpooled.buffer();
+        ProtocolCodec.writeVarInt(buf, 10);
+        assertEquals(10, ProtocolCodec.readVarIntCount(buf, 10));
+    }
+
+    @Test
+    void readVarIntCountRejectsCountAboveMax() {
+        // A wire-supplied count must never size an eager allocation (e.g. new ArrayList<>(count))
+        // without this check first - see ProtocolCodec.readVarIntCount's javadoc.
+        ByteBuf buf = Unpooled.buffer();
+        ProtocolCodec.writeVarInt(buf, 11);
+        assertThrows(IllegalStateException.class, () -> ProtocolCodec.readVarIntCount(buf, 10));
+    }
+
+    @Test
+    void readVarIntCountRejectsNegativeCount() {
+        ByteBuf buf = Unpooled.buffer();
+        ProtocolCodec.writeVarInt(buf, -1);
+        assertThrows(IllegalStateException.class, () -> ProtocolCodec.readVarIntCount(buf, 10));
+    }
+
     private static byte[] hexToBytes(String hex) {
         String[] parts = hex.trim().split("\\s+");
         byte[] bytes = new byte[parts.length];

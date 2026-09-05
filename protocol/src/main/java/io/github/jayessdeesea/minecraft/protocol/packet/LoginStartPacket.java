@@ -9,10 +9,16 @@ import java.util.UUID;
  * offline mode the vanilla server derives its own UUID from the username and ignores whatever we
  * send here, so any value works; we still have to send a syntactically valid one.
  */
-public record LoginStartPacket(String name, UUID uuid) {
+public record LoginStartPacket(String name, UUID uuid) implements Packet {
 
     public static final int PACKET_ID = 0x00;
 
+    @Override
+    public int packetId() {
+        return PACKET_ID;
+    }
+
+    @Override
     public void encode(ByteBuf out) {
         ProtocolCodec.writeString(out, name);
         ProtocolCodec.writeUuid(out, uuid);

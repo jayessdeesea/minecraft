@@ -96,14 +96,148 @@ Spring's proxying/reflection-heavy DI has real friction under JPMS's strong enca
 ArchUnit gives compiler-adjacent enforcement (a broken rule fails the build) without that
 friction.
 
-**No separate Frame abstraction over Netty.** We considered a pure-POJO `Frame`/`FrameCodec`
-interface layer (OSI-style: byte stream → frame → packet, independent of Netty) so framing logic
-could be unit-tested without a real channel. Decided against it: Netty's own `ChannelPipeline`
-already *is* a chain of decoupled handlers (frame decoder → packet codec → application handler),
-and Netty is a deliberate choice here, not something we're trying to abstract away. Packet codecs
-in `protocol.packet` read/write `ByteBuf` directly rather than going through an extra interface.
-Revisit only if framing logic actually needs testing independent of a Netty channel and
-`EmbeddedChannel` proves insufficient for that.
+## Protocol pipeline architecture
+
+`protocol`'s Netty pipeline is deliberately seven stages, each with exactly one responsibility,
+not the two merged handlers ("frame+compress" / "decode+dispatch") the module started with:
+
+```
+bytes → FrameDecoder → CompressionDecoder → MarshallingDecoder → SessionStateManager → control handler → bot
+bytes ← FrameEncoder ← CompressionEncoder ← MarshallingEncoder ← SessionStateManager ← control handler ← bot
+```
+
+(Netty runs outbound handlers in the reverse of their pipeline-registration order, which is why
+registering all seven in the order shown above produces the correct order in *both* directions —
+see `MinecraftClient.addPipeline`'s javadoc.)
+
+**Why split this far — three tiers of responsibility, not two:**
+1. **Marshal/unmarshal** — bytes ↔ typed `Packet`. Zero state, zero decisions
+   (`ProtocolCodec`, each packet type's `encode`/`decode`).
+2. **Connection mechanics** — stateful, but *zero-decision*: does replying require any input from
+   outside `protocol`? If no, it's mechanics. This tier is itself split by a further seam - mutate
+   vs. send (see below) - but both halves are "not business logic just because they're stateful,"
+   same category as an HTTP client transparently handling gzip content-encoding.
+3. **Business logic** — content reflecting an actual decision or preference (view distance,
+   locale, movement, respawn policy). Never belongs in `protocol` — it's `bot`'s job, driven by
+   the deterministic per-tick loop described above. One concrete violation to watch for:
+   `ClientInformationPacket.defaults()` is currently hardcoded inside `JoinClientHandler`; that's
+   tier-3 content living in tier-2 code, tolerated for now because nothing yet needs to vary it,
+   but a real Soldier should be able to override it.
+
+**Tier 2 splits into two handlers along a mutate-vs-send seam.** Not every tier-2 mechanic
+requires a reply - `SetCompressionPacket` triggers a mutation (toggle the compressor) with no
+response at all, while `LoginSuccessPacket` triggers both a mutation (state transition) *and* a
+send (Login Acknowledged, Client Information). That distinction is why there are two handlers,
+not one:
+- **`SessionStateManager`** — owns `ProtocolState`, reacts autonomously to whatever packet implies
+  a mutation (`SetCompressionPacket`, `LoginSuccessPacket`, `FinishConfigurationPacket`), swaps
+  compression/marshaller state accordingly, logs unrecognized packets (once per distinct kind —
+  Play alone repeats the same unrecognized ID hundreds of times a second), and **never sends
+  anything** — every packet is forwarded downstream via `ctx.fireChannelRead(packet)`
+  unconditionally, whether or not it acted on it.
+- **Control handler** (`StatusClientHandler`, `JoinClientHandler`) — sends every reply, and holds
+  no `ProtocolState` field of its own. Dispatch here is entirely by packet *type*
+  (`instanceof LoginSuccessPacket` → send X), never by querying current state, since a packet's
+  type already implies what to do with it. The one place it does query `SessionStateManager.state()`
+  is deciding whether to keep resetting its own completion deadline — a control-handler-specific
+  concern, not something `SessionStateManager` needs to know about.
+
+The one transition with no inbound trigger — HANDSHAKE → LOGIN/STATUS, since Handshake has no
+response at all — can't happen autonomously inside `SessionStateManager`; the control handler's
+`channelActive` calls `sessionState.transitionTo(ctx, ...)` once, explicitly, to kick it off.
+Everything after that, `SessionStateManager` drives itself by observing the packet stream.
+
+**A real bug this design surfaced, not just moved around:** a first cut had the control handler
+reset its completion deadline whenever state was anything other than `LOGIN` - which also matched
+`PLAY`, so every one of Play's ~1,000+ packets/2s kept re-canceling the fixed observation window
+and the test timed out. Fixed by checking for `CONFIGURATION` specifically. Worth remembering:
+Play is continuous traffic with no natural quiet gap, unlike Login/Configuration's genuine
+burst-then-pause - a "wait for quiet" strategy silently doesn't apply there.
+
+**Static pipeline structure, swappable delegates — not dynamic pipeline mutation.**
+`CompressionDecoder`/`CompressionEncoder` and `MarshallingDecoder`/`MarshallingEncoder` are always
+present in the pipeline; what changes is an internal field (`compressionThreshold`, or the active
+`PacketMarshaller`), set via a narrow setter `SessionStateManager` calls on each transition. Chosen
+over Netty's `ChannelPipeline.replace()`/`addAfter()` for three reasons: the pipeline's shape is
+knowable by reading `addPipeline()` once, rather than having to trace every place that might
+mutate it at runtime; each handler with a swappable delegate is trivially unit-testable in
+isolation (construct it, set the delegate, feed it input); and it avoids `ByteToMessageDecoder`'s
+real subtleties around leftover buffered bytes when a decoder is replaced mid-stream. The
+criterion for when you'd actually need real pipeline surgery instead: a stage's fundamental
+*contract* needs to differ, not just its behavior. Neither stage here does — decompression is
+always "`ByteBuf` in, `ByteBuf` out," marshalling is always "packet ID + bytes → `Packet`."
+
+**Per-state `PacketMarshaller` implementations, not one generic `Map`-keyed class.** Each of the
+five states (`HandshakeMarshaller`, `StatusMarshaller`, `LoginMarshaller`,
+`ConfigurationMarshaller`, `PlayMarshaller`) is its own small class rather than one class
+parameterized by a lookup table. Not because it changes who tracks state — `SessionStateManager`
+owns that either way — but because a named class is a discoverable, navigable home for "everything
+that can arrive during this state," matching how docs/protocol-spec.md is itself organized by
+state. `HandshakeMarshaller.decode()` throws unconditionally: nothing is ever clientbound during
+Handshake, so if it's ever invoked that's a protocol anomaly worth failing loudly on, not a
+missing case to add.
+
+**Unknown packets are logged, not silently dropped.** Every marshaller falls back to
+`UnknownPacket(id, rawBytes)` for anything not in its table, and `SessionStateManager` logs that
+at WARN (once per distinct state+ID kind). The catalog for Configuration (mostly) and all of Play
+is intentionally incomplete right
+now — see docs/protocol-spec.md § 3.4 on deriving IDs from real traffic rather than guessing — and
+the warning is what drives that toward zero over time instead of it going unnoticed. Play's first
+confirmed exception is `PlayLoginPacket` (0x31, "Login (play)"), identified by finding the
+server's own reported entity ID inside its raw hex, then cross-checking several other fields
+against server.properties - the same by-content method that identified every Configuration ID.
+`PlayState` is the seed of the world-model layer this feeds - see its javadoc for why that's
+deliberately a small, growing shape rather than a big one designed upfront.
+
+**Never let a wire-supplied length or count size an allocation without a cap.** Applies uniformly:
+`ProtocolCodec.readString`/`MAX_STRING_LENGTH`, `CompressionDecoder`'s Data Length check against
+`MAX_FRAME_LENGTH` (the "compression bomb" guard from docs/protocol-spec.md § 4.3/§ 8), and
+`ProtocolCodec.readVarIntCount` for any count-prefixed list (used by `KnownPacksPacket` today).
+The same principle will apply to NBT's nesting *depth* once that's implemented — the recursive
+case of the same guard, not implemented yet because nothing we decode today recurses. **On
+violation, every one of these terminates the connection — never skip-and-continue.** See the
+tenet below for why, and docs/protocol-spec.md § 4.3/§ 8 for the full reasoning per guard.
+
+## No fallbacks — fail loud, not gracefully-wrong
+
+Tenet, not a suggestion: when something is ambiguous, missing, or violates an invariant, the
+correct response is to fail immediately and visibly — not to silently pick a plausible-looking
+default and continue. Two reasons, from experience, not just principle:
+1. A fallback path is by definition rarely exercised, which means it's rarely tested and often
+   subtly broken by the time it actually triggers — "not well-paved" in exactly the way a
+   rarely-driven road develops potholes nobody's noticed yet.
+2. A fallback that "works" by picking something reasonable also *hides* the fact that a real
+   decision needed to be made and wasn't. The underlying problem doesn't get fixed — it gets
+   papered over, usually until it resurfaces somewhere much harder to diagnose than where it
+   actually originated.
+
+**Concretely, once `command-ai` has more than one Spring bean satisfying the same interface**
+(multiple `ChatModel`s, multiple strategy implementations, etc.): never use `@Primary`. It
+silently resolves ambiguity by picking one bean as the default, which means a bean added later can
+silently steal precedence at every injection site that didn't ask for something specific — with no
+compile-time or startup-time signal that anything changed. Use `@Qualifier("beanName")` at every
+injection point instead: an ambiguous or missing qualifier fails to wire at all, loudly, at
+startup — exactly the failure mode we want, and exactly the opposite of `@Primary`'s silent
+default. (Nothing in the codebase wires multiple beans yet — this is a rule to have ready before
+`command-ai` needs it, not a retrofit.)
+
+**This is also why every resource-exhaustion guard in `protocol` terminates the connection rather
+than skip-and-continue** (docs/protocol-spec.md § 8): an oversized frame, a compression bomb, or
+(once implemented) a nesting-depth violation are violated invariants, not expected gaps. Skipping
+one and hoping the byte stream resynchronizes isn't just against this tenet — for the frame-length
+case specifically, it's *provably unreliable*: our framing has no resync mechanism, so guessing
+how many bytes to discard risks silently misinterpreting everything that follows for the rest of
+the connection. That's a fallback that "doesn't always work" in the most literal, dangerous sense.
+
+**Contrast with `UnknownPacket`, which looks similar but isn't the same category of thing.** An
+unrecognized packet ID is not a violated invariant — it's a known, catalogued gap in *our*
+implementation (Play's catalog is deliberately incomplete right now), not evidence the connection
+itself is broken. Continuing past it is safe because the frame decoder already isolated exactly
+how many bytes it occupies — no guessing, unlike the frame-length case above — and it's loud, not
+silent: every occurrence is logged (docs/protocol-spec.md § 3.4), specifically so the gap gets
+noticed and closed, not forgotten. The question that actually matters isn't "did we continue past
+an anomaly" — it's "is this an *expected, tracked* gap that's *provably* safe to skip, or a
+violated invariant we're guessing our way past?" Only the first is legitimate to continue through.
 
 ## Dependency version pinning
 

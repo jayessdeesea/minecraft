@@ -19,6 +19,14 @@ public final class ProtocolCodec {
     /** Wire limit from docs/protocol-spec.md § 1.1 - reject before allocating on a bad length. */
     public static final int MAX_STRING_LENGTH = 32767;
 
+    /**
+     * 2 MiB - generous for Status/Login/Configuration; revisit once large Play packets (chunk
+     * data) exist. Shared by {@code FrameDecoder} (the raw frame length) and
+     * {@code CompressionDecoder} (the declared decompressed size) since both are the same class
+     * of guard: never let a wire-supplied length size an allocation without a cap.
+     */
+    public static final int MAX_FRAME_LENGTH = 1 << 21;
+
     private ProtocolCodec() {
     }
 
@@ -93,6 +101,23 @@ public final class ProtocolCodec {
         byte[] bytes = new byte[length];
         in.readBytes(bytes);
         return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Reads a VarInt meant to be used as a following-collection's element count, rejecting it if
+     * negative or above {@code max} <strong>before</strong> the caller sizes any allocation from
+     * it (e.g. {@code new ArrayList<>(count)}) - a wire-supplied count sizing an eager allocation
+     * with no upper bound is a real, previously-shipped bug in this codebase (see
+     * {@code KnownPacksPacket}), not a hypothetical one. Every packet that decodes a
+     * count-prefixed list should read its count through this, not through {@link #readVarInt}
+     * directly.
+     */
+    public static int readVarIntCount(ByteBuf in, int max) {
+        int count = readVarInt(in);
+        if (count < 0 || count > max) {
+            throw new IllegalStateException("Count " + count + " outside allowed range (max " + max + ")");
+        }
+        return count;
     }
 
     public static void writeUuid(ByteBuf out, UUID uuid) {
