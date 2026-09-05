@@ -1,0 +1,58 @@
+package io.github.jayessdeesea.minecraft.app;
+
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Enforces, at build time, the module tenets documented in AGENTS.md:
+ * Netty stays inside the protocol module, and the command-ai implementation
+ * package is never depended on directly by the command interfaces it
+ * implements or by the bot module that consumes those interfaces.
+ */
+class ArchitectureTest {
+
+    private static final String ROOT = "io.github.jayessdeesea.minecraft";
+
+    private static JavaClasses classes;
+
+    @BeforeAll
+    static void importClasses() {
+        classes = new ClassFileImporter().importPackages(ROOT);
+    }
+
+    @Test
+    void nettyIsConfinedToTheProtocolModule() {
+        ArchRule rule = ArchRuleDefinition.noClasses()
+                .that().resideOutsideOfPackage(ROOT + ".protocol..")
+                .should().dependOnClassesThat().resideInAPackage("io.netty..");
+        rule.check(classes);
+    }
+
+    @Test
+    void commandDomainDoesNotDependOnItsAiImplementation() {
+        ArchRule rule = ArchRuleDefinition.noClasses()
+                .that().resideInAPackage(ROOT + ".command")
+                .should().dependOnClassesThat().resideInAPackage(ROOT + ".command.ai..");
+        rule.check(classes);
+    }
+
+    @Test
+    void botDependsOnTheCommandInterfaceNotItsAiImplementation() {
+        ArchRule rule = ArchRuleDefinition.noClasses()
+                .that().resideInAPackage(ROOT + ".bot..")
+                .should().dependOnClassesThat().resideInAPackage(ROOT + ".command.ai..");
+        rule.check(classes);
+    }
+
+    @Test
+    void commandDomainStaysFrameworkFree() {
+        ArchRule rule = ArchRuleDefinition.noClasses()
+                .that().resideInAPackage(ROOT + ".command")
+                .should().dependOnClassesThat().resideInAnyPackage("org.springframework..", "io.netty..");
+        rule.check(classes);
+    }
+}

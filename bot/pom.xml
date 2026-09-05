@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.jayessdeesea.minecraft</groupId>
+    <artifactId>minecraft-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>bot</artifactId>
+  <packaging>jar</packaging>
+
+  <name>bot</name>
+  <description>
+    The Soldier runtime: a deterministic, non-LLM, per-tick control loop
+    (movement, pathing, combat reflexes) that connects to the server via the
+    protocol module and implements the Soldier role from the command module.
+    Depends on command for the Order/Soldier/SquadLeader *interfaces* only -
+    never on command-ai. A soldier must not know or care whether its orders
+    come from an LLM-backed squad leader or a hand-typed test order.
+  </description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.jayessdeesea.minecraft</groupId>
+      <artifactId>protocol</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.jayessdeesea.minecraft</groupId>
+      <artifactId>command</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

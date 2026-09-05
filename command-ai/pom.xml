@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.jayessdeesea.minecraft</groupId>
+    <artifactId>minecraft-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>command-ai</artifactId>
+  <packaging>jar</packaging>
+
+  <name>command-ai</name>
+  <description>
+    Spring AI-backed implementations of the General and SquadLeader roles
+    defined in the command module. All model calls go through Spring AI's
+    ChatModel/ChatClient abstraction - starting provider is Anthropic Claude,
+    with a planned move to a local model later, so provider-specific request/
+    response shapes must not leak out of this module.
+  </description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.jayessdeesea.minecraft</groupId>
+      <artifactId>command</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-anthropic</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

@@ -1,0 +1,45 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+
+# IDE - IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# IDE - Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# IDE - VS Code
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local secrets / config overrides — never commit real credentials (e.g. the Anthropic API key
+# command-ai will need) or server configs. Covers the conventional Spring Boot local-override
+# filenames as well as generic ones, since it's not yet decided which pattern command-ai will use.
+*.local.properties
+*.local.yml
+*.local.yaml
+application-local.properties
+application-local.yml
+application-local.yaml
+secrets.properties
+.env
