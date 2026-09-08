@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.protocol;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -19,14 +21,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  */
 class JoinObservationLiveIT {
 
+    private static final Logger LOG = LogManager.getLogger(JoinObservationLiveIT.class);
+
     @Test
     void observesConfigurationPacketsAfterLogin() throws Exception {
         List<ObservedPacket> observed = MinecraftClient.observeJoin("localhost", 25565, "ScoutBot")
                 .get(15, TimeUnit.SECONDS);
 
-        System.out.println("Observed " + observed.size() + " Configuration packet(s):");
+        LOG.info("Observed {} Configuration packet(s):", observed.size());
         for (ObservedPacket packet : observed) {
-            System.out.printf("  id=0x%02X payloadLength=%d%n", packet.packetId(), packet.payloadLength());
+            LOG.info("  id=0x{} payloadLength={}",
+                    Integer.toHexString(packet.packetId()).toUpperCase(), packet.payloadLength());
         }
 
         assertFalse(observed.isEmpty(), "expected at least one Configuration packet from the server");

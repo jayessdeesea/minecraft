@@ -10,9 +10,9 @@ Minecraft server, connect a native client, current build status.
 
 ## Docs
 
-- [docs/protocol-pipeline.md](docs/protocol-pipeline.md) — how `protocol`'s seven-stage Netty
-  pipeline works, with a diagram: framing, compression, and marshalling as swappable-delegate
-  handlers, state ownership split from packet-sending, and how a join actually unfolds
+- [docs/protocol-pipeline.md](docs/protocol-pipeline.md) — how `protocol`'s Netty pipeline works:
+  framing, compression, and marshalling as swappable-delegate handlers, state ownership split from
+  packet-sending, and how a join actually unfolds
 - [docs/protocol-spec.md](docs/protocol-spec.md) — the Minecraft wire protocol (packet format,
   states, compression, encryption) as implemented by the `protocol` module
 - [docs/world-data-spec.md](docs/world-data-spec.md) — the chunk/block/light data formats the

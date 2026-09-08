@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.protocol;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -20,13 +22,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class StatusPingLiveIT {
 
+    private static final Logger LOG = LogManager.getLogger(StatusPingLiveIT.class);
+
     @Test
     void pingsTheLocalDevServer() throws Exception {
         StatusResult result = MinecraftClient.pingStatus("localhost", 25565)
                 .get(10, TimeUnit.SECONDS);
 
-        System.out.println("Status JSON: " + result.json());
-        System.out.println("Round trip: " + result.roundTripMillis() + " ms");
+        LOG.info("Status JSON: {}", result.json());
+        LOG.info("Round trip: {} ms", result.roundTripMillis());
 
         assertTrue(result.json().contains("\"version\""), "status response should describe the server version");
     }

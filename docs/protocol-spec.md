@@ -220,17 +220,27 @@ Confirmed this way, against 26.2 specifically — clientbound unless noted:
 | `0x07` (serverbound) | Known Packs (reply) | same as above — sending an empty list here is what unblocked Registry Data/Update Tags |
 | `0x03` (serverbound) | Acknowledge Finish Configuration | same inference; confirmed working: sending it after Finish Configuration is what put the server into Play (see below) |
 
+**Registry Data (`0x07`) is now actually decoded**, not just identified by size - `RegistryDataPacket`
+reads the registry name and every entry's identifier (each entry's own NBT payload is skipped, not
+parsed - see that class's javadoc for why). Cross-checked a second, independent way beyond the
+by-content method above: decompiling the real server jar's `ConfigurationProtocols` puts this
+packet at clientbound registration index 7, and the same list's index 14 lands on `Select Known
+Packs` - matching this table's own already-confirmed `0x0E` exactly. Confirmed live against the dev
+server: all ~30 registries synced during a real join decode cleanly with plausible names and entry
+counts (`minecraft:worldgen/biome` 66 entries, `minecraft:dimension_type` 4, `minecraft:damage_type`
+51, etc.) - see DEVELOPMENT.md's "Confirming wire formats against the real server" for the method.
+
 **Play was reached and confirmed end to end.** After acknowledging Finish Configuration, the
 server's own log showed:
 ```
 ScoutBot[/127.0.0.1:59369] logged in with entity id 19 at (4.5, 81.0, 42.5)
 ScoutBot joined the game
 ```
-— the same broadcast a real player join produces. `JoinClientHandler` disconnects a couple of
-seconds later without responding to anything Play-state sends (no Keep Alive replies, no
-movement) — it's a diagnostic tool that proves the join sequence works, not yet a Soldier. Play's
-packet catalog is far larger than Configuration's and genuinely belongs in its own future spec
-section (§ 3.5) written against real traffic the same way this one was, not attempted here.
+— the same broadcast a real player join produces. `JoinClientHandler` replies to Keep Alive but
+still disconnects a couple of seconds later (no movement, no persistent session) — it's a
+diagnostic tool that proves the join sequence works, not yet a Soldier. Play's packet catalog is
+far larger than Configuration's and genuinely belongs in its own future spec section (§ 3.5)
+written against real traffic the same way this one was, not attempted here.
 
 ### 3.5 Play
 Main gameplay state — the large majority of packet types live here. Specified incrementally, per

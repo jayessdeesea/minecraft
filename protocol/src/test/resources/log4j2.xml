@@ -5,10 +5,27 @@
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%-5level %logger{1} - %msg%n"/>
         </Console>
+        <!-- Writes directly to the final path for the current hour - no active/rename-at-rollover
+             file, so a restart mid-hour appends to the one correctly-named file instead of mixing
+             into a stale "current" file. ${sys:mc.logLabel} is fixed per JVM (which IT test, or
+             "server" once something wraps the dev server), not per log event - see AGENTS.md's
+             note on JoinObservationLiveIT/StatusPingLiveIT for what runs today. -->
+        <Routing name="Hourly">
+            <Routes pattern="$${date:yyyy-MM-dd-HH}">
+                <Route>
+                    <File name="File-${date:yyyy-MM-dd-HH}"
+                          fileName="${sys:mc.logPath:-logs}/${date:yyyy/MM/dd}/${date:yyyy-MM-dd-HH}-${sys:mc.logLabel:-protocol}.txt">
+                        <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level %logger{1} - %msg%n"/>
+                    </File>
+                </Route>
+            </Routes>
+            <IdlePurgePolicy timeToLive="10" timeUnit="minutes"/>
+        </Routing>
     </Appenders>
     <Loggers>
         <Root level="INFO">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="Hourly"/>
         </Root>
     </Loggers>
 </Configuration>

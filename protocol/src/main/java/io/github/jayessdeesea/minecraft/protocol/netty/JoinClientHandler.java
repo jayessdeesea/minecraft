@@ -6,6 +6,8 @@ import io.github.jayessdeesea.minecraft.protocol.packet.AcknowledgeFinishConfigu
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientInformationPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.FinishConfigurationPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.HandshakePacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.KeepAliveRequestPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.KeepAliveResponsePacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.KnownPacksPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.LoginAcknowledgedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.LoginDisconnectPacket;
@@ -13,6 +15,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.LoginStartPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.LoginSuccessPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.RegistryDataPacket;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.concurrent.ScheduledFuture;
@@ -83,6 +86,8 @@ public final class JoinClientHandler extends SimpleChannelInboundHandler<Packet>
             // The server withholds Finish Configuration without this - confirmed against the
             // live dev server. See ClientInformationPacket's javadoc on the ID being unconfirmed.
             ctx.writeAndFlush(ClientInformationPacket.defaults());
+        } else if (packet instanceof RegistryDataPacket registryData) {
+            LOG.info("Registry Data: {} ({} entries)", registryData.registry(), registryData.entryIds().size());
         } else if (packet instanceof KnownPacksPacket selectKnownPacks) {
             LOG.info("Select Known Packs: {}", selectKnownPacks.packs());
             // Claim we know none of them (we don't bundle any Minecraft data ourselves), so the
@@ -97,6 +102,9 @@ public final class JoinClientHandler extends SimpleChannelInboundHandler<Packet>
         } else if (packet instanceof PlayLoginPacket login) {
             // Field-by-field confirmed against the live dev server - see PlayLoginPacket's javadoc.
             LOG.info("Entered Play: {}", PlayState.fromLogin(login));
+        } else if (packet instanceof KeepAliveRequestPacket keepAlive) {
+            LOG.info("Keep Alive received: id={} - replying", keepAlive.id());
+            ctx.writeAndFlush(new KeepAliveResponsePacket(keepAlive.id()));
         }
 
         // Only Configuration is a genuine burst-then-pause worth waiting out; Login has nothing to
