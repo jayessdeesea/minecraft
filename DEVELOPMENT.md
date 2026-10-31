@@ -247,6 +247,30 @@ those need aren't decoded.
   production but meant the idle-triggered close itself couldn't be forced to fire live in the time
   available; the unit tests are what actually exercise that path today.
 
+- **`General`/`SquadLeader`/`Objective` - `command-ai` is no longer untouched.** `command` gained
+  `Objective` (freeform, unlike the closed `Order` set - an LLM-backed `SquadLeader` interprets it,
+  so there's no fixed vocabulary to close over), `SquadStatus` (mirrors `SoldierStatus` one level
+  up), and the `General`/`SquadLeader` interfaces themselves - both `decide(...)` methods return a
+  list positionally matched to their input, no map/key needed since the shell already owns the
+  ordered list it built the input from. `command-ai` implements both
+  (`SpringAiSquadLeader`/`SpringAiGeneral`) following AGENTS.md's `buildContext -> callModel ->
+  parseOrders` split exactly: `callModel` is the only line touching Spring AI's `ChatClient`,
+  proven untested-but-isolated by unit tests that wire a `ChatModel` which fails the test if it's
+  ever actually invoked. Neither implementation calls the model when there's nothing to decide
+  (`SquadLeader.decide` before any `receiveObjective`, `General.decide` on an empty squad list) -
+  both return `Order.Idle()`/no objectives instead, the same "no goal yet" default `Order.Idle`
+  already models, not a fallback masking a bug. The LLM's response is a small line-based text
+  protocol (`"<name>: IDLE"` / `"<name>: TREND <x> <z>"` for orders, `"<squadName>: <text>"` for
+  objectives) - any malformed line throws with the raw response included, per AGENTS.md's
+  no-fallbacks tenet; nothing here guesses its way past a bad response. Full `mvn test` reactor
+  stays green, including `ArchitectureTest`'s existing module-boundary rules against the new types.
+
+  **Deliberately not wired into `app` yet** - scoped out for this pass. Needs: grouping Alice/Bob
+  (or however many soldiers exist) into a squad, a decision on `SquadLeader`/`General` invocation
+  cadence (AGENTS.md's "Latency architecture" section says "start conservative," not a specific
+  number), and a real `ANTHROPIC_API_KEY` to actually run - none of today's unit tests make a live
+  model call.
+
 **Needs a decision:**
 - **`PlaySession`'s remaining shape** — chat, or anything beyond position, is still only sketched
   in conversation; reading chunk data and reporting position are both done now (above).
