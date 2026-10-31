@@ -400,7 +400,9 @@ real names - the sequence of `FriendlyByteBuf.readX`/`writeX` calls in a packet'
 *is* its field layout. Point it straight at the jar; no extraction, no third-party tool:
 
 ```bash
-J='C:\mc-dev-server\versions\26.2\server-26.2.jar'
+# once per pin bump: copy the versioned jar out of the dev-server container (see section 1)
+docker compose cp minecraft:/data/versions/26.2/server-26.2.jar C:/mc-reference/
+J='C:\mc-reference\server-26.2.jar'
 javap -p -c -classpath "$J" net.minecraft.network.protocol.game.ClientboundAddEntityPacket
 javap -p -c -classpath "$J" net.minecraft.network.protocol.game.GameProtocols   # registration order = packet IDs
 javap -v ...   # when a codec is a method reference: the BootstrapMethods/MethodHandle lines name its target
@@ -445,83 +447,56 @@ both good candidates.
 
 - Java 25 (Amazon Corretto or another distribution) — matches [AGENTS.md](AGENTS.md#stack)
 - Maven
-- An Anthropic API key, only once `command-ai` actually calls Claude (not needed for the
-  connectivity smoke test in this doc)
+- Docker Desktop - runs the dev server and local model (section 1)
+- An Anthropic API key, only if `command-ai` is pointed at Claude instead of the local model
 
-## 1. Download and run a local dev server
+## 1. Start the dev server and local model (Docker)
 
-We target a single pinned Minecraft version — see
-[AGENTS.md § Target environment](AGENTS.md#target-environment) for the current pin (it's bumped
-deliberately, so treat that section as the source of truth rather than anything below). Get the
-server jar from Mojang's own version manifest rather than a third-party mirror, so it's guaranteed
-to match:
-
-1. Fetch `https://piston-meta.mojang.com/mc/game/version_manifest_v2.json` and find the entry
-   under `versions` whose `id` matches the pinned version.
-2. Fetch that entry's own `url` — a per-version JSON document.
-3. In that document, `downloads.server.url` is the server jar's download URL and
-   `downloads.server.sha1` is its checksum. The server's own `javaVersion.majorVersion` field
-   tells you the minimum JRE it needs.
+`compose.yaml` runs the two external services this project talks to; our own app runs on the host
+(fast edit/build/debug loop) and reaches both on `localhost`. Needs Docker Desktop (WSL2 backend);
+for GPU inference, an NVIDIA driver recent enough for Docker's GPU passthrough.
 
 ```bash
-SERVER_JAR_URL="<downloads.server.url from step 3>"
-SERVER_JAR_SHA1="<downloads.server.sha1 from step 3>"
-
-mkdir -p ~/mc-dev-server && cd ~/mc-dev-server   # or e.g. C:\mc-dev-server on Windows
-curl -Lo server.jar "$SERVER_JAR_URL"
-
-# verify the download
-echo "$SERVER_JAR_SHA1  server.jar" | sha1sum -c -
-
-# first run: generates eula.txt and server.properties, then exits
-java -jar server.jar nogui
+docker compose up -d --build                           # first run builds the server image
+docker compose exec ollama ollama pull qwen3:14b       # once - ~9 GB into the ollama-models volume
 ```
 
-Keep the server directory **outside this repo, and outside any cloud-sync client** (OneDrive,
-Dropbox, etc., if your working copy happens to be under one — see AGENTS.md's note on `target/`
-for why). It's a large third-party binary with its own world save that gets rewritten
-continuously while the server runs; a live server's region files under active cloud sync is a
-worse version of the same file-locking problem, up to save corruption.
+- **`minecraft`** - `docker/minecraft-server/Dockerfile` downloads the pinned version's server jar
+  from Mojang's own manifest URL and verifies its SHA-1 (the pin is [AGENTS.md § Target
+  environment](AGENTS.md#target-environment); bump the Dockerfile's `ARG`s deliberately with it).
+  First start accepts the EULA and writes `online-mode=false` (the offline dev setup AGENTS.md
+  commits to). The world lives in the `minecraft-data` volume - inside Docker, not the working
+  copy, so it's out of reach of OneDrive/cloud-sync file locking. Listens on `localhost:25565`.
+- **`ollama`** - pinned `ollama/ollama` image, models in the `ollama-models` volume, GPU passed
+  through. Listens on `localhost:11434`. Confirm the GPU was found with `docker compose logs ollama
+  | grep "inference compute"`. Qwen3 "thinks" by default - ~20s per decision; with `think: false`
+  it's ~0.5s.
 
-Edit the two generated files before the second run:
-- `eula.txt` — change `eula=false` to `eula=true`
-- `server.properties` — set `online-mode=false` (this is the offline-mode dev setup AGENTS.md
-  commits to; skips Mojang/Xbox auth entirely)
+Day to day:
 
 ```bash
-java -jar server.jar nogui
+docker compose logs -f minecraft                        # join/leave/death lines, live
+docker compose exec minecraft console "time set night"  # any server console command
+docker compose exec minecraft console "summon zombie 0 80 0"
+docker compose down                                     # stop; volumes (world, models) are kept
 ```
 
-Server listens on `localhost:25565` by default.
+`console` writes to a FIFO the server reads as its stdin (`docker/minecraft-server/entrypoint.sh`),
+so commands work non-interactively - forcing night or spawning a mob makes live tests of the combat
+reflex deterministic instead of waiting for a night. In Git Bash, prefix commands that pass
+container paths with `MSYS_NO_PATHCONV=1`, or the paths get rewritten to Windows ones.
 
-### Starting it again later, with a log file (so join/leave events are captured)
-
-Server log lines like `ScoutBot joined the game` only show up in whichever console it's running
-in. Tee stdout+stderr to a file too, so a live IT run's join/leave/disconnect lines can be
-`grep`/`tail`ed after the fact without keeping the server's own terminal window around:
-
-```powershell
-# Windows (PowerShell) — Tee-Object is PowerShell's equivalent of Unix tee
-cd C:\mc-dev-server
-java -jar server.jar nogui 2>&1 | Tee-Object -FilePath run.log
-```
+To regenerate the server's data reports (`blocks.json`, `registries.json` - inputs to the
+`tools/*-generator`s):
 
 ```bash
-# macOS/Linux
-cd ~/mc-dev-server
-java -jar server.jar nogui 2>&1 | tee run.log
+MSYS_NO_PATHCONV=1 docker compose run --rm --no-deps --entrypoint java minecraft \
+    -DbundlerMainClass=net.minecraft.data.Main -jar /opt/minecraft/server.jar --reports --output /data/generated
+docker compose cp minecraft:/data/generated/reports C:/mc-reference/reports
 ```
-
-`2>&1` merges stderr into stdout before the pipe — the server's crash/error output goes to the
-log too, not just normal INFO lines. Use `-Append`/`>>` instead of overwriting (`Tee-Object
--Append -FilePath run.log`, `tee -a run.log`) to keep history across restarts rather than
-clobbering the previous run's log.
 
 **Don't stop stray `app.jar`/test processes with a bare `Get-Process java | Stop-Process`** - it
-matches every process named `java.exe`, the dev server included, and will kill it too (this
-happened once - recovered by just restarting the server, nothing was corrupted, but it wasted a
-debugging cycle chasing a symptom that was really "the server isn't running"). Filter by command
-line instead: `Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.CommandLine -like '*app.jar*' }`.
+kills every `java.exe` on the host. Filter by command line instead: `Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.CommandLine -like '*app.jar*' }`.
 
 ## 2. Connect with the real Minecraft Java client
 

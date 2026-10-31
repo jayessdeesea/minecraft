@@ -1,0 +1,31 @@
+# The dev environment's external services: the pinned Minecraft server and a local LLM. Our own
+# app runs on the host during development (fast edit/run/debug loop) and connects to both via
+# localhost. See DEVELOPMENT.md section 1.
+services:
+  minecraft:
+    build: docker/minecraft-server
+    image: minecraft-dev-server:26.2
+    ports:
+      - "25565:25565"
+    volumes:
+      - minecraft-data:/data
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.40.5
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  minecraft-data:
+  ollama-models:
