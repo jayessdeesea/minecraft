@@ -1,0 +1,37 @@
+# Generated from the pinned server jar's `--reports` registries.json by
+# tools/entity-hostility-generator. One hostile entity-type protocol ID per
+# line: <id> <name>. Everything NOT listed here is treated as not hostile.
+14 blaze
+16 bogged
+17 breeze
+22 cave_spider
+32 creeper
+38 drowned
+40 elder_guardian
+42 endermite
+43 ender_dragon
+46 evoker
+57 ghast
+63 guardian
+64 hoglin
+67 husk
+80 magma_cube
+99 phantom
+102 piglin_brute
+103 pillager
+109 ravager
+112 shulker
+114 silverfish
+115 skeleton
+117 slime
+124 spider
+128 stray
+139 vex
+141 vindicator
+143 warden
+145 witch
+146 wither
+147 wither_skeleton
+150 zoglin
+151 zombie
+154 zombie_villager

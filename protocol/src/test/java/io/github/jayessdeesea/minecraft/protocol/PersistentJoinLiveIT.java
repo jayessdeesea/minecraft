@@ -60,7 +60,7 @@ class PersistentJoinLiveIT {
         List<ChunkUpdate> updates = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "ChunkTestBot",
-                        new PlaySessionListeners(updates::add, position -> { }, cause -> { }))
+                        new PlaySessionListeners(updates::add, position -> { }, entity -> { }, ids -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         // Chunks around spawn arrive within the first second or two of reaching Play - no need to
@@ -80,12 +80,38 @@ class PersistentJoinLiveIT {
         }
     }
 
+    /**
+     * Any entity proves the decode - a passive mob, a dropped item, another player. Doesn't need a
+     * hostile mob nearby. Also proves the variable-length velocity skip is right against real
+     * traffic: {@code AddEntityPacket.decode} rejects trailing bytes, which closes the connection.
+     */
+    @Test
+    void deliversEntityUpdatesForEntitiesAroundSpawn() throws Exception {
+        List<EntityUpdate> entities = new CopyOnWriteArrayList<>();
+
+        PlaySession session = MinecraftClient.join("localhost", 25565, "EntityTestBot",
+                        new PlaySessionListeners(update -> { }, position -> { }, entities::add, ids -> { }, cause -> { }))
+                .get(15, TimeUnit.SECONDS);
+
+        for (int i = 0; i < 50 && entities.isEmpty(); i++) {
+            Thread.sleep(100);
+        }
+        assertTrue(session.isOpen(), "session should survive decoding Add Entity packets");
+        session.close();
+
+        assertFalse(entities.isEmpty(), "expected at least one entity in view after joining");
+        LOG.info("{} entity update(s); first: {}", entities.size(), entities.get(0));
+        for (EntityUpdate entity : entities) {
+            assertTrue(entity.y() > -64 && entity.y() < 320, "entity Y should be within the Overworld's height range: " + entity);
+        }
+    }
+
     @Test
     void receivesRealSpawnPositionAndStaysConnectedAfterAcceptingIt() throws Exception {
         List<PlayerPosition> positions = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "PositionTestBot",
-                        new PlaySessionListeners(update -> { }, positions::add, cause -> { }))
+                        new PlaySessionListeners(update -> { }, positions::add, entity -> { }, ids -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         for (int i = 0; i < 50 && positions.isEmpty(); i++) {

@@ -85,6 +85,8 @@ public class SoldierRunner implements CommandLineRunner {
         MinecraftClient.join(HOST, PORT, name, new PlaySessionListeners(
                         update -> chunkCache.load(update.chunkX(), update.chunkZ(), update.sectionBlockStates(), name),
                         firstPosition::complete,
+                        entity -> { },
+                        ids -> { },
                         cause -> onDisconnected(definition, chunkCache, activeScheduler, cause)))
                 .thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, chunkCache, activeScheduler))
                 .exceptionally(cause -> {

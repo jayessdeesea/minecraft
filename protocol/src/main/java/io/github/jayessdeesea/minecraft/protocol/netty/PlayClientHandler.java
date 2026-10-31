@@ -1,11 +1,13 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.ChunkUpdate;
+import io.github.jayessdeesea.minecraft.protocol.EntityUpdate;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
 import io.github.jayessdeesea.minecraft.protocol.PlayState;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import io.github.jayessdeesea.minecraft.protocol.packet.AcceptTeleportationPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.AddEntityPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.AcknowledgeFinishConfigurationPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChunkDataPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientInformationPacket;
@@ -22,6 +24,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RegistryDataPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.AttributeKey;
@@ -135,6 +138,13 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             LOG.info("Player Position received: ({}, {}, {}) - accepting", position.x(), position.y(), position.z());
             ctx.writeAndFlush(new AcceptTeleportationPacket(position.teleportId()));
             listeners.onPlayerPosition().accept(new PlayerPosition(position.x(), position.y(), position.z()));
+        } else if (packet instanceof AddEntityPacket entity) {
+            LOG.debug("Add Entity received: id={} type={} at ({}, {}, {})",
+                    entity.entityId(), entity.typeId(), entity.x(), entity.y(), entity.z());
+            listeners.onEntitySpawn().accept(new EntityUpdate(entity.entityId(), entity.typeId(), entity.x(), entity.y(), entity.z()));
+        } else if (packet instanceof RemoveEntitiesPacket removal) {
+            LOG.debug("Remove Entities received: {}", removal.entityIds());
+            listeners.onEntitiesRemoved().accept(removal.entityIds());
         }
         // Everything else recognized-but-unhandled or unrecognized is already logged/cataloged by
         // PacketLoggingHandler/SessionStateManager earlier in the pipeline - nothing further to do

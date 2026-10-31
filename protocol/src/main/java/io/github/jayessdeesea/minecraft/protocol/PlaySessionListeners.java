@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.protocol;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -21,9 +22,11 @@ import java.util.function.Consumer;
  */
 public record PlaySessionListeners(Consumer<ChunkUpdate> onChunkUpdate,
                                     Consumer<PlayerPosition> onPlayerPosition,
+                                    Consumer<EntityUpdate> onEntitySpawn,
+                                    Consumer<List<Integer>> onEntitiesRemoved,
                                     Consumer<Throwable> onDisconnect) {
 
     public static PlaySessionListeners none() {
-        return new PlaySessionListeners(update -> { }, position -> { }, cause -> { });
+        return new PlaySessionListeners(update -> { }, position -> { }, entity -> { }, ids -> { }, cause -> { });
     }
 }

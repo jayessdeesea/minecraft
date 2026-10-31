@@ -1,10 +1,13 @@
 package io.github.jayessdeesea.minecraft.bot;
 
+import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Soldier;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
+
+import java.util.List;
 
 /**
  * The {@code bot} module's implementation of {@link Soldier}: a deterministic, non-LLM per-tick
@@ -44,18 +47,40 @@ public final class DeterministicSoldier implements Soldier {
     }
 
     /**
-     * Advances one step toward the current order's target, unless {@code world} reports the next
-     * block as solid - in which case this soldier simply stays put. No pathing around obstacles by
-     * design (see {@code Order.TrendToward}'s javadoc): getting stuck on a tree or a mountain is an
-     * acceptable outcome for this soldier, not a bug to route around.
+     * Ballpark starting value, not tuned against real mob behavior - vanilla hostiles typically
+     * notice a player around 16 blocks out, so this reacts well inside that. Revisit once a live
+     * run shows soldiers reacting too late or too skittishly.
+     */
+    static final double CONTACT_RADIUS = 8.0;
+
+    /**
+     * One tick of movement. First the "actions on contact" reflex: if a hostile is within {@link
+     * #CONTACT_RADIUS}, step directly away from the nearest one, ignoring the current order
+     * entirely - the infantry "break contact" drill, decided here at tick speed with no squad
+     * leader involved. If the retreat step is blocked, stand still rather than fall back to the
+     * order (which might lead toward the threat).
+     *
+     * <p>Otherwise advances one step toward the current order's target, unless {@code world}
+     * reports the next block as solid - in which case this soldier simply stays put. No pathing
+     * around obstacles by design (see {@code Order.TrendToward}'s javadoc): getting stuck on a tree
+     * or a mountain is an acceptable outcome for this soldier, not a bug to route around.
      */
     public void tick(WorldView world) {
-        if (!(order instanceof Order.TrendToward trend)) {
+        List<TrackedEntity> threats = world.nearbyHostiles(position, CONTACT_RADIUS);
+        if (!threats.isEmpty()) {
+            Position threat = threats.get(0).position();
+            stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
             return;
         }
 
-        double dx = trend.x() - position.x();
-        double dz = trend.z() - position.z();
+        if (order instanceof Order.TrendToward trend) {
+            stepToward(world, trend.x(), trend.z());
+        }
+    }
+
+    private void stepToward(WorldView world, double targetX, double targetZ) {
+        double dx = targetX - position.x();
+        double dz = targetZ - position.z();
         double distance = Math.hypot(dx, dz);
         if (distance < STEP) {
             return;

@@ -271,6 +271,40 @@ those need aren't decoded.
   number), and a real `ANTHROPIC_API_KEY` to actually run - none of today's unit tests make a live
   model call.
 
+- **Entity awareness, and a "break contact" reflex.** `protocol` decodes Add Entity (`0x01`) and
+  Remove Entities (`0x4D`) - IDs from `GameProtocols`' clientbound registration order (the same list
+  whose 0x2C/0x2D/0x31/0x48 match this codebase's earlier confirmations), layouts from the server's
+  own wire constructors (see "Confirming wire formats" below). Add Entity's velocity field is
+  `LpVec3`, a *variable-length* encoding (1 byte if zero, else 6, plus a VarInt if a continuation
+  bit is set), so `AddEntityPacket.decode` rejects trailing bytes as a direct check on that skip.
+  Both surface through new `PlaySessionListeners.onEntitySpawn`/`onEntitiesRemoved`; confirmed
+  live by `PersistentJoinLiveIT` (28 real entities around spawn, no decode errors - the first was
+  type 10, which the registry report names `bat`, at y≈-4: underground, as expected).
+
+  `bot.world` gains `HostileMobRegistry` (same generated-resource pattern as
+  `BlockSolidityRegistry`, via `tools/entity-hostility-generator` reading `--reports`'
+  `registries.json`; the generator fails if a curated name isn't in the registry, so a typo can't
+  silently drop a mob), `EntityTracker` (shared `ConcurrentHashMap` by entity ID, no reference
+  counting - removal names exact IDs), and a default `WorldView.nearbyHostiles` (a default so every
+  one-line lambda fake keeps compiling). `DeterministicSoldier.tick` checks for a hostile within
+  `CONTACT_RADIUS` (8 blocks, untuned) before following its order; if one is there it steps
+  directly away from the nearest, and stands still if that step is blocked rather than falling back
+  to an order that might lead toward the threat. That's the deterministic half of infantry
+  actions-on-contact; the squad-level half (regroup/hold/disperse) belongs in `SquadLeader` once
+  `command-ai` is wired in.
+
+  **Open follow-ups, deliberately scoped out:**
+  - **Positions are spawn-time only.** Nothing decodes entity movement packets, so a tracked mob's
+    position goes stale as soon as it walks. Next protocol step for this feature.
+  - **Not wired into `app`.** `SoldierRunner` passes no-op entity listeners and still hands
+    `ChunkCache` straight to `tick` - and `ChunkCache` inherits `WorldView`'s default "no threats,"
+    so soldiers in the live app do not react yet. Wiring needs a `WorldView` composite over
+    `ChunkCache` + `EntityTracker`; that composite must override `nearbyHostiles`, or the default
+    silently hides every threat.
+  - **Cross-soldier removal.** One connection's Remove Entities drops the entity for everyone, even
+    if another soldier still sees it. Harmless while positions are spawn-only; revisit with
+    movement tracking.
+
 **Needs a decision:**
 - **`PlaySession`'s remaining shape** — chat, or anything beyond position, is still only sketched
   in conversation; reading chunk data and reporting position are both done now (above).
@@ -308,9 +342,21 @@ modeling" section already settled, not by adding anything new:
 (`versions/<version>/server-<version>.jar` inside the bundler `server.jar`) ships with real,
 unobfuscated `net.minecraft.*` class and method names - despite Mojang not publishing official
 `client_mappings`/`server_mappings` for this version yet (checked directly against the version
-manifest JSON; the field is simply absent). That means a plain decompiler run directly against the
-jar - no mapping file needed - gives actual Mojang source with real names, not obfuscated
-single-letter noise:
+manifest JSON; the field is simply absent). So the JDK's own `javap` gives readable bytecode with
+real names - the sequence of `FriendlyByteBuf.readX`/`writeX` calls in a packet's wire constructor
+*is* its field layout. Point it straight at the jar; no extraction, no third-party tool:
+
+```bash
+J='C:\mc-dev-server\versions\26.2\server-26.2.jar'
+javap -p -c -classpath "$J" net.minecraft.network.protocol.game.ClientboundAddEntityPacket
+javap -p -c -classpath "$J" net.minecraft.network.protocol.game.GameProtocols   # registration order = packet IDs
+javap -v ...   # when a codec is a method reference: the BootstrapMethods/MethodHandle lines name its target
+```
+
+Extracting the jar on Windows is worse than unnecessary: deep `net/minecraft/...` paths under a
+long base directory exceed `MAX_PATH`, and `unzip` silently skips them. When bytecode isn't enough
+(heavy control flow), a decompiler like CFR gives Java source - same jar, same no-mapping
+advantage:
 
 ```bash
 # one-time: grab a decompiler (CFR is a single jar, no install)
