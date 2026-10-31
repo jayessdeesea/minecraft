@@ -326,15 +326,18 @@ those need aren't decoded.
   there's no swimming, and a fall can hurt. Fine until a live run shows otherwise.
 
   **Open follow-ups - in priority order:**
-  - **Fighting withdrawal: unit-tested, not yet seen live.** Retreat alone couldn't break contact
-    (zombies chase at a soldier's walking speed; Bob died 4 times in one 90s run), so the reflex now
-    also strikes the nearest hostile within `ATTACK_REACH` (3 blocks) every `ATTACK_COOLDOWN_TICKS`
-    (10) while still backing away - knockback buys distance. `tick` returns the entity to attack;
-    `SoldierRunner` sends it via `PlaySession.attack` (Attack `0x01` + Swing `0x3F`). The server
-    ignores attacks until the client sends Player Loaded (`0x2C`, empty), so `PlayClientHandler`
-    now sends it after accepting the first Player Position. A daytime live run had no hostile come
-    near; confirm at night. Bare fists do 1 damage against a zombie's 20 health, so this may still
-    lose fights - the squad-level answer (regroup, mutual support) needs `command-ai` wired in.
+  - **Fighting withdrawal - confirmed live.** Retreat alone couldn't break contact (zombies chase at
+    a soldier's walking speed; Bob died 4 times in one 90s run), so the reflex also strikes the
+    nearest hostile within `ATTACK_REACH` (3 blocks) every `ATTACK_COOLDOWN_TICKS` (10) while still
+    backing away. `tick` returns the entity to attack; `SoldierRunner` sends it via
+    `PlaySession.attack` (Attack `0x01` + Swing `0x3F`). The server ignores attacks until the client
+    sends Player Loaded (`0x2C`, empty), so `PlayClientHandler` sends it after accepting the first
+    Player Position. Live at night: Alice and Bob each killed a hostile (the server awarded both
+    "Monster Hunter") and neither died in 4 minutes. Still bare-fisted; the squad-level answer to
+    bigger fights (regroup, mutual support) needs `command-ai` wired in.
+
+    To find night for a live check: Set Time (`0x71`, not decoded) carries the day time as a VarInt
+    after the game-time long - night is day time mod 24000 in 13000-23000.
   - **Obstacles stop soldiers dead.** By design (no pathing), but with real terrain it now happens
     within a block or two of spawn - Alice stops at a tree. Pathing belongs with the squad layer
     deciding *where* to go.
