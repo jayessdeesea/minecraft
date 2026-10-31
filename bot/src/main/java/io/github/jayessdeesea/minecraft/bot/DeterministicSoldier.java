@@ -8,6 +8,7 @@ import io.github.jayessdeesea.minecraft.command.Soldier;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -44,6 +45,7 @@ public final class DeterministicSoldier implements Soldier {
     // Tick-loop-only, like position's writes - no other thread reads it.
     private double verticalVelocity = 0;
     private volatile boolean onGround = true;
+    private int ticksUntilAttack = 0; // tick-loop only
 
     public DeterministicSoldier(String name, Position startingPosition) {
         this.name = name;
@@ -82,11 +84,23 @@ public final class DeterministicSoldier implements Soldier {
     public static final double CONTACT_RADIUS = 8.0;
 
     /**
+     * Centre-to-centre distance a soldier swings at. The server's check (eye to target hitbox,
+     * {@code isWithinAttackRange}) is more generous; staying inside it avoids attacks it would
+     * silently drop.
+     */
+    public static final double ATTACK_REACH = 3.0;
+
+    /** Ticks between attacks - vanilla's fist recharges fully in 5 ticks (attack speed 4). */
+    static final int ATTACK_COOLDOWN_TICKS = 10;
+
+    /**
      * One tick of movement. First the "actions on contact" reflex: if a hostile is within {@link
      * #CONTACT_RADIUS}, step directly away from the nearest one, ignoring the current order
-     * entirely - the infantry "break contact" drill, decided here at tick speed with no squad
-     * leader involved. If the retreat step is blocked, stand still rather than fall back to the
-     * order (which might lead toward the threat).
+     * entirely, and strike it whenever it's within {@link #ATTACK_REACH} and the attack has
+     * recharged - a fighting withdrawal, decided here at tick speed with no squad leader involved.
+     * Retreat alone can't break contact (zombies chase as fast as a soldier walks); each hit's
+     * knockback buys distance. If the retreat step is blocked, stand still rather than fall back to
+     * the order (which might lead toward the threat).
      *
      * <p>Otherwise advances one step toward the current order's target. A step needs room for the
      * whole ~1.8-block body; a one-block rise is jumped, anything taller stops the soldier. No
@@ -95,24 +109,42 @@ public final class DeterministicSoldier implements Soldier {
      *
      * <p>Then vertical movement with vanilla gravity: the server kicks a client that reports
      * standing while hovering over lower ground ("floating too long"), so falling is not optional.
+     *
+     * @return the entity to attack this tick, if any - the caller sends it, keeping this decision
+     *     free of I/O like the rest of the tick
      */
-    public void tick(WorldView world) {
+    public OptionalInt tick(WorldView world) {
+        if (ticksUntilAttack > 0) {
+            ticksUntilAttack--;
+        }
+
         Position correction = pendingCorrection.getAndSet(null);
         if (correction != null) {
             position = correction;
             verticalVelocity = 0;
-            return;
+            return OptionalInt.empty();
         }
 
+        OptionalInt attack = OptionalInt.empty();
         List<TrackedEntity> threats = world.nearbyHostiles(position, CONTACT_RADIUS);
         if (!threats.isEmpty()) {
-            Position threat = threats.get(0).position();
+            TrackedEntity nearest = threats.get(0);
+            Position threat = nearest.position();
+            if (ticksUntilAttack == 0 && distance(position, threat) <= ATTACK_REACH) {
+                attack = OptionalInt.of(nearest.entityId());
+                ticksUntilAttack = ATTACK_COOLDOWN_TICKS;
+            }
             stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
         } else if (order instanceof Order.TrendToward trend) {
             stepToward(world, trend.x(), trend.z());
         }
 
         applyVerticalMovement(world);
+        return attack;
+    }
+
+    private static double distance(Position a, Position b) {
+        return Math.sqrt(Math.pow(a.x() - b.x(), 2) + Math.pow(a.y() - b.y(), 2) + Math.pow(a.z() - b.z(), 2));
     }
 
     private void applyVerticalMovement(WorldView world) {

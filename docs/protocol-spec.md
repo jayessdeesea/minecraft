@@ -266,9 +266,12 @@ previously-confirmed IDs in the same list land where expected.
 | ← | `0x68` | Set Health | `SetHealthPacket` | registration order; live (`0.0` for a dead player) |
 | ← | `0x7D` | Teleport Entity | `EntityPositionPacket` | registration order |
 | → | `0x00` | Accept Teleportation | `AcceptTeleportationPacket` | registration order; server keeps the session after it |
+| → | `0x01` | Attack | `AttackPacket` | registration order |
 | → | `0x0C` | Client Command | `ClientCommandPacket` | registration order; live respawn |
 | → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | wiki + live round-trip |
 | → | `0x1E` | Move Player Pos | `MovePlayerPosPacket` | registration order; live movement |
+| → | `0x2C` | Player Loaded | `PlayerLoadedPacket` | registration order; empty body |
+| → | `0x3F` | Swing | `SwingPacket` | registration order |
 
 `0x00` clientbound is the bundle delimiter: vanilla brackets related packets (e.g. an entity spawn
 and its metadata) in a pair of them but still sends each inner packet as its own frame, so it's

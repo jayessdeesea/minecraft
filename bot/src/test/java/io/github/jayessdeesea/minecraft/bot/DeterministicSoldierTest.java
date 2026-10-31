@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.OptionalInt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -82,6 +83,49 @@ class DeterministicSoldierTest {
         alice.tick(withHostileAt(new Position(3, 64, 0), true));
 
         assertEquals(new Position(0, 64, 0), alice.status().position());
+    }
+
+    @Test
+    void attacksAHostileWithinReachAndKeepsWithdrawing() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+
+        OptionalInt attack = alice.tick(withHostileAt(new Position(2, 64, 0), false));
+
+        assertEquals(OptionalInt.of(1), attack);
+        assertTrue(alice.status().position().x() < 0, "should still back away while fighting");
+    }
+
+    @Test
+    void doesNotAttackOutOfReach() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+
+        assertEquals(OptionalInt.empty(), alice.tick(withHostileAt(new Position(5, 64, 0), false)));
+    }
+
+    @Test
+    void waitsForTheAttackToRecharge() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+        // A hostile that keeps pace: always 2 blocks east of wherever Alice is.
+        WorldView chaser = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, 151, new Position(center.x() + 2, center.y(), center.z())));
+            }
+        };
+
+        int attacks = 0;
+        for (int i = 0; i < DeterministicSoldier.ATTACK_COOLDOWN_TICKS * 3; i++) {
+            if (alice.tick(chaser).isPresent()) {
+                attacks++;
+            }
+        }
+
+        assertEquals(3, attacks);
     }
 
     @Test

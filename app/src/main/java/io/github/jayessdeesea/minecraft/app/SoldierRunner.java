@@ -139,7 +139,10 @@ public class SoldierRunner implements CommandLineRunner {
                 runnable -> new Thread(runnable, name + "-tick"));
         activeScheduler.set(scheduler);
         scheduler.scheduleAtFixedRate(() -> {
-            soldier.tick(world);
+            soldier.tick(world).ifPresent(target -> {
+                LOG.info("{} attacks entity {}", name, target);
+                session.attack(target);
+            });
             Position current = soldier.status().position();
             session.reportPosition(current.x(), current.y(), current.z(), soldier.onGround());
         }, 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);

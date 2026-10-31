@@ -2,7 +2,9 @@ package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlayState;
+import io.github.jayessdeesea.minecraft.protocol.packet.AttackPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientCommandPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.SwingPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MovePlayerPosPacket;
 import io.netty.channel.Channel;
 
@@ -34,6 +36,12 @@ final class NettyPlaySession implements PlaySession {
     @Override
     public void respawn() {
         channel.writeAndFlush(new ClientCommandPacket(ClientCommandPacket.PERFORM_RESPAWN));
+    }
+
+    @Override
+    public void attack(int entityId) {
+        channel.write(new AttackPacket(entityId));
+        channel.writeAndFlush(new SwingPacket());
     }
 
     @Override

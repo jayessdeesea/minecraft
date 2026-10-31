@@ -36,6 +36,12 @@ public interface PlaySession {
      */
     void respawn();
 
+    /**
+     * Attacks the entity (with an arm swing, as a vanilla client does). The server silently ignores
+     * an attack that's out of range, so whether to attack - and how often - is the caller's call.
+     */
+    void attack(int entityId);
+
     /** Whether the underlying connection is still open. */
     boolean isOpen();
 

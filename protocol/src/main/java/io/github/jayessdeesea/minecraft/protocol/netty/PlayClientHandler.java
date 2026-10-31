@@ -25,6 +25,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.LoginSuccessPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MoveEntityPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayerLoadedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RegistryDataPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
@@ -92,6 +93,7 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
     // single-threading guarantee - see AGENTS.md's "Behavior modeling" section) - no volatile needed.
     private boolean playReached = false;
     private Throwable failureCause = null;
+    private boolean loadedSent = false;
 
     // Last server-sent position per entity on this connection - Move Entity packets are changes
     // relative to it (see MoveEntityPacket). Kept here, per connection, rather than in the shared
@@ -149,6 +151,12 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
         } else if (packet instanceof PlayerPositionPacket position) {
             LOG.info("Player Position received: ({}, {}, {}) - accepting", position.x(), position.y(), position.z());
             ctx.writeAndFlush(new AcceptTeleportationPacket(position.teleportId()));
+            if (!loadedSent) {
+                // Protocol-level, like Accept Teleportation: "I'm in the world now." Without it the
+                // server ignores attacks (and some other actions) until its own timeout.
+                ctx.writeAndFlush(new PlayerLoadedPacket());
+                loadedSent = true;
+            }
             listeners.onPlayerPosition().accept(new PlayerPosition(position.x(), position.y(), position.z()));
         } else if (packet instanceof AddEntityPacket entity) {
             LOG.debug("Add Entity received: id={} type={} at ({}, {}, {})",

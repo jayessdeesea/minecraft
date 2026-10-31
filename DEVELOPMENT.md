@@ -326,11 +326,15 @@ those need aren't decoded.
   there's no swimming, and a fall can hurt. Fine until a live run shows otherwise.
 
   **Open follow-ups - in priority order:**
-  - **Soldiers can't outrun zombies.** The retreat walks at 4 blocks/s; zombies chase at about the
-    same speed, so "break contact" alone just delays death (Bob died 4 times in one 90s run). Real
-    answers are either fighting back (attacking needs the Interact packet) or squad tactics - the
-    squad-level half of actions-on-contact, which needs `command-ai` wired in. A choice for the
-    user, not a bug fix.
+  - **Fighting withdrawal: unit-tested, not yet seen live.** Retreat alone couldn't break contact
+    (zombies chase at a soldier's walking speed; Bob died 4 times in one 90s run), so the reflex now
+    also strikes the nearest hostile within `ATTACK_REACH` (3 blocks) every `ATTACK_COOLDOWN_TICKS`
+    (10) while still backing away - knockback buys distance. `tick` returns the entity to attack;
+    `SoldierRunner` sends it via `PlaySession.attack` (Attack `0x01` + Swing `0x3F`). The server
+    ignores attacks until the client sends Player Loaded (`0x2C`, empty), so `PlayClientHandler`
+    now sends it after accepting the first Player Position. A daytime live run had no hostile come
+    near; confirm at night. Bare fists do 1 damage against a zombie's 20 health, so this may still
+    lose fights - the squad-level answer (regroup, mutual support) needs `command-ai` wired in.
   - **Obstacles stop soldiers dead.** By design (no pathing), but with real terrain it now happens
     within a block or two of spawn - Alice stops at a tree. Pathing belongs with the squad layer
     deciding *where* to go.
@@ -350,9 +354,6 @@ those need aren't decoded.
   writer of position. Previously only the first Player Position was used and every later one was
   ignored, so a server correction never reached the soldier. Confirmed live: both soldiers detected
   death, respawned, and resumed walking from the server's new position.
-
-  Not done: the serverbound Player Loaded packet (`0x2C`) a vanilla client sends once it's ready.
-  The server proceeds without it after a timeout; nothing has needed it yet.
 
 **Needs a decision:**
 - **`PlaySession`'s remaining shape** — chat, or anything beyond position, is still only sketched
