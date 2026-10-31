@@ -279,10 +279,9 @@ imported *above* those two platform BOMs specifically so our own pins for those 
 win — for two imported BOMs managing the same `groupId:artifactId`, the first declared in
 `dependencyManagement` wins, so order in that block is load-bearing, not cosmetic.
 
-Current pins (bump deliberately, not silently): Java 25, Spring Boot 4.1.1, Spring AI 2.0.1
-(requires Boot 4.0/4.1 — hard requirement, won't load under Boot 3.x), Netty 4.2.15.Final (the
-4.2.x line, not 4.1.x — new project, no migration burden, recommended default), JUnit 6.1.3,
-Log4j2 2.26.1, ArchUnit 1.5.0.
+The pins themselves live in the root `pom.xml`'s `<properties>` - bump them there, deliberately,
+not silently. Spring AI's 2.0 line requires Boot 4.0/4.1 (it won't load under Boot 3.x), so bump
+those two together; Netty stays on the 4.2.x line (new project, no 4.1.x migration burden).
 
 **`spring-boot-maven-plugin` needs an explicit `<execution>` binding `repackage`.** Without
 `spring-boot-starter-parent`, that goal isn't bound to the `package` phase automatically — omit
