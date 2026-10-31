@@ -120,8 +120,9 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   alongside Spring Boot's own threading model and isn't needed to solve a problem this narrow.
 
 **Where world state fits:** a soldier's `tick` depends on `WorldView` (a narrow, read-only query —
-is this block solid), not on the shared chunk cache itself. The cache that backs it — `bot.world`,
-not yet implemented, fed by every Soldier's own connection as chunks load/unload — is a *shared*
+is this block solid, which hostiles are near), not on the shared structures behind it. Its real
+implementation, `bot.world.WorldModel`, combines a `ChunkCache` and an `EntityTracker`, both fed by
+every Soldier's own connection. The chunk cache — loaded as chunks arrive and unloaded as they leave — is a *shared*
 structure (the block data is the same ground truth for every soldier; there's no reason to decode
 or store it per-connection), but chunk *visibility* is per-connection, so eviction has to be
 reference-counted (loaded by which connections), not last-writer-wins. `ConcurrentHashMap.compute()`

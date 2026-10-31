@@ -24,9 +24,10 @@ public record PlaySessionListeners(Consumer<ChunkUpdate> onChunkUpdate,
                                     Consumer<PlayerPosition> onPlayerPosition,
                                     Consumer<EntityUpdate> onEntitySpawn,
                                     Consumer<List<Integer>> onEntitiesRemoved,
+                                    Consumer<Float> onHealth,
                                     Consumer<Throwable> onDisconnect) {
 
     public static PlaySessionListeners none() {
-        return new PlaySessionListeners(update -> { }, position -> { }, entity -> { }, ids -> { }, cause -> { });
+        return new PlaySessionListeners(update -> { }, position -> { }, entity -> { }, ids -> { }, health -> { }, cause -> { });
     }
 }

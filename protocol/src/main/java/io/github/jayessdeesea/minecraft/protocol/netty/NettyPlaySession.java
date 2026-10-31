@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlayState;
+import io.github.jayessdeesea.minecraft.protocol.packet.ClientCommandPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MovePlayerPosPacket;
 import io.netty.channel.Channel;
 
@@ -28,6 +29,11 @@ final class NettyPlaySession implements PlaySession {
     @Override
     public void reportPosition(double x, double y, double z, boolean onGround) {
         channel.writeAndFlush(new MovePlayerPosPacket(x, y, z, onGround));
+    }
+
+    @Override
+    public void respawn() {
+        channel.writeAndFlush(new ClientCommandPacket(ClientCommandPacket.PERFORM_RESPAWN));
     }
 
     @Override

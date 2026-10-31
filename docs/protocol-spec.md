@@ -246,13 +246,31 @@ written against real traffic the same way this one was, not attempted here.
 Main gameplay state — the large majority of packet types live here. Specified incrementally, per
 packet, as we implement the features that need them; not enumerated in this document as a whole.
 
-**One packet confirmed so far**, the same by-content method as Configuration's:
+**This table is the authoritative list of confirmed Play packet IDs** - add a row here when a
+packet is confirmed; the packet class's javadoc carries its field layout. IDs are positions in the
+server's own `GameProtocols` registration lists (read with `javap` - see DEVELOPMENT.md's
+"Confirming wire formats against the real server"); each new one is accepted only once
+previously-confirmed IDs in the same list land where expected.
 
-| ID | Packet | How it was identified |
-|---|---|---|
-| `0x31` | Login (play) | first Play packet; a 4-byte Int near the start matched the server console's own "logged in with entity id N" exactly, and several other fields matched server.properties (`max-players`, `view-distance`, `simulation-distance`, `gamemode`) |
+| Dir | ID | Packet | Class | Confirmation |
+|---|---|---|---|---|
+| ← | `0x01` | Add Entity | `AddEntityPacket` | registration order; live (real entities decode with zero trailing bytes) |
+| ← | `0x2C` | Keep Alive | `KeepAliveRequestPacket` | by content: 8-byte payload ~15s into Play |
+| ← | `0x2D` | Chunk Data and Update Light | `ChunkDataPacket` | decompiled layout; live across many chunks |
+| ← | `0x31` | Login (play) | `PlayLoginPacket` | by content: entity ID matched the server console's "logged in with entity id N", other fields matched server.properties |
+| ← | `0x48` | Player Position | `PlayerPositionPacket` | registration order; live spawn coordinates |
+| ← | `0x4D` | Remove Entities | `RemoveEntitiesPacket` | registration order |
+| ← | `0x68` | Set Health | `SetHealthPacket` | registration order; live (`0.0` for a dead player) |
+| → | `0x00` | Accept Teleportation | `AcceptTeleportationPacket` | registration order; server keeps the session after it |
+| → | `0x0C` | Client Command | `ClientCommandPacket` | registration order; live respawn |
+| → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | wiki + live round-trip |
+| → | `0x1E` | Move Player Pos | `MovePlayerPosPacket` | registration order; live movement |
 
-Fields decoded: entity ID, hardcore flag, the 3 dimension names, max players, view/simulation
+`0x00` clientbound is the bundle delimiter: vanilla brackets related packets (e.g. an entity spawn
+and its metadata) in a pair of them but still sends each inner packet as its own frame, so it's
+safe to leave as `UnknownPacket`.
+
+Login (play) fields decoded: entity ID, hardcore flag, the 3 dimension names, max players, view/simulation
 distance, reduced-debug-info/respawn-screen/limited-crafting flags, dimension type + name, hashed
 seed, game mode + previous game mode, debug/flat flags, has-death-location flag. Trailing fields
 (portal cooldown and later) aren't decoded yet - see `PlayLoginPacket`'s javadoc. This seeds

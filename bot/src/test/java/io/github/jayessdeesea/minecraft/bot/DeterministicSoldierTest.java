@@ -13,7 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises {@link DeterministicSoldier} as a black box: construct it, feed it an order and a
- * fake {@code WorldView}, tick it, observe {@code status()}. No Netty, no live server, no LLM -
+ * fake {@code WorldView} ({@code terrain}/{@code withHostileAt} below), tick it, observe {@code
+ * status()}. No Netty, no live server, no LLM -
  * see AGENTS.md's "Behavior modeling" section on why this decision core is built to allow exactly
  * this.
  */
@@ -25,7 +26,7 @@ class DeterministicSoldierTest {
         alice.receiveOrder(new Order.TrendToward(0, 0));
 
         for (int i = 0; i < 10; i++) {
-            alice.tick((x, y, z) -> false);
+            alice.tick(terrain(false));
         }
 
         Position position = alice.status().position();
@@ -38,7 +39,7 @@ class DeterministicSoldierTest {
         DeterministicSoldier bob = new DeterministicSoldier("Bob", new Position(5, 64, 0));
         bob.receiveOrder(new Order.TrendToward(0, 0));
 
-        bob.tick((x, y, z) -> true);
+        bob.tick(terrain(true));
 
         assertEquals(new Position(5, 64, 0), bob.status().position());
     }
@@ -47,7 +48,7 @@ class DeterministicSoldierTest {
     void idleOrderProducesNoMovement() {
         DeterministicSoldier idle = new DeterministicSoldier("Idle", new Position(1, 64, 1));
 
-        idle.tick((x, y, z) -> false);
+        idle.tick(terrain(false));
 
         assertEquals(new Position(1, 64, 1), idle.status().position());
     }
@@ -93,6 +94,34 @@ class DeterministicSoldierTest {
         assertTrue(alice.status().position().x() > 0, "a distant hostile shouldn't interrupt the order");
     }
 
+    @Test
+    void serverCorrectionReplacesPositionOnTheNextTickInsteadOfMoving() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+        alice.receiveOrder(new Order.TrendToward(10, 0));
+
+        alice.correctPosition(new Position(100, 70, 100));
+        alice.tick(terrain(false));
+        assertEquals(new Position(100, 70, 100), alice.status().position());
+
+        alice.tick(terrain(false));
+        assertTrue(alice.status().position().x() < 100, "should resume following the order from the corrected spot");
+    }
+
+    /** A fake {@link WorldView} where every block is {@code solid} or not, with no hostiles. */
+    private static WorldView terrain(boolean solid) {
+        return new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return solid;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
     /** A fake {@link WorldView} with one hostile, honoring the radius the soldier asks for. */
     private static WorldView withHostileAt(Position hostile, boolean everythingSolid) {
         return new WorldView() {
@@ -115,7 +144,7 @@ class DeterministicSoldierTest {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.1, 64, 0));
         alice.receiveOrder(new Order.TrendToward(0, 0));
 
-        alice.tick((x, y, z) -> false);
+        alice.tick(terrain(false));
 
         assertEquals(new Position(0.1, 64, 0), alice.status().position());
     }

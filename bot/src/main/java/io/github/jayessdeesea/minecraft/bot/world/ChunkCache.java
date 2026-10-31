@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The real, shared {@link WorldView} implementation - a reference-counted chunk cache, per
+ * The terrain half of {@link WorldModel} - a shared, reference-counted chunk cache, per
  * AGENTS.md's "Behavior modeling" section: the block data is one shared ground truth for every
  * soldier, but chunk *visibility* is per-connection, so a chunk is evicted only once every
  * connection that loaded it has also unloaded it, not on the first unload. {@link
@@ -17,15 +17,15 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Deliberately decoupled from {@code protocol}'s packet types - {@code load}/{@code unload}
  * take plain ints and {@code List<int[]>}, not a {@code ChunkDataPacket}, so this class has no
- * dependency on the {@code protocol} module at all (only {@link WorldView}, already in this
- * module, does). {@code app} is the glue: it bridges {@code MinecraftClient.join}'s
+ * dependency on the {@code protocol} module at all. {@code app} is the glue: it bridges {@code
+ * MinecraftClient.join}'s
  * {@code ChunkUpdate} listener into {@link #load} for each connected Soldier.
  *
  * <p>{@code isSolid}'s notion of "solid" is backed by {@link BlockSolidityRegistry} - a real,
  * generated-from-the-server's-own-data classification, not the "state 0 = air" placeholder this
  * class used before. See that class's javadoc for what it does and doesn't cover.
  */
-public final class ChunkCache implements WorldView {
+public final class ChunkCache {
 
     private static final int SECTION_SIZE = 16;
 
@@ -62,7 +62,6 @@ public final class ChunkCache implements WorldView {
         });
     }
 
-    @Override
     public boolean isSolid(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
         // Unknown (unloaded chunk, or outside the decoded vertical range) is treated as blocked,

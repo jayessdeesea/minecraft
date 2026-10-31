@@ -2,6 +2,8 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
+import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
+import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.MinecraftClient;
@@ -22,7 +24,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The composition root's actual job: connect each named Soldier below, bridge their live
- * {@code ChunkUpdate}s into one shared {@link ChunkCache}, seed each one's real spawn position
+ * {@code ChunkUpdate}s into one shared {@link ChunkCache} and their entity spawns/removals into one
+ * shared {@link EntityTracker}, seed each one's real spawn position
  * from the server's own {@code PlayerPosition} confirmation, give each a short walk in a different
  * direction to visibly prove independent movement, and run each one's tick loop.
  *
@@ -35,7 +38,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * reference counting specifically for this: the block data is one shared ground truth regardless
  * of which soldier's connection loaded it, and a chunk both soldiers can see stays cached until
  * *both* have unloaded it. Each soldier still gets its own connection, tick-loop thread, and
- * {@link DeterministicSoldier} instance - only the world model is shared.
+ * {@link DeterministicSoldier} instance - only the world model is shared. Entities work the same
+ * way: every connection feeds one {@link EntityTracker}, and each soldier ticks against one
+ * {@link WorldModel} combining both, so a hostile seen by Bob's connection makes Alice back away too.
  *
  * <p>Each soldier also reconnects on its own if its connection dies unexpectedly - see {@code
  * PlaySessionListeners.onDisconnect} and {@link #onDisconnected}. A reconnect re-seeds a brand new
@@ -65,15 +70,18 @@ public class SoldierRunner implements CommandLineRunner {
             new SoldierDefinition("Bob", -10, 10)
     );
 
+    private final ChunkCache chunkCache = new ChunkCache();
+    private final EntityTracker entityTracker = new EntityTracker();
+    private final WorldModel world = new WorldModel(chunkCache, entityTracker);
+
     @Override
     public void run(String... args) {
-        ChunkCache chunkCache = new ChunkCache();
         for (SoldierDefinition definition : SOLDIERS) {
-            connect(definition, chunkCache);
+            connect(definition);
         }
     }
 
-    private void connect(SoldierDefinition definition, ChunkCache chunkCache) {
+    private void connect(SoldierDefinition definition) {
         String name = definition.name();
         CompletableFuture<PlayerPosition> firstPosition = new CompletableFuture<>();
         // Populated once onJoined's own scheduler starts - onDisconnected reads it to stop the old
@@ -81,14 +89,35 @@ public class SoldierRunner implements CommandLineRunner {
         // (which runs from the same PlayLoginPacket dispatch that completes this join) has already
         // set it by the time any later channelInactive on this same connection could fire onDisconnect.
         AtomicReference<ScheduledExecutorService> activeScheduler = new AtomicReference<>();
+        // Set by onJoined, which runs on the event loop inside the first Player Position's dispatch -
+        // so every later Player Position on this connection already sees it.
+        AtomicReference<DeterministicSoldier> activeSoldier = new AtomicReference<>();
+        CompletableFuture<PlaySession> sessionReady = new CompletableFuture<>();
 
-        MinecraftClient.join(HOST, PORT, name, new PlaySessionListeners(
-                        update -> chunkCache.load(update.chunkX(), update.chunkZ(), update.sectionBlockStates(), name),
-                        firstPosition::complete,
-                        entity -> { },
-                        ids -> { },
-                        cause -> onDisconnected(definition, chunkCache, activeScheduler, cause)))
-                .thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, chunkCache, activeScheduler))
+        CompletableFuture<PlaySession> joined = MinecraftClient.join(HOST, PORT, name, new PlaySessionListeners(
+                update -> chunkCache.load(update.chunkX(), update.chunkZ(), update.sectionBlockStates(), name),
+                position -> {
+                    if (!firstPosition.complete(position)) {
+                        DeterministicSoldier soldier = activeSoldier.get();
+                        if (soldier != null) {
+                            soldier.correctPosition(new Position(position.x(), position.y(), position.z()));
+                        }
+                    }
+                },
+                entity -> entityTracker.spawn(entity.entityId(), entity.typeId(), entity.x(), entity.y(), entity.z()),
+                entityTracker::remove,
+                health -> {
+                    // A dead player gets no chunks or entities until it respawns, and a soldier has
+                    // no reason to stay dead - respawn immediately. The server then teleports it and
+                    // sends a Player Position, which arrives above as a correction.
+                    if (health <= 0) {
+                        LOG.warn("{} is dead - respawning", name);
+                        sessionReady.thenAccept(PlaySession::respawn);
+                    }
+                },
+                cause -> onDisconnected(definition, activeScheduler, cause)));
+        joined.thenAccept(sessionReady::complete);
+        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier))
                 .exceptionally(cause -> {
                     LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
                     return null;
@@ -96,18 +125,20 @@ public class SoldierRunner implements CommandLineRunner {
     }
 
     private void onJoined(SoldierDefinition definition, PlaySession session, PlayerPosition spawn,
-                           ChunkCache chunkCache, AtomicReference<ScheduledExecutorService> activeScheduler) {
+                           AtomicReference<ScheduledExecutorService> activeScheduler,
+                           AtomicReference<DeterministicSoldier> activeSoldier) {
         String name = definition.name();
         LOG.info("{} joined at real spawn ({}, {}, {}): {}", name, spawn.x(), spawn.y(), spawn.z(), session.playState());
 
         DeterministicSoldier soldier = new DeterministicSoldier(name, new Position(spawn.x(), spawn.y(), spawn.z()));
+        activeSoldier.set(soldier);
         soldier.receiveOrder(new Order.TrendToward(spawn.x() + definition.walkDx(), spawn.z() + definition.walkDz()));
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
                 runnable -> new Thread(runnable, name + "-tick"));
         activeScheduler.set(scheduler);
         scheduler.scheduleAtFixedRate(() -> {
-            soldier.tick(chunkCache);
+            soldier.tick(world);
             // onGround is always true - nothing here models jumping/falling yet, and the server
             // tolerates this being wrong far more than it tolerates a wrong position (see
             // MovePlayerPosPacket's javadoc).
@@ -115,8 +146,10 @@ public class SoldierRunner implements CommandLineRunner {
             session.reportPosition(current.x(), current.y(), current.z(), true);
         }, 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
         scheduler.scheduleAtFixedRate(
-                () -> LOG.info("{} status: {} - {} chunk(s) loaded, session open: {}",
-                        name, soldier.status(), chunkCache.loadedChunkCount(), session.isOpen()),
+                () -> LOG.info("{} status: {} - {} chunk(s), {} entities tracked, hostiles in contact: {}, session open: {}",
+                        name, soldier.status(), chunkCache.loadedChunkCount(), entityTracker.trackedEntityCount(),
+                        world.nearbyHostiles(soldier.status().position(), DeterministicSoldier.CONTACT_RADIUS),
+                        session.isOpen()),
                 STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
     }
 
@@ -129,7 +162,7 @@ public class SoldierRunner implements CommandLineRunner {
      * exceptionally} already logs that loudly and stops, per AGENTS.md's revisit-on-real-pressure
      * tenet this can grow a backoff/retry-limit policy if a real deployment ever needs one.
      */
-    private void onDisconnected(SoldierDefinition definition, ChunkCache chunkCache,
+    private void onDisconnected(SoldierDefinition definition,
                                  AtomicReference<ScheduledExecutorService> activeScheduler, Throwable cause) {
         String name = definition.name();
         LOG.warn("{} disconnected unexpectedly ({}) - reconnecting", name, cause.getMessage());
@@ -137,6 +170,6 @@ public class SoldierRunner implements CommandLineRunner {
         if (scheduler != null) {
             scheduler.shutdownNow();
         }
-        connect(definition, chunkCache);
+        connect(definition);
     }
 }

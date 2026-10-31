@@ -29,6 +29,13 @@ public interface PlaySession {
      */
     void reportPosition(double x, double y, double z, boolean onGround);
 
+    /**
+     * Asks the server to respawn this (dead) player. Whether and when to respawn is the caller's
+     * decision, not {@code protocol}'s - see docs/protocol-pipeline.md on game decisions staying out
+     * of the control plane. A dead player is sent no chunks or entities until it does.
+     */
+    void respawn();
+
     /** Whether the underlying connection is still open. */
     boolean isOpen();
 

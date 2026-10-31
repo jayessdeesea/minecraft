@@ -8,12 +8,13 @@ import io.github.jayessdeesea.minecraft.command.Soldier;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The {@code bot} module's implementation of {@link Soldier}: a deterministic, non-LLM per-tick
- * decision core (AGENTS.md's "Behavior modeling" section) wrapped by whatever imperative shell
- * eventually drives it from a live, persistent Play connection - no such shell exists yet, so
- * {@link #tick} is called directly (by a test today, by a real scheduler once one exists).
+ * decision core (AGENTS.md's "Behavior modeling" section). {@code app}'s {@code SoldierRunner} is
+ * the imperative shell: it calls {@link #tick} at 20Hz and reports the resulting position to the
+ * server; tests call it directly with a fake {@code WorldView}.
  *
  * <p>{@code position}/{@code order} are {@code volatile} rather than behind a lock: {@link
  * #receiveOrder} may be called from a different thread than {@link #tick} (a future SquadLeader's
@@ -23,13 +24,14 @@ import java.util.List;
  */
 public final class DeterministicSoldier implements Soldier {
 
-    /** Blocks per tick - ballpark vanilla walk speed, not wire-verified (nothing sends real
-     * movement packets yet). Revisit once a real shell exists to send actual position packets. */
+    /** Blocks per tick - 4 blocks/s at 20Hz, just under vanilla walk speed (~4.3), not tuned.
+     * Revisit if the server starts correcting reported positions (it would send Player Position). */
     private static final double STEP = 0.2;
 
     private final String name;
     private volatile Position position;
     private volatile Order order = new Order.Idle();
+    private final AtomicReference<Position> pendingCorrection = new AtomicReference<>();
 
     public DeterministicSoldier(String name, Position startingPosition) {
         this.name = name;
@@ -39,6 +41,15 @@ public final class DeterministicSoldier implements Soldier {
     @Override
     public void receiveOrder(Order order) {
         this.order = order;
+    }
+
+    /**
+     * The server says this soldier is somewhere else (a respawn, or a correction of a reported
+     * move) - authoritative, so it wins. Applied at the start of the next {@link #tick} rather than
+     * written here, so the tick loop stays the sole writer of {@code position}.
+     */
+    public void correctPosition(Position serverPosition) {
+        pendingCorrection.set(serverPosition);
     }
 
     @Override
@@ -51,7 +62,7 @@ public final class DeterministicSoldier implements Soldier {
      * notice a player around 16 blocks out, so this reacts well inside that. Revisit once a live
      * run shows soldiers reacting too late or too skittishly.
      */
-    static final double CONTACT_RADIUS = 8.0;
+    public static final double CONTACT_RADIUS = 8.0;
 
     /**
      * One tick of movement. First the "actions on contact" reflex: if a hostile is within {@link
@@ -66,6 +77,12 @@ public final class DeterministicSoldier implements Soldier {
      * or a mountain is an acceptable outcome for this soldier, not a bug to route around.
      */
     public void tick(WorldView world) {
+        Position correction = pendingCorrection.getAndSet(null);
+        if (correction != null) {
+            position = correction;
+            return;
+        }
+
         List<TrackedEntity> threats = world.nearbyHostiles(position, CONTACT_RADIUS);
         if (!threats.isEmpty()) {
             Position threat = threats.get(0).position();

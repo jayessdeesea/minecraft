@@ -25,6 +25,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RegistryDataPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.AttributeKey;
@@ -145,6 +146,9 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
         } else if (packet instanceof RemoveEntitiesPacket removal) {
             LOG.debug("Remove Entities received: {}", removal.entityIds());
             listeners.onEntitiesRemoved().accept(removal.entityIds());
+        } else if (packet instanceof SetHealthPacket health) {
+            LOG.debug("Set Health received: health={} food={}", health.health(), health.food());
+            listeners.onHealth().accept(health.health());
         }
         // Everything else recognized-but-unhandled or unrecognized is already logged/cataloged by
         // PacketLoggingHandler/SessionStateManager earlier in the pipeline - nothing further to do

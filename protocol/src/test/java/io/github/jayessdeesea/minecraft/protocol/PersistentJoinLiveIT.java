@@ -60,7 +60,7 @@ class PersistentJoinLiveIT {
         List<ChunkUpdate> updates = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "ChunkTestBot",
-                        new PlaySessionListeners(updates::add, position -> { }, entity -> { }, ids -> { }, cause -> { }))
+                        new PlaySessionListeners(updates::add, position -> { }, entity -> { }, ids -> { }, health -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         // Chunks around spawn arrive within the first second or two of reaching Play - no need to
@@ -90,7 +90,7 @@ class PersistentJoinLiveIT {
         List<EntityUpdate> entities = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "EntityTestBot",
-                        new PlaySessionListeners(update -> { }, position -> { }, entities::add, ids -> { }, cause -> { }))
+                        new PlaySessionListeners(update -> { }, position -> { }, entities::add, ids -> { }, health -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         for (int i = 0; i < 50 && entities.isEmpty(); i++) {
@@ -111,7 +111,7 @@ class PersistentJoinLiveIT {
         List<PlayerPosition> positions = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "PositionTestBot",
-                        new PlaySessionListeners(update -> { }, positions::add, entity -> { }, ids -> { }, cause -> { }))
+                        new PlaySessionListeners(update -> { }, positions::add, entity -> { }, ids -> { }, health -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         for (int i = 0; i < 50 && positions.isEmpty(); i++) {

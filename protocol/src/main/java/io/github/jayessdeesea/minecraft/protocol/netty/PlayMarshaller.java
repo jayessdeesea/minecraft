@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.UnknownPacket;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -28,6 +29,7 @@ public final class PlayMarshaller implements PacketMarshaller {
             case PlayerPositionPacket.PACKET_ID -> PlayerPositionPacket.decode(data);
             case AddEntityPacket.PACKET_ID -> AddEntityPacket.decode(data);
             case RemoveEntitiesPacket.PACKET_ID -> RemoveEntitiesPacket.decode(data);
+            case SetHealthPacket.PACKET_ID -> SetHealthPacket.decode(data);
             default -> new UnknownPacket(packetId, ByteBufUtil.getBytes(data));
         };
     }

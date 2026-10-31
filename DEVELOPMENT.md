@@ -285,25 +285,47 @@ those need aren't decoded.
   `BlockSolidityRegistry`, via `tools/entity-hostility-generator` reading `--reports`'
   `registries.json`; the generator fails if a curated name isn't in the registry, so a typo can't
   silently drop a mob), `EntityTracker` (shared `ConcurrentHashMap` by entity ID, no reference
-  counting - removal names exact IDs), and a default `WorldView.nearbyHostiles` (a default so every
-  one-line lambda fake keeps compiling). `DeterministicSoldier.tick` checks for a hostile within
+  counting - removal names exact IDs), and `WorldView.nearbyHostiles`. `WorldView`'s two methods are
+  both abstract on purpose: a default "no threats" would let a terrain-only implementation (like
+  `ChunkCache` alone) compile and silently blind every soldier. The real one is `WorldModel`
+  (`ChunkCache` + `EntityTracker`), and `SoldierRunner` ticks every soldier against one shared
+  instance - a hostile seen by Bob's connection makes Alice react too. `DeterministicSoldier.tick` checks for a hostile within
   `CONTACT_RADIUS` (8 blocks, untuned) before following its order; if one is there it steps
   directly away from the nearest, and stands still if that step is blocked rather than falling back
   to an order that might lead toward the threat. That's the deterministic half of infantry
   actions-on-contact; the squad-level half (regroup/hold/disperse) belongs in `SquadLeader` once
   `command-ai` is wired in.
 
-  **Open follow-ups, deliberately scoped out:**
-  - **Positions are spawn-time only.** Nothing decodes entity movement packets, so a tracked mob's
-    position goes stale as soon as it walks. Next protocol step for this feature.
-  - **Not wired into `app`.** `SoldierRunner` passes no-op entity listeners and still hands
-    `ChunkCache` straight to `tick` - and `ChunkCache` inherits `WorldView`'s default "no threats,"
-    so soldiers in the live app do not react yet. Wiring needs a `WorldView` composite over
-    `ChunkCache` + `EntityTracker`; that composite must override `nearbyHostiles`, or the default
-    silently hides every threat.
+  **Confirmed live at night:** Bob detected a real zombie inside contact range and retreated
+  directly away from it (~6 blocks in ~5s). He was killed shortly after anyway - the zombie chased
+  him while his tracker still held its spawn position. That's the main open gap, below.
+
+  **Open follow-ups:**
+  - **Positions are spawn-time only - the top priority.** Nothing decodes entity movement packets,
+    so a tracked mob's position is stale the moment it walks, and the reflex retreats from where a
+    chaser *was*. Shown live above, not hypothetical.
+  - **Head-height collision.** `isSolid` checks the foot block only; the server checks the full
+    ~1.8-block body. Walking into a head-height obstacle makes the server reject each step and send
+    a correction - accepted now (see "Respawn" below), so the soldier stays put correctly, but
+    ping-pongs ~20 corrections/s instead of recognizing the step as blocked.
   - **Cross-soldier removal.** One connection's Remove Entities drops the entity for everyone, even
-    if another soldier still sees it. Harmless while positions are spawn-only; revisit with
-    movement tracking.
+    if another soldier still sees it. Revisit with movement tracking.
+
+- **Respawn, and accepting server position corrections.** Soldiers killed between runs stayed dead
+  forever - a dead player is sent no chunks or entities until it respawns, so a dead Alice/Bob
+  joined, loaded nothing, and stood still (0 chunks, unknown terrain = blocked) with no error
+  anywhere. Found via Set Health (`0x68`) reporting `health=0.0` on join. `protocol` now decodes Set
+  Health (surfaced as `PlaySessionListeners.onHealth`) and sends Client Command (`0x0C`,
+  `PERFORM_RESPAWN`) via `PlaySession.respawn()`; *deciding* to respawn is `SoldierRunner`'s call
+  (respawn immediately on `health <= 0`), keeping game policy out of the control plane. Every Player
+  Position after the first is now handed to `DeterministicSoldier.correctPosition` - the server is
+  authoritative, and the correction is applied on the next tick so the tick loop stays the sole
+  writer of position. Previously only the first Player Position was used and every later one was
+  ignored, so a server correction never reached the soldier. Confirmed live: both soldiers detected
+  death, respawned, and resumed walking from the server's new position.
+
+  Not done: the serverbound Player Loaded packet (`0x2C`) a vanilla client sends once it's ready.
+  The server proceeds without it after a timeout; nothing has needed it yet.
 
 **Needs a decision:**
 - **`PlaySession`'s remaining shape** — chat, or anything beyond position, is still only sketched
