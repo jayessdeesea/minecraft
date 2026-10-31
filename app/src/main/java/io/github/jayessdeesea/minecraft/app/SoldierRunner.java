@@ -140,11 +140,8 @@ public class SoldierRunner implements CommandLineRunner {
         activeScheduler.set(scheduler);
         scheduler.scheduleAtFixedRate(() -> {
             soldier.tick(world);
-            // onGround is always true - nothing here models jumping/falling yet, and the server
-            // tolerates this being wrong far more than it tolerates a wrong position (see
-            // MovePlayerPosPacket's javadoc).
             Position current = soldier.status().position();
-            session.reportPosition(current.x(), current.y(), current.z(), true);
+            session.reportPosition(current.x(), current.y(), current.z(), soldier.onGround());
         }, 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
         scheduler.scheduleAtFixedRate(
                 () -> LOG.info("{} status: {} - {} chunk(s), {} entities tracked, hostiles in contact: {}, session open: {}",

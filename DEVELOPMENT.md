@@ -300,12 +300,6 @@ those need aren't decoded.
   from it, with the zombie's tracked position following it as it chased him (see "Entity movement"
   below).
 
-  **Open follow-ups:**
-  - **Head-height collision.** `isSolid` checks the foot block only; the server checks the full
-    ~1.8-block body. Walking into a head-height obstacle makes the server reject each step and send
-    a correction - accepted now (see "Respawn" below), so the soldier stays put correctly, but
-    ping-pongs ~20 corrections/s instead of recognizing the step as blocked.
-
 - **Entity movement.** `protocol` decodes Move Entity Pos/Pos Rot (`0x35`/`0x36`), Entity Position
   Sync (`0x23`), and Teleport Entity (`0x7D`); layouts in `MoveEntityPacket`/`EntityPositionPacket`.
   The move packets carry *changes* in 1/4096-block units relative to the last position the server
@@ -319,16 +313,30 @@ those need aren't decoded.
   `PersistentJoinLiveIT` (1,800 resolved moves across 101 entities in 10s, every step within a few
   blocks of the last) and in `app.jar` (a chasing zombie's tracked position followed it).
 
+- **Soldier physics: gravity, jumping, a real body.** `DeterministicSoldier` now moves like a
+  vanilla player closely enough that the server accepts it: per-tick gravity with vanilla's
+  constants (velocity -= 0.08, then *= 0.98), a jump (0.42) to climb a one-block rise, and
+  collision against the full 0.6 x 1.8 x 0.6 body rather than the single block under its centre.
+  `onGround` is real and reported with every move. Before this the server kicked soldiers for
+  "floating too long" (they walked at constant Y over lower ground) and fought them with ~20
+  position corrections/s (the server checks the box; we checked a point). Live: zero floating
+  kicks and 4 corrections in 90s, down from 5 kicks and 955 corrections.
+
+  Still approximate: every non-air, non-curated block is a full cube (slabs, stairs, fences),
+  there's no swimming, and a fall can hurt. Fine until a live run shows otherwise.
+
   **Open follow-ups - in priority order:**
-  - **No gravity: soldiers get kicked for "floating too long."** `DeterministicSoldier` walks at a
-    constant Y. Crossing lower ground leaves it hovering while reporting `onGround=true`, and the
-    server kicks it after ~4s airborne - 5 kicks in a 60s live run. This now limits everything else
-    soldiers do. Needs per-tick vertical movement: fall when nothing solid is underfoot, at vanilla
-    gravity (the server also rejects moves that are "too quick"), and some answer for climbing
-    (vanilla auto-steps only 0.6 blocks; a full block needs a jump).
-  - **Reconnects drift the walk.** `SoldierRunner` aims each new soldier 10 blocks past wherever it
-    rejoins, so every kick-and-reconnect pushes the target further out. Harmless once kicks stop;
-    goes away entirely once orders come from a `SquadLeader` instead.
+  - **Soldiers can't outrun zombies.** The retreat walks at 4 blocks/s; zombies chase at about the
+    same speed, so "break contact" alone just delays death (Bob died 4 times in one 90s run). Real
+    answers are either fighting back (attacking needs the Interact packet) or squad tactics - the
+    squad-level half of actions-on-contact, which needs `command-ai` wired in. A choice for the
+    user, not a bug fix.
+  - **Obstacles stop soldiers dead.** By design (no pathing), but with real terrain it now happens
+    within a block or two of spawn - Alice stops at a tree. Pathing belongs with the squad layer
+    deciding *where* to go.
+  - **One stale report after a respawn.** The tick loop can report the pre-respawn position once
+    before the server's correction lands, logged by the server as "moved too quickly." Harmless:
+    the correction wins on the next tick.
 
 - **Respawn, and accepting server position corrections.** Soldiers killed between runs stayed dead
   forever - a dead player is sent no chunks or entities until it respawns, so a dead Alice/Bob

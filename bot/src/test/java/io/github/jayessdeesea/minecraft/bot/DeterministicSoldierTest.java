@@ -107,12 +107,120 @@ class DeterministicSoldierTest {
         assertTrue(alice.status().position().x() < 100, "should resume following the order from the corrected spot");
     }
 
-    /** A fake {@link WorldView} where every block is {@code solid} or not, with no hostiles. */
+    @Test
+    void fallsWithGravityAndLandsOnTheGround() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, 70, 0.5));
+
+        alice.tick(terrain(false));
+        assertTrue(alice.status().position().y() < 70, "should start falling");
+        assertTrue(!alice.onGround());
+
+        for (int i = 0; i < 40; i++) {
+            alice.tick(terrain(false));
+        }
+        assertEquals(GROUND, alice.status().position().y(), 1e-9);
+        assertTrue(alice.onGround());
+    }
+
+    @Test
+    void walksOffALedgeAndFallsToTheLowerGround() {
+        // Ground at 64 for x < 2, a pit down to 60 beyond it.
+        WorldView ledge = blocks((x, y, z) -> y < (x < 2 ? GROUND : 60));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.TrendToward(10, 0.5));
+
+        for (int i = 0; i < 60; i++) {
+            alice.tick(ledge);
+        }
+
+        assertEquals(60, alice.status().position().y(), 1e-9);
+        assertTrue(alice.onGround());
+    }
+
+    @Test
+    void jumpsUpAOneBlockStep() {
+        // One block higher from x >= 2.
+        WorldView step = blocks((x, y, z) -> y < (x < 2 ? GROUND : GROUND + 1));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.TrendToward(10, 0.5));
+
+        for (int i = 0; i < 40; i++) {
+            alice.tick(step);
+        }
+
+        assertTrue(alice.status().position().x() > 3, "should have climbed and kept walking");
+        assertEquals(GROUND + 1, alice.status().position().y(), 1e-9);
+    }
+
+    @Test
+    void stopsAtATwoBlockWall() {
+        WorldView wall = blocks((x, y, z) -> y < GROUND || (x >= 2 && y < GROUND + 2));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.TrendToward(10, 0.5));
+
+        for (int i = 0; i < 40; i++) {
+            alice.tick(wall);
+        }
+
+        assertTrue(alice.status().position().x() < 2, "should not pass the wall");
+        assertEquals(GROUND, alice.status().position().y(), 1e-9);
+    }
+
+    @Test
+    void stopsAtAHeadHeightObstacle() {
+        // Clear at foot level, solid at head level from x >= 2 (e.g. an overhang).
+        WorldView overhang = blocks((x, y, z) -> y < GROUND || (x >= 2 && y == GROUND + 1));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.TrendToward(10, 0.5));
+
+        for (int i = 0; i < 20; i++) {
+            alice.tick(overhang);
+        }
+
+        assertTrue(alice.status().position().x() < 2, "the body doesn't fit under the overhang");
+    }
+
+    @Test
+    void theBodyIsSixTenthsWideNotAPoint() {
+        // Wall at x >= 2; the centre can get no closer than x = 1.7.
+        WorldView wall = blocks((x, y, z) -> y < GROUND || (x >= 2 && y < GROUND + 2));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.0, GROUND, 0.5));
+        alice.receiveOrder(new Order.TrendToward(10, 0.5));
+
+        for (int i = 0; i < 20; i++) {
+            alice.tick(wall);
+        }
+
+        assertTrue(alice.status().position().x() <= 1.7 + 1e-9, "was " + alice.status().position().x());
+    }
+
+    @Test
+    void standsOnALedgeWhileAnyPartOfTheFootprintIsSupported() {
+        // Ground only for x < 2; centre at 2.2 still has its x in [1.9, 2.5) over the edge block.
+        WorldView ledge = blocks((x, y, z) -> x < 2 && y < GROUND);
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(2.2, GROUND, 0.5));
+
+        alice.tick(ledge);
+
+        assertEquals(GROUND, alice.status().position().y(), 1e-9);
+    }
+
+    /** Flat ground (solid below y=64); at and above it, every block is {@code solid} or not. No hostiles. */
     private static WorldView terrain(boolean solid) {
+        return blocks((x, y, z) -> y < GROUND || solid);
+    }
+
+    private static final int GROUND = 64;
+
+    private interface Blocks {
+        boolean isSolid(int x, int y, int z);
+    }
+
+    private static WorldView blocks(Blocks blocks) {
         return new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
-                return solid;
+                return blocks.isSolid(x, y, z);
             }
 
             @Override
@@ -127,7 +235,7 @@ class DeterministicSoldierTest {
         return new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
-                return everythingSolid;
+                return y < GROUND || everythingSolid;
             }
 
             @Override

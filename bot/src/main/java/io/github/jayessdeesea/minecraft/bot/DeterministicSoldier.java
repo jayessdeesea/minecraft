@@ -28,10 +28,22 @@ public final class DeterministicSoldier implements Soldier {
      * Revisit if the server starts correcting reported positions (it would send Player Position). */
     private static final double STEP = 0.2;
 
+    // Vanilla player physics constants (LivingEntity): per tick, velocity -= 0.08 then *= 0.98;
+    // a jump starts at 0.42 (peaks ~1.25 blocks - enough for one block, not two).
+    private static final double GRAVITY = 0.08;
+    private static final double DRAG = 0.98;
+    private static final double JUMP_VELOCITY = 0.42;
+    private static final double BODY_HEIGHT = 1.8;
+    private static final double HALF_WIDTH = 0.3; // a player's box is 0.6 x 1.8 x 0.6
+    private static final double EPSILON = 1e-9;
+
     private final String name;
     private volatile Position position;
     private volatile Order order = new Order.Idle();
     private final AtomicReference<Position> pendingCorrection = new AtomicReference<>();
+    // Tick-loop-only, like position's writes - no other thread reads it.
+    private double verticalVelocity = 0;
+    private volatile boolean onGround = true;
 
     public DeterministicSoldier(String name, Position startingPosition) {
         this.name = name;
@@ -50,6 +62,11 @@ public final class DeterministicSoldier implements Soldier {
      */
     public void correctPosition(Position serverPosition) {
         pendingCorrection.set(serverPosition);
+    }
+
+    /** Whether the last tick ended standing on something - reported to the server with each move. */
+    public boolean onGround() {
+        return onGround;
     }
 
     @Override
@@ -71,15 +88,19 @@ public final class DeterministicSoldier implements Soldier {
      * leader involved. If the retreat step is blocked, stand still rather than fall back to the
      * order (which might lead toward the threat).
      *
-     * <p>Otherwise advances one step toward the current order's target, unless {@code world}
-     * reports the next block as solid - in which case this soldier simply stays put. No pathing
-     * around obstacles by design (see {@code Order.TrendToward}'s javadoc): getting stuck on a tree
-     * or a mountain is an acceptable outcome for this soldier, not a bug to route around.
+     * <p>Otherwise advances one step toward the current order's target. A step needs room for the
+     * whole ~1.8-block body; a one-block rise is jumped, anything taller stops the soldier. No
+     * pathing around obstacles by design (see {@code Order.TrendToward}'s javadoc): getting stuck
+     * on a tree or a mountain is an acceptable outcome for this soldier, not a bug to route around.
+     *
+     * <p>Then vertical movement with vanilla gravity: the server kicks a client that reports
+     * standing while hovering over lower ground ("floating too long"), so falling is not optional.
      */
     public void tick(WorldView world) {
         Position correction = pendingCorrection.getAndSet(null);
         if (correction != null) {
             position = correction;
+            verticalVelocity = 0;
             return;
         }
 
@@ -87,12 +108,60 @@ public final class DeterministicSoldier implements Soldier {
         if (!threats.isEmpty()) {
             Position threat = threats.get(0).position();
             stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
-            return;
-        }
-
-        if (order instanceof Order.TrendToward trend) {
+        } else if (order instanceof Order.TrendToward trend) {
             stepToward(world, trend.x(), trend.z());
         }
+
+        applyVerticalMovement(world);
+    }
+
+    private void applyVerticalMovement(WorldView world) {
+        double x = position.x();
+        double z = position.z();
+        double y = position.y();
+        double velocity = onGround ? -GRAVITY * DRAG : verticalVelocity;
+        double nextY = y + velocity;
+
+        if (velocity < 0) {
+            // Land on the highest solid block whose top lies between here and nextY.
+            for (int blockY = (int) Math.floor(y + EPSILON) - 1; blockY >= (int) Math.floor(nextY); blockY--) {
+                if (anySolid(world, x, z, blockY, blockY)) {
+                    position = new Position(position.x(), blockY + 1, position.z());
+                    verticalVelocity = 0;
+                    onGround = true;
+                    return;
+                }
+            }
+        } else if (anySolid(world, x, z, (int) Math.floor(nextY + BODY_HEIGHT), (int) Math.floor(nextY + BODY_HEIGHT))) {
+            nextY = y; // bumped a ceiling
+            velocity = 0;
+        }
+
+        position = new Position(position.x(), nextY, position.z());
+        verticalVelocity = (velocity - GRAVITY) * DRAG;
+        onGround = false;
+    }
+
+    private static boolean bodyFits(WorldView world, double x, double y, double z) {
+        return !anySolid(world, x, z, (int) Math.floor(y), (int) Math.floor(y + BODY_HEIGHT - EPSILON));
+    }
+
+    /** Whether any block in rows {@code minY..maxY} under the body's 0.6-wide footprint at (x, z) is solid. */
+    private static boolean anySolid(WorldView world, double x, double z, int minY, int maxY) {
+        int minX = (int) Math.floor(x - HALF_WIDTH);
+        int maxX = (int) Math.floor(x + HALF_WIDTH - EPSILON);
+        int minZ = (int) Math.floor(z - HALF_WIDTH);
+        int maxZ = (int) Math.floor(z + HALF_WIDTH - EPSILON);
+        for (int bx = minX; bx <= maxX; bx++) {
+            for (int bz = minZ; bz <= maxZ; bz++) {
+                for (int by = minY; by <= maxY; by++) {
+                    if (world.isSolid(bx, by, bz)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private void stepToward(WorldView world, double targetX, double targetZ) {
@@ -105,10 +174,14 @@ public final class DeterministicSoldier implements Soldier {
 
         double nextX = position.x() + (dx / distance) * STEP;
         double nextZ = position.z() + (dz / distance) * STEP;
-        if (world.isSolid((int) Math.floor(nextX), (int) Math.floor(position.y()), (int) Math.floor(nextZ))) {
-            return;
+        double y = position.y();
+        if (bodyFits(world, nextX, y, nextZ)) {
+            position = new Position(nextX, y, nextZ);
+        } else if (onGround && bodyFits(world, nextX, Math.floor(y) + 1, nextZ)
+                && bodyFits(world, position.x(), Math.floor(y) + 1, position.z())) {
+            // A one-block rise with headroom here and there: jump; the step happens once airborne.
+            verticalVelocity = JUMP_VELOCITY;
+            onGround = false;
         }
-
-        position = new Position(nextX, position.y(), nextZ);
     }
 }
