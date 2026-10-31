@@ -255,12 +255,16 @@ previously-confirmed IDs in the same list land where expected.
 | Dir | ID | Packet | Class | Confirmation |
 |---|---|---|---|---|
 | ← | `0x01` | Add Entity | `AddEntityPacket` | registration order; live (real entities decode with zero trailing bytes) |
+| ← | `0x23` | Entity Position Sync | `EntityPositionPacket` | registration order; live |
 | ← | `0x2C` | Keep Alive | `KeepAliveRequestPacket` | by content: 8-byte payload ~15s into Play |
 | ← | `0x2D` | Chunk Data and Update Light | `ChunkDataPacket` | decompiled layout; live across many chunks |
 | ← | `0x31` | Login (play) | `PlayLoginPacket` | by content: entity ID matched the server console's "logged in with entity id N", other fields matched server.properties |
+| ← | `0x35` | Move Entity Pos | `MoveEntityPacket` | registration order; live (resolved positions continuous) |
+| ← | `0x36` | Move Entity Pos Rot | `MoveEntityPacket` | registration order; live |
 | ← | `0x48` | Player Position | `PlayerPositionPacket` | registration order; live spawn coordinates |
 | ← | `0x4D` | Remove Entities | `RemoveEntitiesPacket` | registration order |
 | ← | `0x68` | Set Health | `SetHealthPacket` | registration order; live (`0.0` for a dead player) |
+| ← | `0x7D` | Teleport Entity | `EntityPositionPacket` | registration order |
 | → | `0x00` | Accept Teleportation | `AcceptTeleportationPacket` | registration order; server keeps the session after it |
 | → | `0x0C` | Client Command | `ClientCommandPacket` | registration order; live respawn |
 | → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | wiki + live round-trip |

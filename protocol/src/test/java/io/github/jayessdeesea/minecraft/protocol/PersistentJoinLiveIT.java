@@ -5,7 +5,10 @@ import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -60,7 +63,7 @@ class PersistentJoinLiveIT {
         List<ChunkUpdate> updates = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "ChunkTestBot",
-                        new PlaySessionListeners(updates::add, position -> { }, entity -> { }, ids -> { }, health -> { }, cause -> { }))
+                        new PlaySessionListeners(updates::add, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         // Chunks around spawn arrive within the first second or two of reaching Play - no need to
@@ -90,7 +93,7 @@ class PersistentJoinLiveIT {
         List<EntityUpdate> entities = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "EntityTestBot",
-                        new PlaySessionListeners(update -> { }, position -> { }, entities::add, ids -> { }, health -> { }, cause -> { }))
+                        new PlaySessionListeners(update -> { }, position -> { }, entities::add, move -> { }, ids -> { }, health -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         for (int i = 0; i < 50 && entities.isEmpty(); i++) {
@@ -106,12 +109,46 @@ class PersistentJoinLiveIT {
         }
     }
 
+    /**
+     * Wandering mobs around spawn send a steady stream of relative moves. Each resolved position
+     * should be a small step from that entity's previous one - a wrong scale or a wrong base would
+     * show up as jumps of many blocks (or drift off to nonsense coordinates) within seconds.
+     */
+    @Test
+    void resolvesEntityMovesIntoContinuousAbsolutePositions() throws Exception {
+        Map<Integer, double[]> last = new ConcurrentHashMap<>();
+        List<String> jumps = new CopyOnWriteArrayList<>();
+        AtomicInteger moves = new AtomicInteger();
+
+        PlaySession session = MinecraftClient.join("localhost", 25565, "MoveTestBot",
+                        new PlaySessionListeners(update -> { }, position -> { },
+                                entity -> last.put(entity.entityId(), new double[]{entity.x(), entity.y(), entity.z()}),
+                                move -> {
+                                    moves.incrementAndGet();
+                                    double[] previous = last.put(move.entityId(), new double[]{move.x(), move.y(), move.z()});
+                                    if (previous != null && Math.abs(previous[0] - move.x()) + Math.abs(previous[1] - move.y())
+                                            + Math.abs(previous[2] - move.z()) > 8) {
+                                        jumps.add(move + " from " + previous[0] + "," + previous[1] + "," + previous[2]);
+                                    }
+                                },
+                                ids -> { }, health -> { }, cause -> { }))
+                .get(15, TimeUnit.SECONDS);
+
+        Thread.sleep(10_000);
+        assertTrue(session.isOpen(), "session should survive decoding movement packets");
+        session.close();
+
+        LOG.info("{} entity move(s) across {} entities", moves.get(), last.size());
+        assertTrue(moves.get() > 0, "expected wandering mobs to send at least one move in 10s");
+        assertTrue(jumps.isEmpty(), "implausible jumps: " + jumps);
+    }
+
     @Test
     void receivesRealSpawnPositionAndStaysConnectedAfterAcceptingIt() throws Exception {
         List<PlayerPosition> positions = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "PositionTestBot",
-                        new PlaySessionListeners(update -> { }, positions::add, entity -> { }, ids -> { }, health -> { }, cause -> { }))
+                        new PlaySessionListeners(update -> { }, positions::add, entity -> { }, move -> { }, ids -> { }, health -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         for (int i = 0; i < 50 && positions.isEmpty(); i++) {

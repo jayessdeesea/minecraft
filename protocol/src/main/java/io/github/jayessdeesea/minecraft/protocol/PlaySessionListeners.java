@@ -23,11 +23,12 @@ import java.util.function.Consumer;
 public record PlaySessionListeners(Consumer<ChunkUpdate> onChunkUpdate,
                                     Consumer<PlayerPosition> onPlayerPosition,
                                     Consumer<EntityUpdate> onEntitySpawn,
+                                    Consumer<EntityMove> onEntityMove,
                                     Consumer<List<Integer>> onEntitiesRemoved,
                                     Consumer<Float> onHealth,
                                     Consumer<Throwable> onDisconnect) {
 
     public static PlaySessionListeners none() {
-        return new PlaySessionListeners(update -> { }, position -> { }, entity -> { }, ids -> { }, health -> { }, cause -> { });
+        return new PlaySessionListeners(update -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, cause -> { });
     }
 }

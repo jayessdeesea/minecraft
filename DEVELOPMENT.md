@@ -296,20 +296,39 @@ those need aren't decoded.
   actions-on-contact; the squad-level half (regroup/hold/disperse) belongs in `SquadLeader` once
   `command-ai` is wired in.
 
-  **Confirmed live at night:** Bob detected a real zombie inside contact range and retreated
-  directly away from it (~6 blocks in ~5s). He was killed shortly after anyway - the zombie chased
-  him while his tracker still held its spawn position. That's the main open gap, below.
+  **Confirmed live:** Bob detected a real zombie inside contact range and retreated directly away
+  from it, with the zombie's tracked position following it as it chased him (see "Entity movement"
+  below).
 
   **Open follow-ups:**
-  - **Positions are spawn-time only - the top priority.** Nothing decodes entity movement packets,
-    so a tracked mob's position is stale the moment it walks, and the reflex retreats from where a
-    chaser *was*. Shown live above, not hypothetical.
   - **Head-height collision.** `isSolid` checks the foot block only; the server checks the full
     ~1.8-block body. Walking into a head-height obstacle makes the server reject each step and send
     a correction - accepted now (see "Respawn" below), so the soldier stays put correctly, but
     ping-pongs ~20 corrections/s instead of recognizing the step as blocked.
-  - **Cross-soldier removal.** One connection's Remove Entities drops the entity for everyone, even
-    if another soldier still sees it. Revisit with movement tracking.
+
+- **Entity movement.** `protocol` decodes Move Entity Pos/Pos Rot (`0x35`/`0x36`), Entity Position
+  Sync (`0x23`), and Teleport Entity (`0x7D`); layouts in `MoveEntityPacket`/`EntityPositionPacket`.
+  The move packets carry *changes* in 1/4096-block units relative to the last position the server
+  sent for that entity (`ServerEntity` resets its `VecDeltaCodec` base after every send, change or
+  absolute). `PlayClientHandler` resolves them against a per-connection position map and surfaces
+  only absolute positions (`PlaySessionListeners.onEntityMove`). Per connection, not in the shared
+  tracker, because every connection watching an entity receives the same changes - applying them
+  to one shared position would move it once per watching soldier. `EntityTracker` is now
+  reference-counted by owner like `ChunkCache`, so an entity leaving Alice's view stays tracked
+  while Bob sees it; a disconnect drops that connection's whole view. Confirmed live by
+  `PersistentJoinLiveIT` (1,800 resolved moves across 101 entities in 10s, every step within a few
+  blocks of the last) and in `app.jar` (a chasing zombie's tracked position followed it).
+
+  **Open follow-ups - in priority order:**
+  - **No gravity: soldiers get kicked for "floating too long."** `DeterministicSoldier` walks at a
+    constant Y. Crossing lower ground leaves it hovering while reporting `onGround=true`, and the
+    server kicks it after ~4s airborne - 5 kicks in a 60s live run. This now limits everything else
+    soldiers do. Needs per-tick vertical movement: fall when nothing solid is underfoot, at vanilla
+    gravity (the server also rejects moves that are "too quick"), and some answer for climbing
+    (vanilla auto-steps only 0.6 blocks; a full block needs a jump).
+  - **Reconnects drift the walk.** `SoldierRunner` aims each new soldier 10 blocks past wherever it
+    rejoins, so every kick-and-reconnect pushes the target further out. Harmless once kicks stop;
+    goes away entirely once orders come from a `SquadLeader` instead.
 
 - **Respawn, and accepting server position corrections.** Soldiers killed between runs stayed dead
   forever - a dead player is sent no chunks or entities until it respawns, so a dead Alice/Bob

@@ -104,8 +104,9 @@ public class SoldierRunner implements CommandLineRunner {
                         }
                     }
                 },
-                entity -> entityTracker.spawn(entity.entityId(), entity.typeId(), entity.x(), entity.y(), entity.z()),
-                entityTracker::remove,
+                entity -> entityTracker.spawn(entity.entityId(), entity.typeId(), entity.x(), entity.y(), entity.z(), name),
+                move -> entityTracker.move(move.entityId(), move.x(), move.y(), move.z()),
+                ids -> entityTracker.remove(ids, name),
                 health -> {
                     // A dead player gets no chunks or entities until it respawns, and a soldier has
                     // no reason to stay dead - respawn immediately. The server then teleports it and
@@ -170,6 +171,8 @@ public class SoldierRunner implements CommandLineRunner {
         if (scheduler != null) {
             scheduler.shutdownNow();
         }
+        // The new connection re-receives Add Entity for everything in view; drop this one's stale view.
+        entityTracker.removeOwner(name);
         connect(definition);
     }
 }

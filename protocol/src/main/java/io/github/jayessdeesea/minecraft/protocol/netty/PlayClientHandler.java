@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.ChunkUpdate;
+import io.github.jayessdeesea.minecraft.protocol.EntityMove;
 import io.github.jayessdeesea.minecraft.protocol.EntityUpdate;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
@@ -10,6 +11,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.AcceptTeleportationPacke
 import io.github.jayessdeesea.minecraft.protocol.packet.AddEntityPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.AcknowledgeFinishConfigurationPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChunkDataPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.EntityPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientInformationPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.FinishConfigurationPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.HandshakePacket;
@@ -20,6 +22,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.LoginAcknowledgedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.LoginDisconnectPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.LoginStartPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.LoginSuccessPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.MoveEntityPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
@@ -33,6 +36,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -88,6 +93,12 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
     private boolean playReached = false;
     private Throwable failureCause = null;
 
+    // Last server-sent position per entity on this connection - Move Entity packets are changes
+    // relative to it (see MoveEntityPacket). Kept here, per connection, rather than in the shared
+    // bot-side tracker: every connection watching an entity receives the same changes, so applying
+    // them to one shared position would move it once per watching soldier. Event-loop confined.
+    private final Map<Integer, double[]> entityPositions = new HashMap<>();
+
     public PlayClientHandler(int protocolVersion, String host, int port, String username,
                               CompletableFuture<PlaySession> result, PlaySessionListeners listeners) {
         this.protocolVersion = protocolVersion;
@@ -142,9 +153,32 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
         } else if (packet instanceof AddEntityPacket entity) {
             LOG.debug("Add Entity received: id={} type={} at ({}, {}, {})",
                     entity.entityId(), entity.typeId(), entity.x(), entity.y(), entity.z());
+            entityPositions.put(entity.entityId(), new double[]{entity.x(), entity.y(), entity.z()});
             listeners.onEntitySpawn().accept(new EntityUpdate(entity.entityId(), entity.typeId(), entity.x(), entity.y(), entity.z()));
+        } else if (packet instanceof MoveEntityPacket move) {
+            double[] position = entityPositions.get(move.entityId());
+            if (position == null) {
+                LOG.warn("Move Entity for entity {} this connection never saw added - ignoring", move.entityId());
+                return;
+            }
+            position[0] = MoveEntityPacket.apply(position[0], move.deltaX());
+            position[1] = MoveEntityPacket.apply(position[1], move.deltaY());
+            position[2] = MoveEntityPacket.apply(position[2], move.deltaZ());
+            listeners.onEntityMove().accept(new EntityMove(move.entityId(), position[0], position[1], position[2]));
+        } else if (packet instanceof EntityPositionPacket sync) {
+            double[] position = entityPositions.get(sync.entityId());
+            if (position == null) {
+                LOG.warn("Entity position 0x{} for entity {} this connection never saw added - ignoring",
+                        Integer.toHexString(sync.packetId()), sync.entityId());
+                return;
+            }
+            position[0] = sync.isRelative(0) ? position[0] + sync.x() : sync.x();
+            position[1] = sync.isRelative(1) ? position[1] + sync.y() : sync.y();
+            position[2] = sync.isRelative(2) ? position[2] + sync.z() : sync.z();
+            listeners.onEntityMove().accept(new EntityMove(sync.entityId(), position[0], position[1], position[2]));
         } else if (packet instanceof RemoveEntitiesPacket removal) {
             LOG.debug("Remove Entities received: {}", removal.entityIds());
+            removal.entityIds().forEach(entityPositions::remove);
             listeners.onEntitiesRemoved().accept(removal.entityIds());
         } else if (packet instanceof SetHealthPacket health) {
             LOG.debug("Set Health received: health={} food={}", health.health(), health.food());
