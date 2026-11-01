@@ -22,6 +22,6 @@ its own backlog item when it's picked up.
 - **Squad column and movement techniques** (ATP 3-21.8 ¶3-53; traveling, traveling overwatch,
   bounding overwatch). Bounding means one element moves while another watches, so it needs more
   than one fire team. Weapons placement within the formation falls under this item too.
-- **Battle drills** beyond react to contact (backlog/react-to-contact.md): break contact, and
+- **Battle drills** beyond react to contact (docs/military-doctrine.md §8): break contact, and
   others. These are standardised responses, which fit the scenario harness as fixed test cases.
 - **Casualty reporting.** Deaths roll up as a casualty report rather than a CANTCO.

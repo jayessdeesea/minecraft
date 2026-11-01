@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
 import io.github.jayessdeesea.minecraft.command.Formations;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
+import io.github.jayessdeesea.minecraft.command.ReactToContact;
 import io.github.jayessdeesea.minecraft.command.Report;
 import java.util.HashMap;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -137,7 +138,9 @@ public class SoldierRunner implements CommandLineRunner {
         if (order == null) {
             return;
         }
-        List<Order> orders = linkUp.orders(statuses, Formations.assign(order, statuses));
+        // Formation slots, then replacements' link-up, then the react-to-contact drill: teammates
+        // near a soldier in contact go to support it until the contact ends.
+        List<Order> orders = ReactToContact.orders(statuses, linkUp.orders(statuses, Formations.assign(order, statuses)));
         Map<String, DeterministicSoldier> byName = new HashMap<>();
         squad.forEach(soldier -> byName.put(soldier.status().name(), soldier));
         for (int i = 0; i < statuses.size(); i++) {

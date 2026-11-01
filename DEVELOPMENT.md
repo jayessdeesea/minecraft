@@ -69,8 +69,8 @@ mvn -pl bot test -Dtest=SoldierScenarioTest -Dscenario.only=forest:7  # replay o
 ```
 
 **Combat sweep.** `bot`'s `CombatScenarioTest` pits a soldier against one simulated zombie,
-skeleton or creeper (`Battle`: rough approximations, not vanilla mob AI) and prints how the fights
-end. Use it to measure a change to combat behaviour: `-Dcombat.seeds=200` for more.
+skeleton or creeper, and a squad against a pack (`Battle`: rough approximations, not vanilla mob
+AI), and prints how the fights end. Use it to measure a change to combat behaviour: `-Dcombat.seeds=200` for more.
 
 **Squad-leader evaluation.** `app`'s `SquadLeaderScenarioIT` runs the real squad leader, with its
 real prompt, against Ollama on the same scenarios. It prints a pass rate per family rather than

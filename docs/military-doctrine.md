@@ -134,6 +134,26 @@ So a safe route always wins when one exists. A soldier that reports CANTCO price
 order that would free it, for example "a route with falls costing 8 of my 20 health exists (MEDIUM
 risk)". The squad leader then decides whether the mission is worth that.
 
+## 8. Actions on contact and the react-to-contact drill
+
+| Practice | Content | Source |
+|---|---|---|
+| **Actions on contact** | The element in contact returns fire and takes cover immediately, without waiting for orders. | ATP 3-21.8 |
+| **React to contact** (battle drill) | The rest of the unit moves to support the element in contact. The leader then decides whether to assault, bypass or break contact. | ATP 3-21.8 (battle drills) |
+
+*How we use it:*
+- **The soldier's reflex.** A soldier in contact fights the nearest hostile at arm's length
+  (`DeterministicSoldier.tick`): it closes to its 3-block reach, strikes when its attack has
+  recharged, backs off inside 2.5 blocks, which is outside a zombie's reach, and holds in
+  between. It gets away from creepers instead.
+- **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
+  ahead of the squad leader's next decision.
+- **The squad leader** sees the contact in its next SITREP and can order something else.
+
+In the combat simulation, three zombies on one soldier's flank kill a lone soldier 64 times in
+100. A squad spread 10 blocks apart without the drill still wins, but loses its flank soldier 66
+times in 100. With the drill it loses nobody.
+
 ## Sources
 
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)

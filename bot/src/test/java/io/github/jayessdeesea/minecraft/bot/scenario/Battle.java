@@ -124,22 +124,38 @@ public final class Battle implements WorldView {
      * damage it dealt him this tick.
      */
     public double step(Position soldier) {
-        double damage = 0;
+        return step(List.of(soldier))[0];
+    }
+
+    /**
+     * Advances every live hostile one tick, each against the nearest of {@code soldiers}, and
+     * returns the damage each soldier took this tick (a creeper's blast hits everyone near it).
+     */
+    public double[] step(List<Position> soldiers) {
+        double[] damage = new double[soldiers.size()];
         for (Hostile h : hostiles) {
-            if (!h.alive()) {
+            if (!h.alive() || soldiers.isEmpty()) {
                 continue;
             }
             if (h.cooldown > 0) {
                 h.cooldown--;
             }
-            double distance = horizontal(positionOf(h), soldier);
+            Position here = positionOf(h);
+            int target = 0;
+            for (int i = 1; i < soldiers.size(); i++) {
+                if (horizontal(here, soldiers.get(i)) < horizontal(here, soldiers.get(target))) {
+                    target = i;
+                }
+            }
+            Position soldier = soldiers.get(target);
+            double distance = horizontal(here, soldier);
             switch (h.archetype) {
                 case ZOMBIE -> {
                     if (distance > ZOMBIE_REACH * 0.8) {
                         move(h, soldier, h.archetype.speed);
                     }
                     if (distance <= ZOMBIE_REACH && h.cooldown == 0) {
-                        damage += ZOMBIE_DAMAGE;
+                        damage[target] += ZOMBIE_DAMAGE;
                         h.cooldown = ZOMBIE_COOLDOWN;
                     }
                 }
@@ -152,7 +168,7 @@ public final class Battle implements WorldView {
                         move(h, soldier, -speed);
                     }
                     if (distance <= BOW_RANGE && h.cooldown == 0) {
-                        damage += random.nextDouble() < ARROW_HIT_CHANCE ? ARROW_DAMAGE : 0;
+                        damage[target] += random.nextDouble() < ARROW_HIT_CHANCE ? ARROW_DAMAGE : 0;
                         h.cooldown = BOW_COOLDOWN;
                     }
                 }
@@ -161,7 +177,9 @@ public final class Battle implements WorldView {
                         if (distance > CREEPER_ABORT) {
                             h.fuse = -1;
                         } else if (++h.fuse >= CREEPER_FUSE) {
-                            damage += Math.max(0, BLAST_DAMAGE * (1 - distance / BLAST_RADIUS));
+                            for (int i = 0; i < soldiers.size(); i++) {
+                                damage[i] += Math.max(0, BLAST_DAMAGE * (1 - horizontal(here, soldiers.get(i)) / BLAST_RADIUS));
+                            }
                             h.health = 0;
                             h.exploded = true;
                         }

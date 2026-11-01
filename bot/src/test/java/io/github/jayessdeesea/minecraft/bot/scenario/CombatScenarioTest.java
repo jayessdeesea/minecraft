@@ -8,7 +8,12 @@ import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.Risk;
 import org.junit.jupiter.api.Test;
 
+import io.github.jayessdeesea.minecraft.command.ReactToContact;
+import io.github.jayessdeesea.minecraft.command.SoldierStatus;
+
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalInt;
@@ -51,6 +56,99 @@ class CombatScenarioTest {
         StringBuilder table = new StringBuilder("\nOne soldier vs one hostile, " + seeds + " seeds each:\n");
         tally.forEach((archetype, endings) -> table.append(String.format(Locale.ROOT, "  %-9s %s%n", archetype, endings)));
         System.out.println(table);
+    }
+
+    /** A squad fight's result: how many soldiers died, and whether every hostile did. */
+    record SquadFight(int deaths, boolean won) {
+    }
+
+    /**
+     * Three zombies jump the flank of a squad spread in a line at a 10-block interval - too far
+     * apart for the others' reflexes to notice - with and without the react-to-contact drill, and a
+     * lone soldier against the same three for reference.
+     */
+    @Test
+    void reactToContactAgainstThreeZombies() {
+        int seeds = Integer.getInteger("combat.seeds", DEFAULT_SEEDS);
+        StringBuilder table = new StringBuilder("\nThree zombies on one soldier's flank, " + seeds + " seeds each:\n");
+        for (String setup : new String[]{"alone", "squad, no support", "squad, react to contact"}) {
+            int deaths = 0;
+            int wins = 0;
+            for (long seed = 1; seed <= seeds; seed++) {
+                SquadFight fight = squadFight(seed, setup.equals("alone") ? 1 : 3, setup.endsWith("contact"));
+                deaths += fight.deaths();
+                wins += fight.won() ? 1 : 0;
+            }
+            table.append(String.format(Locale.ROOT, "  %-24s %3d wins, %3d soldier deaths%n", setup, wins, deaths));
+        }
+        System.out.println(table);
+    }
+
+    static SquadFight squadFight(long seed, int soldiers, boolean support) {
+        SyntheticWorld world = Scenario.generate(Terrain.FLAT, seed).world();
+        Battle battle = new Battle(world, seed);
+        Random random = new Random(seed);
+        List<DeterministicSoldier> squad = new ArrayList<>();
+        List<Order> slots = new ArrayList<>();
+        double[] health = new double[soldiers];
+        for (int i = 0; i < soldiers; i++) {
+            int x = i * 10 - 10;
+            world.clearAbove(x, 20);
+            DeterministicSoldier soldier = new DeterministicSoldier("S" + i, new Position(x + 0.5, world.ground(x, 20) + 1, 20.5));
+            soldier.reportHealth(20, 20);
+            squad.add(soldier);
+            slots.add(new Order.MoveTo(x + 0.5, Scenario.BASE_GROUND + 1, -40.5, 3, 3, Risk.LOW));
+            soldier.receiveOrder(slots.get(i));
+            health[i] = 20;
+        }
+        // The pack comes in on the west flank, just inside the first soldier's contact radius.
+        double packX = -10.5 - 6 - random.nextDouble() * 1.5;
+        double packZ = 20.5 - 2 + random.nextDouble() * 4;
+        for (int j = 0; j < 3; j++) {
+            battle.spawn(Battle.Archetype.ZOMBIE, packX - j * 1.2, packZ + (j - 1) * 1.2);
+        }
+
+        int deaths = 0;
+        for (int tick = 0; tick < TICKS; tick++) {
+            List<Integer> alive = new ArrayList<>();
+            for (int i = 0; i < soldiers; i++) {
+                if (health[i] > 0) {
+                    alive.add(i);
+                }
+            }
+            if (alive.isEmpty() || battle.hostiles().stream().noneMatch(Battle.Hostile::alive)) {
+                break;
+            }
+            if (support && tick % 20 == 0) {
+                List<SoldierStatus> statuses = alive.stream().map(i -> squad.get(i).status()).toList();
+                List<Order> base = alive.stream().map(slots::get).toList();
+                List<Order> orders = ReactToContact.orders(statuses, base);
+                for (int k = 0; k < alive.size(); k++) {
+                    squad.get(alive.get(k)).receiveOrder(orders.get(k));
+                }
+            }
+            List<Position> positions = new ArrayList<>();
+            for (int i : alive) {
+                DeterministicSoldier soldier = squad.get(i);
+                OptionalInt attack = soldier.tick(battle);
+                Position now = soldier.status().position();
+                attack.ifPresent(id -> battle.strike(id, now, DeterministicSoldier.ATTACK_REACH));
+                positions.add(now);
+            }
+            double[] damage = battle.step(positions);
+            for (int k = 0; k < alive.size(); k++) {
+                int i = alive.get(k);
+                double healed = tick % REGEN_TICKS == 0 && health[i] < 20 ? 1 : 0;
+                if (damage[k] > 0 || healed > 0) {
+                    health[i] = Math.min(20, health[i] - damage[k] + healed);
+                    squad.get(i).reportHealth(Math.max(0, health[i]), 20);
+                    if (health[i] <= 0) {
+                        deaths++;
+                    }
+                }
+            }
+        }
+        return new SquadFight(deaths, battle.hostiles().stream().noneMatch(Battle.Hostile::alive));
     }
 
     static Fight fight(Battle.Archetype archetype, long seed) {

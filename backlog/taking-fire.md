@@ -1,7 +1,6 @@
 ---
 status: proposed
 priority: P2
-depends-on: [react-to-contact]
 ---
 
 # Detect ranged fire from outside contact radius
