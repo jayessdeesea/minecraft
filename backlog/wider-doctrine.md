@@ -23,5 +23,5 @@ its own backlog item when it's picked up.
   bounding overwatch). Bounding means one element moves while another watches, so it needs more
   than one fire team. Weapons placement within the formation falls under this item too.
 - **Battle drills** (react to contact, break contact). These are standardised responses, which
-  fits the scenario harness (scenario-harness.md) as fixed test cases.
+  fits the scenario harness (`bot`'s `scenario` test package) as fixed test cases.
 - **Casualty reporting.** Deaths roll up as a casualty report rather than a CANTCO.

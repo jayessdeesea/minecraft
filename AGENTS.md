@@ -145,6 +145,9 @@ never supposed to creep in.
   Anthropic-specific request/response shapes, message formats, or tool-call conventions into
   General/Squad Leader logic. If it only works with Claude, it's not written against the
   abstraction correctly.
+- **Tests: JUnit 6 and ArchUnit; no property-testing library.** Variation testing uses our own
+  seeded scenario generators (`bot`'s `scenario` test package, shared with `app` as a test jar).
+  jqwik was rejected: its maintainer asks AI coding agents not to use it.
 - **Netty**, hand-rolled protocol implementation. No MCProtocolLib, no PacketEvents, no NBT/world
   libraries of any kind — VarInt/VarLong, packet framing, compression, encryption, and the full
   connection state machine (Handshake → Status/Login → Configuration → Play) are all written here.

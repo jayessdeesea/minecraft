@@ -1,7 +1,6 @@
 ---
 status: proposed
 priority: P2
-depends-on: [scenario-harness]
 ---
 
 # Simulated hostiles for the scenario harness
@@ -14,7 +13,7 @@ approximately right is enough to check that soldiers break contact, report it, a
 leader responds.
 
 ## Done when
-- The scenario harness can place simulated hostiles, each stepped every tick against the same
+- The scenario harness (`bot`'s `scenario` test package) can place simulated hostiles, each stepped every tick against the same
   synthetic world. Three archetypes:
   - **Melee chaser:** closes to contact at about walking speed and hits on contact.
   - **Ranged:** keeps at a standoff distance and deals damage over time while it has line of

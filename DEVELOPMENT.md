@@ -56,8 +56,26 @@ mvn verify                      # every module's unit tests and the ArchUnit bou
 mvn package -DskipTests         # just the bootable app/target/app.jar
 ```
 
-Neither needs the server or the model. Tests that need a live server are named `*IT` and run only
-when asked for (section 5).
+Neither needs the server or the model. Tests that need a live server or model are named `*IT` and
+run only when asked for (section 5 and below).
+
+**Scenario sweeps.** `bot`'s `SoldierScenarioTest` sends a soldier across generated terrain (flat,
+hills, forest, lake, ravine, walled compound), 20 seeds per family by default. Each case is named
+`<family> seed=<n>`, and a failure prints a top-down map of the world and the soldier's trail.
+
+```bash
+mvn -pl bot test -Dtest=SoldierScenarioTest -Dscenario.seeds=200      # a wider sweep
+mvn -pl bot test -Dtest=SoldierScenarioTest -Dscenario.only=forest:7  # replay one case
+```
+
+**Squad-leader evaluation.** `app`'s `SquadLeaderScenarioIT` runs the real squad leader, with its
+real prompt, against Ollama on the same scenarios. It prints a pass rate per family rather than
+pass/fail. Re-run it after any prompt or model change:
+
+```bash
+mvn -q install -DskipTests
+mvn -pl app test -Dtest=SquadLeaderScenarioIT -Dsurefire.failIfNoSpecifiedTests=false -Deval.seeds=5 [-Deval.model=...]
+```
 
 ## 3. Run the chain of command
 

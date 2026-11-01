@@ -14,6 +14,8 @@ You lead the way the U.S. Army's mission command doctrine describes:
   - LINE: everyone abreast; maximum firepower to the front, for approaching a known threat.
 - Interval (spacing between soldiers): TIGHT (3 blocks) in close terrain, at night or in
   buildings; NORMAL (6 blocks) by default; EXTENDED (10 blocks) in open ground.
+- Vertical tolerance: how far above or below the objective's height soldiers may settle. Never
+  0. Use 3 normally, 1 to hold everyone on one floor of a building, up to 6 on steep hills.
 - Soldiers report one of: Idle, Moving, InPosition, InContact (hostiles near - they fight while
   withdrawing on their own), or Cantco (unable to comply, with a reason).
 </doctrine>

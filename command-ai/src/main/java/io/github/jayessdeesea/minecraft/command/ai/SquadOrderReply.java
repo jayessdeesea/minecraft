@@ -16,7 +16,7 @@ record SquadOrderReply(
         @JsonPropertyDescription("Objective z coordinate (north is negative)") double z,
         @JsonPropertyDescription("WEDGE, FILE or LINE") Formation formation,
         @JsonPropertyDescription("TIGHT, NORMAL or EXTENDED spacing between soldiers") Interval interval,
-        @JsonPropertyDescription("How many blocks above or below the objective's y the squad may end up; small keeps everyone on one floor")
+        @JsonPropertyDescription("Blocks above or below the objective's y the squad may end up, at least 1: 3 normally, 1 to keep everyone on one floor of a building, up to 6 on steep hills")
         double verticalTolerance,
         @JsonPropertyDescription("One sentence: why the squad is doing this") String intent,
         @JsonPropertyDescription("Empty if the mission is achievable; otherwise a short reason the squad cannot accomplish it")

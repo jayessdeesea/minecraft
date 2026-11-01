@@ -99,12 +99,12 @@ class SpringAiSquadLeaderTest {
                 <objective_ground>
                 The objective is NOT reachable: land the point man cannot get to.
                 Reachable spots nearest the objective:
-                - (-8, 64, -8): 8 blocks from the objective
-                - (0, 64, 0): 8 blocks from the objective
-                - (-8, 64, 0): 11 blocks from the objective
-                - (8, 65, 0): 11 blocks from the objective
-                - (0, 63, 8): 16 blocks from the objective
-                Highest reachable spot: (8, 65, 0).
+                - x=-8 y=64 z=-8: 8 blocks from the objective
+                - x=0 y=64 z=0: 8 blocks from the objective
+                - x=-8 y=64 z=0: 11 blocks from the objective
+                - x=8 y=65 z=0: 11 blocks from the objective
+                - x=0 y=63 z=8: 16 blocks from the objective
+                Highest reachable spot: x=8 y=65 z=0.
                 </objective_ground>
                 """, ground);
     }

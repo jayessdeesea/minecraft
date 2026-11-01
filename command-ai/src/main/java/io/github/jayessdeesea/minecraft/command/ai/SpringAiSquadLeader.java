@@ -192,13 +192,13 @@ public final class SpringAiSquadLeader implements SquadLeader {
         }
         out.append("Reachable spots nearest the objective:\n");
         reachable.stream().sorted(Comparator.comparingDouble(s -> distance(s, objective))).limit(5).forEach(s ->
-                out.append(String.format(Locale.ROOT, "- (%d, %d, %d): %.0f blocks from the objective\n",
+                out.append(String.format(Locale.ROOT, "- x=%d y=%d z=%d: %.0f blocks from the objective\n",
                         s.x(), s.height(), s.z(), distance(s, objective))));
         TerrainSurvey.Sample highest = reachable.stream()
                 .max(Comparator.comparingInt(TerrainSurvey.Sample::height)
                         .thenComparing(Comparator.comparingDouble((TerrainSurvey.Sample s) -> distance(s, objective)).reversed()))
                 .orElseThrow();
-        out.append(String.format(Locale.ROOT, "Highest reachable spot: (%d, %d, %d).\n", highest.x(), highest.height(), highest.z()));
+        out.append(String.format(Locale.ROOT, "Highest reachable spot: x=%d y=%d z=%d.\n", highest.x(), highest.height(), highest.z()));
         return out.append("</objective_ground>\n").toString();
     }
 

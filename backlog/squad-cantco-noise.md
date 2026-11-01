@@ -13,7 +13,7 @@ CANTCO when one occurs.
 
 ## Done when
 - Across scenario variations with exactly one stuck non-point soldier, the squad leader rarely
-  sets `cantco`, at a measured rate (scenario-harness.md evaluation).
+  sets `cantco`, at a rate measured by `SquadLeaderScenarioIT` with a stuck-soldier variant added.
 
 ## Notes
 - Same lesson as `<objective_ground>`: precompute rather than hope the model infers. For example,
