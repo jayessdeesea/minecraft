@@ -13,7 +13,7 @@ import java.util.List;
  * hostiles are stepped every tick by {@link #step} and answer {@link #nearbyHostiles}, the same
  * seam the live {@code EntityTracker} fills.
  *
- * <p>Deliberately approximate, not vanilla mob AI (backlog/mob-simulation.md's framing: the subject
+ * <p>Deliberately approximate, not vanilla mob AI (AGENTS.md's framing: the subject
  * is coordination, so the simulation only has to make a soldier's choices matter). The numbers
  * that come from the server jar ({@code createAttributes}): zombie attack damage 3, and movement
  * speed attributes zombie 0.23, skeleton and creeper 0.25. Speeds here are scaled from live runs,
