@@ -73,7 +73,7 @@ class SpringAiSquadLeaderTest {
 
         assertTrue(prompt.contains("<objective>") && prompt.contains("seize the hill") && prompt.contains("observe the valley"));
         assertTrue(prompt.contains("Alice (point man) at (1, 64, 2): Cantco: no route out of the pit"));
-        assertTrue(prompt.contains("Bob at (3, 64, 4): Moving; health 6/20, food 12/20, died 1x"));
+        assertTrue(prompt.contains("Bob at (3, 64, 4), 3 blocks from the point man: Moving; health 6/20, food 12/20, died 1x"));
         assertTrue(prompt.contains("no route out of the pit; condition not reported yet"));
         assertTrue(prompt.contains("<current_order>\nNone yet."));
         assertTrue(prompt.contains("<terrain>"));

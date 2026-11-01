@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.command.ai;
 
+import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -95,6 +96,8 @@ public final class SpringAiSquadLeader implements SquadLeader {
             SoldierStatus soldier = soldierStatuses.get(i);
             prompt.append("- ").append(soldier.name()).append(i == 0 ? " (point man)" : "")
                     .append(" at ").append(describe(soldier.position()))
+                    .append(i == 0 ? "" : String.format(Locale.ROOT, ", %.0f blocks from the point man",
+                            Cohesion.distance(soldierStatuses.getFirst().position(), soldier.position())))
                     .append(": ").append(describe(soldier.report()))
                     .append("; ").append(describe(soldier.condition())).append('\n');
         }

@@ -154,6 +154,19 @@ In the combat simulation, three zombies on one soldier's flank kill a lone soldi
 100. A squad spread 10 blocks apart without the drill still wins, but loses its flank soldier 66
 times in 100. With the drill it loses nobody.
 
+## 9. Pace control and supporting distance
+
+A leader keeps the unit's elements within supporting distance, close enough to reinforce each
+other in contact. When the unit strings out, the lead element halts or slows until the rest
+close up (ATP 3-21.8, movement and dispersion).
+
+*How we use it:* `command.Cohesion` halts the point man while a soldier who can follow is more than
+24 blocks from him, the same distance the react-to-contact drill sends support. Every formation
+slot is measured from the point man, so holding him holds the squad. Stuck soldiers (CANTCO),
+replacements linking up and soldiers in contact don't hold the squad; each has its own mechanism.
+The squad leader's prompt shows each soldier's distance from the point man, and the log reads
+`[Alpha] HALT: point man waits for Bob`.
+
 ## Sources
 
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)

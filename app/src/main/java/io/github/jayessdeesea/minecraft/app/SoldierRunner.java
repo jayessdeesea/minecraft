@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
 import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
 import io.github.jayessdeesea.minecraft.command.Formations;
+import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
 import io.github.jayessdeesea.minecraft.command.ReactToContact;
 import io.github.jayessdeesea.minecraft.command.Report;
@@ -14,6 +15,7 @@ import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
+import io.github.jayessdeesea.minecraft.protocol.HealthUpdate;
 import io.github.jayessdeesea.minecraft.protocol.MinecraftClient;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
@@ -93,6 +95,7 @@ public class SoldierRunner implements CommandLineRunner {
     private final ChainOfCommand chainOfCommand;
     private final LinkUp linkUp = new LinkUp(); // squad thread only
     private java.util.Set<String> linkingUp = java.util.Set.of(); // squad thread only
+    private String haltedFor; // squad thread only
 
     public SoldierRunner(ChainOfCommand chainOfCommand) {
         this.chainOfCommand = chainOfCommand;
@@ -138,9 +141,19 @@ public class SoldierRunner implements CommandLineRunner {
         if (order == null) {
             return;
         }
-        // Formation slots, then replacements' link-up, then the react-to-contact drill: teammates
-        // near a soldier in contact go to support it until the contact ends.
-        List<Order> orders = ReactToContact.orders(statuses, linkUp.orders(statuses, Formations.assign(order, statuses)));
+        // Formation slots, then replacements' link-up, then pace control (the point man halts for
+        // a straggler), then the react-to-contact drill, which overrides all of them.
+        List<Order> orders = ReactToContact.orders(statuses,
+                Cohesion.orders(statuses, linkUp.orders(statuses, Formations.assign(order, statuses))));
+        String straggler = Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
+        if (!java.util.Objects.equals(straggler, haltedFor)) {
+            if (straggler != null) {
+                LOG.info("[{}] HALT: point man waits for {}", ChainOfCommand.SQUAD_NAME, straggler);
+            } else {
+                LOG.info("[{}] squad closed up - moving on", ChainOfCommand.SQUAD_NAME);
+            }
+            haltedFor = straggler;
+        }
         Map<String, DeterministicSoldier> byName = new HashMap<>();
         squad.forEach(soldier -> byName.put(soldier.status().name(), soldier));
         for (int i = 0; i < statuses.size(); i++) {
@@ -179,6 +192,10 @@ public class SoldierRunner implements CommandLineRunner {
         // Set by onJoined, which runs on the event loop inside the first Player Position's dispatch -
         // so every later Player Position on this connection already sees it.
         AtomicReference<DeterministicSoldier> activeSoldier = new AtomicReference<>();
+        // The server sends health on join - possibly before the soldier exists - and afterwards
+        // only on a change. Kept so the soldier starts from it: otherwise a one-blow kill of a
+        // soldier never hurt since joining reads like joining dead, and its death isn't counted.
+        AtomicReference<HealthUpdate> lastHealth = new AtomicReference<>();
         CompletableFuture<PlaySession> sessionReady = new CompletableFuture<>();
 
         CompletableFuture<PlaySession> joined = MinecraftClient.join(HOST, PORT, name, new PlaySessionListeners(
@@ -196,6 +213,7 @@ public class SoldierRunner implements CommandLineRunner {
                 move -> entityTracker.move(move.entityId(), move.x(), move.y(), move.z()),
                 ids -> entityTracker.remove(ids, name),
                 health -> {
+                    lastHealth.set(health);
                     DeterministicSoldier soldier = activeSoldier.get();
                     if (soldier != null) {
                         soldier.reportHealth(health.health(), health.food());
@@ -210,7 +228,7 @@ public class SoldierRunner implements CommandLineRunner {
                 },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
-        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier))
+        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth))
                 .exceptionally(cause -> {
                     LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
                     return null;
@@ -219,11 +237,15 @@ public class SoldierRunner implements CommandLineRunner {
 
     private void onJoined(SoldierDefinition definition, PlaySession session, PlayerPosition spawn,
                            AtomicReference<ScheduledExecutorService> activeScheduler,
-                           AtomicReference<DeterministicSoldier> activeSoldier) {
+                           AtomicReference<DeterministicSoldier> activeSoldier, AtomicReference<HealthUpdate> lastHealth) {
         String name = definition.name();
         LOG.info("{} joined at real spawn ({}, {}, {}): {}", name, spawn.x(), spawn.y(), spawn.z(), session.playState());
 
         DeterministicSoldier soldier = new DeterministicSoldier(name, new Position(spawn.x(), spawn.y(), spawn.z()));
+        HealthUpdate health = lastHealth.get();
+        if (health != null) {
+            soldier.reportHealth(health.health(), health.food());
+        }
         activeSoldier.set(soldier);
         if (definition == SOLDIERS.getFirst()) {
             // The point man carries the squad's radio: the squad leader and general aren't in the

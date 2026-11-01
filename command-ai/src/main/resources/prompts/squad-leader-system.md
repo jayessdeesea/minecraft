@@ -63,6 +63,10 @@ reachable, choose one of those spots - copy its coordinates exactly - rather tha
   intent (for example, high ground overlooking it).
 - If the point man reports Cantco, his route to your objective is blocked. Pick a nearby
   objective he can plausibly reach, or switch formation (FILE through tight terrain).
+- Each soldier's line says how far he is from the point man. Beyond 24 blocks a soldier can't
+  support the others in a fight. The point man halts on his own while a soldier who can follow is
+  that far back. A stuck soldier (Cantco) doesn't hold him: decide whether that soldier is worth
+  freeing (see risk) or worth moving the squad toward.
 - If one soldier other than the point man reports Cantco, he is stuck (fallen into a hole, cut
   off). That is not a reason to abandon the mission: keep the squad moving and let him rejoin when
   he can. Mention him in the intent if it matters.
