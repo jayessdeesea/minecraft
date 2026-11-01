@@ -1,7 +1,9 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.packet.AddEntityPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ChunkBatchFinishedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChunkDataPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ForgetLevelChunkPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.EntityPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.KeepAliveRequestPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MoveEntityPacket;
@@ -32,6 +34,8 @@ public final class PlayMarshaller implements PacketMarshaller {
             case AddEntityPacket.PACKET_ID -> AddEntityPacket.decode(data);
             case RemoveEntitiesPacket.PACKET_ID -> RemoveEntitiesPacket.decode(data);
             case SetHealthPacket.PACKET_ID -> SetHealthPacket.decode(data);
+            case ChunkBatchFinishedPacket.PACKET_ID -> ChunkBatchFinishedPacket.decode(data);
+            case ForgetLevelChunkPacket.PACKET_ID -> ForgetLevelChunkPacket.decode(data);
             case MoveEntityPacket.POS_PACKET_ID -> MoveEntityPacket.decodePos(data);
             case MoveEntityPacket.POS_ROT_PACKET_ID -> MoveEntityPacket.decodePosRot(data);
             case EntityPositionPacket.SYNC_PACKET_ID -> EntityPositionPacket.decodeSync(data);

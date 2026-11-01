@@ -147,7 +147,10 @@ class DeterministicSoldierTest {
         alice.tick(terrain(false));
         assertEquals(new Position(100, 70, 100), alice.status().position());
 
-        alice.tick(terrain(false));
+        for (int i = 0; i < 40; i++) {
+            alice.tick(terrain(false)); // falls from y=70 to the ground first, then plans and walks
+        }
+        assertEquals(GROUND, alice.status().position().y(), 1e-9);
         assertTrue(alice.status().position().x() < 100, "should resume following the order from the corrected spot");
     }
 
@@ -168,8 +171,8 @@ class DeterministicSoldierTest {
 
     @Test
     void walksOffALedgeAndFallsToTheLowerGround() {
-        // Ground at 64 for x < 2, a pit down to 60 beyond it.
-        WorldView ledge = blocks((x, y, z) -> y < (x < 2 ? GROUND : 60));
+        // Ground at 64 for x < 2, three blocks lower beyond it (the most the route planner will drop).
+        WorldView ledge = blocks((x, y, z) -> y < (x < 2 ? GROUND : 61));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));
         alice.receiveOrder(new Order.TrendToward(10, 0.5));
 
@@ -177,8 +180,50 @@ class DeterministicSoldierTest {
             alice.tick(ledge);
         }
 
-        assertEquals(60, alice.status().position().y(), 1e-9);
+        assertEquals(61, alice.status().position().y(), 1e-9);
         assertTrue(alice.onGround());
+    }
+
+    @Test
+    void doesNotWalkOffACliff() {
+        WorldView cliff = blocks((x, y, z) -> y < (x < 2 ? GROUND : 50));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.TrendToward(10, 0.5));
+
+        for (int i = 0; i < 100; i++) {
+            alice.tick(cliff);
+        }
+
+        assertEquals(GROUND, alice.status().position().y(), 1e-9, "a 14-block drop isn't a route");
+    }
+
+    @Test
+    void routesAroundATree() {
+        // A 2-high trunk at x=3 in a 3-wide band - straight-line walking used to stop dead here.
+        WorldView tree = blocks((x, y, z) -> y < GROUND || (x == 3 && z >= -1 && z <= 1 && y < GROUND + 2));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.MoveTo(8.5, GROUND, 0.5, 1, 1));
+
+        for (int i = 0; i < 200; i++) {
+            alice.tick(tree);
+        }
+
+        Position end = alice.status().position();
+        double cellCentreDistance = Math.hypot(Math.floor(end.x()) + 0.5 - 8.5, Math.floor(end.z()) + 0.5 - 0.5);
+        assertTrue(cellCentreDistance <= 1, "should stand in a cell inside the zone past the tree: " + end);
+    }
+
+    @Test
+    void stopsAnywhereInsideTheToleranceZone() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.MoveTo(20.5, GROUND, 0.5, 10, 2));
+
+        for (int i = 0; i < 200; i++) {
+            alice.tick(terrain(false));
+        }
+
+        double x = alice.status().position().x();
+        assertTrue(x >= 10 && x < 13, "should stop just inside the zone's near edge, not its centre: " + x);
     }
 
     @Test

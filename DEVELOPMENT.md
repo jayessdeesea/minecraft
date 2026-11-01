@@ -338,12 +338,32 @@ those need aren't decoded.
 
     To find night for a live check: Set Time (`0x71`, not decoded) carries the day time as a VarInt
     after the game-time long - night is day time mod 24000 in 13000-23000.
-  - **Obstacles stop soldiers dead.** By design (no pathing), but with real terrain it now happens
-    within a block or two of spawn - Alice stops at a tree. Pathing belongs with the squad layer
-    deciding *where* to go.
   - **One stale report after a respawn.** The tick loop can report the pre-respawn position once
     before the server's correction lands, logged by the server as "moved too quickly." Harmless:
     the correction wins on the next tick.
+
+- **Soldier route-finding, and chunk streaming that actually streams.** Orders now carry a
+  zone, not a point: `Order.MoveTo(x, y, z, horizontalTolerance, verticalTolerance)` - any standing
+  spot within those distances counts, and the tolerances are the soldier's freedom (a squad leader
+  that wants everyone on one floor keeps the vertical one small). `bot.nav.Pathfinder` is a
+  budget-bounded A* over block cells (4000 visits, so it can't stall a tick): walk to any of 8
+  neighbours (no diagonal corner-cutting), jump up one block, drop up to 3. An out-of-budget goal
+  returns the path to the closest cell reached, and the soldier re-plans from there - that's how
+  long distances are covered. `DeterministicSoldier` re-plans when its order changes, when it stops
+  making progress for a second, and every 2s; the contact reflex still overrides all of it.
+  "Arrived" uses the planner's own rule (the cell you stand in counts if its centre is in the
+  zone) - two different rules for "there yet" once left a soldier frozen just outside its zone.
+  `TrendToward` remains as "any height, within a block" until the squad leader's reply format is
+  replaced.
+
+  Live testing exposed a protocol gap that had capped every soldier's world at 9-18 chunks since
+  the start: the server streams chunks in batches and sends the next batch only after Chunk Batch
+  Received (`0x0B`, a float of desired chunks/tick) answers Chunk Batch Finished (`0x0B`). Without
+  it, everything past the first batches was unknown terrain - which counts as solid, so routes
+  dead-ended at the edge of the loaded area. With the ack: 680-720 chunks in a minute. Forget Level
+  Chunk (`0x25`) is decoded too, so `ChunkCache` drops chunks no soldier can see (and a dead
+  connection's whole view). Live: both soldiers routed 25+ blocks over real terrain to their zones
+  - Alice down 25 blocks of hillside - with no server corrections.
 
 - **Respawn, and accepting server position corrections.** Soldiers killed between runs stayed dead
   forever - a dead player is sent no chunks or entities until it respawns, so a dead Alice/Bob

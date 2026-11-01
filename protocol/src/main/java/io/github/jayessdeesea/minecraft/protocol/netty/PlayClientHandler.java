@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
+import io.github.jayessdeesea.minecraft.protocol.ChunkUnload;
 import io.github.jayessdeesea.minecraft.protocol.ChunkUpdate;
 import io.github.jayessdeesea.minecraft.protocol.EntityMove;
 import io.github.jayessdeesea.minecraft.protocol.EntityUpdate;
@@ -10,7 +11,10 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import io.github.jayessdeesea.minecraft.protocol.packet.AcceptTeleportationPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.AddEntityPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.AcknowledgeFinishConfigurationPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ChunkBatchFinishedPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ChunkBatchReceivedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChunkDataPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ForgetLevelChunkPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.EntityPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientInformationPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.FinishConfigurationPacket;
@@ -94,6 +98,9 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
     private boolean playReached = false;
     private Throwable failureCause = null;
     private boolean loadedSent = false;
+
+    /** Asked for in every Chunk Batch Received; the server clamps it. Vanilla's own ceiling is 64. */
+    private static final float DESIRED_CHUNKS_PER_TICK = 32f;
 
     // Last server-sent position per entity on this connection - Move Entity packets are changes
     // relative to it (see MoveEntityPacket). Kept here, per connection, rather than in the shared
@@ -188,6 +195,12 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             LOG.debug("Remove Entities received: {}", removal.entityIds());
             removal.entityIds().forEach(entityPositions::remove);
             listeners.onEntitiesRemoved().accept(removal.entityIds());
+        } else if (packet instanceof ChunkBatchFinishedPacket batch) {
+            // Protocol-level, like Keep Alive: without this ack the server stops sending terrain.
+            LOG.debug("Chunk Batch Finished: {} chunk(s) - acknowledging", batch.batchSize());
+            ctx.writeAndFlush(new ChunkBatchReceivedPacket(DESIRED_CHUNKS_PER_TICK));
+        } else if (packet instanceof ForgetLevelChunkPacket forget) {
+            listeners.onChunkUnload().accept(new ChunkUnload(forget.chunkX(), forget.chunkZ()));
         } else if (packet instanceof SetHealthPacket health) {
             LOG.debug("Set Health received: health={} food={}", health.health(), health.food());
             listeners.onHealth().accept(health.health());

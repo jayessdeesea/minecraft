@@ -130,6 +130,8 @@ public final class SpringAiSquadLeader implements SquadLeader {
     private static String describe(Order order) {
         return switch (order) {
             case Order.Idle() -> "Idle";
+            case Order.MoveTo move -> String.format(Locale.ROOT, "MoveTo(%.1f, %.1f, %.1f within %.1f/%.1f)",
+                    move.x(), move.y(), move.z(), move.horizontalTolerance(), move.verticalTolerance());
             case Order.TrendToward trend ->
                     String.format(Locale.ROOT, "TrendToward(%.1f, %.1f)", trend.x(), trend.z());
         };

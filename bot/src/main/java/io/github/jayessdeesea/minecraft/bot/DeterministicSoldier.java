@@ -1,5 +1,8 @@
 package io.github.jayessdeesea.minecraft.bot;
 
+import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.Goal;
+import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -102,10 +105,11 @@ public final class DeterministicSoldier implements Soldier {
      * knockback buys distance. If the retreat step is blocked, stand still rather than fall back to
      * the order (which might lead toward the threat).
      *
-     * <p>Otherwise advances one step toward the current order's target. A step needs room for the
-     * whole ~1.8-block body; a one-block rise is jumped, anything taller stops the soldier. No
-     * pathing around obstacles by design (see {@code Order.TrendToward}'s javadoc): getting stuck
-     * on a tree or a mountain is an acceptable outcome for this soldier, not a bug to route around.
+     * <p>Otherwise follows a route to the current order's goal - planned by {@link Pathfinder}
+     * around trees, up one-block steps and down short drops, and re-planned when the order
+     * changes, when the soldier stops making progress, or every {@link #REPLAN_TICKS} ticks (the
+     * world changes, and a far goal is reached in budget-sized legs). A step needs room for the
+     * whole ~1.8-block body; a one-block rise is jumped.
      *
      * <p>Then vertical movement with vanilla gravity: the server kicks a client that reports
      * standing while hovering over lower ground ("floating too long"), so falling is not optional.
@@ -122,6 +126,8 @@ public final class DeterministicSoldier implements Soldier {
         if (correction != null) {
             position = correction;
             verticalVelocity = 0;
+            onGround = false; // unknown until gravity settles it - and no route is planned mid-air
+            route = null;
             return OptionalInt.empty();
         }
 
@@ -135,12 +141,102 @@ public final class DeterministicSoldier implements Soldier {
                 ticksUntilAttack = ATTACK_COOLDOWN_TICKS;
             }
             stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
-        } else if (order instanceof Order.TrendToward trend) {
-            stepToward(world, trend.x(), trend.z());
+            route = null; // wherever the retreat ends up, the old route no longer starts here
+        } else {
+            navigate(world);
         }
 
         applyVerticalMovement(world);
         return attack;
+    }
+
+    /** Re-plan at least this often while moving - 2 seconds. */
+    static final int REPLAN_TICKS = 40;
+    /** Ticks without real progress along the route before re-planning. */
+    private static final int STUCK_TICKS = 20;
+    /** Cell visits per plan - bounds the planning cost per tick (see {@link Pathfinder}). */
+    private static final int PLAN_BUDGET = 4000;
+    private static final double WAYPOINT_REACHED = 0.25;
+
+    // Navigation state - tick-loop only, like verticalVelocity.
+    private Order plannedOrder;
+    private Goal goal;
+    private List<BlockPos> route;
+    private int routeIndex;
+    private int ticksSincePlan;
+    private int stuckTicks;
+    private Position progressMark;
+    private volatile String lastPlan = "none";
+
+    /** Observability only: the most recent route plan, e.g. "partial, 12 steps ending BlockPos[...]". */
+    public String lastPlan() {
+        return lastPlan;
+    }
+
+    private void navigate(WorldView world) {
+        Order current = this.order;
+        if (current != plannedOrder) {
+            plannedOrder = current;
+            goal = goalFor(current);
+            route = null;
+        }
+        // Arrived = standing in a cell the goal accepts - the same cell-centre rule the planner uses,
+        // so the two can never disagree about whether there's anywhere left to go.
+        if (goal == null || (onGround && goal.contains(BlockPos.containing(position.x(), position.y(), position.z())))) {
+            route = null;
+            return;
+        }
+
+        ticksSincePlan++;
+        trackProgress();
+        boolean replan = route == null || routeIndex >= route.size()
+                || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS;
+        if (replan && onGround) {
+            Pathfinder.Result plan = Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), goal, PLAN_BUDGET);
+            route = plan.path();
+            lastPlan = (plan.reachesGoal() ? "to goal" : "partial") + ", " + route.size() + " steps"
+                    + (route.isEmpty() ? "" : " ending " + route.getLast());
+            routeIndex = 0;
+            ticksSincePlan = 0;
+            stuckTicks = 0;
+        }
+        if (route == null || routeIndex >= route.size()) {
+            return; // nothing reachable makes headway - wait for the next re-plan
+        }
+
+        BlockPos waypoint = route.get(routeIndex);
+        double centreX = waypoint.x() + 0.5;
+        double centreZ = waypoint.z() + 0.5;
+        if (Math.hypot(centreX - position.x(), centreZ - position.z()) < WAYPOINT_REACHED
+                && Math.abs(waypoint.y() - position.y()) < 0.6) {
+            routeIndex++;
+            if (routeIndex >= route.size()) {
+                return;
+            }
+            waypoint = route.get(routeIndex);
+            centreX = waypoint.x() + 0.5;
+            centreZ = waypoint.z() + 0.5;
+        }
+        stepToward(world, centreX, centreZ);
+    }
+
+    private void trackProgress() {
+        if (progressMark == null || Math.hypot(position.x() - progressMark.x(), position.z() - progressMark.z()) > 0.5
+                || Math.abs(position.y() - progressMark.y()) > 0.5) {
+            progressMark = position;
+            stuckTicks = 0;
+        } else {
+            stuckTicks++;
+        }
+    }
+
+    private Goal goalFor(Order order) {
+        return switch (order) {
+            case Order.Idle() -> null;
+            // Height left to the terrain: any floor, centred within a step of (x, z).
+            case Order.TrendToward trend -> new Goal(trend.x(), position.y(), trend.z(), 1.0, Double.MAX_VALUE);
+            case Order.MoveTo move -> new Goal(move.x(), move.y(), move.z(), move.horizontalTolerance(), move.verticalTolerance());
+        };
     }
 
     private static double distance(Position a, Position b) {

@@ -255,7 +255,9 @@ previously-confirmed IDs in the same list land where expected.
 | Dir | ID | Packet | Class | Confirmation |
 |---|---|---|---|---|
 | ← | `0x01` | Add Entity | `AddEntityPacket` | registration order; live (real entities decode with zero trailing bytes) |
+| ← | `0x0B` | Chunk Batch Finished | `ChunkBatchFinishedPacket` | registration order; live (chunks keep streaming once acked) |
 | ← | `0x23` | Entity Position Sync | `EntityPositionPacket` | registration order; live |
+| ← | `0x25` | Forget Level Chunk | `ForgetLevelChunkPacket` | registration order |
 | ← | `0x2C` | Keep Alive | `KeepAliveRequestPacket` | by content: 8-byte payload ~15s into Play |
 | ← | `0x2D` | Chunk Data and Update Light | `ChunkDataPacket` | decompiled layout; live across many chunks |
 | ← | `0x31` | Login (play) | `PlayLoginPacket` | by content: entity ID matched the server console's "logged in with entity id N", other fields matched server.properties |
@@ -267,6 +269,7 @@ previously-confirmed IDs in the same list land where expected.
 | ← | `0x7D` | Teleport Entity | `EntityPositionPacket` | registration order |
 | → | `0x00` | Accept Teleportation | `AcceptTeleportationPacket` | registration order; server keeps the session after it |
 | → | `0x01` | Attack | `AttackPacket` | registration order |
+| → | `0x0B` | Chunk Batch Received | `ChunkBatchReceivedPacket` | registration order; live |
 | → | `0x0C` | Client Command | `ClientCommandPacket` | registration order; live respawn |
 | → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | wiki + live round-trip |
 | → | `0x1E` | Move Player Pos | `MovePlayerPosPacket` | registration order; live movement |

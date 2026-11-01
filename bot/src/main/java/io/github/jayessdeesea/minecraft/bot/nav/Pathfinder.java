@@ -1,0 +1,145 @@
+package io.github.jayessdeesea.minecraft.bot.nav;
+
+import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
+
+/**
+ * Short-range A* over block cells, run on a soldier's tick thread - so it's bounded by an
+ * expansion budget rather than unbounded: an unreachable or far-off goal costs at most
+ * {@code maxExpanded} cell visits, never a stalled tick loop.
+ *
+ * <p>Moves are what {@code DeterministicSoldier} can physically do: walk to any of the 8 neighbours
+ * on the same level (diagonals only when both orthogonal cells are clear, so the 0.6-wide body
+ * doesn't clip a corner), jump up one block orthogonally (needs headroom above the takeoff cell),
+ * or walk off an edge and drop up to {@link #MAX_DROP} blocks orthogonally. No ladders, no water.
+ *
+ * <p>A goal outside the budget isn't a failure: the result is a path to the explored cell that
+ * got closest, flagged {@code reachesGoal = false}, and the caller re-plans from there. That's how
+ * a target 100 blocks away is reached with a 32-block-sized search.
+ */
+public final class Pathfinder {
+
+    /** Drops this far take damage-free-ish falls (vanilla starts fall damage after 3 blocks). */
+    public static final int MAX_DROP = 3;
+
+    private static final double DIAGONAL = Math.sqrt(2);
+    private static final double JUMP_COST = 2.0;
+    private static final int[][] ORTHOGONAL = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    private static final int[][] DIAGONALS = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+
+    public record Result(List<BlockPos> path, boolean reachesGoal) {
+    }
+
+    private Pathfinder() {
+    }
+
+    public static boolean standable(WorldView world, BlockPos cell) {
+        return clear(world, cell) && world.isSolid(cell.x(), cell.y() - 1, cell.z());
+    }
+
+    /** Room for the body: this cell and the one above aren't solid. */
+    private static boolean clear(WorldView world, BlockPos cell) {
+        return !world.isSolid(cell.x(), cell.y(), cell.z()) && !world.isSolid(cell.x(), cell.y() + 1, cell.z());
+    }
+
+    public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded) {
+        if (goal.contains(start)) {
+            return new Result(List.of(), true);
+        }
+
+        Map<BlockPos, Double> costSoFar = new HashMap<>();
+        Map<BlockPos, BlockPos> cameFrom = new HashMap<>();
+        PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingDouble(Node::priority));
+        costSoFar.put(start, 0.0);
+        open.add(new Node(start, goal.estimate(start)));
+
+        BlockPos closest = start;
+        double closestEstimate = goal.estimate(start);
+        int expanded = 0;
+
+        while (!open.isEmpty() && expanded < maxExpanded) {
+            BlockPos current = open.poll().cell();
+            expanded++;
+            if (goal.contains(current)) {
+                return new Result(reconstruct(cameFrom, start, current), true);
+            }
+            double estimate = goal.estimate(current);
+            if (estimate < closestEstimate) {
+                closest = current;
+                closestEstimate = estimate;
+            }
+
+            double base = costSoFar.get(current);
+            for (Move move : moves(world, current)) {
+                double cost = base + move.cost();
+                Double known = costSoFar.get(move.to());
+                if (known == null || cost < known) {
+                    costSoFar.put(move.to(), cost);
+                    cameFrom.put(move.to(), current);
+                    open.add(new Node(move.to(), cost + goal.estimate(move.to())));
+                }
+            }
+        }
+
+        return new Result(reconstruct(cameFrom, start, closest), false);
+    }
+
+    private static List<Move> moves(WorldView world, BlockPos from) {
+        List<Move> moves = new ArrayList<>(8);
+        for (int[] d : ORTHOGONAL) {
+            BlockPos level = from.offset(d[0], 0, d[1]);
+            if (standable(world, level)) {
+                moves.add(new Move(level, 1));
+                continue;
+            }
+            BlockPos up = from.offset(d[0], 1, d[1]);
+            if (standable(world, up) && !world.isSolid(from.x(), from.y() + 2, from.z())) {
+                moves.add(new Move(up, JUMP_COST));
+                continue;
+            }
+            if (clear(world, level)) {
+                for (int drop = 1; drop <= MAX_DROP; drop++) {
+                    BlockPos down = from.offset(d[0], -drop, d[1]);
+                    if (world.isSolid(down.x(), down.y(), down.z())) {
+                        break; // landed on something that isn't standable (e.g. a 1-high gap)
+                    }
+                    if (standable(world, down)) {
+                        moves.add(new Move(down, 1 + drop * 0.5));
+                        break;
+                    }
+                }
+            }
+        }
+        for (int[] d : DIAGONALS) {
+            BlockPos diagonal = from.offset(d[0], 0, d[1]);
+            if (standable(world, diagonal)
+                    && clear(world, from.offset(d[0], 0, 0))
+                    && clear(world, from.offset(0, 0, d[1]))) {
+                moves.add(new Move(diagonal, DIAGONAL));
+            }
+        }
+        return moves;
+    }
+
+    private static List<BlockPos> reconstruct(Map<BlockPos, BlockPos> cameFrom, BlockPos start, BlockPos end) {
+        List<BlockPos> path = new ArrayList<>();
+        for (BlockPos cell = end; !cell.equals(start); cell = cameFrom.get(cell)) {
+            path.add(cell);
+        }
+        Collections.reverse(path);
+        return List.copyOf(path);
+    }
+
+    private record Node(BlockPos cell, double priority) {
+    }
+
+    private record Move(BlockPos to, double cost) {
+    }
+}

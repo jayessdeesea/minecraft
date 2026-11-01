@@ -66,8 +66,8 @@ public class SoldierRunner implements CommandLineRunner {
     }
 
     private static final List<SoldierDefinition> SOLDIERS = List.of(
-            new SoldierDefinition("Alice", 10, 10),
-            new SoldierDefinition("Bob", -10, 10)
+            new SoldierDefinition("Alice", 25, 25),
+            new SoldierDefinition("Bob", -25, 25)
     );
 
     private final ChunkCache chunkCache = new ChunkCache();
@@ -96,6 +96,7 @@ public class SoldierRunner implements CommandLineRunner {
 
         CompletableFuture<PlaySession> joined = MinecraftClient.join(HOST, PORT, name, new PlaySessionListeners(
                 update -> chunkCache.load(update.chunkX(), update.chunkZ(), update.sectionBlockStates(), name),
+                unload -> chunkCache.unload(unload.chunkX(), unload.chunkZ(), name),
                 position -> {
                     if (!firstPosition.complete(position)) {
                         DeterministicSoldier soldier = activeSoldier.get();
@@ -133,7 +134,9 @@ public class SoldierRunner implements CommandLineRunner {
 
         DeterministicSoldier soldier = new DeterministicSoldier(name, new Position(spawn.x(), spawn.y(), spawn.z()));
         activeSoldier.set(soldier);
-        soldier.receiveOrder(new Order.TrendToward(spawn.x() + definition.walkDx(), spawn.z() + definition.walkDz()));
+        // Within 3 blocks horizontally of the target, at any height: this hardcoded demo can't know
+        // the terrain there. Real targets (with a real height) come from a SquadLeader.
+        soldier.receiveOrder(new Order.MoveTo(spawn.x() + definition.walkDx(), spawn.y(), spawn.z() + definition.walkDz(), 3, 256));
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
                 runnable -> new Thread(runnable, name + "-tick"));
@@ -147,8 +150,8 @@ public class SoldierRunner implements CommandLineRunner {
             session.reportPosition(current.x(), current.y(), current.z(), soldier.onGround());
         }, 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
         scheduler.scheduleAtFixedRate(
-                () -> LOG.info("{} status: {} - {} chunk(s), {} entities tracked, hostiles in contact: {}, session open: {}",
-                        name, soldier.status(), chunkCache.loadedChunkCount(), entityTracker.trackedEntityCount(),
+                () -> LOG.info("{} status: {} - plan: {} - {} chunk(s), {} entities tracked, hostiles in contact: {}, session open: {}",
+                        name, soldier.status(), soldier.lastPlan(), chunkCache.loadedChunkCount(), entityTracker.trackedEntityCount(),
                         world.nearbyHostiles(soldier.status().position(), DeterministicSoldier.CONTACT_RADIUS),
                         session.isOpen()),
                 STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
@@ -173,6 +176,7 @@ public class SoldierRunner implements CommandLineRunner {
         }
         // The new connection re-receives Add Entity for everything in view; drop this one's stale view.
         entityTracker.removeOwner(name);
+        chunkCache.removeOwner(name);
         connect(definition);
     }
 }

@@ -21,6 +21,7 @@ import java.util.function.Consumer;
  * {@code app}/{@code bot} concerns, not {@code protocol}'s.
  */
 public record PlaySessionListeners(Consumer<ChunkUpdate> onChunkUpdate,
+                                    Consumer<ChunkUnload> onChunkUnload,
                                     Consumer<PlayerPosition> onPlayerPosition,
                                     Consumer<EntityUpdate> onEntitySpawn,
                                     Consumer<EntityMove> onEntityMove,
@@ -29,6 +30,6 @@ public record PlaySessionListeners(Consumer<ChunkUpdate> onChunkUpdate,
                                     Consumer<Throwable> onDisconnect) {
 
     public static PlaySessionListeners none() {
-        return new PlaySessionListeners(update -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, cause -> { });
+        return new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, cause -> { });
     }
 }

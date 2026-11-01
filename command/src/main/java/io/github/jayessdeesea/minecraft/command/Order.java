@@ -13,7 +13,16 @@ public sealed interface Order {
     record Idle() implements Order {
     }
 
-    /** Trend toward (x, z), one step per tick, stopping (not pathing around) if blocked. */
+    /** Head for (x, z) at whatever height the terrain puts the soldier. */
     record TrendToward(double x, double z) implements Order {
+    }
+
+    /**
+     * Get to any standing spot within {@code horizontalTolerance} blocks (x/z plane) and
+     * {@code verticalTolerance} blocks (feet height) of (x, y, z). The tolerances are the soldier's
+     * own freedom: it picks the route, around trees and up steps, and where inside the zone to
+     * stop. A small vertical tolerance keeps it on one floor of a building.
+     */
+    record MoveTo(double x, double y, double z, double horizontalTolerance, double verticalTolerance) implements Order {
     }
 }

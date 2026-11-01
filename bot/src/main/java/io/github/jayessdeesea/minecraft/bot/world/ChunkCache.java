@@ -62,6 +62,16 @@ public final class ChunkCache {
         });
     }
 
+    /** Drops {@code owner}'s view entirely - for a connection that died without unloading what it saw. */
+    public void removeOwner(Object owner) {
+        for (Long key : chunks.keySet()) {
+            chunks.computeIfPresent(key, (k, chunk) -> {
+                chunk.owners.remove(owner);
+                return chunk.owners.isEmpty() ? null : chunk;
+            });
+        }
+    }
+
     public boolean isSolid(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
         // Unknown (unloaded chunk, or outside the decoded vertical range) is treated as blocked,
