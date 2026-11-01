@@ -7,7 +7,8 @@ import java.util.List;
  * builds its LLM prompt context from, mirroring how {@link SoldierStatus} feeds a
  * {@link SquadLeader}. Built by the caller (the imperative shell that owns the squad's
  * {@link Soldier} instances), not returned by {@link SquadLeader} itself - a {@code SquadLeader}
- * never holds its soldiers' state, so it has nothing to report on its own.
+ * never holds its soldiers' state. {@code report} is the squad leader's own line - CANTCO when it
+ * judged the objective impossible (see {@link SquadLeader#report}).
  */
-public record SquadStatus(String squadName, List<SoldierStatus> soldiers) {
+public record SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers) {
 }

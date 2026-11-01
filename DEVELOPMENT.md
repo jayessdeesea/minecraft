@@ -247,29 +247,11 @@ those need aren't decoded.
   production but meant the idle-triggered close itself couldn't be forced to fire live in the time
   available; the unit tests are what actually exercise that path today.
 
-- **`General`/`SquadLeader`/`Objective` - `command-ai` is no longer untouched.** `command` gained
-  `Objective` (freeform, unlike the closed `Order` set - an LLM-backed `SquadLeader` interprets it,
-  so there's no fixed vocabulary to close over), `SquadStatus` (mirrors `SoldierStatus` one level
-  up), and the `General`/`SquadLeader` interfaces themselves - both `decide(...)` methods return a
-  list positionally matched to their input, no map/key needed since the shell already owns the
-  ordered list it built the input from. `command-ai` implements both
-  (`SpringAiSquadLeader`/`SpringAiGeneral`) following AGENTS.md's `buildContext -> callModel ->
-  parseOrders` split exactly: `callModel` is the only line touching Spring AI's `ChatClient`,
-  proven untested-but-isolated by unit tests that wire a `ChatModel` which fails the test if it's
-  ever actually invoked. Neither implementation calls the model when there's nothing to decide
-  (`SquadLeader.decide` before any `receiveObjective`, `General.decide` on an empty squad list) -
-  both return `Order.Idle()`/no objectives instead, the same "no goal yet" default `Order.Idle`
-  already models, not a fallback masking a bug. The LLM's response is a small line-based text
-  protocol (`"<name>: IDLE"` / `"<name>: TREND <x> <z>"` for orders, `"<squadName>: <text>"` for
-  objectives) - any malformed line throws with the raw response included, per AGENTS.md's
-  no-fallbacks tenet; nothing here guesses its way past a bad response. Full `mvn test` reactor
-  stays green, including `ArchitectureTest`'s existing module-boundary rules against the new types.
-
-  **Deliberately not wired into `app` yet** - scoped out for this pass. Needs: grouping Alice/Bob
-  (or however many soldiers exist) into a squad, a decision on `SquadLeader`/`General` invocation
-  cadence (AGENTS.md's "Latency architecture" section says "start conservative," not a specific
-  number), and a real `ANTHROPIC_API_KEY` to actually run - none of today's unit tests make a live
-  model call.
+- **`General`/`SquadLeader` interfaces and their Spring AI implementations.** First cut of
+  `command-ai`, since superseded in shape: the `buildContext -> callModel -> validate` split and the
+  "no model call when there's nothing to decide" rule survive; the original line-based text reply
+  format was replaced by structured output, and `decide` now returns a `SquadOrder` rather than
+  per-soldier orders. See "The chain of command, live" below for what runs today.
 
 - **Entity awareness, and a "break contact" reflex.** `protocol` decodes Add Entity (`0x01`) and
   Remove Entities (`0x4D`) - IDs from `GameProtocols`' clientbound registration order (the same list
@@ -383,7 +365,36 @@ those need aren't decoded.
   routed back to rejoin, and Alice reported CANTCO on a hardcoded objective 5 blocks below her
   that she couldn't route to, escalated as a squad CANTCO.
 
-  Open: nothing acts on a CANTCO yet - that's the squad leader's job once it's wired in (step 4).
+  CANTCOs now reach the LLM echelons - see "The chain of command, live" below.
+
+- **The chain of command, live, on a local model.** `app` now runs the whole hierarchy: the
+  general (one `SpringAiGeneral`, given the operator's mission from `minecraft.general.mission` in
+  `app/src/main/resources/application.yml`) issues each squad an `Objective` (mission, location,
+  intent); squad Alpha's `SpringAiSquadLeader` turns it into a `SquadOrder`; `Formations` and the
+  soldiers do the rest. Both echelons run `qwen3:14b` on Ollama with thinking off
+  (`spring.ai.model.chat: ollama` - set it to `anthropic` with `ANTHROPIC_API_KEY` to use Claude).
+  Each is a `ChatClient` with its system prompt baked in (`CommandAiConfiguration`), replying via
+  `.entity(...)` with provider-native structured output plus schema validation; replies are then
+  checked by `toSquadOrder`/`toObjectives` and rejected loudly if they can't be carried out.
+
+  `ChainOfCommand` decides *when* each echelon thinks: the squad leader every 20s, the general
+  every 2min, either one early (at most every 8s) on a *new* CANTCO from below. A standing CANTCO
+  that's already been answered waits for the routine interval - re-asking about the same report
+  every few seconds just churned orders. A failed call is logged and the squad keeps its last
+  order. Each decision takes 1.5-2.5s on the RTX 4080. The log reads as a radio net: `[General ->
+  Alpha] OPORD`, `[Alpha -> squad] FRAGO`, `[Alpha -> General] CANTCO`, `[squad -> Alpha] SITREP`.
+
+  Live: the general ordered an observation post on high ground; the squad leader moved the squad
+  in a wedge, then single file "to navigate through tight terrain"; soldiers blocked by terrain
+  reported CANTCO; the squad leader escalated ("Bob and Carol are unable to reach the objective
+  due to terrain obstacles"); the general re-tasked to nearer high ground. A soldier's CANTCO count
+  resets when its order moves somewhere genuinely different (`RETASK_DISTANCE`), but not as its
+  slot drifts with the point man.
+
+  Open: model quality is the limit now, not plumbing - `qwen3:14b` sometimes re-issues the same
+  unreachable objective, and has no map beyond the squad's positions to pick a reachable one from.
+  Many CANTCOs are our own coarse terrain model (fences, water and leaves count as full solid
+  cubes) rather than real impassability.
 
 - **Respawn, and accepting server position corrections.** Soldiers killed between runs stayed dead
   forever - a dead player is sent no chunks or entities until it respawns, so a dead Alice/Bob
@@ -402,10 +413,8 @@ those need aren't decoded.
 - **`PlaySession`'s remaining shape** — chat, or anything beyond position, is still only sketched
   in conversation; reading chunk data and reporting position are both done now (above).
 
-Alice and Bob both exist, walk, and stop at real obstacles today, live-confirmed together on a
-shared world model - AGENTS.md's stated objective-framing milestone ("Alice and Bob visibly move
-in the game") is reached. What's left is `PlaySession`'s remaining shape above, plus whatever the
-curated block-solidity list still gets wrong as more terrain gets walked.
+The full chain - general, squad leader, three soldiers - runs live against the dev server on a
+local model, with orders down and reports (including CANTCO) up.
 
 ### Data architecture: no pipeline/world/bot actor needed
 
@@ -601,18 +610,17 @@ chunk data arrives, and that the real spawn position decodes and can be reported
 cleanly on request. This is `MinecraftClient.join`, not `observeJoin` — the entry point a Soldier's
 connection actually uses. Same `*IT` naming reasoning as steps 3–4.
 
-## 6. Run two Soldiers that stay connected, build a real world model, and walk
+## 6. Run the chain of command
 
 ```bash
+docker compose up -d                 # server + Ollama (section 1)
 mvn package -DskipTests
 java -jar app/target/app.jar
 ```
 
-Connects as `Alice` and `Bob` (hardcoded in `SoldierRunner.SOLDIERS` for now - see "Known gaps"),
-each on its own connection sharing one `ChunkCache`, and logs each one's status every 5 seconds:
-position, current order, how many chunks are loaded, and whether the session is still open. Both
-walk toward a short `Order.TrendToward` target in a different direction from their real spawn
-position, stopping correctly on arrival or at a genuine obstacle. Reconnects on its own if a
-connection dies unexpectedly (see "Known gaps"). Stop it with Ctrl-C, or find and kill the `java`
-process filtered by command line — see the caution above (under "Starting it again later") about
-not matching by bare process name.
+Connects `Alice`, `Bob` and `Carol` (`SoldierRunner.SOLDIERS`; first is the point man) as squad
+Alpha under an LLM squad leader and general (`ChainOfCommand`). Watch the radio net in the log:
+`[General -> Alpha] OPORD`, `[Alpha -> squad] FRAGO`, `[Alpha -> General] CANTCO`, and a squad
+SITREP every 5 seconds. Soldiers reconnect on their own if a connection dies. Use `docker compose
+exec minecraft console "time set night"` to put the fighting withdrawal to work. Stop with Ctrl-C,
+or kill the `java` process filtered by command line (see the caution in section 1).

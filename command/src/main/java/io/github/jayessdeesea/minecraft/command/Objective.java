@@ -1,11 +1,10 @@
 package io.github.jayessdeesea.minecraft.command;
 
 /**
- * A goal handed down from a {@link General} to a {@link SquadLeader} - freeform, unlike
- * {@link Order}. {@code Order} is a closed set because {@code DeterministicSoldier} executes it
- * directly and exhaustively; an {@code Objective} is consumed by another LLM ({@code SquadLeader})
- * that itself decides how to interpret it into concrete {@code Order}s, so there's no fixed
- * vocabulary to close over here.
+ * What a {@link General} hands a {@link SquadLeader} - OPORD-shaped but small
+ * (docs/military-doctrine.md §5): the mission (what), where, and the commander's intent (why,
+ * §1). The intent is what lets the squad leader adapt - pick a different spot near the location,
+ * report CANTCO with a useful reason - without another round trip to the general.
  */
-public record Objective(String description) {
+public record Objective(String mission, Position location, String intent) {
 }

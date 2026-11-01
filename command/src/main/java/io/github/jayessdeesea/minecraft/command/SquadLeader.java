@@ -1,13 +1,17 @@
 package io.github.jayessdeesea.minecraft.command;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
- * The chain-of-command view of a squad leader: receive an {@link Objective}, decide {@link Order}s
- * for its soldiers. Deliberately doesn't hold its soldiers' state - a {@code SquadLeader} is not
- * itself a Minecraft entity or protocol connection (see AGENTS.md's Objective section); the
- * imperative shell that owns the actual {@link Soldier} instances passes their current
- * {@link SoldierStatus}es in and applies the returned {@link Order}s back out.
+ * The chain-of-command view of a squad leader: receive an {@link Objective}, decide how the squad
+ * carries it out. Deliberately doesn't hold its soldiers' state - a {@code SquadLeader} is not
+ * itself a Minecraft entity or protocol connection (AGENTS.md's Objective section); the imperative
+ * shell that owns the {@link Soldier}s passes their {@link SoldierStatus}es (SITREPs) in.
+ *
+ * <p>The decision is a {@link SquadOrder} - objective, formation, interval, intent - not a
+ * per-soldier order: turning that into each soldier's slot is geometry, done deterministically by
+ * {@link Formations}, so the LLM spends its judgement only on what needs judgement.
  */
 public interface SquadLeader {
 
@@ -16,9 +20,11 @@ public interface SquadLeader {
     void receiveObjective(Objective objective);
 
     /**
-     * Decides an {@link Order} for each soldier. The returned list has exactly the same length and
-     * order as {@code soldierStatuses} - element {@code i} of the result is the order for the
-     * soldier described by element {@code i} of the input.
+     * The squad leader's own SITREP line upward - notably {@link Report.Cantco} when it judged the
+     * objective impossible (docs/military-doctrine.md §3), so the general can re-task the squad.
      */
-    List<Order> decide(List<SoldierStatus> soldierStatuses);
+    Report report();
+
+    /** How the squad moves now - empty until an objective has been received. */
+    Optional<SquadOrder> decide(List<SoldierStatus> soldierStatuses);
 }

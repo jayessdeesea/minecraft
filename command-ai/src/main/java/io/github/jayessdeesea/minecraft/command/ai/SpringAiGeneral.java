@@ -6,95 +6,98 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 
 /**
- * The {@link General} whose strategic decisions come from an LLM call - same
- * {@link #buildContext} (pure) -&gt; {@link #callModel} (impure) -&gt; {@link #parseObjectives}
- * (pure) split {@link SpringAiSquadLeader} uses, per AGENTS.md's "Behavior modeling" section.
+ * The {@link General}: same {@link #buildContext} (pure) -&gt; {@link #callModel} (impure) -&gt;
+ * {@link #toObjectives} (pure validation) split as {@link SpringAiSquadLeader}. Its own orders come
+ * from the operator - {@code minecraft.general.mission} - the one piece of intent that originates
+ * outside the chain of command.
  *
- * <p>A {@code @Component}, unlike {@link SpringAiSquadLeader}: exactly one {@code General} exists
- * project-wide (AGENTS.md's Objective section), so unlike a per-squad squad leader, a single
- * autowired instance is the correct shape.
+ * <p>A {@code @Component}: exactly one general exists (AGENTS.md's Objective section).
  */
 @Component
 public final class SpringAiGeneral implements General {
 
     private final ChatClient chatClient;
+    private final String mission;
 
-    public SpringAiGeneral(ChatClient.Builder chatClientBuilder) {
-        this.chatClient = chatClientBuilder.build();
+    public SpringAiGeneral(@Qualifier("generalChatClient") ChatClient chatClient,
+                           @Value("${minecraft.general.mission}") String mission) {
+        this.chatClient = chatClient;
+        this.mission = mission;
     }
 
-    /**
-     * An empty squad list has nothing to command - short-circuits before touching the model, both
-     * to avoid a pointless call and so this path is testable without one.
-     */
+    /** No squads, nothing to command - returns without calling the model. */
     @Override
     public List<Objective> decide(List<SquadStatus> squadStatuses) {
         if (squadStatuses.isEmpty()) {
             return List.of();
         }
-
-        PromptContext context = buildContext(squadStatuses);
-        LlmResponse response = callModel(context);
-        return parseObjectives(response, squadStatuses);
+        return toObjectives(callModel(buildContext(mission, squadStatuses)), squadStatuses);
     }
 
-    static PromptContext buildContext(List<SquadStatus> squadStatuses) {
+    static PromptContext buildContext(String mission, List<SquadStatus> squadStatuses) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("You are the general commanding several squads of Minecraft player bots.\n");
-        prompt.append("Decide a strategic objective for each squad based on its current status.\n\n");
-        prompt.append("Current squad status:\n");
+        prompt.append("<mission>\n").append(mission).append("\n</mission>\n\n");
         for (SquadStatus squad : squadStatuses) {
-            prompt.append("- ").append(squad.squadName()).append(": ").append(squad.soldiers().size())
-                    .append(" soldier(s)");
+            prompt.append("<squad name=\"").append(squad.squadName()).append("\">\n")
+                    .append("Squad leader reports: ").append(SpringAiSquadLeader.describe(squad.report())).append('\n');
             for (SoldierStatus soldier : squad.soldiers()) {
-                prompt.append("; ").append(soldier.name()).append(" at ").append(describe(soldier.position()));
+                prompt.append("- ").append(soldier.name()).append(" at ").append(SpringAiSquadLeader.describe(soldier.position()))
+                        .append(": ").append(SpringAiSquadLeader.describe(soldier.report())).append('\n');
             }
-            prompt.append('\n');
+            prompt.append("</squad>\n\n");
         }
-        prompt.append("\nRespond with exactly one line per squad, in this exact order, and no other text\n");
-        prompt.append("or commentary. Each line must be exactly:\n");
-        prompt.append("<squadName>: <objective, a single line of plain text with no colons>\n");
+        prompt.append("Give each squad its objective now.");
         return new PromptContext(prompt.toString());
     }
 
-    LlmResponse callModel(PromptContext context) {
-        return new LlmResponse(chatClient.prompt(context.prompt()).call().content());
+    GeneralReply callModel(PromptContext context) {
+        return chatClient.prompt()
+                .user(context.prompt())
+                .call()
+                .entity(GeneralReply.class, spec -> spec.useProviderStructuredOutput().validateSchema());
     }
 
-    static List<Objective> parseObjectives(LlmResponse response, List<SquadStatus> squadStatuses) {
-        List<String> lines = response.text().lines().map(String::trim).filter(line -> !line.isEmpty()).toList();
-        if (lines.size() != squadStatuses.size()) {
-            throw new IllegalStateException("expected " + squadStatuses.size() + " objective line(s), got "
-                    + lines.size() + " - raw response: " + response.text());
+    /** One objective per listed squad, in the same order - anything else is a violated contract. */
+    static List<Objective> toObjectives(GeneralReply reply, List<SquadStatus> squadStatuses) {
+        if (reply == null || reply.objectives() == null) {
+            throw new IllegalStateException("general model returned no objectives");
         }
-
+        Map<String, GeneralReply.ObjectiveReply> bySquad = new HashMap<>();
+        for (GeneralReply.ObjectiveReply objective : reply.objectives()) {
+            if (bySquad.put(objective.squad(), objective) != null) {
+                throw new IllegalStateException("two objectives for squad " + objective.squad() + ": " + reply);
+            }
+        }
         List<Objective> objectives = new ArrayList<>(squadStatuses.size());
-        for (int i = 0; i < squadStatuses.size(); i++) {
-            String expectedName = squadStatuses.get(i).squadName();
-            String line = lines.get(i);
-            String prefix = expectedName + ":";
-            if (!line.startsWith(prefix)) {
-                throw new IllegalStateException("expected line " + i + " to start with \"" + prefix
-                        + "\", got \"" + line + "\" - raw response: " + response.text());
+        for (SquadStatus squad : squadStatuses) {
+            GeneralReply.ObjectiveReply objective = bySquad.get(squad.squadName());
+            if (objective == null) {
+                throw new IllegalStateException("no objective for squad " + squad.squadName() + ": " + reply);
             }
-            String description = line.substring(prefix.length()).trim();
-            if (description.isEmpty()) {
-                throw new IllegalStateException("empty objective in line \"" + line
-                        + "\" - raw response: " + response.text());
+            if (!Double.isFinite(objective.x()) || !Double.isFinite(objective.y()) || !Double.isFinite(objective.z())
+                    || objective.y() < -64 || objective.y() > 320) {
+                throw new IllegalStateException("objective outside the world for squad " + squad.squadName() + ": " + reply);
             }
-            objectives.add(new Objective(description));
+            if (objective.mission() == null || objective.mission().isBlank()
+                    || objective.intent() == null || objective.intent().isBlank()) {
+                throw new IllegalStateException("objective without mission or intent for squad " + squad.squadName() + ": " + reply);
+            }
+            objectives.add(new Objective(objective.mission(), new Position(objective.x(), objective.y(), objective.z()),
+                    objective.intent()));
+        }
+        if (bySquad.size() != squadStatuses.size()) {
+            throw new IllegalStateException("objectives for squads that weren't listed: " + reply);
         }
         return objectives;
-    }
-
-    private static String describe(Position position) {
-        return String.format(Locale.ROOT, "(%.1f, %.1f, %.1f)", position.x(), position.y(), position.z());
     }
 }

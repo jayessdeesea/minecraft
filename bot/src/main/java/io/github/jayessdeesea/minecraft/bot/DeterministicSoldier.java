@@ -160,6 +160,9 @@ public final class DeterministicSoldier implements Soldier {
      */
     static final int CANTCO_AFTER_FAILED_PLANS = 3;
 
+    /** How far an order's goal must move to count as a new task (resetting CANTCO), not slot drift. */
+    static final double RETASK_DISTANCE = 8;
+
     /** Re-plan at least this often while moving - 2 seconds. */
     static final int REPLAN_TICKS = 40;
     /** Ticks without real progress along the route before re-planning. */
@@ -191,8 +194,16 @@ public final class DeterministicSoldier implements Soldier {
         Order current = this.order;
         if (current != plannedOrder) {
             plannedOrder = current;
+            Goal previous = goal;
             goal = goalFor(current);
             route = null;
+            if (previous == null || goal == null
+                    || Math.hypot(goal.x() - previous.x(), goal.z() - previous.z()) > RETASK_DISTANCE) {
+                // A genuinely different task: earlier failures say nothing about this one. A slot
+                // drifting with the point man is the same task, so its failures keep counting.
+                failedPlans = 0;
+                lastPartialPlanFrom = null;
+            }
         }
         // Arrived = standing in a cell the goal accepts - the same cell-centre rule the planner uses,
         // so the two can never disagree about whether there's anywhere left to go.
@@ -272,8 +283,6 @@ public final class DeterministicSoldier implements Soldier {
     private Goal goalFor(Order order) {
         return switch (order) {
             case Order.Idle() -> null;
-            // Height left to the terrain: any floor, centred within a step of (x, z).
-            case Order.TrendToward trend -> new Goal(trend.x(), position.y(), trend.z(), 1.0, Double.MAX_VALUE);
             case Order.MoveTo move -> new Goal(move.x(), move.y(), move.z(), move.horizontalTolerance(), move.verticalTolerance());
         };
     }

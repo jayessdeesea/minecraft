@@ -100,25 +100,23 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   network at all — a deliberate contrast with `StatusPingLiveIT`/`JoinObservationLiveIT`, which
   stay necessary for exercising the actual wire protocol, but shouldn't be the only way to verify
   decision logic.
-- **`SquadLeader`/`General` follow the identical shape one level up** — `command`'s `SquadLeader`/
-  `General`/`Objective`/`SquadStatus` interfaces and their Spring AI-backed implementations
-  (`SpringAiSquadLeader`/`SpringAiGeneral` in `command-ai`) exist now, with one real difference from
-  `Soldier`: an LLM call is inherently non-deterministic, so that decision core can't be fully pure.
-  Each `decide(...)` splits into three pieces so only the middle one is impure: `buildContext(...)
-  -> PromptContext` (pure) → `callModel(PromptContext) -> LlmResponse` (impure — the one line that
-  actually touches Spring AI's `ChatClient`) → `parseOrders`/`parseObjectives(LlmResponse, ...) ->
-  List<Order>`/`List<Objective>` (pure). Only `callModel` needs faking in a test — proven by handing
-  `ChatClient` a `ChatModel` that fails the test if it's ever actually invoked, the same "fake the
-  one impure seam" approach `DeterministicSoldierTest` uses for `WorldView`; context-building and
-  response-parsing get the same fast, deterministic JUnit coverage `Soldier` does. This split isn't
-  just for tests — it's the same mechanism that keeps Anthropic-specific request/response shapes out
-  of `command-ai`'s decision logic (see the Stack section below): the boundary you draw for
-  testability and the boundary you need for provider-independence are the same boundary.
-  `SquadLeader`/`General` neither hold their soldiers'/squads' state nor call an LLM when there's
-  nothing to decide yet (no `Objective` received, or an empty squad list) — both mirror `Order`'s
-  own `Idle` default rather than treating "nothing to do yet" as a fallback to guess around. Wiring
-  a `SpringAiSquadLeader`/`SpringAiGeneral` into `app` (squad grouping, invocation cadence, a real
-  `ANTHROPIC_API_KEY`) is still open — see DEVELOPMENT.md's "Known gaps".
+- **`SquadLeader`/`General` follow the identical shape one level up** (`SpringAiSquadLeader`/
+  `SpringAiGeneral` in `command-ai`), with one real difference from `Soldier`: an LLM call is
+  inherently non-deterministic, so that decision core can't be fully pure. Each `decide(...)`
+  splits into three pieces so only the middle one is impure: `buildContext(...) -> PromptContext`
+  (pure: the situation as an XML-tagged user prompt) → `callModel(PromptContext)` (impure — the one
+  call into Spring AI's `ChatClient`, returning a structured-output reply record) →
+  `toSquadOrder`/`toObjectives(reply)` (pure validation into domain types; anything invalid
+  throws). Only `callModel` needs faking in a test — with a hand-written `ChatModel` that fails if
+  invoked, or one that answers canned JSON to exercise the whole structured-output path. This split
+  isn't just for tests — it's the same boundary that keeps provider-specific shapes out of the
+  decision logic (see the Stack section below). The role, doctrine and coordinate conventions are
+  each echelon's fixed system prompt (`command-ai/src/main/resources/prompts/`), never rebuilt per
+  call. The squad leader decides *what* (objective, formation, interval, intent - a `SquadOrder`);
+  turning that into per-soldier slots is geometry, done deterministically by `command.Formations`,
+  so the model spends judgement only where judgement is needed. Neither echelon calls the model
+  when there's nothing to decide yet (no objective, no squads). `app`'s `ChainOfCommand` decides
+  *when* each echelon thinks - see DEVELOPMENT.md.
 - **Borrowed from the actor model's discipline, not its runtime.** An actor's single-threaded
   mailbox processing is *one* way to guarantee a unit of state is never touched by two threads at
   once; a per-tick loop that's the sole writer of its own Soldier's state is another. We get the
@@ -142,9 +140,10 @@ never supposed to creep in.
 
 - **Java 25** (Amazon Corretto)
 - **Maven**
-- **Spring AI 2.0** — all LLM calls go through the `ChatModel`/`ChatClient` abstraction. Starting
-  provider is Anthropic Claude, with a deliberate plan to switch to a locally-hosted model later.
-  Because of that: keep provider selection in config, never hardcode
+- **Spring AI 2.0** — all LLM calls go through the `ChatModel`/`ChatClient` abstraction. The
+  default provider is a local model served by Ollama (`compose.yaml`); Anthropic Claude is the
+  config-switchable alternative (`spring.ai.model.chat`). Because of that: keep provider selection
+  in config, never hardcode
   Anthropic-specific request/response shapes, message formats, or tool-call conventions into
   General/Squad Leader logic. If it only works with Claude, it's not written against the
   abstraction correctly.
@@ -177,8 +176,7 @@ modules:
   `Soldier`) depend on, so that neither has to know about the other. Built so far: `Soldier`,
   `Order`, `Position`, `SoldierStatus`, `General`, `SquadLeader`, `Objective`, `SquadStatus`.
 - **`command-ai`** — Spring AI-backed implementations of `General`/`SquadLeader` from `command`
-  (`SpringAiGeneral`/`SpringAiSquadLeader`). Depends on `command`, not the other way around. Not yet
-  wired into `app` — see DEVELOPMENT.md's "Known gaps".
+  (`SpringAiGeneral`/`SpringAiSquadLeader`). Depends on `command`, not the other way around.
 - **`bot`** — the deterministic per-tick soldier runtime. Depends on `protocol` (to actually
   connect and act) and `command` (interfaces only) — never on `command-ai`. A soldier must not
   know or care whether its orders came from an LLM or a hand-typed test order.

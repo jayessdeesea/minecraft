@@ -8,87 +8,68 @@ import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
-import reactor.core.publisher.Flux;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Exercises {@link SpringAiGeneral} the same way {@code SpringAiSquadLeaderTest} exercises
- * {@link SpringAiSquadLeader}: pure {@code buildContext}/{@code parseObjectives} tested directly,
- * {@code decide}'s empty-squad-list short-circuit proven against a model that fails the test if
- * it's ever actually invoked.
- */
+/** {@link SpringAiGeneral}, the same way {@code SpringAiSquadLeaderTest} covers the squad leader. */
 class SpringAiGeneralTest {
 
-    private static final SquadStatus ALPHA = new SquadStatus("Alpha", List.of(
+    private static final SquadStatus ALPHA = new SquadStatus("Alpha", new Report.Cantco("ravine in the way"), List.of(
             new SoldierStatus("Alice", new Position(1, 64, 2), new Order.Idle(), new Report.Idle())));
-    private static final SquadStatus BRAVO = new SquadStatus("Bravo", List.of(
-            new SoldierStatus("Bob", new Position(3, 64, 4), new Order.Idle(), new Report.Idle())));
+    private static final SquadStatus BRAVO = new SquadStatus("Bravo", new Report.Moving(), List.of(
+            new SoldierStatus("Bob", new Position(3, 64, 4), new Order.Idle(), new Report.Moving())));
 
-    private static final ChatModel THROWING_MODEL = new ChatModel() {
-        @Override
-        public ChatResponse call(Prompt prompt) {
-            throw new AssertionError("model should not have been called");
-        }
-
-        @Override
-        public Flux<ChatResponse> stream(Prompt prompt) {
-            throw new AssertionError("model should not have been called");
-        }
-    };
+    private static GeneralReply.ObjectiveReply objective(String squad) {
+        return new GeneralReply.ObjectiveReply(squad, "scout", 0, 64, -50, "find the village");
+    }
 
     @Test
     void decideReturnsNoObjectivesForAnEmptySquadList() {
-        SpringAiGeneral general = new SpringAiGeneral(ChatClient.builder(THROWING_MODEL));
+        SpringAiGeneral general = new SpringAiGeneral(ChatClient.create(FakeChatModels.THROWING), "win");
 
         assertEquals(List.of(), general.decide(List.of()));
     }
 
     @Test
-    void buildContextIncludesEachSquadAndSoldier() {
-        PromptContext context = SpringAiGeneral.buildContext(List.of(ALPHA, BRAVO));
+    void buildContextGivesTheMissionAndEachSquadsReports() {
+        String prompt = SpringAiGeneral.buildContext("secure the village", List.of(ALPHA, BRAVO)).prompt();
 
-        String prompt = context.prompt();
-        assertTrue(prompt.contains("Alpha"));
-        assertTrue(prompt.contains("Alice"));
-        assertTrue(prompt.contains("Bravo"));
-        assertTrue(prompt.contains("Bob"));
+        assertTrue(prompt.contains("<mission>\nsecure the village\n</mission>"));
+        assertTrue(prompt.contains("<squad name=\"Alpha\">\nSquad leader reports: Cantco: ravine in the way"));
+        assertTrue(prompt.contains("- Bob at (3, 64, 4): Moving"));
     }
 
     @Test
-    void parseObjectivesReadsOneLinePerSquadInOrder() {
-        LlmResponse response = new LlmResponse("Alpha: scout north\nBravo: hold the ridge\n");
+    void decideRoundTripsStructuredOutputInSquadOrder() {
+        String reply = """
+                {"objectives": [
+                  {"squad": "Bravo", "mission": "hold", "x": 5, "y": 64, "z": 5, "intent": "cover Alpha"},
+                  {"squad": "Alpha", "mission": "scout north", "x": 0, "y": 70, "z": -60, "intent": "find a way around"}
+                ]}
+                """;
+        SpringAiGeneral general = new SpringAiGeneral(ChatClient.create(FakeChatModels.replying(reply, new AtomicReference<>())), "win");
 
-        List<Objective> objectives = SpringAiGeneral.parseObjectives(response, List.of(ALPHA, BRAVO));
+        List<Objective> objectives = general.decide(List.of(ALPHA, BRAVO));
 
-        assertEquals(List.of(new Objective("scout north"), new Objective("hold the ridge")), objectives);
+        assertEquals(List.of(
+                new Objective("scout north", new Position(0, 70, -60), "find a way around"),
+                new Objective("hold", new Position(5, 64, 5), "cover Alpha")), objectives);
     }
 
     @Test
-    void parseObjectivesRejectsWrongLineCount() {
-        LlmResponse response = new LlmResponse("Alpha: scout north\n");
-
-        assertThrows(IllegalStateException.class, () -> SpringAiGeneral.parseObjectives(response, List.of(ALPHA, BRAVO)));
-    }
-
-    @Test
-    void parseObjectivesRejectsAMismatchedSquadName() {
-        LlmResponse response = new LlmResponse("Bravo: hold the ridge\nAlpha: scout north\n");
-
-        assertThrows(IllegalStateException.class, () -> SpringAiGeneral.parseObjectives(response, List.of(ALPHA, BRAVO)));
-    }
-
-    @Test
-    void parseObjectivesRejectsAnEmptyObjective() {
-        LlmResponse response = new LlmResponse("Alpha: \nBravo: hold the ridge\n");
-
-        assertThrows(IllegalStateException.class, () -> SpringAiGeneral.parseObjectives(response, List.of(ALPHA, BRAVO)));
+    void validationRequiresExactlyOneObjectivePerListedSquad() {
+        List<SquadStatus> squads = List.of(ALPHA, BRAVO);
+        assertThrows(IllegalStateException.class,
+                () -> SpringAiGeneral.toObjectives(new GeneralReply(List.of(objective("Alpha"))), squads));
+        assertThrows(IllegalStateException.class,
+                () -> SpringAiGeneral.toObjectives(new GeneralReply(List.of(objective("Alpha"), objective("Alpha"), objective("Bravo"))), squads));
+        assertThrows(IllegalStateException.class,
+                () -> SpringAiGeneral.toObjectives(new GeneralReply(List.of(objective("Alpha"), objective("Bravo"), objective("Charlie"))), squads));
+        assertEquals(2, SpringAiGeneral.toObjectives(new GeneralReply(List.of(objective("Bravo"), objective("Alpha"))), squads).size());
     }
 }

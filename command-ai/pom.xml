@@ -17,9 +17,9 @@
   <description>
     Spring AI-backed implementations of the General and SquadLeader roles
     defined in the command module. All model calls go through Spring AI's
-    ChatModel/ChatClient abstraction - starting provider is Anthropic Claude,
-    with a planned move to a local model later, so provider-specific request/
-    response shapes must not leak out of this module.
+    ChatModel/ChatClient abstraction. The provider (a local Ollama model by
+    default, Anthropic Claude as the alternative) is chosen in config, so
+    provider-specific request/response shapes must not leak out of this module.
   </description>
 
   <dependencies>
@@ -32,6 +32,12 @@
     <dependency>
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-starter-model-anthropic</artifactId>
+    </dependency>
+    <!-- Both providers are on the classpath; spring.ai.model.chat picks one (app's application.yml).
+         Provider choice is config, never code - see AGENTS.md "Stack". -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-ollama</artifactId>
     </dependency>
 
     <dependency>

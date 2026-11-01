@@ -13,10 +13,6 @@ public sealed interface Order {
     record Idle() implements Order {
     }
 
-    /** Head for (x, z) at whatever height the terrain puts the soldier. */
-    record TrendToward(double x, double z) implements Order {
-    }
-
     /**
      * Get to any standing spot within {@code horizontalTolerance} blocks (x/z plane) and
      * {@code verticalTolerance} blocks (feet height) of (x, y, z). The tolerances are the soldier's

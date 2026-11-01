@@ -1,0 +1,21 @@
+spring:
+  ai:
+    model:
+      # Which ChatModel the chain of command talks to: "ollama" (local, see compose.yaml) or
+      # "anthropic" (needs ANTHROPIC_API_KEY). Provider choice lives here, never in code.
+      chat: ollama
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: qwen3:14b
+          # Qwen3 reasons before answering by default: ~20s per decision with it, ~0.5s without.
+          think-option: FALSE
+          temperature: 0.3
+
+minecraft:
+  general:
+    # The operator's intent - the one order that comes from outside the chain of command.
+    mission: >-
+      Reconnoitre the terrain around the squad's start point and establish an observation post
+      on high ground within 80 blocks, from which the squad can watch for hostile activity.

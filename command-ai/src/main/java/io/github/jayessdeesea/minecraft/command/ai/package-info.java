@@ -1,6 +1,7 @@
 /**
- * Spring AI-backed {@code General} and {@code SquadLeader} implementations.
- * Provider (Anthropic today, a local model later) is a Spring config
- * concern - keep provider-specific types out of the public surface here.
+ * Spring AI-backed {@code General} and {@code SquadLeader} implementations. The model provider
+ * (local Ollama by default, Anthropic as the alternative) is a Spring config concern - keep
+ * provider-specific types out of this package. System prompts live in {@code prompts/*.md}
+ * resources; replies come back as structured output ({@code ChatClient...entity(...)}).
  */
 package io.github.jayessdeesea.minecraft.command.ai;
