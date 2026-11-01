@@ -30,6 +30,13 @@ final class Nbt {
     private static final int INT_ARRAY = 11;
     private static final int LONG_ARRAY = 12;
 
+    /**
+     * Vanilla's own nesting limit ({@code NbtAccounter}, 512 in every preset). Deeper input
+     * terminates the connection, like every other resource guard (docs/protocol-spec.md § 8):
+     * recursion here is the one cost a length-capped frame doesn't already bound.
+     */
+    static final int MAX_DEPTH = 512;
+
     private Nbt() {
     }
 
@@ -42,11 +49,14 @@ final class Nbt {
     static void skipUnnamedRoot(ByteBuf in) {
         int typeId = in.readUnsignedByte();
         if (typeId != END) {
-            skipPayload(in, typeId);
+            skipPayload(in, typeId, 0);
         }
     }
 
-    private static void skipPayload(ByteBuf in, int typeId) {
+    private static void skipPayload(ByteBuf in, int typeId, int depth) {
+        if (depth > MAX_DEPTH) {
+            throw new IllegalStateException("NBT nested deeper than " + MAX_DEPTH);
+        }
         switch (typeId) {
             case BYTE -> in.skipBytes(1);
             case SHORT -> in.skipBytes(2);
@@ -58,14 +68,14 @@ final class Nbt {
                 int elementType = in.readUnsignedByte();
                 int count = in.readInt();
                 for (int i = 0; i < count; i++) {
-                    skipPayload(in, elementType);
+                    skipPayload(in, elementType, depth + 1);
                 }
             }
             case COMPOUND -> {
                 int childType;
                 while ((childType = in.readUnsignedByte()) != END) {
                     in.skipBytes(in.readUnsignedShort()); // the child's name
-                    skipPayload(in, childType);
+                    skipPayload(in, childType, depth + 1);
                 }
             }
             case INT_ARRAY -> {

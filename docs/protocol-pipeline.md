@@ -229,10 +229,10 @@ javadoc for why that's deliberately a small, growing shape rather than a big one
 Never let a wire-supplied length or count size an allocation without a cap. Applies uniformly:
 `ProtocolCodec.readString`/`MAX_STRING_LENGTH`, `CompressionDecoder`'s Data Length check against
 `MAX_FRAME_LENGTH` (the "compression bomb" guard), and `ProtocolCodec.readVarIntCount` for any
-count-prefixed list (used by `KnownPacksPacket` today). NBT's nesting *depth* has no guard: `Nbt`
-recurses through lists and compounds unbounded (backlog/nbt-depth-guard.md).
+count-prefixed list (used by `KnownPacksPacket` today). NBT's nesting *depth* is the recursive case
+of the same guard: `Nbt` stops at vanilla's 512 levels.
 
-An oversized frame or a compression bomb terminates the connection outright rather than skip-and-continue — see
+An oversized frame, a compression bomb, or NBT nested too deep terminates the connection outright rather than skip-and-continue — see
 [protocol-spec.md § 4.3/§ 8](protocol-spec.md) for the full reasoning, and
 [AGENTS.md's no-fallbacks tenet](../AGENTS.md) for why that's a deliberate, general policy and not
 specific to this pipeline.

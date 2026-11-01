@@ -257,8 +257,8 @@ default. `command-ai`'s two `ChatClient` beans (`squadLeaderChatClient`, `genera
 are the live instance: each injection site names its bean.
 
 **This is also why every resource-exhaustion guard in `protocol` terminates the connection rather
-than skip-and-continue** (docs/protocol-spec.md § 8): an oversized frame or a compression bomb is a
-violated invariant, not expected gaps. Skipping
+than skip-and-continue** (docs/protocol-spec.md § 8): an oversized frame, a compression bomb, or NBT
+nested too deep is a violated invariant, not expected gaps. Skipping
 one and hoping the byte stream resynchronizes isn't just against this tenet — for the frame-length
 case specifically, it's *provably unreliable*: our framing has no resync mechanism, so guessing
 how many bytes to discard risks silently misinterpreting everything that follows for the rest of

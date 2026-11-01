@@ -387,13 +387,14 @@ packet structure — only the bytes after it are.
   maximum **before** allocating or reading based on it
 - Enforce the compression guardrails in § 4.3, including their termination policy — never
   skip-and-continue past a violated guard, only past a known-and-tracked gap (§ 3.4)
-- **Nested or wide structures aren't caught by a single count cap alone**, and nothing we've
-  implemented yet actually recurses (no NBT yet) — but the tenet to apply once something does: a
-  per-level count cap (`ProtocolCodec.readVarIntCount`) doesn't stop many individually-small
-  counts from multiplying into something enormous (map of map of map, or a long list of long
-  lists). The real defense is a **cumulative element/depth budget tracked across the whole
-  packet's decode**, not just each level in isolation — and exceeding that budget terminates the
-  connection too, same as any other guard violation, not a partial-decode-and-truncate.
+- **Nested or wide structures aren't caught by a single count cap alone**: a per-level count
+  cap (`ProtocolCodec.readVarIntCount`) doesn't stop many individually-small counts multiplying
+  into something enormous (map of map of map). The defense is a budget tracked across the whole
+  packet's decode, and exceeding it terminates the connection. Today's one recursive decoder,
+  `Nbt`, only skips, and every element it skips consumes at least one byte of an already
+  length-capped frame, so its total work is bounded by the frame size. Its depth isn't, so it
+  enforces vanilla's own limit of 512 (`Nbt.MAX_DEPTH`). A decoder that materialises values
+  needs a cumulative element budget as well.
 - Use `SecureRandom` for the verify token and the client's shared secret — never `Random`
 - Rate-limit packets per connection; a hostile or buggy peer sending packets far faster than the
   protocol expects should be disconnected, not processed indefinitely
