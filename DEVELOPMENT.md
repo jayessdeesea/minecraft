@@ -88,7 +88,8 @@ java -jar app/target/app.jar
 This connects `Alice`, `Bob` and `Carol` (`SoldierRunner.SOLDIERS`; the first is the point man) as
 squad Alpha, under an LLM squad leader and general (`ChainOfCommand`). The log reads as a radio
 net: `[General -> Alpha] OPORD`, `[Alpha -> squad] FRAGO`, `[Alpha -> General] CANTCO`, and a squad
-SITREP every 5 seconds. Soldiers reconnect on their own if a connection dies. The general's mission
+SITREP every 5 seconds. Orders and CANTCOs also appear in game chat (section 4), spoken by
+the point man as the squad's radio operator. Soldiers reconnect on their own if a connection dies. The general's mission
 is `minecraft.general.mission` in `application.yml`.
 
 Stop it with Ctrl-C. **Don't kill stray `app.jar` or test JVMs with a bare
