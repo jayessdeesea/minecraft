@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -33,7 +34,10 @@ import java.util.function.Supplier;
  * every few seconds about the same report just churns orders.
  *
  * <p>Every exchange is logged like a radio net - orders down, reports up - so a run reads as a
- * transcript of how doctrine-shaped communication plays out between LLM agents.
+ * transcript of how doctrine-shaped communication plays out between LLM agents. Orders and
+ * CANTCOs are also keyed out over the {@linkplain #setRadio radio}: in game chat, so anyone
+ * watching in a Minecraft client sees the net too. SITREPs stay in the log - one every few seconds
+ * would trip the server's chat spam kick.
  *
  * <p>A failed model call (malformed reply, model down) is logged loudly and the squad keeps its
  * last order - doctrine's "soldiers keep executing the last order" - and the next scheduled
@@ -50,6 +54,8 @@ public class ChainOfCommand {
     private static final long GENERAL_PERIOD_MILLIS = 120_000;
     /** Least time between decisions, however many CANTCOs arrive - stops a stuck soldier spamming the model. */
     private static final long MIN_GAP_MILLIS = 8_000;
+    /** Vanilla chat's own limit is 256 characters. */
+    static final int CHAT_LINE_LIMIT = 250;
 
     private final General general;
     private final SquadLeader squadLeader;
@@ -66,10 +72,19 @@ public class ChainOfCommand {
     // The reports each echelon last answered - a decision is triggered early only when these change.
     private volatile Report squadReportAnswered = new Report.Idle();
     private volatile java.util.Set<String> cantcosAnswered = java.util.Set.of();
+    private volatile Consumer<String> radio;
 
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient) {
         this.general = general;
         this.squadLeader = new SpringAiSquadLeader(SQUAD_NAME, squadLeaderClient);
+    }
+
+    /**
+     * Where radio traffic is keyed out - the squad's radio operator's connection. Until one is set
+     * (no soldier connected yet), traffic is only logged.
+     */
+    public void setRadio(Consumer<String> radio) {
+        this.radio = radio;
     }
 
     /** The squad's standing order, if the squad leader has issued one. */
@@ -120,6 +135,8 @@ public class ChainOfCommand {
                         System.currentTimeMillis() - started, given.mission(),
                         Math.round(given.location().x()), Math.round(given.location().y()), Math.round(given.location().z()),
                         given.intent());
+                transmit("[General -> " + SQUAD_NAME + "] OPORD: " + given.mission() + " at " + at(given.location())
+                        + ". Intent: " + given.intent());
                 squadLeader.receiveObjective(given);
                 objective = given;
                 newObjective = true;
@@ -147,8 +164,11 @@ public class ChainOfCommand {
                             SQUAD_NAME, System.currentTimeMillis() - started, reachable, survey.samples().size(),
                             Math.round(decided.objective().x()), Math.round(decided.objective().y()), Math.round(decided.objective().z()),
                             decided.formation(), decided.interval(), decided.intent());
+                    transmit("[" + SQUAD_NAME + " -> squad] FRAGO: " + decided.formation() + " to " + at(decided.objective())
+                            + ". Intent: " + decided.intent());
                     if (squadLeader.report() instanceof Report.Cantco cantco) {
                         LOG.warn("[{} -> General] CANTCO: {}", SQUAD_NAME, cantco.reason());
+                        transmit("[" + SQUAD_NAME + " -> General] CANTCO: " + cantco.reason());
                     }
                     order = decided;
                 });
@@ -158,6 +178,31 @@ public class ChainOfCommand {
                 squadLeaderBusy.set(false);
             }
         });
+    }
+
+    private void transmit(String line) {
+        Consumer<String> current = radio;
+        if (current != null) {
+            current.accept(chatLine(line));
+        }
+    }
+
+    /**
+     * A radio line as a chat command: {@code /me} (any player may use it, and it reads as the radio
+     * operator speaking), stripped of characters the server kicks for and cut to chat length.
+     * Model-written intents can contain anything.
+     */
+    static String chatLine(String line) {
+        StringBuilder clean = new StringBuilder("me ");
+        for (int i = 0; i < line.length() && clean.length() < CHAT_LINE_LIMIT; i++) {
+            char c = line.charAt(i);
+            clean.append(c == '§' || c < ' ' || c == 127 ? ' ' : c);
+        }
+        return clean.toString();
+    }
+
+    private static String at(io.github.jayessdeesea.minecraft.command.Position p) {
+        return "(" + Math.round(p.x()) + ", " + Math.round(p.y()) + ", " + Math.round(p.z()) + ")";
     }
 
     private static long since(long then, long now) {

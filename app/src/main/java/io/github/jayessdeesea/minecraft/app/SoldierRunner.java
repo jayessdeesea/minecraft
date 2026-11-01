@@ -202,6 +202,11 @@ public class SoldierRunner implements CommandLineRunner {
 
         DeterministicSoldier soldier = new DeterministicSoldier(name, new Position(spawn.x(), spawn.y(), spawn.z()));
         activeSoldier.set(soldier);
+        if (definition == SOLDIERS.getFirst()) {
+            // The point man carries the squad's radio: the squad leader and general aren't in the
+            // world, so their traffic is keyed out over his connection (rebound on reconnect).
+            chainOfCommand.setRadio(session::sendChatCommand);
+        }
         activeSoldiers.put(name, soldier);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(

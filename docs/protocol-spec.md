@@ -268,6 +268,7 @@ previously-confirmed IDs in the same list land where expected.
 | ← | `0x7D` | Teleport Entity | `EntityPositionPacket` | registration order |
 | → | `0x00` | Accept Teleportation | `AcceptTeleportationPacket` | registration order; server keeps the session after it |
 | → | `0x01` | Attack | `AttackPacket` | registration order |
+| → | `0x07` | Chat Command | `ChatCommandPacket` | registration order; live (`/me` lines in the server log) |
 | → | `0x0B` | Chunk Batch Received | `ChunkBatchReceivedPacket` | registration order; live |
 | → | `0x0C` | Client Command | `ClientCommandPacket` | registration order; live respawn |
 | → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | wiki + live round-trip |
