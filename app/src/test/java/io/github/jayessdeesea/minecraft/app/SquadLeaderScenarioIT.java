@@ -49,7 +49,10 @@ class SquadLeaderScenarioIT {
     private static final double PROGRESS_SLACK = 4;
     private static final int ORACLE_BUDGET = 500_000;
 
-    private record Outcome(Scenario scenario, long millis, List<String> failures) {
+    private record Outcome(Scenario scenario, boolean stuck, long millis, List<String> failures) {
+        String name() {
+            return scenario + (stuck ? " stuck" : "");
+        }
     }
 
     @Test
@@ -66,10 +69,12 @@ class SquadLeaderScenarioIT {
         List<Outcome> outcomes = new ArrayList<>();
         for (Terrain terrain : Terrain.values()) {
             for (long seed = 1; seed <= seeds; seed++) {
-                Outcome outcome = run(client, Scenario.generate(terrain, seed));
-                outcomes.add(outcome);
-                System.out.printf(Locale.ROOT, "%-18s %5dms  %s%n", outcome.scenario(), outcome.millis(),
-                        outcome.failures().isEmpty() ? "PASS" : "FAIL " + String.join("; ", outcome.failures()));
+                for (boolean stuck : new boolean[]{false, true}) {
+                    Outcome outcome = run(client, Scenario.generate(terrain, seed), stuck);
+                    outcomes.add(outcome);
+                    System.out.printf(Locale.ROOT, "%-24s %5dms  %s%n", outcome.name(), outcome.millis(),
+                            outcome.failures().isEmpty() ? "PASS" : "FAIL " + String.join("; ", outcome.failures()));
+                }
             }
         }
         System.out.printf(Locale.ROOT, "%n%s: %d/%d pass%n", model,
@@ -79,9 +84,12 @@ class SquadLeaderScenarioIT {
             System.out.printf(Locale.ROOT, "  %-9s %d/%d%n", terrain.name().toLowerCase(),
                     family.stream().filter(o -> o.failures().isEmpty()).count(), family.size());
         }
+        List<Outcome> stuck = outcomes.stream().filter(Outcome::stuck).toList();
+        System.out.printf(Locale.ROOT, "  one soldier stuck: %d/%d%n",
+                stuck.stream().filter(o -> o.failures().isEmpty()).count(), stuck.size());
     }
 
-    private static Outcome run(ChatClient client, Scenario scenario) {
+    private static Outcome run(ChatClient client, Scenario scenario, boolean stuck) {
         SyntheticWorld world = scenario.world();
         BlockPos start = scenario.start();
         BlockPos objective = scenario.objective();
@@ -89,7 +97,9 @@ class SquadLeaderScenarioIT {
         List<SoldierStatus> squad = List.of(
                 new SoldierStatus("Alice", pointMan, new Order.Idle(), new Report.Idle()),
                 soldierNear("Bob", world, start.x() - 2, start.z() + 2),
-                soldierNear("Carol", world, start.x() + 2, start.z() + 2));
+                stuck ? new SoldierStatus("Carol", new Position(start.x() + 6.5, start.y() - 4, start.z() + 4.5),
+                        new Order.Idle(), new Report.Cantco("no route out of the pit"))
+                        : soldierNear("Carol", world, start.x() + 2, start.z() + 2));
         TerrainSurvey terrain = TerrainSurveyor.survey(world, pointMan);
 
         SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha", client);
@@ -100,7 +110,7 @@ class SquadLeaderScenarioIT {
         try {
             order = leader.decide(squad, terrain).orElseThrow();
         } catch (RuntimeException e) {
-            return new Outcome(scenario, (System.nanoTime() - t0) / 1_000_000, List.of("invalid order: " + e.getMessage()));
+            return new Outcome(scenario, stuck, (System.nanoTime() - t0) / 1_000_000, List.of("invalid order: " + e.getMessage()));
         }
         long millis = (System.nanoTime() - t0) / 1_000_000;
 
@@ -121,7 +131,7 @@ class SquadLeaderScenarioIT {
                 && Pathfinder.find(world, start, goal, ORACLE_BUDGET).reachesGoal()) {
             failures.add("false CANTCO: " + reason);
         }
-        return new Outcome(scenario, millis, failures);
+        return new Outcome(scenario, stuck, millis, failures);
     }
 
     private static SoldierStatus soldierNear(String name, SyntheticWorld world, int x, int z) {
