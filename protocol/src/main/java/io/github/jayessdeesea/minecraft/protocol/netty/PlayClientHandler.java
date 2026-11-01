@@ -34,6 +34,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.PlayerLoadedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RegistryDataPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -205,6 +206,8 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
         } else if (packet instanceof SetHealthPacket health) {
             LOG.debug("Set Health received: health={} food={}", health.health(), health.food());
             listeners.onHealth().accept(new HealthUpdate(health.health(), health.food()));
+        } else if (packet instanceof InventoryPackets inventory && inventory.containerId() == 0) {
+            listeners.onInventory().accept(inventory.update());
         }
         // Everything else recognized-but-unhandled or unrecognized is already logged/cataloged by
         // PacketLoggingHandler/SessionStateManager earlier in the pipeline - nothing further to do

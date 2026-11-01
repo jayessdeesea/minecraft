@@ -1,33 +1,18 @@
 ---
 status: proposed
-priority: P2
-doctrine: LACE report - ammunition and equipment
+priority: P3
 ---
 
-# Inventory decoding: weapon and armour in the LACE report
+# Decode more item components
 
 ## Why
-`command.Condition` reports food, health and deaths. It doesn't report weapon or armour, so the
-squad leader can't tell a bare-fisted soldier from an armed one. Supply requests and pre-combat
-checks depend on knowing that too.
+Inventories are decoded into each soldier's `Kit`: weapon in hand, arrows, armour worn. Item
+stacks carrying a component `ItemStacks` doesn't know stop the decode for the rest of that
+packet, and the type is logged (docs/protocol-spec.md § 3.5, item stacks). Live, an enchanted
+sword (enchantments, type 13) was the first case. Enchantments also matter beyond completeness:
+Feather Falling and Protection reduce fall damage, which `Risk` currently assumes nothing does.
 
 ## Done when
-- `protocol` decodes the player inventory: Set Container Content, Set Container Slot and Set
-  Held Slot. IDs and layouts come from the server jar.
-- `Condition` gains ammunition (weapon in hand, arrows) and equipment (armour, tools). The squad
-  leader's prompt shows them.
-
-## Notes
-- The hard part is the item stack's wire format. After the item ID, a stack carries a component
-  patch. Each component is written with its own type's codec and has no length prefix
-  (`DataComponentPatch`'s stream codec). A component we don't decode can't be skipped, so the
-  rest of the packet can't be read either.
-- Options:
-  - Decode the handful of component types soldiers will meet: damage, enchantments, custom name.
-  - Or, when an unknown component appears, keep the item ID and mark the rest of that packet
-    unknown, logging it loudly. That's safe because the frame is already length-isolated, the same
-    reasoning as `UnknownPacket`.
-- Items picked up from the ground or from mob drops usually carry an empty patch, which is the
-  common case.
-- Mapping item IDs to "weapon" or "armour" is a generated registry, built from the server's
-  reports the same way `BlockClassRegistry` is.
+- Enchantments (type 13) decode, and the `Kit` reports protective enchantments where a soldier's
+  fall allowance can use them.
+- Other component types that soldiers meet in live runs are added as the log names them.

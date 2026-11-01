@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Condition;
+import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
@@ -55,6 +56,7 @@ public final class DeterministicSoldier implements Soldier {
     private int ticksUntilAttack = 0; // tick-loop only
     // Written only by the connection's thread (reportHealth), as position is only by the tick loop.
     private volatile Condition condition;
+    private volatile Kit kit; // written only by the connection's thread (reportKit)
     private double lastReportedHealth = -1;
     private int deaths;
     // Set by the connection's thread on a hit, consumed by the tick loop.
@@ -92,7 +94,12 @@ public final class DeterministicSoldier implements Soldier {
             hurt.set(true);
         }
         lastReportedHealth = health;
-        condition = new Condition(health, food, deaths);
+        condition = new Condition(health, food, deaths, java.util.Optional.empty());
+    }
+
+    /** What the soldier now carries (LACE ammunition and equipment). Connection thread only. */
+    public void reportKit(Kit kit) {
+        this.kit = kit;
     }
 
     /** Whether the last tick ended standing on something - reported to the server with each move. */
@@ -102,7 +109,9 @@ public final class DeterministicSoldier implements Soldier {
 
     @Override
     public SoldierStatus status() {
-        return new SoldierStatus(name, position, order, report, java.util.Optional.ofNullable(condition));
+        Kit carried = kit;
+        return new SoldierStatus(name, position, order, report, java.util.Optional.ofNullable(condition)
+                .map(c -> new Condition(c.health(), c.food(), c.deaths(), java.util.Optional.ofNullable(carried))));
     }
 
     /**

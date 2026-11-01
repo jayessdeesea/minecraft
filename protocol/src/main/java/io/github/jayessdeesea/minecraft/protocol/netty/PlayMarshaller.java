@@ -11,6 +11,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.UnknownPacket;
 import io.netty.buffer.ByteBuf;
@@ -40,6 +41,9 @@ public final class PlayMarshaller implements PacketMarshaller {
             case MoveEntityPacket.POS_ROT_PACKET_ID -> MoveEntityPacket.decodePosRot(data);
             case EntityPositionPacket.SYNC_PACKET_ID -> EntityPositionPacket.decodeSync(data);
             case EntityPositionPacket.TELEPORT_PACKET_ID -> EntityPositionPacket.decodeTeleport(data);
+            case InventoryPackets.SET_CONTENT_PACKET_ID -> InventoryPackets.decodeSetContent(data);
+            case InventoryPackets.SET_SLOT_PACKET_ID -> InventoryPackets.decodeSetSlot(data);
+            case InventoryPackets.SET_HELD_SLOT_PACKET_ID -> InventoryPackets.decodeSetHeldSlot(data);
             default -> new UnknownPacket(packetId, ByteBufUtil.getBytes(data));
         };
     }

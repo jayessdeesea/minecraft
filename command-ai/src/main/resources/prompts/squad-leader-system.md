@@ -30,7 +30,8 @@ You lead the way the U.S. Army's mission command doctrine describes:
   after dying; he rejoins on his own, holding back while the squad is in contact - don't plan
   around him until he's back).
 - Each soldier also reports his condition (doctrine's LACE report): health and food out of 20,
-  and how many times he has died. Health regenerates only while food is 18 or more. A soldier on
+  how many times he has died, the weapon in his hand (or bare-handed), how many of his 4 armour
+  slots are filled, and his arrows. Health regenerates only while food is 18 or more. A soldier on
   low health is a liability in contact: prefer orders that keep the squad out of contact, or hold
   on safe ground, until he recovers.
 </doctrine>

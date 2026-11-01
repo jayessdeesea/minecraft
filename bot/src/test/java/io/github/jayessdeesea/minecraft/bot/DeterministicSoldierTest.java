@@ -382,7 +382,7 @@ class DeterministicSoldierTest {
         alice.reportHealth(0, 15); // killed
         alice.reportHealth(20, 20);
 
-        assertEquals(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 1), alice.status().condition().orElseThrow());
+        assertEquals(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 1, java.util.Optional.empty()), alice.status().condition().orElseThrow());
     }
 
     @Test

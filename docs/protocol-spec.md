@@ -264,7 +264,10 @@ previously-confirmed IDs in the same list land where expected.
 | ← | `0x36` | Move Entity Pos Rot | `MoveEntityPacket` | registration order; live |
 | ← | `0x48` | Player Position | `PlayerPositionPacket` | registration order; live spawn coordinates |
 | ← | `0x4D` | Remove Entities | `RemoveEntitiesPacket` | registration order |
+| ← | `0x12` | Container Set Content | `InventoryPackets` | registration order; live |
+| ← | `0x14` | Container Set Slot | `InventoryPackets` | registration order; live (`/give`) |
 | ← | `0x68` | Set Health | `SetHealthPacket` | registration order; live (`0.0` for a dead player) |
+| ← | `0x69` | Set Held Slot | `InventoryPackets` | registration order |
 | ← | `0x7D` | Teleport Entity | `EntityPositionPacket` | registration order |
 | → | `0x00` | Accept Teleportation | `AcceptTeleportationPacket` | registration order; server keeps the session after it |
 | → | `0x01` | Attack | `AttackPacket` | registration order |
@@ -286,6 +289,14 @@ seed, game mode + previous game mode, debug/flat flags, has-death-location flag.
 (portal cooldown and later) aren't decoded yet - see `PlayLoginPacket`'s javadoc. This seeds
 `PlayState` (in the `protocol` package), the start of a world-model layer that will grow one
 confirmed field at a time, the same way this table will grow one confirmed packet at a time.
+
+**Item stacks** (inside the inventory packets) - VarInt count; if positive, VarInt item ID and a
+component patch: VarInt added count, VarInt removed count, each added component as VarInt type
+then its value, each removed one as VarInt type. A component's value has its own codec and no
+length prefix, so `ItemStacks` decodes only the ones it knows - `max_damage` (2), `damage` (3),
+`repair_cost` (19) as VarInts and `unbreakable` (4) as empty - and on any other type keeps the
+item, drops the rest of that packet (the frame is length-isolated, so this is safe), and logs the
+type. Enchantments (13) are the first such gap seen live.
 
 ## 4. Compression
 

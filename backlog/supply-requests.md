@@ -1,7 +1,6 @@
 ---
 status: proposed
 priority: P2
-depends-on: [inventory-decoding]
 doctrine: classes of supply (FM 4-0), LOGSTAT
 ---
 

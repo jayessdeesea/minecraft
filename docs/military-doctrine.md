@@ -83,8 +83,8 @@ loop a human squad runs.
 
 *How we use it:* each soldier's status is a SITREP (position, task, condition, and a CANTCO if
 any); contact with hostiles adds a SALUTE-shaped spot report. The condition is LACE-shaped
-(`command.Condition`): liquids is food, casualties is health and deaths. Ammunition and equipment
-aren't reported yet. Squad leaders aggregate their
+(`command.Condition`): liquids is food, casualties is health and deaths, ammunition is the weapon
+in hand and arrows, equipment is armour worn (`command.Kit`). Squad leaders aggregate their
 soldiers' SITREPs into one for the general. These are the structured inputs the LLM-backed
 echelons read - the same economy of attention doctrine optimizes for.
 

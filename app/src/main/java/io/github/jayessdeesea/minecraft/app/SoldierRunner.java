@@ -16,6 +16,9 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.protocol.HealthUpdate;
+import io.github.jayessdeesea.minecraft.protocol.InventoryUpdate;
+import io.github.jayessdeesea.minecraft.command.Kit;
+import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.protocol.MinecraftClient;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
@@ -169,8 +172,9 @@ public class SoldierRunner implements CommandLineRunner {
         StringBuilder sitrep = new StringBuilder();
         for (DeterministicSoldier soldier : squad) {
             SoldierStatus status = soldier.status();
-            sitrep.append(String.format(Locale.ROOT, "%n  %s at (%.1f, %.1f, %.1f): %s",
-                    status.name(), status.position().x(), status.position().y(), status.position().z(), status.report()));
+            sitrep.append(String.format(Locale.ROOT, "%n  %s at (%.1f, %.1f, %.1f): %s %s",
+                    status.name(), status.position().x(), status.position().y(), status.position().z(), status.report(),
+                    status.condition().map(Object::toString).orElse("(condition not reported)")));
         }
         LOG.info("[squad -> {}] SITREP - {} chunk(s), {} entities tracked:{}",
                 ChainOfCommand.SQUAD_NAME, chunkCache.loadedChunkCount(), entityTracker.trackedEntityCount(), sitrep);
@@ -196,6 +200,9 @@ public class SoldierRunner implements CommandLineRunner {
         // only on a change. Kept so the soldier starts from it: otherwise a one-blow kill of a
         // soldier never hurt since joining reads like joining dead, and its death isn't counted.
         AtomicReference<HealthUpdate> lastHealth = new AtomicReference<>();
+        // Inventory too arrives on join, before the soldier exists - kept the same way.
+        Inventory inventory = new Inventory(); // this connection's thread only
+        AtomicReference<Kit> lastKit = new AtomicReference<>();
         CompletableFuture<PlaySession> sessionReady = new CompletableFuture<>();
 
         CompletableFuture<PlaySession> joined = MinecraftClient.join(HOST, PORT, name, new PlaySessionListeners(
@@ -226,9 +233,23 @@ public class SoldierRunner implements CommandLineRunner {
                         sessionReady.thenAccept(PlaySession::respawn);
                     }
                 },
+                update -> {
+                    Kit kit = switch (update) {
+                        case InventoryUpdate.Contents(var slots, var complete) -> inventory.replaceAll(
+                                slots.stream().map(item -> item.map(i -> new int[]{i.itemId(), i.count()}).orElse(null)).toList());
+                        case InventoryUpdate.Slot(int slot, var item) ->
+                                inventory.setSlot(slot, item.map(i -> new int[]{i.itemId(), i.count()}).orElse(null));
+                        case InventoryUpdate.HeldSlot(int hotbarSlot) -> inventory.selectHotbar(hotbarSlot);
+                    };
+                    lastKit.set(kit);
+                    DeterministicSoldier soldier = activeSoldier.get();
+                    if (soldier != null) {
+                        soldier.reportKit(kit);
+                    }
+                },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
-        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth))
+        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit))
                 .exceptionally(cause -> {
                     LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
                     return null;
@@ -237,7 +258,8 @@ public class SoldierRunner implements CommandLineRunner {
 
     private void onJoined(SoldierDefinition definition, PlaySession session, PlayerPosition spawn,
                            AtomicReference<ScheduledExecutorService> activeScheduler,
-                           AtomicReference<DeterministicSoldier> activeSoldier, AtomicReference<HealthUpdate> lastHealth) {
+                           AtomicReference<DeterministicSoldier> activeSoldier, AtomicReference<HealthUpdate> lastHealth,
+                           AtomicReference<Kit> lastKit) {
         String name = definition.name();
         LOG.info("{} joined at real spawn ({}, {}, {}): {}", name, spawn.x(), spawn.y(), spawn.z(), session.playState());
 
@@ -245,6 +267,10 @@ public class SoldierRunner implements CommandLineRunner {
         HealthUpdate health = lastHealth.get();
         if (health != null) {
             soldier.reportHealth(health.health(), health.food());
+        }
+        Kit kit = lastKit.get();
+        if (kit != null) {
+            soldier.reportKit(kit);
         }
         activeSoldier.set(soldier);
         if (definition == SOLDIERS.getFirst()) {

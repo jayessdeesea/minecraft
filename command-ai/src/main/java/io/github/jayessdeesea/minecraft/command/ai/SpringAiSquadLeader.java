@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.command.ai;
 
 import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.Condition;
+import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
@@ -225,8 +226,12 @@ public final class SpringAiSquadLeader implements SquadLeader {
             return "condition not reported yet";
         }
         Condition c = condition.get();
-        return String.format(Locale.ROOT, "health %.0f/%.0f, food %d/%d%s", c.health(), Condition.MAX_HEALTH, c.food(),
-                Condition.MAX_FOOD, c.deaths() == 0 ? "" : ", died " + c.deaths() + "x");
+        String kit = c.kit().map(k -> ", " + k.weapon().map(w -> "armed with " + w).orElse("bare-handed")
+                        + String.format(Locale.ROOT, ", armour %d/%d", k.armour(), Kit.ARMOUR_SLOTS)
+                        + (k.arrows() == 0 ? "" : ", " + k.arrows() + " arrows"))
+                .orElse(", kit not reported yet");
+        return String.format(Locale.ROOT, "health %.0f/%.0f, food %d/%d%s%s", c.health(), Condition.MAX_HEALTH, c.food(),
+                Condition.MAX_FOOD, c.deaths() == 0 ? "" : ", died " + c.deaths() + "x", kit);
     }
 
     static String describe(Report report) {

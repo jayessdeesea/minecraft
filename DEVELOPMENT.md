@@ -143,7 +143,8 @@ exceed `MAX_PATH`, and `unzip` silently skips them.
 
 ## 7. Regenerating the generated registries
 
-`bot`'s block classes and hostile-mob list are generated from the server's own data reports.
+`bot`'s block classes, hostile-mob list and item classes are generated from the server's own data
+reports.
 Regenerate both after every pin bump:
 
 ```bash
@@ -155,7 +156,9 @@ R=bot/src/main/resources/io/github/jayessdeesea/minecraft/bot/world
 CP="<jackson-databind>;<jackson-core>;<jackson-annotations>"   # jars from ~/.m2
 java -cp "$CP" tools/block-class-generator/GenerateBlockClasses.java C:/mc-reference/reports/blocks.json $R/block-classes-776.txt
 java -cp "$CP" tools/entity-hostility-generator/GenerateEntityHostility.java C:/mc-reference/reports/registries.json $R/hostile-entity-types-776.txt
+java -cp "$CP" tools/item-class-generator/GenerateItemClasses.java C:/mc-reference/reports/registries.json $R/item-classes-776.txt
 ```
 
 Rename the output files to match the new protocol number, along with the resource names in
-`BlockClassRegistry` and `HostileMobRegistry`.
+`BlockClassRegistry`, `HostileMobRegistry` and `ItemClassRegistry`. In Git Bash, give `java` a
+Windows-style classpath (`cygpath -w`).

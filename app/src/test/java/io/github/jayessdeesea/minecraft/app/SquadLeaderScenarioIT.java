@@ -48,7 +48,7 @@ class SquadLeaderScenarioIT {
 
     private static final double PROGRESS_SLACK = 4;
     private static final java.util.Optional<io.github.jayessdeesea.minecraft.command.Condition> HEALTHY =
-            java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 0));
+            java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 0, java.util.Optional.empty()));
     private static final int ORACLE_BUDGET = 500_000;
 
     private record Outcome(Scenario scenario, boolean stuck, long millis, String risk, List<String> failures) {

@@ -35,7 +35,8 @@ class SpringAiSquadLeaderTest {
             new SoldierStatus("Alice", new Position(1, 64, 2), new Order.Idle(), new Report.Cantco("no route out of the pit"), java.util.Optional.empty());
     private static final SoldierStatus BOB =
             new SoldierStatus("Bob", new Position(3, 64, 4), new Order.Idle(), new Report.Moving(),
-                    java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(6, 12, 1)));
+                    java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(6, 12, 1, java.util.Optional.of(
+                            new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.of("iron_sword"), 12, 2)))));
     private static final Objective HILL =
             new Objective("seize the hill", new Position(10, 70, -40), "observe the valley to the north");
 
@@ -73,7 +74,7 @@ class SpringAiSquadLeaderTest {
 
         assertTrue(prompt.contains("<objective>") && prompt.contains("seize the hill") && prompt.contains("observe the valley"));
         assertTrue(prompt.contains("Alice (point man) at (1, 64, 2): Cantco: no route out of the pit"));
-        assertTrue(prompt.contains("Bob at (3, 64, 4), 3 blocks from the point man: Moving; health 6/20, food 12/20, died 1x"));
+        assertTrue(prompt.contains("Bob at (3, 64, 4), 3 blocks from the point man: Moving; health 6/20, food 12/20, died 1x, armed with iron_sword, armour 2/4, 12 arrows"));
         assertTrue(prompt.contains("no route out of the pit; condition not reported yet"));
         assertTrue(prompt.contains("<current_order>\nNone yet."));
         assertTrue(prompt.contains("<terrain>"));
