@@ -12,7 +12,7 @@ these gaps closed:
   1.5 blocks tall.
 - No swimming. Water is a hazard that soldiers route around.
 - No ladders or vines for climbing.
-- Fall damage isn't considered when planning a drop.
+- Drops longer than 3 blocks, which cost health, are never planned (backlog/damaging-drops.md).
 
 ## Done when
 - Each gap is closed only when a live run or scenario shows it costing something. Split it into
