@@ -1,0 +1,108 @@
+# Military doctrine this project emulates
+
+The chain of command here (General → Squad Leader → Soldier) deliberately borrows real military
+doctrine for *how* echelons talk to each other, not just what they're called. The point is to see
+where a doctrine refined over a century for humans under stress - limited bandwidth, partial
+information, subordinates who must act without asking - overlaps with what works for LLM agents
+at different timescales. When code implements one of these ideas, it cites the section here, and
+this doc cites the manual.
+
+**Source confidence.** Formation text below is quoted from the 2024 ATP 3-21.8 as reproduced by
+InfantryDrills.com, with paragraph numbers. Proword and report definitions come from secondary
+sources consistent with each other (USMC radio training material, ACP 125 summaries, archived
+FM 34-35); the primary manuals (ACP 125(G), ATP 6-02.53, ATP 1-02.1, FM 6-99) weren't readable
+from here. Treat those entries as "well-attested, not verified against the primary text."
+
+## 1. Mission command: intent over instructions
+
+**ADP 6-0, *Mission Command*.** Commanders direct through *mission orders* that state the task and
+the **commander's intent** - the purpose and desired end state - and leave the *how* to
+subordinates, who exercise **disciplined initiative**: acting without further orders when the
+situation changes, as long as they stay inside the intent.
+
+*How we use it:* every order down the chain carries a short `intent` (why), not just a target
+(what). That's what lets a soldier who fell into a hole, or a squad that hits a cliff, do something
+sensible without waiting for an LLM round trip - and it's the same reason a good prompt states the
+goal, not only the steps.
+
+## 2. Formations and intervals
+
+**ATP 3-21.8, *Infantry Rifle Platoon and Squad* (2024), Chapter 3, Section 2.**
+
+General principles:
+- ¶3-44: "Soldiers must know their location in the formation relative to the other fire team
+  members and team leader."
+- ¶3-45: "As a rule, the unit should be dispersed up to the limit of control." "The team leader
+  adjusts the team's formation as necessary while the team is moving."
+- ¶3-47: "fire team leaders are in the lead position with their Soldiers echeloned to the right and
+  left behind them." "The positions for all but the leader may vary."
+
+The formations we implement:
+
+| Formation | Doctrine | When |
+|---|---|---|
+| **Wedge** | ¶3-46: the basic fire team formation; "The interval between Soldiers in the wedge formation is normally 10 meters." "The wedge expands and contracts depending on the terrain." "The sides of the wedge can contract to the point where the wedge resembles a single file." | Default for moving. |
+| **File** (column/file) | ¶3-48: used "when employing the wedge is impractical" - "severely restrictive terrain, when inside a building, in dense vegetation." Spacing "changes due to constraints of the situation." | Forest, tunnels, buildings, narrow paths. |
+| **Line** | ¶3-54 (squad line): "provides maximum firepower to the front"; "used to assault or as a pre-assault formation." | Approaching a known threat. |
+
+*How we use it:* the squad leader picks the **formation** and an **interval** (tight, normal,
+extended). Each soldier's slot is a fixed offset from the **point man** - the lead soldier, who
+heads for the objective - in the direction of travel (¶3-47: leader in front, others echeloned
+behind). The slot is a *zone*, not a point: the soldier routes into it however the ground allows
+(¶3-46 "expands and contracts depending on the terrain", ¶3-47 "positions for all but the leader
+may vary"). Blocks are metres, so doctrine's 10 m wedge interval is our *extended* interval; normal
+and tight are closer because Minecraft visibility and mob density make 10 blocks loose for a
+fire team of two or three.
+
+Not implemented yet: squad column (two fire teams, ¶3-53), movement techniques (traveling /
+traveling overwatch / bounding overwatch), weapons placement.
+
+## 3. Acknowledging orders: prowords
+
+Radiotelephone procedure (ACP 125; Army: ATP 6-02.53) uses *prowords* with exact meanings so a
+garbled channel can't create ambiguity:
+
+| Proword | Meaning |
+|---|---|
+| **ROGER** | "I have received your last transmission satisfactorily." *Not* agreement, *not* compliance. |
+| **WILCO** | "I have received your message, understand it, and will comply." Includes ROGER; never sent together. |
+| **CANTCO** | "Unable to comply" (multi-service brevity, ATP 1-02.1). Aviation's equivalent is **UNABLE**, "normally followed by a reason." |
+
+*How we use it:* a subordinate answers an order with **WILCO** or **CANTCO + reason**. CANTCO is
+the push-back channel: the squad leader orders a spot that can't be reached and the squad *says
+so*, rather than silently stalling. A soldier that can't reach its slot (fell into a pit, cut off
+by water) reports CANTCO with the reason; the squad leader decides what to do about it - the same
+loop a human squad runs.
+
+## 4. Reports upward
+
+| Report | Content | Source |
+|---|---|---|
+| **SITREP** (situation report) | Where we are, what we're doing, our condition, what we can't do. Routine and on request. | FM 6-99, *U.S. Army Report and Message Formats* |
+| **SPOTREP** using **SALUTE** | Enemy contact: **S**ize, **A**ctivity, **L**ocation, **U**nit, **T**ime, **E**quipment. | FM 6-99; FM 34-35 App. C |
+
+*How we use it:* each soldier's status is a SITREP (position, task, condition, and a CANTCO if
+any); contact with hostiles adds a SALUTE-shaped spot report. Squad leaders aggregate their
+soldiers' SITREPs into one for the general. These are the structured inputs the LLM-backed
+echelons read - the same economy of attention doctrine optimizes for.
+
+## 5. Orders downward
+
+| Order | Use | Source |
+|---|---|---|
+| **OPORD** | Full order, five paragraphs: **S**ituation, **M**ission, **E**xecution (incl. commander's intent), **S**ustainment, **C**ommand and signal ("SMEAC"). | FM 6-0 |
+| **FRAGO** (fragmentary order) | Changes to an existing order - only what's different. | FM 6-0 |
+
+*How we use it:* the general's objective to a squad is OPORD-shaped but small - situation, mission
+(who / what / where / why), intent. The squad leader's frequent re-tasking is FRAGO-shaped: a new
+objective, formation, or interval against the standing mission.
+
+## Sources
+
+- ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)
+- FM 3-21.9 Ch. 3 (formation intervals reduced to keep visual contact) - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/3-21-9/chap3.htm)
+- ADP 6-0 (2012, archived) - [UNT web archive](https://webarchive.library.unt.edu/web/20130213211329/http:/armypubs.army.mil/doctrine/DR_pubs/dr_a/pdf/adp6_0_new.pdf)
+- FM 6-99.2 report and message formats (2007, archived) - [UNT web archive](https://webarchive.library.unt.edu/web/20130213212857/http:/armypubs.army.mil/doctrine/DR_pubs/dr_a/pdf/fm6_99x2.pdf)
+- FM 34-35 App. C, SALUTE spot report - [irp.fas.org](https://irp.fas.org/doddir/army/fm34-35/Appc.htm)
+- Prowords: [Procedure word (Wikipedia)](https://en.wikipedia.org/wiki/Procedure_word), [USMC MCT-COMM-1003/4 Radio Communications](https://www.trngcmd.marines.mil/Portals/207/Docs/FMTBE/Student%20Materials/MCECST/MCT-COMM-1003_4%20Radio%20Communications.doc), [SERA.14045 (UNABLE)](https://regulatorylibrary.caa.co.uk/923-2012/Content/Regs/03440_SERA14045_Transmitting_technique.htm)
+- ATP 1-02.1 multi-service brevity codes (CANTCO) - [ALSSA](https://www.alssa.mil/MTTPs/Brevity/)

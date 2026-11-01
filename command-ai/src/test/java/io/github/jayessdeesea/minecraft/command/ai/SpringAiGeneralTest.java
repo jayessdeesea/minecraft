@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.command.ai;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import org.junit.jupiter.api.Test;
@@ -27,9 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SpringAiGeneralTest {
 
     private static final SquadStatus ALPHA = new SquadStatus("Alpha", List.of(
-            new SoldierStatus("Alice", new Position(1, 64, 2), new Order.Idle())));
+            new SoldierStatus("Alice", new Position(1, 64, 2), new Order.Idle(), new Report.Idle())));
     private static final SquadStatus BRAVO = new SquadStatus("Bravo", List.of(
-            new SoldierStatus("Bob", new Position(3, 64, 4), new Order.Idle())));
+            new SoldierStatus("Bob", new Position(3, 64, 4), new Order.Idle(), new Report.Idle())));
 
     private static final ChatModel THROWING_MODEL = new ChatModel() {
         @Override

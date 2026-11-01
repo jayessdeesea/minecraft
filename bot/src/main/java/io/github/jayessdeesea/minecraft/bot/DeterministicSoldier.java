@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.Soldier;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 
@@ -76,7 +77,7 @@ public final class DeterministicSoldier implements Soldier {
 
     @Override
     public SoldierStatus status() {
-        return new SoldierStatus(name, position, order);
+        return new SoldierStatus(name, position, order, report);
     }
 
     /**
@@ -142,6 +143,7 @@ public final class DeterministicSoldier implements Soldier {
             }
             stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
             route = null; // wherever the retreat ends up, the old route no longer starts here
+            report = new Report.InContact(threats.size());
         } else {
             navigate(world);
         }
@@ -149,6 +151,14 @@ public final class DeterministicSoldier implements Soldier {
         applyVerticalMovement(world);
         return attack;
     }
+
+    /**
+     * Partial plans in a row that gained no ground before this soldier reports CANTCO (unable to
+     * comply, docs/military-doctrine.md §3): stuck in a pit, cut off by water, objective on a ledge.
+     * It keeps re-planning - the terrain or the order may change - but stops pretending it's
+     * on the way.
+     */
+    static final int CANTCO_AFTER_FAILED_PLANS = 3;
 
     /** Re-plan at least this often while moving - 2 seconds. */
     static final int REPLAN_TICKS = 40;
@@ -167,6 +177,10 @@ public final class DeterministicSoldier implements Soldier {
     private int stuckTicks;
     private Position progressMark;
     private volatile String lastPlan = "none";
+    private volatile Report report = new Report.Idle();
+    /** Consecutive partial plans with no real headway - see {@link #CANTCO_AFTER_FAILED_PLANS}. */
+    private int failedPlans;
+    private Position lastPartialPlanFrom;
 
     /** Observability only: the most recent route plan, e.g. "partial, 12 steps ending BlockPos[...]". */
     public String lastPlan() {
@@ -182,8 +196,15 @@ public final class DeterministicSoldier implements Soldier {
         }
         // Arrived = standing in a cell the goal accepts - the same cell-centre rule the planner uses,
         // so the two can never disagree about whether there's anywhere left to go.
-        if (goal == null || (onGround && goal.contains(BlockPos.containing(position.x(), position.y(), position.z())))) {
+        if (goal == null) {
             route = null;
+            report = new Report.Idle();
+            return;
+        }
+        if (onGround && goal.contains(BlockPos.containing(position.x(), position.y(), position.z()))) {
+            route = null;
+            failedPlans = 0;
+            report = new Report.InPosition();
             return;
         }
 
@@ -194,6 +215,7 @@ public final class DeterministicSoldier implements Soldier {
         if (replan && onGround) {
             Pathfinder.Result plan = Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), goal, PLAN_BUDGET);
             route = plan.path();
+            assessPlan(plan);
             lastPlan = (plan.reachesGoal() ? "to goal" : "partial") + ", " + route.size() + " steps"
                     + (route.isEmpty() ? "" : " ending " + route.getLast());
             routeIndex = 0;
@@ -218,6 +240,23 @@ public final class DeterministicSoldier implements Soldier {
             centreZ = waypoint.z() + 0.5;
         }
         stepToward(world, centreX, centreZ);
+    }
+
+    private void assessPlan(Pathfinder.Result plan) {
+        if (plan.reachesGoal()) {
+            failedPlans = 0;
+            lastPartialPlanFrom = null;
+        } else {
+            boolean gainedGround = lastPartialPlanFrom != null
+                    && Math.hypot(position.x() - lastPartialPlanFrom.x(), position.z() - lastPartialPlanFrom.z()) > 1;
+            failedPlans = plan.path().isEmpty() || !gainedGround ? failedPlans + 1 : 0;
+            lastPartialPlanFrom = position;
+        }
+        report = failedPlans >= CANTCO_AFTER_FAILED_PLANS
+                ? new Report.Cantco(String.format(java.util.Locale.ROOT,
+                        "no route from (%.0f, %.0f, %.0f) to within %.0f of (%.0f, %.0f, %.0f)",
+                        position.x(), position.y(), position.z(), goal.horizontalTolerance(), goal.x(), goal.y(), goal.z()))
+                : new Report.Moving();
     }
 
     private void trackProgress() {

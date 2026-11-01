@@ -1,10 +1,10 @@
 package io.github.jayessdeesea.minecraft.command;
 
 /**
- * What a {@link Soldier} reports upward. This is the input a future {@code SquadLeader}'s decision
- * core builds its LLM prompt context from ({@code buildContext(List<SoldierStatus>)} in AGENTS.md's
- * "Behavior modeling" section) - kept to plain, provider-agnostic value types for exactly that
- * reason.
+ * What a {@link Soldier} reports upward - the input a {@code SquadLeader}'s decision core builds
+ * its LLM prompt context from (AGENTS.md's "Behavior modeling" section), kept to plain,
+ * provider-agnostic value types for exactly that reason. Together it's a soldier's SITREP (docs/military-doctrine.md §4): where, tasked with
+ * what, and how it's going - including CANTCO when the order can't be carried out.
  */
-public record SoldierStatus(String name, Position position, Order order) {
+public record SoldierStatus(String name, Position position, Order order, Report report) {
 }

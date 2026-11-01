@@ -18,6 +18,13 @@ of AI agents at different levels of the hierarchy coordinate. Keep that framing 
 design tradeoffs — e.g. err toward whatever makes the coordination layer legible, not toward
 Minecraft feature completeness for its own sake.
 
+**How the echelons talk is borrowed from real military doctrine** — mission command (orders carry
+intent, subordinates use initiative within it), formations, WILCO/CANTCO acknowledgement,
+SITREP/SALUTE reports, OPORD/FRAGO orders — on purpose: part of the experiment is seeing where
+doctrine built for humans under stress overlaps with what works for LLM agents. The doctrine, its
+manual citations, and how each piece maps onto code live in
+[docs/military-doctrine.md](docs/military-doctrine.md); code implementing a piece cites the section.
+
 ## How this project stays legible as it grows
 
 Four tenets about maintaining the project's own self-model, not about Minecraft or AI specifically
@@ -311,6 +318,9 @@ or move the working copy outside the synced folder.
   "Protocol pipeline architecture" section: full plane/tier table, a worked walkthrough of an
   actual join, and the reasoning behind each stage. Keep it in sync whenever a stage's
   responsibility changes — this file states the rule, that one carries the detail.
+- [docs/military-doctrine.md](docs/military-doctrine.md) — the military doctrine the chain of
+  command emulates (mission command, formations, prowords, reports, orders), with manual
+  citations and how each maps onto code.
 - [docs/world-data-spec.md](docs/world-data-spec.md) — canonical chunk/block-state/light data
   format the client decodes from the server. Explicitly client-decode-only; world generation,
   storage, and light propagation are the (self-hosted vanilla) server's job, not ours.

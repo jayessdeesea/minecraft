@@ -365,6 +365,26 @@ those need aren't decoded.
   connection's whole view). Live: both soldiers routed 25+ blocks over real terrain to their zones
   - Alice down 25 blocks of hillside - with no server corrections.
 
+- **Formations, SITREPs, and CANTCO.** The chain of command now talks the way
+  [docs/military-doctrine.md](docs/military-doctrine.md) describes. A `SquadOrder` (objective,
+  `Formation` wedge/file/line, `Interval` tight/normal/extended, vertical tolerance, intent) is the
+  squad leader's FRAGO-shaped decision; `Formations.assign` turns it into each soldier's
+  `Order.MoveTo` deterministically - the point man (first soldier) heads for the objective, everyone
+  else gets a zone at a fixed offset from where he *currently* is, along the direction of travel. No
+  LLM in that part: geometry needs no judgement. `SoldierRunner` re-runs it every second for a
+  three-soldier fire team (Alice, Bob, Carol) under a hardcoded order until a `SquadLeader` supplies
+  one.
+
+  Every `SoldierStatus` now carries a `Report` - its SITREP line: `Idle`, `Moving`, `InPosition`,
+  `InContact(n)`, or `Cantco(reason)`. A soldier reports CANTCO after 3 consecutive route plans that
+  can't reach its zone and gain no ground (stuck in a pit, cut off), and keeps re-planning in case
+  things change. When the point man reports CANTCO the squad does too, since nobody can follow him
+  to the objective. Live: Carol reached her wedge slot, Bob - who'd logged out 40 blocks away -
+  routed back to rejoin, and Alice reported CANTCO on a hardcoded objective 5 blocks below her
+  that she couldn't route to, escalated as a squad CANTCO.
+
+  Open: nothing acts on a CANTCO yet - that's the squad leader's job once it's wired in (step 4).
+
 - **Respawn, and accepting server position corrections.** Soldiers killed between runs stayed dead
   forever - a dead player is sent no chunks or entities until it respawns, so a dead Alice/Bob
   joined, loaded nothing, and stood still (0 chunks, unknown terrain = blocked) with no error

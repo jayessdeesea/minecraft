@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Report;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -211,6 +212,43 @@ class DeterministicSoldierTest {
         Position end = alice.status().position();
         double cellCentreDistance = Math.hypot(Math.floor(end.x()) + 0.5 - 8.5, Math.floor(end.z()) + 0.5 - 0.5);
         assertTrue(cellCentreDistance <= 1, "should stand in a cell inside the zone past the tree: " + end);
+    }
+
+    @Test
+    void reportsCantcoWhenStuckInAPit() {
+        // A 5-deep pit around the soldier: no one-block steps out.
+        WorldView pit = blocks((x, y, z) -> y < GROUND - 5 || (y < GROUND && (Math.abs(x) > 1 || Math.abs(z) > 1)));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND - 5, 0.5));
+        alice.receiveOrder(new Order.MoveTo(20.5, GROUND, 0.5, 2, 2));
+
+        for (int i = 0; i < DeterministicSoldier.REPLAN_TICKS * (DeterministicSoldier.CANTCO_AFTER_FAILED_PLANS + 1); i++) {
+            alice.tick(pit);
+        }
+
+        assertTrue(alice.status().report() instanceof Report.Cantco, "should say it can't comply: " + alice.status().report());
+    }
+
+    @Test
+    void reportsMovingThenInPosition() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.MoveTo(5.5, GROUND, 0.5, 1, 1));
+
+        alice.tick(terrain(false));
+        assertEquals(new Report.Moving(), alice.status().report());
+
+        for (int i = 0; i < 100; i++) {
+            alice.tick(terrain(false));
+        }
+        assertEquals(new Report.InPosition(), alice.status().report());
+    }
+
+    @Test
+    void reportsContact() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+
+        alice.tick(withHostileAt(new Position(3, 64, 0), false));
+
+        assertEquals(new Report.InContact(1), alice.status().report());
     }
 
     @Test

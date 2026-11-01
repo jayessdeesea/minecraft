@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.command.ai;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -27,9 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SpringAiSquadLeaderTest {
 
     private static final SoldierStatus ALICE =
-            new SoldierStatus("Alice", new Position(1, 64, 2), new Order.Idle());
+            new SoldierStatus("Alice", new Position(1, 64, 2), new Order.Idle(), new Report.Idle());
     private static final SoldierStatus BOB =
-            new SoldierStatus("Bob", new Position(3, 64, 4), new Order.TrendToward(10, 20));
+            new SoldierStatus("Bob", new Position(3, 64, 4), new Order.TrendToward(10, 20), new Report.Idle());
 
     /** A {@link ChatModel} that fails the test if the LLM is actually called. */
     private static final ChatModel THROWING_MODEL = new ChatModel() {

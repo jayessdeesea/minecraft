@@ -4,8 +4,14 @@ import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
 import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
+import io.github.jayessdeesea.minecraft.command.Formation;
+import io.github.jayessdeesea.minecraft.command.Formations;
+import io.github.jayessdeesea.minecraft.command.Interval;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.SoldierStatus;
+import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.protocol.MinecraftClient;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
@@ -16,7 +22,10 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -26,8 +35,15 @@ import java.util.concurrent.atomic.AtomicReference;
  * The composition root's actual job: connect each named Soldier below, bridge their live
  * {@code ChunkUpdate}s into one shared {@link ChunkCache} and their entity spawns/removals into one
  * shared {@link EntityTracker}, seed each one's real spawn position
- * from the server's own {@code PlayerPosition} confirmation, give each a short walk in a different
- * direction to visibly prove independent movement, and run each one's tick loop.
+ * from the server's own {@code PlayerPosition} confirmation, and run each one's tick loop - plus one
+ * squad loop that keeps every soldier's formation slot current ({@link Formations}).
+ *
+ * <p>The squad's orders come from a hardcoded {@link SquadOrder} for now - the squad leader's job
+ * until a {@code SquadLeader} is wired in: once the point man (first soldier) joins, the squad moves
+ * {@link #OBJECTIVE_OFFSET} blocks from his spawn in a wedge. Every second the squad loop re-derives
+ * each soldier's slot from where the point man actually is, and logs a squad SITREP every few
+ * seconds - including CANTCO when the point man can't reach the objective
+ * (docs/military-doctrine.md §3).
  *
  * <p>{@code SOLDIERS} is a hardcoded list, not {@code application.yml} - the "app config shape"
  * decision DEVELOPMENT.md's "Known gaps" flagged as open. Deliberately resolved this way for now
@@ -61,14 +77,23 @@ public class SoldierRunner implements CommandLineRunner {
     private static final long TICK_PERIOD_MILLIS = 50; // 20 Hz, matching Minecraft's own tick rate
     private static final long STATUS_LOG_PERIOD_SECONDS = 5;
 
-    /** Each soldier's name and which direction to walk from spawn - just enough to visibly diverge. */
-    private record SoldierDefinition(String name, double walkDx, double walkDz) {
+    /** One soldier: its username. List order is formation order - the first is the point man. */
+    private record SoldierDefinition(String name) {
     }
 
     private static final List<SoldierDefinition> SOLDIERS = List.of(
-            new SoldierDefinition("Alice", 25, 25),
-            new SoldierDefinition("Bob", -25, 25)
+            new SoldierDefinition("Alice"),
+            new SoldierDefinition("Bob"),
+            new SoldierDefinition("Carol")
     );
+
+    private static final long SQUAD_PERIOD_MILLIS = 1000;
+    /** Where the hardcoded squad order sends the squad, relative to the point man's spawn: 40 blocks north. */
+    private static final Position OBJECTIVE_OFFSET = new Position(0, 0, -40);
+
+    /** Currently connected soldiers by name - written by connect/disconnect, read by the squad loop. */
+    private final Map<String, DeterministicSoldier> activeSoldiers = new ConcurrentHashMap<>();
+    private final AtomicReference<SquadOrder> squadOrder = new AtomicReference<>();
 
     private final ChunkCache chunkCache = new ChunkCache();
     private final EntityTracker entityTracker = new EntityTracker();
@@ -79,6 +104,48 @@ public class SoldierRunner implements CommandLineRunner {
         for (SoldierDefinition definition : SOLDIERS) {
             connect(definition);
         }
+        ScheduledExecutorService squad = Executors.newSingleThreadScheduledExecutor(runnable -> new Thread(runnable, "squad"));
+        squad.scheduleAtFixedRate(this::leadSquad, SQUAD_PERIOD_MILLIS, SQUAD_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
+        squad.scheduleAtFixedRate(this::logSquadSitrep, STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
+    }
+
+    /** The squad leader's deterministic half: hand every present soldier its current formation slot. */
+    private void leadSquad() {
+        SquadOrder order = squadOrder.get();
+        List<DeterministicSoldier> squad = presentSoldiers();
+        if (order == null || squad.isEmpty()) {
+            return;
+        }
+        List<SoldierStatus> statuses = squad.stream().map(DeterministicSoldier::status).toList();
+        List<Order> orders = Formations.assign(order, statuses);
+        for (int i = 0; i < squad.size(); i++) {
+            squad.get(i).receiveOrder(orders.get(i));
+        }
+    }
+
+    private void logSquadSitrep() {
+        List<DeterministicSoldier> squad = presentSoldiers();
+        if (squad.isEmpty()) {
+            return;
+        }
+        StringBuilder sitrep = new StringBuilder();
+        for (DeterministicSoldier soldier : squad) {
+            SoldierStatus status = soldier.status();
+            sitrep.append(String.format(Locale.ROOT, "%n  %s at (%.1f, %.1f, %.1f): %s",
+                    status.name(), status.position().x(), status.position().y(), status.position().z(), status.report()));
+        }
+        LOG.info("Squad SITREP - {} - {} chunk(s), {} entities tracked:{}",
+                squadOrder.get(), chunkCache.loadedChunkCount(), entityTracker.trackedEntityCount(), sitrep);
+        if (squad.get(0).status().report() instanceof Report.Cantco cantco) {
+            // The point man can't reach the objective, so neither can the squad. Today that's logged;
+            // once a SquadLeader/General is wired in, this is the CANTCO they re-task on.
+            LOG.warn("Squad CANTCO: {}", cantco.reason());
+        }
+    }
+
+    /** Connected soldiers in formation order (the first present one is the point man). */
+    private List<DeterministicSoldier> presentSoldiers() {
+        return SOLDIERS.stream().map(d -> activeSoldiers.get(d.name())).filter(java.util.Objects::nonNull).toList();
     }
 
     private void connect(SoldierDefinition definition) {
@@ -134,9 +201,14 @@ public class SoldierRunner implements CommandLineRunner {
 
         DeterministicSoldier soldier = new DeterministicSoldier(name, new Position(spawn.x(), spawn.y(), spawn.z()));
         activeSoldier.set(soldier);
-        // Within 3 blocks horizontally of the target, at any height: this hardcoded demo can't know
-        // the terrain there. Real targets (with a real height) come from a SquadLeader.
-        soldier.receiveOrder(new Order.MoveTo(spawn.x() + definition.walkDx(), spawn.y(), spawn.z() + definition.walkDz(), 3, 256));
+        activeSoldiers.put(name, soldier);
+        if (definition.equals(SOLDIERS.get(0))) {
+            // Vertical tolerance is wide open: this hardcoded order can't know the terrain height
+            // 40 blocks away. A real SquadLeader sets the objective's height and tolerance itself.
+            squadOrder.compareAndSet(null, new SquadOrder(
+                    new Position(spawn.x() + OBJECTIVE_OFFSET.x(), spawn.y(), spawn.z() + OBJECTIVE_OFFSET.z()),
+                    Formation.WEDGE, Interval.NORMAL, 256, "move north as a team and hold"));
+        }
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
                 runnable -> new Thread(runnable, name + "-tick"));
@@ -150,10 +222,7 @@ public class SoldierRunner implements CommandLineRunner {
             session.reportPosition(current.x(), current.y(), current.z(), soldier.onGround());
         }, 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
         scheduler.scheduleAtFixedRate(
-                () -> LOG.info("{} status: {} - plan: {} - {} chunk(s), {} entities tracked, hostiles in contact: {}, session open: {}",
-                        name, soldier.status(), soldier.lastPlan(), chunkCache.loadedChunkCount(), entityTracker.trackedEntityCount(),
-                        world.nearbyHostiles(soldier.status().position(), DeterministicSoldier.CONTACT_RADIUS),
-                        session.isOpen()),
+                () -> LOG.debug("{} status: {} - plan: {} - session open: {}", name, soldier.status(), soldier.lastPlan(), session.isOpen()),
                 STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
     }
 
@@ -170,6 +239,7 @@ public class SoldierRunner implements CommandLineRunner {
                                  AtomicReference<ScheduledExecutorService> activeScheduler, Throwable cause) {
         String name = definition.name();
         LOG.warn("{} disconnected unexpectedly ({}) - reconnecting", name, cause.getMessage());
+        activeSoldiers.remove(name);
         ScheduledExecutorService scheduler = activeScheduler.get();
         if (scheduler != null) {
             scheduler.shutdownNow();
