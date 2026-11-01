@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.bot;
 
 import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
+import io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -59,44 +60,68 @@ class DeterministicSoldierTest {
     }
 
     @Test
-    void retreatsDirectlyAwayFromANearbyHostileEvenWhenIdle() {
-        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
-
-        alice.tick(withHostileAt(new Position(3, 64, 0), false));
-
-        Position position = alice.status().position();
-        assertTrue(position.x() < 0, "expected to back away from x=3, was " + position.x());
-        assertEquals(0, position.z(), 1e-9);
-    }
-
-    @Test
-    void retreatOverridesAnOrderTowardTheThreat() {
-        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
-        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0, 1, 256, Risk.LOW));
-
-        alice.tick(withHostileAt(new Position(3, 64, 0), false));
-
-        assertTrue(alice.status().position().x() < 0, "should retreat, not follow the order toward the threat");
-    }
-
-    @Test
-    void standsStillWhenTheRetreatStepIsBlocked() {
+    void closesOnAHostileOutsideReachEvenAgainstItsOrder() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
         alice.receiveOrder(new Order.MoveTo(-10, GROUND, 0, 1, 256, Risk.LOW));
 
-        alice.tick(withHostileAt(new Position(3, 64, 0), true));
+        alice.tick(withHostileAt(new Position(5, 64, 0), false));
 
-        assertEquals(new Position(0, 64, 0), alice.status().position());
+        assertTrue(alice.status().position().x() > 0, "closes on the zombie at x=5, not away along the order");
     }
 
     @Test
-    void attacksAHostileWithinReachAndKeepsWithdrawing() {
+    void holdsItsGroundAndStrikesAtArmsLength() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+
+        OptionalInt attack = alice.tick(withHostileAt(new Position(3, 64, 0), false));
+
+        assertEquals(OptionalInt.of(1), attack);
+        assertEquals(new Position(0, 64, 0), alice.status().position(), "between keep-away and reach: hold");
+    }
+
+    @Test
+    void backsOffFromAHostileInsideKeepAway() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
 
         OptionalInt attack = alice.tick(withHostileAt(new Position(2, 64, 0), false));
 
         assertEquals(OptionalInt.of(1), attack);
-        assertTrue(alice.status().position().x() < 0, "should still back away while fighting");
+        assertTrue(alice.status().position().x() < 0, "backs off while striking");
+    }
+
+    @Test
+    void standsStillWhenBackingOffIsBlocked() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+
+        alice.tick(withHostileAt(new Position(2, 64, 0), true));
+
+        assertEquals(new Position(0, 64, 0), alice.status().position());
+    }
+
+    @Test
+    void getsAwayFromACreeperInsteadOfFightingIt() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+        WorldView creeper = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, HostileMobRegistry.typeIdOf("creeper"), new Position(2, 64, 0)));
+            }
+        };
+
+        OptionalInt attack = alice.tick(creeper);
+
+        assertEquals(OptionalInt.empty(), attack);
+        assertTrue(alice.status().position().x() < 0, "gets clear of the blast");
     }
 
     @Test

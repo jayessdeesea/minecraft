@@ -118,13 +118,22 @@ public final class DeterministicSoldier implements Soldier {
     static final int ATTACK_COOLDOWN_TICKS = 10;
 
     /**
+     * Closer than this, back off: outside a zombie's own reach (about 1.5) but inside ours, so a
+     * soldier striking every {@link #ATTACK_COOLDOWN_TICKS} with knockback keeps it from landing a
+     * hit. Between this and {@link #ATTACK_REACH} the soldier holds its ground.
+     */
+    static final double KEEP_AWAY = 2.5;
+
+    /**
      * One tick of movement. First the "actions on contact" reflex: if a hostile is within {@link
-     * #CONTACT_RADIUS}, step directly away from the nearest one, ignoring the current order
-     * entirely, and strike it whenever it's within {@link #ATTACK_REACH} and the attack has
-     * recharged - a fighting withdrawal, decided here at tick speed with no squad leader involved.
-     * Retreat alone can't break contact (zombies chase as fast as a soldier walks); each hit's
-     * knockback buys distance. If the retreat step is blocked, stand still rather than fall back to
-     * the order (which might lead toward the threat).
+     * #CONTACT_RADIUS}, the current order is set aside and the soldier fights the nearest one at
+     * arm's length - closing to {@link #ATTACK_REACH}, striking whenever the attack has recharged,
+     * backing off inside {@link #KEEP_AWAY}, holding its ground in between. A creeper is the
+     * exception: the soldier gets away from it. Decided here at tick speed with no squad leader
+     * involved. Running from a zombie can't break contact - it chases as fast as a soldier walks -
+     * which is why the reflex holds rather than flees; the squad's react-to-contact drill brings
+     * help ({@code command.ReactToContact}). A blocked step means standing still, never falling back
+     * to the order (which might lead toward the threat).
      *
      * <p>Otherwise follows a route to the current order's goal - planned by {@link Pathfinder}
      * around trees, up one-block steps and down short drops, and re-planned when the order
@@ -157,12 +166,22 @@ public final class DeterministicSoldier implements Soldier {
         if (!threats.isEmpty()) {
             TrackedEntity nearest = threats.get(0);
             Position threat = nearest.position();
-            if (ticksUntilAttack == 0 && distance(position, threat) <= ATTACK_REACH) {
-                attack = OptionalInt.of(nearest.entityId());
-                ticksUntilAttack = ATTACK_COOLDOWN_TICKS;
+            double range = distance(position, threat);
+            if (nearest.explodes()) {
+                // A creeper is never fought at arm's length: get clear of the blast.
+                stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
+            } else {
+                if (ticksUntilAttack == 0 && range <= ATTACK_REACH) {
+                    attack = OptionalInt.of(nearest.entityId());
+                    ticksUntilAttack = ATTACK_COOLDOWN_TICKS;
+                }
+                if (range < KEEP_AWAY) {
+                    stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
+                } else if (range > ATTACK_REACH) {
+                    stepToward(world, threat.x(), threat.z());
+                }
             }
-            stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
-            route = null; // wherever the retreat ends up, the old route no longer starts here
+            route = null; // wherever the fight ends up, the old route no longer starts here
             report = new Report.InContact(threats.size());
         } else {
             navigate(world);

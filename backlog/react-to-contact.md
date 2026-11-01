@@ -4,31 +4,29 @@ priority: P1
 doctrine: battle drill "react to contact" (ATP 3-21.8); mutual support
 ---
 
-# React to contact as a squad, not as individuals
+# React to contact as a squad
 
 ## Why
-`CombatScenarioTest` shows a lone bare-fisted soldier loses to one zombie: dead in 84 of 100
-seeds. The zombie deals 3 damage every 20 ticks against the soldier's 1 every 10. The contact reflex
-makes it worse: the soldier retreats straight away at the speed the zombie chases, so contact
-never breaks. It runs indefinitely, abandoning its order, until something corners it.
+A lone soldier now wins one-on-one. The contact reflex fights at arm's length: it closes to
+reach, strikes, backs off inside 2.5 blocks, holds in between, and gets away from creepers.
+`CombatScenarioTest` shows 100 of 100 wins against a zombie or skeleton, and a live zombie
+summoned next to Alice died in 18 strikes. Several hostiles at once are a different fight. One
+soldier can keep only one at arm's length.
 
-Doctrine doesn't leave contact to the individual. In the react-to-contact drill, the element in
-contact returns fire and the rest of the team moves to support it.
+In doctrine's react-to-contact drill, the rest of the team moves to support the element in
+contact.
 
 ## Done when
-- When a soldier reports InContact, the squad responds deterministically, without waiting for the
-  squad leader's next decision. Soldiers within supporting distance close on it, so the hostile
-  faces several fists. The soldier in contact stops running and holds or withdraws toward the
-  squad.
-- The withdrawal is bounded: a soldier never retreats indefinitely away from its squad and order.
-- The combat simulation gains squad fights. Three soldiers against one, then several, zombies
-  survive and kill at a measured rate that clearly beats the lone-soldier baseline. The baseline
-  stays as a regression reference.
+- When a soldier reports InContact, squad members within supporting distance close on it
+  deterministically, without waiting for the squad leader's next decision. Their own reflexes
+  take over once the hostiles are within range.
+- The combat simulation gains multi-hostile fights, for example one soldier against three
+  zombies, and the same with the squad supporting. Support clearly improves survival.
 - The squad leader sees the contact in its next SITREP and can override it, for example by
   breaking contact as a squad.
 
 ## Notes
-- Lone-soldier baseline, 100 seeds each: zombie DIED 84 / STILL_ENGAGED 15 / KILLED_IT 1;
-  skeleton DIED 85 / STILL_ENGAGED 15; creeper SURVIVED_BLAST 86 / STILL_ENGAGED 14.
-- This sits between the soldier's per-tick reflex and the squad leader's order. That's where
-  `LinkUp` sits too: deterministic squad-level bookkeeping in `command`, run by the squad loop.
+- This sits between the soldier's reflex and the squad leader's order, alongside `LinkUp`:
+  deterministic squad-level bookkeeping in `command`, run by the squad loop.
+- `Battle.step` targets a single soldier today; squad fights need it to target the nearest of
+  several.

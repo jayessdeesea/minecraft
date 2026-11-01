@@ -21,16 +21,32 @@ import java.util.BitSet;
  *
  * <p>Pinned to protocol 776 by filename - regenerate and rename deliberately when the pin bumps.
  */
-final class HostileMobRegistry {
+public final class HostileMobRegistry {
 
     private static final String RESOURCE_NAME = "hostile-entity-types-776.txt";
 
+    private static final java.util.Map<String, Integer> TYPE_IDS = new java.util.HashMap<>();
     private static final BitSet HOSTILE_TYPE_IDS = load();
+    /** Hostiles to get away from rather than fight at arm's length: they explode. */
+    private static final int CREEPER = typeIdOf("creeper");
 
     private HostileMobRegistry() {
     }
 
-    static boolean isHostile(int typeId) {
+    /** The protocol entity-type ID of a hostile, by registry name (without "minecraft:"). */
+    public static int typeIdOf(String name) {
+        Integer id = TYPE_IDS.get(name);
+        if (id == null) {
+            throw new IllegalArgumentException("not a listed hostile: " + name);
+        }
+        return id;
+    }
+
+    static boolean explodes(int typeId) {
+        return typeId == CREEPER;
+    }
+
+    public static boolean isHostile(int typeId) {
         return typeId >= 0 && HOSTILE_TYPE_IDS.get(typeId);
     }
 
@@ -47,7 +63,11 @@ final class HostileMobRegistry {
                         continue;
                     }
                     int spaceIndex = line.indexOf(' ');
-                    ids.set(Integer.parseInt(spaceIndex < 0 ? line : line.substring(0, spaceIndex)));
+                    int id = Integer.parseInt(spaceIndex < 0 ? line : line.substring(0, spaceIndex));
+                    ids.set(id);
+                    if (spaceIndex >= 0) {
+                        TYPE_IDS.put(line.substring(spaceIndex + 1).trim(), id);
+                    }
                 }
             }
         } catch (IOException e) {

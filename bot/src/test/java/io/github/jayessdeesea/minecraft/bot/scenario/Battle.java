@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -227,7 +228,7 @@ public final class Battle implements WorldView {
     @Override
     public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
         return hostiles.stream().filter(Hostile::alive)
-                .map(h -> new TrackedEntity(h.id, h.archetype.ordinal(), positionOf(h)))
+                .map(h -> new TrackedEntity(h.id, HostileMobRegistry.typeIdOf(h.archetype.name().toLowerCase(java.util.Locale.ROOT)), positionOf(h)))
                 .filter(e -> distance3(e.position(), center) <= radius)
                 .sorted(Comparator.comparingDouble(e -> distance3(e.position(), center)))
                 .toList();
