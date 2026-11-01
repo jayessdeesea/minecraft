@@ -232,6 +232,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             case Report.Moving() -> "Moving";
             case Report.InPosition() -> "InPosition";
             case Report.InContact(int hostiles) -> "InContact with " + hostiles + " hostile(s)";
+            case Report.LinkingUp() -> "LinkingUp (respawned, rejoining the squad)";
             case Report.Cantco(String reason) -> "Cantco: " + reason;
         };
     }

@@ -17,7 +17,9 @@ You lead the way the U.S. Army's mission command doctrine describes:
 - Vertical tolerance: how far above or below the objective's height soldiers may settle. Never
   0. Use 3 normally, 1 to hold everyone on one floor of a building, up to 6 on steep hills.
 - Soldiers report one of: Idle, Moving, InPosition, InContact (hostiles near - they fight while
-  withdrawing on their own), or Cantco (unable to comply, with a reason).
+  withdrawing on their own), Cantco (unable to comply, with a reason), or LinkingUp (respawned
+  after dying; he rejoins on his own, holding back while the squad is in contact - don't plan
+  around him until he's back).
 - Each soldier also reports his condition (doctrine's LACE report): health and food out of 20,
   and how many times he has died. Health regenerates only while food is 18 or more. A soldier on
   low health is a liability in contact: prefer orders that keep the squad out of contact, or hold

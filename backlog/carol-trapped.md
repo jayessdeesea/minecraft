@@ -11,9 +11,9 @@ genuinely enclosed, or it may be a terrain-class or pathfinding error that live 
 re-triggering.
 
 ## Done when
-- The cause is known. If it's a bug, it's fixed with a regression test (a synthetic world that
-  reproduces the spot). If the spot really is enclosed, the respawn and link-up behaviour
-  (respawn-linkup.md) is what eventually gets her out.
+- The cause is known. If it's a bug, it's fixed with a regression test: a synthetic world that
+  reproduces the spot, in `bot`'s scenario harness. If the spot really is enclosed, the open
+  question is what a live soldier should do. `LinkUp` only helps after a death.
 
 ## Notes
 - Inspect the blocks there through the server console, or dump the `ChunkCache` classes around

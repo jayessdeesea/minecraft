@@ -30,4 +30,12 @@ public sealed interface Report {
      */
     record Cantco(String reason) implements Report {
     }
+
+    /**
+     * Respawned and rejoining (docs/military-doctrine.md §6): holding at the rally point while the
+     * squad is in contact, otherwise closing on the squad. Assigned by {@link LinkUp} from the
+     * squad's view - a soldier doesn't know where its squad is - never by the soldier itself.
+     */
+    record LinkingUp() implements Report {
+    }
 }

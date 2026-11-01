@@ -6,6 +6,9 @@ import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
 import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
 import io.github.jayessdeesea.minecraft.command.Formations;
+import io.github.jayessdeesea.minecraft.command.LinkUp;
+import io.github.jayessdeesea.minecraft.command.Report;
+import java.util.HashMap;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
@@ -87,6 +90,8 @@ public class SoldierRunner implements CommandLineRunner {
     /** Currently connected soldiers by name - written by connect/disconnect, read by the squad loop. */
     private final Map<String, DeterministicSoldier> activeSoldiers = new ConcurrentHashMap<>();
     private final ChainOfCommand chainOfCommand;
+    private final LinkUp linkUp = new LinkUp(); // squad thread only
+    private java.util.Set<String> linkingUp = java.util.Set.of(); // squad thread only
 
     public SoldierRunner(ChainOfCommand chainOfCommand) {
         this.chainOfCommand = chainOfCommand;
@@ -116,16 +121,27 @@ public class SoldierRunner implements CommandLineRunner {
         if (squad.isEmpty()) {
             return;
         }
-        List<SoldierStatus> statuses = squad.stream().map(DeterministicSoldier::status).toList();
+        // Replacements (respawned soldiers) go to the rear and rejoin by link-up, so the first
+        // formed soldier is the point man.
+        List<SoldierStatus> statuses = linkUp.reconstitute(squad.stream().map(DeterministicSoldier::status).toList());
+        java.util.Set<String> linking = statuses.stream().filter(s -> s.report() instanceof Report.LinkingUp)
+                .map(SoldierStatus::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        linking.stream().filter(name -> !linkingUp.contains(name))
+                .forEach(name -> LOG.info("[{} -> {}] LINKING UP after respawn", name, ChainOfCommand.SQUAD_NAME));
+        linkingUp.stream().filter(name -> !linking.contains(name))
+                .forEach(name -> LOG.info("[{} -> {}] LINKED UP", name, ChainOfCommand.SQUAD_NAME));
+        linkingUp = linking;
         Position pointMan = statuses.get(0).position();
         chainOfCommand.onSitrep(statuses, () -> TerrainSurveyor.survey(world, pointMan));
         SquadOrder order = chainOfCommand.currentOrder().orElse(null);
         if (order == null) {
             return;
         }
-        List<Order> orders = Formations.assign(order, statuses);
-        for (int i = 0; i < squad.size(); i++) {
-            squad.get(i).receiveOrder(orders.get(i));
+        List<Order> orders = linkUp.orders(statuses, Formations.assign(order, statuses));
+        Map<String, DeterministicSoldier> byName = new HashMap<>();
+        squad.forEach(soldier -> byName.put(soldier.status().name(), soldier));
+        for (int i = 0; i < statuses.size(); i++) {
+            byName.get(statuses.get(i).name()).receiveOrder(orders.get(i));
         }
     }
 

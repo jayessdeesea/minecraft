@@ -99,6 +99,20 @@ echelons read - the same economy of attention doctrine optimizes for.
 (who / what / where / why), intent. The squad leader's frequent re-tasking is FRAGO-shaped: a new
 objective, formation, or interval against the standing mission.
 
+## 6. Replacements: rally point and link-up
+
+| Practice | Content | Source |
+|---|---|---|
+| **Rally point** | A place the unit can reassemble at if it's dispersed - chosen where the unit last was secure. | ATP 3-21.8 (rally points) |
+| **Link-up** | Two elements joining up safely: recognition at a distance, then up close, then moving together, then local security. | FM 3-21.9 ch. 7 (older manual) |
+
+*How we use it:* a respawned soldier is a replacement. `command.LinkUp` reports it as
+`LinkingUp` and moves it to the rear of the formation, so if the point man died the next soldier
+takes point. While anyone in the squad is in contact the replacement holds at the rally point,
+which is where the point man last stood with nobody in contact. Otherwise it closes on the nearest
+squad member, and within 6 blocks it has linked up and gets a formation slot again. Recognition is
+just knowing where the squad is - our soldiers can't mistake each other for the enemy.
+
 ## Sources
 
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)
@@ -108,4 +122,5 @@ objective, formation, or interval against the standing mission.
 - FM 34-35 App. C, SALUTE spot report - [irp.fas.org](https://irp.fas.org/doddir/army/fm34-35/Appc.htm)
 - Prowords: [Procedure word (Wikipedia)](https://en.wikipedia.org/wiki/Procedure_word), [USMC MCT-COMM-1003/4 Radio Communications](https://www.trngcmd.marines.mil/Portals/207/Docs/FMTBE/Student%20Materials/MCECST/MCT-COMM-1003_4%20Radio%20Communications.doc), [SERA.14045 (UNABLE)](https://regulatorylibrary.caa.co.uk/923-2012/Content/Regs/03440_SERA14045_Transmitting_technique.htm)
 - LACE: [Kentucky National Guard photo caption](https://ky.ng.mil/News/Photos/igphoto/2003751897/), [RallyPoint discussion](https://rallypoint.com/answers/what-s-the-difference-between-each-of-these-reports-salute-lace-salt-spot-report-sit-rep) (secondary sources)
+- Link-up procedure: FM 3-21.9 ch. 7 - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/3-21-9/chap7.htm)
 - ATP 1-02.1 multi-service brevity codes (CANTCO) - [ALSSA](https://www.alssa.mil/MTTPs/Brevity/)
