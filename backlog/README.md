@@ -6,7 +6,7 @@ starting an item - are in AGENTS.md § Docs.
 
 ## Item format
 
-File name: a short kebab-case slug (`mob-simulation.md`). The slug is the item's ID; refer to items
+File name: a short kebab-case slug (`react-to-contact.md`). The slug is the item's ID; refer to items
 by file path.
 
 ```markdown
