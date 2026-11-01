@@ -272,6 +272,20 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void countsDeathsFromAliveButNotADeathCarriedOverFromAnEarlierRun() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        assertTrue(alice.status().condition().isEmpty(), "nothing reported yet");
+
+        alice.reportHealth(0, 19); // joined dead
+        alice.reportHealth(20, 20); // respawned
+        alice.reportHealth(7, 15);
+        alice.reportHealth(0, 15); // killed
+        alice.reportHealth(20, 20);
+
+        assertEquals(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 1), alice.status().condition().orElseThrow());
+    }
+
+    @Test
     void reportsMovingThenInPosition() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
         alice.receiveOrder(new Order.MoveTo(5.5, GROUND, 0.5, 1, 1));

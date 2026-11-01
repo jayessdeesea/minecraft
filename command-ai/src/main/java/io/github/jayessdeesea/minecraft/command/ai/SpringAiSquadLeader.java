@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.command.ai;
 
+import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
@@ -94,7 +95,8 @@ public final class SpringAiSquadLeader implements SquadLeader {
             SoldierStatus soldier = soldierStatuses.get(i);
             prompt.append("- ").append(soldier.name()).append(i == 0 ? " (point man)" : "")
                     .append(" at ").append(describe(soldier.position()))
-                    .append(": ").append(describe(soldier.report())).append('\n');
+                    .append(": ").append(describe(soldier.report()))
+                    .append("; ").append(describe(soldier.condition())).append('\n');
         }
         prompt.append("</squad>\n\n");
         prompt.append(describe(terrain)).append('\n');
@@ -213,6 +215,15 @@ public final class SpringAiSquadLeader implements SquadLeader {
     private static String describe(SquadOrder order) {
         return String.format(Locale.ROOT, "Move to %s in %s at %s interval, within %.0f blocks of that height. Intent: %s",
                 describe(order.objective()), order.formation(), order.interval(), order.verticalTolerance(), order.intent());
+    }
+
+    static String describe(Optional<Condition> condition) {
+        if (condition.isEmpty()) {
+            return "condition not reported yet";
+        }
+        Condition c = condition.get();
+        return String.format(Locale.ROOT, "health %.0f/%.0f, food %d/%d%s", c.health(), Condition.MAX_HEALTH, c.food(),
+                Condition.MAX_FOOD, c.deaths() == 0 ? "" : ", died " + c.deaths() + "x");
     }
 
     static String describe(Report report) {

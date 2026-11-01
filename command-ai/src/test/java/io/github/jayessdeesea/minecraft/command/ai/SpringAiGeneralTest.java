@@ -20,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SpringAiGeneralTest {
 
     private static final SquadStatus ALPHA = new SquadStatus("Alpha", new Report.Cantco("ravine in the way"), List.of(
-            new SoldierStatus("Alice", new Position(1, 64, 2), new Order.Idle(), new Report.Idle())));
+            new SoldierStatus("Alice", new Position(1, 64, 2), new Order.Idle(), new Report.Idle(), java.util.Optional.empty())));
     private static final SquadStatus BRAVO = new SquadStatus("Bravo", new Report.Moving(), List.of(
-            new SoldierStatus("Bob", new Position(3, 64, 4), new Order.Idle(), new Report.Moving())));
+            new SoldierStatus("Bob", new Position(3, 64, 4), new Order.Idle(), new Report.Moving(), java.util.Optional.empty())));
 
     private static GeneralReply.ObjectiveReply objective(String squad) {
         return new GeneralReply.ObjectiveReply(squad, "scout", 0, 64, -50, "find the village");

@@ -15,7 +15,7 @@ class FormationsTest {
 
     private static List<SoldierStatus> squadAt(Position... positions) {
         return java.util.Arrays.stream(positions)
-                .map(p -> new SoldierStatus("S", p, new Order.Idle(), new Report.Idle()))
+                .map(p -> new SoldierStatus("S", p, new Order.Idle(), new Report.Idle(), java.util.Optional.empty()))
                 .toList();
     }
 

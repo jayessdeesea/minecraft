@@ -1,7 +1,6 @@
 ---
 status: ready
 priority: P1
-depends-on: [lace-report]
 doctrine: rally points and link-up procedures (ATP 3-21.8; older FM 3-21.9 ch. 7)
 ---
 

@@ -47,6 +47,8 @@ import java.util.Locale;
 class SquadLeaderScenarioIT {
 
     private static final double PROGRESS_SLACK = 4;
+    private static final java.util.Optional<io.github.jayessdeesea.minecraft.command.Condition> HEALTHY =
+            java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 0));
     private static final int ORACLE_BUDGET = 500_000;
 
     private record Outcome(Scenario scenario, boolean stuck, long millis, List<String> failures) {
@@ -95,10 +97,10 @@ class SquadLeaderScenarioIT {
         BlockPos objective = scenario.objective();
         Position pointMan = new Position(start.x() + 0.5, start.y(), start.z() + 0.5);
         List<SoldierStatus> squad = List.of(
-                new SoldierStatus("Alice", pointMan, new Order.Idle(), new Report.Idle()),
+                new SoldierStatus("Alice", pointMan, new Order.Idle(), new Report.Idle(), HEALTHY),
                 soldierNear("Bob", world, start.x() - 2, start.z() + 2),
                 stuck ? new SoldierStatus("Carol", new Position(start.x() + 6.5, start.y() - 4, start.z() + 4.5),
-                        new Order.Idle(), new Report.Cantco("no route out of the pit"))
+                        new Order.Idle(), new Report.Cantco("no route out of the pit"), HEALTHY)
                         : soldierNear("Carol", world, start.x() + 2, start.z() + 2));
         TerrainSurvey terrain = TerrainSurveyor.survey(world, pointMan);
 
@@ -135,7 +137,7 @@ class SquadLeaderScenarioIT {
     }
 
     private static SoldierStatus soldierNear(String name, SyntheticWorld world, int x, int z) {
-        return new SoldierStatus(name, new Position(x + 0.5, world.ground(x, z) + 1, z + 0.5), new Order.Idle(), new Report.Idle());
+        return new SoldierStatus(name, new Position(x + 0.5, world.ground(x, z) + 1, z + 0.5), new Order.Idle(), new Report.Idle(), HEALTHY);
     }
 
     private static double horizontal(double x, double z, BlockPos objective) {

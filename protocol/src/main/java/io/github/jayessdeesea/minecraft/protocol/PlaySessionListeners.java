@@ -26,7 +26,7 @@ public record PlaySessionListeners(Consumer<ChunkUpdate> onChunkUpdate,
                                     Consumer<EntityUpdate> onEntitySpawn,
                                     Consumer<EntityMove> onEntityMove,
                                     Consumer<List<Integer>> onEntitiesRemoved,
-                                    Consumer<Float> onHealth,
+                                    Consumer<HealthUpdate> onHealth,
                                     Consumer<Throwable> onDisconnect) {
 
     public static PlaySessionListeners none() {

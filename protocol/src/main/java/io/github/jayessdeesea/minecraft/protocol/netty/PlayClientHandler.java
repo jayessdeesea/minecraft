@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
+import io.github.jayessdeesea.minecraft.protocol.HealthUpdate;
 import io.github.jayessdeesea.minecraft.protocol.ChunkUnload;
 import io.github.jayessdeesea.minecraft.protocol.ChunkUpdate;
 import io.github.jayessdeesea.minecraft.protocol.EntityMove;
@@ -203,7 +204,7 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             listeners.onChunkUnload().accept(new ChunkUnload(forget.chunkX(), forget.chunkZ()));
         } else if (packet instanceof SetHealthPacket health) {
             LOG.debug("Set Health received: health={} food={}", health.health(), health.food());
-            listeners.onHealth().accept(health.health());
+            listeners.onHealth().accept(new HealthUpdate(health.health(), health.food()));
         }
         // Everything else recognized-but-unhandled or unrecognized is already logged/cataloged by
         // PacketLoggingHandler/SessionStateManager earlier in the pipeline - nothing further to do

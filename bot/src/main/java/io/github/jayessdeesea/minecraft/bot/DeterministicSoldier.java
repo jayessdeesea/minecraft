@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.Goal;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
@@ -50,6 +51,10 @@ public final class DeterministicSoldier implements Soldier {
     private double verticalVelocity = 0;
     private volatile boolean onGround = true;
     private int ticksUntilAttack = 0; // tick-loop only
+    // Written only by the connection's thread (reportHealth), as position is only by the tick loop.
+    private volatile Condition condition;
+    private double lastReportedHealth = -1;
+    private int deaths;
 
     public DeterministicSoldier(String name, Position startingPosition) {
         this.name = name;
@@ -70,6 +75,19 @@ public final class DeterministicSoldier implements Soldier {
         pendingCorrection.set(serverPosition);
     }
 
+    /**
+     * The server's health and food for this soldier. Counts a death when health drops to 0 from
+     * alive; a soldier already dead when it joins died in an earlier run, so that isn't counted.
+     * Called from the connection's thread only - the sole writer of the condition fields.
+     */
+    public void reportHealth(double health, int food) {
+        if (health <= 0 && lastReportedHealth > 0) {
+            deaths++;
+        }
+        lastReportedHealth = health;
+        condition = new Condition(health, food, deaths);
+    }
+
     /** Whether the last tick ended standing on something - reported to the server with each move. */
     public boolean onGround() {
         return onGround;
@@ -77,7 +95,7 @@ public final class DeterministicSoldier implements Soldier {
 
     @Override
     public SoldierStatus status() {
-        return new SoldierStatus(name, position, order, report);
+        return new SoldierStatus(name, position, order, report, java.util.Optional.ofNullable(condition));
     }
 
     /**

@@ -1,7 +1,7 @@
 ---
 status: proposed
 priority: P3
-depends-on: [lace-report]
+depends-on: [inventory-decoding]
 doctrine: pre-combat checks/inspections (troop leading procedures)
 ---
 
@@ -22,7 +22,7 @@ Doing it on its own initiative, within the squad's intent, is mission command.
 ## Notes
 - This is the largest pure-Minecraft lift so far, and none of the groundwork exists:
   - Block breaking: Player Action start/finish digging, break timing, item pickup.
-  - Inventory state, which lace-report adds.
+  - Inventory state, which inventory-decoding adds.
   - Crafting: container clicks on the 2x2 grid, or the recipe book.
 - The work builds the substrate more than the coordination layer, so it stays behind the
   reporting items (AGENTS.md: favour legibility of coordination over feature completeness).

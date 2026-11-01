@@ -177,10 +177,14 @@ public class SoldierRunner implements CommandLineRunner {
                 move -> entityTracker.move(move.entityId(), move.x(), move.y(), move.z()),
                 ids -> entityTracker.remove(ids, name),
                 health -> {
+                    DeterministicSoldier soldier = activeSoldier.get();
+                    if (soldier != null) {
+                        soldier.reportHealth(health.health(), health.food());
+                    }
                     // A dead player gets no chunks or entities until it respawns, and a soldier has
                     // no reason to stay dead - respawn immediately. The server then teleports it and
                     // sends a Player Position, which arrives above as a correction.
-                    if (health <= 0) {
+                    if (health.health() <= 0) {
                         LOG.warn("{} is dead - respawning", name);
                         sessionReady.thenAccept(PlaySession::respawn);
                     }

@@ -6,7 +6,7 @@ starting an item - are in AGENTS.md § Docs.
 
 ## Item format
 
-File name: a short kebab-case slug (`lace-report.md`). The slug is the item's ID; refer to items
+File name: a short kebab-case slug (`respawn-linkup.md`). The slug is the item's ID; refer to items
 by file path.
 
 ```markdown
