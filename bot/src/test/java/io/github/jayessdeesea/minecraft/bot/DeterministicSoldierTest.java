@@ -167,6 +167,25 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void aHitWithNothingInReachSendsItAfterTheShooter() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+        alice.reportHealth(20, 20);
+        alice.receiveOrder(new Order.MoveTo(-10, GROUND, 0, 1, 256, Risk.LOW));
+        WorldView skeleton = withHostileAt(new Position(12, 64, 0), false);
+
+        alice.tick(skeleton);
+        assertTrue(alice.status().position().x() < 0, "nothing in contact radius: carries on with the order");
+
+        alice.reportHealth(17, 20); // an arrow
+        alice.tick(skeleton);
+
+        assertEquals(new Report.InContact(1), alice.status().report());
+        Position before = alice.status().position();
+        alice.tick(skeleton);
+        assertTrue(alice.status().position().x() > before.x(), "goes for the shooter at x=12");
+    }
+
+    @Test
     void ignoresHostilesOutsideContactRadius() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
         alice.receiveOrder(new Order.MoveTo(10, GROUND, 0, 1, 256, Risk.LOW));

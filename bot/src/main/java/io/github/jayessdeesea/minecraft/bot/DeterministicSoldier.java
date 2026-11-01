@@ -57,6 +57,9 @@ public final class DeterministicSoldier implements Soldier {
     private volatile Condition condition;
     private double lastReportedHealth = -1;
     private int deaths;
+    // Set by the connection's thread on a hit, consumed by the tick loop.
+    private final java.util.concurrent.atomic.AtomicBoolean hurt = new java.util.concurrent.atomic.AtomicBoolean();
+    private int underFireTicks; // tick-loop only
 
     public DeterministicSoldier(String name, Position startingPosition) {
         this.name = name;
@@ -85,6 +88,8 @@ public final class DeterministicSoldier implements Soldier {
     public void reportHealth(double health, int food) {
         if (health <= 0 && lastReportedHealth > 0) {
             deaths++;
+        } else if (health > 0 && health < lastReportedHealth) {
+            hurt.set(true);
         }
         lastReportedHealth = health;
         condition = new Condition(health, food, deaths);
@@ -125,6 +130,15 @@ public final class DeterministicSoldier implements Soldier {
     static final double KEEP_AWAY = 2.5;
 
     /**
+     * Losing health with no hostile in contact radius means being shot at - a skeleton holds 11 to
+     * 15 blocks off ({@code RangedBowAttackGoal}). For this long after a hit the soldier looks out
+     * to {@link #UNDER_FIRE_RADIUS} for the shooter and goes for it.
+     */
+    static final int UNDER_FIRE_TICKS = 100;
+    /** Just beyond a skeleton's 15-block bow range. */
+    public static final double UNDER_FIRE_RADIUS = 16;
+
+    /**
      * One tick of movement. First the "actions on contact" reflex: if a hostile is within {@link
      * #CONTACT_RADIUS}, the current order is set aside and the soldier fights the nearest one at
      * arm's length - closing to {@link #ATTACK_REACH}, striking whenever the attack has recharged,
@@ -133,7 +147,9 @@ public final class DeterministicSoldier implements Soldier {
      * involved. Running from a zombie can't break contact - it chases as fast as a soldier walks -
      * which is why the reflex holds rather than flees; the squad's react-to-contact drill brings
      * help ({@code command.ReactToContact}). A blocked step means standing still, never falling back
-     * to the order (which might lead toward the threat).
+     * to the order (which might lead toward the threat). A hit with nothing in contact radius means
+     * ranged fire: for {@link #UNDER_FIRE_TICKS} the soldier treats the nearest hostile within
+     * {@link #UNDER_FIRE_RADIUS} as its contact.
      *
      * <p>Otherwise follows a route to the current order's goal - planned by {@link Pathfinder}
      * around trees, up one-block steps and down short drops, and re-planned when the order
@@ -162,7 +178,17 @@ public final class DeterministicSoldier implements Soldier {
         }
 
         OptionalInt attack = OptionalInt.empty();
+        if (hurt.getAndSet(false)) {
+            underFireTicks = UNDER_FIRE_TICKS;
+        }
         List<TrackedEntity> threats = world.nearbyHostiles(position, CONTACT_RADIUS);
+        if (threats.isEmpty() && underFireTicks > 0) {
+            // Hit with nothing in reach: someone is shooting - find the shooter.
+            threats = world.nearbyHostiles(position, UNDER_FIRE_RADIUS);
+        }
+        if (underFireTicks > 0) {
+            underFireTicks--;
+        }
         if (!threats.isEmpty()) {
             TrackedEntity nearest = threats.get(0);
             Position threat = nearest.position();

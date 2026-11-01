@@ -145,7 +145,9 @@ risk)". The squad leader then decides whether the mission is worth that.
 - **The soldier's reflex.** A soldier in contact fights the nearest hostile at arm's length
   (`DeterministicSoldier.tick`): it closes to its 3-block reach, strikes when its attack has
   recharged, backs off inside 2.5 blocks, which is outside a zombie's reach, and holds in
-  between. It gets away from creepers instead.
+  between. It gets away from creepers instead. Losing health with no hostile within 8 blocks
+  means being shot at, so for 5 seconds it looks out to 16 blocks, beyond a skeleton's 15-block
+  bow range, and goes for the shooter.
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
 - **The squad leader** sees the contact in its next SITREP and can order something else.

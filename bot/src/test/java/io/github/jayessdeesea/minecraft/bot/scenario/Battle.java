@@ -16,8 +16,9 @@ import java.util.List;
  *
  * <p>Deliberately approximate, not vanilla mob AI (AGENTS.md's framing: the subject
  * is coordination, so the simulation only has to make a soldier's choices matter). The numbers
- * that come from the server jar ({@code createAttributes}): zombie attack damage 3, and movement
- * speed attributes zombie 0.23, skeleton and creeper 0.25. Speeds here are scaled from live runs,
+ * that come from the server jar: zombie attack damage 3, movement speed attributes zombie 0.23,
+ * skeleton and creeper 0.25 ({@code createAttributes}), and bow range 15 with a standoff from
+ * about 11 to 15 blocks ({@code RangedBowAttackGoal}). Speeds here are scaled from live runs,
  * where zombies chased at about a soldier's walking speed (0.2 blocks per tick). Everything else -
  * reach, cooldowns, knockback, bow range, aim and damage, creeper fuse and blast - is an estimate.
  */
@@ -45,7 +46,8 @@ public final class Battle implements WorldView {
     static final double ZOMBIE_DAMAGE = 3;
     static final int ZOMBIE_COOLDOWN = 20;
     static final double BOW_RANGE = 15;
-    static final double SKELETON_STANDOFF = 8;
+    /** Holds between 0.75 x 15 and 15 blocks, as {@code RangedBowAttackGoal} strafes (server jar). */
+    static final double SKELETON_STANDOFF = 13;
     static final double ARROW_DAMAGE = 3;
     static final int BOW_COOLDOWN = 40;
     static final double CREEPER_TRIGGER = 3;
