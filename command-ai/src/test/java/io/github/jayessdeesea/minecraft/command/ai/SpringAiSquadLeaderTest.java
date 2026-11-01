@@ -8,6 +8,7 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
+import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.MessageType;
@@ -41,6 +42,18 @@ class SpringAiSquadLeaderTest {
              "verticalTolerance": 3, "intent": "take the hilltop through the trees", "cantco": ""}
             """;
 
+    /** A 3x3 survey (radius 8, spacing 8) around (0, 0): reachable land, an unreachable ridge, water, unknown. */
+    private static final TerrainSurvey TERRAIN = new TerrainSurvey(0, 0, 8, 8, List.of(
+            new TerrainSurvey.Sample(-8, -8, TerrainSurvey.Ground.LAND, 64, true),
+            new TerrainSurvey.Sample(0, -8, TerrainSurvey.Ground.LAND, 80, false),
+            new TerrainSurvey.Sample(8, -8, TerrainSurvey.Ground.WATER, 62, false),
+            new TerrainSurvey.Sample(-8, 0, TerrainSurvey.Ground.LAND, 64, true),
+            new TerrainSurvey.Sample(0, 0, TerrainSurvey.Ground.LAND, 64, true),
+            new TerrainSurvey.Sample(8, 0, TerrainSurvey.Ground.LAND, 65, true),
+            new TerrainSurvey.Sample(-8, 8, TerrainSurvey.Ground.UNKNOWN, 64, false),
+            new TerrainSurvey.Sample(0, 8, TerrainSurvey.Ground.LAND, 63, true),
+            new TerrainSurvey.Sample(8, 8, TerrainSurvey.Ground.LAND, 63, true)));
+
     private static SquadOrderReply reply(double y, Formation formation, double verticalTolerance, String intent) {
         return new SquadOrderReply(0, y, 0, formation, Interval.NORMAL, verticalTolerance, intent, "");
     }
@@ -49,17 +62,32 @@ class SpringAiSquadLeaderTest {
     void decideReturnsNothingAndSkipsTheModelBeforeAnyObjective() {
         SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha", ChatClient.create(FakeChatModels.THROWING));
 
-        assertEquals(Optional.empty(), leader.decide(List.of(ALICE, BOB)));
+        assertEquals(Optional.empty(), leader.decide(List.of(ALICE, BOB), TERRAIN));
     }
 
     @Test
     void buildContextGivesTheSituationInTaggedSectionsWithReports() {
-        String prompt = SpringAiSquadLeader.buildContext("Alpha", HILL, null, List.of(ALICE, BOB)).prompt();
+        String prompt = SpringAiSquadLeader.buildContext("Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN).prompt();
 
         assertTrue(prompt.contains("<objective>") && prompt.contains("seize the hill") && prompt.contains("observe the valley"));
         assertTrue(prompt.contains("Alice (point man) at (1, 64, 2): Cantco: no route out of the pit"));
         assertTrue(prompt.contains("Bob at (3, 64, 4): Moving"));
         assertTrue(prompt.contains("<current_order>\nNone yet."));
+        assertTrue(prompt.contains("<terrain>"));
+    }
+
+    @Test
+    void terrainRendersAsATableNorthAtTheTop() {
+        String table = SpringAiSquadLeader.describe(TERRAIN);
+
+        assertEquals("""
+                <terrain>
+                        x=-8   x=0   x=8
+                z=-8      64   80x    ~~
+                z=0       64    64    65
+                z=8       ??    63    63
+                </terrain>
+                """, table);
     }
 
     @Test
@@ -69,7 +97,7 @@ class SpringAiSquadLeaderTest {
                 ChatClient.builder(FakeChatModels.replying(GOOD_REPLY, sent)).defaultSystem("You are a squad leader.").build());
         leader.receiveObjective(HILL);
 
-        SquadOrder order = leader.decide(List.of(ALICE, BOB)).orElseThrow();
+        SquadOrder order = leader.decide(List.of(ALICE, BOB), TERRAIN).orElseThrow();
 
         assertEquals(new SquadOrder(new Position(12, 71, -38), Formation.FILE, Interval.TIGHT, 3,
                 "take the hilltop through the trees"), order);
@@ -84,7 +112,7 @@ class SpringAiSquadLeaderTest {
                 ChatClient.create(FakeChatModels.replying(cantco, new AtomicReference<>())));
         leader.receiveObjective(HILL);
 
-        leader.decide(List.of(ALICE, BOB));
+        leader.decide(List.of(ALICE, BOB), TERRAIN);
 
         assertEquals(new Report.Cantco("the hill is behind a ravine"), leader.report());
     }

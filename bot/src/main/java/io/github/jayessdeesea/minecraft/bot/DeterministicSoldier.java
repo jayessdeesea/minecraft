@@ -224,9 +224,10 @@ public final class DeterministicSoldier implements Soldier {
         boolean replan = route == null || routeIndex >= route.size()
                 || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS;
         if (replan && onGround) {
+            boolean stuck = stuckTicks >= STUCK_TICKS;
             Pathfinder.Result plan = Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), goal, PLAN_BUDGET);
             route = plan.path();
-            assessPlan(plan);
+            assessPlan(plan, stuck);
             lastPlan = (plan.reachesGoal() ? "to goal" : "partial") + ", " + route.size() + " steps"
                     + (route.isEmpty() ? "" : " ending " + route.getLast());
             routeIndex = 0;
@@ -253,8 +254,16 @@ public final class DeterministicSoldier implements Soldier {
         stepToward(world, centreX, centreZ);
     }
 
-    private void assessPlan(Pathfinder.Result plan) {
-        if (plan.reachesGoal()) {
+    /**
+     * A re-plan forced by lack of progress counts as a failure even if the new route looks fine on
+     * paper: the planner can't see everything that stops a body (an off-grid snag, an entity in the
+     * way), and a soldier that keeps re-planning the same route without moving must eventually say
+     * so rather than report "Moving" forever.
+     */
+    private void assessPlan(Pathfinder.Result plan, boolean stuck) {
+        if (stuck) {
+            failedPlans++;
+        } else if (plan.reachesGoal()) {
             failedPlans = 0;
             lastPartialPlanFrom = null;
         } else {
@@ -368,8 +377,10 @@ public final class DeterministicSoldier implements Soldier {
             return;
         }
 
-        double nextX = position.x() + (dx / distance) * STEP;
-        double nextZ = position.z() + (dz / distance) * STEP;
+        double stepX = (dx / distance) * STEP;
+        double stepZ = (dz / distance) * STEP;
+        double nextX = position.x() + stepX;
+        double nextZ = position.z() + stepZ;
         double y = position.y();
         if (bodyFits(world, nextX, y, nextZ)) {
             position = new Position(nextX, y, nextZ);
@@ -378,6 +389,13 @@ public final class DeterministicSoldier implements Soldier {
             // A one-block rise with headroom here and there: jump; the step happens once airborne.
             verticalVelocity = JUMP_VELOCITY;
             onGround = false;
+        } else if (Math.abs(stepX) > 1e-9 && bodyFits(world, nextX, y, position.z())) {
+            // Blocked on the diagonal: slide along the obstacle, one axis at a time - how vanilla
+            // resolves collisions. The route is planned on cell centres; a 0.6-wide body standing
+            // off-centre can snag a corner the plan doesn't see.
+            position = new Position(nextX, y, position.z());
+        } else if (Math.abs(stepZ) > 1e-9 && bodyFits(world, position.x(), y, nextZ)) {
+            position = new Position(position.x(), y, nextZ);
         }
     }
 }

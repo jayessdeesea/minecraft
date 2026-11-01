@@ -25,6 +25,10 @@ public interface SquadLeader {
      */
     Report report();
 
-    /** How the squad moves now - empty until an objective has been received. */
-    Optional<SquadOrder> decide(List<SoldierStatus> soldierStatuses);
+    /**
+     * How the squad moves now - empty until an objective has been received. {@code terrain} is the
+     * ground around the point man (see {@link TerrainSurvey}), so the objective can be one the
+     * squad can actually reach.
+     */
+    Optional<SquadOrder> decide(List<SoldierStatus> soldierStatuses, TerrainSurvey terrain);
 }

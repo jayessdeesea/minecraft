@@ -96,6 +96,34 @@ public final class Pathfinder {
         return new Result(reconstruct(cameFrom, start, closest), false);
     }
 
+    /**
+     * Every standing cell reachable from {@code start} with the same moves {@link #find} uses,
+     * staying within {@code maxHorizontalDistance} blocks (x and z) of it, visiting at most
+     * {@code maxExpanded} cells. A breadth-first flood fill - one call answers "can the point man
+     * get there?" for a whole area at once.
+     */
+    public static java.util.Set<BlockPos> reachable(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded) {
+        java.util.Set<BlockPos> seen = new java.util.HashSet<>();
+        java.util.ArrayDeque<BlockPos> frontier = new java.util.ArrayDeque<>();
+        if (!standable(world, start)) {
+            return seen;
+        }
+        seen.add(start);
+        frontier.add(start);
+        while (!frontier.isEmpty() && seen.size() < maxExpanded) {
+            BlockPos current = frontier.poll();
+            for (Move move : moves(world, current)) {
+                BlockPos next = move.to();
+                if (Math.abs(next.x() - start.x()) <= maxHorizontalDistance
+                        && Math.abs(next.z() - start.z()) <= maxHorizontalDistance
+                        && seen.add(next)) {
+                    frontier.add(next);
+                }
+            }
+        }
+        return seen;
+    }
+
     private static List<Move> moves(WorldView world, BlockPos from) {
         List<Move> moves = new ArrayList<>(8);
         for (int[] d : ORTHOGONAL) {

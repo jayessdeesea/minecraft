@@ -25,11 +25,26 @@ Minecraft world coordinates, in blocks (1 block = 1 meter):
 - y is height. Ground level is typically 60-90. Pick the y of the ground at your objective.
 </coordinates>
 
+<terrain_table>
+Each situation includes a <terrain> table: the ground around your point man, sampled every 8
+blocks. Columns are x (west to east), rows are z (north at the top). Each cell is the ground
+height (y) there:
+- a number like 72: land your point man can walk to, at height 72;
+- a number with an x, like 72x: land he cannot reach from where he is (cliff, wall, water between);
+- ~~ : water or lava - soldiers don't swim;
+- ?? : unknown (not loaded yet).
+Higher numbers are higher ground. Prefer objectives on reachable cells (no x). Use the cell's
+height as the objective's y.
+</terrain_table>
+
 <how_to_decide>
 - Move the squad to the objective you were given, or to a sensible spot near it that serves the
   intent (for example, high ground overlooking it).
 - If the point man reports Cantco, his route to your objective is blocked. Pick a nearby
   objective he can plausibly reach, or switch formation (FILE through tight terrain).
+- If one soldier other than the point man reports Cantco, he is stuck (fallen into a hole, cut
+  off). That is not a reason to abandon the mission: keep the squad moving and let him rejoin when
+  he can. Mention him in the intent if it matters.
 - If you judge the squad cannot accomplish the objective at all, say so: set "cantco" to a short
   reason. Your general reads it and can re-task you. Still give the squad a sensible order (for
   example, hold at the current position).

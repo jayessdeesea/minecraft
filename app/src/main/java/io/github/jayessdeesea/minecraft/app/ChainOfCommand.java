@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
+import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
 import io.github.jayessdeesea.minecraft.command.ai.SpringAiSquadLeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,6 +20,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /**
  * The LLM echelons' imperative shell: decides <em>when</em> the general and the squad leader
@@ -77,27 +79,30 @@ public class ChainOfCommand {
 
     /**
      * Called with the squad's SITREPs (formation order, point man first) every second. Cheap: at
-     * most kicks off a model call on its echelon's own thread and returns.
+     * most kicks off a model call on its echelon's own thread and returns. {@code terrain} is only
+     * evaluated - on the squad leader's thread - when the squad leader is actually about to decide.
      */
-    public void onSitrep(List<SoldierStatus> squad) {
+    public void onSitrep(List<SoldierStatus> squad, Supplier<TerrainSurvey> terrain) {
         if (squad.isEmpty()) {
             return;
         }
         long now = System.currentTimeMillis();
         Report squadReport = squadLeader.report();
-        boolean newSquadCantco = squadReport instanceof Report.Cantco && !squadReport.equals(squadReportAnswered);
+        // New = the squad went from able to unable. A CANTCO re-worded on the next decision is the
+        // same CANTCO; comparing the text re-tasked the squad every few seconds.
+        boolean newSquadCantco = squadReport instanceof Report.Cantco && !(squadReportAnswered instanceof Report.Cantco);
         if (objective == null || since(lastGeneralMillis, now) >= GENERAL_PERIOD_MILLIS
                 || (newSquadCantco && since(lastGeneralMillis, now) >= MIN_GAP_MILLIS)) {
-            squadReportAnswered = squadReport;
             askGeneral(squad, now);
         }
+        squadReportAnswered = squadReport;
         java.util.Set<String> cantcos = squad.stream().filter(s -> s.report() instanceof Report.Cantco)
                 .map(SoldierStatus::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
         boolean newSoldierCantco = !cantcosAnswered.containsAll(cantcos);
         if (objective != null && (newObjective || since(lastSquadLeaderMillis, now) >= SQUAD_PERIOD_MILLIS
                 || (newSoldierCantco && since(lastSquadLeaderMillis, now) >= MIN_GAP_MILLIS))) {
             cantcosAnswered = cantcos;
-            askSquadLeader(squad, now);
+            askSquadLeader(squad, terrain, now);
         }
     }
 
@@ -126,7 +131,7 @@ public class ChainOfCommand {
         });
     }
 
-    private void askSquadLeader(List<SoldierStatus> squad, long now) {
+    private void askSquadLeader(List<SoldierStatus> squad, Supplier<TerrainSurvey> terrain, long now) {
         if (!squadLeaderBusy.compareAndSet(false, true)) {
             return;
         }
@@ -135,9 +140,11 @@ public class ChainOfCommand {
         squadLeaderThread.execute(() -> {
             try {
                 long started = System.currentTimeMillis();
-                squadLeader.decide(squad).ifPresent(decided -> {
-                    LOG.info("[{} -> squad] ({} ms) FRAGO: move to ({}, {}, {}) in {} at {} interval. Intent: {}", SQUAD_NAME,
-                            System.currentTimeMillis() - started,
+                TerrainSurvey survey = terrain.get();
+                long reachable = survey.samples().stream().filter(TerrainSurvey.Sample::reachable).count();
+                squadLeader.decide(squad, survey).ifPresent(decided -> {
+                    LOG.info("[{} -> squad] ({} ms, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval. Intent: {}",
+                            SQUAD_NAME, System.currentTimeMillis() - started, reachable, survey.samples().size(),
                             Math.round(decided.objective().x()), Math.round(decided.objective().y()), Math.round(decided.objective().z()),
                             decided.formation(), decided.interval(), decided.intent());
                     if (squadLeader.report() instanceof Report.Cantco cantco) {

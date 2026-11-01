@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
+import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
 import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
 import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
@@ -117,7 +118,8 @@ public class SoldierRunner implements CommandLineRunner {
             return;
         }
         List<SoldierStatus> statuses = squad.stream().map(DeterministicSoldier::status).toList();
-        chainOfCommand.onSitrep(statuses);
+        Position pointMan = statuses.get(0).position();
+        chainOfCommand.onSitrep(statuses, () -> TerrainSurveyor.survey(world, pointMan));
         SquadOrder order = chainOfCommand.currentOrder().orElse(null);
         if (order == null) {
             return;

@@ -257,6 +257,21 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void slidesAlongAWallInsteadOfSnaggingOnIt() {
+        // A wall along z = 1 (z >= 1 solid at body height). Alice hugs it, off-centre, and is sent
+        // east along it; a straight step toward a slightly-south target would clip the wall.
+        WorldView wall = blocks((x, y, z) -> y < GROUND || (z >= 1 && y < GROUND + 2));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.69));
+        alice.receiveOrder(new Order.MoveTo(8.5, GROUND, 0.5, 1, 1));
+
+        for (int i = 0; i < 100; i++) {
+            alice.tick(wall);
+        }
+
+        assertTrue(alice.status().position().x() > 7, "should slide east along the wall: " + alice.status().position());
+    }
+
+    @Test
     void reportsMovingThenInPosition() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
         alice.receiveOrder(new Order.MoveTo(5.5, GROUND, 0.5, 1, 1));

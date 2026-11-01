@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
+import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
 import org.springframework.ai.chat.client.ChatClient;
 
 import java.util.List;
@@ -64,12 +65,12 @@ public final class SpringAiSquadLeader implements SquadLeader {
      * without one.
      */
     @Override
-    public Optional<SquadOrder> decide(List<SoldierStatus> soldierStatuses) {
+    public Optional<SquadOrder> decide(List<SoldierStatus> soldierStatuses, TerrainSurvey terrain) {
         Objective current = this.objective;
         if (current == null) {
             return Optional.empty();
         }
-        SquadOrderReply reply = callModel(buildContext(name, current, lastOrder, soldierStatuses));
+        SquadOrderReply reply = callModel(buildContext(name, current, lastOrder, soldierStatuses, terrain));
         SquadOrder order = toSquadOrder(reply);
         lastOrder = order;
         report = reply.cantco() == null || reply.cantco().isBlank() ? new Report.Moving() : new Report.Cantco(reply.cantco());
@@ -77,7 +78,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
     }
 
     static PromptContext buildContext(String squadName, Objective objective, SquadOrder lastOrder,
-                                      List<SoldierStatus> soldierStatuses) {
+                                      List<SoldierStatus> soldierStatuses, TerrainSurvey terrain) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("<objective>\n")
                 .append("Mission: ").append(objective.mission()).append('\n')
@@ -95,6 +96,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
                     .append(": ").append(describe(soldier.report())).append('\n');
         }
         prompt.append("</squad>\n\n");
+        prompt.append(describe(terrain)).append('\n');
         prompt.append("Decide the squad's order now.");
         return new PromptContext(prompt.toString());
     }
@@ -127,6 +129,34 @@ public final class SpringAiSquadLeader implements SquadLeader {
         }
         return new SquadOrder(new Position(reply.x(), reply.y(), reply.z()), reply.formation(), reply.interval(),
                 reply.verticalTolerance(), reply.intent());
+    }
+
+    /**
+     * The survey as a compact table: one row per z (north at the top), one column per x, each cell
+     * the ground height - suffixed {@code x} if the point man can't reach it - or {@code ~~} for
+     * water and {@code ??} for unknown. The system prompt explains the notation.
+     */
+    static String describe(TerrainSurvey terrain) {
+        StringBuilder table = new StringBuilder("<terrain>\n      ");
+        int columns = 2 * terrain.radius() / terrain.spacing() + 1;
+        for (int c = 0; c < columns; c++) {
+            table.append(String.format(Locale.ROOT, "%6s", "x=" + terrain.samples().get(c).x()));
+        }
+        table.append('\n');
+        for (int r = 0; r * columns < terrain.samples().size(); r++) {
+            table.append(String.format(Locale.ROOT, "%-6s", "z=" + terrain.samples().get(r * columns).z()));
+            for (int c = 0; c < columns; c++) {
+                TerrainSurvey.Sample sample = terrain.samples().get(r * columns + c);
+                String cell = switch (sample.ground()) {
+                    case LAND -> sample.height() + (sample.reachable() ? "" : "x");
+                    case WATER -> "~~";
+                    case UNKNOWN -> "??";
+                };
+                table.append(String.format(Locale.ROOT, "%6s", cell));
+            }
+            table.append('\n');
+        }
+        return table.append("</terrain>\n").toString();
     }
 
     static String describe(Position position) {
