@@ -91,6 +91,31 @@ class SpringAiSquadLeaderTest {
     }
 
     @Test
+    void objectiveGroundListsReachableAlternativesWhenTheObjectiveIsNot() {
+        // (0, -8) is the unreachable ridge in TERRAIN.
+        String ground = SpringAiSquadLeader.describeObjectiveGround(TERRAIN, new Position(0, 80, -8));
+
+        assertEquals("""
+                <objective_ground>
+                The objective is NOT reachable: land the point man cannot get to.
+                Reachable spots nearest the objective:
+                - (-8, 64, -8): 8 blocks from the objective
+                - (0, 64, 0): 8 blocks from the objective
+                - (-8, 64, 0): 11 blocks from the objective
+                - (8, 65, 0): 11 blocks from the objective
+                - (0, 63, 8): 16 blocks from the objective
+                Highest reachable spot: (8, 65, 0).
+                </objective_ground>
+                """, ground);
+    }
+
+    @Test
+    void objectiveGroundSaysWhenTheObjectiveIsBeyondTheSurvey() {
+        assertTrue(SpringAiSquadLeader.describeObjectiveGround(TERRAIN, new Position(0, 64, -40))
+                .contains("outside the surveyed area, 32 blocks beyond its edge"));
+    }
+
+    @Test
     void decideRoundTripsStructuredOutputIntoASquadOrder() {
         AtomicReference<Prompt> sent = new AtomicReference<>();
         SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha",

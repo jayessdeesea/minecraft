@@ -376,6 +376,13 @@ those need aren't decoded.
   `.entity(...)` with provider-native structured output plus schema validation; replies are then
   checked by `toSquadOrder`/`toObjectives` and rejected loudly if they can't be carried out.
 
+  Model size is not the bottleneck on this prompt. `gpt-oss:20b` and `qwen3:30b-a3b` - the
+  largest that run at interactive speed on 16 GB of VRAM - did no better than `qwen3:14b` at
+  choosing reachable ground: all three copied the general's coordinates back even when the terrain
+  table marked them unreachable. Precomputing the answer did fix it. `<objective_ground>` lists
+  the reachable spots nearest the objective, and with it `qwen3:14b` chose correctly. The same
+  rule applies to every echelon: give the model lookups already done, never a grid to decode.
+
   `ChainOfCommand` decides *when* each echelon thinks: the squad leader every 20s, the general
   every 2min, either one early (at most every 8s) on a *new* CANTCO from below. A standing CANTCO
   that's already been answered waits for the routine interval - re-asking about the same report

@@ -35,6 +35,10 @@ height (y) there:
 - ?? : unknown (not loaded yet).
 Higher numbers are higher ground. Prefer objectives on reachable cells (no x). Use the cell's
 height as the objective's y.
+
+After the table, <objective_ground> says whether your objective itself is reachable and lists
+the reachable spots nearest it, and the highest reachable spot. When the objective is not
+reachable, choose one of those spots - copy its coordinates exactly - rather than the objective.
 </terrain_table>
 
 <how_to_decide>

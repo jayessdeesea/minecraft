@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
 import org.springframework.ai.chat.client.ChatClient;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -97,6 +98,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
         }
         prompt.append("</squad>\n\n");
         prompt.append(describe(terrain)).append('\n');
+        prompt.append(describeObjectiveGround(terrain, objective.location())).append('\n');
         prompt.append("Decide the squad's order now.");
         return new PromptContext(prompt.toString());
     }
@@ -157,6 +159,51 @@ public final class SpringAiSquadLeader implements SquadLeader {
             table.append('\n');
         }
         return table.append("</terrain>\n").toString();
+    }
+
+    /**
+     * The table's answer to "where can we actually go near the objective", precomputed: models
+     * read a 2D grid poorly and tend to echo the general's coordinates back even when the table
+     * marks them unreachable, so - like formation geometry - the lookup is done here and the model
+     * keeps only the judgement of which candidate serves the intent.
+     */
+    static String describeObjectiveGround(TerrainSurvey terrain, Position objective) {
+        List<TerrainSurvey.Sample> reachable = terrain.samples().stream()
+                .filter(s -> s.ground() == TerrainSurvey.Ground.LAND && s.reachable()).toList();
+        TerrainSurvey.Sample nearest = terrain.samples().stream()
+                .min(Comparator.comparingDouble(s -> distance(s, objective))).orElseThrow();
+        boolean inside = Math.abs(objective.x() - terrain.originX()) <= terrain.radius()
+                && Math.abs(objective.z() - terrain.originZ()) <= terrain.radius();
+        StringBuilder out = new StringBuilder("<objective_ground>\n");
+        if (!inside) {
+            out.append(String.format(Locale.ROOT, "The objective is outside the surveyed area, %.0f blocks beyond its edge.\n",
+                    distance(nearest, objective)));
+        } else if (nearest.ground() == TerrainSurvey.Ground.LAND && nearest.reachable()) {
+            out.append("The objective is on reachable land at height ").append(nearest.height()).append(".\n");
+        } else {
+            out.append("The objective is NOT reachable: ").append(switch (nearest.ground()) {
+                case WATER -> "water";
+                case UNKNOWN -> "unknown ground";
+                case LAND -> "land the point man cannot get to";
+            }).append(".\n");
+        }
+        if (reachable.isEmpty()) {
+            return out.append("No surveyed spot is reachable.\n</objective_ground>\n").toString();
+        }
+        out.append("Reachable spots nearest the objective:\n");
+        reachable.stream().sorted(Comparator.comparingDouble(s -> distance(s, objective))).limit(5).forEach(s ->
+                out.append(String.format(Locale.ROOT, "- (%d, %d, %d): %.0f blocks from the objective\n",
+                        s.x(), s.height(), s.z(), distance(s, objective))));
+        TerrainSurvey.Sample highest = reachable.stream()
+                .max(Comparator.comparingInt(TerrainSurvey.Sample::height)
+                        .thenComparing(Comparator.comparingDouble((TerrainSurvey.Sample s) -> distance(s, objective)).reversed()))
+                .orElseThrow();
+        out.append(String.format(Locale.ROOT, "Highest reachable spot: (%d, %d, %d).\n", highest.x(), highest.height(), highest.z()));
+        return out.append("</objective_ground>\n").toString();
+    }
+
+    private static double distance(TerrainSurvey.Sample sample, Position position) {
+        return Math.hypot(sample.x() - position.x(), sample.z() - position.z());
     }
 
     static String describe(Position position) {
