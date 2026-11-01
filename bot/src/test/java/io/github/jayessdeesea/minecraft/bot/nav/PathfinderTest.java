@@ -151,6 +151,55 @@ class PathfinderTest {
         assertTrue(Pathfinder.find(pit, START, exactly(2, GROUND - 3, 0), 1000).reachesGoal());
         assertFalse(Pathfinder.find(cliff, START, exactly(2, GROUND - 10, 0), 1000).reachesGoal());
         assertTrue(Pathfinder.find(ledge, START, exactly(1, GROUND, 0), 10).reachesGoal());
+
+        assertTrue(Pathfinder.find(cliff, START, exactly(2, GROUND - 10, 0), 1000, new FallAllowance(7, 5)).reachesGoal(),
+                "a 10-block drop costs 7");
+        assertFalse(Pathfinder.find(cliff, START, exactly(2, GROUND - 10, 0), 1000, new FallAllowance(6, 5)).reachesGoal());
+    }
+
+    @Test
+    void prefersALongerSafeRouteToADamagingDropUnlessDamageIsCheap() {
+        // Lower ground 5 down beyond x=0, except a 1-block staircase down along z=3.
+        WorldView steps = world((x, y, z) -> false);
+        WorldView terrain = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                if (x <= 0) {
+                    return y < GROUND;
+                }
+                if (z == 3 && x <= 5) {
+                    return y < GROUND - x;
+                }
+                return y < GROUND - 5;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return steps.nearbyHostiles(center, radius);
+            }
+        };
+        Goal below = exactly(7, GROUND - 5, 0);
+
+        List<BlockPos> careful = Pathfinder.find(terrain, START, below, 5000, new FallAllowance(10, 20)).path();
+        List<BlockPos> hasty = Pathfinder.find(terrain, START, below, 5000, new FallAllowance(10, 0.1)).path();
+
+        assertTrue(maxDrop(careful) <= Pathfinder.MAX_DROP, "takes the stairs: " + careful);
+        assertTrue(maxDrop(hasty) > Pathfinder.MAX_DROP, "jumps: " + hasty);
+    }
+
+    private static int maxDrop(List<BlockPos> path) {
+        int max = 0;
+        BlockPos previous = START;
+        for (BlockPos cell : path) {
+            max = Math.max(max, previous.y() - cell.y());
+            previous = cell;
+        }
+        return max;
     }
 
     @Test

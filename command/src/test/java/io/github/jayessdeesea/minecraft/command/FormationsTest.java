@@ -26,15 +26,15 @@ class FormationsTest {
     @Test
     void pointManHeadsForTheObjective() {
         List<Order> orders = Formations.assign(
-                new SquadOrder(NORTH, Formation.WEDGE, Interval.NORMAL, 2, "scout"), squadAt(POINT, POINT, POINT));
+                new SquadOrder(NORTH, Formation.WEDGE, Interval.NORMAL, 2, Risk.LOW, "scout"), squadAt(POINT, POINT, POINT));
 
-        assertEquals(new Order.MoveTo(0, 64, -50, Formations.POINT_TOLERANCE, 2), orders.get(0));
+        assertEquals(new Order.MoveTo(0, 64, -50, Formations.POINT_TOLERANCE, 2, Risk.LOW), orders.get(0));
     }
 
     @Test
     void wedgeEchelonsRightThenLeftBehindThePointMan() {
         List<Order> orders = Formations.assign(
-                new SquadOrder(NORTH, Formation.WEDGE, Interval.NORMAL, 2, "scout"), squadAt(POINT, POINT, POINT));
+                new SquadOrder(NORTH, Formation.WEDGE, Interval.NORMAL, 2, Risk.LOW, "scout"), squadAt(POINT, POINT, POINT));
 
         Order.MoveTo first = order(orders, 1);
         Order.MoveTo second = order(orders, 2);
@@ -47,7 +47,7 @@ class FormationsTest {
     @Test
     void fileLinesUpBehind() {
         List<Order> orders = Formations.assign(
-                new SquadOrder(NORTH, Formation.FILE, Interval.TIGHT, 2, "move"), squadAt(POINT, POINT, POINT));
+                new SquadOrder(NORTH, Formation.FILE, Interval.TIGHT, 2, Risk.LOW, "move"), squadAt(POINT, POINT, POINT));
 
         assertEquals(0, order(orders, 1).x(), 1e-9);
         assertEquals(3, order(orders, 1).z(), 1e-9);
@@ -57,7 +57,7 @@ class FormationsTest {
     @Test
     void lineDeploysAbreast() {
         List<Order> orders = Formations.assign(
-                new SquadOrder(NORTH, Formation.LINE, Interval.EXTENDED, 2, "assault"), squadAt(POINT, POINT, POINT));
+                new SquadOrder(NORTH, Formation.LINE, Interval.EXTENDED, 2, Risk.LOW, "assault"), squadAt(POINT, POINT, POINT));
 
         assertEquals(new Position(10, 64, 0), new Position(order(orders, 1).x(), 64, order(orders, 1).z()));
         assertEquals(new Position(-10, 64, 0), new Position(order(orders, 2).x(), 64, order(orders, 2).z()));
@@ -67,7 +67,7 @@ class FormationsTest {
     void slotsFollowThePointMansCurrentPosition() {
         Position movedPoint = new Position(5, 70, -20);
         List<Order> orders = Formations.assign(
-                new SquadOrder(NORTH, Formation.FILE, Interval.TIGHT, 2, "move"), squadAt(movedPoint, POINT));
+                new SquadOrder(NORTH, Formation.FILE, Interval.TIGHT, 2, Risk.LOW, "move"), squadAt(movedPoint, POINT));
 
         Order.MoveTo slot = order(orders, 1);
         assertTrue(Math.abs(slot.x() - 5) < 1 && slot.z() > -20, "behind the point man where he is now: " + slot);
@@ -78,7 +78,7 @@ class FormationsTest {
     void onArrivalTheFormationKeepsTheApproachHeading() {
         // Point man at the objective; the other soldier is south of him, so they came from the south.
         List<Order> orders = Formations.assign(
-                new SquadOrder(NORTH, Formation.FILE, Interval.TIGHT, 2, "hold"),
+                new SquadOrder(NORTH, Formation.FILE, Interval.TIGHT, 2, Risk.LOW, "hold"),
                 squadAt(NORTH, new Position(0, 64, -40)));
 
         assertTrue(order(orders, 1).z() > -50, "slot stays on the approach side: " + orders.get(1));

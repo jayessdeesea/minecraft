@@ -122,8 +122,8 @@ public final class SpringAiSquadLeader implements SquadLeader {
         if (reply.y() < -64 || reply.y() > 320) {
             throw new IllegalStateException("objective height outside the world: " + reply);
         }
-        if (reply.formation() == null || reply.interval() == null) {
-            throw new IllegalStateException("missing formation or interval: " + reply);
+        if (reply.formation() == null || reply.interval() == null || reply.risk() == null) {
+            throw new IllegalStateException("missing formation, interval or risk: " + reply);
         }
         if (!(reply.verticalTolerance() > 0)) {
             throw new IllegalStateException("vertical tolerance must be positive: " + reply);
@@ -132,7 +132,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             throw new IllegalStateException("an order without intent: " + reply);
         }
         return new SquadOrder(new Position(reply.x(), reply.y(), reply.z()), reply.formation(), reply.interval(),
-                reply.verticalTolerance(), reply.intent());
+                reply.verticalTolerance(), reply.risk(), reply.intent());
     }
 
     /**
@@ -213,8 +213,8 @@ public final class SpringAiSquadLeader implements SquadLeader {
     }
 
     private static String describe(SquadOrder order) {
-        return String.format(Locale.ROOT, "Move to %s in %s at %s interval, within %.0f blocks of that height. Intent: %s",
-                describe(order.objective()), order.formation(), order.interval(), order.verticalTolerance(), order.intent());
+        return String.format(Locale.ROOT, "Move to %s in %s at %s interval, within %.0f blocks of that height, %s risk. Intent: %s",
+                describe(order.objective()), order.formation(), order.interval(), order.verticalTolerance(), order.risk(), order.intent());
     }
 
     static String describe(Optional<Condition> condition) {

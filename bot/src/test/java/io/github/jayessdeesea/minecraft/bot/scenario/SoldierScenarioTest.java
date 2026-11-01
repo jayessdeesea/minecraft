@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Risk;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -81,7 +82,7 @@ class SoldierScenarioTest {
         int budget = reachable ? 400 + 15 * oracle.path().size() : UNREACHABLE_TICK_BUDGET;
 
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
-        soldier.receiveOrder(new Order.MoveTo(goal.x(), goal.y(), goal.z(), goal.horizontalTolerance(), goal.verticalTolerance()));
+        soldier.receiveOrder(new Order.MoveTo(goal.x(), goal.y(), goal.z(), goal.horizontalTolerance(), goal.verticalTolerance(), Risk.LOW));
         Set<BlockPos> trail = new LinkedHashSet<>();
 
         for (int tick = 0; tick < budget; tick++) {

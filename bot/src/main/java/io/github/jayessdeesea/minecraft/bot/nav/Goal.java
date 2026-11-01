@@ -19,7 +19,7 @@ public record Goal(double x, double y, double z, double horizontalTolerance, dou
     }
 
     /** Admissible distance-to-go for A*: how far outside the tolerance zone the cell is. */
-    double estimate(BlockPos cell) {
+    public double estimate(BlockPos cell) {
         return Math.max(0, horizontalDistance(cell.x() + 0.5, cell.z() + 0.5) - horizontalTolerance)
                 + Math.max(0, Math.abs(cell.y() - y) - verticalTolerance);
     }

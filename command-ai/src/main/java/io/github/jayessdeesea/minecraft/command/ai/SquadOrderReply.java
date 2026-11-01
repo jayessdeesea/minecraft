@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.command.ai;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import io.github.jayessdeesea.minecraft.command.Formation;
 import io.github.jayessdeesea.minecraft.command.Interval;
+import io.github.jayessdeesea.minecraft.command.Risk;
 
 /**
  * The squad leader model's structured reply - the JSON schema handed to the model is generated
@@ -18,6 +19,8 @@ record SquadOrderReply(
         @JsonPropertyDescription("TIGHT, NORMAL or EXTENDED spacing between soldiers") Interval interval,
         @JsonPropertyDescription("Blocks above or below the objective's y the squad may end up, at least 1: 3 normally, 1 to keep everyone on one floor of a building, up to 6 on steep hills")
         double verticalTolerance,
+        @JsonPropertyDescription("LOW: nobody takes damage to keep moving. MEDIUM: a soldier may take a fall that leaves him at half health or more when there's no safe way. HIGH: falls down to 4 health, only when the mission needs it")
+        Risk risk,
         @JsonPropertyDescription("One sentence: why the squad is doing this") String intent,
         @JsonPropertyDescription("Empty if the mission is achievable; otherwise a short reason the squad cannot accomplish it")
         String cantco) {

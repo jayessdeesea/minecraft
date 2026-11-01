@@ -17,8 +17,10 @@ public sealed interface Order {
      * Get to any standing spot within {@code horizontalTolerance} blocks (x/z plane) and
      * {@code verticalTolerance} blocks (feet height) of (x, y, z). The tolerances are the soldier's
      * own freedom: it picks the route, around trees and up steps, and where inside the zone to
-     * stop. A small vertical tolerance keeps it on one floor of a building.
+     * stop. A small vertical tolerance keeps it on one floor of a building. {@code risk} is how
+     * much health the soldier may spend on the way ({@link Risk}).
      */
-    record MoveTo(double x, double y, double z, double horizontalTolerance, double verticalTolerance) implements Order {
+    record MoveTo(double x, double y, double z, double horizontalTolerance, double verticalTolerance, Risk risk)
+            implements Order {
     }
 }

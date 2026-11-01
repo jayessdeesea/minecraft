@@ -89,7 +89,9 @@ public final class LinkUp {
             SoldierStatus soldier = reconstituted.get(i);
             if (soldier.report() instanceof Report.LinkingUp) {
                 Position target = inContact && rallyPoint != null ? rallyPoint : nearest(linkUpCandidates(formed), soldier.position()).position();
-                orders.set(i, new Order.MoveTo(target.x(), target.y(), target.z(), APPROACH_TOLERANCE, VERTICAL_TOLERANCE));
+                // A replacement rejoining is never worth more of its health than the squad's own order.
+                Risk risk = formationOrders.get(i) instanceof Order.MoveTo slot ? slot.risk() : Risk.LOW;
+                orders.set(i, new Order.MoveTo(target.x(), target.y(), target.z(), APPROACH_TOLERANCE, VERTICAL_TOLERANCE, risk));
             }
         }
         return List.copyOf(orders);

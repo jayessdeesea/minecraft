@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Risk;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
@@ -40,7 +41,7 @@ class SpringAiSquadLeaderTest {
 
     private static final String GOOD_REPLY = """
             {"x": 12, "y": 71, "z": -38, "formation": "FILE", "interval": "TIGHT",
-             "verticalTolerance": 3, "intent": "take the hilltop through the trees", "cantco": ""}
+             "verticalTolerance": 3, "risk": "MEDIUM", "intent": "take the hilltop through the trees", "cantco": ""}
             """;
 
     /** A 3x3 survey (radius 8, spacing 8) around (0, 0): reachable land, an unreachable ridge, water, unknown. */
@@ -56,7 +57,7 @@ class SpringAiSquadLeaderTest {
             new TerrainSurvey.Sample(8, 8, TerrainSurvey.Ground.LAND, 63, true)));
 
     private static SquadOrderReply reply(double y, Formation formation, double verticalTolerance, String intent) {
-        return new SquadOrderReply(0, y, 0, formation, Interval.NORMAL, verticalTolerance, intent, "");
+        return new SquadOrderReply(0, y, 0, formation, Interval.NORMAL, verticalTolerance, Risk.LOW, intent, "");
     }
 
     @Test
@@ -126,7 +127,7 @@ class SpringAiSquadLeaderTest {
 
         SquadOrder order = leader.decide(List.of(ALICE, BOB), TERRAIN).orElseThrow();
 
-        assertEquals(new SquadOrder(new Position(12, 71, -38), Formation.FILE, Interval.TIGHT, 3,
+        assertEquals(new SquadOrder(new Position(12, 71, -38), Formation.FILE, Interval.TIGHT, 3, Risk.MEDIUM,
                 "take the hilltop through the trees"), order);
         assertEquals(new Report.Moving(), leader.report());
         assertEquals(MessageType.SYSTEM, sent.get().getInstructions().getFirst().getMessageType(), "role goes in the system prompt");

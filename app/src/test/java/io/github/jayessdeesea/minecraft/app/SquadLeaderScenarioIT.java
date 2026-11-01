@@ -51,7 +51,7 @@ class SquadLeaderScenarioIT {
             java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 0));
     private static final int ORACLE_BUDGET = 500_000;
 
-    private record Outcome(Scenario scenario, boolean stuck, long millis, List<String> failures) {
+    private record Outcome(Scenario scenario, boolean stuck, long millis, String risk, List<String> failures) {
         String name() {
             return scenario + (stuck ? " stuck" : "");
         }
@@ -74,7 +74,7 @@ class SquadLeaderScenarioIT {
                 for (boolean stuck : new boolean[]{false, true}) {
                     Outcome outcome = run(client, Scenario.generate(terrain, seed), stuck);
                     outcomes.add(outcome);
-                    System.out.printf(Locale.ROOT, "%-24s %5dms  %s%n", outcome.name(), outcome.millis(),
+                    System.out.printf(Locale.ROOT, "%-24s %5dms  %-6s  %s%n", outcome.name(), outcome.millis(), outcome.risk(),
                             outcome.failures().isEmpty() ? "PASS" : "FAIL " + String.join("; ", outcome.failures()));
                 }
             }
@@ -100,7 +100,8 @@ class SquadLeaderScenarioIT {
                 new SoldierStatus("Alice", pointMan, new Order.Idle(), new Report.Idle(), HEALTHY),
                 soldierNear("Bob", world, start.x() - 2, start.z() + 2),
                 stuck ? new SoldierStatus("Carol", new Position(start.x() + 6.5, start.y() - 4, start.z() + 4.5),
-                        new Order.Idle(), new Report.Cantco("no route out of the pit"), HEALTHY)
+                        new Order.Idle(), new Report.Cantco("no route from the pit to within 3 of the squad's slot; "
+                                + "a route with falls costing 7 of my 20 health exists (MEDIUM risk)"), HEALTHY)
                         : soldierNear("Carol", world, start.x() + 2, start.z() + 2));
         TerrainSurvey terrain = TerrainSurveyor.survey(world, pointMan);
 
@@ -112,7 +113,7 @@ class SquadLeaderScenarioIT {
         try {
             order = leader.decide(squad, terrain).orElseThrow();
         } catch (RuntimeException e) {
-            return new Outcome(scenario, stuck, (System.nanoTime() - t0) / 1_000_000, List.of("invalid order: " + e.getMessage()));
+            return new Outcome(scenario, stuck, (System.nanoTime() - t0) / 1_000_000, "-", List.of("invalid order: " + e.getMessage()));
         }
         long millis = (System.nanoTime() - t0) / 1_000_000;
 
@@ -133,7 +134,7 @@ class SquadLeaderScenarioIT {
                 && Pathfinder.find(world, start, goal, ORACLE_BUDGET).reachesGoal()) {
             failures.add("false CANTCO: " + reason);
         }
-        return new Outcome(scenario, stuck, millis, failures);
+        return new Outcome(scenario, stuck, millis, order.risk().name(), failures);
     }
 
     private static SoldierStatus soldierNear(String name, SyntheticWorld world, int x, int z) {

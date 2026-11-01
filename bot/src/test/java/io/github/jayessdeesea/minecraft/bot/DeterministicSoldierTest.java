@@ -1,16 +1,19 @@
 package io.github.jayessdeesea.minecraft.bot;
 
+import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Risk;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.OptionalInt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -25,7 +28,7 @@ class DeterministicSoldierTest {
     @Test
     void trendsTowardTargetWhenUnobstructed() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(10, 64, 10));
-        alice.receiveOrder(new Order.MoveTo(0, GROUND, 0, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(0, GROUND, 0, 1, 256, Risk.LOW));
 
         for (int i = 0; i < 10; i++) {
             alice.tick(terrain(false));
@@ -39,7 +42,7 @@ class DeterministicSoldierTest {
     @Test
     void stopsWhenTheNextStepIsSolid() {
         DeterministicSoldier bob = new DeterministicSoldier("Bob", new Position(5, 64, 0));
-        bob.receiveOrder(new Order.MoveTo(0, GROUND, 0, 1, 256));
+        bob.receiveOrder(new Order.MoveTo(0, GROUND, 0, 1, 256, Risk.LOW));
 
         bob.tick(terrain(true));
 
@@ -69,7 +72,7 @@ class DeterministicSoldierTest {
     @Test
     void retreatOverridesAnOrderTowardTheThreat() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
-        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0, 1, 256, Risk.LOW));
 
         alice.tick(withHostileAt(new Position(3, 64, 0), false));
 
@@ -79,7 +82,7 @@ class DeterministicSoldierTest {
     @Test
     void standsStillWhenTheRetreatStepIsBlocked() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
-        alice.receiveOrder(new Order.MoveTo(-10, GROUND, 0, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(-10, GROUND, 0, 1, 256, Risk.LOW));
 
         alice.tick(withHostileAt(new Position(3, 64, 0), true));
 
@@ -141,7 +144,7 @@ class DeterministicSoldierTest {
     @Test
     void ignoresHostilesOutsideContactRadius() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
-        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0, 1, 256, Risk.LOW));
 
         alice.tick(withHostileAt(new Position(DeterministicSoldier.CONTACT_RADIUS + 1, 64, 0), false));
 
@@ -151,7 +154,7 @@ class DeterministicSoldierTest {
     @Test
     void serverCorrectionReplacesPositionOnTheNextTickInsteadOfMoving() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
-        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0, 1, 256, Risk.LOW));
 
         alice.correctPosition(new Position(100, 70, 100));
         alice.tick(terrain(false));
@@ -184,7 +187,7 @@ class DeterministicSoldierTest {
         // Ground at 64 for x < 2, three blocks lower beyond it (the most the route planner will drop).
         WorldView ledge = blocks((x, y, z) -> y < (x < 2 ? GROUND : 61));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));
-        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256, Risk.LOW));
 
         for (int i = 0; i < 60; i++) {
             alice.tick(ledge);
@@ -198,7 +201,7 @@ class DeterministicSoldierTest {
     void doesNotWalkOffACliff() {
         WorldView cliff = blocks((x, y, z) -> y < (x < 2 ? GROUND : 50));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256, Risk.LOW));
 
         for (int i = 0; i < 100; i++) {
             alice.tick(cliff);
@@ -208,11 +211,64 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void takesADamagingDropOnlyWhenTheRiskAndItsHealthAllow() {
+        // A 10-block cliff (7 damage) and nothing else: the lower ground is reachable only by falling.
+        WorldView cliff = blocks((x, y, z) -> y < (x < 2 ? GROUND : GROUND - 10));
+        Order.MoveTo low = new Order.MoveTo(10.5, GROUND - 10, 0.5, 1, 1, Risk.LOW);
+        Order.MoveTo medium = new Order.MoveTo(10.5, GROUND - 10, 0.5, 1, 1, Risk.MEDIUM);
+
+        assertEquals(GROUND - 10, afterTicks(cliff, medium, 20, 20).y(), 1e-9, "healthy, MEDIUM: 20 - 7 leaves 13 >= 10");
+        assertEquals(GROUND, afterTicks(cliff, low, 20, 20).y(), 1e-9, "LOW never spends health");
+        assertEquals(GROUND, afterTicks(cliff, medium, 15, 20).y(), 1e-9, "15 - 7 would leave 8 < 10");
+        assertEquals(GROUND, afterTicks(cliff, medium, -1, 0).y(), 1e-9, "unknown health: spend none");
+    }
+
+    @Test
+    void aCantcoUnderLowRiskSaysWhatARiskierOrderWouldCost() {
+        WorldView cliff = blocks((x, y, z) -> y < (x < 2 ? GROUND : GROUND - 10));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportHealth(20, 20);
+        alice.receiveOrder(new Order.MoveTo(10.5, GROUND - 10, 0.5, 1, 1, Risk.LOW));
+
+        for (int i = 0; i < 400; i++) {
+            alice.tick(cliff);
+        }
+
+        Report.Cantco cantco = assertInstanceOf(Report.Cantco.class, alice.status().report());
+        assertTrue(cantco.reason().endsWith("a route with falls costing 7 of my 20 health exists (MEDIUM risk)"), cantco.reason());
+    }
+
+    /** Where Alice ends up after 200 ticks under {@code order}, having reported {@code health} (-1: never). */
+    private static Position afterTicks(WorldView world, Order order, double health, int food) {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        if (health >= 0) {
+            alice.reportHealth(health, food);
+        }
+        alice.receiveOrder(order);
+        for (int i = 0; i < 200; i++) {
+            alice.tick(world);
+        }
+        return alice.status().position();
+    }
+
+    @Test
+    void aWellFedSoldierPricesDamageAtHalf() {
+        DeterministicSoldier fed = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        fed.reportHealth(20, 20);
+        DeterministicSoldier hungry = new DeterministicSoldier("Bob", new Position(0.5, GROUND, 0.5));
+        hungry.reportHealth(20, 6);
+        Order.MoveTo high = new Order.MoveTo(10.5, GROUND, 0.5, 1, 1, Risk.HIGH);
+
+        assertEquals(new FallAllowance(16, Risk.HIGH.costPerHealth() / 2), fed.fallAllowance(high));
+        assertEquals(new FallAllowance(16, Risk.HIGH.costPerHealth()), hungry.fallAllowance(high));
+    }
+
+    @Test
     void routesAroundATree() {
         // A 2-high trunk at x=3 in a 3-wide band - straight-line walking used to stop dead here.
         WorldView tree = blocks((x, y, z) -> y < GROUND || (x == 3 && z >= -1 && z <= 1 && y < GROUND + 2));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.receiveOrder(new Order.MoveTo(8.5, GROUND, 0.5, 1, 1));
+        alice.receiveOrder(new Order.MoveTo(8.5, GROUND, 0.5, 1, 1, Risk.LOW));
 
         for (int i = 0; i < 200; i++) {
             alice.tick(tree);
@@ -228,7 +284,7 @@ class DeterministicSoldierTest {
         // A 5-deep pit around the soldier: no one-block steps out.
         WorldView pit = blocks((x, y, z) -> y < GROUND - 5 || (y < GROUND && (Math.abs(x) > 1 || Math.abs(z) > 1)));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND - 5, 0.5));
-        alice.receiveOrder(new Order.MoveTo(20.5, GROUND, 0.5, 2, 2));
+        alice.receiveOrder(new Order.MoveTo(20.5, GROUND, 0.5, 2, 2, Risk.LOW));
 
         for (int i = 0; i < DeterministicSoldier.REPLAN_TICKS * (DeterministicSoldier.CANTCO_AFTER_FAILED_PLANS + 1); i++) {
             alice.tick(pit);
@@ -241,17 +297,17 @@ class DeterministicSoldierTest {
     void aGenuinelyNewOrderClearsCantcoButSlotDriftDoesNot() {
         WorldView pit = blocks((x, y, z) -> y < GROUND - 5 || (y < GROUND && (Math.abs(x) > 1 || Math.abs(z) > 1)));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND - 5, 0.5));
-        alice.receiveOrder(new Order.MoveTo(20.5, GROUND, 0.5, 2, 2));
+        alice.receiveOrder(new Order.MoveTo(20.5, GROUND, 0.5, 2, 2, Risk.LOW));
         for (int i = 0; i < DeterministicSoldier.REPLAN_TICKS * (DeterministicSoldier.CANTCO_AFTER_FAILED_PLANS + 1); i++) {
             alice.tick(pit);
         }
         assertTrue(alice.status().report() instanceof Report.Cantco);
 
-        alice.receiveOrder(new Order.MoveTo(21.5, GROUND, 0.5, 2, 2)); // drifted one block - same task
+        alice.receiveOrder(new Order.MoveTo(21.5, GROUND, 0.5, 2, 2, Risk.LOW)); // drifted one block - same task
         alice.tick(pit);
         assertTrue(alice.status().report() instanceof Report.Cantco, "slot drift keeps the CANTCO");
 
-        alice.receiveOrder(new Order.MoveTo(-20.5, GROUND, 0.5, 2, 2)); // somewhere else entirely
+        alice.receiveOrder(new Order.MoveTo(-20.5, GROUND, 0.5, 2, 2, Risk.LOW)); // somewhere else entirely
         alice.tick(pit);
         assertEquals(new Report.Moving(), alice.status().report(), "a new task gets a fresh assessment");
     }
@@ -262,7 +318,7 @@ class DeterministicSoldierTest {
         // east along it; a straight step toward a slightly-south target would clip the wall.
         WorldView wall = blocks((x, y, z) -> y < GROUND || (z >= 1 && y < GROUND + 2));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.69));
-        alice.receiveOrder(new Order.MoveTo(8.5, GROUND, 0.5, 1, 1));
+        alice.receiveOrder(new Order.MoveTo(8.5, GROUND, 0.5, 1, 1, Risk.LOW));
 
         for (int i = 0; i < 100; i++) {
             alice.tick(wall);
@@ -288,7 +344,7 @@ class DeterministicSoldierTest {
     @Test
     void reportsMovingThenInPosition() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.receiveOrder(new Order.MoveTo(5.5, GROUND, 0.5, 1, 1));
+        alice.receiveOrder(new Order.MoveTo(5.5, GROUND, 0.5, 1, 1, Risk.LOW));
 
         alice.tick(terrain(false));
         assertEquals(new Report.Moving(), alice.status().report());
@@ -311,7 +367,7 @@ class DeterministicSoldierTest {
     @Test
     void stopsAnywhereInsideTheToleranceZone() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.receiveOrder(new Order.MoveTo(20.5, GROUND, 0.5, 10, 2));
+        alice.receiveOrder(new Order.MoveTo(20.5, GROUND, 0.5, 10, 2, Risk.LOW));
 
         for (int i = 0; i < 200; i++) {
             alice.tick(terrain(false));
@@ -326,7 +382,7 @@ class DeterministicSoldierTest {
         // One block higher from x >= 2.
         WorldView step = blocks((x, y, z) -> y < (x < 2 ? GROUND : GROUND + 1));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));
-        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256, Risk.LOW));
 
         for (int i = 0; i < 40; i++) {
             alice.tick(step);
@@ -340,7 +396,7 @@ class DeterministicSoldierTest {
     void stopsAtATwoBlockWall() {
         WorldView wall = blocks((x, y, z) -> y < GROUND || (x >= 2 && y < GROUND + 2));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));
-        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256, Risk.LOW));
 
         for (int i = 0; i < 40; i++) {
             alice.tick(wall);
@@ -355,7 +411,7 @@ class DeterministicSoldierTest {
         // Clear at foot level, solid at head level from x >= 2 (e.g. an overhang).
         WorldView overhang = blocks((x, y, z) -> y < GROUND || (x >= 2 && y == GROUND + 1));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));
-        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256, Risk.LOW));
 
         for (int i = 0; i < 20; i++) {
             alice.tick(overhang);
@@ -369,7 +425,7 @@ class DeterministicSoldierTest {
         // Wall at x >= 2; the centre can get no closer than x = 1.7.
         WorldView wall = blocks((x, y, z) -> y < GROUND || (x >= 2 && y < GROUND + 2));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.0, GROUND, 0.5));
-        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(10, GROUND, 0.5, 1, 256, Risk.LOW));
 
         for (int i = 0; i < 20; i++) {
             alice.tick(wall);
@@ -452,7 +508,7 @@ class DeterministicSoldierTest {
     @Test
     void stopsAdvancingOnceCloseEnoughToTarget() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.1, 64, 0));
-        alice.receiveOrder(new Order.MoveTo(0, GROUND, 0, 1, 256));
+        alice.receiveOrder(new Order.MoveTo(0, GROUND, 0, 1, 256, Risk.LOW));
 
         alice.tick(terrain(false));
 

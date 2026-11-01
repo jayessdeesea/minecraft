@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 class LinkUpTest {
 
-    private static final Order SLOT = new Order.MoveTo(0, 64, 0, 3, 3);
+    private static final Order SLOT = new Order.MoveTo(0, 64, 0, 3, 3, Risk.LOW);
 
     private static SoldierStatus soldier(String name, double x, double z, Report report, int deaths) {
         return new SoldierStatus(name, new Position(x, 64, z), new Order.Idle(), report,

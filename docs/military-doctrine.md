@@ -113,6 +113,27 @@ which is where the point man last stood with nobody in contact. Otherwise it clo
 squad member, and within 6 blocks it has linked up and gets a formation slot again. Recognition is
 just knowing where the squad is - our soldiers can't mistake each other for the enemy.
 
+## 7. Risk acceptance
+
+| Practice | Content | Source |
+|---|---|---|
+| **Risk levels** | Low, medium, high, extremely high: how likely and how severe a loss the mission exposes people to. | ATP 5-19, *Risk Management* |
+| **Risk acceptance** | The commander decides how much risk the mission justifies, at the level that owns the mission; subordinates operate within it. | ATP 5-19 |
+
+*How we use it:* the squad leader's order carries a `Risk` (LOW, MEDIUM or HIGH), the health the
+mission justifies spending to keep moving. The priorities are the mission first, then the
+soldiers' survival, then avoiding damage. Today health is spent only on falls of more than 3
+blocks, at 1 health per block beyond 3; armour doesn't soften falls. Each soldier turns the order's
+risk and its own condition into a fall allowance:
+- **The floor:** it never falls below the risk's minimum health (LOW allows no damage, MEDIUM keeps
+  10, HIGH keeps 4).
+- **The price:** each point of damage costs extra route length, halved for a well-fed soldier
+  because it regenerates.
+
+So a safe route always wins when one exists. A soldier that reports CANTCO prices the riskier
+order that would free it, for example "a route with falls costing 8 of my 20 health exists (MEDIUM
+risk)". The squad leader then decides whether the mission is worth that.
+
 ## Sources
 
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)
@@ -123,4 +144,5 @@ just knowing where the squad is - our soldiers can't mistake each other for the 
 - Prowords: [Procedure word (Wikipedia)](https://en.wikipedia.org/wiki/Procedure_word), [USMC MCT-COMM-1003/4 Radio Communications](https://www.trngcmd.marines.mil/Portals/207/Docs/FMTBE/Student%20Materials/MCECST/MCT-COMM-1003_4%20Radio%20Communications.doc), [SERA.14045 (UNABLE)](https://regulatorylibrary.caa.co.uk/923-2012/Content/Regs/03440_SERA14045_Transmitting_technique.htm)
 - LACE: [Kentucky National Guard photo caption](https://ky.ng.mil/News/Photos/igphoto/2003751897/), [RallyPoint discussion](https://rallypoint.com/answers/what-s-the-difference-between-each-of-these-reports-salute-lace-salt-spot-report-sit-rep) (secondary sources)
 - Link-up procedure: FM 3-21.9 ch. 7 - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/3-21-9/chap7.htm)
+- ATP 5-19, *Risk Management* - [Army Publishing Directorate](https://armypubs.army.mil/)
 - ATP 1-02.1 multi-service brevity codes (CANTCO) - [ALSSA](https://www.alssa.mil/MTTPs/Brevity/)

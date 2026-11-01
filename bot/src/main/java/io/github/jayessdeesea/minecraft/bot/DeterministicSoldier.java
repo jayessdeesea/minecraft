@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.bot;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
 import io.github.jayessdeesea.minecraft.bot.nav.Goal;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
@@ -9,6 +10,7 @@ import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Risk;
 import io.github.jayessdeesea.minecraft.command.Soldier;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 
@@ -243,9 +245,10 @@ public final class DeterministicSoldier implements Soldier {
                 || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS;
         if (replan && onGround) {
             boolean stuck = stuckTicks >= STUCK_TICKS;
-            Pathfinder.Result plan = Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), goal, PLAN_BUDGET);
+            Pathfinder.Result plan = Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), goal,
+                    PLAN_BUDGET, fallAllowance(current));
             route = plan.path();
-            assessPlan(plan, stuck);
+            assessPlan(world, plan, stuck);
             lastPlan = (plan.reachesGoal() ? "to goal" : "partial") + ", " + route.size() + " steps"
                     + (route.isEmpty() ? "" : " ending " + route.getLast());
             routeIndex = 0;
@@ -278,7 +281,7 @@ public final class DeterministicSoldier implements Soldier {
      * way), and a soldier that keeps re-planning the same route without moving must eventually say
      * so rather than report "Moving" forever.
      */
-    private void assessPlan(Pathfinder.Result plan, boolean stuck) {
+    private void assessPlan(WorldView world, Pathfinder.Result plan, boolean stuck) {
         if (stuck) {
             failedPlans++;
         } else if (plan.reachesGoal()) {
@@ -293,8 +296,37 @@ public final class DeterministicSoldier implements Soldier {
         report = failedPlans >= CANTCO_AFTER_FAILED_PLANS
                 ? new Report.Cantco(String.format(java.util.Locale.ROOT,
                         "no route from (%.0f, %.0f, %.0f) to within %.0f of (%.0f, %.0f, %.0f)",
-                        position.x(), position.y(), position.z(), goal.horizontalTolerance(), goal.x(), goal.y(), goal.z()))
+                        position.x(), position.y(), position.z(), goal.horizontalTolerance(), goal.x(), goal.y(), goal.z())
+                        + priceOfARiskierRoute(world, plan))
                 : new Report.Moving();
+    }
+
+    /**
+     * When this soldier can't comply under its order's risk, whether a riskier order would let it -
+     * and at what price - so the squad leader can weigh the mission against the soldier's health
+     * rather than guess. Searches with every fall it could survive allowed (cheaply priced, to find
+     * the least damaging such route), then names the least risk level that would accept it. "Would
+     * let it" means reaching the goal, or - for a goal beyond one search - getting meaningfully
+     * closer than the safe plan does: the shape of escaping a trap on the way somewhere far.
+     */
+    private String priceOfARiskierRoute(WorldView world, Pathfinder.Result safe) {
+        Condition known = condition;
+        if (known == null || known.health() < 2) {
+            return "";
+        }
+        BlockPos start = BlockPos.containing(position.x(), position.y(), position.z());
+        Pathfinder.Result route = Pathfinder.find(world, start, goal, PLAN_BUDGET,
+                new FallAllowance((int) Math.ceil(known.health()) - 1, 1));
+        BlockPos safeEnd = safe.path().isEmpty() ? start : safe.path().getLast();
+        BlockPos riskyEnd = route.path().isEmpty() ? start : route.path().getLast();
+        if (!route.reachesGoal() && goal.estimate(safeEnd) - goal.estimate(riskyEnd) < RETASK_DISTANCE) {
+            return "";
+        }
+        int damage = Pathfinder.fallDamage(start, route.path());
+        double left = known.health() - damage;
+        Risk needed = left >= Risk.MEDIUM.minHealthAfter() ? Risk.MEDIUM : left >= Risk.HIGH.minHealthAfter() ? Risk.HIGH : null;
+        return String.format(java.util.Locale.ROOT, "; a route with falls costing %d of my %.0f health exists%s", damage,
+                known.health(), needed == null ? ", too costly even at HIGH risk" : " (" + needed + " risk)");
     }
 
     private void trackProgress() {
@@ -305,6 +337,24 @@ public final class DeterministicSoldier implements Soldier {
         } else {
             stuckTicks++;
         }
+    }
+
+    /**
+     * How much fall damage this soldier may take under {@code order}'s {@link Risk}: whatever keeps
+     * it at or above the risk's floor, from the health it last reported - none if it hasn't
+     * reported any. A well-fed soldier regenerates, so damage costs it half as much.
+     */
+    FallAllowance fallAllowance(Order order) {
+        Condition known = condition;
+        if (!(order instanceof Order.MoveTo move) || known == null) {
+            return FallAllowance.NONE;
+        }
+        double spare = known.health() - move.risk().minHealthAfter();
+        if (!(spare >= 1)) {
+            return FallAllowance.NONE;
+        }
+        double cost = move.risk().costPerHealth() * (known.food() >= Condition.REGENERATION_FOOD ? 0.5 : 1);
+        return new FallAllowance((int) Math.floor(spare), cost);
     }
 
     private Goal goalFor(Order order) {

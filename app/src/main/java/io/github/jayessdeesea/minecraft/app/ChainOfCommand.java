@@ -160,11 +160,12 @@ public class ChainOfCommand {
                 TerrainSurvey survey = terrain.get();
                 long reachable = survey.samples().stream().filter(TerrainSurvey.Sample::reachable).count();
                 squadLeader.decide(squad, survey).ifPresent(decided -> {
-                    LOG.info("[{} -> squad] ({} ms, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval. Intent: {}",
+                    LOG.info("[{} -> squad] ({} ms, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval, {} risk. Intent: {}",
                             SQUAD_NAME, System.currentTimeMillis() - started, reachable, survey.samples().size(),
                             Math.round(decided.objective().x()), Math.round(decided.objective().y()), Math.round(decided.objective().z()),
-                            decided.formation(), decided.interval(), decided.intent());
+                            decided.formation(), decided.interval(), decided.risk(), decided.intent());
                     transmit("[" + SQUAD_NAME + " -> squad] FRAGO: " + decided.formation() + " to " + at(decided.objective())
+                            + ", " + decided.risk() + " risk"
                             + ". Intent: " + decided.intent());
                     if (squadLeader.report() instanceof Report.Cantco cantco) {
                         LOG.warn("[{} -> General] CANTCO: {}", SQUAD_NAME, cantco.reason());

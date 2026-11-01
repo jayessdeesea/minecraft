@@ -18,8 +18,9 @@ import java.util.PriorityQueue;
  * <p>Moves are what {@code DeterministicSoldier} can physically do: walk to any of the 8 neighbours
  * on the same level (diagonals only when both orthogonal cells are clear, so the 0.6-wide body
  * doesn't clip a corner), jump up one block orthogonally (needs headroom above the takeoff cell),
- * or walk off an edge and drop up to {@link #MAX_DROP} blocks orthogonally. Hazards (water, lava,
- * fire) are never entered - no swimming, no ladders.
+ * or walk off an edge and drop up to {@link #MAX_DROP} blocks orthogonally - further only within a
+ * {@link FallAllowance}, at a cost per point of fall damage. Hazards (water, lava, fire) are never
+ * entered - no swimming, no ladders.
  *
  * <p>A goal outside the budget isn't a failure: the result is a path to the explored cell that
  * got closest, flagged {@code reachesGoal = false}, and the caller re-plans from there. That's how
@@ -29,6 +30,8 @@ public final class Pathfinder {
 
     /** Drops this far take damage-free-ish falls (vanilla starts fall damage after 3 blocks). */
     public static final int MAX_DROP = 3;
+    /** No allowance plans a fall longer than this; 23 blocks is lethal from full health anyway. */
+    static final int MAX_FALL = 23;
 
     private static final double DIAGONAL = Math.sqrt(2);
     private static final double JUMP_COST = 2.0;
@@ -55,6 +58,10 @@ public final class Pathfinder {
     }
 
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded) {
+        return find(world, start, goal, maxExpanded, FallAllowance.NONE);
+    }
+
+    public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls) {
         if (goal.contains(start)) {
             return new Result(List.of(), true);
         }
@@ -82,7 +89,7 @@ public final class Pathfinder {
             }
 
             double base = costSoFar.get(current);
-            for (Move move : moves(world, current)) {
+            for (Move move : moves(world, current, falls)) {
                 double cost = base + move.cost();
                 Double known = costSoFar.get(move.to());
                 if (known == null || cost < known) {
@@ -112,7 +119,7 @@ public final class Pathfinder {
         frontier.add(start);
         while (!frontier.isEmpty() && seen.size() < maxExpanded) {
             BlockPos current = frontier.poll();
-            for (Move move : moves(world, current)) {
+            for (Move move : moves(world, current, FallAllowance.NONE)) {
                 BlockPos next = move.to();
                 if (Math.abs(next.x() - start.x()) <= maxHorizontalDistance
                         && Math.abs(next.z() - start.z()) <= maxHorizontalDistance
@@ -124,7 +131,7 @@ public final class Pathfinder {
         return seen;
     }
 
-    private static List<Move> moves(WorldView world, BlockPos from) {
+    private static List<Move> moves(WorldView world, BlockPos from, FallAllowance falls) {
         List<Move> moves = new ArrayList<>(8);
         for (int[] d : ORTHOGONAL) {
             BlockPos level = from.offset(d[0], 0, d[1]);
@@ -138,13 +145,15 @@ public final class Pathfinder {
                 continue;
             }
             if (clear(world, level)) {
-                for (int drop = 1; drop <= MAX_DROP; drop++) {
+                int deepest = Math.min(MAX_FALL, MAX_DROP + falls.maxDamage());
+                for (int drop = 1; drop <= deepest; drop++) {
                     BlockPos down = from.offset(d[0], -drop, d[1]);
                     if (!open(world, down.x(), down.y(), down.z())) {
                         break; // landed on something that isn't standable (a 1-high gap, water)
                     }
                     if (standable(world, down)) {
-                        moves.add(new Move(down, 1 + drop * 0.5));
+                        int damage = Math.max(0, drop - MAX_DROP);
+                        moves.add(new Move(down, 1 + drop * 0.5 + damage * falls.costPerDamage()));
                         break;
                     }
                 }
@@ -159,6 +168,17 @@ public final class Pathfinder {
             }
         }
         return moves;
+    }
+
+    /** Total fall damage along {@code path} from {@code start}: 1 per block beyond {@link #MAX_DROP}, per fall. */
+    public static int fallDamage(BlockPos start, List<BlockPos> path) {
+        int damage = 0;
+        BlockPos previous = start;
+        for (BlockPos cell : path) {
+            damage += Math.max(0, previous.y() - cell.y() - MAX_DROP);
+            previous = cell;
+        }
+        return damage;
     }
 
     private static List<BlockPos> reconstruct(Map<BlockPos, BlockPos> cameFrom, BlockPos start, BlockPos end) {
