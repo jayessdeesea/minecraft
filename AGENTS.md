@@ -58,13 +58,7 @@ Four tenets about maintaining the project's own self-model, not about Minecraft 
    case (when a package graduates into its own module).
 4. **Record the lesson, not the expedition.** A doc should state what's true now and, only when
    the discovery method itself is reusable elsewhere, that method — not the blow-by-blow of the
-   specific investigation that got there. This happened this session: getting the connection
-   watchdog's idle-close path verified live took three separate attempts (a 35s run, a 90s run,
-   then a single-soldier run at a deliberately shrunk 5s timeout) before concluding the dev
-   server's own incidental traffic made forcing a live idle window impractical in the time
-   available. None of that sequence belongs in DEVELOPMENT.md — what belongs is the conclusion
-   (the idle-close path is covered by `ConnectionWatchdogHandlerTest`/`PlayClientHandlerTest`, not
-   a live run, and why) and nothing about the three attempts that got there. Test before writing:
+   specific investigation that got there. Test before writing:
    delete every sentence describing a specific attempt or dead end — if a future reader loses
    nothing they'd act on, it was history, not knowledge, and shouldn't have been written down.
 
@@ -116,7 +110,11 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   turning that into per-soldier slots is geometry, done deterministically by `command.Formations`,
   so the model spends judgement only where judgement is needed. Neither echelon calls the model
   when there's nothing to decide yet (no objective, no squads). `app`'s `ChainOfCommand` decides
-  *when* each echelon thinks - see DEVELOPMENT.md.
+  *when* each echelon thinks (see its javadoc). The same split applies to what goes into a
+  prompt: precompute lookups (which nearby ground is reachable, `<objective_ground>`) rather than
+  hand the model a grid to decode. Measured: no local model that fits on a 16 GB GPU read
+  reachability off the terrain table, and with the lookup done for it `qwen3:14b` chose
+  correctly.
 - **Borrowed from the actor model's discipline, not its runtime.** An actor's single-threaded
   mailbox processing is *one* way to guarantee a unit of state is never touched by two threads at
   once; a per-tick loop that's the sole writer of its own Soldier's state is another. We get the
@@ -153,10 +151,10 @@ never supposed to creep in.
 
 ## Target environment
 
-- **Protocol version: pinned, not negotiated.** Target current Minecraft Java Edition release —
-  26.2 ("Chaos Cubed", protocol 776) as of project start. 26.3 is in pre-release as of September
-  2026; bump the pin deliberately once it ships final rather than letting it drift. No
-  multi-version support, no version-negotiation/compat layer — one version, one protocol.
+- **Protocol version: pinned, not negotiated.** Pinned to Minecraft Java Edition 26.2 ("Chaos
+  Cubed", protocol 776). Track the current release, but bump the pin deliberately
+  (backlog/bump-to-26-3.md), never let it drift. No multi-version support, no
+  version-negotiation/compat layer — one version, one protocol.
 - **Auth: self-hosted, offline-mode dev server only.** No Mojang/Xbox Live OAuth device-code flow,
   no session server, no login encryption request/response — offline mode skips that handshake
   entirely. Revisit this decision if bots ever need to join a real online-mode server.
@@ -173,8 +171,7 @@ modules:
 - **`command`** — the chain-of-command *interfaces*, deliberately framework-free (no Spring, no
   Netty). This is the "interface package" both `command-ai` (an implementation of
   `General`/`SquadLeader`) and `bot` (a consumer of those interfaces, and the implementation of
-  `Soldier`) depend on, so that neither has to know about the other. Built so far: `Soldier`,
-  `Order`, `Position`, `SoldierStatus`, `General`, `SquadLeader`, `Objective`, `SquadStatus`.
+  `Soldier`) depend on, so that neither has to know about the other.
 - **`command-ai`** — Spring AI-backed implementations of `General`/`SquadLeader` from `command`
   (`SpringAiGeneral`/`SpringAiSquadLeader`). Depends on `command`, not the other way around.
 - **`bot`** — the deterministic per-tick soldier runtime. Depends on `protocol` (to actually
@@ -223,7 +220,7 @@ on time instead of size), **control plane** (session management + protocol reply
 decisions, never game decisions), **application** (`bot`, entirely outside the pipeline). One
 concrete violation to watch for: `ClientInformationPacket.defaults()` is currently hardcoded inside
 `JoinClientHandler` — application content living in control-plane code, tolerated for now because
-nothing yet needs to vary it, but a real Soldier should be able to override it.
+nothing yet needs to vary it (backlog/client-information-override.md).
 
 See [docs/protocol-pipeline.md](docs/protocol-pipeline.md) for the full plane/tier table (including
 `FrameStatsHandler`/`PacketLoggingHandler`, the two cross-cutting logging handlers this framing made
@@ -253,12 +250,12 @@ silently steal precedence at every injection site that didn't ask for something 
 compile-time or startup-time signal that anything changed. Use `@Qualifier("beanName")` at every
 injection point instead: an ambiguous or missing qualifier fails to wire at all, loudly, at
 startup — exactly the failure mode we want, and exactly the opposite of `@Primary`'s silent
-default. (Nothing in the codebase wires multiple beans yet — this is a rule to have ready before
-`command-ai` needs it, not a retrofit.)
+default. `command-ai`'s two `ChatClient` beans (`squadLeaderChatClient`, `generalChatClient`)
+are the live instance: each injection site names its bean.
 
 **This is also why every resource-exhaustion guard in `protocol` terminates the connection rather
-than skip-and-continue** (docs/protocol-spec.md § 8): an oversized frame, a compression bomb, or
-(once implemented) a nesting-depth violation are violated invariants, not expected gaps. Skipping
+than skip-and-continue** (docs/protocol-spec.md § 8): an oversized frame or a compression bomb is a
+violated invariant, not expected gaps. Skipping
 one and hoping the byte stream resynchronizes isn't just against this tenet — for the frame-length
 case specifically, it's *provably unreliable*: our framing has no resync mechanism, so guessing
 how many bytes to discard risks silently misinterpreting everything that follows for the rest of
@@ -307,9 +304,25 @@ or move the working copy outside the synced folder.
 
 ## Docs
 
-- [DEVELOPMENT.md](DEVELOPMENT.md) — human-facing runbook: download/run a local dev server,
-  connect a native client, current build status. Root-level (not under `docs/`) on purpose —
-  it's the first-run entry point, not reference material.
+**`docs/` describes the system as it is; `backlog/` holds what will or might happen.** A doc
+under `docs/` states only what the code does today. A sentence about what "will", "might" or
+"should" happen is a backlog item, not documentation, and moves to `backlog/` (format:
+[backlog/README.md](backlog/README.md)). Landing a backlog item deletes its file in the same change
+and writes whatever stays true into `docs/` or the code. A reader never has to ask "is this built
+yet?"
+
+**Before starting a backlog item, sanity-check it.** It was written against the architecture and
+requirements of its day, and both drift. Re-read it against the current code and docs:
+- Does its "Why" still hold?
+- Have its dependencies landed, or been made unnecessary?
+- Does the design sketch still fit the module boundaries and the doctrine as they are now?
+
+Before writing code, update or delete the item, or raise the mismatch with the user.
+
+- [backlog/](backlog/README.md) — planned and open work, one file per item.
+- [DEVELOPMENT.md](DEVELOPMENT.md) — getting started: run the dev server and model, build, run
+  the squad, live protocol checks, confirming wire formats. Root-level (not under `docs/`) on
+  purpose: it's the first-run entry point, not reference material. Not a changelog - `git log` is.
 - [docs/protocol-spec.md](docs/protocol-spec.md) — canonical wire protocol spec (packet format,
   states, compression, encryption) for the `protocol` module.
 - [docs/protocol-pipeline.md](docs/protocol-pipeline.md) — the tour version of this doc's

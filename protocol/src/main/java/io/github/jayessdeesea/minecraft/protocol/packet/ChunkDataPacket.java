@@ -11,7 +11,7 @@ import java.util.List;
  * array (4096 global state IDs, one per block) - exactly what {@code bot.world}'s chunk cache
  * needs for collision queries.
  *
- * <p>Confirmed against the real (unobfuscated - see DEVELOPMENT.md's "Known gaps") game server
+ * <p>Confirmed against the real (unobfuscated - see DEVELOPMENT.md's "Confirming wire formats") game server
  * jar's decompiled source, not just the wire spec, after a first attempt (built from wiki
  * descriptions alone) threw decoder exceptions on live data. Two things the wiki-derived version
  * got wrong, per {@code net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData} and

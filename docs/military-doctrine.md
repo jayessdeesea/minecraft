@@ -54,8 +54,7 @@ may vary"). Blocks are metres, so doctrine's 10 m wedge interval is our *extende
 and tight are closer because Minecraft visibility and mob density make 10 blocks loose for a
 fire team of two or three.
 
-Not implemented yet: squad column (two fire teams, ¶3-53), movement techniques (traveling /
-traveling overwatch / bounding overwatch), weapons placement.
+The rest of chapter 3 (squad column, movement techniques) is in backlog/wider-doctrine.md.
 
 ## 3. Acknowledging orders: prowords
 

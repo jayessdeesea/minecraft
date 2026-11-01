@@ -239,8 +239,7 @@ ScoutBot joined the game
 — the same broadcast a real player join produces. `JoinClientHandler` replies to Keep Alive but
 still disconnects a couple of seconds later (no movement, no persistent session) — it's a
 diagnostic tool that proves the join sequence works, not yet a Soldier. Play's packet catalog is
-far larger than Configuration's and genuinely belongs in its own future spec section (§ 3.5)
-written against real traffic the same way this one was, not attempted here.
+specified separately, in § 3.5.
 
 ### 3.5 Play
 Main gameplay state — the large majority of packet types live here. Specified incrementally, per

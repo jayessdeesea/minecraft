@@ -27,13 +27,14 @@ the control plane, not something outside the pipeline - it's the pipeline's *las
 handler. `JoinClientHandler` and `PlayClientHandler` are two separate classes, not one generalized
 over a mode flag: they complete their result at different points for different reasons (diagnostic
 self-close vs. handing back a persistent `PlaySession`) - see `PlayClientHandler`'s own javadoc.
-Only `bot`, past the pipeline entirely, is genuinely "the application" (not wired to a live
-connection yet - see AGENTS.md's "Behavior modeling" section).
+Only `bot`, past the pipeline entirely, is genuinely "the application". It never touches the
+pipeline directly: `app`'s `SoldierRunner` feeds each `DeterministicSoldier` from
+`PlaySessionListeners` callbacks and carries its decisions back out through `PlaySession`.
 
 | Plane | Tier | Type handed to the tier above *(= type received from above, for outbound)* | Inbound | Outbound | Same object (duplex)? |
 |---|---|---|---|---|---|
-| Application *(outside the pipeline)* | Decision core | - (top of the stack) | `bot`'s `DeterministicSoldier` | not wired to a live connection yet | - |
-| Control | Protocol reply | nothing flows up to `bot` yet - `bot` isn't a live consumer of any connection (see the row above); eventually `SoldierStatus`/decoded facts, see AGENTS.md | control handler - decides and sends every reply (Keep Alive included - see the tenets below) | control handler - same object | Conceptually yes; not a registered Netty outbound handler today |
+| Application *(outside the pipeline)* | Decision core | - (top of the stack) | `bot`'s `DeterministicSoldier`, fed by `app`'s `SoldierRunner` | `PlaySession` (`reportPosition`, `attack`, `respawn`) | - |
+| Control | Protocol reply | decoded facts via `PlaySessionListeners` (chunks, position, entities, health, disconnect) | control handler - decides and sends every reply (Keep Alive included - see the tenets below) | control handler - same object | Conceptually yes; not a registered Netty outbound handler today |
 | Control | Session management | typed `Packet`, unmodified (forwarded via `fireChannelRead`) | `SessionStateManager` - owns `ProtocolState`, reacts to state-implying packets, sends nothing | *(none - see below)* | N/A |
 | Data | Packet logging (`PacketLoggingHandler`) | typed `Packet`, unmodified (observed, not altered) | logs each decoded `Packet` (excludes `UnknownPacket` - `SessionStateManager` already covers that, deduplicated) | logs each `Packet` pre-encode | **Yes** - `ChannelDuplexHandler`, registered right after `MarshallingEncoder` |
 | Data | Marshalling (serialization) | typed `Packet` - the real type change happens here, bytes become a business object | `MarshallingDecoder` - `[packet ID][bytes]` → typed `Packet`, state-dependent | `MarshallingEncoder` - `Packet` → bytes, stateless | No - separate objects |
@@ -61,13 +62,12 @@ Notes worth keeping precise, since sloppy naming here is exactly what this table
   change, so there's nothing on that side to react to. `SessionStateManager` is also the only
   handler that reaches into others (`ctx.pipeline().get(X.class).setY(...)`) - nothing else in the
   pipeline does this, and it shouldn't grow more of these without a real reason.
-- **The control plane's outbound side is currently self-triggered, not externally called.** The
-  control handler reads a packet and reacts by writing a reply *itself* (e.g. reading
-  `LoginSuccessPacket` triggers writing `LoginAcknowledgedPacket`) - nothing outside it calls it
-  today. `bot` isn't a live caller yet either: the control handler's only real destination right now
-  is a log line and a completed `CompletableFuture` (see `JoinObservationLiveIT`), not a soldier.
-  See AGENTS.md's "Behavior modeling" section for what a real `bot`-triggered write path will look
-  like once one exists.
+- **The control plane's outbound side has two triggers.** Protocol replies are self-triggered:
+  the control handler reads a packet and writes the reply *itself* (reading `LoginSuccessPacket`
+  writes `LoginAcknowledgedPacket`; a Chunk Batch Finished writes Chunk Batch Received). Game
+  actions come from outside, through the Netty-free `PlaySession` interface `PlayClientHandler`
+  hands back - movement, attacks, respawn - so game policy (when to attack, when to respawn)
+  stays in `bot`/`app` and never in the control plane.
 - **Registering all eleven real handlers in this one order** produces the correct order in *both*
   directions, because Netty walks outbound handlers in the reverse of their registration order - a
   packet the control handler writes travels marshaller → compressor → framer → socket, the mirror
@@ -229,12 +229,10 @@ javadoc for why that's deliberately a small, growing shape rather than a big one
 Never let a wire-supplied length or count size an allocation without a cap. Applies uniformly:
 `ProtocolCodec.readString`/`MAX_STRING_LENGTH`, `CompressionDecoder`'s Data Length check against
 `MAX_FRAME_LENGTH` (the "compression bomb" guard), and `ProtocolCodec.readVarIntCount` for any
-count-prefixed list (used by `KnownPacksPacket` today). The same principle will apply to NBT's
-nesting *depth* once that's implemented — the recursive case of the same guard, not implemented yet
-because nothing we decode today recurses.
+count-prefixed list (used by `KnownPacksPacket` today). NBT's nesting *depth* has no guard: `Nbt`
+recurses through lists and compounds unbounded (backlog/nbt-depth-guard.md).
 
-An oversized frame, a compression bomb, or (once implemented) a nesting-depth violation all
-terminate the connection outright rather than skip-and-continue — see
+An oversized frame or a compression bomb terminates the connection outright rather than skip-and-continue — see
 [protocol-spec.md § 4.3/§ 8](protocol-spec.md) for the full reasoning, and
 [AGENTS.md's no-fallbacks tenet](../AGENTS.md) for why that's a deliberate, general policy and not
 specific to this pipeline.

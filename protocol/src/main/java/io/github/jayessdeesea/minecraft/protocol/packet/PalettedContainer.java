@@ -20,12 +20,10 @@ import java.util.Arrays;
  * earlier version of this class read a VarInt "data array length" here that doesn't exist on the
  * wire at all - it does for {@link ChunkDataPacket}'s Heightmaps field (a genuinely
  * length-prefixed {@code ByteBufCodecs.LONG_ARRAY}), which is a different type with a different
- * encoding; conflating the two was the root cause of a real live-decoding failure (see
- * DEVELOPMENT.md's "Known gaps" history) before this was checked against the actual server code.
+ * encoding; conflating the two broke live decoding before this was checked against the actual server code.
  *
  * <p>Returns raw global IDs (block state IDs, or biome registry IDs), not their meaning - resolving
- * a block state ID to "is this solid" is {@code bot.world}'s job, once it has a real registry to
- * consult (see DEVELOPMENT.md's "Known gaps").
+ * a block state ID to "is this solid" is {@code bot.world.BlockClassRegistry}'s job.
  */
 final class PalettedContainer {
 

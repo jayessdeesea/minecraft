@@ -41,7 +41,7 @@ A section's block-state palette is one of:
   valuesPerLong)`, computed independently by both sides, not transmitted. (An earlier version of
   this project's decoder assumed a length-prefixed array here, matching a different, genuinely
   length-prefixed long-array type used elsewhere in the same packet - that mismatch broke live
-  decoding; see DEVELOPMENT.md's "Known gaps" for the fix and how it was found.)
+  decoding.)
 
 ### What the Client Needs
 Decode enough of this to know, for any `(x, y, z)` in a loaded chunk, its current block state ID

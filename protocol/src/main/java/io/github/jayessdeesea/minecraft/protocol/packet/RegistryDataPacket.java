@@ -19,7 +19,7 @@ import java.util.List;
  * "what entries does dimension_type have" is now answerable without guessing) but does not parse
  * each entry's NBT payload's actual contents, only skips past it: that payload's schema differs
  * per registry (dimension_type's height/min_y, biome's climate params, etc.) and nothing consumes
- * any of it yet - see DEVELOPMENT.md's "Known gaps". The frame is already length-isolated, so
+ * any of it yet. The frame is already length-isolated, so
  * skipping instead of parsing is safe, same precedent as {@link PlayLoginPacket}'s trailing fields.
  *
  * <p>Confirmed by decompiling {@code ClientboundRegistryDataPacket}/{@code

@@ -41,8 +41,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * re-derives each soldier's slot from the standing order and where the point man actually is; every
  * few seconds it logs the squad's SITREPs.
  *
- * <p>{@code SOLDIERS} is a hardcoded list, not {@code application.yml} - the "app config shape"
- * decision DEVELOPMENT.md's "Known gaps" flagged as open. Deliberately resolved this way for now
+ * <p>{@code SOLDIERS} is a hardcoded list, not {@code application.yml}. Deliberately, for now
  * (AGENTS.md's revisit-on-real-pressure tenet): nothing yet needs to reconfigure soldiers without
  * recompiling (no real deployment, one dev server, always localhost). Revisit once that changes.
  *

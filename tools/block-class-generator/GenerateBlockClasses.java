@@ -11,7 +11,7 @@ import java.util.TreeMap;
 /**
  * One-off, dev-time generator - NOT part of the Maven build (it depends on Jackson, which nothing at
  * runtime needs). Reads the pinned server jar's own {@code generated/reports/blocks.json} (produced
- * by {@code --reports}; see DEVELOPMENT.md section 1) and classifies every block state for movement,
+ * by {@code --reports}; see DEVELOPMENT.md section 7) and classifies every block state for movement,
  * emitting {@code bot/src/main/resources/.../block-classes-<version>.txt}, which
  * {@code bot.world.BlockClassRegistry} loads at runtime.
  *
