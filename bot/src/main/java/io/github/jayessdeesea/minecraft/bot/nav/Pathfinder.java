@@ -18,7 +18,8 @@ import java.util.PriorityQueue;
  * <p>Moves are what {@code DeterministicSoldier} can physically do: walk to any of the 8 neighbours
  * on the same level (diagonals only when both orthogonal cells are clear, so the 0.6-wide body
  * doesn't clip a corner), jump up one block orthogonally (needs headroom above the takeoff cell),
- * or walk off an edge and drop up to {@link #MAX_DROP} blocks orthogonally. No ladders, no water.
+ * or walk off an edge and drop up to {@link #MAX_DROP} blocks orthogonally. Hazards (water, lava,
+ * fire) are never entered - no swimming, no ladders.
  *
  * <p>A goal outside the budget isn't a failure: the result is a path to the explored cell that
  * got closest, flagged {@code reachesGoal = false}, and the caller re-plans from there. That's how
@@ -44,9 +45,13 @@ public final class Pathfinder {
         return clear(world, cell) && world.isSolid(cell.x(), cell.y() - 1, cell.z());
     }
 
-    /** Room for the body: this cell and the one above aren't solid. */
+    /** Room for the body: this cell and the one above are neither solid nor hazardous (water, fire). */
     private static boolean clear(WorldView world, BlockPos cell) {
-        return !world.isSolid(cell.x(), cell.y(), cell.z()) && !world.isSolid(cell.x(), cell.y() + 1, cell.z());
+        return open(world, cell.x(), cell.y(), cell.z()) && open(world, cell.x(), cell.y() + 1, cell.z());
+    }
+
+    private static boolean open(WorldView world, int x, int y, int z) {
+        return !world.isSolid(x, y, z) && !world.isHazard(x, y, z);
     }
 
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded) {
@@ -107,8 +112,8 @@ public final class Pathfinder {
             if (clear(world, level)) {
                 for (int drop = 1; drop <= MAX_DROP; drop++) {
                     BlockPos down = from.offset(d[0], -drop, d[1]);
-                    if (world.isSolid(down.x(), down.y(), down.z())) {
-                        break; // landed on something that isn't standable (e.g. a 1-high gap)
+                    if (!open(world, down.x(), down.y(), down.z())) {
+                        break; // landed on something that isn't standable (a 1-high gap, water)
                     }
                     if (standable(world, down)) {
                         moves.add(new Move(down, 1 + drop * 0.5));

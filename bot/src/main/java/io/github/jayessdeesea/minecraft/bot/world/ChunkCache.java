@@ -21,9 +21,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * MinecraftClient.join}'s
  * {@code ChunkUpdate} listener into {@link #load} for each connected Soldier.
  *
- * <p>{@code isSolid}'s notion of "solid" is backed by {@link BlockSolidityRegistry} - a real,
- * generated-from-the-server's-own-data classification, not the "state 0 = air" placeholder this
- * class used before. See that class's javadoc for what it does and doesn't cover.
+ * <p>{@code isSolid}/{@code isHazard} are backed by {@link BlockClassRegistry}, a classification
+ * generated from the server's own data. A tall block (fence, wall: 1.5-high collision) reports the
+ * cell above it as solid too - the simplest model that stops anything treating a fence as a
+ * one-block step.
  */
 public final class ChunkCache {
 
@@ -73,10 +74,20 @@ public final class ChunkCache {
     }
 
     public boolean isSolid(int x, int y, int z) {
+        BlockClassRegistry.BlockClass here = classAt(x, y, z);
+        return here == BlockClassRegistry.BlockClass.SOLID || here == BlockClassRegistry.BlockClass.TALL
+                || classAt(x, y - 1, z) == BlockClassRegistry.BlockClass.TALL;
+    }
+
+    public boolean isHazard(int x, int y, int z) {
+        return classAt(x, y, z) == BlockClassRegistry.BlockClass.HAZARD;
+    }
+
+    private BlockClassRegistry.BlockClass classAt(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
-        // Unknown (unloaded chunk, or outside the decoded vertical range) is treated as blocked,
-        // not walkable, until proven otherwise - same policy as an unrecognized block state.
-        return stateId == UNKNOWN || BlockSolidityRegistry.isSolid(stateId);
+        // Unknown (unloaded chunk, or outside the decoded vertical range) is treated as solid, not
+        // walkable, until proven otherwise - same policy as an unrecognized block state.
+        return stateId == UNKNOWN ? BlockClassRegistry.BlockClass.SOLID : BlockClassRegistry.classOf(stateId);
     }
 
     /** Number of distinct chunks currently cached - observability only, not used by any query. */
@@ -87,7 +98,7 @@ public final class ChunkCache {
     /**
      * The raw global block-state ID at ({@code x}, {@code y}, {@code z}), or empty if unknown -
      * observability/debugging only, not used by {@link #isSolid}. Useful for checking
-     * {@link BlockSolidityRegistry}'s classification against real data without guessing.
+     * {@link BlockClassRegistry}'s classification against real data without guessing.
      */
     public OptionalInt stateIdAt(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);

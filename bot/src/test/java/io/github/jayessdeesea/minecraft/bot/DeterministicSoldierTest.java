@@ -114,6 +114,15 @@ class DeterministicSoldierTest {
             }
 
             @Override
+
+            public boolean isHazard(int x, int y, int z) {
+
+                return false;
+
+            }
+
+
+            @Override
             public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
                 return List.of(new TrackedEntity(1, 151, new Position(center.x() + 2, center.y(), center.z())));
             }
@@ -370,6 +379,15 @@ class DeterministicSoldierTest {
             }
 
             @Override
+
+            public boolean isHazard(int x, int y, int z) {
+
+                return false;
+
+            }
+
+
+            @Override
             public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
                 return List.of();
             }
@@ -383,6 +401,15 @@ class DeterministicSoldierTest {
             public boolean isSolid(int x, int y, int z) {
                 return y < GROUND || everythingSolid;
             }
+
+            @Override
+
+            public boolean isHazard(int x, int y, int z) {
+
+                return false;
+
+            }
+
 
             @Override
             public List<TrackedEntity> nearbyHostiles(Position center, double radius) {

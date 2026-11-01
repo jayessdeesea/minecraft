@@ -11,7 +11,7 @@ import java.util.TreeSet;
 
 /**
  * One-off, dev-time generator - NOT part of the Maven build, same as
- * ../block-solidity-generator/GenerateBlockSolidity.java. Reads the pinned server jar's own {@code
+ * ../block-class-generator/GenerateBlockClasses.java. Reads the pinned server jar's own {@code
  * generated/reports/registries.json} (produced by {@code --reports}) and emits the resource
  * {@code bot/src/main/resources/.../hostile-entity-types-<version>.txt} that {@code
  * bot.world.HostileMobRegistry} loads at runtime: the {@code minecraft:entity_type} protocol IDs

@@ -11,9 +11,9 @@ import java.util.BitSet;
 /**
  * Which entity-type registry IDs are hostile - backed by a resource generated from the pinned
  * server jar's own {@code --reports} output (see {@code tools/entity-hostility-generator}), same
- * approach as {@link BlockSolidityRegistry}.
+ * approach as {@link BlockClassRegistry}.
  *
- * <p>The default is the opposite of {@code BlockSolidityRegistry}'s, deliberately: there the curated
+ * <p>The default is the opposite of {@code BlockClassRegistry}'s, deliberately: there the curated
  * list is the exception (non-solid) to a safe default (solid); here the curated list <em>is</em> the
  * classification, and the uncurated majority - items, passive mobs, players, projectiles - is
  * correctly "not hostile." A hostile mob missing from the list goes unnoticed, which is a tracked,

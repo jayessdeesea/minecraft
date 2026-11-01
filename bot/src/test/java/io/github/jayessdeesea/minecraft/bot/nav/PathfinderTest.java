@@ -29,6 +29,15 @@ class PathfinderTest {
             }
 
             @Override
+
+            public boolean isHazard(int x, int y, int z) {
+
+                return false;
+
+            }
+
+
+            @Override
             public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
                 return List.of();
             }
@@ -105,6 +114,15 @@ class PathfinderTest {
             }
 
             @Override
+
+            public boolean isHazard(int x, int y, int z) {
+
+                return false;
+
+            }
+
+
+            @Override
             public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
                 return List.of();
             }
@@ -114,6 +132,15 @@ class PathfinderTest {
             public boolean isSolid(int x, int y, int z) {
                 return x <= 0 ? y < GROUND : y < GROUND - 10;
             }
+
+            @Override
+
+            public boolean isHazard(int x, int y, int z) {
+
+                return false;
+
+            }
+
 
             @Override
             public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
@@ -146,6 +173,53 @@ class PathfinderTest {
 
         // The platform is 3 high with no steps - unreachable, so the ground nearby must not count.
         assertFalse(result.reachesGoal());
+    }
+
+    /** Ground with a 3-wide water channel at x=2..4, z=-2..2 - the surface of the water is at y=GROUND-1. */
+    private static WorldView pond() {
+        return new WorldView() {
+            private boolean water(int x, int y, int z) {
+                return x >= 2 && x <= 4 && z >= -2 && z <= 2 && y == GROUND - 1;
+            }
+
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND && !water(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return water(x, y, z);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    @Test
+    void routesAroundWaterRatherThanThroughIt() {
+        WorldView pond = pond();
+
+        Pathfinder.Result result = Pathfinder.find(pond, START, exactly(6, GROUND, 0), 2000);
+
+        assertTrue(result.reachesGoal());
+        for (BlockPos cell : result.path()) {
+            assertFalse(pond.isHazard(cell.x(), cell.y() - 1, cell.z()) || pond.isHazard(cell.x(), cell.y(), cell.z()),
+                    "path enters the water at " + cell);
+        }
+    }
+
+    @Test
+    void aFenceIsNotAOneBlockStep() {
+        // A fence row at x=2, as ChunkCache reports it: the fence cell and the cell above are both solid.
+        WorldView fence = world((x, y, z) -> x == 2 && (y == GROUND || y == GROUND + 1));
+
+        Pathfinder.Result result = Pathfinder.find(fence, START, exactly(4, GROUND, 0), 3000);
+
+        assertFalse(result.reachesGoal(), "an endless fence can't be crossed");
     }
 
     @Test

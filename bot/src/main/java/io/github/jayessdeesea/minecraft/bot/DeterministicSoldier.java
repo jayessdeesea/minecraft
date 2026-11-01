@@ -318,8 +318,28 @@ public final class DeterministicSoldier implements Soldier {
         onGround = false;
     }
 
+    /** Room for the whole body, and no hazard (water, fire) to step into - including when retreating. */
     private static boolean bodyFits(WorldView world, double x, double y, double z) {
-        return !anySolid(world, x, z, (int) Math.floor(y), (int) Math.floor(y + BODY_HEIGHT - EPSILON));
+        int minY = (int) Math.floor(y);
+        int maxY = (int) Math.floor(y + BODY_HEIGHT - EPSILON);
+        return !anySolid(world, x, z, minY, maxY) && !anyHazard(world, x, z, minY, maxY);
+    }
+
+    private static boolean anyHazard(WorldView world, double x, double z, int minY, int maxY) {
+        int minX = (int) Math.floor(x - HALF_WIDTH);
+        int maxX = (int) Math.floor(x + HALF_WIDTH - EPSILON);
+        int minZ = (int) Math.floor(z - HALF_WIDTH);
+        int maxZ = (int) Math.floor(z + HALF_WIDTH - EPSILON);
+        for (int bx = minX; bx <= maxX; bx++) {
+            for (int bz = minZ; bz <= maxZ; bz++) {
+                for (int by = minY; by <= maxY; by++) {
+                    if (world.isHazard(bx, by, bz)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /** Whether any block in rows {@code minY..maxY} under the body's 0.6-wide footprint at (x, z) is solid. */

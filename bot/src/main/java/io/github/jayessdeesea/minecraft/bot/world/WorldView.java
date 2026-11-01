@@ -22,6 +22,9 @@ public interface WorldView {
      */
     boolean isSolid(int x, int y, int z);
 
+    /** Somewhere never to stand in or walk through: water, lava, fire, powder snow. Not solid either. */
+    boolean isHazard(int x, int y, int z);
+
     /** Hostile entities within {@code radius} of {@code center}, nearest first. */
     List<TrackedEntity> nearbyHostiles(Position center, double radius);
 }

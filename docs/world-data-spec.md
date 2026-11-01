@@ -81,16 +81,14 @@ internally, matching whatever version it targets. Registry Data (Configuration s
 different set of data-driven registries (`dimension_type`, `biome`, `damage_type`, etc.) - useful,
 but it does not answer "what does state ID N mean."
 
-**Implemented**: `bot.world.BlockSolidityRegistry` sources exactly this way -
-`tools/block-solidity-generator/GenerateBlockSolidity.java` (checked in, run manually, not part of
-the Maven build) reads the pinned server jar's own `blocks.json` and classifies every block's
-`definition.type` (its real internal behavior class) against a curated allowlist of non-solid types
-(flowers, torches, rails, tall grass, and similar), emitting a plain resource file
-`ChunkCache.isSolid` loads at startup. Deliberately not exhaustive - a type not on the allowlist
-defaults solid, the same "unknown = blocked" policy used for unloaded chunks; expected to grow
-incrementally as real testing surfaces specific wrong classifications. We still do not need a state
-*generation* system (computing all N combinations and assigning IDs ourselves) — the server has
-already done that; we just need to obtain its results some way other than a packet.
+**Implemented**: `bot.world.BlockClassRegistry` sources exactly this way -
+`tools/block-class-generator/GenerateBlockClasses.java` (checked in, run manually, not part of the
+Maven build) reads the pinned server jar's own `blocks.json` and classifies every block state by its
+`definition.type` (its real internal behavior class) and properties (`waterlogged`, `open`) into
+passable, solid, tall (1.5-high collision: fences, walls, closed gates) or hazard (liquids,
+waterlogged and underwater blocks, fire, powder snow), emitting a plain resource file `ChunkCache`
+loads at startup. Deliberately not exhaustive - an unlisted type defaults solid, the same "unknown
+= blocked" policy used for unloaded chunks.
 
 ## 3. Light Data
 
