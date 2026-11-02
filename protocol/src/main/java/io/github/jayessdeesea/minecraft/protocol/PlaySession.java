@@ -80,6 +80,13 @@ public interface PlaySession {
     void useItem(float yaw, float pitch);
 
     /**
+     * Tells the server this player is (or stops) sprinting. Movement speed is the client's own; the
+     * flag is what makes the server charge sprinting's food cost, so a client that moves at sprint
+     * speed must set it.
+     */
+    void setSprinting(boolean sprinting);
+
+    /**
      * Shift-clicks {@code slot} of an open container (or container 0, the player's inventory):
      * from a chest the stack moves into the inventory; from the inventory, armour moves onto the
      * body. {@code stateId} is the one the container's last update carried.

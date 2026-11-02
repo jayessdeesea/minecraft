@@ -594,6 +594,8 @@ public class SoldierRunner implements CommandLineRunner {
         Builder builder = new Builder(name, session, inventory);
         builders.put(name, builder);
         Rations rations = new Rations(name, session, inventory);
+        // What the server was last told about sprinting: a new connection starts walking.
+        java.util.concurrent.atomic.AtomicBoolean sprintingSent = new java.util.concurrent.atomic.AtomicBoolean();
         woodcraftRef.set(woodcraft);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
@@ -669,6 +671,10 @@ public class SoldierRunner implements CommandLineRunner {
                     ? new Report.Cantco("nothing left to gather within 16 blocks of the objective")
                     : tool.isPresent() && woodcraft.failure().isPresent() ? new Report.Cantco(woodcraft.failure().get()) : null);
             Position current = status.position();
+            if (soldier.sprinting() != sprintingSent.get()) {
+                sprintingSent.set(soldier.sprinting());
+                session.setSprinting(soldier.sprinting());
+            }
             session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
             session.endTick();
         }, 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);

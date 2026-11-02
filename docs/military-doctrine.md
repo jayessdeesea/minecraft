@@ -212,7 +212,9 @@ recomputed each squad cycle from where the principal is now:
 
 A soldier who respawns goes straight to its slot in the ring rather than linking up with the point
 man first (§6), and any soldier more than 8 blocks from its goal sprints, so the ring keeps up with
-a principal on the move. The squad leader still chooses the interval and the risk. The soldiers find the principal by its
+a principal on the move. Sprinting is the game's, at the game's price: the soldier tells the
+server it's sprinting (Player Command), so the server charges the food it costs, and it doesn't
+sprint at food 6 or below, where vanilla won't let a player. The squad leader still chooses the interval and the risk. The soldiers find the principal by its
 offline-mode UUID among the entities they see; if none of them can see it, the squad holds the last
 known position. `!mission` ends the escort and hands the squad back to the general.
 

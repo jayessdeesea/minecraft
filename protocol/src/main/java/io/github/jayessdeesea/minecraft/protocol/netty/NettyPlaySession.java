@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.BlockFace;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayerCommandPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.UseItemPacket;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlayState;
@@ -71,6 +72,12 @@ final class NettyPlaySession implements PlaySession {
     @Override
     public void useBlock(int x, int y, int z) {
         channel.writeAndFlush(new ContainerPackets.UseItemOn(x, y, z, BlockFace.UP, sequence.incrementAndGet()));
+    }
+
+    @Override
+    public void setSprinting(boolean sprinting) {
+        channel.writeAndFlush(new PlayerCommandPacket(playState.entityId(),
+                sprinting ? PlayerCommandPacket.START_SPRINTING : PlayerCommandPacket.STOP_SPRINTING));
     }
 
     @Override

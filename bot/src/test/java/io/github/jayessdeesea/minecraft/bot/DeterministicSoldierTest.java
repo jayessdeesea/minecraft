@@ -74,6 +74,21 @@ class DeterministicSoldierTest {
         before = bob.status().position().x();
         bob.tick(terrain(false));
         assertTrue(before - bob.status().position().x() < DeterministicSoldier.SPRINT_STEP - 1e-6, "5 blocks out: walk");
+        assertTrue(alice.sprinting(), "the server is told, so it charges for it");
+        assertTrue(!bob.sprinting());
+    }
+
+    @Test
+    void aSoldierAtFoodSixOrBelowCantSprint() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportHealth(20, DeterministicSoldier.SPRINT_FOOD_FLOOR);
+        alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
+        alice.tick(terrain(false));
+        double before = alice.status().position().x();
+        alice.tick(terrain(false));
+
+        assertTrue(before - alice.status().position().x() < DeterministicSoldier.SPRINT_STEP - 1e-6, "too hungry: walks");
+        assertTrue(!alice.sprinting());
     }
 
     @Test

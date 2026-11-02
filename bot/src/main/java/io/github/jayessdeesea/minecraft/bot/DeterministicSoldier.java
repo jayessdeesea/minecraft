@@ -40,6 +40,16 @@ public final class DeterministicSoldier implements Soldier {
     static final double SPRINT_STEP = 0.28;
     /** Far enough from its goal that a soldier sprints to catch up - a moving principal, a distant slot. */
     static final double SPRINT_DISTANCE = 8;
+    /** At this food level or below a player can't sprint. */
+    static final int SPRINT_FOOD_FLOOR = 6;
+
+    /**
+     * Whether the soldier is sprinting - to be told to the server, which charges sprinting's food cost
+     * (0.1 exhaustion a metre) only to a player it knows is sprinting.
+     */
+    public boolean sprinting() {
+        return sprinting;
+    }
 
     // Vanilla player physics constants (LivingEntity): per tick, velocity -= 0.08 then *= 0.98;
     // a jump starts at 0.42 (peaks ~1.25 blocks - enough for one block, not two).
@@ -64,6 +74,8 @@ public final class DeterministicSoldier implements Soldier {
     private int ticksUntilAttack = 0; // tick-loop only
     // Written only by the connection's thread (reportHealth), as position is only by the tick loop.
     private volatile Condition condition;
+    /** Whether the last step was a sprint - tick thread writes, its caller reads. */
+    private volatile boolean sprinting;
     private volatile Kit kit; // written only by the connection's thread (reportKit)
     private double lastReportedHealth = -1;
     private int deaths;
@@ -229,6 +241,7 @@ public final class DeterministicSoldier implements Soldier {
         }
 
         OptionalInt attack = OptionalInt.empty();
+        sprinting = false; // only a long move sprints; fighting and short moves walk
         Position before = position;
         if (hurt.getAndSet(false)) {
             underFireTicks = UNDER_FIRE_TICKS;
@@ -424,7 +437,10 @@ public final class DeterministicSoldier implements Soldier {
             centreZ = waypoint.z() + 0.5;
         }
         boolean far = Math.hypot(goal.x() - position.x(), goal.z() - position.z()) > SPRINT_DISTANCE;
-        stepToward(world, centreX, centreZ, far ? SPRINT_STEP : STEP);
+        // Vanilla won't let a player sprint at food 6 or below; the server charges for every metre.
+        Condition known = condition;
+        sprinting = far && (known == null || known.food() > SPRINT_FOOD_FLOOR);
+        stepToward(world, centreX, centreZ, sprinting ? SPRINT_STEP : STEP);
     }
 
     /**
