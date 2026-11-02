@@ -15,6 +15,9 @@ You command the way the U.S. Army's mission command doctrine describes:
   far. A squad that is mostly bare-handed, unarmoured or wounded is weak in a fight: prefer
   objectives that keep it out of contact, or let it hold on safe ground to recover, until the
   mission needs it to take the risk.
+- With more than one squad, split the work: one can hold or observe while another moves, and
+  one can resupply while another covers it. Squads support each other: when one reports InContact
+  or is weak (wounded, bare-handed), an objective beside it for another squad brings help.
 - If there is a <supply_point>, a squad sent there re-arms: its soldiers short of a weapon or
   armour take them from the chest. Send a squad that is badly short of either there before
   committing it to a fight, if the mission allows the time.

@@ -55,9 +55,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * re-derives each soldier's slot from the standing order and where the point man actually is; every
  * few seconds it logs the squad's SITREPs.
  *
- * <p>{@code SOLDIERS} is a hardcoded list, not {@code application.yml}. Deliberately, for now
- * (AGENTS.md's revisit-on-real-pressure tenet): nothing yet needs to reconfigure soldiers without
- * recompiling (no real deployment, one dev server, always localhost). Revisit once that changes.
+ * <p>Who connects, and in which squad, is the {@link Roster}. Each squad has its own formation,
+ * link-up and pace control; the world model is shared by all of them.
  *
  * <p>All soldiers share one {@link ChunkCache} - AGENTS.md's "Behavior modeling" section built its
  * reference counting specifically for this: the block data is one shared ground truth regardless
@@ -86,24 +85,28 @@ public class SoldierRunner implements CommandLineRunner {
     private static final long TICK_PERIOD_MILLIS = 50; // 20 Hz, matching Minecraft's own tick rate
     private static final long STATUS_LOG_PERIOD_SECONDS = 5;
 
-    /** One soldier: its username. List order is formation order - the first is the point man. */
-    private record SoldierDefinition(String name) {
+    /** One soldier: its username and squad. */
+    private record SoldierDefinition(String name, String squad) {
     }
 
-    private static final List<SoldierDefinition> SOLDIERS = List.of(
-            new SoldierDefinition("Alice"),
-            new SoldierDefinition("Bob"),
-            new SoldierDefinition("Carol")
-    );
+    /** Every soldier of every squad, squad by squad in formation order; the first carries the radio. */
+    private static final List<SoldierDefinition> SOLDIERS = Roster.SQUADS.stream()
+            .flatMap(squad -> squad.soldiers().stream().map(name -> new SoldierDefinition(name, squad.name())))
+            .toList();
+
+    /** A squad's deterministic state across cycles - squad thread only. */
+    private static final class SquadState {
+        final LinkUp linkUp = new LinkUp();
+        java.util.Set<String> linkingUp = java.util.Set.of();
+        String haltedFor;
+    }
 
     private static final long SQUAD_PERIOD_MILLIS = 1000;
 
     /** Currently connected soldiers by name - written by connect/disconnect, read by the squad loop. */
     private final Map<String, DeterministicSoldier> activeSoldiers = new ConcurrentHashMap<>();
     private final ChainOfCommand chainOfCommand;
-    private final LinkUp linkUp = new LinkUp(); // squad thread only
-    private java.util.Set<String> linkingUp = java.util.Set.of(); // squad thread only
-    private String haltedFor; // squad thread only
+    private final Map<String, SquadState> squadStates = new HashMap<>(); // squad thread only
 
     private final OperatorOrders operatorOrders;
     /** The chest soldiers draw kit from, if the operator set one up (docs/military-doctrine.md §4). */
@@ -131,33 +134,48 @@ public class SoldierRunner implements CommandLineRunner {
     }
 
     /**
-     * Reports up, orders down: pass the squad's SITREPs to the chain of command, then hand every
-     * present soldier its formation slot under the standing order (the deterministic half of
-     * squad leading - {@link Formations}).
+     * Reports up, orders down: pass every squad's SITREPs to the chain of command, then hand every
+     * present soldier its slot under its squad's standing order (the deterministic half of squad
+     * leading - {@link Formations} and the drills).
      */
     private void leadSquad() {
-        List<DeterministicSoldier> squad = presentSoldiers();
-        if (squad.isEmpty()) {
-            return;
+        record Present(String squad, List<DeterministicSoldier> soldiers, List<SoldierStatus> statuses,
+                       Optional<Position> principalAt) {
         }
-        // Replacements (respawned soldiers) go to the rear and rejoin by link-up, so the first
-        // formed soldier is the point man.
-        List<SoldierStatus> statuses = linkUp.reconstitute(squad.stream().map(DeterministicSoldier::status).toList());
-        java.util.Set<String> linking = statuses.stream().filter(s -> s.report() instanceof Report.LinkingUp)
-                .map(SoldierStatus::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
-        linking.stream().filter(name -> !linkingUp.contains(name))
-                .forEach(name -> LOG.info("[{} -> {}] LINKING UP after respawn", name, ChainOfCommand.SQUAD_NAME));
-        linkingUp.stream().filter(name -> !linking.contains(name))
-                .forEach(name -> LOG.info("[{} -> {}] LINKED UP", name, ChainOfCommand.SQUAD_NAME));
-        linkingUp = linking;
-        Position pointMan = statuses.get(0).position();
-        Optional<Position> principalAt = chainOfCommand.escort()
-                .flatMap(principal -> entityTracker.positionOf(OperatorOrders.offlineUuid(principal)));
-        chainOfCommand.onSitrep(statuses, () -> TerrainSurveyor.survey(world, pointMan), principalAt);
-        SquadOrder order = chainOfCommand.currentOrder().orElse(null);
-        if (order == null) {
-            return;
+        List<Present> present = new java.util.ArrayList<>();
+        for (Roster.Squad squad : Roster.SQUADS) {
+            List<DeterministicSoldier> soldiers = presentSoldiers(squad.name());
+            if (soldiers.isEmpty()) {
+                continue;
+            }
+            SquadState state = squadStates.computeIfAbsent(squad.name(), name -> new SquadState());
+            // Replacements (respawned soldiers) go to the rear and rejoin by link-up, so the first
+            // formed soldier is the point man.
+            List<SoldierStatus> statuses = state.linkUp.reconstitute(soldiers.stream().map(DeterministicSoldier::status).toList());
+            java.util.Set<String> linking = statuses.stream().filter(s -> s.report() instanceof Report.LinkingUp)
+                    .map(SoldierStatus::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
+            java.util.Set<String> wasLinking = state.linkingUp;
+            linking.stream().filter(name -> !wasLinking.contains(name))
+                    .forEach(name -> LOG.info("[{} -> {}] LINKING UP after respawn", name, squad.name()));
+            wasLinking.stream().filter(name -> !linking.contains(name))
+                    .forEach(name -> LOG.info("[{} -> {}] LINKED UP", name, squad.name()));
+            state.linkingUp = linking;
+            Optional<Position> principalAt = chainOfCommand.escort(squad.name())
+                    .flatMap(principal -> entityTracker.positionOf(OperatorOrders.offlineUuid(principal)));
+            present.add(new Present(squad.name(), soldiers, statuses, principalAt));
         }
+        chainOfCommand.onSitreps(present.stream().map(p -> {
+            Position pointMan = p.statuses().get(0).position();
+            return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan), p.principalAt());
+        }).toList());
+        for (Present p : present) {
+            chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
+                    orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt()));
+        }
+    }
+
+    private void orderSquad(String squadName, SquadState state, List<DeterministicSoldier> squad, List<SoldierStatus> statuses,
+                            SquadOrder order, Optional<Position> principalAt) {
         // Formation slots, then replacements' link-up, then pace control (the point man halts for
         // a straggler), then resupply at the supply point, then the react-to-contact drill, which
         // overrides all of them. Escorting, the ring around the principal replaces the formation
@@ -168,22 +186,22 @@ public class SoldierRunner implements CommandLineRunner {
             List<Position> threats = entityTracker.nearbyHostiles(principal, Escort.THREAT_RADIUS).stream()
                     .map(io.github.jayessdeesea.minecraft.bot.world.TrackedEntity::position).toList();
             orders = ReactToContact.orders(statuses, Escort.intercept(statuses,
-                    Resupply.orders(statuses, linkUp.orders(statuses, Escort.slots(statuses, order, principal)),
+                    Resupply.orders(statuses, state.linkUp.orders(statuses, Escort.slots(statuses, order, principal)),
                             principal, supplyPoint),
                     principal, threats));
         } else {
             orders = ReactToContact.orders(statuses,
-                    Resupply.orders(statuses, Cohesion.orders(statuses, linkUp.orders(statuses, Formations.assign(order, statuses))),
+                    Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, Formations.assign(order, statuses))),
                             order.objective(), supplyPoint));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
-        if (!java.util.Objects.equals(straggler, haltedFor)) {
+        if (!java.util.Objects.equals(straggler, state.haltedFor)) {
             if (straggler != null) {
-                LOG.info("[{}] HALT: point man waits for {}", ChainOfCommand.SQUAD_NAME, straggler);
+                LOG.info("[{}] HALT: point man waits for {}", squadName, straggler);
             } else {
-                LOG.info("[{}] squad closed up - moving on", ChainOfCommand.SQUAD_NAME);
+                LOG.info("[{}] squad closed up - moving on", squadName);
             }
-            haltedFor = straggler;
+            state.haltedFor = straggler;
         }
         Map<String, DeterministicSoldier> byName = new HashMap<>();
         squad.forEach(soldier -> byName.put(soldier.status().name(), soldier));
@@ -193,24 +211,27 @@ public class SoldierRunner implements CommandLineRunner {
     }
 
     private void logSquadSitrep() {
-        List<DeterministicSoldier> squad = presentSoldiers();
-        if (squad.isEmpty()) {
-            return;
+        for (Roster.Squad squadDefinition : Roster.SQUADS) {
+            List<DeterministicSoldier> squad = presentSoldiers(squadDefinition.name());
+            if (squad.isEmpty()) {
+                continue;
+            }
+            StringBuilder sitrep = new StringBuilder();
+            for (DeterministicSoldier soldier : squad) {
+                SoldierStatus status = soldier.status();
+                sitrep.append(String.format(Locale.ROOT, "%n  %s at (%.1f, %.1f, %.1f): %s %s",
+                        status.name(), status.position().x(), status.position().y(), status.position().z(), status.report(),
+                        status.condition().map(Object::toString).orElse("(condition not reported)")));
+            }
+            LOG.info("[squad -> {}] SITREP - {} chunk(s), {} entities tracked:{}",
+                    squadDefinition.name(), chunkCache.loadedChunkCount(), entityTracker.trackedEntityCount(), sitrep);
         }
-        StringBuilder sitrep = new StringBuilder();
-        for (DeterministicSoldier soldier : squad) {
-            SoldierStatus status = soldier.status();
-            sitrep.append(String.format(Locale.ROOT, "%n  %s at (%.1f, %.1f, %.1f): %s %s",
-                    status.name(), status.position().x(), status.position().y(), status.position().z(), status.report(),
-                    status.condition().map(Object::toString).orElse("(condition not reported)")));
-        }
-        LOG.info("[squad -> {}] SITREP - {} chunk(s), {} entities tracked:{}",
-                ChainOfCommand.SQUAD_NAME, chunkCache.loadedChunkCount(), entityTracker.trackedEntityCount(), sitrep);
     }
 
-    /** Connected soldiers in formation order (the first present one is the point man). */
-    private List<DeterministicSoldier> presentSoldiers() {
-        return SOLDIERS.stream().map(d -> activeSoldiers.get(d.name())).filter(java.util.Objects::nonNull).toList();
+    /** A squad's connected soldiers in formation order (the first present one is the point man). */
+    private List<DeterministicSoldier> presentSoldiers(String squad) {
+        return SOLDIERS.stream().filter(d -> d.squad().equals(squad))
+                .map(d -> activeSoldiers.get(d.name())).filter(java.util.Objects::nonNull).toList();
     }
 
     private void connect(SoldierDefinition definition) {

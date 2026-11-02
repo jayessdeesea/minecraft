@@ -109,7 +109,9 @@ armour and holds the weapon. Nothing restocks the chest but the operator.
 
 *How we use it:* the general's objective to a squad is OPORD-shaped but small - situation, mission
 (who / what / where / why), intent. The squad leader's frequent re-tasking is FRAGO-shaped: a new
-objective, formation, or interval against the standing mission.
+objective, formation, or interval against the standing mission. The general orders every squad in
+one decision, so it divides the mission between them; its prompt says one squad can hold or
+observe while another moves, and that a squad beside one in contact or weak brings it help.
 
 ## 6. Replacements: rally point and link-up
 
@@ -189,8 +191,9 @@ The squad leader's prompt shows each soldier's distance from the point man, and 
 |---|---|---|
 | **Protective detail** | A team assigned to a principal moves with them, keeps a perimeter around them, and meets a threat before it reaches them. | ATP 3-39.35, *Protective Services* |
 
-*How we use it:* the operator attaches the squad to a player with `!escort` (or `!escort <player>`)
-in game chat. `ChainOfCommand` sets the general aside and gives the squad leader the principal's
+*How we use it:* the operator attaches the first squad (Alpha) to a player with `!escort` (or
+`!escort <player>`) in game chat. `ChainOfCommand` takes it out of the general's command - the
+general goes on commanding the other squads - and gives its squad leader the principal's
 position as its objective, re-issued whenever the principal has moved 8 blocks. The principal
 moves every tick, faster than any LLM decides, so `command.Escort` - a drill like the others - is
 recomputed each squad cycle from where the principal is now:

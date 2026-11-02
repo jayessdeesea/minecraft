@@ -1,12 +1,9 @@
 package io.github.jayessdeesea.minecraft.app;
 
-import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
-import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
@@ -17,23 +14,31 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * The LLM echelons' imperative shell: decides <em>when</em> the general and the squad leader
- * think, runs their model calls off every soldier-facing thread, and hands the resulting
- * {@link SquadOrder} to {@code SoldierRunner}'s formation loop. Cadence follows AGENTS.md's
- * latency architecture - the higher the echelon, the less often - plus events: a new objective,
- * or a <em>new</em> CANTCO from below (docs/military-doctrine.md §3), triggers a decision early, so
- * push-back is answered in seconds rather than at the next routine interval. A CANTCO that's
- * still standing after the echelon has answered it waits for the routine interval - re-asking
- * every few seconds about the same report just churns orders.
+ * The LLM echelons' imperative shell: decides <em>when</em> the general and each squad leader
+ * think, runs their model calls off every soldier-facing thread, and hands each squad's
+ * {@link SquadOrder} to {@code SoldierRunner}'s squad loop. Cadence follows AGENTS.md's latency
+ * architecture - the higher the echelon, the less often - plus events: a new objective, or a
+ * <em>new</em> CANTCO from below (docs/military-doctrine.md §3), triggers a decision early, so
+ * push-back is answered in seconds rather than at the next routine interval. A CANTCO that's still
+ * standing after the echelon has answered it waits for the routine interval - re-asking every few
+ * seconds about the same report just churns orders.
+ *
+ * <p>One general commands every squad in the {@link Roster} at once, so it can split the work
+ * between them. A squad the operator attached to a player as an escort ({@code !escort}) is set
+ * aside from the general until the next {@code !mission}; its objective follows the player
+ * instead (see {@link SquadCommand}).
  *
  * <p>Every exchange is logged like a radio net - orders down, reports up - so a run reads as a
  * transcript of how doctrine-shaped communication plays out between LLM agents. Orders and
@@ -50,48 +55,37 @@ public class ChainOfCommand {
 
     private static final Logger LOG = LogManager.getLogger(ChainOfCommand.class);
 
-    static final String SQUAD_NAME = "Alpha";
-
-    private static final long SQUAD_PERIOD_MILLIS = 20_000;
     private static final long GENERAL_PERIOD_MILLIS = 120_000;
     /** Least time between decisions, however many CANTCOs arrive - stops a stuck soldier spamming the model. */
     private static final long MIN_GAP_MILLIS = 8_000;
     /** Vanilla chat's own limit is 256 characters. */
     static final int CHAT_LINE_LIMIT = 250;
 
+    /** One squad's SITREP for a cycle: its soldiers, its terrain (surveyed only if its leader decides), its principal. */
+    public record Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain,
+                         Optional<Position> principalAt) {
+    }
+
     private final General general;
-    private final SquadLeader squadLeader;
+    private final Map<String, SquadCommand> squads = new LinkedHashMap<>();
     private final ExecutorService generalThread = Executors.newSingleThreadExecutor(r -> new Thread(r, "general"));
-    private final ExecutorService squadLeaderThread = Executors.newSingleThreadExecutor(r -> new Thread(r, "squad-leader-" + SQUAD_NAME));
     private final AtomicBoolean generalBusy = new AtomicBoolean();
-    private final AtomicBoolean squadLeaderBusy = new AtomicBoolean();
-    /** Bumped on each operator mission, so a general's decision already in flight is known to be stale. */
-    private final java.util.concurrent.atomic.AtomicInteger missionVersion = new java.util.concurrent.atomic.AtomicInteger();
+    /** Bumped on each operator order, so a general's decision already in flight is known to be stale. */
+    private final AtomicInteger missionVersion = new AtomicInteger();
 
-    private volatile SquadOrder order;
-    private volatile Objective objective;
-    private volatile boolean newObjective;
     private volatile long lastGeneralMillis = Long.MIN_VALUE / 2;
-    private volatile long lastSquadLeaderMillis = Long.MIN_VALUE / 2;
-    // The reports each echelon last answered - a decision is triggered early only when these change.
-    private volatile Report squadReportAnswered = new Report.Idle();
-    private volatile java.util.Set<String> cantcosAnswered = java.util.Set.of();
     private volatile Consumer<String> radio;
-    /** The player the squad is escorting, or null - set by the operator's thread, read by the squad's. */
-    private volatile String escort;
-    private volatile boolean principalOutOfSight;
-
-    /** How far the principal moves before the squad leader is given its new position. */
-    static final double ESCORT_RETASK_DISTANCE = 8;
 
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient) {
         this.general = general;
-        this.squadLeader = new SpringAiSquadLeader(SQUAD_NAME, squadLeaderClient);
+        for (Roster.Squad squad : Roster.SQUADS) {
+            squads.put(squad.name(), new SquadCommand(squad.name(), new SpringAiSquadLeader(squad.name(), squadLeaderClient), this::transmit));
+        }
     }
 
     /**
-     * Where radio traffic is keyed out - the squad's radio operator's connection. Until one is set
-     * (no soldier connected yet), traffic is only logged.
+     * Where radio traffic is keyed out - the radio operator's connection. Until one is set (no
+     * soldier connected yet), traffic is only logged.
      */
     public void setRadio(Consumer<String> radio) {
         this.radio = radio;
@@ -99,11 +93,12 @@ public class ChainOfCommand {
 
     /**
      * A new mission from a human operator (see {@code OperatorOrders}): the general takes it and
-     * re-plans at the next SITREP rather than at its routine interval. Acknowledged on the radio.
+     * re-plans at the next SITREP rather than at its routine interval, for every squad - an escort
+     * ends. Acknowledged on the radio.
      */
     public void onOperatorMission(String operator, String mission) {
         general.receiveMission(mission);
-        escort = null;
+        squads.values().forEach(squad -> squad.escort(null));
         missionVersion.incrementAndGet();
         lastGeneralMillis = Long.MIN_VALUE / 2;
         LOG.info("[{} -> General] MISSION: {}", operator, mission);
@@ -111,155 +106,85 @@ public class ChainOfCommand {
     }
 
     /**
-     * The operator attaches the squad to {@code principal} as its escort (docs/military-doctrine.md
-     * §10): until the next {@code !mission}, the general is set aside and the squad leader's
-     * objective follows the principal (see {@link #onSitrep}). Acknowledged on the radio.
+     * The operator attaches the first squad in the {@link Roster} to {@code principal} as its
+     * escort (docs/military-doctrine.md §10): until the next {@code !mission}, the general leaves
+     * it out and its squad leader's objective follows the principal. Acknowledged on the radio.
      */
     public void onOperatorEscort(String operator, String principal) {
-        escort = principal;
-        missionVersion.incrementAndGet(); // a general's decision in flight no longer applies
-        principalOutOfSight = false;
-        LOG.info("[{} -> {}] ESCORT: {}", operator, SQUAD_NAME, principal);
-        transmit("[" + SQUAD_NAME + " -> " + operator + "] WILCO: escorting " + principal);
+        SquadCommand escort = squads.values().iterator().next();
+        escort.escort(principal);
+        missionVersion.incrementAndGet(); // a general's decision in flight may have included this squad
+        lastGeneralMillis = Long.MIN_VALUE / 2; // the others are re-planned without it
+        LOG.info("[{} -> {}] ESCORT: {}", operator, escort.name, principal);
+        transmit("[" + escort.name + " -> " + operator + "] WILCO: escorting " + principal);
     }
 
-    /** Who the squad is escorting, if anyone. */
-    public Optional<String> escort() {
-        return Optional.ofNullable(escort);
+    /** Who {@code squad} is escorting, if anyone. */
+    public Optional<String> escort(String squad) {
+        return squads.get(squad).escort();
     }
 
-    /** The squad's standing order, if the squad leader has issued one. */
-    public Optional<SquadOrder> currentOrder() {
-        return Optional.ofNullable(order);
+    /** {@code squad}'s standing order, if its squad leader has issued one. */
+    public Optional<SquadOrder> currentOrder(String squad) {
+        return squads.get(squad).order();
     }
 
     /**
-     * Called with the squad's SITREPs (formation order, point man first) every second. Cheap: at
-     * most kicks off a model call on its echelon's own thread and returns. {@code terrain} is only
-     * evaluated - on the squad leader's thread - when the squad leader is actually about to decide.
+     * Called with every present squad's SITREP (formation order, point man first) every second.
+     * Cheap: at most kicks off model calls on the echelons' own threads and returns.
      */
-    public void onSitrep(List<SoldierStatus> squad, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt) {
-        if (squad.isEmpty()) {
+    public void onSitreps(List<Sitrep> sitreps) {
+        if (sitreps.isEmpty()) {
             return;
         }
         long now = System.currentTimeMillis();
-        String principal = escort;
-        if (principal != null) {
-            followPrincipal(principal, principalAt);
+        List<Sitrep> underGeneral = sitreps.stream().filter(s -> squads.get(s.squad()).escort().isEmpty()).toList();
+        boolean newCantco = false;
+        boolean unordered = false;
+        for (Sitrep sitrep : underGeneral) {
+            SquadCommand squad = squads.get(sitrep.squad());
+            newCantco |= squad.newCantco();
+            unordered |= !squad.hasObjective();
         }
-        Report squadReport = squadLeader.report();
-        // New = the squad went from able to unable. A CANTCO re-worded on the next decision is the
-        // same CANTCO; comparing the text re-tasked the squad every few seconds.
-        boolean newSquadCantco = squadReport instanceof Report.Cantco && !(squadReportAnswered instanceof Report.Cantco);
-        if (principal == null && (objective == null || since(lastGeneralMillis, now) >= GENERAL_PERIOD_MILLIS
-                || (newSquadCantco && since(lastGeneralMillis, now) >= MIN_GAP_MILLIS))) {
-            askGeneral(squad, now);
+        if (!underGeneral.isEmpty() && (unordered || now - lastGeneralMillis >= GENERAL_PERIOD_MILLIS
+                || (newCantco && now - lastGeneralMillis >= MIN_GAP_MILLIS))) {
+            askGeneral(underGeneral, now);
         }
-        squadReportAnswered = squadReport;
-        java.util.Set<String> cantcos = squad.stream().filter(s -> s.report() instanceof Report.Cantco)
-                .map(SoldierStatus::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
-        boolean newSoldierCantco = !cantcosAnswered.containsAll(cantcos);
-        if (objective != null && (newObjective || since(lastSquadLeaderMillis, now) >= SQUAD_PERIOD_MILLIS
-                || (newSoldierCantco && since(lastSquadLeaderMillis, now) >= MIN_GAP_MILLIS))) {
-            cantcosAnswered = cantcos;
-            askSquadLeader(squad, terrain, now);
+        for (Sitrep sitrep : sitreps) {
+            squads.get(sitrep.squad()).onSitrep(sitrep.soldiers(), sitrep.terrain(), sitrep.principalAt(), now, MIN_GAP_MILLIS);
         }
     }
 
-    /**
-     * While escorting, the squad leader's objective is the principal's position - re-issued once
-     * the principal has moved {@link #ESCORT_RETASK_DISTANCE} from it, so the squad leader's view
-     * keeps up without a decision every second (the escort drill follows the live position in
-     * between). A principal nobody in the squad can see keeps the last objective.
-     */
-    private void followPrincipal(String principal, Optional<Position> principalAt) {
-        if (principalAt.isEmpty()) {
-            if (!principalOutOfSight) {
-                LOG.warn("[{}] can't see {} - holding the last known position", SQUAD_NAME, principal);
-                principalOutOfSight = true;
-            }
-            return;
-        }
-        principalOutOfSight = false;
-        Position at = principalAt.get();
-        Objective current = objective;
-        if (current != null && current.mission().equals(escortMission(principal))
-                && Cohesion.distance(current.location(), at) < ESCORT_RETASK_DISTANCE) {
-            return;
-        }
-        Objective follow = new Objective(escortMission(principal), at,
-                "Keep " + principal + " safe: stay close around them and intercept hostiles that come near them.");
-        LOG.info("[{}] escort objective follows {} to {}", SQUAD_NAME, principal, at(at));
-        squadLeader.receiveObjective(follow);
-        objective = follow;
-        newObjective = true;
-    }
-
-    private static String escortMission(String principal) {
-        return "Escort and protect " + principal;
-    }
-
-    private void askGeneral(List<SoldierStatus> squad, long now) {
+    private void askGeneral(List<Sitrep> sitreps, long now) {
         if (!generalBusy.compareAndSet(false, true)) {
             return;
         }
         lastGeneralMillis = now;
-        SquadStatus status = new SquadStatus(SQUAD_NAME, squadLeader.report(), squad);
+        List<SquadStatus> statuses = sitreps.stream()
+                .map(s -> new SquadStatus(s.squad(), squads.get(s.squad()).report(), s.soldiers())).toList();
         int missionAsked = missionVersion.get();
         generalThread.execute(() -> {
             try {
                 long started = System.currentTimeMillis();
-                Objective given = general.decide(List.of(status)).getFirst();
+                List<Objective> objectives = general.decide(statuses);
                 if (missionVersion.get() != missionAsked) {
-                    LOG.info("[General] discarding a decision made under the superseded mission");
+                    LOG.info("[General] discarding a decision made under superseded orders");
                     return; // lastGeneralMillis was reset: the next SITREP asks again
                 }
-                LOG.info("[General -> {}] ({} ms) OPORD: {} at ({}, {}, {}). Intent: {}", SQUAD_NAME,
-                        System.currentTimeMillis() - started, given.mission(),
-                        Math.round(given.location().x()), Math.round(given.location().y()), Math.round(given.location().z()),
-                        given.intent());
-                transmit("[General -> " + SQUAD_NAME + "] OPORD: " + given.mission() + " at " + at(given.location())
-                        + ". Intent: " + given.intent());
-                squadLeader.receiveObjective(given);
-                objective = given;
-                newObjective = true;
+                long millis = System.currentTimeMillis() - started;
+                for (int i = 0; i < statuses.size(); i++) {
+                    String name = statuses.get(i).squadName();
+                    Objective given = objectives.get(i);
+                    LOG.info("[General -> {}] ({} ms) OPORD: {} at {}. Intent: {}", name, millis, given.mission(),
+                            at(given.location()), given.intent());
+                    transmit("[General -> " + name + "] OPORD: " + given.mission() + " at " + at(given.location())
+                            + ". Intent: " + given.intent());
+                    squads.get(name).receiveObjective(given);
+                }
             } catch (RuntimeException e) {
-                LOG.error("[General] no decision - keeping the current objective: {}", e.getMessage(), e);
+                LOG.error("[General] no decision - keeping the current objectives: {}", e.getMessage(), e);
             } finally {
                 generalBusy.set(false);
-            }
-        });
-    }
-
-    private void askSquadLeader(List<SoldierStatus> squad, Supplier<TerrainSurvey> terrain, long now) {
-        if (!squadLeaderBusy.compareAndSet(false, true)) {
-            return;
-        }
-        lastSquadLeaderMillis = now;
-        newObjective = false;
-        squadLeaderThread.execute(() -> {
-            try {
-                long started = System.currentTimeMillis();
-                TerrainSurvey survey = terrain.get();
-                long reachable = survey.samples().stream().filter(TerrainSurvey.Sample::reachable).count();
-                squadLeader.decide(squad, survey).ifPresent(decided -> {
-                    LOG.info("[{} -> squad] ({} ms, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval, {} risk{}. Intent: {}",
-                            SQUAD_NAME, System.currentTimeMillis() - started, reachable, survey.samples().size(),
-                            Math.round(decided.objective().x()), Math.round(decided.objective().y()), Math.round(decided.objective().z()),
-                            decided.formation(), decided.interval(), decided.risk(), soldierRisk(decided), decided.intent());
-                    transmit("[" + SQUAD_NAME + " -> squad] FRAGO: " + decided.formation() + " to " + at(decided.objective())
-                            + ", " + decided.risk() + " risk" + soldierRisk(decided)
-                            + ". Intent: " + decided.intent());
-                    if (squadLeader.report() instanceof Report.Cantco cantco) {
-                        LOG.warn("[{} -> General] CANTCO: {}", SQUAD_NAME, cantco.reason());
-                        transmit("[" + SQUAD_NAME + " -> General] CANTCO: " + cantco.reason());
-                    }
-                    order = decided;
-                });
-            } catch (RuntimeException e) {
-                LOG.error("[{}] no decision - squad keeps its last order: {}", SQUAD_NAME, e.getMessage(), e);
-            } finally {
-                squadLeaderBusy.set(false);
             }
         });
     }
@@ -285,17 +210,7 @@ public class ChainOfCommand {
         return clean.toString();
     }
 
-    private static String at(Position p) {
+    static String at(Position p) {
         return "(" + Math.round(p.x()) + ", " + Math.round(p.y()) + ", " + Math.round(p.z()) + ")";
-    }
-
-    /** ", Carol at MEDIUM risk" for each per-soldier override, in name order; empty if none. */
-    private static String soldierRisk(SquadOrder order) {
-        return order.soldierRisk().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
-                .map(e -> ", " + e.getKey() + " at " + e.getValue() + " risk").collect(java.util.stream.Collectors.joining());
-    }
-
-    private static long since(long then, long now) {
-        return now - then;
     }
 }

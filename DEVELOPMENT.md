@@ -89,11 +89,11 @@ mvn package -DskipTests
 java -jar app/target/app.jar
 ```
 
-This connects `Alice`, `Bob` and `Carol` (`SoldierRunner.SOLDIERS`; the first is the point man) as
-squad Alpha, under an LLM squad leader and general (`ChainOfCommand`). The log reads as a radio
-net: `[General -> Alpha] OPORD`, `[Alpha -> squad] FRAGO`, `[Alpha -> General] CANTCO`, and a squad
-SITREP every 5 seconds. Orders and CANTCOs also appear in game chat (section 4), spoken by
-the point man as the squad's radio operator. Soldiers reconnect on their own if a connection dies. The general's mission
+This connects two squads (`app.Roster`): Alpha (`Alice`, `Bob`, `Carol`) and Bravo (`Dana`, `Eli`,
+`Fran`), the first of each its point man, each under its own LLM squad leader, both under one LLM
+general (`ChainOfCommand`). The log reads as a radio net: `[General -> Alpha] OPORD`,
+`[Bravo -> squad] FRAGO`, `[Alpha -> General] CANTCO`, and each squad's SITREP every 5 seconds.
+Orders and CANTCOs also appear in game chat (section 4), spoken by Alice as the radio operator. Soldiers reconnect on their own if a connection dies. The general's mission
 starts as `minecraft.general.mission` in `application.yml`.
 
 **Giving orders from game chat.** A player named in `minecraft.operators` (comma-separated, empty
@@ -103,7 +103,7 @@ doesn't authenticate names, so the list guards against accidents, not impostors.
 absolute coordinates ("hold x=-40 z=0"): the general re-reads the mission at every re-plan, so
 "40 blocks west of here" moves the objective another 40 blocks each time.
 
-`!escort` attaches the squad to you as a protective detail, and `!escort <player>` to another
+`!escort` attaches Alpha to you as a protective detail, and `!escort <player>` to another
 player: the soldiers ring the player and go after hostiles that come near them
 (docs/military-doctrine.md § 10). `!mission <text>` ends it.
 
