@@ -296,7 +296,8 @@ under the soldiers.
 Each soldier goes to its own floor cell. Once all are inside, each builds from where it stands
 (`bot.supply.Builder`): cobblestone first, then planks, then logs. Each block is placed against a
 solid neighbour's face and checked against the server's block updates; a cell that won't take a
-block after three tries is skipped. A soldier at it reports `Fortifying`, or CANTCO when it runs
+block after three tries is skipped; after the first miss the soldier digs the cell, since a flower
+or sapling there blocks a placement until it is broken. A soldier at it reports `Fortifying`, or CANTCO when it runs
 out of blocks. The general's LOGSTAT says whether the squad carries enough for a base, so the
 model never has to add up the numbers itself.
 

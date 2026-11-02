@@ -44,6 +44,8 @@ class BuilderTest {
         }
     };
     private final List<String> calls = new ArrayList<>();
+    /** Cells holding something not solid that a block can't replace until it's broken. */
+    private final Set<BlockPos> flowers = new HashSet<>();
     /** Whether the server lets a placement land. */
     private boolean placementsLand = true;
     /** The soldier's inventory, which the fake server swaps items in as the real one would. */
@@ -55,7 +57,7 @@ class BuilderTest {
                         BlockFace face = (BlockFace) args[3];
                         BlockPos placed = new BlockPos((int) args[0] + face.dx, (int) args[1] + face.dy, (int) args[2] + face.dz);
                         calls.add("place " + placed);
-                        if (placementsLand) {
+                        if (placementsLand && !flowers.contains(placed)) {
                             solid.add(placed);
                         }
                     }
@@ -68,6 +70,8 @@ class BuilderTest {
                         calls.add("swap " + slot + " to hotbar " + args[3]);
                     }
                     case "selectHotbarSlot" -> calls.add("select " + args[0]);
+                    case "startDigging" -> flowers.remove(new BlockPos((int) args[0], (int) args[1], (int) args[2]));
+                    case "finishDigging" -> calls.add("dig " + new BlockPos((int) args[0], (int) args[1], (int) args[2]));
                     default -> throw new AssertionError("unexpected " + method.getName());
                 }
                 return null;
@@ -122,6 +126,18 @@ class BuilderTest {
 
         assertEquals(new Builder.Progress.Failed("1 cell(s) wouldn't take a block"), progress);
         assertEquals(Builder.ATTEMPTS, calls.stream().filter(c -> c.startsWith("place")).count());
+    }
+
+    @Test
+    void aFlowerInTheWayIsBrokenAndTheBlockGoesIn() {
+        BlockPos cell = new BlockPos(2, 64, 0);
+        flowers.add(cell);
+        Builder builder = new Builder("Alice", session, inventory);
+
+        Builder.Progress progress = run(builder, new Position(0.5, 64, 0.5), List.of(cell), 100);
+
+        assertInstanceOf(Builder.Progress.Done.class, progress);
+        assertEquals(List.of("swap 20 to hotbar 8", "select 8", "place " + cell, "dig " + cell, "place " + cell, "select 0"), calls);
     }
 
     @Test

@@ -157,6 +157,12 @@ public final class Builder {
         // DeterministicSoldier.lookAt aims at chest height above the position it's given.
         lookAt = new Position(against.x() + 0.5 + toward.dx * 0.5, against.y() + 0.5 + toward.dy * 0.5 - 1.2,
                 against.z() + 0.5 + toward.dz * 0.5);
+        if (attempts > 0) {
+            // A block that didn't land: something not solid but not replaceable either - a flower,
+            // a sapling - fills the cell. Those break at a touch; an empty cell ignores the dig.
+            session.startDigging(target.x(), target.y(), target.z());
+            session.finishDigging(target.x(), target.y(), target.z());
+        }
         session.useBlockFace(against.x(), against.y(), against.z(), toward);
         attempts++;
         ticksSinceAction = 0;
