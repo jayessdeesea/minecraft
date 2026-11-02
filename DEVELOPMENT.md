@@ -62,7 +62,7 @@ run only when asked for (section 5 and below).
 **Scenario sweeps.** `bot`'s `SoldierScenarioTest` sends a soldier across generated terrain (flat,
 hills, forest, lake, ravine, walled compound, cliff), 20 seeds per family by default, each run on
 foot and again carrying cobblestone to climb with. Each case is named
-`<family> seed=<n>`, and a failure prints a top-down map of the world and the soldier's trail.
+`<family> seed=<n>` (the climbing run adds `climbing`), and a failure prints a top-down map of the world and the soldier's trail.
 
 ```bash
 mvn -pl bot test -Dtest=SoldierScenarioTest -Dscenario.seeds=200      # a wider sweep
