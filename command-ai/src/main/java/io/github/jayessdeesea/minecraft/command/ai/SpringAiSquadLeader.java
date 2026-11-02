@@ -261,6 +261,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
                         + String.format(Locale.ROOT, ", armour %d/%d", k.armour(), Kit.ARMOUR_SLOTS)
                         + (k.arrows() == 0 ? "" : ", " + k.arrows() + " arrows")
                         + (k.logs() == 0 ? "" : ", " + k.logs() + " logs")
+                        + (k.stone() == 0 ? "" : ", " + k.stone() + " cobblestone")
                         + (k.fallProtection() == 0 ? "" : String.format(Locale.ROOT, ", falls cost him %.0f%%", 100 * k.fallDamageFactor())))
                 .orElse(", kit not reported yet");
         return String.format(Locale.ROOT, "health %.0f/%.0f, food %d/%d%s%s", c.health(), Condition.MAX_HEALTH, c.food(),

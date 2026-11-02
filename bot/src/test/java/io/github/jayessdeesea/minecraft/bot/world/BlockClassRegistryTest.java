@@ -11,7 +11,7 @@ class BlockClassRegistryTest {
     @Test
     void classifiesRealBlockStates() {
         assertEquals(BlockClass.PASSABLE, BlockClassRegistry.classOf(0));    // air
-        assertEquals(BlockClass.SOLID, BlockClassRegistry.classOf(1));       // stone
+        assertEquals(BlockClass.STONE, BlockClassRegistry.classOf(1));       // stone: solid, and quarried
         assertEquals(BlockClass.SOLID, BlockClassRegistry.classOf(9));       // grass_block
         assertEquals(BlockClass.PASSABLE, BlockClassRegistry.classOf(2363)); // short_grass
         assertEquals(BlockClass.HAZARD, BlockClassRegistry.classOf(89));     // water, level 0

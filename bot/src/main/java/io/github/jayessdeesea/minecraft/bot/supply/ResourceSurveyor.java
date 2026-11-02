@@ -11,9 +11,12 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * What wood a squad can see: the nearest stands of trees around a point, from the blocks its
- * soldiers have loaded. A stand is the logs within {@link #STAND_RADIUS} of one another, reported at
- * their middle with their count, nearest first. Precomputed for the general - like the squad
+ * What a squad can see to gather: the nearest stands of trees and outcrops of exposed stone around a
+ * point, from the blocks its soldiers have loaded. A site is the blocks of one material within
+ * {@link #STAND_RADIUS} of one another, reported at their middle with their count, nearest first.
+ * Stone counts only where it's exposed to the open sky - beside or under an open cell with nothing
+ * solid over it for {@link #SKY_CLEARANCE} blocks - since buried stone, or a cave wall, takes a mine
+ * to reach. Precomputed for the general - like the squad
  * leader's terrain survey - rather than handing a model a block scan to read.
  */
 public final class ResourceSurveyor {
@@ -26,24 +29,53 @@ public final class ResourceSurveyor {
     static final int STAND_RADIUS = 8;
     /** Fewer logs than this aren't worth sending a squad for. */
     static final int MIN_STAND = 4;
+    /** Nor fewer blocks of exposed stone than this. */
+    static final int MIN_OUTCROP = 8;
+    /** An open cell with this much open space above it is under the sky, not in a cave. */
+    static final int SKY_CLEARANCE = 12;
     static final int MAX_STANDS = 3;
 
     private ResourceSurveyor() {
     }
 
-    public static List<ResourceSite> woods(WorldView world, Position around) {
+    /** Trees then stone, each nearest first. */
+    public static List<ResourceSite> survey(WorldView world, Position around) {
         BlockPos centre = BlockPos.containing(around.x(), around.y(), around.z());
         List<BlockPos> logs = new ArrayList<>();
+        List<BlockPos> stone = new ArrayList<>();
         for (int dx = -SURVEY_RADIUS; dx <= SURVEY_RADIUS; dx++) {
             for (int dz = -SURVEY_RADIUS; dz <= SURVEY_RADIUS; dz++) {
                 for (int dy = -SURVEY_HEIGHT; dy <= SURVEY_HEIGHT; dy++) {
                     BlockPos cell = centre.offset(dx, dy, dz);
                     if (world.isLog(cell.x(), cell.y(), cell.z())) {
                         logs.add(cell);
+                    } else if (world.isStone(cell.x(), cell.y(), cell.z()) && exposed(world, cell)) {
+                        stone.add(cell);
                     }
                 }
             }
         }
+        List<ResourceSite> sites = new ArrayList<>(cluster(logs, centre, Resource.WOOD, MIN_STAND));
+        sites.addAll(cluster(stone, centre, Resource.STONE, MIN_OUTCROP));
+        return List.copyOf(sites);
+    }
+
+    private static boolean exposed(WorldView world, BlockPos cell) {
+        return underSky(world, cell.offset(0, 1, 0)) || underSky(world, cell.offset(1, 0, 0))
+                || underSky(world, cell.offset(-1, 0, 0)) || underSky(world, cell.offset(0, 0, 1))
+                || underSky(world, cell.offset(0, 0, -1));
+    }
+
+    private static boolean underSky(WorldView world, BlockPos open) {
+        for (int up = 0; up <= SKY_CLEARANCE; up++) {
+            if (world.isSolid(open.x(), open.y() + up, open.z())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static List<ResourceSite> cluster(List<BlockPos> logs, BlockPos centre, Resource resource, int minimum) {
         logs.sort(Comparator.comparingDouble(log -> horizontal(log, centre)));
         List<ResourceSite> stands = new ArrayList<>();
         boolean[] taken = new boolean[logs.size()];
@@ -63,8 +95,8 @@ public final class ResourceSurveyor {
                     count++;
                 }
             }
-            if (count >= MIN_STAND) {
-                stands.add(new ResourceSite(Resource.WOOD, new Position(Math.round(sx / count), Math.round(sy / count),
+            if (count >= minimum) {
+                stands.add(new ResourceSite(resource, new Position(Math.round(sx / count), Math.round(sy / count),
                         Math.round(sz / count)), count));
             }
         }

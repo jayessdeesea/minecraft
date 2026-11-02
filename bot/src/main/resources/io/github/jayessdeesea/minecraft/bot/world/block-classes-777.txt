@@ -1,8 +1,9 @@
 # Generated from the pinned server jar's `--reports` blocks.json by
 # tools/block-class-generator. One block state per line: <id> <class> <blockName>,
-# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log (solid).
+# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone (both solid).
 # Every state NOT listed is solid (the safe default).
 0 P air
+1 Q stone
 30 P oak_sapling
 31 P oak_sapling
 32 P spruce_sapling

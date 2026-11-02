@@ -13,17 +13,17 @@ import java.util.List;
  *   <li>Class II, individual equipment: {@code armourEmpty} of {@code armourSlots} armour slots
  *       unfilled;</li>
  *   <li>Class V, ammunition: soldiers {@code unarmed} (nothing in hand) and {@code arrows} carried;</li>
- *   <li>Class IV, construction materials: {@code logs} carried;</li>
+ *   <li>Class IV, construction materials: {@code logs} and {@code stone} (cobblestone) carried;</li>
  *   <li>personnel: soldiers {@code wounded} below half health, and {@code deaths} so far.</li>
  * </ul>
  * Kit counts cover only the {@code kitReported} soldiers whose inventory has been reported.
  */
 public record Logstat(int soldiers, int reporting, int hungry, int wounded, int deaths,
-                      int kitReported, int unarmed, int armourEmpty, int armourSlots, int arrows, int logs) {
+                      int kitReported, int unarmed, int armourEmpty, int armourSlots, int arrows, int logs, int stone) {
 
     public static Logstat of(List<SoldierStatus> squad) {
         int reporting = 0, hungry = 0, wounded = 0, deaths = 0;
-        int kitReported = 0, unarmed = 0, armourEmpty = 0, arrows = 0, logs = 0;
+        int kitReported = 0, unarmed = 0, armourEmpty = 0, arrows = 0, logs = 0, stone = 0;
         for (SoldierStatus soldier : squad) {
             if (soldier.condition().isEmpty()) {
                 continue;
@@ -40,9 +40,10 @@ public record Logstat(int soldiers, int reporting, int hungry, int wounded, int 
                 armourEmpty += Kit.ARMOUR_SLOTS - kit.armour();
                 arrows += kit.arrows();
                 logs += kit.logs();
+                stone += kit.stone();
             }
         }
         return new Logstat(squad.size(), reporting, hungry, wounded, deaths,
-                kitReported, unarmed, armourEmpty, kitReported * Kit.ARMOUR_SLOTS, arrows, logs);
+                kitReported, unarmed, armourEmpty, kitReported * Kit.ARMOUR_SLOTS, arrows, logs, stone);
     }
 }

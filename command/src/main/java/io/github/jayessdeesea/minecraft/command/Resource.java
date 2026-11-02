@@ -6,5 +6,7 @@ package io.github.jayessdeesea.minecraft.command;
  */
 public enum Resource {
     /** Logs, chopped by hand from trees. */
-    WOOD
+    WOOD,
+    /** Cobblestone, quarried from exposed stone with a pickaxe. */
+    STONE
 }

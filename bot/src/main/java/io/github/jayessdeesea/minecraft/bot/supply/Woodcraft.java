@@ -14,10 +14,10 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * A bare-handed soldier making itself a wooden sword - doctrine's pre-combat checks
- * (docs/military-doctrine.md §11): find a log within {@link #SEARCH_RADIUS}, stand beside it, chop
- * two logs, craft planks, sticks and a crafting table in the inventory's 2x2 grid, place the table,
- * craft the sword in it, and hold it. About a minute. Driven by the soldier's tick ({@link #tick})
+ * A soldier making itself a wooden tool (docs/military-doctrine.md §11, §12): a sword when it's
+ * bare-handed, a pickaxe when it's sent for stone. Chop the logs the tool needs (fewer if it carries
+ * some), craft planks, sticks and a crafting table in the inventory's 2x2 grid, place the table,
+ * craft the tool in it - and hold it, for a sword. About a minute. Driven by the soldier's tick ({@link #tick})
  * and its connection's container updates ({@link #onContainer}); synchronized because those are
  * two threads.
  *
@@ -33,8 +33,30 @@ public final class Woodcraft {
 
     private static final Logger LOG = LogManager.getLogger(Woodcraft.class);
 
-    /** Two logs make eight planks: four for the table, two for sticks, two for the sword. */
-    static final int LOGS_NEEDED = 2;
+    /**
+     * What it can make, and from what. The table's 3x3 grid slots are 1-9, row by row. Each needs a
+     * table (4 planks) and sticks (2 planks make 4); a log makes 4 planks.
+     */
+    public enum Tool {
+        /** Planks over planks over a stick, down the middle: 2 logs make the 8 planks. Held once made. */
+        WOODEN_SWORD(2, new int[]{2, 5}, new int[]{8}, ItemClass.WEAPON, true),
+        /** Three planks across the top, two sticks down the middle: 3 logs make the 9 planks. */
+        WOODEN_PICKAXE(3, new int[]{1, 2, 3}, new int[]{5, 8}, ItemClass.PICKAXE, false);
+
+        final int logs;
+        final int[] plankSlots;
+        final int[] stickSlots;
+        final ItemClass makes;
+        final boolean hold;
+
+        Tool(int logs, int[] plankSlots, int[] stickSlots, ItemClass makes, boolean hold) {
+            this.logs = logs;
+            this.plankSlots = plankSlots;
+            this.stickSlots = stickSlots;
+            this.makes = makes;
+            this.hold = hold;
+        }
+    }
     static final int SETTLE_TICKS = 20;
     static final int OPEN_TIMEOUT_TICKS = 40;
     static final int COOLDOWN_TICKS = 1200;
@@ -45,7 +67,7 @@ public final class Woodcraft {
     /** The table's window: result and nine grid slots come before the inventory's. */
     private static final int TABLE_WINDOW_SLOTS = 10;
 
-    private enum State { IDLE, CHOPPING, PLANKS, STICKS, TABLE, PLACE, OPEN, SWORD, EQUIP }
+    private enum State { IDLE, CHOPPING, PLANKS, STICKS, TABLE, PLACE, OPEN, TOOL, EQUIP }
 
     private final String name;
     private final PlaySession session;
@@ -55,7 +77,9 @@ public final class Woodcraft {
     private State state = State.IDLE;
     private int ticksInState;
     private int cooldown;
-    private Chopper chopper;
+    private Digger digger;
+    private Tool tool;
+    private String failure;
     private BlockPos table;
     /** Cells a table was tried in this run and didn't land - something the block data can't show (a squadmate) was there. */
     private final java.util.Set<BlockPos> blockedCells = new java.util.HashSet<>();
@@ -76,46 +100,71 @@ public final class Woodcraft {
         return state != State.IDLE;
     }
 
+    /**
+     * Why the last attempt failed, while the soldier waits out its cooldown - so it can say it
+     * can't make what it needs rather than look idle. Empty after a success or once it tries again.
+     */
+    public synchronized Optional<String> failure() {
+        return cooldown > 0 ? Optional.ofNullable(failure) : Optional.empty();
+    }
+
+    /** The tool being made, while {@link #active}. */
+    public synchronized Tool tool() {
+        return tool;
+    }
+
     /** Where the soldier should be standing while the routine runs, if it needs to be somewhere. */
     public synchronized Optional<Position> standAt() {
-        return state == State.CHOPPING ? Optional.of(chopper.standAt()) : Optional.empty();
+        return state == State.CHOPPING ? Optional.of(digger.standAt()) : Optional.empty();
     }
 
     /**
-     * Each tick: starts the routine when {@code wanted} (bare-handed, allowed, no hostile near) and
-     * advances it; abandons it when no longer wanted.
+     * Each tick: starts making {@code wanted} - empty when the soldier needs nothing, or isn't free to
+     * make it (a hostile near, the squad leader's leave withdrawn) - and advances it; abandons a tool
+     * no longer wanted.
      */
-    public synchronized void tick(Position soldier, WorldView world, boolean wanted) {
+    public synchronized void tick(Position soldier, WorldView world, Optional<Tool> wanted) {
         ticksInState++;
         if (cooldown > 0) {
             cooldown--;
         }
-        if (state != State.IDLE && !wanted) {
-            giveUp("no longer wanted");
+        if (state != State.IDLE && !wanted.equals(Optional.of(tool))) {
+            if (inventory.slotOf(tool.makes) >= 0 && (state == State.EQUIP || state == State.TOOL)) {
+                LOG.info("{} made a {}", name, tool); // made - no longer wanted only because it now exists
+                kitChanged.run();
+                finish();
+            } else {
+                giveUp("no longer wanted");
+            }
             return;
         }
         switch (state) {
             case IDLE -> {
-                if (wanted && cooldown == 0) {
+                if (wanted.isPresent() && cooldown == 0) {
+                    tool = wanted.get();
+                    failure = null;
                     gather(soldier, world);
                 }
             }
             case CHOPPING -> {
-                switch (chopper.tick(soldier, world)) {
-                    case Chopper.Progress.Working working -> {
+                switch (digger.tick(soldier, world)) {
+                    case Digger.Progress.Working working -> {
                     }
-                    case Chopper.Progress.Done done -> {
-                        chopper.release();
+                    case Digger.Progress.Done done -> {
+                        digger.release();
                         gather(soldier, world);
                     }
-                    case Chopper.Progress.Failed(String why) -> giveUp(why);
+                    case Digger.Progress.Failed(String why) -> giveUp(why);
                 }
             }
             case PLANKS -> settled(() -> {
                 int log = need(ItemClass.LOG);
-                session.click(0, 0, log, false);   // every log onto the cursor,
-                session.click(0, 0, 1, false);     // into the grid,
-                session.quickMove(0, 0, RESULT);   // and craft them all into planks
+                session.click(0, 0, log, false);       // the logs onto the cursor,
+                for (int i = 0; i < tool.logs; i++) {
+                    session.click(0, 0, 1, true);      // as many as the tool needs into the grid,
+                }
+                session.click(0, 0, log, false);       // the rest back - gathered wood stays wood -
+                session.quickMove(0, 0, RESULT);       // and craft them into planks
                 enter(State.STICKS);
             });
             case STICKS -> settled(() -> {
@@ -128,6 +177,10 @@ public final class Woodcraft {
                 enter(State.TABLE);
             });
             case TABLE -> settled(() -> {
+                if (inventory.slotOf(ItemClass.CRAFTING_TABLE) >= 0) {
+                    enter(State.PLACE); // one left over from an earlier attempt
+                    return;
+                }
                 int planks = need(ItemClass.PLANKS);
                 session.click(0, 0, planks, false);
                 for (int grid = 1; grid <= 4; grid++) {
@@ -169,24 +222,33 @@ public final class Woodcraft {
                     giveUp("the crafting table at " + table + " didn't open");
                 }
             }
-            case SWORD -> settled(() -> {
+            case TOOL -> settled(() -> {
                 // The table's window: result 0, grid 1-9 (row by row), then inventory 9-44 as 10-45.
                 int planks = need(ItemClass.PLANKS) + 1;
                 int sticks = need(ItemClass.STICK) + 1;
                 session.click(windowId, windowState, planks, false);
-                session.click(windowId, 0, 2, true);  // the middle column, top:
-                session.click(windowId, 0, 5, true);  // planks, planks,
+                for (int slot : tool.plankSlots) {
+                    session.click(windowId, 0, slot, true);
+                }
                 session.click(windowId, 0, planks, false);
                 session.click(windowId, 0, sticks, false);
-                session.click(windowId, 0, 8, true);  // and a stick for the hilt
+                for (int slot : tool.stickSlots) {
+                    session.click(windowId, 0, slot, true);
+                }
                 session.click(windowId, 0, sticks, false);
                 session.quickMove(windowId, 0, RESULT);
                 session.closeContainer(windowId);
                 enter(State.EQUIP);
             });
             case EQUIP -> settled(() -> {
-                if (inventory.slotOf(ItemClass.WEAPON) < 0) {
-                    throw new IllegalStateException("no sword came out of the crafting table - " + inventory.summary());
+                if (inventory.slotOf(tool.makes) < 0) {
+                    throw new IllegalStateException("no " + tool + " came out of the crafting table - " + inventory.summary());
+                }
+                if (!tool.hold) {
+                    LOG.info("{} made a {}", name, tool);
+                    kitChanged.run();
+                    finish();
+                    return;
                 }
                 for (Quartermaster.Step step : Quartermaster.equip(inventory)) {
                     switch (step) {
@@ -198,7 +260,7 @@ public final class Woodcraft {
                         case Quartermaster.Step.BringToHand(int slot, int hotbarSlot) -> session.swapWithHotbar(0, 0, slot, hotbarSlot);
                     }
                 }
-                LOG.info("{} made a wooden sword", name);
+                LOG.info("{} made a {}", name, tool);
                 kitChanged.run();
                 finish();
             });
@@ -217,7 +279,7 @@ public final class Woodcraft {
                     return;
                 }
                 windowId = id;
-                enter(State.SWORD);
+                enter(State.TOOL);
             }
             // While the table is open, the inventory's changes arrive only through its window.
             case ContainerUpdate.Contents(int id, int stateId, var slots, boolean complete) -> {
@@ -235,7 +297,7 @@ public final class Woodcraft {
                 }
             }
             case ContainerUpdate.Closed(int id) -> {
-                if (id == windowId && state == State.SWORD) {
+                if (id == windowId && state == State.TOOL) {
                     giveUp("the server closed the crafting table");
                 }
             }
@@ -244,20 +306,21 @@ public final class Woodcraft {
 
     /** Chop the next log, or - with enough wood - start crafting. */
     private void gather(Position soldier, WorldView world) {
-        if (inventory.count(ItemClass.LOG) >= LOGS_NEEDED) {
-            LOG.info("{} has the wood - crafting", name);
+        if (inventory.count(ItemClass.LOG) >= tool.logs) {
+            LOG.info("{} has the wood - crafting a {}", name, tool);
             enter(State.PLANKS);
             return;
         }
-        Optional<Chopper.Tree> next = Chopper.findTree(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), claims);
+        Optional<Digger.Spot> next = Digger.findSpot(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), claims,
+                Digger.Target.LOG);
         if (next.isEmpty()) {
-            giveUp("no tree within " + Chopper.SEARCH_RADIUS + " blocks");
+            giveUp("no tree within " + Digger.SEARCH_RADIUS + " blocks");
             return;
         }
-        if (chopper == null) {
-            LOG.info("{} goes to chop wood at {}", name, next.get().log());
+        if (digger == null) {
+            LOG.info("{} goes to chop wood for a {} at {}", name, tool, next.get().block());
         }
-        chopper = new Chopper(session, inventory, claims, next.get());
+        digger = new Digger(session, inventory, claims, next.get());
         enter(State.CHOPPING);
     }
 
@@ -304,7 +367,8 @@ public final class Woodcraft {
     }
 
     private void giveUp(String why) {
-        LOG.warn("{} gives up making a sword ({}) - {}", name, state, why);
+        LOG.warn("{} gives up making a {} ({}) - {}", name, tool, state, why);
+        failure = "can't make a " + tool.name().toLowerCase(java.util.Locale.ROOT).replace('_', ' ') + ": " + why;
         if (windowId >= 0) {
             session.closeContainer(windowId);
         }
@@ -314,10 +378,10 @@ public final class Woodcraft {
 
     private void finish() {
         blockedCells.clear();
-        if (chopper != null) {
-            chopper.release();
+        if (digger != null) {
+            digger.release();
         }
-        chopper = null;
+        digger = null;
         table = null;
         windowId = -1;
         cooldown = COOLDOWN_TICKS;

@@ -33,6 +33,11 @@ public interface WorldView {
         return false;
     }
 
+    /** Whether the block is plain stone a soldier can quarry (it's also {@link #isSolid}). */
+    default boolean isStone(int x, int y, int z) {
+        return false;
+    }
+
     /** Hostile entities within {@code radius} of {@code center}, nearest first. */
     List<TrackedEntity> nearbyHostiles(Position center, double radius);
 }

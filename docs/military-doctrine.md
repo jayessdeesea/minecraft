@@ -216,7 +216,8 @@ known position. `!mission` ends the escort and hands the squad back to the gener
 |---|---|---|
 | **Pre-combat checks and inspections** | Before a unit is employed, every soldier is checked for the equipment the mission needs, and shortfalls are made good. | ATP 3-21.8, troop leading procedures |
 
-*How we use it:* a bare-handed soldier makes itself a wooden sword (`bot.supply.Woodcraft`): it
+*How we use it:* a bare-handed soldier makes itself a wooden sword (`bot.supply.Woodcraft`, which
+also makes the pickaxe of §12): it
 finds the nearest log within 16 blocks that it can stand beside, chops two logs, crafts planks,
 sticks and a crafting table in its 2x2 inventory grid, places the table, crafts the sword in it, and
 holds it - about a minute. The squad leader decides whether there's time: its order's `rearm` lets
@@ -231,15 +232,20 @@ and puts any half-crafted items back in the inventory; the soldier tries again a
 |---|---|---|
 | **Class IV supply** | Construction and barrier materials - lumber, sandbags, wire - requisitioned or, in the field, obtained locally. | FM 4-0, *Sustainment Operations* |
 
-*How we use it:* the general can give a squad an objective with `gather: WOOD`
-(`command.Objective.gather`). Its soldiers chop logs within 16 blocks of the objective on their own
-(`bot.supply.Gatherer`, sharing `Chopper` with §11): each puts its weapon away to chop, works a tree
-no squadmate has claimed, checks each log actually broke, and stops at 16 logs or when anything
-nears. A soldier at it reports `Gathering`; one that finds nothing left in reach reports CANTCO,
+*How we use it:* the general can give a squad an objective with `gather: WOOD` or `STONE`
+(`command.Objective.gather`). Its soldiers gather within 16 blocks of the objective on their own
+(`bot.supply.Gatherer`, digging with `Digger`, shared with §11): each works a log or a block of
+stone no squadmate has claimed, checks it actually broke, and stops at its load (16 logs, 32
+cobblestone) or when anything nears. Logs are chopped bare-handed - a sword wears, and digs no
+faster. Stone needs a pickaxe, or it drops nothing: a soldier without one makes a wooden pickaxe
+first, the way it makes a sword (§11), from logs it carries or chops. Break times are the
+server's - hardness over tool speed - with a margin, since the server times each dig. A soldier at it reports `Gathering`; one that finds nothing left in reach reports CANTCO,
 which the squad leader passes up so the general can choose another place. To choose, the general
-reads what each squad can see: the nearest three stands of trees within 64 blocks of its point man,
-each a cluster of logs with its count, distance and direction (`bot.supply.ResourceSurveyor`,
-`command.SquadStatus.resources`). Logs carried show in each
+reads what each squad can see within 64 blocks of its point man: the nearest three stands of trees
+and the nearest three outcrops of stone open to the sky (not cave walls, which no gatherer can
+reach), each with its count, distance and direction (`bot.supply.ResourceSurveyor`,
+`command.SquadStatus.resources`). A soldier that can't make the pickaxe it needs - no trees in reach
+- reports CANTCO too. Logs carried show in each
 soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
 
 ## Sources

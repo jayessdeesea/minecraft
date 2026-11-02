@@ -15,8 +15,8 @@ import java.util.Set;
 
 /**
  * One soldier gathering a material around its squad's objective (docs/military-doctrine.md §12):
- * chop the nearest log within {@link Chopper#SEARCH_RADIUS} of the objective, again and again, until
- * it carries {@link #CARRY_LOGS}. Wood only, so far. Ticked by the soldier's tick loop; synchronized
+ * dig the nearest log - or stone, with a pickaxe it makes first if it has none ({@link Woodcraft}) -
+ * within {@link Digger#SEARCH_RADIUS} of the objective, again and again, until it carries its load. Ticked by the soldier's tick loop; synchronized
  * like the other routines in this package.
  *
  * <p>Gathering stops - quietly, the logs kept - when it's no longer wanted (contact, a new
@@ -27,8 +27,9 @@ public final class Gatherer {
 
     private static final Logger LOG = LogManager.getLogger(Gatherer.class);
 
-    /** What one soldier carries before it stops: a quarter stack, a load it can still fight with. */
+    /** What one soldier carries before it stops: loads it can still fight with. */
     static final int CARRY_LOGS = 16;
+    static final int CARRY_STONE = 32;
     static final int RETRY_TICKS = 600;
 
     private final String name;
@@ -36,7 +37,7 @@ public final class Gatherer {
     private final Inventory inventory;
     private final Set<BlockPos> claims;
 
-    private Chopper chopper;
+    private Digger digger;
     /** Trees this soldier failed at (out of reach, or the log wouldn't break) - not tried again. */
     private final Set<BlockPos> avoid = new java.util.HashSet<>();
     private int retry;
@@ -51,7 +52,7 @@ public final class Gatherer {
     }
 
     public synchronized boolean active() {
-        return chopper != null;
+        return digger != null;
     }
 
     /** Whether the woods around the objective are worked out: the last search found nothing in reach. */
@@ -61,7 +62,7 @@ public final class Gatherer {
 
     /** Where the soldier should be standing while it gathers, if anywhere. */
     public synchronized Optional<Position> standAt() {
-        return chopper == null ? Optional.empty() : Optional.of(chopper.standAt());
+        return digger == null ? Optional.empty() : Optional.of(digger.standAt());
     }
 
     /**
@@ -78,34 +79,41 @@ public final class Gatherer {
             exhausted = false;
             return;
         }
-        if (inventory.count(ItemClass.LOG) >= CARRY_LOGS) {
+        ItemClass item = resource.get() == Resource.WOOD ? ItemClass.LOG : ItemClass.COBBLESTONE;
+        int load = resource.get() == Resource.WOOD ? CARRY_LOGS : CARRY_STONE;
+        if (resource.get() == Resource.STONE && inventory.slotOf(ItemClass.PICKAXE) < 0) {
+            stop(); // a pickaxe first - Woodcraft makes one
+            return;
+        }
+        if (inventory.count(item) >= load) {
             if (!reportedFull) {
-                LOG.info("{} carries {} logs - done gathering", name, inventory.count(ItemClass.LOG));
+                LOG.info("{} carries {} {} - done gathering", name, inventory.count(item), item);
                 reportedFull = true;
             }
             stop();
             return;
         }
         reportedFull = false;
-        if (chopper == null) {
+        Digger.Target target = resource.get() == Resource.WOOD ? Digger.Target.LOG : Digger.Target.STONE;
+        if (digger == null) {
             if (retry == 0) {
-                next(world, around);
+                next(world, around, target);
             }
             return;
         }
-        switch (chopper.tick(soldier, world)) {
-            case Chopper.Progress.Working working -> {
+        switch (digger.tick(soldier, world)) {
+            case Digger.Progress.Working working -> {
             }
-            case Chopper.Progress.Done done -> {
-                chopper.release();
-                next(world, around);
+            case Digger.Progress.Done done -> {
+                digger.release();
+                next(world, around, target);
             }
-            case Chopper.Progress.Failed(String why) -> {
-                LOG.info("{} leaves that tree - {}", name, why);
-                avoid.add(chopper.tree().log());
-                avoid.add(chopper.tree().stand());
-                chopper.release();
-                chopper = null;
+            case Digger.Progress.Failed(String why) -> {
+                LOG.info("{} leaves that spot - {}", name, why);
+                avoid.add(digger.spot().block());
+                avoid.add(digger.spot().stand());
+                digger.release();
+                digger = null;
                 retry = RETRY_TICKS / 10; // try another tree soon
             }
         }
@@ -113,11 +121,11 @@ public final class Gatherer {
 
     /** Stops gathering: frees its claims and takes its weapon back in hand. */
     private void stop() {
-        if (chopper == null) {
+        if (digger == null) {
             return;
         }
-        chopper.release();
-        chopper = null;
+        digger.release();
+        digger = null;
         for (Quartermaster.Step step : Quartermaster.equip(inventory)) {
             if (step instanceof Quartermaster.Step.Hold(int hotbarSlot)) {
                 session.selectHotbarSlot(hotbarSlot);
@@ -128,20 +136,20 @@ public final class Gatherer {
         }
     }
 
-    private void next(WorldView world, Position around) {
+    private void next(WorldView world, Position around, Digger.Target target) {
         Set<BlockPos> excluded = new java.util.HashSet<>(claims);
         excluded.addAll(avoid);
-        Optional<Chopper.Tree> tree = Chopper.findTree(world, BlockPos.containing(around.x(), around.y(), around.z()), excluded);
-        if (tree.isEmpty()) {
-            if (chopper != null || retry == 0) {
-                LOG.info("{}: no tree within {} blocks of the objective", name, Chopper.SEARCH_RADIUS);
+        Optional<Digger.Spot> spot = Digger.findSpot(world, BlockPos.containing(around.x(), around.y(), around.z()), excluded, target);
+        if (spot.isEmpty()) {
+            if (digger != null || retry == 0) {
+                LOG.info("{}: no {} within {} blocks of the objective", name, target, Digger.SEARCH_RADIUS);
             }
-            chopper = null;
+            digger = null;
             retry = RETRY_TICKS;
             exhausted = true;
             return;
         }
         exhausted = false;
-        chopper = new Chopper(session, inventory, claims, tree.get());
+        digger = new Digger(session, inventory, claims, spot.get());
     }
 }

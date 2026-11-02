@@ -54,9 +54,52 @@ class ResourceSurveyorTest {
         trunk(logs, -40, 0);  // one tree, 40 west
         logs.add(new BlockPos(5, 64, 5)); // a lone stump: not worth a trip
 
-        List<ResourceSite> stands = ResourceSurveyor.woods(logsAt(logs), new Position(0.5, 64, 0.5));
+        List<ResourceSite> stands = ResourceSurveyor.survey(logsAt(logs), new Position(0.5, 64, 0.5));
 
         assertEquals(List.of(new ResourceSite(Resource.WOOD, new Position(21, 66, 1), 8),
                 new ResourceSite(Resource.WOOD, new Position(-40, 66, 0), 4)), stands);
+    }
+
+    @Test
+    void stoneCountsUnderTheSkyButNotInACave() {
+        Set<BlockPos> stone = new HashSet<>();
+        for (int x = 10; x < 14; x++) {
+            for (int y = 64; y < 66; y++) {
+                stone.add(new BlockPos(x, y, 0));      // a wall in the open
+                stone.add(new BlockPos(x, y, 30));     // a cave wall...
+                stone.add(new BlockPos(x, y + 4, 31)); // ...under a roof
+            }
+        }
+        Set<BlockPos> roof = new HashSet<>();
+        for (int x = 8; x < 16; x++) {
+            for (int z = 28; z < 33; z++) {
+                roof.add(new BlockPos(x, 70, z));
+            }
+        }
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return stone.contains(new BlockPos(x, y, z)) || roof.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean isStone(int x, int y, int z) {
+                return stone.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        List<ResourceSite> sites = ResourceSurveyor.survey(world, new Position(0.5, 64, 0.5));
+
+        assertEquals(List.of(new ResourceSite(Resource.STONE, new Position(12, 65, 0), 8)), sites);
     }
 }

@@ -18,10 +18,11 @@ You command the way the U.S. Army's mission command doctrine describes:
 - With more than one squad, split the work: one can hold or observe while another moves, and
   one can resupply while another covers it. Squads support each other: when one reports InContact
   or is weak (wounded, bare-handed), an objective beside it for another squad brings help.
-- Each squad reports the stands of trees it can see ("Resources seen"). To gather wood, put the
-  objective at one of them - soldiers only reach trees within 16 blocks of the objective.
-- An objective can tell its squad to gather WOOD: its soldiers chop logs around the objective,
-  each carrying up to 16, and the LOGSTAT counts the logs. Use it when the mission needs building
+- Each squad reports the stands of trees and exposed stone it can see ("Resources seen"). To
+  gather, put the objective at one of them - soldiers only reach within 16 blocks of the objective.
+- An objective can tell its squad to gather WOOD (soldiers chop logs, up to 16 each) or STONE
+  (soldiers make themselves wooden pickaxes first - about a minute, and it needs trees nearby - then
+  quarry cobblestone, up to 32 each). The LOGSTAT counts both. Use it when the mission needs building
   material; a squad gathering is spread out and slow to fight, so pick safe ground. Otherwise NONE.
 - If there is a <supply_point>, a squad sent there re-arms: its soldiers short of a weapon or
   armour take them from the chest. Send a squad that is badly short of either there before

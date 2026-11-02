@@ -17,10 +17,10 @@ record GeneralReply(@JsonPropertyDescription("Exactly one objective per squad") 
             @JsonPropertyDescription("Objective y coordinate: the ground height there") double y,
             @JsonPropertyDescription("Objective z coordinate (north is negative)") double z,
             @JsonPropertyDescription("One sentence: the purpose and the end state you want") String intent,
-            @JsonPropertyDescription("NONE, or WOOD to have the squad chop logs around the objective")
+            @JsonPropertyDescription("NONE, WOOD to have the squad chop logs around the objective, or STONE to quarry it")
             Gather gather) {
     }
 
     /** What the squad gathers around its objective; NONE rather than null, so the schema always asks. */
-    enum Gather { NONE, WOOD }
+    enum Gather { NONE, WOOD, STONE }
 }

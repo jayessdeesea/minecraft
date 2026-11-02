@@ -35,7 +35,7 @@ public class GenerateItemClasses {
         Map<Integer, String> classes = new TreeMap<>();
         Set<String> unmatched = new TreeSet<>(WEAPONS);
         unmatched.addAll(ROUNDS);
-        unmatched.addAll(Set.of("stick", "crafting_table"));
+        unmatched.addAll(Set.of("stick", "crafting_table", "cobblestone", "wooden_pickaxe"));
         Iterator<Map.Entry<String, JsonNode>> it = entries.fields();
         while (it.hasNext()) {
             Map.Entry<String, JsonNode> entry = it.next();
@@ -47,6 +47,8 @@ public class GenerateItemClasses {
                     : name.endsWith("_planks") ? 'P'
                     : name.equals("stick") ? 'S'
                     : name.equals("crafting_table") ? 'C'
+                    : name.equals("cobblestone") ? 'K'
+                    : name.endsWith("_pickaxe") ? 'X'
                     : '-';
             if (kind != '-') {
                 classes.put(entry.getValue().get("protocol_id").asInt(), kind + " " + name);
@@ -62,7 +64,7 @@ public class GenerateItemClasses {
             out.println("# Generated from the pinned server jar's `--reports` registries.json by");
             out.println("# tools/item-class-generator. One counted item per line: <id> <class> <name>,");
             out.println("# W weapon, A armour, R arrows; and what a wooden sword is made from: L logs, P planks,");
-            out.println("# S stick, C crafting table. Everything NOT listed is just carried.");
+            out.println("# S stick, C crafting table; K cobblestone, X pickaxes. Everything NOT listed is just carried.");
             classes.forEach((id, line) -> out.println(id + " " + line));
         }
         System.out.println(classes.size() + " counted items written to " + args[1]);

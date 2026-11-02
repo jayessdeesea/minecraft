@@ -183,7 +183,7 @@ public class SoldierRunner implements CommandLineRunner {
         chainOfCommand.onSitreps(present.stream().map(p -> {
             Position pointMan = p.statuses().get(0).position();
             return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan), p.principalAt(),
-                    () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.woods(world, pointMan));
+                    () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, pointMan));
         }).toList());
         for (Present p : present) {
             chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
@@ -446,17 +446,26 @@ public class SoldierRunner implements CommandLineRunner {
             SoldierStatus status = soldier.status();
             run.tick(status.position(), supplyPoint, Resupply.isShort(status) && !(status.report() instanceof Report.InContact));
             boolean bareHanded = status.condition().flatMap(c -> c.kit()).map(k -> k.weapon().isEmpty()).orElse(false);
-            woodcraft.tick(status.position(), world, bareHanded && rearmAllowed.getOrDefault(name, false)
-                    && !(status.report() instanceof Report.InContact) && !run.active()
-                    && world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).isEmpty());
+            boolean clear = !(status.report() instanceof Report.InContact) && !run.active()
+                    && world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).isEmpty();
             io.github.jayessdeesea.minecraft.command.Objective gather = gathering.get(name);
+            boolean needsPickaxe = gather != null && gather.gather().equals(Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE))
+                    && inventory.slotOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.PICKAXE) < 0;
+            // A sword first, if bare-handed and allowed; then a pickaxe, if sent for stone without one.
+            Optional<Woodcraft.Tool> tool = !clear ? Optional.empty()
+                    : bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
+                    : needsPickaxe ? Optional.of(Woodcraft.Tool.WOODEN_PICKAXE) : Optional.empty();
+            woodcraft.tick(status.position(), world, tool);
             gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
                     gather == null ? status.position() : gather.location(),
                     !(status.report() instanceof Report.InContact) && !woodcraft.active() && !run.active());
-            soldier.task(woodcraft.active() ? new Report.Rearming()
+            soldier.task(woodcraft.active()
+                    ? (woodcraft.tool() == Woodcraft.Tool.WOODEN_SWORD ? new Report.Rearming()
+                            : new Report.Gathering(io.github.jayessdeesea.minecraft.command.Resource.STONE))
                     : gatherer.active() ? new Report.Gathering(gather.gather().orElseThrow())
                     : gather != null && gatherer.exhausted()
-                    ? new Report.Cantco("nothing left to gather within 16 blocks of the objective") : null);
+                    ? new Report.Cantco("nothing left to gather within 16 blocks of the objective")
+                    : tool.isPresent() && woodcraft.failure().isPresent() ? new Report.Cantco(woodcraft.failure().get()) : null);
             Position current = status.position();
             session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
             session.endTick();

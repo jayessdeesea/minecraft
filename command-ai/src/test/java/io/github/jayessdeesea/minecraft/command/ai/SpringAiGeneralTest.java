@@ -63,17 +63,17 @@ class SpringAiGeneralTest {
 
         assertEquals("Resources seen: 23 logs around (30, 66, -40) (50 blocks NE).", SpringAiGeneral.describeResources(squad));
         assertTrue(SpringAiGeneral.describeResources(new SquadStatus("Alpha", new Report.Idle(), List.of()))
-                .contains("no stands of trees"));
+                .contains("no trees or exposed stone"));
     }
 
     @Test
     void logstatSaysWhatTheSquadIsShortOf() {
         assertEquals("LOGSTAT: food - 1 of 3 hungry (not regenerating health); weapons - 1 of 2 bare-handed, 18 arrows; "
-                        + "armour - 3 of 8 slots empty; casualties - 1 below half health, 3 deaths so far; materials - 0 logs.",
-                SpringAiGeneral.describe(new io.github.jayessdeesea.minecraft.command.Logstat(4, 3, 1, 1, 3, 2, 1, 3, 8, 18, 0)));
+                        + "armour - 3 of 8 slots empty; casualties - 1 below half health, 3 deaths so far; materials - 0 logs, 0 cobblestone.",
+                SpringAiGeneral.describe(new io.github.jayessdeesea.minecraft.command.Logstat(4, 3, 1, 1, 3, 2, 1, 3, 8, 18, 0, 0)));
         assertEquals("LOGSTAT: food - 0 of 1 hungry (not regenerating health); weapons and armour not reported yet; "
-                        + "casualties - 0 below half health, 0 deaths so far; materials - 0 logs.",
-                SpringAiGeneral.describe(new io.github.jayessdeesea.minecraft.command.Logstat(1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
+                        + "casualties - 0 below half health, 0 deaths so far; materials - 0 logs, 0 cobblestone.",
+                SpringAiGeneral.describe(new io.github.jayessdeesea.minecraft.command.Logstat(1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
     }
 
     @Test

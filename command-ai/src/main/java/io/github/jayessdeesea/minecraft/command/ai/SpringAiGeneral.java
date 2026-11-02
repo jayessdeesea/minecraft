@@ -84,12 +84,12 @@ public final class SpringAiGeneral implements General {
     /** What the squad can see to gather, with distance and direction from its point man. */
     static String describeResources(SquadStatus squad) {
         if (squad.resources().isEmpty()) {
-            return "Resources seen: no stands of trees within 64 blocks.";
+            return "Resources seen: no trees or exposed stone within 64 blocks.";
         }
         Position from = squad.soldiers().isEmpty() ? null : squad.soldiers().getFirst().position();
         StringBuilder line = new StringBuilder("Resources seen:");
         for (io.github.jayessdeesea.minecraft.command.ResourceSite site : squad.resources()) {
-            line.append(' ').append(site.amount()).append(' ').append(site.resource() == io.github.jayessdeesea.minecraft.command.Resource.WOOD ? "logs" : site.resource().name().toLowerCase(Locale.ROOT))
+            line.append(' ').append(site.amount()).append(' ').append(site.resource() == io.github.jayessdeesea.minecraft.command.Resource.WOOD ? "logs" : "exposed stone")
                     .append(" around ").append(SpringAiSquadLeader.describe(site.location()));
             if (from != null) {
                 double dx = site.location().x() - from.x();
@@ -122,8 +122,8 @@ public final class SpringAiGeneral implements General {
             line.append(String.format(Locale.ROOT, "weapons - %d of %d bare-handed, %d arrows; armour - %d of %d slots empty; ",
                     l.unarmed(), l.kitReported(), l.arrows(), l.armourEmpty(), l.armourSlots()));
         }
-        line.append(String.format(Locale.ROOT, "casualties - %d below half health, %d deaths so far; materials - %d logs.",
-                l.wounded(), l.deaths(), l.logs()));
+        line.append(String.format(Locale.ROOT, "casualties - %d below half health, %d deaths so far; materials - %d logs, %d cobblestone.",
+                l.wounded(), l.deaths(), l.logs(), l.stone()));
         return line.toString();
     }
 
@@ -166,6 +166,7 @@ public final class SpringAiGeneral implements General {
                     objective.intent(), switch (objective.gather()) {
                         case NONE -> java.util.Optional.empty();
                         case WOOD -> java.util.Optional.of(io.github.jayessdeesea.minecraft.command.Resource.WOOD);
+                        case STONE -> java.util.Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE);
                     }));
         }
         if (bySquad.size() != squadStatuses.size()) {

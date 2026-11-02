@@ -12,7 +12,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class ChopperTest {
+class DiggerTest {
 
     private static final int GROUND = 64;
 
@@ -47,9 +47,9 @@ class ChopperTest {
         BlockPos far = new BlockPos(12, GROUND, 0);
         WorldView world = forest(Set.of(near, near.offset(0, 1, 0), far));
 
-        Optional<Chopper.Tree> tree = Chopper.findTree(world, new BlockPos(0, GROUND, 0), Set.of());
+        Optional<Digger.Spot> tree = Digger.findSpot(world, new BlockPos(0, GROUND, 0), Set.of(), Digger.Target.LOG);
 
-        assertEquals(Optional.of(new Chopper.Tree(new BlockPos(4, GROUND, 0), near)), tree,
+        assertEquals(Optional.of(new Digger.Spot(Digger.Target.LOG, new BlockPos(4, GROUND, 0), near)), tree,
                 "stand west of the near trunk, chop its lowest log first");
     }
 
@@ -59,13 +59,13 @@ class ChopperTest {
         BlockPos far = new BlockPos(9, GROUND, 0);
         WorldView world = forest(Set.of(near, far));
 
-        Optional<Chopper.Tree> tree = Chopper.findTree(world, new BlockPos(0, GROUND, 0), Set.of(near));
+        Optional<Digger.Spot> tree = Digger.findSpot(world, new BlockPos(0, GROUND, 0), Set.of(near), Digger.Target.LOG);
 
-        assertEquals(far, tree.orElseThrow().log());
+        assertEquals(far, tree.orElseThrow().block());
     }
 
     @Test
     void noTreeInReachIsNoTree() {
-        assertEquals(Optional.empty(), Chopper.findTree(forest(Set.of(new BlockPos(40, GROUND, 0))), new BlockPos(0, GROUND, 0), Set.of()));
+        assertEquals(Optional.empty(), Digger.findSpot(forest(Set.of(new BlockPos(40, GROUND, 0))), new BlockPos(0, GROUND, 0), Set.of(), Digger.Target.LOG));
     }
 }
