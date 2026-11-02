@@ -74,10 +74,39 @@ public final class SpringAiGeneral implements General {
                         .append(": ").append(SpringAiSquadLeader.describe(soldier.report())).append('\n');
             }
             prompt.append(describe(Logstat.of(squad.soldiers()))).append('\n');
+            prompt.append(describeResources(squad)).append('\n');
             prompt.append("</squad>\n\n");
         }
         prompt.append("Give each squad its objective now.");
         return new PromptContext(prompt.toString());
+    }
+
+    /** What the squad can see to gather, with distance and direction from its point man. */
+    static String describeResources(SquadStatus squad) {
+        if (squad.resources().isEmpty()) {
+            return "Resources seen: no stands of trees within 64 blocks.";
+        }
+        Position from = squad.soldiers().isEmpty() ? null : squad.soldiers().getFirst().position();
+        StringBuilder line = new StringBuilder("Resources seen:");
+        for (io.github.jayessdeesea.minecraft.command.ResourceSite site : squad.resources()) {
+            line.append(' ').append(site.amount()).append(' ').append(site.resource() == io.github.jayessdeesea.minecraft.command.Resource.WOOD ? "logs" : site.resource().name().toLowerCase(Locale.ROOT))
+                    .append(" around ").append(SpringAiSquadLeader.describe(site.location()));
+            if (from != null) {
+                double dx = site.location().x() - from.x();
+                double dz = site.location().z() - from.z();
+                line.append(String.format(Locale.ROOT, " (%.0f blocks %s)", Math.hypot(dx, dz), compass(dx, dz)));
+            }
+            line.append(';');
+        }
+        line.setCharAt(line.length() - 1, '.');
+        return line.toString();
+    }
+
+    /** The eight-point compass direction of a horizontal offset (north is -z). */
+    static String compass(double dx, double dz) {
+        String[] points = {"S", "SW", "W", "NW", "N", "NE", "E", "SE"};
+        double degrees = Math.toDegrees(Math.atan2(-dx, dz)); // 0 south, 90 west - Minecraft's yaw
+        return points[(int) Math.floorMod(Math.round(degrees / 45), 8)];
     }
 
     /** The LOGSTAT line: what the squad is short of, by class of supply. */

@@ -182,7 +182,8 @@ public class SoldierRunner implements CommandLineRunner {
         }
         chainOfCommand.onSitreps(present.stream().map(p -> {
             Position pointMan = p.statuses().get(0).position();
-            return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan), p.principalAt());
+            return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan), p.principalAt(),
+                    () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.woods(world, pointMan));
         }).toList());
         for (Present p : present) {
             chainOfCommand.currentOrder(p.squad()).ifPresent(order ->

@@ -55,6 +55,18 @@ class SpringAiGeneralTest {
     }
 
     @Test
+    void resourcesSeenAreGivenWithDistanceAndDirection() {
+        SquadStatus squad = new SquadStatus("Bravo", new Report.Moving(), List.of(
+                new SoldierStatus("Dana", new Position(0, 64, 0), new Order.Idle(), new Report.Moving(), java.util.Optional.empty())),
+                List.of(new io.github.jayessdeesea.minecraft.command.ResourceSite(io.github.jayessdeesea.minecraft.command.Resource.WOOD,
+                        new Position(30, 66, -40), 23)));
+
+        assertEquals("Resources seen: 23 logs around (30, 66, -40) (50 blocks NE).", SpringAiGeneral.describeResources(squad));
+        assertTrue(SpringAiGeneral.describeResources(new SquadStatus("Alpha", new Report.Idle(), List.of()))
+                .contains("no stands of trees"));
+    }
+
+    @Test
     void logstatSaysWhatTheSquadIsShortOf() {
         assertEquals("LOGSTAT: food - 1 of 3 hungry (not regenerating health); weapons - 1 of 2 bare-handed, 18 arrows; "
                         + "armour - 3 of 8 slots empty; casualties - 1 below half health, 3 deaths so far; materials - 0 logs.",

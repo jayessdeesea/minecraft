@@ -236,7 +236,10 @@ and puts any half-crafted items back in the inventory; the soldier tries again a
 (`bot.supply.Gatherer`, sharing `Chopper` with §11): each puts its weapon away to chop, works a tree
 no squadmate has claimed, checks each log actually broke, and stops at 16 logs or when anything
 nears. A soldier at it reports `Gathering`; one that finds nothing left in reach reports CANTCO,
-which the squad leader passes up so the general can choose another place. Logs carried show in each
+which the squad leader passes up so the general can choose another place. To choose, the general
+reads what each squad can see: the nearest three stands of trees within 64 blocks of its point man,
+each a cluster of logs with its count, distance and direction (`bot.supply.ResourceSurveyor`,
+`command.SquadStatus.resources`). Logs carried show in each
 soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
 
 ## Sources

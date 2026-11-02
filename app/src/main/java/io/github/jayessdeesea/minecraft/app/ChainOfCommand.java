@@ -61,9 +61,12 @@ public class ChainOfCommand {
     /** Vanilla chat's own limit is 256 characters. */
     static final int CHAT_LINE_LIMIT = 250;
 
-    /** One squad's SITREP for a cycle: its soldiers, its terrain (surveyed only if its leader decides), its principal. */
+    /**
+     * One squad's SITREP for a cycle: its soldiers, its terrain (surveyed only if its leader
+     * decides), its principal, and what it can see to gather (surveyed only if the general decides).
+     */
     public record Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain,
-                         Optional<Position> principalAt) {
+                         Optional<Position> principalAt, Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources) {
     }
 
     private final General general;
@@ -165,12 +168,12 @@ public class ChainOfCommand {
             return;
         }
         lastGeneralMillis = now;
-        List<SquadStatus> statuses = sitreps.stream()
-                .map(s -> new SquadStatus(s.squad(), squads.get(s.squad()).report(), s.soldiers())).toList();
         int missionAsked = missionVersion.get();
         generalThread.execute(() -> {
             try {
                 long started = System.currentTimeMillis();
+                List<SquadStatus> statuses = sitreps.stream().map(s -> new SquadStatus(s.squad(),
+                        squads.get(s.squad()).report(), s.soldiers(), s.resources().get())).toList();
                 List<Objective> objectives = general.decide(statuses);
                 if (missionVersion.get() != missionAsked) {
                     LOG.info("[General] discarding a decision made under superseded orders");
