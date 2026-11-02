@@ -13,11 +13,13 @@ leader should be able to pass the squad's needs up to the general as a logistics
 and the general should weigh them.
 
 ## Done when
-- `SquadStatus` carries a LOGSTAT-shaped summary built from the soldiers' LACE reports.
-- The general's prompt shows it, and the general can respond, for example by giving the squad a
-  resupply or reconstitution objective.
+- A supply point - a chest the operator places and stocks, at a configured position - is shown to
+  the general next to each squad's LOGSTAT, and the general can send a squad there.
+- A soldier at the supply point who is short of something takes it: opens the chest, moves a
+  weapon, armour, arrows or food into its inventory, holds the weapon and wears the armour. All
+  deterministic, no LLM.
 
 ## Notes
-- Open question: what supplies the supplies? There is no logistics chain in Minecraft beyond the
-  soldiers themselves. Until pre-combat-checks lands, the only possible answer is "withdraw and
-  reconstitute", which may still be worth having.
+- The LOGSTAT already reaches the general (docs/military-doctrine.md §4).
+- Mechanics needed: Use Item On to open the chest, Open Screen and the chest's Container Set
+  Content, Container Click (quick move), Container Close, Set Carried Item to hold the weapon.

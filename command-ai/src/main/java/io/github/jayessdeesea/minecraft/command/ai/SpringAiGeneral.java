@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.command.ai;
 
 import io.github.jayessdeesea.minecraft.command.General;
+import io.github.jayessdeesea.minecraft.command.Logstat;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -62,10 +64,28 @@ public final class SpringAiGeneral implements General {
                 prompt.append("- ").append(soldier.name()).append(" at ").append(SpringAiSquadLeader.describe(soldier.position()))
                         .append(": ").append(SpringAiSquadLeader.describe(soldier.report())).append('\n');
             }
+            prompt.append(describe(Logstat.of(squad.soldiers()))).append('\n');
             prompt.append("</squad>\n\n");
         }
         prompt.append("Give each squad its objective now.");
         return new PromptContext(prompt.toString());
+    }
+
+    /** The LOGSTAT line: what the squad is short of, by class of supply. */
+    static String describe(Logstat l) {
+        if (l.reporting() == 0) {
+            return "LOGSTAT: no soldier has reported his condition yet.";
+        }
+        StringBuilder line = new StringBuilder("LOGSTAT: ");
+        line.append(String.format(Locale.ROOT, "food - %d of %d hungry (not regenerating health); ", l.hungry(), l.reporting()));
+        if (l.kitReported() == 0) {
+            line.append("weapons and armour not reported yet; ");
+        } else {
+            line.append(String.format(Locale.ROOT, "weapons - %d of %d bare-handed, %d arrows; armour - %d of %d slots empty; ",
+                    l.unarmed(), l.kitReported(), l.arrows(), l.armourEmpty(), l.armourSlots()));
+        }
+        line.append(String.format(Locale.ROOT, "casualties - %d below half health, %d deaths so far.", l.wounded(), l.deaths()));
+        return line.toString();
     }
 
     GeneralReply callModel(PromptContext context) {

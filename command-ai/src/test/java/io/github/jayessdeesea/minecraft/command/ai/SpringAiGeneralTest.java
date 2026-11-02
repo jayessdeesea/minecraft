@@ -42,6 +42,17 @@ class SpringAiGeneralTest {
         assertTrue(prompt.contains("<mission>\nsecure the village\n</mission>"));
         assertTrue(prompt.contains("<squad name=\"Alpha\">\nSquad leader reports: Cantco: ravine in the way"));
         assertTrue(prompt.contains("- Bob at (3, 64, 4): Moving"));
+        assertTrue(prompt.contains("LOGSTAT: no soldier has reported his condition yet."));
+    }
+
+    @Test
+    void logstatSaysWhatTheSquadIsShortOf() {
+        assertEquals("LOGSTAT: food - 1 of 3 hungry (not regenerating health); weapons - 1 of 2 bare-handed, 18 arrows; "
+                        + "armour - 3 of 8 slots empty; casualties - 1 below half health, 3 deaths so far.",
+                SpringAiGeneral.describe(new io.github.jayessdeesea.minecraft.command.Logstat(4, 3, 1, 1, 3, 2, 1, 3, 8, 18)));
+        assertEquals("LOGSTAT: food - 0 of 1 hungry (not regenerating health); weapons and armour not reported yet; "
+                        + "casualties - 0 below half health, 0 deaths so far.",
+                SpringAiGeneral.describe(new io.github.jayessdeesea.minecraft.command.Logstat(1, 1, 0, 0, 0, 0, 0, 0, 0, 0)));
     }
 
     @Test

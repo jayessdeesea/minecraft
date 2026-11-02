@@ -81,12 +81,15 @@ operator with WILCO on the radio net.
 | **SITREP** (situation report) | Where we are, what we're doing, our condition, what we can't do. Routine and on request. | FM 6-99, *U.S. Army Report and Message Formats* |
 | **SPOTREP** using **SALUTE** | Enemy contact: **S**ize, **A**ctivity, **L**ocation, **U**nit, **T**ime, **E**quipment. | FM 6-99; FM 34-35 App. C |
 | **LACE** | A unit's own condition after contact or on request: **L**iquids (water, fuel), **A**mmunition, **C**asualties, **E**quipment. | Small-unit convention during consolidation and reorganization; not confirmed in a primary manual |
+| **LOGSTAT** (logistics status) | What a unit holds and needs, by class of supply: Class I subsistence, Class II clothing and individual equipment, Class V ammunition, Class VIII medical. | FM 4-0, *Sustainment Operations* |
 
 *How we use it:* each soldier's status is a SITREP (position, task, condition, and a CANTCO if
 any); contact with hostiles adds a SALUTE-shaped spot report. The condition is LACE-shaped
 (`command.Condition`): liquids is food, casualties is health and deaths, ammunition is the weapon
 in hand and arrows, equipment is armour worn (`command.Kit`). Squad leaders aggregate their
-soldiers' SITREPs into one for the general. These are the structured inputs the LLM-backed
+soldiers' SITREPs into one for the general, with a LOGSTAT summed from the soldiers' LACE
+(`command.Logstat`): hungry soldiers (Class I), empty armour slots (Class II), bare-handed
+soldiers and arrows (Class V), and casualties. These are the structured inputs the LLM-backed
 echelons read - the same economy of attention doctrine optimizes for.
 
 ## 5. Orders downward
