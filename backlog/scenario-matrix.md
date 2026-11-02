@@ -55,5 +55,9 @@ Scenarios, each a mission with a measurable end state:
 - **Decided:** the live tier runs targeted scenarios when a change touches them, and the full
   matrix only before a pin bump or a model change. Nothing runs on a schedule: each live scenario
   takes minutes and holds the GPU.
+- **A live scenario that tests a soldier's reflex has to pin the squad's orders.** The chain of
+  command reacts to the setup itself. Making it night to stage a skeleton fight had the general
+  order a patrol base, and the soldier walked away from the skeleton. Options: an operator order
+  that holds a squad in place, or a harness mode with the general and squad leaders stood down.
 - A scenario is a test fixture, so it lives in code (`bot`'s `scenario` package for offline, a
   live harness in `app` for live) and this item becomes docs when it lands.
