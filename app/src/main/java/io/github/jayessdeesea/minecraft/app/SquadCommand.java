@@ -73,6 +73,11 @@ final class SquadCommand {
         return current != null && current.gather().isPresent() ? Optional.of(current) : Optional.empty();
     }
 
+    Optional<Objective> patrolBaseObjective() {
+        Objective current = objective;
+        return current != null && current.patrolBase() ? Optional.of(current) : Optional.empty();
+    }
+
     boolean hasObjective() {
         return objective != null;
     }

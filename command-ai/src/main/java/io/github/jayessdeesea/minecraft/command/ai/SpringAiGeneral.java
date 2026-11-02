@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.command.ai;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Logstat;
 import io.github.jayessdeesea.minecraft.command.Objective;
+import io.github.jayessdeesea.minecraft.command.PatrolBase;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Resupply;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
@@ -160,17 +161,25 @@ public final class SpringAiGeneral implements General {
             line.append(String.format(Locale.ROOT, "weapons - %d of %d bare-handed, %d arrows; armour - %d of %d slots empty; ",
                     l.unarmed(), l.kitReported(), l.arrows(), l.armourEmpty(), l.armourSlots()));
         }
-        line.append(String.format(Locale.ROOT, "casualties - %d below half health, %d deaths so far; materials - %d logs, %d cobblestone.",
+        line.append(String.format(Locale.ROOT, "casualties - %d below half health, %d deaths so far; materials - %d logs, %d cobblestone",
                 l.wounded(), l.deaths(), l.logs(), l.stone()));
+        // Worked out here, not left to the model: whether what they carry builds their shelter.
+        int needed = PatrolBase.hasty(new Position(0, 0, 0), Math.max(1, Math.min(l.soldiers(), 9))).cells().size();
+        int blocks = l.logs() + l.stone();
+        line.append(blocks >= needed
+                ? String.format(Locale.ROOT, " - enough to build a patrol base (%d blocks).", needed)
+                : String.format(Locale.ROOT, " - %d short of the %d blocks a patrol base takes.", needed - blocks, needed));
         return line.toString();
     }
 
     GeneralReply callModel(PromptContext context) {
         LOG.debug("General prompt:\n{}", context.prompt());
-        return chatClient.prompt()
+        GeneralReply reply = chatClient.prompt()
                 .user(context.prompt())
                 .call()
                 .entity(GeneralReply.class, spec -> spec.useProviderStructuredOutput().validateSchema());
+        LOG.debug("General reply: {}", reply);
+        return reply;
     }
 
     /** One objective per listed squad, in the same order - anything else is a violated contract. */
@@ -198,15 +207,15 @@ public final class SpringAiGeneral implements General {
                     || objective.intent() == null || objective.intent().isBlank()) {
                 throw new IllegalStateException("objective without mission or intent for squad " + squad.squadName() + ": " + reply);
             }
-            if (objective.gather() == null) {
-                throw new IllegalStateException("objective without gather (NONE if nothing) for squad " + squad.squadName() + ": " + reply);
+            if (objective.task() == null) {
+                throw new IllegalStateException("objective without a task (NONE if nothing) for squad " + squad.squadName() + ": " + reply);
             }
             objectives.add(new Objective(objective.mission(), new Position(objective.x(), objective.y(), objective.z()),
-                    objective.intent(), switch (objective.gather()) {
-                        case NONE -> java.util.Optional.empty();
+                    objective.intent(), switch (objective.task()) {
+                        case NONE, PATROL_BASE -> java.util.Optional.empty();
                         case WOOD -> java.util.Optional.of(io.github.jayessdeesea.minecraft.command.Resource.WOOD);
                         case STONE -> java.util.Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE);
-                    }));
+                    }, objective.task() == GeneralReply.Task.PATROL_BASE));
         }
         if (bySquad.size() != squadStatuses.size()) {
             throw new IllegalStateException("objectives for squads that weren't listed: " + reply);

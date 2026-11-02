@@ -274,6 +274,32 @@ restarts at once instead of waiting out the minute's cooldown after a failure.
 The giver reports `CrossLeveling`; each soldier's LACE shows the logs move. The squad leader isn't
 asked: pairing is bookkeeping, done deterministically like the other drills.
 
+## 14. Patrol base
+
+| Practice | Content | Source |
+|---|---|---|
+| **Patrol base** | A defensible position held for a set time. Security first, then the leader's *priorities of work*, each a task with a time and a measurable standard. | ATP 3-21.8 ch. 7; FM 3-21.8 (2007) |
+| **Survivability** | Positions start hasty and are improved toward deliberate; overhead cover matters most. | ATP 3-37.34 |
+
+*How we use it:* the general knows the time of day: Set Time's overworld clock becomes
+`command.TimeOfDay`. Dark is when the server's day timeline dims sky light enough for monsters to
+spawn in the open, ticks 13178 to 22822. The general's prompt says how many minutes until that
+changes.
+
+An objective's task can be `PATROL_BASE`. `command.PatrolBase` lays out a hasty hut around the
+squad: a 2x2 floor for up to four soldiers (3x3 for up to nine), walls two high, and a roof over
+walls and floor, so each roof block has a neighbour to go against. That's 40 blocks for a squad of
+three. The site is placed on the ground actually there, since the model's height is a guess. A
+re-issued objective within 8 blocks keeps the site already laid out, so the outline doesn't move
+under the soldiers.
+
+Each soldier goes to its own floor cell. Once all are inside, each builds from where it stands
+(`bot.supply.Builder`): cobblestone first, then planks, then logs. Each block is placed against a
+solid neighbour's face and checked against the server's block updates; a cell that won't take a
+block after three tries is skipped. A soldier at it reports `Fortifying`, or CANTCO when it runs
+out of blocks. The general's LOGSTAT says whether the squad carries enough for a base, so the
+model never has to add up the numbers itself.
+
 ## Sources
 
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)
@@ -286,6 +312,8 @@ asked: pairing is bookkeeping, done deterministically like the other drills.
 - Link-up procedure: FM 3-21.9 ch. 7 - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/3-21-9/chap7.htm)
 - ATP 5-19, *Risk Management* - [Army Publishing Directorate](https://armypubs.army.mil/)
 - FM 4-0, *Sustainment Operations* (classes of supply) - [Army Publishing Directorate](https://armypubs.army.mil/)
+- ATP 3-21.8, patrol base and priorities of work - [study notes based on the manual](https://tac-9yd.pages.dev/patrol-base-ops) (secondary); FM 3-21.8 (2007) - [marines.mil](https://www.marines.mil/Portals/1/Publications/FM%203-21.8%20%20The%20Infantry%20Rifle%20Platoon%20and%20Squad_6.pdf)
+- ATP 3-37.34, *Survivability Operations* (restricted distribution) - [Army engineer bulletin on overhead cover](https://home.army.mil/wood/contact/publications/engr_mag/Rethinking-Survivability) (secondary)
 - FM 4-93.51 ch. 9 (cross-leveling ammunition within the company) - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/4-93-51/ch9.htm)
 - ATP 3-39.35, *Protective Services* - [Army Publishing Directorate](https://armypubs.army.mil/)
 - ATP 1-02.1 multi-service brevity codes (CANTCO) - [ALSSA](https://www.alssa.mil/MTTPs/Brevity/)

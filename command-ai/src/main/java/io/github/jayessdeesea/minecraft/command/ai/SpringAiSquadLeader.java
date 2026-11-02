@@ -97,6 +97,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
                 .append("Location: ").append(describe(objective.location())).append('\n')
                 .append("Intent: ").append(objective.intent()).append('\n')
                 .append(objective.gather().map(r -> "Gather: " + r + " - your soldiers collect it around the objective on their own\n").orElse(""))
+                .append(objective.patrolBase() ? "Patrol base: your soldiers build a shelter at the objective on their own and wait in it\n" : "")
                 .append("</objective>\n\n");
         prompt.append("<current_order>\n")
                 .append(lastOrder == null ? "None yet." : describe(lastOrder) + String.format(Locale.ROOT,
@@ -277,6 +278,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             case Report.LinkingUp() -> "LinkingUp (respawned, rejoining the squad)";
             case Report.Rearming() -> "Rearming (making himself a wooden sword)";
             case Report.Gathering(var resource) -> "Gathering " + resource;
+            case Report.Fortifying() -> "Fortifying (building the patrol base)";
             case Report.CrossLeveling(String to, int logs) -> "CrossLeveling (handing " + logs + " logs to " + to + ")";
             case Report.Cantco(String reason) -> "Cantco: " + reason;
         };

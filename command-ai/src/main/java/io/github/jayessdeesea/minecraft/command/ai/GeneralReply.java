@@ -12,15 +12,21 @@ record GeneralReply(@JsonPropertyDescription("Exactly one objective per squad") 
 
     record ObjectiveReply(
             @JsonPropertyDescription("The squad's name, exactly as listed") String squad,
-            @JsonPropertyDescription("What the squad must do") String mission,
+            @JsonPropertyDescription("The squad's task at the objective - this field, not the mission's wording, sets it: "
+                    + "NONE; WOOD to chop logs around the objective; STONE to quarry it; PATROL_BASE to build a small "
+                    + "roofed shelter at the objective and spend the night in it")
+            Task task,
+            @JsonPropertyDescription("What the squad must do, in plain words for the squad leader") String mission,
             @JsonPropertyDescription("Objective x coordinate (east is positive)") double x,
             @JsonPropertyDescription("Objective y coordinate: the ground height there") double y,
             @JsonPropertyDescription("Objective z coordinate (north is negative)") double z,
-            @JsonPropertyDescription("One sentence: the purpose and the end state you want") String intent,
-            @JsonPropertyDescription("NONE, WOOD to have the squad chop logs around the objective, or STONE to quarry it")
-            Gather gather) {
+            @JsonPropertyDescription("One sentence: the purpose and the end state you want") String intent) {
     }
 
-    /** What the squad gathers around its objective; NONE rather than null, so the schema always asks. */
-    enum Gather { NONE, WOOD, STONE }
+    /**
+     * The squad's task at its objective, at most one; NONE rather than null, so the schema always asks.
+     * One field rather than a gather and a separate patrol-base flag: a model sets one choice reliably
+     * and can't ask for both.
+     */
+    enum Task { NONE, WOOD, STONE, PATROL_BASE }
 }

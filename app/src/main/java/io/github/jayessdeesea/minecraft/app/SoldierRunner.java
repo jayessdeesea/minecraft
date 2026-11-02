@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
+import io.github.jayessdeesea.minecraft.bot.supply.Builder;
 import io.github.jayessdeesea.minecraft.bot.supply.Depositor;
 import io.github.jayessdeesea.minecraft.bot.supply.Gatherer;
 import io.github.jayessdeesea.minecraft.bot.supply.Handover;
@@ -15,6 +16,7 @@ import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.command.Escort;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
+import io.github.jayessdeesea.minecraft.command.PatrolBase;
 import io.github.jayessdeesea.minecraft.command.ReactToContact;
 import io.github.jayessdeesea.minecraft.command.Resupply;
 import io.github.jayessdeesea.minecraft.command.Risk;
@@ -107,6 +109,10 @@ public class SoldierRunner implements CommandLineRunner {
         final LinkUp linkUp = new LinkUp();
         java.util.Set<String> linkingUp = java.util.Set.of();
         String haltedFor;
+        boolean fortifying;
+        boolean allInside;
+        /** Where the squad's patrol base is laid out, once it is. */
+        Position baseSite;
         java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.of();
     }
 
@@ -126,6 +132,13 @@ public class SoldierRunner implements CommandLineRunner {
     private final Map<String, Depositor> depositors = new ConcurrentHashMap<>();
     /** Each connected soldier's handing of logs to a squadmate, by name. */
     private final Map<String, Handover> handovers = new ConcurrentHashMap<>();
+    /** Each connected soldier's building, by name. */
+    private final Map<String, Builder> builders = new ConcurrentHashMap<>();
+    /** A soldier's part in building its squad's patrol base. */
+    private record Fortify(Position stand, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells, boolean allInside) {
+    }
+    /** What each soldier is building, while its squad builds a patrol base - squad loop writes, tick reads. */
+    private final Map<String, Fortify> fortifying = new ConcurrentHashMap<>();
     /** Logs each soldier is short of for a tool it can't chop wood for - tick writes, squad loop reads; absent when none. */
     private final Map<String, Integer> logsWanted = new ConcurrentHashMap<>();
     /** What each soldier is to hand over, by giver - squad loop writes, tick reads; absent when nothing. */
@@ -138,6 +151,8 @@ public class SoldierRunner implements CommandLineRunner {
     private static final double REARM_CLEAR_RADIUS = 16;
     /** A soldier being handed logs goes for dropped items this close - where a throw lands. */
     private static final double PICKUP_RADIUS = 4;
+    /** A patrol base objective re-issued this close to the base already laid out keeps that one. */
+    private static final double BASE_SITE_RADIUS = 8;
 
     private final OperatorOrders operatorOrders;
     /** The chest soldiers draw kit from, if the operator set one up (docs/military-doctrine.md §4). */
@@ -258,6 +273,35 @@ public class SoldierRunner implements CommandLineRunner {
         state.crossLeveling = crossLeveling;
         java.util.Set<String> receiving = transfers.stream().map(CrossLevel.Transfer::receiver)
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        // Patrol base (docs/military-doctrine.md §14): each soldier to its place inside the hut's
+        // outline; once all are in, they build its walls and roof around themselves.
+        Optional<io.github.jayessdeesea.minecraft.command.Objective> base = squadInContact
+                ? Optional.empty() : chainOfCommand.patrolBaseObjective(squadName);
+        // A squad that has laid out its base stays on it: the general re-plans every few seconds and
+        // nudges the objective a block or two, and an outline that moves keeps the soldiers walking.
+        Position site = base.map(o -> o.location()).orElse(null);
+        if (site != null && state.baseSite != null && Math.hypot(site.x() - state.baseSite.x(), site.z() - state.baseSite.z()) <= BASE_SITE_RADIUS
+                && Math.abs(site.y() - state.baseSite.y()) <= 2) {
+            site = state.baseSite;
+        } else if (site != null) {
+            // The model's height is a guess; the floor goes on the ground actually there.
+            site = groundAt(site);
+            if (state.baseSite != null) {
+                LOG.info("[{}] patrol base moved to {}", squadName, site);
+            }
+        }
+        state.baseSite = site;
+        PatrolBase.Plan plan = site == null ? null : PatrolBase.hasty(site, statuses.size());
+        boolean allInside = plan != null && statuses.stream().allMatch(s -> plan.inside(s.position()));
+        if ((plan != null) != state.fortifying) {
+            LOG.info(plan != null ? "[{}] PATROL BASE at {}: {} blocks to build" : "[{}] patrol base stood down",
+                    squadName, site, plan == null ? 0 : plan.cells().size());
+            state.fortifying = plan != null;
+        }
+        if (allInside && !state.allInside) {
+            LOG.info("[{}] all inside the patrol base - building", squadName);
+        }
+        state.allInside = allInside;
         for (int i = 0; i < statuses.size(); i++) {
             String soldierName = statuses.get(i).name();
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
@@ -267,6 +311,17 @@ public class SoldierRunner implements CommandLineRunner {
                     ? Optional.empty() : chainOfCommand.gatherObjective(squadName);
             gather.ifPresentOrElse(o -> gathering.put(soldierName, o), () -> gathering.remove(soldierName));
             Order given = orders.get(i);
+            if (plan != null) {
+                List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = new java.util.ArrayList<>(plan.cells().stream()
+                        .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) c.x(), (int) c.y(), (int) c.z())).toList());
+                // Each soldier starts at a different point round the walls, so they don't all go for the same block.
+                java.util.Collections.rotate(cells, -i * cells.size() / statuses.size());
+                fortifying.put(soldierName, new Fortify(plan.stands().get(i), List.copyOf(cells), allInside));
+                Position place = plan.stands().get(i);
+                byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(), 0.3, 0.5, Risk.LOW));
+                continue;
+            }
+            fortifying.remove(soldierName);
             Woodcraft woodcraft = woodcrafts.get(soldierName);
             Gatherer gatherer = gatherers.get(soldierName);
             Optional<Position> stand = woodcraft == null ? Optional.empty() : woodcraft.standAt();
@@ -307,6 +362,26 @@ public class SoldierRunner implements CommandLineRunner {
                     squadDefinition.name(), chunkCache.loadedChunkCount(), entityTracker.trackedEntityCount(), sitrep);
         }
     }
+
+    /**
+     * The standable cell nearest in height to {@code at} - solid below, room for a body above - or
+     * {@code at} itself when there's none within {@value #GROUND_SEARCH} blocks up or down.
+     */
+    private Position groundAt(Position at) {
+        int x = (int) Math.floor(at.x());
+        int z = (int) Math.floor(at.z());
+        int y = (int) Math.floor(at.y());
+        for (int dy = 0; dy <= GROUND_SEARCH; dy++) {
+            for (int candidate : new int[]{y + dy, y - dy}) {
+                if (world.isSolid(x, candidate - 1, z) && !world.isSolid(x, candidate, z) && !world.isSolid(x, candidate + 1, z)) {
+                    return new Position(at.x(), candidate, at.z());
+                }
+            }
+        }
+        return at;
+    }
+
+    private static final int GROUND_SEARCH = 8;
 
     /** A squad's connected soldiers in formation order (the first present one is the point man). */
     private List<DeterministicSoldier> presentSoldiers(String squad) {
@@ -514,6 +589,8 @@ public class SoldierRunner implements CommandLineRunner {
         depositorRef.set(depositor);
         Handover handover = new Handover(name, session, inventory);
         handovers.put(name, handover);
+        Builder builder = new Builder(name, session, inventory);
+        builders.put(name, builder);
         woodcraftRef.set(woodcraft);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
@@ -536,7 +613,8 @@ public class SoldierRunner implements CommandLineRunner {
             Optional<Woodcraft.Tool> tool = !clear ? Optional.empty()
                     : bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
                     : needsPickaxe ? Optional.of(Woodcraft.Tool.WOODEN_PICKAXE) : Optional.empty();
-            woodcraft.tick(status.position(), world, tool);
+            Fortify fort = fortifying.get(name);
+            woodcraft.tick(status.position(), world, fort == null ? tool : Optional.empty());
             // Short of logs for a tool it tried and failed to chop wood for: a squadmate may have
             // some to spare (§13).
             Optional<Woodcraft.Tool> needed = bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
@@ -549,17 +627,29 @@ public class SoldierRunner implements CommandLineRunner {
             }
             Kit carried = status.condition().flatMap(c -> c.kit()).orElse(null);
             boolean fullLoad = carried != null && (carried.logs() >= Gatherer.CARRY_LOGS || carried.stone() >= Gatherer.CARRY_STONE);
-            depositor.tick(status.position(), supplyPoint, fullLoad && clear && !woodcraft.active() && !handover.active());
+            depositor.tick(status.position(), supplyPoint, fullLoad && clear && !woodcraft.active() && !handover.active() && fort == null);
             CrossLevel.Transfer giving = deliveries.get(name);
-            Optional<Handover.Delivery> delivery = giving == null || !clear || woodcraft.active() || depositor.active() ? Optional.empty()
+            Optional<Handover.Delivery> delivery = giving == null || !clear || woodcraft.active() || depositor.active() || fort != null
+                    ? Optional.empty()
                     : Optional.ofNullable(activeSoldiers.get(giving.receiver()))
                             .map(receiver -> new Handover.Delivery(giving.receiver(), receiver.status().position(), giving.logs()));
             handover.tick(status.position(), delivery).ifPresent(soldier::lookAt);
+            Builder.Progress built = null;
+            if (fort != null && fort.allInside() && !(status.report() instanceof Report.InContact)
+                    && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.5) {
+                built = builder.tickInPlace(status.position(), world, fort.cells());
+                builder.lookAt().ifPresent(soldier::lookAt);
+            } else {
+                builder.stop();
+            }
             gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
                     gather == null ? status.position() : gather.location(),
                     !(status.report() instanceof Report.InContact) && !woodcraft.active() && !run.active() && !depositor.active()
                             && !handover.active());
-            soldier.task(woodcraft.active()
+            soldier.task(fort != null
+                    ? (built instanceof Builder.Progress.Failed(String why) ? new Report.Cantco("can't finish the patrol base: " + why)
+                            : built instanceof Builder.Progress.Done ? null : new Report.Fortifying())
+                    : woodcraft.active()
                     ? (woodcraft.tool() == Woodcraft.Tool.WOODEN_SWORD ? new Report.Rearming()
                             : new Report.Gathering(io.github.jayessdeesea.minecraft.command.Resource.STONE))
                     : depositor.active() ? new Report.Gathering(carried != null && carried.stone() >= Gatherer.CARRY_STONE

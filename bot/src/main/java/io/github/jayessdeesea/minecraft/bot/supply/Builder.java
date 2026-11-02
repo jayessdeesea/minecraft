@@ -82,8 +82,20 @@ public final class Builder {
         return Optional.ofNullable(lookAt);
     }
 
-    /** One tick of building {@code plan}, in order. */
+    /** One tick of building {@code plan}, in order, moving about as needed to reach each cell. */
     public synchronized Progress tick(Position soldier, WorldView world, List<BlockPos> plan) {
+        return tick(soldier, world, plan, false);
+    }
+
+    /**
+     * One tick of building {@code plan} from where the soldier stands - inside a hut it's walling in,
+     * where walking off to reach a cell would leave it outside. A cell out of reach is skipped.
+     */
+    public synchronized Progress tickInPlace(Position soldier, WorldView world, List<BlockPos> plan) {
+        return tick(soldier, world, plan, true);
+    }
+
+    private Progress tick(Position soldier, WorldView world, List<BlockPos> plan, boolean inPlace) {
         ticksSinceAction++;
         lookAt = null;
         if (ticksSinceAction < SETTLE_TICKS) {
@@ -117,7 +129,7 @@ public final class Builder {
             return new Progress.Failed("no blocks to build with");
         }
         if (!withinReach(soldier, target) || overlaps(soldier, target)) {
-            standAt = standingSpot(world, soldier, target).orElse(null);
+            standAt = inPlace ? null : standingSpot(world, soldier, target).orElse(null);
             if (standAt == null) {
                 skipped.add(target);
                 target = null;

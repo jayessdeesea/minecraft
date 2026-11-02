@@ -25,7 +25,7 @@ class SpringAiGeneralTest {
             new SoldierStatus("Bob", new Position(3, 64, 4), new Order.Idle(), new Report.Moving(), java.util.Optional.empty())));
 
     private static GeneralReply.ObjectiveReply objective(String squad) {
-        return new GeneralReply.ObjectiveReply(squad, "scout", 0, 64, -50, "find the village", GeneralReply.Gather.NONE);
+        return new GeneralReply.ObjectiveReply(squad, GeneralReply.Task.NONE, "scout", 0, 64, -50, "find the village");
     }
 
     @Test
@@ -85,19 +85,23 @@ class SpringAiGeneralTest {
     @Test
     void logstatSaysWhatTheSquadIsShortOf() {
         assertEquals("LOGSTAT: food - 1 of 3 hungry (not regenerating health); weapons - 1 of 2 bare-handed, 18 arrows; "
-                        + "armour - 3 of 8 slots empty; casualties - 1 below half health, 3 deaths so far; materials - 0 logs, 0 cobblestone.",
+                        + "armour - 3 of 8 slots empty; casualties - 1 below half health, 3 deaths so far; materials - 0 logs, 0 cobblestone"
+                        + " - 40 short of the 40 blocks a patrol base takes.",
                 SpringAiGeneral.describe(new io.github.jayessdeesea.minecraft.command.Logstat(4, 3, 1, 1, 3, 2, 1, 3, 8, 18, 0, 0)));
         assertEquals("LOGSTAT: food - 0 of 1 hungry (not regenerating health); weapons and armour not reported yet; "
-                        + "casualties - 0 below half health, 0 deaths so far; materials - 0 logs, 0 cobblestone.",
+                        + "casualties - 0 below half health, 0 deaths so far; materials - 0 logs, 0 cobblestone"
+                        + " - 40 short of the 40 blocks a patrol base takes.",
                 SpringAiGeneral.describe(new io.github.jayessdeesea.minecraft.command.Logstat(1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
+        assertTrue(SpringAiGeneral.describe(new io.github.jayessdeesea.minecraft.command.Logstat(3, 3, 0, 0, 0, 3, 0, 0, 12, 0, 2, 46))
+                .endsWith("materials - 2 logs, 46 cobblestone - enough to build a patrol base (40 blocks)."));
     }
 
     @Test
     void decideRoundTripsStructuredOutputInSquadOrder() {
         String reply = """
                 {"objectives": [
-                  {"squad": "Bravo", "mission": "hold", "x": 5, "y": 64, "z": 5, "intent": "cover Alpha", "gather": "WOOD"},
-                  {"squad": "Alpha", "mission": "scout north", "x": 0, "y": 70, "z": -60, "intent": "find a way around", "gather": "NONE"}
+                  {"squad": "Bravo", "mission": "hold", "x": 5, "y": 64, "z": 5, "intent": "cover Alpha", "task": "WOOD"},
+                  {"squad": "Alpha", "mission": "scout north", "x": 0, "y": 70, "z": -60, "intent": "find a way around", "task": "NONE"}
                 ]}
                 """;
         SpringAiGeneral general = new SpringAiGeneral(ChatClient.create(FakeChatModels.replying(reply, new AtomicReference<>())), "win", "");

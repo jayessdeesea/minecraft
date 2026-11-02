@@ -280,7 +280,7 @@ server's own `GameProtocols` registration lists (read with `javap` - see DEVELOP
 | → | `0x2C` | Player Loaded | `PlayerLoadedPacket` | registration order; empty body |
 | → | `0x2E` | Punch | `PunchPacket` | registration order; empty body, sent after each attack |
 | → | `0x36` | Set Carried Item | `ContainerPackets.SetCarriedItem` | live |
-| → | `0x42` | Use Item On | `ContainerPackets.UseItemOn` | live (opens a chest) |
+| → | `0x42` | Use Item On | `ContainerPackets.UseItemOn` | live (opens a chest; places blocks against any face) |
 
 **One position report per client tick.** The server disconnects a player that sends a second Move
 Player before the next Client Tick End ("Invalid move player packet received"), so a client that

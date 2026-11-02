@@ -55,24 +55,25 @@ registry classifies all logs as LOG.
   carried in.
 
 ## Done when
-- Squad leaders see how long until dark, as the general already does (`command.TimeOfDay`).
-- A soldier can place a block it carries against a face it can see (Use Item On with a block in
-  hand). This is the building primitive.
-- Soldiers make torches from coal they dig or charcoal they smelt. A squad leader's order to
-  "establish a patrol base at X" produces a roofed shelter with block light > 0 on every floor
-  block, and the soldiers inside at nightfall.
-- On a later night the squad improves the base: wider perimeter, more light. The improvement is
-  measured by a test that counts lit, walled floor blocks.
+The hasty hut, the general's PATROL_BASE task and the time of day are live (docs/military-doctrine.md
+§ 14). What's left:
+- **Cobblestone moves between soldiers.** Building runs out when one soldier carries the blocks and
+  its squadmates carry none. Cross-levelling covers logs only (backlog/cross-leveling.md).
+- **Squad leaders see how long until dark,** as the general already does (`command.TimeOfDay`).
+- **Torches.** Soldiers make torches from coal they dig or charcoal they smelt, and light the base
+  so block light > 0 on every floor block.
+- **Deliberate base on a later night.** The squad improves the base with a wider perimeter and more
+  light. The improvement is measured by a test that counts lit, walled floor blocks.
+- **A way out in the morning.** Today the squad stays sealed in until the general gives another
+  objective, and then nothing opens the walls. It needs a door, or breaking a wall block when the
+  base stands down.
 
 ## Notes
 - **The order needs a standard.** A patrol base order carries its standard as data (radius, light,
   deadline). Then "done" is computed, not reported. That reuses the existing pattern: a pure check
   in `command`, executed by `bot`.
-- **Geometry is deterministic.** Where the walls and torches go is a drill in `command`, like
-  `Formations`. The squad leader decides *where* and *how big*; it never lays out blocks.
 - **Mapping lightness:** we receive block light per section in chunk data (docs/world-data-spec.md)
   but don't store it. Either keep it, or compute torch coverage ourselves from torch positions
   (light falls off by 1 per block). Prefer the server's data: it's ground truth.
-- **Open question:** does the general choose when to stop and build (a "consolidate" mission), or
-  does the squad leader decide that from time-to-dark? Doctrine says the commander directs it and
-  the leader executes. Start with the general.
+- **Uneven ground:** the floor goes on the ground at the site's centre. A wall cell over a dip has
+  nothing under it, and is skipped if no neighbour is solid either.

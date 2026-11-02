@@ -51,6 +51,10 @@ public sealed interface Report {
     record Gathering(Resource resource) implements Report {
     }
 
+    /** Building the squad's patrol base (docs/military-doctrine.md §14). */
+    record Fortifying() implements Report {
+    }
+
     /** Handing logs to a squadmate who needs them for a tool (cross-leveling, docs/military-doctrine.md §13). */
     record CrossLeveling(String to, int logs) implements Report {
     }

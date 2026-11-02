@@ -137,6 +137,17 @@ public class ChainOfCommand {
         return squads.get(squad).escort();
     }
 
+    /** The objective's task, as the OPORD says it - nothing when there's none. */
+    private static String task(Objective objective) {
+        return objective.patrolBase() ? ", patrol base"
+                : objective.gather().map(r -> ", gather " + r.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
+    }
+
+    /** {@code squad}'s objective, when it has the squad build a patrol base (docs/military-doctrine.md §14). */
+    public Optional<Objective> patrolBaseObjective(String squad) {
+        return squads.get(squad).patrolBaseObjective();
+    }
+
     /** {@code squad}'s objective, when it has the squad gather a material (docs/military-doctrine.md §12). */
     public Optional<Objective> gatherObjective(String squad) {
         return squads.get(squad).gatherObjective();
@@ -193,10 +204,10 @@ public class ChainOfCommand {
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
                     Objective given = objectives.get(i);
-                    LOG.info("[General -> {}] ({} ms) OPORD: {} at {}. Intent: {}", name, millis, given.mission(),
-                            at(given.location()), given.intent());
+                    LOG.info("[General -> {}] ({} ms) OPORD: {} at {}{}. Intent: {}", name, millis, given.mission(),
+                            at(given.location()), task(given), given.intent());
                     transmit("[General -> " + name + "] OPORD: " + given.mission() + " at " + at(given.location())
-                            + ". Intent: " + given.intent());
+                            + task(given) + ". Intent: " + given.intent());
                     squads.get(name).receiveObjective(given);
                 }
             } catch (RuntimeException e) {
