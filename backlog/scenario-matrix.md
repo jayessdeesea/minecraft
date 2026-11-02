@@ -38,7 +38,7 @@ Dimensions to vary:
 | Biome | plains, forest, desert (no trees), snow, swamp, jungle; Nether later |
 | Time | morning, an hour before dusk, night |
 | Difficulty | peaceful, easy, normal, hard (zombies break doors on hard) |
-| Force | squads: 1, 2, 3; soldiers per squad: 2 to 4 |
+| Force | squads: 1, 2, 3; soldiers per squad: 2 to 4 (the roster is 2 squads of 4) |
 | Kit | bare-handed, wooden, iron; with or without rations, blocks, arrows |
 
 Scenarios, each a mission with a measurable end state:
@@ -55,8 +55,5 @@ Scenarios, each a mission with a measurable end state:
 - **Decision needed:** how far to go on the live tier. Each live scenario takes minutes and holds
   the GPU. One option: a small nightly set, with the full matrix run only before a pin bump or a
   model change.
-- **Decision needed:** squad size and number of squads (see the answer in the session that wrote
-  this). Doctrine's fire team is four, and the wedge, the 2x2 patrol base and buddy pairs all fit
-  four. The roster is two squads of three today.
 - A scenario is a test fixture, so it lives in code (`bot`'s `scenario` package for offline, a
   live harness in `app` for live) and this item becomes docs when it lands.
