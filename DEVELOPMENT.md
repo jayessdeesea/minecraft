@@ -198,7 +198,13 @@ java -cp "$CP" tools/entity-hostility-generator/GenerateEntityHostility.java $M/
 java -cp "$CP" tools/item-class-generator/GenerateItemClasses.java $M/generated/reports/registries.json $M/generated/food-items.txt $R/item-classes-$P.txt
 ```
 
+Weapon damage and attack speed aren't in the reports, and an item's stats aren't bound until a
+world loads, so they're measured on the live server instead. With the dev server and the squads
+running, `sh tools/weapon-stats-probe/probe.sh` puts each weapon in Hal's hand and reads his
+`attack_damage` and `attack_speed` attributes. Copy its output into `$R/weapon-stats-$P.txt`,
+keeping the `hand` row; `WeaponStatsTest` fails if any weapon the item registry knows is missing.
+
 Delete the old version's files and update the resource names in `BlockClassRegistry`,
-`HostileMobRegistry` and `ItemClassRegistry`. Test fixtures that use real IDs (items, entity types,
+`HostileMobRegistry`, `ItemClassRegistry` and `WeaponStats`. Test fixtures that use real IDs (items, entity types,
 block states) need the new ones: map each old ID to its name in the old reports, then to the new
 ID. In Git Bash, give `java` a Windows-style classpath (`cygpath -w`).

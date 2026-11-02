@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
 import io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
@@ -55,8 +56,6 @@ public final class Battle implements WorldView {
     static final int CREEPER_FUSE = 30;
     static final double BLAST_DAMAGE = 22;
     static final double BLAST_RADIUS = 6;
-    /** A bare fist. */
-    public static final double FIST_DAMAGE = 1;
     /** How far a punch shoves a hostile back - vanilla's base knockback, roughly. */
     static final double KNOCKBACK = 0.9;
     /**
@@ -129,11 +128,19 @@ public final class Battle implements WorldView {
         return new Position(h.x, world.ground(bx, bz) + 1, h.z);
     }
 
-    /** The soldier's fist lands on {@code entityId}, if that hostile is alive and within {@code reach}. */
+    /** A bare-handed blow on {@code entityId}, if that hostile is alive and within {@code reach}. */
     public void strike(int entityId, Position soldier, double reach) {
+        strike(entityId, soldier, reach, WeaponStats.HAND.damage());
+    }
+
+    /**
+     * A blow of {@code damage} on {@code entityId}, if that hostile is alive and within {@code reach} -
+     * a full-charge hit, since the soldier swings only once its weapon has recharged.
+     */
+    public void strike(int entityId, Position soldier, double reach, double damage) {
         for (Hostile h : hostiles) {
             if (h.id == entityId && h.alive() && horizontal(positionOf(h), soldier) <= reach) {
-                h.health -= FIST_DAMAGE;
+                h.health -= damage;
                 move(h, soldier, -KNOCKBACK);
             }
         }

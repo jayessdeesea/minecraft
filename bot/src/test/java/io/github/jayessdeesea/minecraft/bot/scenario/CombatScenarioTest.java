@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import io.github.jayessdeesea.minecraft.command.Kit;
+import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -16,6 +18,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Random;
 
@@ -45,22 +48,20 @@ class CombatScenarioTest {
     @Test
     void contactReflexAgainstEachArchetype() {
         int seeds = Integer.getInteger("combat.seeds", DEFAULT_SEEDS);
-        Map<Battle.Archetype, Map<Ending, Integer>> tally = new EnumMap<>(Battle.Archetype.class);
-        Map<Battle.Archetype, Double> healthLeft = new EnumMap<>(Battle.Archetype.class);
-        for (Battle.Archetype archetype : Battle.Archetype.values()) {
-            Map<Ending, Integer> endings = new EnumMap<>(Ending.class);
-            double health = 0;
-            for (long seed = 1; seed <= seeds; seed++) {
-                Fight fight = fight(archetype, seed);
-                endings.merge(fight.ending(), 1, Integer::sum);
-                health += fight.healthLeft();
-            }
-            tally.put(archetype, endings);
-            healthLeft.put(archetype, health / seeds);
-        }
         StringBuilder table = new StringBuilder("\nOne soldier vs one hostile, " + seeds + " seeds each:\n");
-        tally.forEach((archetype, endings) -> table.append(String.format(Locale.ROOT, "  %-9s %s, %.1f health left on average%n",
-                archetype, endings, healthLeft.get(archetype))));
+        for (Optional<String> weapon : List.of(Optional.<String>empty(), Optional.of("wooden_sword"))) {
+            for (Battle.Archetype archetype : Battle.Archetype.values()) {
+                Map<Ending, Integer> endings = new EnumMap<>(Ending.class);
+                double health = 0;
+                for (long seed = 1; seed <= seeds; seed++) {
+                    Fight fight = fight(archetype, seed, weapon);
+                    endings.merge(fight.ending(), 1, Integer::sum);
+                    health += fight.healthLeft();
+                }
+                table.append(String.format(Locale.ROOT, "  %-13s %-9s %s, %.1f health left on average%n",
+                        weapon.orElse("bare-handed"), archetype, endings, health / seeds));
+            }
+        }
         System.out.println(table);
     }
 
@@ -158,6 +159,10 @@ class CombatScenarioTest {
     }
 
     static Fight fight(Battle.Archetype archetype, long seed) {
+        return fight(archetype, seed, Optional.empty());
+    }
+
+    static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon) {
         Scenario scenario = Scenario.generate(Terrain.FLAT, seed);
         Battle battle = new Battle(scenario.world(), seed);
         // Start mid-map: the synthetic world is a closed box, and a retreat that backs into its
@@ -173,6 +178,8 @@ class CombatScenarioTest {
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
         double health = 20;
         soldier.reportHealth(health, 20);
+        weapon.ifPresent(w -> soldier.reportKit(new Kit(Optional.of(w), 0, 0)));
+        double blow = WeaponStats.melee(weapon).damage();
         BlockPos objective = scenario.objective();
         soldier.receiveOrder(new Order.MoveTo(objective.x() + 0.5, objective.y(), objective.z() + 0.5, 1.5, 1, Risk.LOW));
 
@@ -185,7 +192,7 @@ class CombatScenarioTest {
                         + soldier.status().report());
             }
             Position now = soldier.status().position();
-            attack.ifPresent(id -> battle.strike(id, now, DeterministicSoldier.ATTACK_REACH));
+            attack.ifPresent(id -> battle.strike(id, now, DeterministicSoldier.ATTACK_REACH, blow));
             double damage = battle.step(now);
             double healed = tick % REGEN_TICKS == 0 && health < 20 ? 1 : 0;
             if (damage > 0 || healed > 0) {

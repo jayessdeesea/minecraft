@@ -219,7 +219,8 @@ class DeterministicSoldierTest {
         };
 
         int attacks = 0;
-        for (int i = 0; i < DeterministicSoldier.ATTACK_COOLDOWN_TICKS * 3; i++) {
+        // Bare-handed: a fist recharges in 5 ticks.
+        for (int i = 0; i < io.github.jayessdeesea.minecraft.bot.world.WeaponStats.HAND.ticksToCharge() * 3; i++) {
             if (alice.tick(chaser).isPresent()) {
                 attacks++;
             }

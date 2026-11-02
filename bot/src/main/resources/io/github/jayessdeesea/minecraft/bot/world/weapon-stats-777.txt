@@ -1,0 +1,27 @@
+# Measured on the live 26.3 server by tools/weapon-stats-probe: each weapon in a soldier's main hand,
+# then /attribute attack_damage and attack_speed. One weapon per line: <name> <damage> <attacks per second>.
+# hand is the player's base attributes, for bare hands and anything held that isn't a melee weapon.
+hand 1.0 4.0000
+copper_axe 9.0 0.8000
+copper_spear 2.0 1.1765
+copper_sword 5.0 1.6000
+diamond_axe 9.0 1.0000
+diamond_spear 4.0 0.9524
+diamond_sword 7.0 1.6000
+golden_axe 7.0 1.0000
+golden_spear 1.0 1.0526
+golden_sword 4.0 1.6000
+iron_axe 9.0 0.9000
+iron_spear 3.0 1.0526
+iron_sword 6.0 1.6000
+mace 6.0 0.6000
+netherite_axe 10.0 1.0000
+netherite_spear 5.0 0.8696
+netherite_sword 8.0 1.6000
+stone_axe 9.0 0.8000
+stone_spear 2.0 1.3333
+stone_sword 5.0 1.6000
+trident 9.0 1.1000
+wooden_axe 7.0 0.8000
+wooden_spear 1.0 1.5385
+wooden_sword 4.0 1.6000

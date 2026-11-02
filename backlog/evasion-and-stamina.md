@@ -30,8 +30,10 @@ doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
 - **What doesn't help:** zigzagging in toward an archer, measured. It loses all 100 too: it slows
   the approach while the arrows that kill land in melee. Dodging is worth another look only for a
   soldier with a ranged weapon of its own, holding at range (backlog/ranged-combat.md).
-- **The simulator gets weapons.** It uses fist damage for every soldier, whatever its kit. Weapon
-  damage and attack cooldown by item would let each change above be measured.
+- **The simulator's knockback is an estimate.** It pushes a hostile 0.9 blocks per hit. Since
+  soldiers swing at each weapon's real recharge (a fist every 5 ticks), a lone bare-handed soldier
+  beats three zombies 99 times in 100, and the squad drills stop separating in that sweep.
+  Measuring vanilla's knockback would make the zombie numbers trustworthy again.
 
 ## Notes
 - Exhaustion from damage taken (0.1 per hit) and from jumping (0.05) is charged by the server

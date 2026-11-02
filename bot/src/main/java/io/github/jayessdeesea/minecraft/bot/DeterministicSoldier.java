@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
 import io.github.jayessdeesea.minecraft.bot.nav.Goal;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
+import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.Kit;
@@ -183,12 +184,9 @@ public final class DeterministicSoldier implements Soldier {
      */
     public static final double ATTACK_REACH = 3.0;
 
-    /** Ticks between attacks - vanilla's fist recharges fully in 5 ticks (attack speed 4). */
-    static final int ATTACK_COOLDOWN_TICKS = 10;
-
     /**
      * Closer than this, back off: outside a zombie's own reach (about 1.5) but inside ours, so a
-     * soldier striking every {@link #ATTACK_COOLDOWN_TICKS} with knockback keeps it from landing a
+     * soldier striking each time its weapon recharges, with knockback, keeps it from landing a
      * hit. Between this and {@link #ATTACK_REACH} the soldier holds its ground.
      */
     static final double KEEP_AWAY = 2.5;
@@ -265,7 +263,9 @@ public final class DeterministicSoldier implements Soldier {
             } else {
                 if (ticksUntilAttack == 0 && range <= ATTACK_REACH) {
                     attack = OptionalInt.of(nearest.entityId());
-                    ticksUntilAttack = ATTACK_COOLDOWN_TICKS;
+                    // A hit's damage scales with the swing's charge: wait for the held weapon's full one.
+                    Kit carried = kit;
+                    ticksUntilAttack = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon()).ticksToCharge();
                 }
                 if (range < KEEP_AWAY) {
                     stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
