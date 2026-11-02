@@ -11,4 +11,9 @@ public record TrackedEntity(int entityId, int typeId, Position position) {
     public boolean explodes() {
         return HostileMobRegistry.explodes(typeId);
     }
+
+    /** Whether this one shoots - a bare-handed soldier takes cover from it rather than closing. */
+    public boolean shoots() {
+        return HostileMobRegistry.shoots(typeId);
+    }
 }

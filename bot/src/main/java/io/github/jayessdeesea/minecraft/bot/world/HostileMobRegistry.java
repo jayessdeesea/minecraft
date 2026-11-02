@@ -46,6 +46,14 @@ public final class HostileMobRegistry {
         return typeId == CREEPER;
     }
 
+    /** Hostiles that shoot: bows (the skeleton family) and crossbows (pillagers). */
+    private static final java.util.Set<Integer> SHOOTERS = java.util.Set.of(
+            typeIdOf("skeleton"), typeIdOf("stray"), typeIdOf("bogged"), typeIdOf("pillager"));
+
+    static boolean shoots(int typeId) {
+        return SHOOTERS.contains(typeId);
+    }
+
     public static boolean isHostile(int typeId) {
         return typeId >= 0 && HOSTILE_TYPE_IDS.get(typeId);
     }

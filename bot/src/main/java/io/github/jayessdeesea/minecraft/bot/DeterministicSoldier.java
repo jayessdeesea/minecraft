@@ -148,8 +148,8 @@ public final class DeterministicSoldier implements Soldier {
     }
 
     /** Eye height of a standing player, and the height a hostile is looked at - roughly its chest. */
-    static final double EYE_HEIGHT = 1.62;
-    static final double TARGET_HEIGHT = 1.2;
+    public static final double EYE_HEIGHT = 1.62;
+    public static final double TARGET_HEIGHT = 1.2;
 
     /** Yaw toward a horizontal direction, in Minecraft's convention. */
     static float yawToward(double dx, double dz) {
@@ -260,6 +260,15 @@ public final class DeterministicSoldier implements Soldier {
             if (nearest.explodes()) {
                 // A creeper is never fought at arm's length: get clear of the blast.
                 stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
+            } else if (nearest.shoots() && !armedForMelee()) {
+                // An archer out-fights a bare hand from any range: get out of its sight, and stay out.
+                Optional<Position> cover = coverFrom(world, threat);
+                if (cover.isPresent()) {
+                    stepToward(world, cover.get().x(), cover.get().z());
+                } else {
+                    stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
+                }
+                holdCoverTicks = UNDER_FIRE_TICKS;
             } else {
                 if (ticksUntilAttack == 0 && range <= ATTACK_REACH) {
                     attack = OptionalInt.of(nearest.entityId());
@@ -276,6 +285,9 @@ public final class DeterministicSoldier implements Soldier {
             route = null; // wherever the fight ends up, the old route no longer starts here
             report = new Report.InContact(threats.size());
             look(threat);
+        } else if (holdCoverTicks > 0) {
+            // In cover from an archer it can't fight: out of its sight isn't out of its range. Hold.
+            holdCoverTicks--;
         } else {
             navigate(world);
             double dx = position.x() - before.x();
@@ -288,6 +300,47 @@ public final class DeterministicSoldier implements Soldier {
 
         applyVerticalMovement(world);
         return attack;
+    }
+
+    /** Ticks left holding cover from an archer, once out of its sight. */
+    private int holdCoverTicks;
+    /** How far a soldier looks for cover from an archer. */
+    static final int COVER_RADIUS = 6;
+
+    /** Whether the soldier holds a melee weapon - with only its hands (or a bow), an archer out-fights it. */
+    private boolean armedForMelee() {
+        Kit carried = kit;
+        return carried == null || WeaponStats.melee(carried.weapon()) != WeaponStats.HAND;
+    }
+
+    /**
+     * The nearest standing cell within {@link #COVER_RADIUS} that {@code shooter} can't see - nothing
+     * solid between its eyes and the soldier's - if there's one.
+     */
+    private Optional<Position> coverFrom(WorldView world, Position shooter) {
+        Position shooterEye = new Position(shooter.x(), shooter.y() + EYE_HEIGHT, shooter.z());
+        BlockPos here = BlockPos.containing(position.x(), position.y() + EPSILON, position.z());
+        Position best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int dx = -COVER_RADIUS; dx <= COVER_RADIUS; dx++) {
+            for (int dz = -COVER_RADIUS; dz <= COVER_RADIUS; dz++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    BlockPos cell = here.offset(dx, dy, dz);
+                    if (!Pathfinder.standable(world, cell)) {
+                        continue;
+                    }
+                    Position spot = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
+                    double distance = Math.hypot(spot.x() - position.x(), spot.z() - position.z());
+                    if (distance < bestDistance
+                            && !lineOfSight(world, shooterEye, new Position(spot.x(), spot.y() + EYE_HEIGHT, spot.z()))
+                            && !lineOfSight(world, shooterEye, new Position(spot.x(), spot.y() + 0.5, spot.z()))) {
+                        best = spot;
+                        bestDistance = distance;
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(best);
     }
 
     /**
@@ -313,7 +366,7 @@ public final class DeterministicSoldier implements Soldier {
     static final double SIGHT_STEP = 0.2;
 
     /** Whether no solid block lies on the straight line from {@code from} to {@code to}. */
-    static boolean lineOfSight(WorldView world, Position from, Position to) {
+    public static boolean lineOfSight(WorldView world, Position from, Position to) {
         double dx = to.x() - from.x();
         double dy = to.y() - from.y();
         double dz = to.z() - from.z();

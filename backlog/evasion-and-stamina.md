@@ -17,16 +17,11 @@ doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
 - **Sprinting is budgeted.** Soldiers sprint only when the time saved is worth the food: closing on
   a threat, catching a principal, crossing open ground under fire. They don't sprint on an ordinary
   move with no rations to make up the cost.
-- **Cover from a shooter:** a soldier under fire with no reachable shooter moves to the nearest
-  cell with no line of sight to it (`DeterministicSoldier.lineOfSight`, already used for contact).
-  That's the "find cover" half of react to contact.
-- **Don't fight an archer bare-handed.** `CombatScenarioTest` now flies arrows: line of sight to
-  shoot, 1.6 blocks a tick, aimed where the soldier stood, vanilla's spread.
-  - A bare-handed soldier loses to a skeleton 100 times in 100. It takes 200 ticks of punching,
-    shot point-blank throughout.
-  - The same fight at a wooden sword's damage wins 100 in 100, on 9.4 health.
-  - So an unarmed soldier under fire should take cover (above) or break contact, and rearm first
-    where the squad leader allows. Fighting there is the losing move.
+- **Cover is live for a bare-handed soldier** (docs/military-doctrine.md § 8). Against a skeleton
+  among trees: 36 of 100 die taking cover, against 75 of 100 charging in. On flat ground there's
+  rarely cover: 79 against 94. What's left:
+  - Cover for an armed soldier pinned at range, where it can't close.
+  - Breaking contact properly, back toward the squad, instead of only backing away.
 - **What doesn't help:** zigzagging in toward an archer, measured. It loses all 100 too: it slows
   the approach while the arrows that kill land in melee. Dodging is worth another look only for a
   soldier with a ranged weapon of its own, holding at range (backlog/ranged-combat.md).

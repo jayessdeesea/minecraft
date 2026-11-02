@@ -171,7 +171,11 @@ the squad to falls.
   means being shot at, so for 5 seconds it looks out to 16 blocks, beyond a skeleton's 15-block
   bow range, and goes for the shooter. Only a hostile it can see counts - nothing solid between
   its eyes and the hostile - so a squad walled into its patrol base (§14) isn't in contact with
-  the monsters outside.
+  the monsters outside. A soldier with no melee weapon doesn't close on an archer (a skeleton or a
+  pillager), which out-fights a bare hand from any range: it moves to the nearest spot within 6
+  blocks the archer can't see, or backs off if there's none, and holds there while it's under
+  fire. It swings each weapon at its full recharge, since a hit's damage scales with the charge
+  (`bot.world.WeaponStats`, measured on the live server).
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
 - **The squad leader** sees the contact in its next SITREP and can order something else.

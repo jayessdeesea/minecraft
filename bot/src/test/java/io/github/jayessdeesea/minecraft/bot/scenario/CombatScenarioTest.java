@@ -61,6 +61,16 @@ class CombatScenarioTest {
                 table.append(String.format(Locale.ROOT, "  %-13s %-9s %s, %.1f health left on average%n",
                         weapon.orElse("bare-handed"), archetype, endings, health / seeds));
             }
+            // An archer among trees: cover to be had.
+            Map<Ending, Integer> endings = new EnumMap<>(Ending.class);
+            double health = 0;
+            for (long seed = 1; seed <= seeds; seed++) {
+                Fight fight = fight(Battle.Archetype.SKELETON, seed, weapon, Terrain.FOREST);
+                endings.merge(fight.ending(), 1, Integer::sum);
+                health += fight.healthLeft();
+            }
+            table.append(String.format(Locale.ROOT, "  %-13s %-9s %s, %.1f health left on average (in a forest)%n",
+                    weapon.orElse("bare-handed"), Battle.Archetype.SKELETON, endings, health / seeds));
         }
         System.out.println(table);
     }
@@ -163,7 +173,11 @@ class CombatScenarioTest {
     }
 
     static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon) {
-        Scenario scenario = Scenario.generate(Terrain.FLAT, seed);
+        return fight(archetype, seed, weapon, Terrain.FLAT);
+    }
+
+    static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain) {
+        Scenario scenario = Scenario.generate(terrain, seed);
         Battle battle = new Battle(scenario.world(), seed);
         // Start mid-map: the synthetic world is a closed box, and a retreat that backs into its
         // edge is cornered in a way the open live world wouldn't corner it.
@@ -178,14 +192,18 @@ class CombatScenarioTest {
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
         double health = 20;
         soldier.reportHealth(health, 20);
-        weapon.ifPresent(w -> soldier.reportKit(new Kit(Optional.of(w), 0, 0)));
+        soldier.reportKit(new Kit(weapon, 0, 0));
         double blow = WeaponStats.melee(weapon).damage();
         BlockPos objective = scenario.objective();
         soldier.receiveOrder(new Order.MoveTo(objective.x() + 0.5, objective.y(), objective.z() + 0.5, 1.5, 1, Risk.LOW));
 
         for (int tick = 0; tick < TICKS; tick++) {
             Position before = soldier.status().position();
-            boolean threatened = !battle.nearbyHostiles(before, DeterministicSoldier.CONTACT_RADIUS).isEmpty();
+            // A hostile in contact radius that the soldier can see - one behind a trunk isn't contact.
+            Position eye = new Position(before.x(), before.y() + DeterministicSoldier.EYE_HEIGHT, before.z());
+            boolean threatened = battle.nearbyHostiles(before, DeterministicSoldier.CONTACT_RADIUS).stream()
+                    .anyMatch(h -> DeterministicSoldier.lineOfSight(scenario.world(), eye, new Position(h.position().x(),
+                            h.position().y() + DeterministicSoldier.TARGET_HEIGHT, h.position().z())));
             OptionalInt attack = soldier.tick(battle);
             if (threatened && !(soldier.status().report() instanceof Report.InContact)) {
                 fail(archetype + " seed=" + seed + " tick " + tick + ": hostile within contact radius but reported "
