@@ -1,7 +1,8 @@
 # Generated from the pinned server jar's `--reports` registries.json by
 # tools/item-class-generator. One counted item per line: <id> <class> <name>,
 # W weapon, A armour, R arrows; and what a wooden sword is made from: L logs, P planks,
-# S stick, C crafting table; K cobblestone, X pickaxes. Everything NOT listed is just carried.
+# S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations.
+# Everything NOT listed is just carried.
 62 K cobblestone
 63 P oak_planks
 64 P spruce_planks
@@ -38,6 +39,7 @@
 187 L stripped_poplar_log
 405 C crafting_table
 1001 A turtle_helmet
+1007 F apple
 1008 W bow
 1009 R arrow
 1025 W wooden_sword
@@ -62,6 +64,8 @@
 1057 X netherite_pickaxe
 1058 W netherite_axe
 1060 S stick
+1061 F mushroom_stew
+1067 F bread
 1068 A leather_helmet
 1069 A leather_chestplate
 1070 A leather_leggings
@@ -90,7 +94,33 @@
 1093 A netherite_chestplate
 1094 A netherite_leggings
 1095 A netherite_boots
+1097 F porkchop
+1098 F cooked_porkchop
+1190 F cod
+1191 F salmon
+1192 F tropical_fish
+1194 F cooked_cod
+1195 F cooked_salmon
+1236 F cookie
+1256 F melon_slice
+1257 F dried_kelp
+1260 F beef
+1261 F cooked_beef
+1262 F chicken
+1263 F cooked_chicken
 1374 W mace
+1378 F carrot
+1379 F potato
+1380 F baked_potato
+1383 F golden_carrot
+1392 F pumpkin_pie
+1400 F rabbit
+1401 F cooked_rabbit
+1402 F rabbit_stew
+1415 F mutton
+1416 F cooked_mutton
+1438 F beetroot
+1440 F beetroot_soup
 1443 R spectral_arrow
 1444 R tipped_arrow
 1447 W wooden_spear
@@ -102,3 +132,6 @@
 1453 W netherite_spear
 1483 W trident
 1491 W crossbow
+1525 F sweet_berries
+1526 F glow_berries
+1533 F honey_bottle

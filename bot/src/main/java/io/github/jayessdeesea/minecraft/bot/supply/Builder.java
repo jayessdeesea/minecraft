@@ -65,11 +65,17 @@ public final class Builder {
     private int previousHotbar = -1;
     private Position standAt;
     private Position lookAt;
+    private boolean done;
 
     public Builder(String name, PlaySession session, Inventory inventory) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
+    }
+
+    /** Whether the last tick found every cell of the plan solid. */
+    public synchronized boolean done() {
+        return done;
     }
 
     /** Where the soldier should stand to reach the cell it's working on, when it isn't within reach. */
@@ -98,6 +104,7 @@ public final class Builder {
     private Progress tick(Position soldier, WorldView world, List<BlockPos> plan, boolean inPlace) {
         ticksSinceAction++;
         lookAt = null;
+        done = false;
         if (ticksSinceAction < SETTLE_TICKS) {
             return new Progress.Working(); // the last swap or placement is still being answered
         }
@@ -114,7 +121,8 @@ public final class Builder {
         List<BlockPos> remaining = plan.stream().filter(cell -> !solid(world, cell) && !skipped.contains(cell)).toList();
         if (remaining.isEmpty()) {
             stop();
-            return skipped.isEmpty() ? new Progress.Done() : new Progress.Failed(skipped.size() + " cell(s) wouldn't take a block");
+            done = skipped.isEmpty();
+            return done ? new Progress.Done() : new Progress.Failed(skipped.size() + " cell(s) wouldn't take a block");
         }
         if (target == null) {
             target = remaining.stream().filter(cell -> support(world, cell).isPresent()).findFirst().orElse(null);

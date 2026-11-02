@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.bot.supply.Builder;
 import io.github.jayessdeesea.minecraft.bot.supply.Depositor;
 import io.github.jayessdeesea.minecraft.bot.supply.Gatherer;
 import io.github.jayessdeesea.minecraft.bot.supply.Handover;
+import io.github.jayessdeesea.minecraft.bot.supply.Rations;
 import io.github.jayessdeesea.minecraft.bot.supply.SupplyRun;
 import io.github.jayessdeesea.minecraft.bot.supply.Woodcraft;
 import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
@@ -13,6 +14,7 @@ import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
 import io.github.jayessdeesea.minecraft.command.Formations;
 import io.github.jayessdeesea.minecraft.command.Cohesion;
+import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.command.Escort;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
@@ -591,6 +593,7 @@ public class SoldierRunner implements CommandLineRunner {
         handovers.put(name, handover);
         Builder builder = new Builder(name, session, inventory);
         builders.put(name, builder);
+        Rations rations = new Rations(name, session, inventory);
         woodcraftRef.set(woodcraft);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
@@ -614,7 +617,11 @@ public class SoldierRunner implements CommandLineRunner {
                     : bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
                     : needsPickaxe ? Optional.of(Woodcraft.Tool.WOODEN_PICKAXE) : Optional.empty();
             Fortify fort = fortifying.get(name);
-            woodcraft.tick(status.position(), world, fort == null ? tool : Optional.empty());
+            boolean building = fort != null && fort.allInside() && !builder.done();
+            rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD),
+                    clear && !woodcraft.active() && !depositor.active() && !handover.active() && !building,
+                    soldier.yaw(), soldier.pitch());
+            woodcraft.tick(status.position(), world, fort == null && !rations.active() ? tool : Optional.empty());
             // Short of logs for a tool it tried and failed to chop wood for: a squadmate may have
             // some to spare (§13).
             Optional<Woodcraft.Tool> needed = bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
@@ -627,15 +634,17 @@ public class SoldierRunner implements CommandLineRunner {
             }
             Kit carried = status.condition().flatMap(c -> c.kit()).orElse(null);
             boolean fullLoad = carried != null && (carried.logs() >= Gatherer.CARRY_LOGS || carried.stone() >= Gatherer.CARRY_STONE);
-            depositor.tick(status.position(), supplyPoint, fullLoad && clear && !woodcraft.active() && !handover.active() && fort == null);
+            depositor.tick(status.position(), supplyPoint, fullLoad && clear && !woodcraft.active() && !handover.active() && fort == null
+                    && !rations.active());
             CrossLevel.Transfer giving = deliveries.get(name);
             Optional<Handover.Delivery> delivery = giving == null || !clear || woodcraft.active() || depositor.active() || fort != null
+                    || rations.active()
                     ? Optional.empty()
                     : Optional.ofNullable(activeSoldiers.get(giving.receiver()))
                             .map(receiver -> new Handover.Delivery(giving.receiver(), receiver.status().position(), giving.logs()));
             handover.tick(status.position(), delivery).ifPresent(soldier::lookAt);
             Builder.Progress built = null;
-            if (fort != null && fort.allInside() && !(status.report() instanceof Report.InContact)
+            if (fort != null && fort.allInside() && !(status.report() instanceof Report.InContact) && !rations.active()
                     && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.5) {
                 built = builder.tickInPlace(status.position(), world, fort.cells());
                 builder.lookAt().ifPresent(soldier::lookAt);
@@ -645,7 +654,7 @@ public class SoldierRunner implements CommandLineRunner {
             gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
                     gather == null ? status.position() : gather.location(),
                     !(status.report() instanceof Report.InContact) && !woodcraft.active() && !run.active() && !depositor.active()
-                            && !handover.active());
+                            && !handover.active() && !rations.active());
             soldier.task(fort != null
                     ? (built instanceof Builder.Progress.Failed(String why) ? new Report.Cantco("can't finish the patrol base: " + why)
                             : built instanceof Builder.Progress.Done ? null : new Report.Fortifying())

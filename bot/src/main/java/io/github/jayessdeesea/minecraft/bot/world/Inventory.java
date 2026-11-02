@@ -150,6 +150,7 @@ public final class Inventory {
         int fallProtection = 0;
         int logs = 0;
         int stone = 0;
+        int rations = 0;
         for (int slot = 0; slot < SLOTS; slot++) {
             Optional<ItemClassRegistry.ItemClass> itemClass = ItemClassRegistry.classOf(itemIds[slot]);
             if (itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.ARROWS))) {
@@ -158,12 +159,14 @@ public final class Inventory {
                 logs += counts[slot];
             } else if (itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.COBBLESTONE))) {
                 stone += counts[slot];
+            } else if (itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.FOOD))) {
+                rations += counts[slot];
             } else if (slot >= ARMOUR_FIRST && slot <= ARMOUR_LAST && itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.ARMOUR))) {
                 armour++;
                 fallProtection += 3 * enchantments[slot].getOrDefault("minecraft:feather_falling", 0)
                         + enchantments[slot].getOrDefault("minecraft:protection", 0);
             }
         }
-        return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs, stone);
+        return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs, stone, rations);
     }
 }

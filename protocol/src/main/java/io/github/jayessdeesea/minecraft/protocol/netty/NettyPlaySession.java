@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.BlockFace;
+import io.github.jayessdeesea.minecraft.protocol.packet.UseItemPacket;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlayState;
 import io.github.jayessdeesea.minecraft.protocol.packet.AttackPacket;
@@ -70,6 +71,11 @@ final class NettyPlaySession implements PlaySession {
     @Override
     public void useBlock(int x, int y, int z) {
         channel.writeAndFlush(new ContainerPackets.UseItemOn(x, y, z, BlockFace.UP, sequence.incrementAndGet()));
+    }
+
+    @Override
+    public void useItem(float yaw, float pitch) {
+        channel.writeAndFlush(new UseItemPacket(sequence.incrementAndGet(), yaw, pitch));
     }
 
     @Override

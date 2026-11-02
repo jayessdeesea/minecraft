@@ -188,12 +188,13 @@ V=26.3; P=777; M=C:/mc-reference/$V
 SCP="$(cygpath -w $M/versions/$V/server-$V.jar)"                      # the server and its libraries
 for j in $(find $M/libraries -name '*.jar'); do SCP="$SCP;$(cygpath -w $j)"; done
 java -cp "$SCP" tools/block-type-dumper/DumpBlockTypes.java > $M/generated/block-types.txt
+java -cp "$SCP" tools/item-food-dumper/DumpFoodItems.java > $M/generated/food-items.txt
 
 R=bot/src/main/resources/io/github/jayessdeesea/minecraft/bot/world
 CP="<jackson-databind>;<jackson-core>;<jackson-annotations>"   # jars from ~/.m2
 java -cp "$CP" tools/block-class-generator/GenerateBlockClasses.java $M/generated/reports/blocks.json $M/generated/block-types.txt $R/block-classes-$P.txt
 java -cp "$CP" tools/entity-hostility-generator/GenerateEntityHostility.java $M/generated/reports/registries.json $R/hostile-entity-types-$P.txt
-java -cp "$CP" tools/item-class-generator/GenerateItemClasses.java $M/generated/reports/registries.json $R/item-classes-$P.txt
+java -cp "$CP" tools/item-class-generator/GenerateItemClasses.java $M/generated/reports/registries.json $M/generated/food-items.txt $R/item-classes-$P.txt
 ```
 
 Delete the old version's files and update the resource names in `BlockClassRegistry`,

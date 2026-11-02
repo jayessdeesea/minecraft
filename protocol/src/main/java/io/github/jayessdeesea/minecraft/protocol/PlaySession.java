@@ -73,6 +73,13 @@ public interface PlaySession {
     void useBlockFace(int x, int y, int z, BlockFace face);
 
     /**
+     * Uses the item in hand at nothing in particular - for food, starts eating it. The server
+     * finishes the meal on its own once the item's eating time has passed (1.6 seconds for most
+     * food), as long as the same item stays in hand.
+     */
+    void useItem(float yaw, float pitch);
+
+    /**
      * Shift-clicks {@code slot} of an open container (or container 0, the player's inventory):
      * from a chest the stack moves into the inventory; from the inventory, armour moves onto the
      * body. {@code stateId} is the one the container's last update carried.

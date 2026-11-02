@@ -86,7 +86,11 @@ operator with WILCO on the radio net.
 *How we use it:* each soldier's status is a SITREP (position, task, condition, and a CANTCO if
 any); contact with hostiles adds a SALUTE-shaped spot report. The condition is LACE-shaped
 (`command.Condition`): liquids is food, casualties is health and deaths, ammunition is the weapon
-in hand and arrows, equipment is armour worn (`command.Kit`). Squad leaders aggregate their
+in hand and arrows, equipment is armour worn (`command.Kit`). A soldier below food 18, the level
+health regenerates at, eats from its rations when it's out of contact and nothing else has its
+hands (`bot.supply.Rations`): the food goes into a hotbar slot without a weapon or tool, the server
+times the meal, and the weapon comes back to hand. Rations are the food items it carries, less
+those that poison or are too precious to eat (`tools/item-class-generator`). Squad leaders aggregate their
 soldiers' SITREPs into one for the general, with a LOGSTAT summed from the soldiers' LACE
 (`command.Logstat`): hungry soldiers (Class I), empty armour slots (Class II), bare-handed
 soldiers and arrows (Class V), and casualties. These are the structured inputs the LLM-backed
