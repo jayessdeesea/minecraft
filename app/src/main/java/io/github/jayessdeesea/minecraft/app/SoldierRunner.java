@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.app;
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
 import io.github.jayessdeesea.minecraft.bot.supply.SupplyRun;
+import io.github.jayessdeesea.minecraft.bot.supply.Woodcraft;
 import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
 import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
@@ -12,6 +13,7 @@ import io.github.jayessdeesea.minecraft.command.Escort;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
 import io.github.jayessdeesea.minecraft.command.ReactToContact;
 import io.github.jayessdeesea.minecraft.command.Resupply;
+import io.github.jayessdeesea.minecraft.command.Risk;
 import io.github.jayessdeesea.minecraft.command.Report;
 import java.util.HashMap;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -108,6 +110,12 @@ public class SoldierRunner implements CommandLineRunner {
     private final Map<String, DeterministicSoldier> activeSoldiers = new ConcurrentHashMap<>();
     private final ChainOfCommand chainOfCommand;
     private final Map<String, SquadState> squadStates = new HashMap<>(); // squad thread only
+    /** Each connected soldier's sword-making routine, by name - set on join, read by the squad loop. */
+    private final Map<String, Woodcraft> woodcrafts = new ConcurrentHashMap<>();
+    /** Whether each soldier's squad leader lets it stop to rearm, with its squad out of contact - squad loop writes, tick reads. */
+    private final Map<String, Boolean> rearmAllowed = new ConcurrentHashMap<>();
+    /** No hostile this close to a soldier, nor any squadmate in contact, before it stops to make a sword. */
+    private static final double REARM_CLEAR_RADIUS = 16;
 
     private final OperatorOrders operatorOrders;
     /** The chest soldiers draw kit from, if the operator set one up (docs/military-doctrine.md §4). */
@@ -205,10 +213,22 @@ public class SoldierRunner implements CommandLineRunner {
             }
             state.haltedFor = straggler;
         }
+        // Pre-combat checks (docs/military-doctrine.md §11): with the squad leader's leave and the
+        // squad out of contact, a bare-handed soldier makes itself a sword; while it does, it stands
+        // where its routine needs it rather than in its slot.
+        boolean squadInContact = statuses.stream().anyMatch(s -> s.report() instanceof Report.InContact);
         Map<String, DeterministicSoldier> byName = new HashMap<>();
         squad.forEach(soldier -> byName.put(soldier.status().name(), soldier));
         for (int i = 0; i < statuses.size(); i++) {
-            byName.get(statuses.get(i).name()).receiveOrder(orders.get(i));
+            String soldierName = statuses.get(i).name();
+            rearmAllowed.put(soldierName, order.rearm() && !squadInContact);
+            Order given = orders.get(i);
+            Woodcraft woodcraft = woodcrafts.get(soldierName);
+            Optional<Position> stand = woodcraft == null ? Optional.empty() : woodcraft.standAt();
+            if (stand.isPresent()) {
+                given = new Order.MoveTo(stand.get().x(), stand.get().y(), stand.get().z(), 0.3, 0.5, Risk.LOW);
+            }
+            byName.get(soldierName).receiveOrder(given);
         }
     }
 
@@ -257,6 +277,7 @@ public class SoldierRunner implements CommandLineRunner {
         AtomicReference<List<String>> enchantmentNames = new AtomicReference<>(List.of());
         // Created with the session (onJoined); container updates before then can't be a supply run.
         AtomicReference<SupplyRun> supplyRun = new AtomicReference<>();
+        AtomicReference<Woodcraft> woodcraftRef = new AtomicReference<>();
         CompletableFuture<PlaySession> sessionReady = new CompletableFuture<>();
 
         CompletableFuture<PlaySession> joined = MinecraftClient.join(HOST, PORT, name, new PlaySessionListeners(
@@ -322,6 +343,10 @@ public class SoldierRunner implements CommandLineRunner {
                     if (run != null) {
                         run.onContainer(container);
                     }
+                    Woodcraft woodcraft = woodcraftRef.get();
+                    if (woodcraft != null) {
+                        woodcraft.onContainer(container);
+                    }
                 },
                 // Configuration syncs the registries before any inventory arrives.
                 (registry, entries) -> {
@@ -333,7 +358,7 @@ public class SoldierRunner implements CommandLineRunner {
                 blocks -> blocks.forEach(b -> chunkCache.setBlock(b.x(), b.y(), b.z(), b.stateId())),
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
-        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun))
+        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, woodcraftRef))
                 .exceptionally(cause -> {
                     LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
                     return null;
@@ -358,7 +383,8 @@ public class SoldierRunner implements CommandLineRunner {
     private void onJoined(SoldierDefinition definition, PlaySession session, PlayerPosition spawn,
                            AtomicReference<ScheduledExecutorService> activeScheduler,
                            AtomicReference<DeterministicSoldier> activeSoldier, AtomicReference<HealthUpdate> lastHealth,
-                           AtomicReference<Kit> lastKit, Inventory inventory, AtomicReference<SupplyRun> supplyRun) {
+                           AtomicReference<Kit> lastKit, Inventory inventory, AtomicReference<SupplyRun> supplyRun,
+                           AtomicReference<Woodcraft> woodcraftRef) {
         String name = definition.name();
         LOG.info("{} joined at real spawn ({}, {}, {}): {}", name, spawn.x(), spawn.y(), spawn.z(), session.playState());
 
@@ -384,6 +410,13 @@ public class SoldierRunner implements CommandLineRunner {
             soldier.reportKit(drawn);
         });
         supplyRun.set(run);
+        Woodcraft woodcraft = new Woodcraft(name, session, inventory, () -> {
+            Kit made = inventory.kit();
+            lastKit.set(made);
+            soldier.reportKit(made);
+        });
+        woodcrafts.put(name, woodcraft);
+        woodcraftRef.set(woodcraft);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
                 runnable -> new Thread(runnable, name + "-tick"));
@@ -395,6 +428,11 @@ public class SoldierRunner implements CommandLineRunner {
             });
             SoldierStatus status = soldier.status();
             run.tick(status.position(), supplyPoint, Resupply.isShort(status) && !(status.report() instanceof Report.InContact));
+            boolean bareHanded = status.condition().flatMap(c -> c.kit()).map(k -> k.weapon().isEmpty()).orElse(false);
+            woodcraft.tick(status.position(), world, bareHanded && rearmAllowed.getOrDefault(name, false)
+                    && !(status.report() instanceof Report.InContact) && !run.active()
+                    && world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).isEmpty());
+            soldier.rearming(woodcraft.active());
             Position current = status.position();
             session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
             session.endTick();

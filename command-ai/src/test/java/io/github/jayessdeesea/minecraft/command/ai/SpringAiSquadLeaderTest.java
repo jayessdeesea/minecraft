@@ -43,7 +43,7 @@ class SpringAiSquadLeaderTest {
     private static final String GOOD_REPLY = """
             {"x": 12, "y": 71, "z": -38, "formation": "FILE", "interval": "TIGHT",
              "verticalTolerance": 3, "risk": "MEDIUM",
-             "soldierRisks": [{"soldier": "Bob", "risk": "HIGH"}], "intent": "take the hilltop through the trees", "cantco": ""}
+             "soldierRisks": [{"soldier": "Bob", "risk": "HIGH"}], "rearm": true, "intent": "take the hilltop through the trees", "cantco": ""}
             """;
 
     /** A 3x3 survey (radius 8, spacing 8) around (0, 0): reachable land, an unreachable ridge, water, unknown. */
@@ -61,7 +61,7 @@ class SpringAiSquadLeaderTest {
     private static final List<String> SQUAD = List.of("Alice", "Bob");
 
     private static SquadOrderReply reply(double y, Formation formation, double verticalTolerance, String intent) {
-        return new SquadOrderReply(0, y, 0, formation, Interval.NORMAL, verticalTolerance, Risk.LOW, List.of(), intent, "");
+        return new SquadOrderReply(0, y, 0, formation, Interval.NORMAL, verticalTolerance, Risk.LOW, List.of(), false, intent, "");
     }
 
     @Test
@@ -132,7 +132,7 @@ class SpringAiSquadLeaderTest {
         SquadOrder order = leader.decide(List.of(ALICE, BOB), TERRAIN).orElseThrow();
 
         assertEquals(new SquadOrder(new Position(12, 71, -38), Formation.FILE, Interval.TIGHT, 3, Risk.MEDIUM,
-                java.util.Map.of("Bob", Risk.HIGH), "take the hilltop through the trees"), order);
+                java.util.Map.of("Bob", Risk.HIGH), true, "take the hilltop through the trees"), order);
         assertEquals(new Report.Moving(), leader.report());
         assertEquals(MessageType.SYSTEM, sent.get().getInstructions().getFirst().getMessageType(), "role goes in the system prompt");
     }
@@ -173,6 +173,6 @@ class SpringAiSquadLeaderTest {
 
     private static SquadOrderReply withSoldierRisks(SquadOrderReply r, List<SquadOrderReply.SoldierRisk> soldierRisks) {
         return new SquadOrderReply(r.x(), r.y(), r.z(), r.formation(), r.interval(), r.verticalTolerance(), r.risk(),
-                soldierRisks, r.intent(), r.cantco());
+                soldierRisks, r.rearm(), r.intent(), r.cantco());
     }
 }

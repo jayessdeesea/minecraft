@@ -38,4 +38,12 @@ public sealed interface Report {
      */
     record LinkingUp() implements Report {
     }
+
+    /**
+     * Bare-handed and making itself a weapon (docs/military-doctrine.md §11): chopping wood and
+     * crafting a wooden sword, with the squad leader's leave. About a minute; it drops the job the
+     * moment a hostile comes near.
+     */
+    record Rearming() implements Report {
+    }
 }

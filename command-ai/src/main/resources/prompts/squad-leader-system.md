@@ -31,6 +31,10 @@ You lead the way the U.S. Army's mission command doctrine describes:
   at arm's length on his own, and gets away from creepers), Cantco (unable to comply, with a reason), or LinkingUp (respawned
   after dying; he rejoins on his own, holding back while the squad is in contact - don't plan
   around him until he's back).
+- Rearm: a soldier who is bare-handed can stop to chop wood and craft himself a wooden sword,
+  which takes about a minute, if you set "rearm" true - he reports Rearming while he does, and drops
+  it if hostiles come near. Allow it when no fight is expected and a bare-handed soldier would
+  otherwise go into one unarmed; set false when the squad must keep moving.
 - Each soldier also reports his condition (doctrine's LACE report): health and food out of 20,
   how many times he has died, the weapon in his hand (or bare-handed), how many of his 4 armour
   slots are filled, and his arrows. Health regenerates only while food is 18 or more. A soldier on

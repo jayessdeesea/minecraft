@@ -1,6 +1,41 @@
 # Generated from the pinned server jar's `--reports` registries.json by
-# tools/item-class-generator. One counted item per line: <id> <W|A|R> <name>,
-# W weapon, A armour, R arrows. Everything NOT listed is just carried.
+# tools/item-class-generator. One counted item per line: <id> <class> <name>,
+# W weapon, A armour, R arrows; and what a wooden sword is made from: L logs, P planks,
+# S stick, C crafting table. Everything NOT listed is just carried.
+63 P oak_planks
+64 P spruce_planks
+65 P birch_planks
+66 P jungle_planks
+67 P acacia_planks
+68 P cherry_planks
+69 P dark_oak_planks
+70 P pale_oak_planks
+71 P mangrove_planks
+72 P poplar_planks
+73 P bamboo_planks
+74 P crimson_planks
+75 P warped_planks
+163 L oak_log
+164 L spruce_log
+165 L birch_log
+166 L jungle_log
+167 L acacia_log
+168 L cherry_log
+169 L pale_oak_log
+170 L dark_oak_log
+171 L mangrove_log
+172 L poplar_log
+178 L stripped_oak_log
+179 L stripped_spruce_log
+180 L stripped_birch_log
+181 L stripped_jungle_log
+182 L stripped_acacia_log
+183 L stripped_cherry_log
+184 L stripped_dark_oak_log
+185 L stripped_pale_oak_log
+186 L stripped_mangrove_log
+187 L stripped_poplar_log
+405 C crafting_table
 1001 A turtle_helmet
 1008 W bow
 1009 R arrow
@@ -18,6 +53,7 @@
 1053 W diamond_axe
 1055 W netherite_sword
 1058 W netherite_axe
+1060 S stick
 1068 A leather_helmet
 1069 A leather_chestplate
 1070 A leather_leggings

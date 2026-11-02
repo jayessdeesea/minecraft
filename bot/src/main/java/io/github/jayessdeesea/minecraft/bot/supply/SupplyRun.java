@@ -58,6 +58,11 @@ public final class SupplyRun {
         this.kitChanged = kitChanged;
     }
 
+    /** Whether a run is under way - while it is, the soldier isn't free to do anything else with its hands. */
+    public synchronized boolean active() {
+        return state != State.IDLE;
+    }
+
     /**
      * Each tick: starts a run when the soldier stands within {@link #REACH} of {@code supplyPoint}
      * and {@code wanted} (it's short of kit and free to draw it), and advances a run in progress.

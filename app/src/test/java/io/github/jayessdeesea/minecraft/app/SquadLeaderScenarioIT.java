@@ -143,7 +143,7 @@ class SquadLeaderScenarioIT {
 
         String standing = String.format(Locale.ROOT, """
                 {"x": %d, "y": %d, "z": %d, "formation": "WEDGE", "interval": "NORMAL", "verticalTolerance": 3,
-                 "risk": "LOW", "soldierRisks": [], "intent": "hold the high ground and observe", "cantco": ""}""",
+                 "risk": "LOW", "soldierRisks": [], "rearm": false, "intent": "hold the high ground and observe", "cantco": ""}""",
                 start.x(), start.y(), start.z());
         ChatClient client = ChatClient.builder(variant == Variant.RETASKED ? answeringFirst(standing, model) : model)
                 .defaultSystem(new ClassPathResource("prompts/squad-leader-system.md"))

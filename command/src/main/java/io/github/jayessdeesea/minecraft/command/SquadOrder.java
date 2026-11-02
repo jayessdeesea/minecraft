@@ -12,20 +12,27 @@ import java.util.Objects;
  * small to keep everyone on one floor of a building, large in open hills. {@code risk} is how much
  * health the mission justifies spending to get there ({@link Risk}); {@code soldierRisk} overrides
  * it for named soldiers - typically one stuck soldier freed at MEDIUM without the whole squad
- * taking falls (docs/military-doctrine.md §7).
+ * taking falls (docs/military-doctrine.md §7). {@code rearm} lets bare-handed soldiers stop to make
+ * themselves a wooden sword when no fight is near (§11).
  * {@link Formations#assign} turns this into each soldier's {@link Order}.
  */
 public record SquadOrder(Position objective, Formation formation, Interval interval,
-                         double verticalTolerance, Risk risk, Map<String, Risk> soldierRisk, String intent) {
+                         double verticalTolerance, Risk risk, Map<String, Risk> soldierRisk, boolean rearm, String intent) {
 
     public SquadOrder {
         soldierRisk = Map.copyOf(soldierRisk);
     }
 
-    /** A squad-wide risk with no per-soldier overrides. */
+    /** A squad-wide risk with no per-soldier overrides, and no stopping to rearm. */
     public SquadOrder(Position objective, Formation formation, Interval interval,
                       double verticalTolerance, Risk risk, String intent) {
-        this(objective, formation, interval, verticalTolerance, risk, Map.of(), intent);
+        this(objective, formation, interval, verticalTolerance, risk, Map.of(), false, intent);
+    }
+
+    /** Per-soldier risk, no stopping to rearm. */
+    public SquadOrder(Position objective, Formation formation, Interval interval,
+                      double verticalTolerance, Risk risk, Map<String, Risk> soldierRisk, String intent) {
+        this(objective, formation, interval, verticalTolerance, risk, soldierRisk, false, intent);
     }
 
     /** The risk this soldier moves at: his override if he has one, else the squad's. */

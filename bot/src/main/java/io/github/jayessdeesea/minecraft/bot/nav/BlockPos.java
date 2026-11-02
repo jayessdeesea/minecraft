@@ -7,7 +7,7 @@ public record BlockPos(int x, int y, int z) {
         return new BlockPos((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
     }
 
-    BlockPos offset(int dx, int dy, int dz) {
+    public BlockPos offset(int dx, int dy, int dz) {
         return new BlockPos(x + dx, y + dy, z + dz);
     }
 }

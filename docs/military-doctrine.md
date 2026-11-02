@@ -210,6 +210,21 @@ a principal on the move. The squad leader still chooses the interval and the ris
 offline-mode UUID among the entities they see; if none of them can see it, the squad holds the last
 known position. `!mission` ends the escort and hands the squad back to the general.
 
+## 11. Pre-combat checks
+
+| Practice | Content | Source |
+|---|---|---|
+| **Pre-combat checks and inspections** | Before a unit is employed, every soldier is checked for the equipment the mission needs, and shortfalls are made good. | ATP 3-21.8, troop leading procedures |
+
+*How we use it:* a bare-handed soldier makes itself a wooden sword (`bot.supply.Woodcraft`): it
+finds the nearest log within 16 blocks that it can stand beside, chops two logs, crafts planks,
+sticks and a crafting table in its 2x2 inventory grid, places the table, crafts the sword in it, and
+holds it - about a minute. The squad leader decides whether there's time: its order's `rearm` lets
+bare-handed soldiers do it, and it only happens while no hostile is within 16 blocks of the soldier
+and nobody in its squad is in contact. A soldier at it reports `Rearming`, and the squad doesn't
+halt for it. Anything that goes wrong - no tree in reach, a table that won't land - ends the attempt
+and puts any half-crafted items back in the inventory; the soldier tries again a minute later.
+
 ## Sources
 
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)

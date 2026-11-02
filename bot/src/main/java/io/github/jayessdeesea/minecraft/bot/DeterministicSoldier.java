@@ -57,6 +57,7 @@ public final class DeterministicSoldier implements Soldier {
     // Tick-loop-only, like position's writes - no other thread reads it.
     private double verticalVelocity = 0;
     private volatile boolean onGround = true;
+    private volatile boolean rearming;
     // Look direction, written by the tick loop, read by the caller reporting it.
     private volatile float yaw;
     private volatile float pitch;
@@ -104,6 +105,14 @@ public final class DeterministicSoldier implements Soldier {
         condition = new Condition(health, food, deaths, java.util.Optional.empty());
     }
 
+    /**
+     * Whether the soldier is making itself a weapon ({@code bot.supply.Woodcraft}) - reported as
+     * {@code Rearming} unless it's in contact. Set by whoever runs the routine.
+     */
+    public void rearming(boolean rearming) {
+        this.rearming = rearming;
+    }
+
     /** What the soldier now carries (LACE ammunition and equipment). Connection thread only. */
     public void reportKit(Kit kit) {
         this.kit = kit;
@@ -139,7 +148,8 @@ public final class DeterministicSoldier implements Soldier {
     @Override
     public SoldierStatus status() {
         Kit carried = kit;
-        return new SoldierStatus(name, position, order, report, java.util.Optional.ofNullable(condition)
+        Report now = rearming && !(report instanceof Report.InContact) ? new Report.Rearming() : report;
+        return new SoldierStatus(name, position, order, now, java.util.Optional.ofNullable(condition)
                 .map(c -> new Condition(c.health(), c.food(), c.deaths(), java.util.Optional.ofNullable(carried))));
     }
 

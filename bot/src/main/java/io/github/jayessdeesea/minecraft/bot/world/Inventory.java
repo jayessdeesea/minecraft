@@ -77,6 +77,38 @@ public final class Inventory {
         return kit();
     }
 
+    /** The first main-inventory or hotbar slot (9-44) holding an item of {@code itemClass}, or -1. */
+    public synchronized int slotOf(ItemClassRegistry.ItemClass itemClass) {
+        for (int slot = MAIN_FIRST; slot <= HOTBAR_LAST; slot++) {
+            if (ItemClassRegistry.classOf(itemIds[slot]).equals(java.util.Optional.of(itemClass))) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
+    /** How many items of {@code itemClass} the main inventory and hotbar hold. */
+    public synchronized int count(ItemClassRegistry.ItemClass itemClass) {
+        int total = 0;
+        for (int slot = MAIN_FIRST; slot <= HOTBAR_LAST; slot++) {
+            if (ItemClassRegistry.classOf(itemIds[slot]).equals(java.util.Optional.of(itemClass))) {
+                total += counts[slot];
+            }
+        }
+        return total;
+    }
+
+    /** What's carried, by counted class - "LOG x2, PLANKS x4" - for logs explaining a failure. */
+    public synchronized String summary() {
+        java.util.Map<ItemClassRegistry.ItemClass, Integer> totals = new java.util.EnumMap<>(ItemClassRegistry.ItemClass.class);
+        for (int slot = 0; slot < SLOTS; slot++) {
+            int s = slot;
+            ItemClassRegistry.classOf(itemIds[slot]).ifPresent(c -> totals.merge(c, counts[s], Integer::sum));
+        }
+        return totals.isEmpty() ? "nothing counted" : totals.entrySet().stream()
+                .map(e -> e.getKey() + " x" + e.getValue()).collect(java.util.stream.Collectors.joining(", "));
+    }
+
     /** The item ID in {@code slot}, or -1 if it's empty. */
     public synchronized int itemAt(int slot) {
         return itemIds[slot];

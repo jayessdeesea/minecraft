@@ -159,7 +159,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             }
         }
         return new SquadOrder(new Position(reply.x(), reply.y(), reply.z()), reply.formation(), reply.interval(),
-                reply.verticalTolerance(), reply.risk(), soldierRisk, reply.intent());
+                reply.verticalTolerance(), reply.risk(), soldierRisk, reply.rearm(), reply.intent());
     }
 
     /**
@@ -272,6 +272,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             case Report.InPosition() -> "InPosition";
             case Report.InContact(int hostiles) -> "InContact with " + hostiles + " hostile(s)";
             case Report.LinkingUp() -> "LinkingUp (respawned, rejoining the squad)";
+            case Report.Rearming() -> "Rearming (making himself a wooden sword)";
             case Report.Cantco(String reason) -> "Cantco: " + reason;
         };
     }
