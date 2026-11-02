@@ -145,10 +145,8 @@ explicitly, not left scattered across commit history and prose:
    control handler may *read* `SessionStateManager.state()` for its own narrow, local bookkeeping
    (today: whether to keep resetting its completion deadline), but it must never be the thing that
    flips `ProtocolState`, touches `compressionThreshold`, or swaps the active marshaller. Reading is
-   fine; writing crosses a boundary that belongs one tier down. (Worth doing at some point: shrink
-   `SessionStateManager.transitionTo` from `public` to package-private, and expose a narrowly-named
-   entry point - e.g. `beginHandshake(ctx, nextState)` - for the one legitimate external caller, so
-   the exception is visible in the API itself rather than only in a comment.)
+   fine; writing crosses a boundary that belongs one tier down. (Making the API enforce this is
+   backlog/session-state-narrowing.md.)
 3. **A reply must be fully self-contained - zero external/business input required.** This is the
    same test that draws the control-plane/application-plane line above: "does replying require any
    input from outside `protocol`?" `ClientInformationPacket.defaults()` being hardcoded here today
@@ -160,15 +158,15 @@ explicitly, not left scattered across commit history and prose:
    but both are protocol-mandated with zero degrees of freedom once the connection is already open. The decision that actually has real freedom - "should we open a
    Status connection to this server at all, right now" - happens one layer up, outside `protocol`
    entirely, before either handler is ever constructed.
-4. **Today's writes are all reflexes; nothing external calls this handler to originate one.** Every
-   `ctx.writeAndFlush()` here happens in direct reaction to a packet just read (or, for Handshake /
-   Status Request / Login Start, to the connection just opening, the one moment with nothing to
-   react to yet). Half-realized now: `PlaySession` exists and is the explicit interface `protocol`
-   exposes outward (never `bot` reaching into the control handler or any Netty type directly, per
-   the module boundary that confines `io.netty` imports to this module alone) - but it's still
-   read-only (`playState()`/`isOpen()`/`close()`). The reflex-only property stays true until
-   `PlaySession` grows a way to *originate* something (movement, chat) rather than just observe and
-   close.
+4. **The handler's own writes are reflexes; everything the client chooses to do goes through
+   `PlaySession`.** Every `ctx.writeAndFlush()` in the control handler happens in direct reaction to
+   a packet just read (Keep Alive, Accept Teleportation, Chunk Batch Received, Player Loaded) or, for
+   Handshake / Status Request / Login Start, to the connection just opening. What the client
+   *decides* to do - move and look, end its tick, attack, respawn, chat, use a block, click a
+   container - the caller originates through `PlaySession`'s explicit methods, which write to the
+   channel directly and never pass through the handler's reply logic. So the handler never makes a
+   game decision, and the caller never reaches into the handler or any Netty type (the module
+   boundary confines `io.netty` to `protocol`).
 5. **Diagnostic self-closing behavior is a test artifact, not a shape to preserve.**
    `JoinClientHandler` closing the connection after a fixed window exists because it's a diagnostic
    tool proving the join sequence works. Resolved by addition, not replacement: `PlayClientHandler`
