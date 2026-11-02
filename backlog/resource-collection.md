@@ -8,7 +8,7 @@ doctrine: Class IV supply (FM 4-0)
 
 ## Why
 Squads can gather wood around an objective the general names (docs/military-doctrine.md § 12),
-or quarry stone (making wooden pickaxes as needed), and reports what it can see of both so the
+or quarry stone (making wooden pickaxes as needed), and report what they can see of both so the
 general can choose. What's missing is a place to put it all. It's the coordination problem the project is about: the general
 splitting gathering, guarding and moving between squads.
 
