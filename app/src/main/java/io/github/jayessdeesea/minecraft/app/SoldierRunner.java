@@ -119,6 +119,10 @@ public class SoldierRunner implements CommandLineRunner {
         Position baseSite;
         /** The last patrol base the squad built - to cut its way out of, once it moves on. */
         PatrolBase.Plan builtBase;
+        /** A patrol base point with no level ground near it - logged once. */
+        Position unbuildable;
+        /** The base's breaches at the last check - logged when they change. */
+        List<Position> breaches;
         java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.of();
     }
 
@@ -296,9 +300,18 @@ public class SoldierRunner implements CommandLineRunner {
                 && Math.abs(site.y() - state.baseSite.y()) <= 2) {
             site = state.baseSite;
         } else if (site != null) {
-            // The model's height is a guess; the floor goes on the ground actually there.
-            site = groundAt(site);
-            if (state.baseSite != null) {
+            // The model's point is a guess at ground it can't see closely: the base goes on the
+            // nearest level footing for the whole floor - never on rubble or a slope, where
+            // soldiers can't all stand in their places.
+            Position asked = site;
+            site = levelSite(site, statuses.size()).orElse(null);
+            if (site == null) {
+                if (!asked.equals(state.unbuildable)) {
+                    LOG.warn("[{}] no level ground for a patrol base within {} blocks of {} - not building", squadName,
+                            SITE_SEARCH, asked);
+                }
+                state.unbuildable = asked;
+            } else if (state.baseSite != null) {
                 LOG.info("[{}] patrol base moved to {}", squadName, site);
             }
         }
@@ -314,6 +327,21 @@ public class SoldierRunner implements CommandLineRunner {
             LOG.info("[{}] all inside the patrol base - building", squadName);
         }
         state.allInside = allInside;
+        // The base's standard, re-checked every cycle while it's held - anything can break a wall
+        // after it's built: every way into the room is a breach, and goes back on the build list.
+        List<Position> breaches = plan == null ? null
+                : plan.breaches(c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z()));
+        if (breaches != null && allInside && !breaches.equals(state.breaches)) {
+            if (breaches.isEmpty()) {
+                LOG.info("[{}] patrol base SEALED - but UNLIT: no torches yet, so its floor is spawn ground once the squad leaves",
+                        squadName);
+            } else {
+                LOG.warn("[{}] patrol base BREACHED at {} - rebuilding", squadName, breaches);
+                statuses.forEach(st -> Optional.ofNullable(builders.get(st.name())).ifPresent(Builder::retrySkipped));
+            }
+        }
+        // What was last logged - reset while the squad isn't all in, so entering always says which.
+        state.breaches = allInside ? breaches : null;
         // Moving on from a base: cut a doorway toward the next objective. Not while only paused for
         // contact - the base is still the squad's.
         String opener = null;
@@ -345,19 +373,20 @@ public class SoldierRunner implements CommandLineRunner {
             gather.ifPresentOrElse(o -> gathering.put(soldierName, o), () -> gathering.remove(soldierName));
             Order given = orders.get(i);
             if (plan != null) {
-                List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = new java.util.ArrayList<>(plan.cells().stream()
+                List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = new java.util.ArrayList<>(
+                        java.util.stream.Stream.concat(plan.cells().stream(), breaches.stream().filter(b -> !plan.cells().contains(b)))
                         .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) c.x(), (int) c.y(), (int) c.z())).toList());
                 // Each soldier starts at a different point round the walls, so they don't all go for the same block.
                 java.util.Collections.rotate(cells, -i * cells.size() / statuses.size());
                 fortifying.put(soldierName, new Fortify(plan.stands().get(i), List.copyOf(cells), allInside));
                 Position place = plan.stands().get(i);
-                byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(), 0.3, 0.5, Risk.LOW));
+                byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(), HUT_PLACE_TOLERANCE, 0.5, Risk.LOW));
                 continue;
             }
             fortifying.remove(soldierName);
             if (soldierName.equals(opener)) {
                 Position place = opening.get(soldierName).stand();
-                byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(), 0.3, 0.5, Risk.LOW));
+                byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(), HUT_PLACE_TOLERANCE, 0.5, Risk.LOW));
                 continue;
             }
             opening.remove(soldierName);
@@ -402,25 +431,51 @@ public class SoldierRunner implements CommandLineRunner {
         }
     }
 
+    private static final int GROUND_SEARCH = 8;
+    /** How far from the general's point to look for level ground for a patrol base. */
+    private static final int SITE_SEARCH = 8;
     /**
-     * The standable cell nearest in height to {@code at} - solid below, room for a body above - or
-     * {@code at} itself when there's none within {@value #GROUND_SEARCH} blocks up or down.
+     * How close to its place's centre a soldier stands inside a hut: a body 0.6 wide is clear of the
+     * walls only within 0.2 of it, and the server won't place a block where a body is.
      */
-    private Position groundAt(Position at) {
-        int x = (int) Math.floor(at.x());
-        int z = (int) Math.floor(at.z());
-        int y = (int) Math.floor(at.y());
-        for (int dy = 0; dy <= GROUND_SEARCH; dy++) {
-            for (int candidate : new int[]{y + dy, y - dy}) {
-                if (world.isSolid(x, candidate - 1, z) && !world.isSolid(x, candidate, z) && !world.isSolid(x, candidate + 1, z)) {
-                    return new Position(at.x(), candidate, at.z());
+    private static final double HUT_PLACE_TOLERANCE = 0.15;
+
+    /**
+     * The nearest point to {@code asked}, within {@value #SITE_SEARCH} blocks across and
+     * {@value #GROUND_SEARCH} up or down, where every floor cell of a hut for {@code soldiers} is
+     * standable at one height: solid below, room for a body above.
+     */
+    private Optional<Position> levelSite(Position asked, int soldiers) {
+        int ax = (int) Math.floor(asked.x());
+        int az = (int) Math.floor(asked.z());
+        int ay = (int) Math.floor(asked.y());
+        Position best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int dx = -SITE_SEARCH; dx <= SITE_SEARCH; dx++) {
+            for (int dz = -SITE_SEARCH; dz <= SITE_SEARCH; dz++) {
+                for (int dy = 0; dy <= GROUND_SEARCH; dy++) {
+                    for (int y : new int[]{ay + dy, ay - dy}) {
+                        Position candidate = new Position(ax + dx, y, az + dz);
+                        boolean level = PatrolBase.hasty(candidate, soldiers).floor().stream().allMatch(cell -> {
+                            int cx = (int) cell.x();
+                            int cy = (int) cell.y();
+                            int cz = (int) cell.z();
+                            return world.isSolid(cx, cy - 1, cz) && !world.isSolid(cx, cy, cz) && !world.isSolid(cx, cy + 1, cz)
+                                    && !world.isHazard(cx, cy, cz);
+                        });
+                        // Height counts double: a level footing on the roof of an old hut is
+                        // nearer across than its own floor, but the floor is the one to reuse.
+                        double distance = Math.hypot(dx, dz) + Math.abs(y - ay) * 2;
+                        if (level && distance < bestDistance) {
+                            best = candidate;
+                            bestDistance = distance;
+                        }
+                    }
                 }
             }
         }
-        return at;
+        return Optional.ofNullable(best);
     }
-
-    private static final int GROUND_SEARCH = 8;
     /** {@code minecraft:cobblestone}'s block state in protocol 777 - a placed pillar block, until the server's update. */
     private static final int COBBLESTONE_STATE = 14;
 
@@ -703,8 +758,14 @@ public class SoldierRunner implements CommandLineRunner {
             handover.tick(status.position(), delivery).ifPresent(soldier::lookAt);
             Builder.Progress built = null;
             if (fort != null && fort.allInside() && !(status.report() instanceof Report.InContact) && !rations.active()
-                    && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.5) {
+                    && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.2) {
+                boolean wasDone = builder.done();
                 built = builder.tickInPlace(status.position(), world, fort.cells());
+                if (wasDone && built instanceof Builder.Progress.Working) {
+                    // A finished base lost a block - knocked out, blown up, dug through. Faster than
+                    // the once-a-second breach check sees it, so say so here.
+                    LOG.warn("{} repairing the patrol base - a block is gone", name);
+                }
                 builder.lookAt().ifPresent(soldier::lookAt);
             } else {
                 builder.stop();

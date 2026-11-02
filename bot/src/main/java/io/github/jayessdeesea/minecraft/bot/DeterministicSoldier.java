@@ -453,6 +453,13 @@ public final class DeterministicSoldier implements Soldier {
         if (onGround && goal.contains(BlockPos.containing(position.x(), position.y(), position.z()))) {
             route = null;
             failedPlans = 0;
+            // A goal finer than half a block wants a spot, not just a cell - inside a hut a body off
+            // its cell's centre leans into the wall being built. Step onto it before standing.
+            if (goal.horizontalTolerance() < 0.5 && !goal.contains(position.x(), position.y(), position.z())) {
+                stepToward(world, goal.x(), goal.z());
+                report = new Report.Moving();
+                return;
+            }
             report = new Report.InPosition();
             return;
         }

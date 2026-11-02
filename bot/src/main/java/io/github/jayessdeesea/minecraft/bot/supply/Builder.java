@@ -177,6 +177,11 @@ public final class Builder {
         return new Progress.Working();
     }
 
+    /** Tries again every cell given up on - the ground changed (a breach found), so a cell that wouldn't take a block may now. */
+    public synchronized void retrySkipped() {
+        skipped.clear();
+    }
+
     /** Stops building: the weapon or tool held before goes back in hand. */
     public synchronized void stop() {
         standAt = null;

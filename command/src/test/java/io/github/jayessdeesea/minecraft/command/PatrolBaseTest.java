@@ -73,6 +73,33 @@ class PatrolBaseTest {
     }
 
     @Test
+    void aFinishedHutIsSealedAndAnyHoleIsABreach() {
+        PatrolBase.Plan plan = PatrolBase.hasty(new Position(0, 64, 0), 4);
+        Set<Position> built = new HashSet<>(plan.cells());
+        // Ground everywhere below the floor level.
+        java.util.function.Predicate<Position> solid = cell -> cell.y() < 64 || built.contains(cell);
+
+        assertEquals(List.of(), plan.breaches(solid), "sealed");
+
+        built.remove(new Position(2, 65, 1)); // a wall block knocked out
+        assertEquals(List.of(new Position(2, 65, 1)), plan.breaches(solid));
+
+        built.add(new Position(2, 65, 1));
+        built.remove(new Position(0, 66, 0)); // a hole in the roof
+        assertEquals(List.of(new Position(0, 66, 0)), plan.breaches(solid));
+    }
+
+    @Test
+    void aDipUnderTheFloorIsABreachToo() {
+        PatrolBase.Plan plan = PatrolBase.hasty(new Position(0, 64, 0), 4);
+        Set<Position> built = new HashSet<>(plan.cells());
+        java.util.function.Predicate<Position> solid = cell -> (cell.y() < 64 && !cell.equals(new Position(1, 63, 1)))
+                || built.contains(cell);
+
+        assertEquals(List.of(new Position(1, 63, 1)), plan.breaches(solid), "a spider fits through a one-block hole");
+    }
+
+    @Test
     void moreThanNineDontFit() {
         assertThrows(IllegalArgumentException.class, () -> PatrolBase.hasty(new Position(0, 64, 0), 10));
     }

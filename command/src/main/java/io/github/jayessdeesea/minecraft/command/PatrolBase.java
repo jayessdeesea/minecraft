@@ -62,6 +62,49 @@ public final class PatrolBase {
                     .findFirst().map(cell -> new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5)).orElseThrow();
         }
 
+        /**
+         * Every way into the room: the cells just outside it that a flood fill from the floor, through
+         * anything not {@code solid}, reaches - a wall or roof block missing, a dip under a wall, a
+         * hole in the floor, whatever later broke one. Empty when the room is sealed. Checked again
+         * and again, not once: anything can break a wall after it's built.
+         */
+        public List<Position> breaches(Predicate<Position> solid) {
+            double minX = floor.stream().mapToDouble(Position::x).min().orElseThrow();
+            double maxX = floor.stream().mapToDouble(Position::x).max().orElseThrow();
+            double minZ = floor.stream().mapToDouble(Position::z).min().orElseThrow();
+            double maxZ = floor.stream().mapToDouble(Position::z).max().orElseThrow();
+            double y = floor.getFirst().y();
+            java.util.Set<Position> seen = new java.util.HashSet<>();
+            java.util.Set<Position> breaches = new java.util.TreeSet<>(
+                    java.util.Comparator.comparingDouble(Position::y).thenComparingDouble(Position::x).thenComparingDouble(Position::z));
+            java.util.ArrayDeque<Position> frontier = new java.util.ArrayDeque<>();
+            for (Position cell : floor) {
+                for (double level : new double[]{y, y + 1}) {
+                    Position inside = new Position(cell.x(), level, cell.z());
+                    if (!solid.test(inside) && seen.add(inside)) {
+                        frontier.add(inside);
+                    }
+                }
+            }
+            while (!frontier.isEmpty()) {
+                Position cell = frontier.poll();
+                for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+                    Position next = new Position(cell.x() + d[0], cell.y() + d[1], cell.z() + d[2]);
+                    if (solid.test(next) || !seen.add(next)) {
+                        continue;
+                    }
+                    boolean inRoom = next.x() >= minX && next.x() <= maxX && next.z() >= minZ && next.z() <= maxZ
+                            && next.y() >= y && next.y() <= y + 1;
+                    if (inRoom) {
+                        frontier.add(next);
+                    } else {
+                        breaches.add(next);
+                    }
+                }
+            }
+            return List.copyOf(breaches);
+        }
+
         /** Whether {@code soldier} stands on the floor inside the walls. */
         public boolean inside(Position soldier) {
             return floor.stream().anyMatch(cell -> cell.x() == Math.floor(soldier.x()) && cell.z() == Math.floor(soldier.z())
