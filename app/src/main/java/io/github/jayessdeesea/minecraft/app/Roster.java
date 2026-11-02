@@ -8,6 +8,8 @@ import java.util.List;
  * the order of battle: {@link ChainOfCommand} gives each squad a squad leader, {@link SoldierRunner}
  * connects each soldier. The first squad is the one {@code !escort} attaches.
  *
+ * <p>Four to a squad: a doctrinal fire team, which the wedge, a 2x2 patrol base and buddy pairs all fit.
+ *
  * <p>Hardcoded, not {@code application.yml}, for the same reason as the dev server's address:
  * nothing yet needs to change it without recompiling.
  */
@@ -17,8 +19,8 @@ final class Roster {
     }
 
     static final List<Squad> SQUADS = List.of(
-            new Squad("Alpha", List.of("Alice", "Bob", "Carol")),
-            new Squad("Bravo", List.of("Dana", "Eli", "Fran")));
+            new Squad("Alpha", List.of("Alice", "Bob", "Carol", "Gus")),
+            new Squad("Bravo", List.of("Dana", "Eli", "Fran", "Hal")));
 
     private Roster() {
     }

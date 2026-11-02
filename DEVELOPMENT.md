@@ -89,8 +89,8 @@ mvn package -DskipTests
 java -jar app/target/app.jar
 ```
 
-This connects two squads (`app.Roster`): Alpha (`Alice`, `Bob`, `Carol`) and Bravo (`Dana`, `Eli`,
-`Fran`), the first of each its point man, each under its own LLM squad leader, both under one LLM
+This connects two squads (`app.Roster`): Alpha (`Alice`, `Bob`, `Carol`, `Gus`) and Bravo
+(`Dana`, `Eli`, `Fran`, `Hal`), the first of each its point man, each under its own LLM squad leader, both under one LLM
 general (`ChainOfCommand`). The log reads as a radio net: `[General -> Alpha] OPORD`,
 `[Bravo -> squad] FRAGO`, `[Alpha -> General] CANTCO`, and each squad's SITREP every 5 seconds.
 Orders and CANTCOs also appear in game chat (section 4), spoken by Alice as the radio operator. Soldiers reconnect on their own if a connection dies. The general's mission

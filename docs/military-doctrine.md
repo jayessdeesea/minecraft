@@ -297,7 +297,7 @@ changes.
 An objective's task can be `PATROL_BASE`. `command.PatrolBase` lays out a hasty hut around the
 squad: a 2x2 floor for up to four soldiers (3x3 for up to nine), walls two high, and a roof over
 walls and floor, so each roof block has a neighbour to go against. That's 40 blocks for a squad of
-three. The site is placed on the ground actually there, since the model's height is a guess. A
+four. The site is placed on the ground actually there, since the model's height is a guess. A
 re-issued objective within 8 blocks keeps the site already laid out, so the outline doesn't move
 under the soldiers.
 
