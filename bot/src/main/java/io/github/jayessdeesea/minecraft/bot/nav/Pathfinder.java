@@ -21,7 +21,8 @@ import java.util.PriorityQueue;
  * or walk off an edge and drop up to {@link #MAX_DROP} blocks orthogonally - further only within a
  * {@link FallAllowance}, at a cost per point of fall damage. A soldier carrying blocks can also
  * pillar: jump and place a block under itself, rising one block straight up - the way up a wall
- * or cliff, repeated, then a step off onto the top. Hazards (water, lava, fire) are never entered -
+ * or cliff, repeated, then a step off onto the top. Pillar steps are offered only beside a wall,
+ * where they get somewhere a walk can't; anywhere else they'd spend the search on open air. Hazards (water, lava, fire) are never entered -
  * no swimming, no ladders.
  *
  * <p>A goal outside the budget isn't a failure: the result is a path to the explored cell that
@@ -102,7 +103,8 @@ public final class Pathfinder {
             }
 
             double base = costSoFar.get(current);
-            for (Move move : moves(world, current, falls, canPillar)) {
+            // Pillar steps only beside a wall: anywhere else they spend the search budget on open air.
+            for (Move move : moves(world, current, falls, canPillar && besideWall(world, current))) {
                 double cost = base + move.cost();
                 Double known = costSoFar.get(move.to());
                 if (known == null || cost < known) {

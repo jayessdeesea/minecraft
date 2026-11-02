@@ -60,7 +60,8 @@ Neither needs the server or the model. Tests that need a live server or model ar
 run only when asked for (section 5 and below).
 
 **Scenario sweeps.** `bot`'s `SoldierScenarioTest` sends a soldier across generated terrain (flat,
-hills, forest, lake, ravine, walled compound), 20 seeds per family by default. Each case is named
+hills, forest, lake, ravine, walled compound, cliff), 20 seeds per family by default, each run on
+foot and again carrying cobblestone to climb with. Each case is named
 `<family> seed=<n>`, and a failure prints a top-down map of the world and the soldier's trail.
 
 ```bash

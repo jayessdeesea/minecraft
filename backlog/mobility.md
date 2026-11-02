@@ -28,8 +28,8 @@ up per step, and the pathfinder plans those steps at a price (`Pathfinder`, `Det
   climb that spends a stack of blocks.
 - **Blocks budgeted:** a route's pillar steps are checked against the blocks carried. Today a
   soldier that runs out mid-climb stops and re-plans.
-- Measured in `SoldierScenarioTest` with a cliff family: 2-, 4- and 8-block walls, crossed with
-  blocks or by digging.
+- Digging is measured by `SoldierScenarioTest`'s cliff family, which climbing with blocks already
+  passes.
 
 ## Notes
 - Blocks come from what the soldier carries (`Builder`'s cobblestone, planks, logs), or from what

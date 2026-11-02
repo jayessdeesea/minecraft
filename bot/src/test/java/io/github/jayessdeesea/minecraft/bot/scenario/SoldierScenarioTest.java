@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import io.github.jayessdeesea.minecraft.command.Kit;
+import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.Goal;
@@ -13,6 +15,7 @@ import org.junit.jupiter.api.TestFactory;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -31,8 +34,12 @@ import static org.junit.jupiter.api.Assertions.fail;
  * oracle checks that the soldier's bounded, re-planning, physics-driven execution delivers what
  * the planner says is possible, not that the planner itself is right.
  *
+ * <p>Every case runs twice: on foot, and climbing - carrying cobblestone, so it can pillar up a
+ * wall (the oracle plans pillar steps too, and each block the soldier places goes into the world).
+ *
  * <p>Each case is named {@code <family> seed=<n>} and is fully reproducible from that. Run more
- * seeds with {@code -Dscenario.seeds=200}, or one case with {@code -Dscenario.only=forest:7}. A
+ * seeds with {@code -Dscenario.seeds=200}, or one case with {@code -Dscenario.only=forest:7} (or
+ * {@code forest:7:climbing}). A
  * failing seed worth keeping becomes an entry in {@link #REGRESSIONS}.
  */
 class SoldierScenarioTest {
@@ -52,41 +59,52 @@ class SoldierScenarioTest {
         String only = System.getProperty("scenario.only");
         if (only != null) {
             String[] parts = only.split(":");
-            return Stream.of(test(Scenario.generate(Terrain.valueOf(parts[0].toUpperCase()), Long.parseLong(parts[1]))));
+            return Stream.of(test(Scenario.generate(Terrain.valueOf(parts[0].toUpperCase()), Long.parseLong(parts[1])),
+                    parts.length > 2 && parts[2].equals("climbing")));
         }
         int seeds = Integer.getInteger("scenario.seeds", DEFAULT_SEEDS);
         List<DynamicTest> tests = new ArrayList<>();
         for (Terrain terrain : Terrain.values()) {
             for (long seed = 1; seed <= seeds; seed++) {
-                tests.add(test(Scenario.generate(terrain, seed)));
+                tests.add(test(Scenario.generate(terrain, seed), false));
+                tests.add(test(Scenario.generate(terrain, seed), true));
             }
         }
         for (String regression : REGRESSIONS) {
             String[] parts = regression.split(":");
-            tests.add(test(Scenario.generate(Terrain.valueOf(parts[0].toUpperCase()), Long.parseLong(parts[1]))));
+            tests.add(test(Scenario.generate(Terrain.valueOf(parts[0].toUpperCase()), Long.parseLong(parts[1])),
+                    parts.length > 2 && parts[2].equals("climbing")));
         }
         return tests.stream();
     }
 
-    private static DynamicTest test(Scenario scenario) {
-        return DynamicTest.dynamicTest(scenario.toString(), () -> run(scenario));
+    private static DynamicTest test(Scenario scenario, boolean climbing) {
+        return DynamicTest.dynamicTest(scenario + (climbing ? " climbing" : ""), () -> run(scenario, climbing));
     }
 
     static void run(Scenario scenario) {
+        run(scenario, false);
+    }
+
+    static void run(Scenario scenario, boolean climbing) {
         SyntheticWorld world = scenario.world();
         BlockPos start = scenario.start();
         BlockPos objective = scenario.objective();
         Goal goal = new Goal(objective.x() + 0.5, objective.y(), objective.z() + 0.5, 1.5, 1);
-        Pathfinder.Result oracle = Pathfinder.find(world, start, goal, ORACLE_BUDGET);
+        Pathfinder.Result oracle = Pathfinder.find(world, start, goal, ORACLE_BUDGET, FallAllowance.NONE, climbing);
         boolean reachable = oracle.reachesGoal();
         int budget = reachable ? 400 + 15 * oracle.path().size() : UNREACHABLE_TICK_BUDGET;
 
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
+        if (climbing) {
+            soldier.reportKit(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 64));
+        }
         soldier.receiveOrder(new Order.MoveTo(goal.x(), goal.y(), goal.z(), goal.horizontalTolerance(), goal.verticalTolerance(), Risk.LOW));
         Set<BlockPos> trail = new LinkedHashSet<>();
 
         for (int tick = 0; tick < budget; tick++) {
             soldier.tick(world);
+            soldier.takePlacement().ifPresent(cell -> world.solid(cell.x(), cell.y(), cell.z())); // the server takes it
             Position p = soldier.status().position();
             trail.add(BlockPos.containing(p.x(), p.y(), p.z()));
             String violation = bodyViolation(world, p);
@@ -138,6 +156,7 @@ class SoldierScenarioTest {
                 + "\n  final " + soldier.status()
                 + "\n  last plan " + soldier.lastPlan()
                 + "\n  reproduce: -Dscenario.only=" + scenario.terrain().name().toLowerCase() + ":" + scenario.seed()
+                + " (add :climbing for the climbing run)"
                 + "\n" + scenario.world().render(scenario.start(), scenario.objective(), trail);
     }
 }

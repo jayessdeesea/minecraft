@@ -13,6 +13,23 @@ import static io.github.jayessdeesea.minecraft.bot.scenario.SyntheticWorld.MIN;
  */
 public enum Terrain {
 
+    /**
+     * A plateau 2 to 8 blocks higher, across the whole map on the objective's side, behind a sheer
+     * wall: out of reach on foot, a climb for a soldier carrying blocks.
+     */
+    CLIFF {
+        @Override
+        void build(SyntheticWorld world, Random random, int startZ, int goalX, int goalZ) {
+            int wallZ = goalZ + 12 + random.nextInt(Math.max(1, startZ - goalZ - 24));
+            int height = 2 + random.nextInt(7);
+            for (int x = MIN; x <= MAX; x++) {
+                for (int z = MIN; z <= wallZ; z++) {
+                    world.setGround(x, z, Scenario.BASE_GROUND + height);
+                }
+            }
+        }
+    },
+
     /** Open ground with scattered one-block rocks. */
     FLAT {
         @Override
