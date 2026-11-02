@@ -9,7 +9,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.ClientCommandPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientTickEndPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.PunchPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.MovePlayerPosPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.MovePlayerPosRotPacket;
 import io.netty.channel.Channel;
 
 /**
@@ -35,8 +35,8 @@ final class NettyPlaySession implements PlaySession {
     }
 
     @Override
-    public void reportPosition(double x, double y, double z, boolean onGround) {
-        channel.writeAndFlush(new MovePlayerPosPacket(x, y, z, onGround));
+    public void reportPosition(double x, double y, double z, float yaw, float pitch, boolean onGround) {
+        channel.writeAndFlush(new MovePlayerPosRotPacket(x, y, z, yaw, pitch, onGround));
     }
 
     @Override

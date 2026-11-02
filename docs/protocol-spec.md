@@ -275,7 +275,7 @@ server's own `GameProtocols` registration lists (read with `javap` - see DEVELOP
 | → | `0x12` | Container Click | `ContainerPackets.ContainerClick` | live (quick move, chest and inventory) |
 | → | `0x13` | Container Close | `ContainerPackets.CloseContainer` | live |
 | → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | live round trip |
-| → | `0x1E` | Move Player Pos | `MovePlayerPosPacket` | live movement |
+| → | `0x1F` | Move Player Pos Rot | `MovePlayerPosRotPacket` | live movement; soldiers turn to face their travel or their target |
 | → | `0x2C` | Player Loaded | `PlayerLoadedPacket` | registration order; empty body |
 | → | `0x2E` | Punch | `PunchPacket` | registration order; empty body, sent after each attack |
 | → | `0x36` | Set Carried Item | `ContainerPackets.SetCarriedItem` | live |

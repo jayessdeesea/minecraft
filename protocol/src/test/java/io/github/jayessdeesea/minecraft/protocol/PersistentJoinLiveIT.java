@@ -165,7 +165,7 @@ class PersistentJoinLiveIT {
         Thread.sleep(16_000);
         assertTrue(session.isOpen(), "session should still be open after accepting the position");
 
-        session.reportPosition(first.x(), first.y(), first.z(), true);
+        session.reportPosition(first.x(), first.y(), first.z(), 0f, 0f, true);
         Thread.sleep(500);
         assertTrue(session.isOpen(), "session should still be open after reporting a position back");
 

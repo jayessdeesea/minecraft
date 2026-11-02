@@ -346,7 +346,7 @@ public class SoldierRunner implements CommandLineRunner {
             SoldierStatus status = soldier.status();
             run.tick(status.position(), supplyPoint, Resupply.isShort(status) && !(status.report() instanceof Report.InContact));
             Position current = status.position();
-            session.reportPosition(current.x(), current.y(), current.z(), soldier.onGround());
+            session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
             session.endTick();
         }, 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
         scheduler.scheduleAtFixedRate(

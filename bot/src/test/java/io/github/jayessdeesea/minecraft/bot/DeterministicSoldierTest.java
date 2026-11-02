@@ -60,6 +60,20 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void facesWhereItWalksAndThenTheHostileItFights() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.MoveTo(-9.5, GROUND, 0.5, 1, 256, Risk.LOW)); // due west
+
+        alice.tick(terrain(false));
+        assertEquals(90, alice.yaw(), 1, "walking west faces west");
+        assertEquals(0, alice.pitch(), 1e-6);
+
+        alice.tick(withHostileAt(new Position(alice.status().position().x(), GROUND, 5.5), false));
+        assertEquals(0, alice.yaw(), 1, "a zombie to the south is faced");
+        assertTrue(alice.pitch() > 0, "and looked down at, being shorter than eye height");
+    }
+
+    @Test
     void closesOnAHostileOutsideReachEvenAgainstItsOrder() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
         alice.receiveOrder(new Order.MoveTo(-10, GROUND, 0, 1, 256, Risk.LOW));

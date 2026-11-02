@@ -22,11 +22,11 @@ public interface PlaySession {
     PlayState playState();
 
     /**
-     * Reports this client's current position to the server - no look direction, since nothing in
-     * this codebase tracks one yet (see {@code MovePlayerPosPacket}'s javadoc). Safe to call
-     * every tick; the server tolerates redundant reports of an unchanged position.
+     * Reports this client's current position and look direction to the server - yaw in degrees
+     * (0 south, 90 west), pitch negative looking up. At most once per tick (see {@link #endTick});
+     * the server tolerates redundant reports of an unchanged position.
      */
-    void reportPosition(double x, double y, double z, boolean onGround);
+    void reportPosition(double x, double y, double z, float yaw, float pitch, boolean onGround);
 
     /**
      * Ends this client's tick, as a vanilla client does after every one. The server accepts at

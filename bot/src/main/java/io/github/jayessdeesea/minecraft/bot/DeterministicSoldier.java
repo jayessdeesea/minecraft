@@ -53,6 +53,9 @@ public final class DeterministicSoldier implements Soldier {
     // Tick-loop-only, like position's writes - no other thread reads it.
     private double verticalVelocity = 0;
     private volatile boolean onGround = true;
+    // Look direction, written by the tick loop, read by the caller reporting it.
+    private volatile float yaw;
+    private volatile float pitch;
     private int ticksUntilAttack = 0; // tick-loop only
     // Written only by the connection's thread (reportHealth), as position is only by the tick loop.
     private volatile Condition condition;
@@ -100,6 +103,28 @@ public final class DeterministicSoldier implements Soldier {
     /** What the soldier now carries (LACE ammunition and equipment). Connection thread only. */
     public void reportKit(Kit kit) {
         this.kit = kit;
+    }
+
+    /**
+     * Where the soldier looks, reported with each move so other players see it turn: at the
+     * hostile it's fighting, else along its last step, else wherever it last looked. Yaw in
+     * degrees, 0 facing south (+z) and 90 west (-x); pitch negative looking up.
+     */
+    public float yaw() {
+        return yaw;
+    }
+
+    public float pitch() {
+        return pitch;
+    }
+
+    /** Eye height of a standing player, and the height a hostile is looked at - roughly its chest. */
+    static final double EYE_HEIGHT = 1.62;
+    static final double TARGET_HEIGHT = 1.2;
+
+    /** Yaw toward a horizontal direction, in Minecraft's convention. */
+    static float yawToward(double dx, double dz) {
+        return (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90);
     }
 
     /** Whether the last tick ended standing on something - reported to the server with each move. */
@@ -187,6 +212,7 @@ public final class DeterministicSoldier implements Soldier {
         }
 
         OptionalInt attack = OptionalInt.empty();
+        Position before = position;
         if (hurt.getAndSet(false)) {
             underFireTicks = UNDER_FIRE_TICKS;
         }
@@ -218,12 +244,27 @@ public final class DeterministicSoldier implements Soldier {
             }
             route = null; // wherever the fight ends up, the old route no longer starts here
             report = new Report.InContact(threats.size());
+            look(threat);
         } else {
             navigate(world);
+            double dx = position.x() - before.x();
+            double dz = position.z() - before.z();
+            if (dx * dx + dz * dz > 1e-4) {
+                yaw = yawToward(dx, dz);
+                pitch = 0;
+            }
         }
 
         applyVerticalMovement(world);
         return attack;
+    }
+
+    private void look(Position target) {
+        double dx = target.x() - position.x();
+        double dz = target.z() - position.z();
+        double dy = target.y() + TARGET_HEIGHT - (position.y() + EYE_HEIGHT);
+        yaw = yawToward(dx, dz);
+        pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
     }
 
     /**
