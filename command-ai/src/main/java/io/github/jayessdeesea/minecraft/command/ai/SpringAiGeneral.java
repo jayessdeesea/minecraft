@@ -7,6 +7,9 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Resupply;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
+import io.github.jayessdeesea.minecraft.command.TimeOfDay;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,10 +33,13 @@ import java.util.Optional;
 @Component
 public final class SpringAiGeneral implements General {
 
+    private static final Logger LOG = LogManager.getLogger(SpringAiGeneral.class);
+
     private final ChatClient chatClient;
     private volatile String mission; // written by the operator's thread, read by the general's
     private final Optional<Position> supplyPoint;
     private volatile io.github.jayessdeesea.minecraft.command.Stockpile stockpile; // a soldier's thread writes, the general's reads
+    private volatile TimeOfDay time; // a connection's thread writes, the general's reads
 
     public SpringAiGeneral(@Qualifier("generalChatClient") ChatClient chatClient,
                            @Value("${minecraft.general.mission}") String mission,
@@ -46,6 +52,11 @@ public final class SpringAiGeneral implements General {
     @Override
     public void receiveStockpile(io.github.jayessdeesea.minecraft.command.Stockpile stockpile) {
         this.stockpile = stockpile;
+    }
+
+    @Override
+    public void receiveTime(TimeOfDay time) {
+        this.time = time;
     }
 
     @Override
@@ -62,13 +73,30 @@ public final class SpringAiGeneral implements General {
         if (squadStatuses.isEmpty()) {
             return List.of();
         }
-        return toObjectives(callModel(buildContext(mission, supplyPoint, Optional.ofNullable(stockpile), squadStatuses)), squadStatuses);
+        return toObjectives(callModel(buildContext(mission, Optional.ofNullable(time), supplyPoint, Optional.ofNullable(stockpile), squadStatuses)), squadStatuses);
     }
 
-    static PromptContext buildContext(String mission, Optional<Position> supplyPoint,
+    /** The time of day in minutes, the unit a commander plans in: a Minecraft day is 20 of them. */
+    static String describe(TimeOfDay time) {
+        String clock = time.running() ? "" : " The clock is stopped: it stays this way.";
+        if (time.dark()) {
+            return "Night: monsters spawn anywhere dark." + (time.running()
+                    ? String.format(Locale.ROOT, " Light again in %s.", minutes(time.ticksUntilLight())) : clock);
+        }
+        return "Day." + (time.running()
+                ? String.format(Locale.ROOT, " Dark - monsters spawn anywhere unlit - in %s.", minutes(time.ticksUntilDark())) : clock);
+    }
+
+    private static String minutes(long ticks) {
+        long minutes = Math.round(ticks / 1200.0);
+        return minutes < 1 ? "under a minute" : minutes == 1 ? "about 1 minute" : "about " + minutes + " minutes";
+    }
+
+    static PromptContext buildContext(String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
                                       Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile, List<SquadStatus> squadStatuses) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("<mission>\n").append(mission).append("\n</mission>\n\n");
+        time.ifPresent(t -> prompt.append("<time>\n").append(describe(t)).append("\n</time>\n\n"));
         supplyPoint.ifPresent(point -> prompt.append("<supply_point>\nA chest stocked with weapons and armour at ")
                 .append(SpringAiSquadLeader.describe(point))
                 .append(". Give a squad an objective there to resupply it: soldiers short of a weapon or armour draw from it.\n")
@@ -138,6 +166,7 @@ public final class SpringAiGeneral implements General {
     }
 
     GeneralReply callModel(PromptContext context) {
+        LOG.debug("General prompt:\n{}", context.prompt());
         return chatClient.prompt()
                 .user(context.prompt())
                 .call()

@@ -28,6 +28,9 @@ You command the way the U.S. Army's mission command doctrine describes:
 - If there is a <supply_point>, a squad sent there re-arms: its soldiers short of a weapon or
   armour take them from the chest. Send a squad that is badly short of either there before
   committing it to a fight, if the mission allows the time.
+- <time> says whether it is day or night and how long until that changes. At night monsters spawn
+  anywhere dark, and far more of them: squads in the open fight all night. Plan around it - don't
+  send a squad off on a long move or a spread-out gathering job just before dark.
 </doctrine>
 
 <coordinates>

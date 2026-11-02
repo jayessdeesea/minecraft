@@ -33,6 +33,7 @@ import io.github.jayessdeesea.minecraft.protocol.MinecraftClient;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
+import io.github.jayessdeesea.minecraft.protocol.TimeUpdate;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
@@ -332,6 +333,7 @@ public class SoldierRunner implements CommandLineRunner {
         Inventory inventory = new Inventory(); // this connection's thread only
         AtomicReference<Kit> lastKit = new AtomicReference<>();
         AtomicReference<List<String>> enchantmentNames = new AtomicReference<>(List.of());
+        AtomicReference<List<String>> clockNames = new AtomicReference<>(List.of());
         // Created with the session (onJoined); container updates before then can't be a supply run.
         AtomicReference<SupplyRun> supplyRun = new AtomicReference<>();
         AtomicReference<Woodcraft> woodcraftRef = new AtomicReference<>();
@@ -414,10 +416,18 @@ public class SoldierRunner implements CommandLineRunner {
                 (registry, entries) -> {
                     if (registry.equals("minecraft:enchantment")) {
                         enchantmentNames.set(List.copyOf(entries));
+                    } else if (registry.equals("minecraft:world_clock")) {
+                        clockNames.set(List.copyOf(entries));
                     }
                 },
                 // Every connection sees the change; applying it twice is harmless.
                 blocks -> blocks.forEach(b -> chunkCache.setBlock(b.x(), b.y(), b.z(), b.stateId())),
+                // Every connection hears the same clock; the radio operator's passes it up.
+                time -> {
+                    if (definition == SOLDIERS.getFirst()) {
+                        overworldClock(time, clockNames.get()).ifPresent(chainOfCommand::onTime);
+                    }
+                },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
         joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, woodcraftRef, depositorRef))
@@ -425,6 +435,25 @@ public class SoldierRunner implements CommandLineRunner {
                     LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
                     return null;
                 });
+    }
+
+    /**
+     * The overworld's time of day from a Set Time, its clocks named through this session's synced
+     * registry - empty when this update doesn't carry the overworld clock (it only sends clocks that
+     * changed).
+     */
+    static Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> overworldClock(TimeUpdate time, List<String> clockNames) {
+        for (Map.Entry<Integer, TimeUpdate.Clock> clock : time.clocks().entrySet()) {
+            int id = clock.getKey();
+            if (id < 0 || id >= clockNames.size()) {
+                throw new IllegalStateException("world clock " + id + " isn't in the synced registry of " + clockNames.size());
+            }
+            if (clockNames.get(id).equals("minecraft:overworld")) {
+                return Optional.of(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(clock.getValue().totalTicks(),
+                        clock.getValue().rate() > 0));
+            }
+        }
+        return Optional.empty();
     }
 
     /** One inventory slot, its enchantments named through this session's synced registry. */

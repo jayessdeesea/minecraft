@@ -264,6 +264,7 @@ server's own `GameProtocols` registration lists (read with `javap` - see DEVELOP
 | ← | `0x4E` | Remove Entities | `RemoveEntitiesPacket` | registration order |
 | ← | `0x6A` | Set Health | `SetHealthPacket` | live (`0.0` for a dead player) |
 | ← | `0x6B` | Set Held Slot | `InventoryPackets` | registration order |
+| ← | `0x73` | Set Time | `SetTimePacket` | live (overworld clock matches `time query minecraft:day`); world clocks indexed by the synced `minecraft:world_clock` registry |
 | ← | `0x80` | Teleport Entity | `EntityPositionPacket` | registration order |
 | → | `0x00` | Accept Teleportation | `AcceptTeleportationPacket` | live (server keeps the session after it) |
 | → | `0x01` | Attack | `AttackPacket` | live |

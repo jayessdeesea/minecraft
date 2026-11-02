@@ -127,6 +127,11 @@ public class ChainOfCommand {
         general.receiveStockpile(stockpile);
     }
 
+    /** The server sent the time of day - the general plans around nightfall. */
+    public void onTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
+        general.receiveTime(time);
+    }
+
     /** Who {@code squad} is escorting, if anyone. */
     public Optional<String> escort(String squad) {
         return squads.get(squad).escort();

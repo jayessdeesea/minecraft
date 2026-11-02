@@ -55,8 +55,7 @@ registry classifies all logs as LOG.
   carried in.
 
 ## Done when
-- The client decodes world time (the clientbound time update), and the general and squad leaders
-  see how long until dark.
+- Squad leaders see how long until dark, as the general already does (`command.TimeOfDay`).
 - A soldier can place a block it carries against a face it can see (Use Item On with a block in
   hand). This is the building primitive.
 - Soldiers make torches from coal they dig or charcoal they smelt. A squad leader's order to

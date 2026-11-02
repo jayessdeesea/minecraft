@@ -17,6 +17,9 @@ public interface General {
     /** What the stockpile held when a soldier last opened it (docs/military-doctrine.md §12). */
     void receiveStockpile(Stockpile stockpile);
 
+    /** The overworld's time of day, as the server last sent it. */
+    void receiveTime(TimeOfDay time);
+
     /**
      * Decides an {@link Objective} for each squad. The returned list has exactly the same length
      * and order as {@code squadStatuses} - element {@code i} of the result is the objective for the

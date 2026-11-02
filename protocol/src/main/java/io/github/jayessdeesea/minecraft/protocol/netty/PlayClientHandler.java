@@ -42,6 +42,8 @@ import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.SetTimePacket;
+import io.github.jayessdeesea.minecraft.protocol.TimeUpdate;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.AttributeKey;
@@ -214,6 +216,8 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
         } else if (packet instanceof SetHealthPacket health) {
             LOG.debug("Set Health received: health={} food={}", health.health(), health.food());
             listeners.onHealth().accept(new HealthUpdate(health.health(), health.food()));
+        } else if (packet instanceof SetTimePacket time) {
+            listeners.onTime().accept(new TimeUpdate(time.clocks()));
         } else if (packet instanceof InventoryPackets inventory && inventory.containerId() == 0) {
             listeners.onInventory().accept(inventory.update());
         } else if (packet instanceof InventoryPackets container) {

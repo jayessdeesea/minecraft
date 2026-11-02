@@ -37,18 +37,32 @@ class SpringAiGeneralTest {
 
     @Test
     void buildContextGivesTheMissionAndEachSquadsReports() {
-        String prompt = SpringAiGeneral.buildContext("secure the village", java.util.Optional.empty(), java.util.Optional.empty(), List.of(ALPHA, BRAVO)).prompt();
+        String prompt = SpringAiGeneral.buildContext("secure the village", java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty(), List.of(ALPHA, BRAVO)).prompt();
 
         assertTrue(prompt.contains("<mission>\nsecure the village\n</mission>"));
         assertTrue(prompt.contains("<squad name=\"Alpha\">\nSquad leader reports: Cantco: ravine in the way"));
         assertTrue(prompt.contains("- Bob at (3, 64, 4): Moving"));
         assertTrue(prompt.contains("LOGSTAT: no soldier has reported his condition yet."));
         assertTrue(!prompt.contains("<supply_point>"));
+        assertTrue(!prompt.contains("<time>"));
+    }
+
+    @Test
+    void buildContextSaysHowLongUntilDark() {
+        String prompt = SpringAiGeneral.buildContext("secure the village",
+                java.util.Optional.of(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(1000, true)),
+                java.util.Optional.empty(), java.util.Optional.empty(), List.of(ALPHA)).prompt();
+
+        assertTrue(prompt.contains("<time>\nDay. Dark - monsters spawn anywhere unlit - in about 10 minutes.\n</time>"), prompt);
+        assertEquals("Night: monsters spawn anywhere dark. Light again in about 4 minutes.",
+                SpringAiGeneral.describe(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(18000, true)));
+        assertEquals("Day. The clock is stopped: it stays this way.",
+                SpringAiGeneral.describe(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(6000, false)));
     }
 
     @Test
     void buildContextShowsTheSupplyPointWhenThereIsOne() {
-        String prompt = SpringAiGeneral.buildContext("secure the village",
+        String prompt = SpringAiGeneral.buildContext("secure the village", java.util.Optional.empty(),
                 java.util.Optional.of(new Position(10, 70, -5)),
                 java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Stockpile(40, 64)), List.of(ALPHA)).prompt();
 

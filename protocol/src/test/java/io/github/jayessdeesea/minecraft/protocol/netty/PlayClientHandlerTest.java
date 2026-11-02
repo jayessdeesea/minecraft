@@ -66,7 +66,7 @@ class PlayClientHandlerTest {
     }
 
     private static EmbeddedChannel newChannel(AtomicReference<Throwable> disconnectCause, CompletableFuture<PlaySession> result) {
-        PlaySessionListeners listeners = new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, blocks -> { }, disconnectCause::set);
+        PlaySessionListeners listeners = new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, blocks -> { }, time -> { }, disconnectCause::set);
         return new EmbeddedChannel(
                 new MarshallingDecoder(),
                 new SessionStateManager(),
