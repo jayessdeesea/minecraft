@@ -57,7 +57,6 @@ registry classifies all logs as LOG.
 ## Done when
 The hasty hut, the general's PATROL_BASE task and the time of day are live (docs/military-doctrine.md
 § 14). What's left:
-- **Squad leaders see how long until dark,** as the general already does (`command.TimeOfDay`).
 - **Torches.** Soldiers make torches from coal they dig or charcoal they smelt, and light the base
   so block light > 0 on every floor block.
 - **Deliberate base on a later night.** The squad improves the base with a wider perimeter and more

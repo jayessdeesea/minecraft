@@ -52,6 +52,11 @@ final class SquadCommand {
     private volatile String escort;
     private volatile boolean principalOutOfSight;
 
+    /** The server sent the time of day - the squad leader plans around nightfall too. */
+    void receiveTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
+        squadLeader.receiveTime(time);
+    }
+
     SquadCommand(String name, SquadLeader squadLeader, Consumer<String> radio) {
         this.name = name;
         this.squadLeader = squadLeader;

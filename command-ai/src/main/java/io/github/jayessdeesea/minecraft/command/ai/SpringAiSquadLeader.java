@@ -50,6 +50,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
     private volatile Objective objective;
     private volatile SquadOrder lastOrder;
     private volatile Report report = new Report.Idle();
+    private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time; // a connection's thread writes
 
     public SpringAiSquadLeader(String name, ChatClient chatClient) {
         this.name = name;
@@ -64,6 +65,11 @@ public final class SpringAiSquadLeader implements SquadLeader {
     @Override
     public void receiveObjective(Objective objective) {
         this.objective = objective;
+    }
+
+    @Override
+    public void receiveTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
+        this.time = time;
     }
 
     @Override
@@ -82,7 +88,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
         if (current == null) {
             return Optional.empty();
         }
-        SquadOrderReply reply = callModel(buildContext(name, current, lastOrder, soldierStatuses, terrain));
+        SquadOrderReply reply = callModel(buildContext(name, current, lastOrder, soldierStatuses, terrain, Optional.ofNullable(time)));
         SquadOrder order = toSquadOrder(reply, soldierStatuses.stream().map(SoldierStatus::name).toList());
         lastOrder = order;
         report = reply.cantco() == null || reply.cantco().isBlank() ? new Report.Moving() : new Report.Cantco(reply.cantco());
@@ -91,7 +97,14 @@ public final class SpringAiSquadLeader implements SquadLeader {
 
     static PromptContext buildContext(String squadName, Objective objective, SquadOrder lastOrder,
                                       List<SoldierStatus> soldierStatuses, TerrainSurvey terrain) {
+        return buildContext(squadName, objective, lastOrder, soldierStatuses, terrain, Optional.empty());
+    }
+
+    static PromptContext buildContext(String squadName, Objective objective, SquadOrder lastOrder,
+                                      List<SoldierStatus> soldierStatuses, TerrainSurvey terrain,
+                                      Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time) {
         StringBuilder prompt = new StringBuilder();
+        time.ifPresent(t -> prompt.append("<time>\n").append(SpringAiGeneral.describe(t)).append("\n</time>\n\n"));
         prompt.append("<objective>\n")
                 .append("Mission: ").append(objective.mission()).append('\n')
                 .append("Location: ").append(describe(objective.location())).append('\n')

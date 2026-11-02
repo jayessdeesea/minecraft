@@ -295,8 +295,8 @@ asked: pairing is bookkeeping, done deterministically like the other drills.
 
 *How we use it:* the general knows the time of day: Set Time's overworld clock becomes
 `command.TimeOfDay`. Dark is when the server's day timeline dims sky light enough for monsters to
-spawn in the open, ticks 13178 to 22822. The general's prompt says how many minutes until that
-changes.
+spawn in the open, ticks 13178 to 22822. The general's and squad leaders' prompts say how many
+minutes until that changes.
 
 An objective's task can be `PATROL_BASE`. `command.PatrolBase` lays out a hasty hut around the
 squad: a 2x2 floor for up to four soldiers (3x3 for up to nine), walls two high, and a roof over

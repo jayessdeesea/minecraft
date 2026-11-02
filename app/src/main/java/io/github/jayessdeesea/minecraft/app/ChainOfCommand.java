@@ -130,6 +130,7 @@ public class ChainOfCommand {
     /** The server sent the time of day - the general plans around nightfall. */
     public void onTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
         general.receiveTime(time);
+        squads.values().forEach(squad -> squad.receiveTime(time));
     }
 
     /** Who {@code squad} is escorting, if anyone. */

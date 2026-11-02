@@ -72,6 +72,15 @@ class SpringAiSquadLeaderTest {
     }
 
     @Test
+    void buildContextSaysHowLongUntilDark() {
+        String prompt = SpringAiSquadLeader.buildContext("Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN,
+                java.util.Optional.of(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(1000, true))).prompt();
+
+        assertTrue(prompt.startsWith("<time>\nDay. Dark - monsters spawn anywhere unlit - in about 10 minutes.\n</time>"), prompt);
+        assertTrue(!SpringAiSquadLeader.buildContext("Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN).prompt().contains("<time>"));
+    }
+
+    @Test
     void buildContextGivesTheSituationInTaggedSectionsWithReports() {
         String prompt = SpringAiSquadLeader.buildContext("Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN).prompt();
 
