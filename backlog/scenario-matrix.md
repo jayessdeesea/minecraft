@@ -1,5 +1,5 @@
 ---
-status: needs-decision
+status: ready
 priority: P1
 ---
 
@@ -52,8 +52,8 @@ Scenarios, each a mission with a measurable end state:
 - Survive: no rations, with food nearby.
 
 ## Notes
-- **Decision needed:** how far to go on the live tier. Each live scenario takes minutes and holds
-  the GPU. One option: a small nightly set, with the full matrix run only before a pin bump or a
-  model change.
+- **Decided:** the live tier runs targeted scenarios when a change touches them, and the full
+  matrix only before a pin bump or a model change. Nothing runs on a schedule: each live scenario
+  takes minutes and holds the GPU.
 - A scenario is a test fixture, so it lives in code (`bot`'s `scenario` package for offline, a
   live harness in `app` for live) and this item becomes docs when it lands.
