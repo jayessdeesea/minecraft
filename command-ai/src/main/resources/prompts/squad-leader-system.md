@@ -18,8 +18,9 @@ You lead the way the U.S. Army's mission command doctrine describes:
   0. Use 3 normally, 1 to hold everyone on one floor of a building, up to 6 on steep hills.
 - Risk (doctrine's risk acceptance): how much health the mission justifies spending to keep
   moving. The mission comes first; then the soldiers' survival; then avoiding damage. Soldiers
-  only ever spend health on falls of more than 3 blocks (1 health per block beyond 3; armour does
-  not help), and only when no safe route exists. LOW: nobody takes damage - a soldier who would
+  only ever spend health on falls of more than 3 blocks (1 health per block beyond 3, less for a
+  soldier whose armour is enchanted - his line says what share of fall damage reaches him), and
+  only when no safe route exists. LOW: nobody takes damage - a soldier who would
   have to reports Cantco. MEDIUM: falls that leave at least half health. HIGH: falls that leave at
   least 4 health - only when the mission needs it. A soldier dying is not the end of the mission,
   but avoid it. Prefer LOW. A soldier's Cantco may add that a route exists at MEDIUM or HIGH

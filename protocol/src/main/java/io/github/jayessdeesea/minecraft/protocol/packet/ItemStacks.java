@@ -5,6 +5,8 @@ import io.netty.buffer.ByteBuf;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -18,7 +20,7 @@ import java.util.Optional;
  * gap, not a broken connection: the frame is already length-isolated (same reasoning as
  * {@code UnknownPacket}), so the caller keeps what it decoded and drops the rest, and the type is
  * logged loudly so the gap gets closed. Known: the plain-number components a soldier's gear
- * carries (codecs confirmed in {@code DataComponents}).
+ * carries, and enchantments (codecs confirmed in {@code DataComponents}).
  */
 final class ItemStacks {
 
@@ -30,6 +32,12 @@ final class ItemStacks {
     private static final int REPAIR_COST = 19;
     // ... and Unit (no bytes at all).
     private static final int UNBREAKABLE = 4;
+    // ItemEnchantments.STREAM_CODEC: VarInt count, then per entry a VarInt enchantment registry ID
+    // (holderRegistry - no inline form) and a VarInt level. Stored enchantments (books) share it.
+    private static final int ENCHANTMENTS = 13;
+    private static final int STORED_ENCHANTMENTS = 45;
+    /** More than any item carries: there are well under 64 enchantments. */
+    private static final int MAX_ENCHANTMENTS = 64;
 
     /** More than there are component types (111) - a patch can name each at most once. */
     private static final int MAX_COMPONENTS = 256;
@@ -56,6 +64,7 @@ final class ItemStacks {
         int added = ProtocolCodec.readVarIntCount(in, MAX_COMPONENTS);
         int removed = ProtocolCodec.readVarIntCount(in, MAX_COMPONENTS);
         int damage = -1;
+        Map<Integer, Integer> enchantments = Map.of();
         for (int i = 0; i < added; i++) {
             int type = ProtocolCodec.readVarInt(in);
             switch (type) {
@@ -63,6 +72,8 @@ final class ItemStacks {
                 case MAX_DAMAGE, REPAIR_COST -> ProtocolCodec.readVarInt(in);
                 case UNBREAKABLE -> {
                 }
+                case ENCHANTMENTS -> enchantments = readEnchantments(in);
+                case STORED_ENCHANTMENTS -> readEnchantments(in); // a book's: not on the soldier
                 default -> {
                     LOG.warn("Item {} carries data component type {} - not decoded; rest of this packet dropped", itemId, type);
                     throw new Undecodable(new ItemSlot(itemId, count, damage, true), type);
@@ -72,6 +83,15 @@ final class ItemStacks {
         for (int i = 0; i < removed; i++) {
             ProtocolCodec.readVarInt(in);
         }
-        return Optional.of(new ItemSlot(itemId, count, damage, false));
+        return Optional.of(new ItemSlot(itemId, count, damage, false, enchantments));
+    }
+
+    private static Map<Integer, Integer> readEnchantments(ByteBuf in) {
+        int count = ProtocolCodec.readVarIntCount(in, MAX_ENCHANTMENTS);
+        Map<Integer, Integer> enchantments = new HashMap<>(count);
+        for (int i = 0; i < count; i++) {
+            enchantments.put(ProtocolCodec.readVarInt(in), ProtocolCodec.readVarInt(in));
+        }
+        return enchantments;
     }
 }

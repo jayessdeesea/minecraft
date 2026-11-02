@@ -145,14 +145,14 @@ public final class Pathfinder {
                 continue;
             }
             if (clear(world, level)) {
-                int deepest = Math.min(MAX_FALL, MAX_DROP + falls.maxDamage());
+                int deepest = Math.min(MAX_FALL, MAX_DROP + (int) Math.floor(falls.maxDamage() / falls.damageFactor()));
                 for (int drop = 1; drop <= deepest; drop++) {
                     BlockPos down = from.offset(d[0], -drop, d[1]);
                     if (!open(world, down.x(), down.y(), down.z())) {
                         break; // landed on something that isn't standable (a 1-high gap, water)
                     }
                     if (standable(world, down)) {
-                        int damage = Math.max(0, drop - MAX_DROP);
+                        double damage = Math.max(0, drop - MAX_DROP) * falls.damageFactor();
                         moves.add(new Move(down, 1 + drop * 0.5 + damage * falls.costPerDamage()));
                         break;
                     }

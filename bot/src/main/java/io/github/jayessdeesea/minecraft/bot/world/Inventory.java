@@ -27,10 +27,25 @@ public final class Inventory {
 
     private final int[] itemIds = new int[SLOTS];
     private final int[] counts = new int[SLOTS];
+    @SuppressWarnings("unchecked")
+    private final java.util.Map<String, Integer>[] enchantments = new java.util.Map[SLOTS];
     private int heldHotbarSlot;
 
     public Inventory() {
         Arrays.fill(itemIds, -1);
+        Arrays.fill(enchantments, java.util.Map.of());
+    }
+
+    /**
+     * One slot with its enchantments by name ("feather_falling" -> 4); {@code item} is {itemId,
+     * count}, or null for empty.
+     */
+    public synchronized Kit setSlot(int slot, int[] item, java.util.Map<String, Integer> enchanted) {
+        setSlot(slot, item);
+        if (slot >= 0 && slot < SLOTS) {
+            enchantments[slot] = item == null ? java.util.Map.of() : java.util.Map.copyOf(enchanted);
+        }
+        return kit();
     }
 
     /** Every slot at once; slots past the end of {@code items} (an incomplete update) are left as they were. */
@@ -79,6 +94,7 @@ public final class Inventory {
     private void set(int slot, int[] item) {
         itemIds[slot] = item == null ? -1 : item[0];
         counts[slot] = item == null ? 0 : item[1];
+        enchantments[slot] = java.util.Map.of();
     }
 
     public synchronized Kit kit() {
@@ -87,14 +103,17 @@ public final class Inventory {
                 .flatMap(c -> ItemClassRegistry.nameOf(held));
         int arrows = 0;
         int armour = 0;
+        int fallProtection = 0;
         for (int slot = 0; slot < SLOTS; slot++) {
             Optional<ItemClassRegistry.ItemClass> itemClass = ItemClassRegistry.classOf(itemIds[slot]);
             if (itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.ARROWS))) {
                 arrows += counts[slot];
             } else if (slot >= ARMOUR_FIRST && slot <= ARMOUR_LAST && itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.ARMOUR))) {
                 armour++;
+                fallProtection += 3 * enchantments[slot].getOrDefault("minecraft:feather_falling", 0)
+                        + enchantments[slot].getOrDefault("minecraft:protection", 0);
             }
         }
-        return new Kit(weapon, arrows, armour);
+        return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION));
     }
 }

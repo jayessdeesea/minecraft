@@ -318,7 +318,9 @@ then its value, each removed one as VarInt type. A component's value has its own
 length prefix, so `ItemStacks` decodes only the ones it knows - `max_damage` (2), `damage` (3),
 `repair_cost` (19) as VarInts and `unbreakable` (4) as empty - and on any other type keeps the
 item, drops the rest of that packet (the frame is length-isolated, so this is safe), and logs the
-type. Enchantments (13) are the first such gap seen live.
+type. Enchantments (13) and stored enchantments (45, on books) are decoded: a VarInt count, then
+per enchantment a VarInt ID in the session's synced `minecraft:enchantment` registry and a VarInt
+level; the registry's entry order, passed on from Registry Data, names them.
 
 ## 4. Compression
 

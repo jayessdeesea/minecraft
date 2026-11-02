@@ -155,6 +155,8 @@ class PathfinderTest {
         assertTrue(Pathfinder.find(cliff, START, exactly(2, GROUND - 10, 0), 1000, new FallAllowance(7, 5)).reachesGoal(),
                 "a 10-block drop costs 7");
         assertFalse(Pathfinder.find(cliff, START, exactly(2, GROUND - 10, 0), 1000, new FallAllowance(6, 5)).reachesGoal());
+        assertTrue(Pathfinder.find(cliff, START, exactly(2, GROUND - 10, 0), 1000, new FallAllowance(4, 5, 0.52)).reachesGoal(),
+                "Feather Falling IV (12 points) lets 48% through: the drop costs 3.6, within 4");
     }
 
     @Test

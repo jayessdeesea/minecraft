@@ -20,6 +20,7 @@ import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.protocol.HealthUpdate;
 import io.github.jayessdeesea.minecraft.protocol.InventoryUpdate;
+import io.github.jayessdeesea.minecraft.protocol.ItemSlot;
 import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.protocol.MinecraftClient;
@@ -253,6 +254,7 @@ public class SoldierRunner implements CommandLineRunner {
         // Inventory too arrives on join, before the soldier exists - kept the same way.
         Inventory inventory = new Inventory(); // this connection's thread only
         AtomicReference<Kit> lastKit = new AtomicReference<>();
+        AtomicReference<List<String>> enchantmentNames = new AtomicReference<>(List.of());
         // Created with the session (onJoined); container updates before then can't be a supply run.
         AtomicReference<SupplyRun> supplyRun = new AtomicReference<>();
         CompletableFuture<PlaySession> sessionReady = new CompletableFuture<>();
@@ -287,10 +289,13 @@ public class SoldierRunner implements CommandLineRunner {
                 },
                 update -> {
                     Kit kit = switch (update) {
-                        case InventoryUpdate.Contents(var slots, var complete) -> inventory.replaceAll(
-                                slots.stream().map(item -> item.map(i -> new int[]{i.itemId(), i.count()}).orElse(null)).toList());
-                        case InventoryUpdate.Slot(int slot, var item) ->
-                                inventory.setSlot(slot, item.map(i -> new int[]{i.itemId(), i.count()}).orElse(null));
+                        case InventoryUpdate.Contents(var slots, var complete) -> {
+                            for (int slot = 0; slot < slots.size(); slot++) {
+                                setSlot(inventory, slot, slots.get(slot), enchantmentNames.get());
+                            }
+                            yield inventory.kit();
+                        }
+                        case InventoryUpdate.Slot(int slot, var item) -> setSlot(inventory, slot, item, enchantmentNames.get());
                         case InventoryUpdate.HeldSlot(int hotbarSlot) -> inventory.selectHotbar(hotbarSlot);
                     };
                     lastKit.set(kit);
@@ -318,6 +323,12 @@ public class SoldierRunner implements CommandLineRunner {
                         run.onContainer(container);
                     }
                 },
+                // Configuration syncs the registries before any inventory arrives.
+                (registry, entries) -> {
+                    if (registry.equals("minecraft:enchantment")) {
+                        enchantmentNames.set(List.copyOf(entries));
+                    }
+                },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
         joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun))
@@ -325,6 +336,21 @@ public class SoldierRunner implements CommandLineRunner {
                     LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
                     return null;
                 });
+    }
+
+    /** One inventory slot, its enchantments named through this session's synced registry. */
+    private static Kit setSlot(Inventory inventory, int slot, Optional<ItemSlot> item, List<String> enchantmentNames) {
+        if (item.isEmpty()) {
+            return inventory.setSlot(slot, null);
+        }
+        Map<String, Integer> named = new HashMap<>();
+        item.get().enchantments().forEach((id, level) -> {
+            if (id < 0 || id >= enchantmentNames.size()) {
+                throw new IllegalStateException("enchantment " + id + " isn't in the synced registry of " + enchantmentNames.size());
+            }
+            named.put(enchantmentNames.get(id), level);
+        });
+        return inventory.setSlot(slot, new int[]{item.get().itemId(), item.get().count()}, named);
     }
 
     private void onJoined(SoldierDefinition definition, PlaySession session, PlayerPosition spawn,

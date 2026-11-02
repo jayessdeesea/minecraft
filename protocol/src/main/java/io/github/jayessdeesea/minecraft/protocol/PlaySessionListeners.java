@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.protocol;
 
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -30,9 +31,10 @@ public record PlaySessionListeners(Consumer<ChunkUpdate> onChunkUpdate,
                                     Consumer<InventoryUpdate> onInventory,
                                     Consumer<ChatMessage> onChat,
                                     Consumer<ContainerUpdate> onContainer,
+                                    BiConsumer<String, List<String>> onRegistry,
                                     Consumer<Throwable> onDisconnect) {
 
     public static PlaySessionListeners none() {
-        return new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, cause -> { });
+        return new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, cause -> { });
     }
 }

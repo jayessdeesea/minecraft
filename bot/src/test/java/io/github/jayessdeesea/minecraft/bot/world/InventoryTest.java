@@ -39,4 +39,18 @@ class InventoryTest {
         assertEquals(new Kit(Optional.of("iron_sword"), 21, 1), inventory.selectHotbar(1));
         assertEquals(new Kit(Optional.empty(), 21, 1), inventory.setSlot(37, null), "sword dropped");
     }
+
+    @Test
+    void featherFallingAndProtectionOnWornArmourProtectFromFalls() {
+        Inventory inventory = new Inventory();
+        inventory.setSlot(8, new int[]{IRON_HELMET, 1}, java.util.Map.of("minecraft:feather_falling", 4, "minecraft:protection", 2));
+        inventory.setSlot(20, new int[]{IRON_HELMET, 1}, java.util.Map.of("minecraft:protection", 4)); // carried: doesn't count
+
+        Kit kit = inventory.kit();
+
+        assertEquals(14, kit.fallProtection());
+        assertEquals(1 - 14 / 25.0, kit.fallDamageFactor(), 1e-9);
+        inventory.setSlot(8, null);
+        assertEquals(0, inventory.kit().fallProtection());
+    }
 }

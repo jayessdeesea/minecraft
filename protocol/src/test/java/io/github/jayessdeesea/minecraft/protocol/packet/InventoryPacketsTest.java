@@ -16,6 +16,7 @@ class InventoryPacketsTest {
     private static final int IRON_SWORD = 1045;
     private static final int ARROW = 1009;
     private static final int ENCHANTMENTS = 13;
+    private static final int CUSTOM_DATA = 0; // an NBT compound - not decoded
 
     private static void stack(ByteBuf out, int count, int itemId, int... components) {
         ProtocolCodec.writeVarInt(out, count);
@@ -52,11 +53,11 @@ class InventoryPacketsTest {
         ProtocolCodec.writeVarInt(in, 3);  // three slots
         stack(in, 0, 0);                   // empty
         stack(in, 16, ARROW);              // 16 arrows
-        ProtocolCodec.writeVarInt(in, 1);  // an enchanted sword: count 1,
+        ProtocolCodec.writeVarInt(in, 1);  // a sword with custom data: count 1,
         ProtocolCodec.writeVarInt(in, IRON_SWORD);
         ProtocolCodec.writeVarInt(in, 1);  // one added component,
         ProtocolCodec.writeVarInt(in, 0);
-        ProtocolCodec.writeVarInt(in, ENCHANTMENTS); // of a type we don't decode
+        ProtocolCodec.writeVarInt(in, CUSTOM_DATA); // of a type we don't decode
         in.writeBytes(new byte[]{1, 2, 3});
 
         InventoryUpdate.Contents contents = (InventoryUpdate.Contents) InventoryPackets.decodeSetContent(in).update();
@@ -64,6 +65,29 @@ class InventoryPacketsTest {
         assertEquals(List.of(Optional.empty(), Optional.of(new ItemSlot(ARROW, 16, -1, false)),
                 Optional.of(new ItemSlot(IRON_SWORD, 1, -1, true))), contents.slots());
         assertEquals(false, contents.complete());
+    }
+
+    @Test
+    void decodesEnchantmentsAsRegistryIdsAndLevels() {
+        ByteBuf in = Unpooled.buffer();
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 3);
+        in.writeShort(8);                  // boots slot
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, IRON_SWORD);
+        ProtocolCodec.writeVarInt(in, 1);  // one added component:
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, ENCHANTMENTS);
+        ProtocolCodec.writeVarInt(in, 2);  // two enchantments
+        ProtocolCodec.writeVarInt(in, 9);  // registry ID 9 at level 4
+        ProtocolCodec.writeVarInt(in, 4);
+        ProtocolCodec.writeVarInt(in, 21);
+        ProtocolCodec.writeVarInt(in, 1);
+
+        InventoryUpdate.Slot slot = (InventoryUpdate.Slot) InventoryPackets.decodeSetSlot(in).update();
+
+        assertEquals(java.util.Map.of(9, 4, 21, 1), slot.item().orElseThrow().enchantments());
+        assertEquals(0, in.readableBytes());
     }
 
     @Test

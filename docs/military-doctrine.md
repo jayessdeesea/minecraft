@@ -137,7 +137,9 @@ just knowing where the squad is - our soldiers can't mistake each other for the 
 *How we use it:* the squad leader's order carries a `Risk` (LOW, MEDIUM or HIGH), the health the
 mission justifies spending to keep moving. The priorities are the mission first, then the
 soldiers' survival, then avoiding damage. Today health is spent only on falls of more than 3
-blocks, at 1 health per block beyond 3; armour doesn't soften falls. Each soldier turns the order's
+blocks, at 1 health per block beyond 3, cut by the worn armour's Feather Falling (3 points a level)
+and Protection (1 a level) at 4% a point, capped at 20 points - vanilla's enchantment protection.
+`command.Kit.fallProtection` carries it. Each soldier turns the order's
 risk and its own condition into a fall allowance:
 - **The floor:** it never falls below the risk's minimum health (LOW allows no damage, MEDIUM keeps
   10, HIGH keeps 4).

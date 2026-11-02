@@ -144,6 +144,7 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             ctx.writeAndFlush(ClientInformationPacket.defaults());
         } else if (packet instanceof RegistryDataPacket registryData) {
             LOG.debug("Registry Data received: {} ({} entries)", registryData.registry(), registryData.entryIds().size());
+            listeners.onRegistry().accept(registryData.registry(), registryData.entryIds());
         } else if (packet instanceof KnownPacksPacket selectKnownPacks) {
             LOG.info("Select Known Packs: {}", selectKnownPacks.packs());
             ctx.writeAndFlush(new KnownPacksPacket(List.of()));

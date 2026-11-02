@@ -415,14 +415,15 @@ public final class DeterministicSoldier implements Soldier {
             return "";
         }
         BlockPos start = BlockPos.containing(position.x(), position.y(), position.z());
+        double factor = fallDamageFactor();
         Pathfinder.Result route = Pathfinder.find(world, start, goal, PLAN_BUDGET,
-                new FallAllowance((int) Math.ceil(known.health()) - 1, 1));
+                new FallAllowance((int) Math.ceil(known.health()) - 1, 1, factor));
         BlockPos safeEnd = safe.path().isEmpty() ? start : safe.path().getLast();
         BlockPos riskyEnd = route.path().isEmpty() ? start : route.path().getLast();
         if (!route.reachesGoal() && goal.estimate(safeEnd) - goal.estimate(riskyEnd) < RETASK_DISTANCE) {
             return "";
         }
-        int damage = Pathfinder.fallDamage(start, route.path());
+        int damage = (int) Math.ceil(Pathfinder.fallDamage(start, route.path()) * factor);
         double left = known.health() - damage;
         Risk needed = left >= Risk.MEDIUM.minHealthAfter() ? Risk.MEDIUM : left >= Risk.HIGH.minHealthAfter() ? Risk.HIGH : null;
         return String.format(java.util.Locale.ROOT, "; a route with falls costing %d of my %.0f health exists%s", damage,
@@ -454,7 +455,13 @@ public final class DeterministicSoldier implements Soldier {
             return FallAllowance.NONE;
         }
         double cost = move.risk().costPerHealth() * (known.food() >= Condition.REGENERATION_FOOD ? 0.5 : 1);
-        return new FallAllowance((int) Math.floor(spare), cost);
+        return new FallAllowance((int) Math.floor(spare), cost, fallDamageFactor());
+    }
+
+    /** The share of fall damage this soldier's worn armour lets through - 1 until its kit is reported. */
+    private double fallDamageFactor() {
+        Kit carried = kit;
+        return carried == null ? 1 : carried.fallDamageFactor();
     }
 
     private Goal goalFor(Order order) {
