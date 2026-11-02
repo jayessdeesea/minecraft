@@ -72,6 +72,14 @@ public interface PlaySession {
      */
     void quickMove(int containerId, int stateId, int slot);
 
+    /**
+     * Clicks {@code slot} of a container as a mouse does: with the cursor empty, the left button
+     * ({@code rightButton} false) picks up the whole stack and the right half of it; with a stack
+     * on the cursor, the left button puts it all down and the right one item. How crafting grids
+     * are filled.
+     */
+    void click(int containerId, int stateId, int slot, boolean rightButton);
+
     /** Swaps {@code slot} of a container with hotbar slot {@code hotbarSlot}, like a number key. */
     void swapWithHotbar(int containerId, int stateId, int slot, int hotbarSlot);
 

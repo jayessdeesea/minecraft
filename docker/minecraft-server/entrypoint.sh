@@ -1,11 +1,12 @@
 #!/bin/sh
 # First run: accept the EULA and seed server.properties with the offline-mode dev setup AGENTS.md
-# commits to. Later runs leave both alone, so hand edits inside the volume survive restarts.
+# commits to, and no spawn protection - the soldiers aren't operators, and they dig and build. Later runs leave both alone, so hand edits inside the volume survive restarts.
 set -e
 [ -f eula.txt ] || echo "eula=true" > eula.txt
 if [ ! -f server.properties ]; then
     cat > server.properties <<PROPS
 online-mode=false
+spawn-protection=0
 PROPS
 fi
 

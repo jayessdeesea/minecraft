@@ -11,8 +11,10 @@ import io.netty.buffer.ByteBuf;
 public record PlayerActionPacket(int action, int x, int y, int z, int sequence) implements Packet {
 
     public static final int PACKET_ID = 0x29;
+    // The Action enum's ordinals: START_DESTROY_BLOCK, CHANGE_DESTROY_DIRECTION (new in 26.3),
+    // ABORT_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ...
     public static final int START_DESTROY_BLOCK = 0;
-    public static final int STOP_DESTROY_BLOCK = 2;
+    public static final int STOP_DESTROY_BLOCK = 3;
     private static final int FACE_UP = 1;
 
     @Override

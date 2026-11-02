@@ -56,6 +56,8 @@ public final class ContainerPackets {
     public record ContainerClick(int containerId, int stateId, int slot, int button, int mode) implements Packet {
 
         public static final int PACKET_ID = 0x12;
+        /** Ordinary click: button 0 picks up or puts down the whole stack, button 1 half or one. */
+        public static final int PICKUP = 0;
         /** Shift-click: moves the stack to the other side (chest to inventory; armour onto the body). */
         public static final int QUICK_MOVE = 1;
         /** Number key: swaps the slot with hotbar slot {@code button}. */

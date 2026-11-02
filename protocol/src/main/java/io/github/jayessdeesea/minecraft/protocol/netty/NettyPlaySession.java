@@ -77,6 +77,11 @@ final class NettyPlaySession implements PlaySession {
     }
 
     @Override
+    public void click(int containerId, int stateId, int slot, boolean rightButton) {
+        channel.writeAndFlush(new ContainerPackets.ContainerClick(containerId, stateId, slot, rightButton ? 1 : 0, ContainerPackets.ContainerClick.PICKUP));
+    }
+
+    @Override
     public void swapWithHotbar(int containerId, int stateId, int slot, int hotbarSlot) {
         channel.writeAndFlush(new ContainerPackets.ContainerClick(containerId, stateId, slot, hotbarSlot, ContainerPackets.ContainerClick.SWAP));
     }

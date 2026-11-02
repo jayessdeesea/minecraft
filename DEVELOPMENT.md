@@ -165,7 +165,9 @@ javap -v ...   # when a codec is a method reference: the BootstrapMethods/Method
 
 For a pin bump, run the same `javap` over both versions' jars and compare: packet IDs move
 whenever a packet is inserted, and a codec rewritten as a composite can keep or change its wire
-format, so read the composite's parts. The data generator's `packets.json` report (section 7)
+format, so read the composite's parts. Compare the constants of every enum written by ordinal
+(`writeEnum`) too: an inserted constant shifts the ones after it without changing any read or
+write call - 26.3's `PlayerAction` gained `CHANGE_DESTROY_DIRECTION` at ordinal 1. The data generator's `packets.json` report (section 7)
 lists every packet ID, a cross-check on the registration order.
 
 Point `javap` straight at the jar. Don't extract it on Windows: deep `net/minecraft/...` paths
