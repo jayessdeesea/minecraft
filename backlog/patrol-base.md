@@ -57,8 +57,6 @@ registry classifies all logs as LOG.
 ## Done when
 The hasty hut, the general's PATROL_BASE task and the time of day are live (docs/military-doctrine.md
 § 14). What's left:
-- **Cobblestone moves between soldiers.** Building runs out when one soldier carries the blocks and
-  its squadmates carry none. Cross-levelling covers logs only (backlog/cross-leveling.md).
 - **Squad leaders see how long until dark,** as the general already does (`command.TimeOfDay`).
 - **Torches.** Soldiers make torches from coal they dig or charcoal they smelt, and light the base
   so block light > 0 on every floor block.
@@ -75,8 +73,5 @@ The hasty hut, the general's PATROL_BASE task and the time of day are live (docs
 - **Mapping lightness:** we receive block light per section in chunk data (docs/world-data-spec.md)
   but don't store it. Either keep it, or compute torch coverage ourselves from torch positions
   (light falls off by 1 per block). Prefer the server's data: it's ground truth.
-- **Contact through a wall:** a hostile within 8 blocks outside the finished hut puts the squad in
-  contact. The base stands down and the soldiers' reflex tries to close on something it can't
-  reach. Contact should count only hostiles the soldier can reach.
 - **Uneven ground:** the floor goes on the ground at the site's centre. A wall cell over a dip has
   nothing under it, and is skipped if no neighbour is solid either.

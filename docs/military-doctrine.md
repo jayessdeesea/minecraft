@@ -165,7 +165,9 @@ the squad to falls.
   recharged, backs off inside 2.5 blocks, which is outside a zombie's reach, and holds in
   between. It gets away from creepers instead. Losing health with no hostile within 8 blocks
   means being shot at, so for 5 seconds it looks out to 16 blocks, beyond a skeleton's 15-block
-  bow range, and goes for the shooter.
+  bow range, and goes for the shooter. Only a hostile it can see counts - nothing solid between
+  its eyes and the hostile - so a squad walled into its patrol base (§14) isn't in contact with
+  the monsters outside.
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
 - **The squad leader** sees the contact in its next SITREP and can order something else.

@@ -233,10 +233,10 @@ public final class DeterministicSoldier implements Soldier {
         if (hurt.getAndSet(false)) {
             underFireTicks = UNDER_FIRE_TICKS;
         }
-        List<TrackedEntity> threats = world.nearbyHostiles(position, CONTACT_RADIUS);
+        List<TrackedEntity> threats = visible(world, world.nearbyHostiles(position, CONTACT_RADIUS));
         if (threats.isEmpty() && underFireTicks > 0) {
             // Hit with nothing in reach: someone is shooting - find the shooter.
-            threats = world.nearbyHostiles(position, UNDER_FIRE_RADIUS);
+            threats = visible(world, world.nearbyHostiles(position, UNDER_FIRE_RADIUS));
         }
         if (underFireTicks > 0) {
             underFireTicks--;
@@ -282,6 +282,37 @@ public final class DeterministicSoldier implements Soldier {
      */
     public void lookAt(Position target) {
         look(target);
+    }
+
+    /**
+     * The hostiles this soldier can see: a hostile behind a wall can't reach it and can't be
+     * reached, so it isn't contact - a squad sealed in its patrol base isn't fighting the night
+     * outside. Vanilla mobs likewise need a line of sight to target a player.
+     */
+    private List<TrackedEntity> visible(WorldView world, List<TrackedEntity> hostiles) {
+        Position eye = new Position(position.x(), position.y() + EYE_HEIGHT, position.z());
+        return hostiles.stream().filter(hostile -> lineOfSight(world, eye,
+                new Position(hostile.position().x(), hostile.position().y() + TARGET_HEIGHT, hostile.position().z()))).toList();
+    }
+
+    /** Sampling step along a sight line: fine enough not to step over the corner of a block. */
+    static final double SIGHT_STEP = 0.2;
+
+    /** Whether no solid block lies on the straight line from {@code from} to {@code to}. */
+    static boolean lineOfSight(WorldView world, Position from, Position to) {
+        double dx = to.x() - from.x();
+        double dy = to.y() - from.y();
+        double dz = to.z() - from.z();
+        double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        int steps = (int) Math.ceil(length / SIGHT_STEP);
+        for (int i = 1; i < steps; i++) {
+            double t = (double) i / steps;
+            if (world.isSolid((int) Math.floor(from.x() + dx * t), (int) Math.floor(from.y() + dy * t),
+                    (int) Math.floor(from.z() + dz * t))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void look(Position target) {

@@ -122,11 +122,25 @@ class DeterministicSoldierTest {
 
     @Test
     void standsStillWhenBackingOffIsBlocked() {
-        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.3, 64, 0.5));
+        // Her back flush to a wall: she sees the zombie in front, and can't step back.
+        WorldView backToTheWall = withHostileAt(new Position(2.3, 64, 0.5), (x, y, z) -> y < GROUND || x < 0);
 
-        alice.tick(withHostileAt(new Position(2, 64, 0), true));
+        alice.tick(backToTheWall);
 
-        assertEquals(new Position(0, 64, 0), alice.status().position());
+        assertEquals(new Report.InContact(1), alice.status().report());
+        assertEquals(new Position(0.3, 64, 0.5), alice.status().position());
+    }
+
+    @Test
+    void aHostileBehindAWallIsNotContact() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, 64, 0.5));
+        // A wall two high at x=2, between her and a zombie at x=4 - a patrol base's wall.
+        WorldView walled = withHostileAt(new Position(4.5, 64, 0.5), (x, y, z) -> y < GROUND || (x == 2 && y <= GROUND + 2));
+
+        alice.tick(walled);
+
+        assertEquals(new Report.Idle(), alice.status().report());
     }
 
     @Test
@@ -556,10 +570,19 @@ class DeterministicSoldierTest {
 
     /** A fake {@link WorldView} with one hostile, honoring the radius the soldier asks for. */
     private static WorldView withHostileAt(Position hostile, boolean everythingSolid) {
+        return withHostileAt(hostile, (x, y, z) -> y < GROUND || everythingSolid);
+    }
+
+    /** Which cells are solid. */
+    private interface Solid {
+        boolean at(int x, int y, int z);
+    }
+
+    private static WorldView withHostileAt(Position hostile, Solid solid) {
         return new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
-                return y < GROUND || everythingSolid;
+                return solid.at(x, y, z);
             }
 
             @Override
