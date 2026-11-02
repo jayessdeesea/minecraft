@@ -123,6 +123,16 @@ public final class Pathfinder {
      * get there?" for a whole area at once.
      */
     public static java.util.Set<BlockPos> reachable(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded) {
+        return reachable(world, start, maxHorizontalDistance, maxExpanded, false);
+    }
+
+    /**
+     * As {@link #reachable(WorldView, BlockPos, int, int)}, with pillar steps when {@code canPillar} -
+     * but only beside a wall, the one place a pillar step gets anywhere a walk can't. Without that
+     * limit the fill would climb every open column into the sky.
+     */
+    public static java.util.Set<BlockPos> reachable(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded,
+                                                     boolean canPillar) {
         java.util.Set<BlockPos> seen = new java.util.HashSet<>();
         java.util.ArrayDeque<BlockPos> frontier = new java.util.ArrayDeque<>();
         if (!standable(world, start)) {
@@ -132,7 +142,7 @@ public final class Pathfinder {
         frontier.add(start);
         while (!frontier.isEmpty() && seen.size() < maxExpanded) {
             BlockPos current = frontier.poll();
-            for (Move move : moves(world, current, FallAllowance.NONE, false)) {
+            for (Move move : moves(world, current, FallAllowance.NONE, canPillar && besideWall(world, current))) {
                 BlockPos next = move.to();
                 if (Math.abs(next.x() - start.x()) <= maxHorizontalDistance
                         && Math.abs(next.z() - start.z()) <= maxHorizontalDistance
@@ -184,6 +194,16 @@ public final class Pathfinder {
             }
         }
         return moves;
+    }
+
+    /** Whether a block one up from {@code cell} is solid on some side - a wall to climb beside. */
+    private static boolean besideWall(WorldView world, BlockPos cell) {
+        for (int[] d : ORTHOGONAL) {
+            if (world.isSolid(cell.x() + d[0], cell.y() + 1, cell.z() + d[1])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Total fall damage along {@code path} from {@code start}: 1 per block beyond {@link #MAX_DROP}, per fall. */

@@ -23,9 +23,9 @@ up per step, and the pathfinder plans those steps at a price (`Pathfinder`, `Det
 - **Digging steps:** facing a hillside it can't climb, a soldier digs a staircase. It removes the
   two cells above each step and goes up one block per step. Pillaring needs blocks; digging
   doesn't, and leaves a way back down.
-- **The survey counts ground reachable by these moves,** so the squad leader and the general see
-  the high ground as reachable at a price, not walled off. Today the survey's flood fill uses
-  walking moves only.
+- **The survey prices climbing.** It counts ground a point man carrying cobblestone can climb to
+  as reachable, the same as ground he can walk to. The squad leader can't tell a stroll from a
+  climb that spends a stack of blocks.
 - **Blocks budgeted:** a route's pillar steps are checked against the blocks carried. Today a
   soldier that runs out mid-climb stops and re-plans.
 - Measured in `SoldierScenarioTest` with a cliff family: 2-, 4- and 8-block walls, crossed with

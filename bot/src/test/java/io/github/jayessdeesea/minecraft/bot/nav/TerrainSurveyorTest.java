@@ -65,6 +65,14 @@ class TerrainSurveyorTest {
     }
 
     @Test
+    void aPointManCarryingBlocksCanClimbTheWall() {
+        TerrainSurvey survey = TerrainSurveyor.survey(WORLD, new Position(0.5, GROUND, 0.5), true);
+
+        assertTrue(at(survey, 24, 0).reachable(), "pillar up beside the wall, over, and down the other side");
+        assertEquals(Ground.WATER, at(survey, -24, 0).ground(), "climbing doesn't make water land");
+    }
+
+    @Test
     void aPointManInMidJumpStillSeesWhatsReachable() {
         TerrainSurvey survey = TerrainSurveyor.survey(WORLD, new Position(0.5, GROUND + 1.2, 0.5));
 

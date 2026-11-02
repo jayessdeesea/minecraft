@@ -27,8 +27,16 @@ public final class TerrainSurveyor {
     }
 
     public static TerrainSurvey survey(WorldView world, Position pointMan) {
+        return survey(world, pointMan, false);
+    }
+
+    /**
+     * As {@link #survey(WorldView, Position)}; with {@code canClimb} - the point man carries blocks to
+     * pillar with - ground up a wall or cliff counts as reachable too.
+     */
+    public static TerrainSurvey survey(WorldView world, Position pointMan, boolean canClimb) {
         BlockPos start = groundUnder(world, BlockPos.containing(pointMan.x(), pointMan.y(), pointMan.z()));
-        Set<BlockPos> reachable = Pathfinder.reachable(world, start, RADIUS + 2, FLOOD_BUDGET);
+        Set<BlockPos> reachable = Pathfinder.reachable(world, start, RADIUS + 2, FLOOD_BUDGET, canClimb);
 
         List<TerrainSurvey.Sample> samples = new ArrayList<>();
         for (int dz = -RADIUS; dz <= RADIUS; dz += SPACING) {
