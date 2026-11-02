@@ -122,6 +122,11 @@ public class ChainOfCommand {
         transmit("[" + escort.name + " -> " + operator + "] WILCO: escorting " + principal);
     }
 
+    /** A soldier saw what the stockpile holds - the general is told, for its next decision. */
+    public void onStockpile(io.github.jayessdeesea.minecraft.command.Stockpile stockpile) {
+        general.receiveStockpile(stockpile);
+    }
+
     /** Who {@code squad} is escorting, if anyone. */
     public Optional<String> escort(String squad) {
         return squads.get(squad).escort();

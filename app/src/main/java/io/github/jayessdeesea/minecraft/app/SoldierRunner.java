@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
+import io.github.jayessdeesea.minecraft.bot.supply.Depositor;
 import io.github.jayessdeesea.minecraft.bot.supply.Gatherer;
 import io.github.jayessdeesea.minecraft.bot.supply.SupplyRun;
 import io.github.jayessdeesea.minecraft.bot.supply.Woodcraft;
@@ -117,6 +118,8 @@ public class SoldierRunner implements CommandLineRunner {
     private final Map<String, Boolean> rearmAllowed = new ConcurrentHashMap<>();
     /** Logs and stand cells a soldier is working, shared so soldiers pick different trees. */
     private final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> treeClaims = ConcurrentHashMap.newKeySet();
+    /** Each connected soldier's trips to the stockpile, by name. */
+    private final Map<String, Depositor> depositors = new ConcurrentHashMap<>();
     /** Each connected soldier's gathering routine, by name. */
     private final Map<String, Gatherer> gatherers = new ConcurrentHashMap<>();
     /** What each soldier's squad is gathering, and around where - squad loop writes, tick reads; absent when nothing. */
@@ -237,6 +240,9 @@ public class SoldierRunner implements CommandLineRunner {
             Woodcraft woodcraft = woodcrafts.get(soldierName);
             Gatherer gatherer = gatherers.get(soldierName);
             Optional<Position> stand = woodcraft == null ? Optional.empty() : woodcraft.standAt();
+            if (stand.isEmpty() && depositors.containsKey(soldierName)) {
+                stand = depositors.get(soldierName).standAt();
+            }
             if (stand.isEmpty() && gatherer != null) {
                 stand = gatherer.standAt();
             }
@@ -293,6 +299,7 @@ public class SoldierRunner implements CommandLineRunner {
         // Created with the session (onJoined); container updates before then can't be a supply run.
         AtomicReference<SupplyRun> supplyRun = new AtomicReference<>();
         AtomicReference<Woodcraft> woodcraftRef = new AtomicReference<>();
+        AtomicReference<Depositor> depositorRef = new AtomicReference<>();
         CompletableFuture<PlaySession> sessionReady = new CompletableFuture<>();
 
         CompletableFuture<PlaySession> joined = MinecraftClient.join(HOST, PORT, name, new PlaySessionListeners(
@@ -362,6 +369,10 @@ public class SoldierRunner implements CommandLineRunner {
                     if (woodcraft != null) {
                         woodcraft.onContainer(container);
                     }
+                    Depositor depositor = depositorRef.get();
+                    if (depositor != null) {
+                        depositor.onContainer(container);
+                    }
                 },
                 // Configuration syncs the registries before any inventory arrives.
                 (registry, entries) -> {
@@ -373,7 +384,7 @@ public class SoldierRunner implements CommandLineRunner {
                 blocks -> blocks.forEach(b -> chunkCache.setBlock(b.x(), b.y(), b.z(), b.stateId())),
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
-        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, woodcraftRef))
+        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, woodcraftRef, depositorRef))
                 .exceptionally(cause -> {
                     LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
                     return null;
@@ -399,7 +410,7 @@ public class SoldierRunner implements CommandLineRunner {
                            AtomicReference<ScheduledExecutorService> activeScheduler,
                            AtomicReference<DeterministicSoldier> activeSoldier, AtomicReference<HealthUpdate> lastHealth,
                            AtomicReference<Kit> lastKit, Inventory inventory, AtomicReference<SupplyRun> supplyRun,
-                           AtomicReference<Woodcraft> woodcraftRef) {
+                           AtomicReference<Woodcraft> woodcraftRef, AtomicReference<Depositor> depositorRef) {
         String name = definition.name();
         LOG.info("{} joined at real spawn ({}, {}, {}): {}", name, spawn.x(), spawn.y(), spawn.z(), session.playState());
 
@@ -433,6 +444,9 @@ public class SoldierRunner implements CommandLineRunner {
         woodcrafts.put(name, woodcraft);
         Gatherer gatherer = new Gatherer(name, session, inventory, treeClaims);
         gatherers.put(name, gatherer);
+        Depositor depositor = new Depositor(name, session, inventory, chainOfCommand::onStockpile);
+        depositors.put(name, depositor);
+        depositorRef.set(depositor);
         woodcraftRef.set(woodcraft);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
@@ -456,12 +470,17 @@ public class SoldierRunner implements CommandLineRunner {
                     : bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
                     : needsPickaxe ? Optional.of(Woodcraft.Tool.WOODEN_PICKAXE) : Optional.empty();
             woodcraft.tick(status.position(), world, tool);
+            Kit carried = status.condition().flatMap(c -> c.kit()).orElse(null);
+            boolean fullLoad = carried != null && (carried.logs() >= Gatherer.CARRY_LOGS || carried.stone() >= Gatherer.CARRY_STONE);
+            depositor.tick(status.position(), supplyPoint, fullLoad && clear && !woodcraft.active());
             gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
                     gather == null ? status.position() : gather.location(),
-                    !(status.report() instanceof Report.InContact) && !woodcraft.active() && !run.active());
+                    !(status.report() instanceof Report.InContact) && !woodcraft.active() && !run.active() && !depositor.active());
             soldier.task(woodcraft.active()
                     ? (woodcraft.tool() == Woodcraft.Tool.WOODEN_SWORD ? new Report.Rearming()
                             : new Report.Gathering(io.github.jayessdeesea.minecraft.command.Resource.STONE))
+                    : depositor.active() ? new Report.Gathering(carried != null && carried.stone() >= Gatherer.CARRY_STONE
+                            ? io.github.jayessdeesea.minecraft.command.Resource.STONE : io.github.jayessdeesea.minecraft.command.Resource.WOOD)
                     : gatherer.active() ? new Report.Gathering(gather.gather().orElseThrow())
                     : gather != null && gatherer.exhausted()
                     ? new Report.Cantco("nothing left to gather within 16 blocks of the objective")

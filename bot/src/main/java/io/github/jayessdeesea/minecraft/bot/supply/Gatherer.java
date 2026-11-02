@@ -28,8 +28,8 @@ public final class Gatherer {
     private static final Logger LOG = LogManager.getLogger(Gatherer.class);
 
     /** What one soldier carries before it stops: loads it can still fight with. */
-    static final int CARRY_LOGS = 16;
-    static final int CARRY_STONE = 32;
+    public static final int CARRY_LOGS = 16;
+    public static final int CARRY_STONE = 32;
     static final int RETRY_TICKS = 600;
 
     private final String name;

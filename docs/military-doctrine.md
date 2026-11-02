@@ -245,7 +245,12 @@ reads what each squad can see within 64 blocks of its point man: the nearest thr
 and the nearest three outcrops of stone open to the sky (not cave walls, which no gatherer can
 reach), each with its count, distance and direction (`bot.supply.ResourceSurveyor`,
 `command.SquadStatus.resources`). A soldier that can't make the pickaxe it needs - no trees in reach
-- reports CANTCO too. Logs carried show in each
+- reports CANTCO too.
+
+The supply point's chest is also the stockpile. A soldier with a full load walks it over and puts in
+the material it has a full load of (`bot.supply.Depositor`) - only that, so a soldier quarrying stone
+keeps the logs for its next pickaxe, which wears out in 59 blocks. What the chest holds when it's
+opened goes to the general (`General.receiveStockpile`), shown with the supply point. Logs carried show in each
 soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
 
 ## Sources

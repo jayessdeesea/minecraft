@@ -22,7 +22,8 @@ You command the way the U.S. Army's mission command doctrine describes:
   gather, put the objective at one of them - soldiers only reach within 16 blocks of the objective.
 - An objective can tell its squad to gather WOOD (soldiers chop logs, up to 16 each) or STONE
   (soldiers make themselves wooden pickaxes first - about a minute, and it needs trees nearby - then
-  quarry cobblestone, up to 32 each). The LOGSTAT counts both. Use it when the mission needs building
+  quarry cobblestone, up to 32 each). The LOGSTAT counts both. With a supply point, soldiers carry a
+  full load to it and go back for more, so the stockpile grows while they gather. Use it when the mission needs building
   material; a squad gathering is spread out and slow to fight, so pick safe ground. Otherwise NONE.
 - If there is a <supply_point>, a squad sent there re-arms: its soldiers short of a weapon or
   armour take them from the chest. Send a squad that is badly short of either there before

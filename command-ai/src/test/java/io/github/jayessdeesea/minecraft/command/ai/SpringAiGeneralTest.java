@@ -37,7 +37,7 @@ class SpringAiGeneralTest {
 
     @Test
     void buildContextGivesTheMissionAndEachSquadsReports() {
-        String prompt = SpringAiGeneral.buildContext("secure the village", java.util.Optional.empty(), List.of(ALPHA, BRAVO)).prompt();
+        String prompt = SpringAiGeneral.buildContext("secure the village", java.util.Optional.empty(), java.util.Optional.empty(), List.of(ALPHA, BRAVO)).prompt();
 
         assertTrue(prompt.contains("<mission>\nsecure the village\n</mission>"));
         assertTrue(prompt.contains("<squad name=\"Alpha\">\nSquad leader reports: Cantco: ravine in the way"));
@@ -49,9 +49,11 @@ class SpringAiGeneralTest {
     @Test
     void buildContextShowsTheSupplyPointWhenThereIsOne() {
         String prompt = SpringAiGeneral.buildContext("secure the village",
-                java.util.Optional.of(new Position(10, 70, -5)), List.of(ALPHA)).prompt();
+                java.util.Optional.of(new Position(10, 70, -5)),
+                java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Stockpile(40, 64)), List.of(ALPHA)).prompt();
 
         assertTrue(prompt.contains("<supply_point>\nA chest stocked with weapons and armour at (10, 70, -5)."));
+        assertTrue(prompt.contains("Last seen holding 40 logs and 64 cobblestone."));
     }
 
     @Test

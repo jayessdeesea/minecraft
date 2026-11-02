@@ -33,6 +33,7 @@ public final class SpringAiGeneral implements General {
     private final ChatClient chatClient;
     private volatile String mission; // written by the operator's thread, read by the general's
     private final Optional<Position> supplyPoint;
+    private volatile io.github.jayessdeesea.minecraft.command.Stockpile stockpile; // a soldier's thread writes, the general's reads
 
     public SpringAiGeneral(@Qualifier("generalChatClient") ChatClient chatClient,
                            @Value("${minecraft.general.mission}") String mission,
@@ -40,6 +41,11 @@ public final class SpringAiGeneral implements General {
         this.chatClient = chatClient;
         this.mission = mission;
         this.supplyPoint = Resupply.supplyPoint(supplyPoint);
+    }
+
+    @Override
+    public void receiveStockpile(io.github.jayessdeesea.minecraft.command.Stockpile stockpile) {
+        this.stockpile = stockpile;
     }
 
     @Override
@@ -56,16 +62,20 @@ public final class SpringAiGeneral implements General {
         if (squadStatuses.isEmpty()) {
             return List.of();
         }
-        return toObjectives(callModel(buildContext(mission, supplyPoint, squadStatuses)), squadStatuses);
+        return toObjectives(callModel(buildContext(mission, supplyPoint, Optional.ofNullable(stockpile), squadStatuses)), squadStatuses);
     }
 
-    static PromptContext buildContext(String mission, Optional<Position> supplyPoint, List<SquadStatus> squadStatuses) {
+    static PromptContext buildContext(String mission, Optional<Position> supplyPoint,
+                                      Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile, List<SquadStatus> squadStatuses) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("<mission>\n").append(mission).append("\n</mission>\n\n");
         supplyPoint.ifPresent(point -> prompt.append("<supply_point>\nA chest stocked with weapons and armour at ")
                 .append(SpringAiSquadLeader.describe(point))
                 .append(". Give a squad an objective there to resupply it: soldiers short of a weapon or armour draw from it.\n")
-                .append("</supply_point>\n\n"));
+                .append("It is also the stockpile: soldiers carrying a full load of gathered logs or cobblestone put it in. ")
+                .append(stockpile.map(s -> "Last seen holding " + s.logs() + " logs and " + s.stone() + " cobblestone.")
+                        .orElse("Nobody has looked inside yet."))
+                .append("\n</supply_point>\n\n"));
         for (SquadStatus squad : squadStatuses) {
             prompt.append("<squad name=\"").append(squad.squadName()).append("\">\n")
                     .append("Squad leader reports: ").append(SpringAiSquadLeader.describe(squad.report())).append('\n');

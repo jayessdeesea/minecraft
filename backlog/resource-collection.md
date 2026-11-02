@@ -1,21 +1,19 @@
 ---
-status: in-progress
-priority: P1
+status: proposed
+priority: P2
 doctrine: Class IV supply (FM 4-0)
 ---
 
-# Collecting resources
+# More of the materials economy
 
 ## Why
-Squads can gather wood around an objective the general names (docs/military-doctrine.md § 12),
-or quarry stone (making wooden pickaxes as needed), and report what they can see of both so the
-general can choose. What's missing is a place to put it all. It's the coordination problem the project is about: the general
-splitting gathering, guarding and moving between squads.
+Squads gather wood and stone where the general sends them, make the tools they need, and stockpile
+what they gather at the supply point (docs/military-doctrine.md § 12). Two gaps show live: a
+soldier with no logs and no trees in reach can't replace a worn-out pickaxe, though its squadmates
+or the stockpile have logs to spare; and wood and stone are the only materials.
 
 ## Done when
-- A stockpile: soldiers deposit what they gather in a chest (the supply point, or one they place),
-  and the LOGSTAT reports what's stockpiled as well as what's carried.
-
-## Notes
-- Beyond the stockpile: other materials (ore, which needs a stone pickaxe; sand; dirt), and squads
-  sharing materials - a soldier with logs handing them to one that has none.
+- A soldier that needs logs for a tool takes them from the stockpile, or a squadmate's load, when
+  there are no trees in reach.
+- At least one more material is gathered: ore (with a stone pickaxe made from cobblestone), or sand
+  and dirt.
