@@ -92,6 +92,14 @@ soldiers' SITREPs into one for the general, with a LOGSTAT summed from the soldi
 soldiers and arrows (Class V), and casualties. These are the structured inputs the LLM-backed
 echelons read - the same economy of attention doctrine optimizes for.
 
+*Resupply:* the operator can set up a supply point - a chest at `minecraft.supply.point` - and
+the general sees it next to the LOGSTAT. When the general gives a squad an objective there, the
+`command.Resupply` drill sends each soldier short of a weapon or armour to the chest. A soldier
+short of kit who comes within reach of the chest draws from it on its own initiative, whatever its
+order (`bot.supply.SupplyRun`). It takes only what fills a gap - the best melee weapon if it has
+none, and one piece for each empty armour slot (`bot.supply.Quartermaster`) - then wears the
+armour and holds the weapon. Nothing restocks the chest but the operator.
+
 ## 5. Orders downward
 
 | Order | Use | Source |

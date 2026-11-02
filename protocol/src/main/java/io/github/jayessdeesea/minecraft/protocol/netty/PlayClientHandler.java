@@ -1,6 +1,8 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.ChatMessage;
+import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
+import io.github.jayessdeesea.minecraft.protocol.InventoryUpdate;
 import io.github.jayessdeesea.minecraft.protocol.HealthUpdate;
 import io.github.jayessdeesea.minecraft.protocol.ChunkUnload;
 import io.github.jayessdeesea.minecraft.protocol.ChunkUpdate;
@@ -35,6 +37,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.PlayerLoadedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RegistryDataPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
@@ -210,6 +213,18 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             listeners.onHealth().accept(new HealthUpdate(health.health(), health.food()));
         } else if (packet instanceof InventoryPackets inventory && inventory.containerId() == 0) {
             listeners.onInventory().accept(inventory.update());
+        } else if (packet instanceof InventoryPackets container) {
+            switch (container.update()) {
+                case InventoryUpdate.Contents(var slots, var complete) -> listeners.onContainer().accept(
+                        new ContainerUpdate.Contents(container.containerId(), container.stateId(), slots, complete));
+                case InventoryUpdate.Slot(int slot, var item) -> listeners.onContainer().accept(
+                        new ContainerUpdate.Slot(container.containerId(), container.stateId(), slot, item));
+                case InventoryUpdate.HeldSlot held -> throw new IllegalStateException("held slot under container " + container.containerId());
+            }
+        } else if (packet instanceof ContainerPackets.OpenScreen open) {
+            listeners.onContainer().accept(new ContainerUpdate.Opened(open.containerId(), open.menuType()));
+        } else if (packet instanceof ContainerPackets.ContainerClosed closed) {
+            listeners.onContainer().accept(new ContainerUpdate.Closed(closed.containerId()));
         } else if (packet instanceof PlayerChatPacket chat) {
             listeners.onChat().accept(new ChatMessage(chat.sender(), chat.message()));
         }

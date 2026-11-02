@@ -11,6 +11,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
@@ -46,6 +47,8 @@ public final class PlayMarshaller implements PacketMarshaller {
             case InventoryPackets.SET_CONTENT_PACKET_ID -> InventoryPackets.decodeSetContent(data);
             case InventoryPackets.SET_SLOT_PACKET_ID -> InventoryPackets.decodeSetSlot(data);
             case InventoryPackets.SET_HELD_SLOT_PACKET_ID -> InventoryPackets.decodeSetHeldSlot(data);
+            case ContainerPackets.OpenScreen.PACKET_ID -> ContainerPackets.OpenScreen.decode(data);
+            case ContainerPackets.ContainerClosed.PACKET_ID -> ContainerPackets.ContainerClosed.decode(data);
             default -> new UnknownPacket(packetId, ByteBufUtil.getBytes(data));
         };
     }

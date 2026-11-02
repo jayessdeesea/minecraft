@@ -11,8 +11,7 @@ package io.github.jayessdeesea.minecraft.protocol;
  * react to or observe - docs/protocol-pipeline.md's control-plane tenet 4 called this moment out
  * specifically: once something outside {@code protocol} needs to send a real command, it goes
  * through an explicit method here, never through {@code bot} reaching into Netty directly (enforced
- * by the app module's {@code ArchitectureTest} confining {@code io.netty} to this module). No
- * {@code onTick}/chat-sending yet - those packets aren't decoded.
+ * by the app module's {@code ArchitectureTest} confining {@code io.netty} to this module).
  *
  * <p>Netty-free by design, like {@link PlayState} - {@code bot} depends on this interface without
  * pulling in {@code io.netty}.
@@ -51,6 +50,29 @@ public interface PlaySession {
 
     /** Sends a plain, unsigned chat line - other players receive it as Player Chat. */
     void sendChat(String message);
+
+    /**
+     * Uses the block at ({@code x}, {@code y}, {@code z}) with the main hand - for a chest, opens
+     * it, and the server answers with a {@code ContainerUpdate.Opened} and the chest's contents.
+     * The server ignores a block out of reach (about 4.5 blocks from the eyes).
+     */
+    void useBlock(int x, int y, int z);
+
+    /**
+     * Shift-clicks {@code slot} of an open container (or container 0, the player's inventory):
+     * from a chest the stack moves into the inventory; from the inventory, armour moves onto the
+     * body. {@code stateId} is the one the container's last update carried.
+     */
+    void quickMove(int containerId, int stateId, int slot);
+
+    /** Swaps {@code slot} of a container with hotbar slot {@code hotbarSlot}, like a number key. */
+    void swapWithHotbar(int containerId, int stateId, int slot, int hotbarSlot);
+
+    /** Closes the container this player has open. */
+    void closeContainer(int containerId);
+
+    /** Selects hotbar slot 0-8 as the item in hand. The server doesn't echo it back. */
+    void selectHotbarSlot(int hotbarSlot);
 
     /** Whether the underlying connection is still open. */
     boolean isOpen();

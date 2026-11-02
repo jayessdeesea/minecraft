@@ -17,10 +17,11 @@ import java.util.Optional;
  *   <li>Container Set Slot, 0x14: VarInt container ID, VarInt state ID, short slot, item stack;</li>
  *   <li>Set Held Slot, 0x69: VarInt hotbar slot.</li>
  * </ul>
- * Decoded straight into the {@link InventoryUpdate} a caller sees; the control handler passes on
- * only container 0, the player's own - a soldier never opens another.
+ * Decoded straight into the {@link InventoryUpdate} a caller sees; the control handler reports
+ * container 0, the player's own, as an inventory change and any other (a chest the player opened)
+ * as a {@code ContainerUpdate}.
  */
-public record InventoryPackets(int packetId, int containerId, InventoryUpdate update) implements Packet {
+public record InventoryPackets(int packetId, int containerId, int stateId, InventoryUpdate update) implements Packet {
 
     public static final int SET_CONTENT_PACKET_ID = 0x12;
     public static final int SET_SLOT_PACKET_ID = 0x14;
@@ -31,7 +32,7 @@ public record InventoryPackets(int packetId, int containerId, InventoryUpdate up
 
     public static InventoryPackets decodeSetContent(ByteBuf in) {
         int containerId = ProtocolCodec.readVarInt(in);
-        ProtocolCodec.readVarInt(in); // state ID
+        int stateId = ProtocolCodec.readVarInt(in);
         int count = ProtocolCodec.readVarIntCount(in, MAX_SLOTS);
         List<Optional<ItemSlot>> slots = new ArrayList<>(count);
         boolean complete = true;
@@ -45,12 +46,12 @@ public record InventoryPackets(int packetId, int containerId, InventoryUpdate up
             }
         }
         // The cursor's stack follows; a soldier never holds one, so it isn't read.
-        return new InventoryPackets(SET_CONTENT_PACKET_ID, containerId, new InventoryUpdate.Contents(List.copyOf(slots), complete));
+        return new InventoryPackets(SET_CONTENT_PACKET_ID, containerId, stateId, new InventoryUpdate.Contents(List.copyOf(slots), complete));
     }
 
     public static InventoryPackets decodeSetSlot(ByteBuf in) {
         int containerId = ProtocolCodec.readVarInt(in);
-        ProtocolCodec.readVarInt(in); // state ID
+        int stateId = ProtocolCodec.readVarInt(in);
         int slot = in.readShort();
         Optional<ItemSlot> item;
         try {
@@ -58,11 +59,11 @@ public record InventoryPackets(int packetId, int containerId, InventoryUpdate up
         } catch (ItemStacks.Undecodable e) {
             item = Optional.of(e.partial);
         }
-        return new InventoryPackets(SET_SLOT_PACKET_ID, containerId, new InventoryUpdate.Slot(slot, item));
+        return new InventoryPackets(SET_SLOT_PACKET_ID, containerId, stateId, new InventoryUpdate.Slot(slot, item));
     }
 
     public static InventoryPackets decodeSetHeldSlot(ByteBuf in) {
-        return new InventoryPackets(SET_HELD_SLOT_PACKET_ID, 0, new InventoryUpdate.HeldSlot(ProtocolCodec.readVarInt(in)));
+        return new InventoryPackets(SET_HELD_SLOT_PACKET_ID, 0, 0, new InventoryUpdate.HeldSlot(ProtocolCodec.readVarInt(in)));
     }
 
     @Override

@@ -262,9 +262,11 @@ previously-confirmed IDs in the same list land where expected.
 | ← | `0x31` | Login (play) | `PlayLoginPacket` | by content: entity ID matched the server console's "logged in with entity id N", other fields matched server.properties |
 | ← | `0x35` | Move Entity Pos | `MoveEntityPacket` | registration order; live (resolved positions continuous) |
 | ← | `0x36` | Move Entity Pos Rot | `MoveEntityPacket` | registration order; live |
+| ← | `0x3B` | Open Screen | `ContainerPackets.OpenScreen` | registration order; live (a chest: menu type 2, `generic_9x3`) |
 | ← | `0x41` | Player Chat | `PlayerChatPacket` | registration order; live (plain chat from another client) |
 | ← | `0x48` | Player Position | `PlayerPositionPacket` | registration order; live spawn coordinates |
 | ← | `0x4D` | Remove Entities | `RemoveEntitiesPacket` | registration order |
+| ← | `0x11` | Container Close | `ContainerPackets.ContainerClosed` | registration order |
 | ← | `0x12` | Container Set Content | `InventoryPackets` | registration order; live |
 | ← | `0x14` | Container Set Slot | `InventoryPackets` | registration order; live (`/give`) |
 | ← | `0x68` | Set Health | `SetHealthPacket` | registration order; live (`0.0` for a dead player) |
@@ -274,11 +276,14 @@ previously-confirmed IDs in the same list land where expected.
 | → | `0x01` | Attack | `AttackPacket` | registration order |
 | → | `0x07` | Chat Command | `ChatCommandPacket` | registration order; live (`/me` lines in the server log) |
 | → | `0x09` | Chat | `ChatPacket` | registration order; live (relayed to other clients as Player Chat) |
+| → | `0x12` | Container Click | `ContainerPackets.ContainerClick` | registration order; live (quick move, chest and inventory) |
+| → | `0x13` | Container Close | `ContainerPackets.CloseContainer` | registration order; live |
 | → | `0x0B` | Chunk Batch Received | `ChunkBatchReceivedPacket` | registration order; live |
 | → | `0x0C` | Client Command | `ClientCommandPacket` | registration order; live respawn |
 | → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | wiki + live round-trip |
 | → | `0x1E` | Move Player Pos | `MovePlayerPosPacket` | registration order; live movement |
 | → | `0x2C` | Player Loaded | `PlayerLoadedPacket` | registration order; empty body |
+| → | `0x35` | Set Carried Item | `ContainerPackets.SetCarriedItem` | registration order; live |
 | → | `0x3F` | Swing | `SwingPacket` | registration order |
 
 **Chat.** Player Chat is decoded only as far as the sender UUID and the message, which come
@@ -288,6 +293,16 @@ the sender identifies the player without decoding player info. Plain chat from a
 chat session arrives as Player Chat with no signature. An unsigned chat *command* such as `/me` -
 the squad's own radio lines - arrives instead as Disguised Chat (`0x21`), whose only sender is a
 name inside an NBT component; it isn't decoded.
+
+| → | `0x42` | Use Item On | `ContainerPackets.UseItemOn` | registration order; live (opens a chest) |
+
+**Containers.** Using a chest (Use Item On) gets Open Screen and then the chest's Container Set
+Content under the new container ID: the chest's own slots, then the player's 27 main slots and 9
+hotbar slots. Changes to the player's slots while a chest is open arrive only for the chest's
+window - the server doesn't repeat them for container 0 on close - so the client applies them to
+its inventory as they come. A Container Click carries the client's prediction of what changed;
+the server applies the click itself regardless, compares, and resends what differs - with a
+stale state ID, the whole container. This client predicts nothing.
 
 `0x00` clientbound is the bundle delimiter: vanilla brackets related packets (e.g. an entity spawn
 and its metadata) in a pair of them but still sends each inner packet as its own frame, so it's

@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Logstat;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Resupply;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import org.springframework.ai.chat.client.ChatClient;
@@ -16,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * The {@link General}: same {@link #buildContext} (pure) -&gt; {@link #callModel} (impure) -&gt;
@@ -30,11 +32,14 @@ public final class SpringAiGeneral implements General {
 
     private final ChatClient chatClient;
     private volatile String mission; // written by the operator's thread, read by the general's
+    private final Optional<Position> supplyPoint;
 
     public SpringAiGeneral(@Qualifier("generalChatClient") ChatClient chatClient,
-                           @Value("${minecraft.general.mission}") String mission) {
+                           @Value("${minecraft.general.mission}") String mission,
+                           @Value("${minecraft.supply.point}") String supplyPoint) {
         this.chatClient = chatClient;
         this.mission = mission;
+        this.supplyPoint = Resupply.supplyPoint(supplyPoint);
     }
 
     @Override
@@ -51,12 +56,16 @@ public final class SpringAiGeneral implements General {
         if (squadStatuses.isEmpty()) {
             return List.of();
         }
-        return toObjectives(callModel(buildContext(mission, squadStatuses)), squadStatuses);
+        return toObjectives(callModel(buildContext(mission, supplyPoint, squadStatuses)), squadStatuses);
     }
 
-    static PromptContext buildContext(String mission, List<SquadStatus> squadStatuses) {
+    static PromptContext buildContext(String mission, Optional<Position> supplyPoint, List<SquadStatus> squadStatuses) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("<mission>\n").append(mission).append("\n</mission>\n\n");
+        supplyPoint.ifPresent(point -> prompt.append("<supply_point>\nA chest stocked with weapons and armour at ")
+                .append(SpringAiSquadLeader.describe(point))
+                .append(". Give a squad an objective there to resupply it: soldiers short of a weapon or armour draw from it.\n")
+                .append("</supply_point>\n\n"));
         for (SquadStatus squad : squadStatuses) {
             prompt.append("<squad name=\"").append(squad.squadName()).append("\">\n")
                     .append("Squad leader reports: ").append(SpringAiSquadLeader.describe(squad.report())).append('\n');

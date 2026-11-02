@@ -30,19 +30,28 @@ class SpringAiGeneralTest {
 
     @Test
     void decideReturnsNoObjectivesForAnEmptySquadList() {
-        SpringAiGeneral general = new SpringAiGeneral(ChatClient.create(FakeChatModels.THROWING), "win");
+        SpringAiGeneral general = new SpringAiGeneral(ChatClient.create(FakeChatModels.THROWING), "win", "");
 
         assertEquals(List.of(), general.decide(List.of()));
     }
 
     @Test
     void buildContextGivesTheMissionAndEachSquadsReports() {
-        String prompt = SpringAiGeneral.buildContext("secure the village", List.of(ALPHA, BRAVO)).prompt();
+        String prompt = SpringAiGeneral.buildContext("secure the village", java.util.Optional.empty(), List.of(ALPHA, BRAVO)).prompt();
 
         assertTrue(prompt.contains("<mission>\nsecure the village\n</mission>"));
         assertTrue(prompt.contains("<squad name=\"Alpha\">\nSquad leader reports: Cantco: ravine in the way"));
         assertTrue(prompt.contains("- Bob at (3, 64, 4): Moving"));
         assertTrue(prompt.contains("LOGSTAT: no soldier has reported his condition yet."));
+        assertTrue(!prompt.contains("<supply_point>"));
+    }
+
+    @Test
+    void buildContextShowsTheSupplyPointWhenThereIsOne() {
+        String prompt = SpringAiGeneral.buildContext("secure the village",
+                java.util.Optional.of(new Position(10, 70, -5)), List.of(ALPHA)).prompt();
+
+        assertTrue(prompt.contains("<supply_point>\nA chest stocked with weapons and armour at (10, 70, -5)."));
     }
 
     @Test
@@ -63,7 +72,7 @@ class SpringAiGeneralTest {
                   {"squad": "Alpha", "mission": "scout north", "x": 0, "y": 70, "z": -60, "intent": "find a way around"}
                 ]}
                 """;
-        SpringAiGeneral general = new SpringAiGeneral(ChatClient.create(FakeChatModels.replying(reply, new AtomicReference<>())), "win");
+        SpringAiGeneral general = new SpringAiGeneral(ChatClient.create(FakeChatModels.replying(reply, new AtomicReference<>())), "win", "");
 
         List<Objective> objectives = general.decide(List.of(ALPHA, BRAVO));
 

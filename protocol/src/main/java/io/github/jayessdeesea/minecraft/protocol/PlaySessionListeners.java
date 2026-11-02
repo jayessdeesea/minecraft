@@ -29,9 +29,10 @@ public record PlaySessionListeners(Consumer<ChunkUpdate> onChunkUpdate,
                                     Consumer<HealthUpdate> onHealth,
                                     Consumer<InventoryUpdate> onInventory,
                                     Consumer<ChatMessage> onChat,
+                                    Consumer<ContainerUpdate> onContainer,
                                     Consumer<Throwable> onDisconnect) {
 
     public static PlaySessionListeners none() {
-        return new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, cause -> { });
+        return new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, cause -> { });
     }
 }

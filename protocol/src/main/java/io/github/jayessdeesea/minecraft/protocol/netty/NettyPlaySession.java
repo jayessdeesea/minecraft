@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.AttackPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChatCommandPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientCommandPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.SwingPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MovePlayerPosPacket;
 import io.netty.channel.Channel;
@@ -19,6 +20,8 @@ final class NettyPlaySession implements PlaySession {
 
     private final Channel channel;
     private final PlayState playState;
+    /** Block-interaction sequence; the server acknowledges each. */
+    private final java.util.concurrent.atomic.AtomicInteger sequence = new java.util.concurrent.atomic.AtomicInteger();
 
     NettyPlaySession(Channel channel, PlayState playState) {
         this.channel = channel;
@@ -54,6 +57,31 @@ final class NettyPlaySession implements PlaySession {
     @Override
     public void sendChat(String message) {
         channel.writeAndFlush(new ChatPacket(message, System.currentTimeMillis(), 0));
+    }
+
+    @Override
+    public void useBlock(int x, int y, int z) {
+        channel.writeAndFlush(new ContainerPackets.UseItemOn(x, y, z, sequence.incrementAndGet()));
+    }
+
+    @Override
+    public void quickMove(int containerId, int stateId, int slot) {
+        channel.writeAndFlush(new ContainerPackets.ContainerClick(containerId, stateId, slot, 0, ContainerPackets.ContainerClick.QUICK_MOVE));
+    }
+
+    @Override
+    public void swapWithHotbar(int containerId, int stateId, int slot, int hotbarSlot) {
+        channel.writeAndFlush(new ContainerPackets.ContainerClick(containerId, stateId, slot, hotbarSlot, ContainerPackets.ContainerClick.SWAP));
+    }
+
+    @Override
+    public void closeContainer(int containerId) {
+        channel.writeAndFlush(new ContainerPackets.CloseContainer(containerId));
+    }
+
+    @Override
+    public void selectHotbarSlot(int hotbarSlot) {
+        channel.writeAndFlush(new ContainerPackets.SetCarriedItem(hotbarSlot));
     }
 
     @Override

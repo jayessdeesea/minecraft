@@ -19,8 +19,10 @@ Doing it on its own initiative, within the squad's intent, is mission command.
   can forbid it, for example with "rejoin immediately".
 
 ## Notes
-- This is the largest pure-Minecraft lift so far, and none of the groundwork exists:
-  - Block breaking: Player Action start/finish digging, break timing, item pickup.
-  - Crafting: container clicks on the 2x2 grid, or the recipe book.
+- This is the largest pure-Minecraft lift so far:
+  - Block breaking: Player Action start/finish digging, break timing, item pickup. None of it
+    exists.
+  - Crafting: clicks on the inventory's 2x2 grid, or the recipe book. Container clicks and the
+    equip step exist already, for the supply point (`bot.supply`).
 - The work builds the substrate more than the coordination layer, so it stays behind the
   reporting items (AGENTS.md: favour legibility of coordination over feature completeness).

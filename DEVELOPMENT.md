@@ -107,6 +107,16 @@ absolute coordinates ("hold x=-40 z=0"): the general re-reads the mission at eve
 java -jar app/target/app.jar --minecraft.operators=YourName
 ```
 
+**Setting up a supply point.** Place a chest, stock it with weapons and armour, and start the app
+with `--minecraft.supply.point=x,y,z` (the chest's block). Soldiers draw from it when the general
+sends the squad there, or when they pass within reach. Stocking from the console, with a player
+nearby so the chunk is loaded:
+
+```bash
+docker compose exec minecraft console "setblock 6 86 6 chest"
+docker compose exec minecraft console "item replace block 6 86 6 container.0 with iron_sword"
+```
+
 Stop it with Ctrl-C. **Don't kill stray `app.jar` or test JVMs with a bare
 `Get-Process java | Stop-Process`**: that kills every `java.exe` on the host. Filter by command line:
 `Get-CimInstance Win32_Process -Filter "Name='java.exe'" | Where-Object { $_.CommandLine -like '*app.jar*' }`.

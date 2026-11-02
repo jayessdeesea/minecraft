@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
+import io.github.jayessdeesea.minecraft.bot.supply.SupplyRun;
 import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
 import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
@@ -9,6 +10,7 @@ import io.github.jayessdeesea.minecraft.command.Formations;
 import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
 import io.github.jayessdeesea.minecraft.command.ReactToContact;
+import io.github.jayessdeesea.minecraft.command.Resupply;
 import io.github.jayessdeesea.minecraft.command.Report;
 import java.util.HashMap;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -25,6 +27,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -101,10 +104,14 @@ public class SoldierRunner implements CommandLineRunner {
     private String haltedFor; // squad thread only
 
     private final OperatorOrders operatorOrders;
+    /** The chest soldiers draw kit from, if the operator set one up (docs/military-doctrine.md §4). */
+    private final java.util.Optional<Position> supplyPoint;
 
-    public SoldierRunner(ChainOfCommand chainOfCommand, OperatorOrders operatorOrders) {
+    public SoldierRunner(ChainOfCommand chainOfCommand, OperatorOrders operatorOrders,
+                         @Value("${minecraft.supply.point}") String supplyPoint) {
         this.chainOfCommand = chainOfCommand;
         this.operatorOrders = operatorOrders;
+        this.supplyPoint = Resupply.supplyPoint(supplyPoint);
     }
 
     private final ChunkCache chunkCache = new ChunkCache();
@@ -148,9 +155,11 @@ public class SoldierRunner implements CommandLineRunner {
             return;
         }
         // Formation slots, then replacements' link-up, then pace control (the point man halts for
-        // a straggler), then the react-to-contact drill, which overrides all of them.
+        // a straggler), then resupply at the supply point, then the react-to-contact drill, which
+        // overrides all of them.
         List<Order> orders = ReactToContact.orders(statuses,
-                Cohesion.orders(statuses, linkUp.orders(statuses, Formations.assign(order, statuses))));
+                Resupply.orders(statuses, Cohesion.orders(statuses, linkUp.orders(statuses, Formations.assign(order, statuses))),
+                        order.objective(), supplyPoint));
         String straggler = Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
         if (!java.util.Objects.equals(straggler, haltedFor)) {
             if (straggler != null) {
@@ -206,6 +215,8 @@ public class SoldierRunner implements CommandLineRunner {
         // Inventory too arrives on join, before the soldier exists - kept the same way.
         Inventory inventory = new Inventory(); // this connection's thread only
         AtomicReference<Kit> lastKit = new AtomicReference<>();
+        // Created with the session (onJoined); container updates before then can't be a supply run.
+        AtomicReference<SupplyRun> supplyRun = new AtomicReference<>();
         CompletableFuture<PlaySession> sessionReady = new CompletableFuture<>();
 
         CompletableFuture<PlaySession> joined = MinecraftClient.join(HOST, PORT, name, new PlaySessionListeners(
@@ -256,9 +267,15 @@ public class SoldierRunner implements CommandLineRunner {
                         operatorOrders.missionFrom(chat).ifPresent(order -> chainOfCommand.onOperatorMission(order.operator(), order.mission()));
                     }
                 },
+                container -> {
+                    SupplyRun run = supplyRun.get();
+                    if (run != null) {
+                        run.onContainer(container);
+                    }
+                },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
-        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit))
+        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun))
                 .exceptionally(cause -> {
                     LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
                     return null;
@@ -268,7 +285,7 @@ public class SoldierRunner implements CommandLineRunner {
     private void onJoined(SoldierDefinition definition, PlaySession session, PlayerPosition spawn,
                            AtomicReference<ScheduledExecutorService> activeScheduler,
                            AtomicReference<DeterministicSoldier> activeSoldier, AtomicReference<HealthUpdate> lastHealth,
-                           AtomicReference<Kit> lastKit) {
+                           AtomicReference<Kit> lastKit, Inventory inventory, AtomicReference<SupplyRun> supplyRun) {
         String name = definition.name();
         LOG.info("{} joined at real spawn ({}, {}, {}): {}", name, spawn.x(), spawn.y(), spawn.z(), session.playState());
 
@@ -288,6 +305,12 @@ public class SoldierRunner implements CommandLineRunner {
             chainOfCommand.setRadio(session::sendChatCommand);
         }
         activeSoldiers.put(name, soldier);
+        SupplyRun run = new SupplyRun(name, session, inventory, () -> {
+            Kit drawn = inventory.kit();
+            lastKit.set(drawn);
+            soldier.reportKit(drawn);
+        });
+        supplyRun.set(run);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
                 runnable -> new Thread(runnable, name + "-tick"));
@@ -297,7 +320,9 @@ public class SoldierRunner implements CommandLineRunner {
                 LOG.info("{} attacks entity {}", name, target);
                 session.attack(target);
             });
-            Position current = soldier.status().position();
+            SoldierStatus status = soldier.status();
+            run.tick(status.position(), supplyPoint, Resupply.isShort(status) && !(status.report() instanceof Report.InContact));
+            Position current = status.position();
             session.reportPosition(current.x(), current.y(), current.z(), soldier.onGround());
         }, 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
         scheduler.scheduleAtFixedRate(
