@@ -18,8 +18,8 @@ import java.util.Map;
 /**
  * The {@link General}: same {@link #buildContext} (pure) -&gt; {@link #callModel} (impure) -&gt;
  * {@link #toObjectives} (pure validation) split as {@link SpringAiSquadLeader}. Its own orders come
- * from the operator - {@code minecraft.general.mission} - the one piece of intent that originates
- * outside the chain of command.
+ * from the operator - the one piece of intent that originates outside the chain of command:
+ * {@code minecraft.general.mission} at start, replaced by {@link #receiveMission} during a run.
  *
  * <p>A {@code @Component}: exactly one general exists (AGENTS.md's Objective section).
  */
@@ -27,11 +27,19 @@ import java.util.Map;
 public final class SpringAiGeneral implements General {
 
     private final ChatClient chatClient;
-    private final String mission;
+    private volatile String mission; // written by the operator's thread, read by the general's
 
     public SpringAiGeneral(@Qualifier("generalChatClient") ChatClient chatClient,
                            @Value("${minecraft.general.mission}") String mission) {
         this.chatClient = chatClient;
+        this.mission = mission;
+    }
+
+    @Override
+    public void receiveMission(String mission) {
+        if (mission == null || mission.isBlank()) {
+            throw new IllegalArgumentException("an empty mission");
+        }
         this.mission = mission;
     }
 

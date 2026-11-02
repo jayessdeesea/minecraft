@@ -71,7 +71,8 @@ garbled channel can't create ambiguity:
 the push-back channel: the squad leader orders a spot that can't be reached and the squad *says
 so*, rather than silently stalling. A soldier that can't reach its slot (fell into a pit, cut off
 by water) reports CANTCO with the reason; the squad leader decides what to do about it - the same
-loop a human squad runs.
+loop a human squad runs. At the top of the chain, the general answers a new mission from the human
+operator with WILCO on the radio net.
 
 ## 4. Reports upward
 

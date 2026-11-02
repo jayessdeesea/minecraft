@@ -262,6 +262,7 @@ previously-confirmed IDs in the same list land where expected.
 | ← | `0x31` | Login (play) | `PlayLoginPacket` | by content: entity ID matched the server console's "logged in with entity id N", other fields matched server.properties |
 | ← | `0x35` | Move Entity Pos | `MoveEntityPacket` | registration order; live (resolved positions continuous) |
 | ← | `0x36` | Move Entity Pos Rot | `MoveEntityPacket` | registration order; live |
+| ← | `0x41` | Player Chat | `PlayerChatPacket` | registration order; live (plain chat from another client) |
 | ← | `0x48` | Player Position | `PlayerPositionPacket` | registration order; live spawn coordinates |
 | ← | `0x4D` | Remove Entities | `RemoveEntitiesPacket` | registration order |
 | ← | `0x12` | Container Set Content | `InventoryPackets` | registration order; live |
@@ -272,12 +273,21 @@ previously-confirmed IDs in the same list land where expected.
 | → | `0x00` | Accept Teleportation | `AcceptTeleportationPacket` | registration order; server keeps the session after it |
 | → | `0x01` | Attack | `AttackPacket` | registration order |
 | → | `0x07` | Chat Command | `ChatCommandPacket` | registration order; live (`/me` lines in the server log) |
+| → | `0x09` | Chat | `ChatPacket` | registration order; live (relayed to other clients as Player Chat) |
 | → | `0x0B` | Chunk Batch Received | `ChunkBatchReceivedPacket` | registration order; live |
 | → | `0x0C` | Client Command | `ClientCommandPacket` | registration order; live respawn |
 | → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | wiki + live round-trip |
 | → | `0x1E` | Move Player Pos | `MovePlayerPosPacket` | registration order; live movement |
 | → | `0x2C` | Player Loaded | `PlayerLoadedPacket` | registration order; empty body |
 | → | `0x3F` | Swing | `SwingPacket` | registration order |
+
+**Chat.** Player Chat is decoded only as far as the sender UUID and the message, which come
+before the NBT text component and the registry-bound chat type; the rest of the frame is left
+unread. In offline mode a player's UUID is `UUID.nameUUIDFromBytes("OfflinePlayer:" + name)`, so
+the sender identifies the player without decoding player info. Plain chat from a player without a
+chat session arrives as Player Chat with no signature. An unsigned chat *command* such as `/me` -
+the squad's own radio lines - arrives instead as Disguised Chat (`0x21`), whose only sender is a
+name inside an NBT component; it isn't decoded.
 
 `0x00` clientbound is the bundle delimiter: vanilla brackets related packets (e.g. an entity spawn
 and its metadata) in a pair of them but still sends each inner packet as its own frame, so it's

@@ -63,7 +63,7 @@ class PersistentJoinLiveIT {
         List<ChunkUpdate> updates = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "ChunkTestBot",
-                        new PlaySessionListeners(updates::add, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, cause -> { }))
+                        new PlaySessionListeners(updates::add, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         // Chunks around spawn arrive within the first second or two of reaching Play - no need to
@@ -93,7 +93,7 @@ class PersistentJoinLiveIT {
         List<EntityUpdate> entities = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "EntityTestBot",
-                        new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entities::add, move -> { }, ids -> { }, health -> { }, inventory -> { }, cause -> { }))
+                        new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entities::add, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         for (int i = 0; i < 50 && entities.isEmpty(); i++) {
@@ -131,7 +131,7 @@ class PersistentJoinLiveIT {
                                         jumps.add(move + " from " + previous[0] + "," + previous[1] + "," + previous[2]);
                                     }
                                 },
-                                ids -> { }, health -> { }, inventory -> { }, cause -> { }))
+                                ids -> { }, health -> { }, inventory -> { }, chat -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         Thread.sleep(10_000);
@@ -148,7 +148,7 @@ class PersistentJoinLiveIT {
         List<PlayerPosition> positions = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "PositionTestBot",
-                        new PlaySessionListeners(update -> { }, unload -> { }, positions::add, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, cause -> { }))
+                        new PlaySessionListeners(update -> { }, unload -> { }, positions::add, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         for (int i = 0; i < 50 && positions.isEmpty(); i++) {
@@ -170,5 +170,28 @@ class PersistentJoinLiveIT {
         assertTrue(session.isOpen(), "session should still be open after reporting a position back");
 
         session.close();
+    }
+
+    /** One player's plain chat reaches another as Player Chat, sender identified by offline UUID. */
+    @Test
+    void deliversAnotherPlayersChatLine() throws Exception {
+        List<ChatMessage> heard = new CopyOnWriteArrayList<>();
+        PlaySession listener = MinecraftClient.join("localhost", 25565, "ChatListenerBot",
+                        new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { },
+                                health -> { }, inventory -> { }, heard::add, cause -> { }))
+                .get(15, TimeUnit.SECONDS);
+        PlaySession speaker = MinecraftClient.join("localhost", 25565, "ChatSpeakerBot").get(15, TimeUnit.SECONDS);
+        Thread.sleep(1_000);
+
+        speaker.sendChat("!mission hold the ridge");
+        java.util.UUID speakerUuid = java.util.UUID.nameUUIDFromBytes("OfflinePlayer:ChatSpeakerBot".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        for (int i = 0; i < 50 && heard.stream().noneMatch(m -> m.sender().equals(speakerUuid)); i++) {
+            Thread.sleep(100);
+        }
+        speaker.close();
+        listener.close();
+
+        LOG.info("Heard: {}", heard);
+        assertTrue(heard.contains(new ChatMessage(speakerUuid, "!mission hold the ridge")), "heard: " + heard);
     }
 }

@@ -19,3 +19,7 @@ minecraft:
     mission: >-
       Reconnoitre the terrain around the squad's start point and establish an observation post
       on high ground within 80 blocks, from which the squad can watch for hostile activity.
+  # Players who may replace the mission from game chat with "!mission <text>", comma-separated.
+  # Empty: nobody.
+  # Offline mode doesn't authenticate names, so this guards against accidents, not impostors.
+  operators: ""

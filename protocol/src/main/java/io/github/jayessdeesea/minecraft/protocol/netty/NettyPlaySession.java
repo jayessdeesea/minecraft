@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlayState;
 import io.github.jayessdeesea.minecraft.protocol.packet.AttackPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChatCommandPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientCommandPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SwingPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MovePlayerPosPacket;
@@ -48,6 +49,11 @@ final class NettyPlaySession implements PlaySession {
     @Override
     public void sendChatCommand(String command) {
         channel.writeAndFlush(new ChatCommandPacket(command));
+    }
+
+    @Override
+    public void sendChat(String message) {
+        channel.writeAndFlush(new ChatPacket(message, System.currentTimeMillis(), 0));
     }
 
     @Override

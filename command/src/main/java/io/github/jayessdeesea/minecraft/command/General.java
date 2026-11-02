@@ -3,13 +3,16 @@ package io.github.jayessdeesea.minecraft.command;
 import java.util.List;
 
 /**
- * The chain-of-command view of the general: decide an {@link Objective} for each squad. No
- * {@code receiveX} method - nothing sits above a {@code General} in the hierarchy (see AGENTS.md's
- * Objective section: "one instance"). Like {@link SquadLeader#decide}, this holds no squad state
- * itself - the imperative shell passes current {@link SquadStatus}es in and applies the returned
- * {@link Objective}s back out to each {@link SquadLeader}.
+ * The chain-of-command view of the general: decide an {@link Objective} for each squad. Above it
+ * is only the human operator, whose mission it carries out ({@link #receiveMission}). Like
+ * {@link SquadLeader#decide}, this holds no squad state itself - the imperative shell passes
+ * current {@link SquadStatus}es in and applies the returned {@link Objective}s back out to each
+ * {@link SquadLeader}.
  */
 public interface General {
+
+    /** A new mission from the operator, replacing the current one from the next decision on. */
+    void receiveMission(String mission);
 
     /**
      * Decides an {@link Objective} for each squad. The returned list has exactly the same length

@@ -63,6 +63,8 @@ reachable, choose one of those spots - copy its coordinates exactly - rather tha
 <how_to_decide>
 - Move the squad to the objective you were given, or to a sensible spot near it that serves the
   intent (for example, high ground overlooking it).
+- Your current order may have been given for an earlier objective. If its spot is far from the
+  objective now, the squad being InPosition there means nothing: order a new spot.
 - If the point man reports Cantco, his route to your objective is blocked. Pick a nearby
   objective he can plausibly reach, or switch formation (FILE through tight terrain).
 - Each soldier's line says how far he is from the point man. Beyond 24 blocks a soldier can't

@@ -17,6 +17,11 @@ import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
 import io.github.jayessdeesea.minecraft.command.ai.SpringAiSquadLeader;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
@@ -25,6 +30,7 @@ import org.springframework.core.io.ClassPathResource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Squad-leader evaluation: the real {@link SpringAiSquadLeader}, with the real system prompt,
@@ -51,9 +57,16 @@ class SquadLeaderScenarioIT {
             java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 0, java.util.Optional.empty()));
     private static final int ORACLE_BUDGET = 500_000;
 
-    private record Outcome(Scenario scenario, boolean stuck, long millis, String risk, List<String> failures) {
+    /**
+     * PLAIN: a fresh squad. STUCK: Carol is in a pit and says what a riskier order would cost her.
+     * RETASKED: the squad is in position at its last order's spot, near the start, when a new
+     * objective arrives - the case where a model can anchor on its standing order.
+     */
+    private enum Variant { PLAIN, STUCK, RETASKED }
+
+    private record Outcome(Scenario scenario, Variant variant, long millis, String risk, List<String> failures) {
         String name() {
-            return scenario + (stuck ? " stuck" : "");
+            return scenario + (variant == Variant.PLAIN ? "" : " " + variant.name().toLowerCase(Locale.ROOT));
         }
     }
 
@@ -61,18 +74,16 @@ class SquadLeaderScenarioIT {
     void evaluate() {
         String model = System.getProperty("eval.model", "qwen3:14b");
         int seeds = Integer.getInteger("eval.seeds", 3);
-        ChatClient client = ChatClient.builder(OllamaChatModel.builder()
-                        .ollamaApi(OllamaApi.builder().baseUrl("http://localhost:11434").build())
-                        .options(OllamaChatOptions.builder().model(model).temperature(0.3).disableThinking().build())
-                        .build())
-                .defaultSystem(new ClassPathResource("prompts/squad-leader-system.md"))
+        ChatModel ollama = OllamaChatModel.builder()
+                .ollamaApi(OllamaApi.builder().baseUrl("http://localhost:11434").build())
+                .options(OllamaChatOptions.builder().model(model).temperature(0.3).disableThinking().build())
                 .build();
 
         List<Outcome> outcomes = new ArrayList<>();
         for (Terrain terrain : Terrain.values()) {
             for (long seed = 1; seed <= seeds; seed++) {
-                for (boolean stuck : new boolean[]{false, true}) {
-                    Outcome outcome = run(client, Scenario.generate(terrain, seed), stuck);
+                for (Variant variant : Variant.values()) {
+                    Outcome outcome = run(ollama, Scenario.generate(terrain, seed), variant);
                     outcomes.add(outcome);
                     System.out.printf(Locale.ROOT, "%-24s %5dms  %-18s  %s%n", outcome.name(), outcome.millis(), outcome.risk(),
                             outcome.failures().isEmpty() ? "PASS" : "FAIL " + String.join("; ", outcome.failures()));
@@ -86,26 +97,62 @@ class SquadLeaderScenarioIT {
             System.out.printf(Locale.ROOT, "  %-9s %d/%d%n", terrain.name().toLowerCase(),
                     family.stream().filter(o -> o.failures().isEmpty()).count(), family.size());
         }
-        List<Outcome> stuck = outcomes.stream().filter(Outcome::stuck).toList();
-        System.out.printf(Locale.ROOT, "  one soldier stuck: %d/%d%n",
-                stuck.stream().filter(o -> o.failures().isEmpty()).count(), stuck.size());
+        for (Variant variant : Variant.values()) {
+            List<Outcome> of = outcomes.stream().filter(o -> o.variant() == variant).toList();
+            System.out.printf(Locale.ROOT, "  %-9s %d/%d%n", variant.name().toLowerCase(Locale.ROOT),
+                    of.stream().filter(o -> o.failures().isEmpty()).count(), of.size());
+        }
     }
 
-    private static Outcome run(ChatClient client, Scenario scenario, boolean stuck) {
+    /** The model, except that the first call is answered with {@code first} - a standing order to set up. */
+    private static ChatModel answeringFirst(String first, ChatModel model) {
+        AtomicBoolean answered = new AtomicBoolean();
+        return new ChatModel() {
+            @Override
+            public ChatResponse call(Prompt prompt) {
+                return answered.getAndSet(true) ? model.call(prompt) : new ChatResponse(List.of(new Generation(new AssistantMessage(first))));
+            }
+
+            @Override
+            public org.springframework.ai.chat.prompt.ChatOptions getDefaultOptions() {
+                return model.getDefaultOptions();
+            }
+
+            @Override
+            public org.springframework.ai.chat.prompt.ChatOptions getOptions() {
+                return model.getOptions();
+            }
+        };
+    }
+
+    private static Outcome run(ChatModel model, Scenario scenario, Variant variant) {
+        boolean stuck = variant == Variant.STUCK;
+        Report settled = variant == Variant.RETASKED ? new Report.InPosition() : new Report.Idle();
         SyntheticWorld world = scenario.world();
         BlockPos start = scenario.start();
         BlockPos objective = scenario.objective();
         Position pointMan = new Position(start.x() + 0.5, start.y(), start.z() + 0.5);
         List<SoldierStatus> squad = List.of(
-                new SoldierStatus("Alice", pointMan, new Order.Idle(), new Report.Idle(), HEALTHY),
-                soldierNear("Bob", world, start.x() - 2, start.z() + 2),
+                new SoldierStatus("Alice", pointMan, new Order.Idle(), settled, HEALTHY),
+                soldierNear("Bob", world, start.x() - 2, start.z() + 2, settled),
                 stuck ? new SoldierStatus("Carol", new Position(start.x() + 6.5, start.y() - 4, start.z() + 4.5),
                         new Order.Idle(), new Report.Cantco("no route from the pit to within 3 of the squad's slot; "
                                 + "a route with falls costing 7 of my 20 health exists (MEDIUM risk)"), HEALTHY)
-                        : soldierNear("Carol", world, start.x() + 2, start.z() + 2));
+                        : soldierNear("Carol", world, start.x() + 2, start.z() + 2, settled));
         TerrainSurvey terrain = TerrainSurveyor.survey(world, pointMan);
 
+        String standing = String.format(Locale.ROOT, """
+                {"x": %d, "y": %d, "z": %d, "formation": "WEDGE", "interval": "NORMAL", "verticalTolerance": 3,
+                 "risk": "LOW", "soldierRisks": [], "intent": "hold the high ground and observe", "cantco": ""}""",
+                start.x(), start.y(), start.z());
+        ChatClient client = ChatClient.builder(variant == Variant.RETASKED ? answeringFirst(standing, model) : model)
+                .defaultSystem(new ClassPathResource("prompts/squad-leader-system.md"))
+                .build();
         SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha", client);
+        if (variant == Variant.RETASKED) {
+            leader.receiveObjective(new Objective("Establish an observation post", pointMan, "watch for hostiles"));
+            leader.decide(squad, terrain);
+        }
         leader.receiveObjective(new Objective("Move the squad to the objective",
                 new Position(objective.x(), objective.y(), objective.z()), "secure the objective"));
         long t0 = System.nanoTime();
@@ -113,7 +160,10 @@ class SquadLeaderScenarioIT {
         try {
             order = leader.decide(squad, terrain).orElseThrow();
         } catch (RuntimeException e) {
-            return new Outcome(scenario, stuck, (System.nanoTime() - t0) / 1_000_000, "-", List.of("invalid order: " + e.getMessage()));
+            if (Boolean.getBoolean("eval.trace")) {
+                e.printStackTrace();
+            }
+            return new Outcome(scenario, variant, (System.nanoTime() - t0) / 1_000_000, "-", List.of("invalid order: " + e.getMessage()));
         }
         long millis = (System.nanoTime() - t0) / 1_000_000;
 
@@ -134,12 +184,12 @@ class SquadLeaderScenarioIT {
                 && Pathfinder.find(world, start, goal, ORACLE_BUDGET).reachesGoal()) {
             failures.add("false CANTCO: " + reason);
         }
-        return new Outcome(scenario, stuck, millis, order.risk().name()
+        return new Outcome(scenario, variant, millis, order.risk().name()
                 + order.soldierRisk().entrySet().stream().map(e -> " " + e.getKey() + "=" + e.getValue()).sorted().collect(java.util.stream.Collectors.joining()), failures);
     }
 
-    private static SoldierStatus soldierNear(String name, SyntheticWorld world, int x, int z) {
-        return new SoldierStatus(name, new Position(x + 0.5, world.ground(x, z) + 1, z + 0.5), new Order.Idle(), new Report.Idle(), HEALTHY);
+    private static SoldierStatus soldierNear(String name, SyntheticWorld world, int x, int z, Report report) {
+        return new SoldierStatus(name, new Position(x + 0.5, world.ground(x, z) + 1, z + 0.5), new Order.Idle(), report, HEALTHY);
     }
 
     private static double horizontal(double x, double z, BlockPos objective) {

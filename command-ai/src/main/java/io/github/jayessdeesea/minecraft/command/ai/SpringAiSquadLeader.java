@@ -11,6 +11,8 @@ import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.ai.chat.client.ChatClient;
 
 import java.util.Comparator;
@@ -37,6 +39,8 @@ import java.util.stream.Collectors;
  * <p>Not a {@code @Component}: one instance per squad, constructed by the composition root.
  */
 public final class SpringAiSquadLeader implements SquadLeader {
+
+    private static final Logger LOG = LogManager.getLogger(SpringAiSquadLeader.class);
 
     private final String name;
     private final ChatClient chatClient;
@@ -94,7 +98,9 @@ public final class SpringAiSquadLeader implements SquadLeader {
                 .append("Intent: ").append(objective.intent()).append('\n')
                 .append("</objective>\n\n");
         prompt.append("<current_order>\n")
-                .append(lastOrder == null ? "None yet." : describe(lastOrder)).append('\n')
+                .append(lastOrder == null ? "None yet." : describe(lastOrder) + String.format(Locale.ROOT,
+                        "\nIts spot is %.0f blocks from the objective.", Cohesion.distance(lastOrder.objective(), objective.location())))
+                .append('\n')
                 .append("</current_order>\n\n");
         prompt.append("<squad name=\"").append(squadName).append("\">\n");
         for (int i = 0; i < soldierStatuses.size(); i++) {
@@ -114,6 +120,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
     }
 
     SquadOrderReply callModel(PromptContext context) {
+        LOG.debug("Squad leader prompt:\n{}", context.prompt());
         return chatClient.prompt()
                 .user(context.prompt())
                 .call()

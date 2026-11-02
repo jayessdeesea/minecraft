@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
+import io.github.jayessdeesea.minecraft.protocol.ChatMessage;
 import io.github.jayessdeesea.minecraft.protocol.HealthUpdate;
 import io.github.jayessdeesea.minecraft.protocol.ChunkUnload;
 import io.github.jayessdeesea.minecraft.protocol.ChunkUpdate;
@@ -35,6 +36,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RegistryDataPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -208,6 +210,8 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             listeners.onHealth().accept(new HealthUpdate(health.health(), health.food()));
         } else if (packet instanceof InventoryPackets inventory && inventory.containerId() == 0) {
             listeners.onInventory().accept(inventory.update());
+        } else if (packet instanceof PlayerChatPacket chat) {
+            listeners.onChat().accept(new ChatMessage(chat.sender(), chat.message()));
         }
         // Everything else recognized-but-unhandled or unrecognized is already logged/cataloged by
         // PacketLoggingHandler/SessionStateManager earlier in the pipeline - nothing further to do

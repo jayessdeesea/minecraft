@@ -100,8 +100,11 @@ public class SoldierRunner implements CommandLineRunner {
     private java.util.Set<String> linkingUp = java.util.Set.of(); // squad thread only
     private String haltedFor; // squad thread only
 
-    public SoldierRunner(ChainOfCommand chainOfCommand) {
+    private final OperatorOrders operatorOrders;
+
+    public SoldierRunner(ChainOfCommand chainOfCommand, OperatorOrders operatorOrders) {
         this.chainOfCommand = chainOfCommand;
+        this.operatorOrders = operatorOrders;
     }
 
     private final ChunkCache chunkCache = new ChunkCache();
@@ -245,6 +248,12 @@ public class SoldierRunner implements CommandLineRunner {
                     DeterministicSoldier soldier = activeSoldier.get();
                     if (soldier != null) {
                         soldier.reportKit(kit);
+                    }
+                },
+                // Every connection hears every chat line; only the radio operator's passes it on.
+                chat -> {
+                    if (definition == SOLDIERS.getFirst()) {
+                        operatorOrders.missionFrom(chat).ifPresent(order -> chainOfCommand.onOperatorMission(order.operator(), order.mission()));
                     }
                 },
                 cause -> onDisconnected(definition, activeScheduler, cause)));

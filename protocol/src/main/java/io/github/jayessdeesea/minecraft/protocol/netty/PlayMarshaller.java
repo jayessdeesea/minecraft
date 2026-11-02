@@ -12,6 +12,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.UnknownPacket;
 import io.netty.buffer.ByteBuf;
@@ -35,6 +36,7 @@ public final class PlayMarshaller implements PacketMarshaller {
             case AddEntityPacket.PACKET_ID -> AddEntityPacket.decode(data);
             case RemoveEntitiesPacket.PACKET_ID -> RemoveEntitiesPacket.decode(data);
             case SetHealthPacket.PACKET_ID -> SetHealthPacket.decode(data);
+            case PlayerChatPacket.PACKET_ID -> PlayerChatPacket.decode(data);
             case ChunkBatchFinishedPacket.PACKET_ID -> ChunkBatchFinishedPacket.decode(data);
             case ForgetLevelChunkPacket.PACKET_ID -> ForgetLevelChunkPacket.decode(data);
             case MoveEntityPacket.POS_PACKET_ID -> MoveEntityPacket.decodePos(data);

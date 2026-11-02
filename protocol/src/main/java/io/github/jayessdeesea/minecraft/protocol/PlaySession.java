@@ -49,6 +49,9 @@ public interface PlaySession {
      */
     void sendChatCommand(String command);
 
+    /** Sends a plain, unsigned chat line - other players receive it as Player Chat. */
+    void sendChat(String message);
+
     /** Whether the underlying connection is still open. */
     boolean isOpen();
 

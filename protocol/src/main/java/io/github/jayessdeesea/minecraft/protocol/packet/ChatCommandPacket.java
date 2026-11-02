@@ -21,10 +21,14 @@ public record ChatCommandPacket(String command) implements Packet {
     public static final int PACKET_ID = 0x07;
 
     public ChatCommandPacket {
-        for (int i = 0; i < command.length(); i++) {
-            char c = command.charAt(i);
+        refuseKickCharacters(command);
+    }
+
+    static void refuseKickCharacters(String line) {
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
             if (c == '§' || c < ' ' || c == 127) {
-                throw new IllegalArgumentException("character the server kicks for, at " + i + ": " + command);
+                throw new IllegalArgumentException("character the server kicks for, at " + i + ": " + line);
             }
         }
     }

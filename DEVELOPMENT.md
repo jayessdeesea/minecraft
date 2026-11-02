@@ -94,7 +94,18 @@ squad Alpha, under an LLM squad leader and general (`ChainOfCommand`). The log r
 net: `[General -> Alpha] OPORD`, `[Alpha -> squad] FRAGO`, `[Alpha -> General] CANTCO`, and a squad
 SITREP every 5 seconds. Orders and CANTCOs also appear in game chat (section 4), spoken by
 the point man as the squad's radio operator. Soldiers reconnect on their own if a connection dies. The general's mission
-is `minecraft.general.mission` in `application.yml`.
+starts as `minecraft.general.mission` in `application.yml`.
+
+**Giving orders from game chat.** A player named in `minecraft.operators` (comma-separated, empty
+by default) can replace the mission by typing `!mission <text>` in plain chat. The general answers
+WILCO on the net and re-plans at once. Lines from anyone else are logged and ignored. Offline mode
+doesn't authenticate names, so the list guards against accidents, not impostors. Give missions in
+absolute coordinates ("hold x=-40 z=0"): the general re-reads the mission at every re-plan, so
+"40 blocks west of here" moves the objective another 40 blocks each time.
+
+```bash
+java -jar app/target/app.jar --minecraft.operators=YourName
+```
 
 Stop it with Ctrl-C. **Don't kill stray `app.jar` or test JVMs with a bare
 `Get-Process java | Stop-Process`**: that kills every `java.exe` on the host. Filter by command line:
@@ -114,7 +125,7 @@ Each of these needs the dev server running:
 |---|---|
 | `mvn -pl protocol test -Dtest=StatusPingLiveIT -Dmc.logLabel=status-ping` | Handshake → Status → Ping: prints the server's status JSON and the round-trip time |
 | `mvn -pl protocol test -Dtest=JoinObservationLiveIT -Dmc.logLabel=join-observation` | The full join through Play as `ScoutBot`: logs each kind of unrecognised packet once, then disconnects after a short window. Use it to catalogue packets we don't decode yet |
-| `mvn -pl protocol test -Dtest=PersistentJoinLiveIT -Dmc.logLabel=persistent-join` | `MinecraftClient.join`, the entry point soldiers use: stays connected through Keep Alive, receives chunks, decodes and reports the spawn position |
+| `mvn -pl protocol test -Dtest=PersistentJoinLiveIT -Dmc.logLabel=persistent-join` | `MinecraftClient.join`, the entry point soldiers use: stays connected through Keep Alive, receives chunks, decodes and reports the spawn position, and hears another client's chat |
 | `mvn -pl app test -Dtest=TerrainProbeIT -Dsurefire.failIfNoSpecifiedTests=false -Dprobe=x,y,z` | Diagnoses a stuck soldier: prints how our terrain model classifies the blocks around a spot (solid, hazard, open) slice by slice, and the region reachable from it |
 
 Logs from IT runs go to the console and to `{logPath}/yyyy/MM/dd/yyyy-MM-dd-HH-{label}.txt`

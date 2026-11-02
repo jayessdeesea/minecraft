@@ -63,6 +63,8 @@ public class ChainOfCommand {
     private final ExecutorService squadLeaderThread = Executors.newSingleThreadExecutor(r -> new Thread(r, "squad-leader-" + SQUAD_NAME));
     private final AtomicBoolean generalBusy = new AtomicBoolean();
     private final AtomicBoolean squadLeaderBusy = new AtomicBoolean();
+    /** Bumped on each operator mission, so a general's decision already in flight is known to be stale. */
+    private final java.util.concurrent.atomic.AtomicInteger missionVersion = new java.util.concurrent.atomic.AtomicInteger();
 
     private volatile SquadOrder order;
     private volatile Objective objective;
@@ -85,6 +87,18 @@ public class ChainOfCommand {
      */
     public void setRadio(Consumer<String> radio) {
         this.radio = radio;
+    }
+
+    /**
+     * A new mission from a human operator (see {@code OperatorOrders}): the general takes it and
+     * re-plans at the next SITREP rather than at its routine interval. Acknowledged on the radio.
+     */
+    public void onOperatorMission(String operator, String mission) {
+        general.receiveMission(mission);
+        missionVersion.incrementAndGet();
+        lastGeneralMillis = Long.MIN_VALUE / 2;
+        LOG.info("[{} -> General] MISSION: {}", operator, mission);
+        transmit("[General -> " + operator + "] WILCO: " + mission);
     }
 
     /** The squad's standing order, if the squad leader has issued one. */
@@ -127,10 +141,15 @@ public class ChainOfCommand {
         }
         lastGeneralMillis = now;
         SquadStatus status = new SquadStatus(SQUAD_NAME, squadLeader.report(), squad);
+        int missionAsked = missionVersion.get();
         generalThread.execute(() -> {
             try {
                 long started = System.currentTimeMillis();
                 Objective given = general.decide(List.of(status)).getFirst();
+                if (missionVersion.get() != missionAsked) {
+                    LOG.info("[General] discarding a decision made under the superseded mission");
+                    return; // lastGeneralMillis was reset: the next SITREP asks again
+                }
                 LOG.info("[General -> {}] ({} ms) OPORD: {} at ({}, {}, {}). Intent: {}", SQUAD_NAME,
                         System.currentTimeMillis() - started, given.mission(),
                         Math.round(given.location().x()), Math.round(given.location().y()), Math.round(given.location().z()),
