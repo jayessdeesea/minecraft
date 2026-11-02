@@ -59,8 +59,26 @@ public final class Battle implements WorldView {
     public static final double FIST_DAMAGE = 1;
     /** How far a punch shoves a hostile back - vanilla's base knockback, roughly. */
     static final double KNOCKBACK = 0.9;
-    /** A skeleton's arrows miss a moving target about half the time. */
-    static final double ARROW_HIT_CHANCE = 0.5;
+    /**
+     * An arrow flies at 1.6 blocks a tick ({@code AbstractSkeleton.performRangedAttack}) toward
+     * where the soldier stood when it was loosed - skeletons don't lead their target - with a little
+     * spread. It hits if the soldier is still that close to its line when it arrives: closing
+     * straight in stays on the line; moving across it doesn't.
+     */
+    static final double ARROW_SPEED = 1.6;
+    /** Half a body's width plus the arrow's own. */
+    static final double ARROW_HIT_RADIUS = 0.55;
+    /**
+     * Aim spread, radians, one standard deviation: vanilla adds a gaussian times 0.0075 x inaccuracy
+     * to each axis of the shot, and a skeleton's inaccuracy is 14 - 4 x difficulty - 6 on normal.
+     */
+    static final double ARROW_SPREAD = 0.0075 * 6;
+
+    /** An arrow in flight at soldier {@code target}: from (ox, oz) along the line through (ax, az). */
+    private record Arrow(int target, double ox, double oz, double ax, double az, int ticksLeft) {
+    }
+
+    private List<Arrow> arrows = new ArrayList<>();
 
     /** One simulated hostile; mutable, stepped only by its battle. */
     public static final class Hostile {
@@ -135,6 +153,15 @@ public final class Battle implements WorldView {
      */
     public double[] step(List<Position> soldiers) {
         double[] damage = new double[soldiers.size()];
+        List<Arrow> flying = new ArrayList<>();
+        for (Arrow arrow : arrows) {
+            if (arrow.ticksLeft() > 1) {
+                flying.add(new Arrow(arrow.target(), arrow.ox(), arrow.oz(), arrow.ax(), arrow.az(), arrow.ticksLeft() - 1));
+            } else if (arrow.target() < soldiers.size() && offLine(arrow, soldiers.get(arrow.target())) <= ARROW_HIT_RADIUS) {
+                damage[arrow.target()] += ARROW_DAMAGE;
+            }
+        }
+        arrows = flying;
         for (Hostile h : hostiles) {
             if (!h.alive() || soldiers.isEmpty()) {
                 continue;
@@ -169,8 +196,10 @@ public final class Battle implements WorldView {
                     } else if (distance < SKELETON_STANDOFF - 2) {
                         move(h, soldier, -speed);
                     }
-                    if (distance <= BOW_RANGE && h.cooldown == 0) {
-                        damage[target] += random.nextDouble() < ARROW_HIT_CHANCE ? ARROW_DAMAGE : 0;
+                    if (distance <= BOW_RANGE && h.cooldown == 0 && canSee(here, soldier)) {
+                        double ax = soldier.x() + random.nextGaussian() * ARROW_SPREAD * distance;
+                        double az = soldier.z() + random.nextGaussian() * ARROW_SPREAD * distance;
+                        arrows.add(new Arrow(target, h.x, h.z, ax, az, (int) Math.ceil(distance / ARROW_SPEED)));
                         h.cooldown = BOW_COOLDOWN;
                     }
                 }
@@ -194,6 +223,33 @@ public final class Battle implements WorldView {
             }
         }
         return damage;
+    }
+
+    /** How far {@code soldier} stands from the arrow's line, horizontally. */
+    private static double offLine(Arrow arrow, Position soldier) {
+        double lx = arrow.ax() - arrow.ox();
+        double lz = arrow.az() - arrow.oz();
+        double length = Math.hypot(lx, lz);
+        if (length < 1e-9) {
+            return Math.hypot(soldier.x() - arrow.ax(), soldier.z() - arrow.az());
+        }
+        return Math.abs((soldier.x() - arrow.ox()) * lz - (soldier.z() - arrow.oz()) * lx) / length;
+    }
+
+    /** Whether nothing solid lies between the two at chest height - a skeleton shoots only what it sees. */
+    private boolean canSee(Position from, Position to) {
+        double dx = to.x() - from.x();
+        double dy = to.y() - from.y();
+        double dz = to.z() - from.z();
+        int steps = (int) Math.ceil(Math.sqrt(dx * dx + dy * dy + dz * dz) / 0.2);
+        for (int i = 1; i < steps; i++) {
+            double t = (double) i / steps;
+            if (world.isSolid((int) Math.floor(from.x() + dx * t), (int) Math.floor(from.y() + 1.5 + dy * t),
+                    (int) Math.floor(from.z() + dz * t))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

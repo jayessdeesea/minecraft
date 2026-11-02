@@ -46,15 +46,21 @@ class CombatScenarioTest {
     void contactReflexAgainstEachArchetype() {
         int seeds = Integer.getInteger("combat.seeds", DEFAULT_SEEDS);
         Map<Battle.Archetype, Map<Ending, Integer>> tally = new EnumMap<>(Battle.Archetype.class);
+        Map<Battle.Archetype, Double> healthLeft = new EnumMap<>(Battle.Archetype.class);
         for (Battle.Archetype archetype : Battle.Archetype.values()) {
             Map<Ending, Integer> endings = new EnumMap<>(Ending.class);
+            double health = 0;
             for (long seed = 1; seed <= seeds; seed++) {
-                endings.merge(fight(archetype, seed).ending(), 1, Integer::sum);
+                Fight fight = fight(archetype, seed);
+                endings.merge(fight.ending(), 1, Integer::sum);
+                health += fight.healthLeft();
             }
             tally.put(archetype, endings);
+            healthLeft.put(archetype, health / seeds);
         }
         StringBuilder table = new StringBuilder("\nOne soldier vs one hostile, " + seeds + " seeds each:\n");
-        tally.forEach((archetype, endings) -> table.append(String.format(Locale.ROOT, "  %-9s %s%n", archetype, endings)));
+        tally.forEach((archetype, endings) -> table.append(String.format(Locale.ROOT, "  %-9s %s, %.1f health left on average%n",
+                archetype, endings, healthLeft.get(archetype))));
         System.out.println(table);
     }
 

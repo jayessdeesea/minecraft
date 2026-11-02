@@ -20,12 +20,18 @@ doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
 - **Cover from a shooter:** a soldier under fire with no reachable shooter moves to the nearest
   cell with no line of sight to it (`DeterministicSoldier.lineOfSight`, already used for contact).
   That's the "find cover" half of react to contact.
-- **Dodging:** a soldier closing on a skeleton strafes, moving across the line of fire rather than
-  along it, so an arrow aimed where it was misses.
-  - Arrow entities would make dodging reactive rather than a habit: track them, and step out of
-    one's path when it's inbound.
-- Measured in `CombatScenarioTest`: damage taken closing on a skeleton drops with strafing; a
-  soldier under fire behind cover takes none.
+- **Don't fight an archer bare-handed.** `CombatScenarioTest` now flies arrows: line of sight to
+  shoot, 1.6 blocks a tick, aimed where the soldier stood, vanilla's spread.
+  - A bare-handed soldier loses to a skeleton 100 times in 100. It takes 200 ticks of punching,
+    shot point-blank throughout.
+  - The same fight at a wooden sword's damage wins 100 in 100, on 9.4 health.
+  - So an unarmed soldier under fire should take cover (above) or break contact, and rearm first
+    where the squad leader allows. Fighting there is the losing move.
+- **What doesn't help:** zigzagging in toward an archer, measured. It loses all 100 too: it slows
+  the approach while the arrows that kill land in melee. Dodging is worth another look only for a
+  soldier with a ranged weapon of its own, holding at range (backlog/ranged-combat.md).
+- **The simulator gets weapons.** It uses fist damage for every soldier, whatever its kit. Weapon
+  damage and attack cooldown by item would let each change above be measured.
 
 ## Notes
 - Exhaustion from damage taken (0.1 per hit) and from jumping (0.05) is charged by the server
