@@ -74,7 +74,7 @@ class SquadLeaderScenarioIT {
                 for (boolean stuck : new boolean[]{false, true}) {
                     Outcome outcome = run(client, Scenario.generate(terrain, seed), stuck);
                     outcomes.add(outcome);
-                    System.out.printf(Locale.ROOT, "%-24s %5dms  %-6s  %s%n", outcome.name(), outcome.millis(), outcome.risk(),
+                    System.out.printf(Locale.ROOT, "%-24s %5dms  %-18s  %s%n", outcome.name(), outcome.millis(), outcome.risk(),
                             outcome.failures().isEmpty() ? "PASS" : "FAIL " + String.join("; ", outcome.failures()));
                 }
             }
@@ -134,7 +134,8 @@ class SquadLeaderScenarioIT {
                 && Pathfinder.find(world, start, goal, ORACLE_BUDGET).reachesGoal()) {
             failures.add("false CANTCO: " + reason);
         }
-        return new Outcome(scenario, stuck, millis, order.risk().name(), failures);
+        return new Outcome(scenario, stuck, millis, order.risk().name()
+                + order.soldierRisk().entrySet().stream().map(e -> " " + e.getKey() + "=" + e.getValue()).sorted().collect(java.util.stream.Collectors.joining()), failures);
     }
 
     private static SoldierStatus soldierNear(String name, SyntheticWorld world, int x, int z) {

@@ -83,4 +83,17 @@ class FormationsTest {
 
         assertTrue(order(orders, 1).z() > -50, "slot stays on the approach side: " + orders.get(1));
     }
+
+    @Test
+    void aSoldierWithHisOwnRiskGetsItAndTheRestKeepTheSquads() {
+        List<SoldierStatus> squad = List.of(
+                new SoldierStatus("Alice", POINT, new Order.Idle(), new Report.Moving(), java.util.Optional.empty()),
+                new SoldierStatus("Bob", POINT, new Order.Idle(), new Report.Moving(), java.util.Optional.empty()),
+                new SoldierStatus("Carol", POINT, new Order.Idle(), new Report.Cantco("on a ledge"), java.util.Optional.empty()));
+
+        List<Order> orders = Formations.assign(new SquadOrder(NORTH, Formation.WEDGE, Interval.NORMAL, 2, Risk.LOW,
+                java.util.Map.of("Carol", Risk.MEDIUM), "free Carol"), squad);
+
+        assertEquals(List.of(Risk.LOW, Risk.LOW, Risk.MEDIUM), orders.stream().map(o -> ((Order.MoveTo) o).risk()).toList());
+    }
 }

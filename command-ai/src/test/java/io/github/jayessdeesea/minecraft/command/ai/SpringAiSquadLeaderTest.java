@@ -42,7 +42,8 @@ class SpringAiSquadLeaderTest {
 
     private static final String GOOD_REPLY = """
             {"x": 12, "y": 71, "z": -38, "formation": "FILE", "interval": "TIGHT",
-             "verticalTolerance": 3, "risk": "MEDIUM", "intent": "take the hilltop through the trees", "cantco": ""}
+             "verticalTolerance": 3, "risk": "MEDIUM",
+             "soldierRisks": [{"soldier": "Bob", "risk": "HIGH"}], "intent": "take the hilltop through the trees", "cantco": ""}
             """;
 
     /** A 3x3 survey (radius 8, spacing 8) around (0, 0): reachable land, an unreachable ridge, water, unknown. */
@@ -57,8 +58,10 @@ class SpringAiSquadLeaderTest {
             new TerrainSurvey.Sample(0, 8, TerrainSurvey.Ground.LAND, 63, true),
             new TerrainSurvey.Sample(8, 8, TerrainSurvey.Ground.LAND, 63, true)));
 
+    private static final List<String> SQUAD = List.of("Alice", "Bob");
+
     private static SquadOrderReply reply(double y, Formation formation, double verticalTolerance, String intent) {
-        return new SquadOrderReply(0, y, 0, formation, Interval.NORMAL, verticalTolerance, Risk.LOW, intent, "");
+        return new SquadOrderReply(0, y, 0, formation, Interval.NORMAL, verticalTolerance, Risk.LOW, List.of(), intent, "");
     }
 
     @Test
@@ -129,7 +132,7 @@ class SpringAiSquadLeaderTest {
         SquadOrder order = leader.decide(List.of(ALICE, BOB), TERRAIN).orElseThrow();
 
         assertEquals(new SquadOrder(new Position(12, 71, -38), Formation.FILE, Interval.TIGHT, 3, Risk.MEDIUM,
-                "take the hilltop through the trees"), order);
+                java.util.Map.of("Bob", Risk.HIGH), "take the hilltop through the trees"), order);
         assertEquals(new Report.Moving(), leader.report());
         assertEquals(MessageType.SYSTEM, sent.get().getInstructions().getFirst().getMessageType(), "role goes in the system prompt");
     }
@@ -148,11 +151,28 @@ class SpringAiSquadLeaderTest {
 
     @Test
     void validationRejectsOrdersThatCantBeCarriedOut() {
-        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(null));
-        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(reply(400, Formation.WEDGE, 2, "x")));
-        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(reply(64, null, 2, "x")));
-        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(reply(64, Formation.WEDGE, 0, "x")));
-        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(reply(64, Formation.WEDGE, 2, " ")));
-        assertInstanceOf(SquadOrder.class, SpringAiSquadLeader.toSquadOrder(reply(64, Formation.WEDGE, 2, "hold")));
+        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(null, SQUAD));
+        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(reply(400, Formation.WEDGE, 2, "x"), SQUAD));
+        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(reply(64, null, 2, "x"), SQUAD));
+        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(reply(64, Formation.WEDGE, 0, "x"), SQUAD));
+        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(reply(64, Formation.WEDGE, 2, " "), SQUAD));
+        assertInstanceOf(SquadOrder.class, SpringAiSquadLeader.toSquadOrder(reply(64, Formation.WEDGE, 2, "hold"), SQUAD));
+    }
+
+    @Test
+    void aSoldiersOwnRiskMustNameSomeoneInTheSquadOnce() {
+        SquadOrderReply hold = reply(64, Formation.WEDGE, 2, "hold");
+        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(withSoldierRisks(hold,
+                List.of(new SquadOrderReply.SoldierRisk("Carol", Risk.MEDIUM))), SQUAD), "Carol isn't in this squad");
+        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(withSoldierRisks(hold,
+                List.of(new SquadOrderReply.SoldierRisk("Bob", Risk.MEDIUM), new SquadOrderReply.SoldierRisk("Bob", Risk.HIGH))), SQUAD));
+        assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(withSoldierRisks(hold, null), SQUAD));
+        assertEquals(java.util.Map.of("Bob", Risk.MEDIUM), SpringAiSquadLeader.toSquadOrder(withSoldierRisks(hold,
+                List.of(new SquadOrderReply.SoldierRisk("Bob", Risk.MEDIUM))), SQUAD).soldierRisk());
+    }
+
+    private static SquadOrderReply withSoldierRisks(SquadOrderReply r, List<SquadOrderReply.SoldierRisk> soldierRisks) {
+        return new SquadOrderReply(r.x(), r.y(), r.z(), r.formation(), r.interval(), r.verticalTolerance(), r.risk(),
+                soldierRisks, r.intent(), r.cantco());
     }
 }

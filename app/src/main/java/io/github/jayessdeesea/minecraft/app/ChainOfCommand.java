@@ -160,12 +160,12 @@ public class ChainOfCommand {
                 TerrainSurvey survey = terrain.get();
                 long reachable = survey.samples().stream().filter(TerrainSurvey.Sample::reachable).count();
                 squadLeader.decide(squad, survey).ifPresent(decided -> {
-                    LOG.info("[{} -> squad] ({} ms, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval, {} risk. Intent: {}",
+                    LOG.info("[{} -> squad] ({} ms, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval, {} risk{}. Intent: {}",
                             SQUAD_NAME, System.currentTimeMillis() - started, reachable, survey.samples().size(),
                             Math.round(decided.objective().x()), Math.round(decided.objective().y()), Math.round(decided.objective().z()),
-                            decided.formation(), decided.interval(), decided.risk(), decided.intent());
+                            decided.formation(), decided.interval(), decided.risk(), soldierRisk(decided), decided.intent());
                     transmit("[" + SQUAD_NAME + " -> squad] FRAGO: " + decided.formation() + " to " + at(decided.objective())
-                            + ", " + decided.risk() + " risk"
+                            + ", " + decided.risk() + " risk" + soldierRisk(decided)
                             + ". Intent: " + decided.intent());
                     if (squadLeader.report() instanceof Report.Cantco cantco) {
                         LOG.warn("[{} -> General] CANTCO: {}", SQUAD_NAME, cantco.reason());
@@ -204,6 +204,12 @@ public class ChainOfCommand {
 
     private static String at(io.github.jayessdeesea.minecraft.command.Position p) {
         return "(" + Math.round(p.x()) + ", " + Math.round(p.y()) + ", " + Math.round(p.z()) + ")";
+    }
+
+    /** ", Carol at MEDIUM risk" for each per-soldier override, in name order; empty if none. */
+    private static String soldierRisk(SquadOrder order) {
+        return order.soldierRisk().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
+                .map(e -> ", " + e.getKey() + " at " + e.getValue() + " risk").collect(java.util.stream.Collectors.joining());
     }
 
     private static long since(long then, long now) {

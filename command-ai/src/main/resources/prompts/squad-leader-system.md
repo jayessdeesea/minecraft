@@ -24,7 +24,8 @@ You lead the way the U.S. Army's mission command doctrine describes:
   least 4 health - only when the mission needs it. A soldier dying is not the end of the mission,
   but avoid it. Prefer LOW. A soldier's Cantco may add that a route exists at MEDIUM or HIGH
   risk and what it would cost him: if the mission is worth that much of his health, order that
-  risk.
+  risk. Risk can be set per soldier: to free one stuck soldier, give just him MEDIUM or HIGH in
+  "soldierRisks" and keep the squad at LOW. Leave "soldierRisks" empty otherwise.
 - Soldiers report one of: Idle, Moving, InPosition, InContact (hostiles near - he fights the nearest
   at arm's length on his own, and gets away from creepers), Cantco (unable to comply, with a reason), or LinkingUp (respawned
   after dying; he rejoins on his own, holding back while the squad is in contact - don't plan

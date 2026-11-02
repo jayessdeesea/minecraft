@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Risk;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
@@ -13,9 +14,12 @@ import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
 import org.springframework.ai.chat.client.ChatClient;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * A {@link SquadLeader} whose decisions come from an LLM, per AGENTS.md's "Behavior modeling"
@@ -75,7 +79,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             return Optional.empty();
         }
         SquadOrderReply reply = callModel(buildContext(name, current, lastOrder, soldierStatuses, terrain));
-        SquadOrder order = toSquadOrder(reply);
+        SquadOrder order = toSquadOrder(reply, soldierStatuses.stream().map(SoldierStatus::name).toList());
         lastOrder = order;
         report = reply.cantco() == null || reply.cantco().isBlank() ? new Report.Moving() : new Report.Cantco(reply.cantco());
         return Optional.of(order);
@@ -116,7 +120,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
                 .entity(SquadOrderReply.class, spec -> spec.useProviderStructuredOutput().validateSchema());
     }
 
-    static SquadOrder toSquadOrder(SquadOrderReply reply) {
+    static SquadOrder toSquadOrder(SquadOrderReply reply, List<String> squad) {
         if (reply == null) {
             throw new IllegalStateException("squad leader model returned no order");
         }
@@ -135,8 +139,20 @@ public final class SpringAiSquadLeader implements SquadLeader {
         if (reply.intent() == null || reply.intent().isBlank()) {
             throw new IllegalStateException("an order without intent: " + reply);
         }
+        if (reply.soldierRisks() == null) {
+            throw new IllegalStateException("missing soldierRisks (empty when nobody needs his own risk): " + reply);
+        }
+        Map<String, Risk> soldierRisk = new HashMap<>();
+        for (SquadOrderReply.SoldierRisk entry : reply.soldierRisks()) {
+            if (entry == null || entry.risk() == null || !squad.contains(entry.soldier())) {
+                throw new IllegalStateException("a soldier's risk names nobody in the squad " + squad + ": " + reply);
+            }
+            if (soldierRisk.put(entry.soldier(), entry.risk()) != null) {
+                throw new IllegalStateException("two risks for " + entry.soldier() + ": " + reply);
+            }
+        }
         return new SquadOrder(new Position(reply.x(), reply.y(), reply.z()), reply.formation(), reply.interval(),
-                reply.verticalTolerance(), reply.risk(), reply.intent());
+                reply.verticalTolerance(), reply.risk(), soldierRisk, reply.intent());
     }
 
     /**
@@ -217,8 +233,15 @@ public final class SpringAiSquadLeader implements SquadLeader {
     }
 
     private static String describe(SquadOrder order) {
-        return String.format(Locale.ROOT, "Move to %s in %s at %s interval, within %.0f blocks of that height, %s risk. Intent: %s",
-                describe(order.objective()), order.formation(), order.interval(), order.verticalTolerance(), order.risk(), order.intent());
+        return String.format(Locale.ROOT, "Move to %s in %s at %s interval, within %.0f blocks of that height, %s risk%s. Intent: %s",
+                describe(order.objective()), order.formation(), order.interval(), order.verticalTolerance(), order.risk(),
+                describeSoldierRisk(order), order.intent());
+    }
+
+    /** ", Carol at MEDIUM risk" - the overrides in name order, so the line is stable; empty if none. */
+    static String describeSoldierRisk(SquadOrder order) {
+        return order.soldierRisk().entrySet().stream().sorted(Map.Entry.comparingByKey())
+                .map(e -> ", " + e.getKey() + " at " + e.getValue() + " risk").collect(Collectors.joining());
     }
 
     static String describe(Optional<Condition> condition) {

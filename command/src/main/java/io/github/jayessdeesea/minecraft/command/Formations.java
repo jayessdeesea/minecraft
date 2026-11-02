@@ -35,12 +35,14 @@ public final class Formations {
         double interval = order.interval().blocks();
 
         List<Order> orders = new ArrayList<>(soldiers.size());
-        orders.add(new Order.MoveTo(objective.x(), objective.y(), objective.z(), POINT_TOLERANCE, order.verticalTolerance(), order.risk()));
+        orders.add(new Order.MoveTo(objective.x(), objective.y(), objective.z(), POINT_TOLERANCE, order.verticalTolerance(),
+                order.riskFor(soldiers.get(0).name())));
         for (int i = 1; i < soldiers.size(); i++) {
             double[] offset = order.formation().offset(i, interval);
             double x = point.x() + forward[0] * offset[0] - forward[1] * offset[1];
             double z = point.z() + forward[1] * offset[0] + forward[0] * offset[1];
-            orders.add(new Order.MoveTo(x, point.y(), z, interval / 2, order.verticalTolerance(), order.risk()));
+            orders.add(new Order.MoveTo(x, point.y(), z, interval / 2, order.verticalTolerance(),
+                    order.riskFor(soldiers.get(i).name())));
         }
         return orders;
     }
