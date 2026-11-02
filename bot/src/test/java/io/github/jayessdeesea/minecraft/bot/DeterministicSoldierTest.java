@@ -152,7 +152,7 @@ class DeterministicSoldierTest {
 
             @Override
             public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
-                return List.of(new TrackedEntity(1, 151, new Position(center.x() + 2, center.y(), center.z())));
+                return List.of(new TrackedEntity(1, 154, new Position(center.x() + 2, center.y(), center.z())));
             }
         };
 
@@ -544,7 +544,7 @@ class DeterministicSoldierTest {
             public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
                 double distance = Math.sqrt(Math.pow(hostile.x() - center.x(), 2)
                         + Math.pow(hostile.y() - center.y(), 2) + Math.pow(hostile.z() - center.z(), 2));
-                return distance <= radius ? List.of(new TrackedEntity(1, 151, hostile)) : List.of();
+                return distance <= radius ? List.of(new TrackedEntity(1, 154, hostile)) : List.of();
             }
         };
     }

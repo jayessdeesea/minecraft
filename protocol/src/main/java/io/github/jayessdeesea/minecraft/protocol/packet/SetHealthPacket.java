@@ -3,7 +3,7 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Clientbound Play-state packet, officially "Set Health" (protocol 776), 0x68 - ID from
+ * Clientbound Play-state packet, officially "Set Health" (protocol 777), 0x6A - ID from
  * {@code GameProtocols}' clientbound registration order (see {@link AddEntityPacket}'s javadoc for
  * the cross-check), layout from {@code ClientboundSetHealthPacket}'s wire constructor: float
  * health, VarInt food, float saturation. Sent on join and whenever any of them changes. A health of
@@ -12,7 +12,7 @@ import io.netty.buffer.ByteBuf;
  */
 public record SetHealthPacket(float health, int food, float saturation) implements Packet {
 
-    public static final int PACKET_ID = 0x68;
+    public static final int PACKET_ID = 0x6A;
 
     public static SetHealthPacket decode(ByteBuf in) {
         float health = in.readFloat();

@@ -3,7 +3,7 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Serverbound Play-state "Player Loaded" (protocol 776), 0x2C - empty body. A vanilla client sends
+ * Serverbound Play-state "Player Loaded" (protocol 777), 0x2C - empty body. A vanilla client sends
  * it once it has loaded in; until then the server ignores some actions entirely, attacks included
  * ({@code ServerGamePacketListenerImpl.handleAttack} checks {@code hasClientLoaded()} first).
  */

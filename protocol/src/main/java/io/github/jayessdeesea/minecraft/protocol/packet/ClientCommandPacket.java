@@ -3,7 +3,7 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Serverbound Play-state packet, officially "Client Command" (protocol 776), 0x0C - ID from
+ * Serverbound Play-state packet, officially "Client Command" (protocol 777), 0x0C - ID from
  * {@code GameProtocols}' serverbound registration order, cross-checked against Accept Teleportation
  * (0x00), Keep Alive (0x1C), and Move Player Pos (0x1E) landing where this codebase already
  * confirmed them. Body is the action enum written as a VarInt ordinal; only {@link #PERFORM_RESPAWN}

@@ -152,34 +152,45 @@ wiki for anything with internal structure:
 
 ```bash
 # once per pin bump: copy the versioned jar out of the dev-server container
-docker compose cp minecraft:/data/versions/26.2/server-26.2.jar C:/mc-reference/
-J='C:\mc-reference\server-26.2.jar'
+docker compose cp minecraft:/data/versions/26.3/server-26.3.jar C:/mc-reference/26.3/
+J='C:\mc-reference\26.3\server-26.3.jar'
 javap -p -c -classpath "$J" net.minecraft.network.protocol.game.ClientboundAddEntityPacket
 javap -p -c -classpath "$J" net.minecraft.network.protocol.game.GameProtocols   # registration order = packet IDs
 javap -v ...   # when a codec is a method reference: the BootstrapMethods/MethodHandle lines name its target
 ```
+
+For a pin bump, run the same `javap` over both versions' jars and compare: packet IDs move
+whenever a packet is inserted, and a codec rewritten as a composite can keep or change its wire
+format, so read the composite's parts. The data generator's `packets.json` report (section 7)
+lists every packet ID, a cross-check on the registration order.
 
 Point `javap` straight at the jar. Don't extract it on Windows: deep `net/minecraft/...` paths
 exceed `MAX_PATH`, and `unzip` silently skips them.
 
 ## 7. Regenerating the generated registries
 
-`bot`'s block classes, hostile-mob list and item classes are generated from the server's own data
-reports.
-Regenerate both after every pin bump:
+`bot`'s block classes, hostile-mob list and item classes are generated from the server itself:
+its data reports, and, for block types, its own registry (the reports dropped block types in
+26.3). Regenerate all three after every pin bump. Run the server's data generator in the version's
+reference folder, with the bundler jar from the version manifest: it writes the reports and
+unpacks the server and its libraries there.
 
 ```bash
-MSYS_NO_PATHCONV=1 docker compose run --rm --no-deps --entrypoint java minecraft \
-    -DbundlerMainClass=net.minecraft.data.Main -jar /opt/minecraft/server.jar --reports --output /data/generated
-docker compose cp minecraft:/data/generated/reports C:/mc-reference/reports
+V=26.3; P=777; M=C:/mc-reference/$V
+(cd $M && java -DbundlerMainClass=net.minecraft.data.Main -jar server.jar --reports --output generated)
+
+SCP="$(cygpath -w $M/versions/$V/server-$V.jar)"                      # the server and its libraries
+for j in $(find $M/libraries -name '*.jar'); do SCP="$SCP;$(cygpath -w $j)"; done
+java -cp "$SCP" tools/block-type-dumper/DumpBlockTypes.java > $M/generated/block-types.txt
 
 R=bot/src/main/resources/io/github/jayessdeesea/minecraft/bot/world
 CP="<jackson-databind>;<jackson-core>;<jackson-annotations>"   # jars from ~/.m2
-java -cp "$CP" tools/block-class-generator/GenerateBlockClasses.java C:/mc-reference/reports/blocks.json $R/block-classes-776.txt
-java -cp "$CP" tools/entity-hostility-generator/GenerateEntityHostility.java C:/mc-reference/reports/registries.json $R/hostile-entity-types-776.txt
-java -cp "$CP" tools/item-class-generator/GenerateItemClasses.java C:/mc-reference/reports/registries.json $R/item-classes-776.txt
+java -cp "$CP" tools/block-class-generator/GenerateBlockClasses.java $M/generated/reports/blocks.json $M/generated/block-types.txt $R/block-classes-$P.txt
+java -cp "$CP" tools/entity-hostility-generator/GenerateEntityHostility.java $M/generated/reports/registries.json $R/hostile-entity-types-$P.txt
+java -cp "$CP" tools/item-class-generator/GenerateItemClasses.java $M/generated/reports/registries.json $R/item-classes-$P.txt
 ```
 
-Rename the output files to match the new protocol number, along with the resource names in
-`BlockClassRegistry`, `HostileMobRegistry` and `ItemClassRegistry`. In Git Bash, give `java` a
-Windows-style classpath (`cygpath -w`).
+Delete the old version's files and update the resource names in `BlockClassRegistry`,
+`HostileMobRegistry` and `ItemClassRegistry`. Test fixtures that use real IDs (items, entity types,
+block states) need the new ones: map each old ID to its name in the old reports, then to the new
+ID. In Git Bash, give `java` a Windows-style classpath (`cygpath -w`).

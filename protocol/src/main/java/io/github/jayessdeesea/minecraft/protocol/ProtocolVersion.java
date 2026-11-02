@@ -7,8 +7,8 @@ package io.github.jayessdeesea.minecraft.protocol;
  */
 public final class ProtocolVersion {
 
-    /** Protocol version for Minecraft Java Edition 26.2 ("Chaos Cubed"). */
-    public static final int CURRENT = 776;
+    /** Protocol version for Minecraft Java Edition 26.3. */
+    public static final int CURRENT = 777;
 
     private ProtocolVersion() {
     }

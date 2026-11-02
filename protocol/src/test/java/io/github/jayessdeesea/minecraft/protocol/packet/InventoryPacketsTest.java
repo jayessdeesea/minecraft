@@ -13,8 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class InventoryPacketsTest {
 
-    private static final int IRON_SWORD = 959;
-    private static final int ARROW = 923;
+    private static final int IRON_SWORD = 1045;
+    private static final int ARROW = 1009;
     private static final int ENCHANTMENTS = 13;
 
     private static void stack(ByteBuf out, int count, int itemId, int... components) {

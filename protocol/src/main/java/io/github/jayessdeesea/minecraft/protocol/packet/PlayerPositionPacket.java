@@ -3,12 +3,8 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Clientbound Play-state packet, officially "Player Position" (protocol 776), 0x48 - confirmed by
- * decompiling the real server jar (see DEVELOPMENT.md's "Confirming wire formats against the real
- * server"): {@code net.minecraft.network.protocol.game.GameProtocols}' clientbound registration
- * order puts it at index 72 (0x48), cross-checked against two already-empirically-confirmed
- * packets in the same list (Keep Alive at index 44/0x2C, Chunk Data at index 45/0x2D both landed
- * exactly where expected). Tells the client its actual position - the first one arrives right
+ * Clientbound Play-state packet, officially "Player Position" (protocol 777), 0x49 - ID from
+ * {@code GameProtocols}' clientbound registration order (DEVELOPMENT.md § 6). Tells the client its actual position - the first one arrives right
  * after entering Play, and it's the only source of real spawn coordinates: {@code PlayLoginPacket}
  * carries none.
  *
@@ -23,7 +19,7 @@ import io.netty.buffer.ByteBuf;
 public record PlayerPositionPacket(int teleportId, double x, double y, double z,
                                     float yRot, float xRot, int relativeFlags) implements Packet {
 
-    public static final int PACKET_ID = 0x48;
+    public static final int PACKET_ID = 0x49;
 
     public static PlayerPositionPacket decode(ByteBuf in) {
         int teleportId = ProtocolCodec.readVarInt(in);

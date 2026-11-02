@@ -15,7 +15,7 @@ import java.util.Arrays;
  * States the resource doesn't list are {@link BlockClass#SOLID}, the same "unknown = blocked"
  * default {@link ChunkCache} uses for unloaded chunks.
  *
- * <p>Pinned to protocol 776 by filename - regenerate and rename deliberately when the pin bumps.
+ * <p>Pinned to protocol 777 by filename - regenerate and rename deliberately when the pin bumps.
  */
 final class BlockClassRegistry {
 
@@ -30,7 +30,7 @@ final class BlockClassRegistry {
         HAZARD
     }
 
-    private static final String RESOURCE_NAME = "block-classes-776.txt";
+    private static final String RESOURCE_NAME = "block-classes-777.txt";
 
     private static final BlockClass[] CLASSES = load();
 

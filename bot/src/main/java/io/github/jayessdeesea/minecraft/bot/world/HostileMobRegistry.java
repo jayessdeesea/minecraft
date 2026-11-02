@@ -19,11 +19,11 @@ import java.util.BitSet;
  * correctly "not hostile." A hostile mob missing from the list goes unnoticed, which is a tracked,
  * incremental gap (grow the list), not a violated invariant.
  *
- * <p>Pinned to protocol 776 by filename - regenerate and rename deliberately when the pin bumps.
+ * <p>Pinned to protocol 777 by filename - regenerate and rename deliberately when the pin bumps.
  */
 public final class HostileMobRegistry {
 
-    private static final String RESOURCE_NAME = "hostile-entity-types-776.txt";
+    private static final String RESOURCE_NAME = "hostile-entity-types-777.txt";
 
     private static final java.util.Map<String, Integer> TYPE_IDS = new java.util.HashMap<>();
     private static final BitSet HOSTILE_TYPE_IDS = load();

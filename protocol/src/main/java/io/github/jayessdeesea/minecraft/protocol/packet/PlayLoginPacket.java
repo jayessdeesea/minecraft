@@ -38,7 +38,7 @@ public record PlayLoginPacket(
         boolean flat,
         boolean hasDeathLocation) implements Packet {
 
-    public static final int PACKET_ID = 0x31;
+    public static final int PACKET_ID = 0x32;
 
     /** Generous cap on the dimension list - vanilla always sends exactly 3 (overworld/end/nether). */
     private static final int MAX_DIMENSIONS = 64;
@@ -62,8 +62,8 @@ public record PlayLoginPacket(
         int dimensionType = ProtocolCodec.readVarInt(in);
         String dimensionName = ProtocolCodec.readString(in);
         long hashedSeed = in.readLong();
-        int gameMode = in.readUnsignedByte();
-        int previousGameMode = in.readByte();
+        int gameMode = ProtocolCodec.readVarInt(in);
+        int previousGameMode = ProtocolCodec.readVarInt(in) - 1; // optional: 0 is none, -1 here as before
         boolean debug = in.readBoolean();
         boolean flat = in.readBoolean();
         boolean hasDeathLocation = in.readBoolean();
@@ -96,8 +96,8 @@ public record PlayLoginPacket(
         ProtocolCodec.writeVarInt(out, dimensionType);
         ProtocolCodec.writeString(out, dimensionName);
         out.writeLong(hashedSeed);
-        out.writeByte(gameMode);
-        out.writeByte(previousGameMode);
+        ProtocolCodec.writeVarInt(out, gameMode);
+        ProtocolCodec.writeVarInt(out, previousGameMode + 1);
         out.writeBoolean(debug);
         out.writeBoolean(flat);
         out.writeBoolean(hasDeathLocation);

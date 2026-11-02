@@ -164,7 +164,8 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             listeners.onChunkUpdate().accept(new ChunkUpdate(chunkData.chunkX(), chunkData.chunkZ(), chunkData.sectionBlockStates()));
         } else if (packet instanceof PlayerPositionPacket position) {
             LOG.info("Player Position received: ({}, {}, {}) - accepting", position.x(), position.y(), position.z());
-            ctx.writeAndFlush(new AcceptTeleportationPacket(position.teleportId()));
+            ctx.writeAndFlush(new AcceptTeleportationPacket(position.teleportId(), position.x(), position.y(), position.z(),
+                    position.yRot(), position.xRot()));
             if (!loadedSent) {
                 // Protocol-level, like Accept Teleportation: "I'm in the world now." Without it the
                 // server ignores attacks (and some other actions) until its own timeout.

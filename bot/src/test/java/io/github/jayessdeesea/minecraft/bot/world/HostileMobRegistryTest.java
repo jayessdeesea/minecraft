@@ -6,15 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Real entity-type protocol IDs from protocol 776's own {@code --reports} registries.json, not
+ * Real entity-type protocol IDs from protocol 777's own {@code --reports} registries.json, not
  * made-up numbers: 10 = bat (the first entity seen live in {@code PersistentJoinLiveIT}), 30 = cow,
- * 32 = creeper, 151 = zombie.
+ * 32 = creeper, 154 = zombie.
  */
 class HostileMobRegistryTest {
 
     @Test
     void zombieIsHostile() {
-        assertTrue(HostileMobRegistry.isHostile(151));
+        assertTrue(HostileMobRegistry.isHostile(154));
     }
 
     @Test

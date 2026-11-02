@@ -3,7 +3,7 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Serverbound Play-state packet, officially "Chat Command" (protocol 776), 0x07 - ID from
+ * Serverbound Play-state packet, officially "Chat Command" (protocol 777), 0x07 - ID from
  * {@code GameProtocols}' serverbound registration order, consistent with Chunk Batch Received
  * (0x0B) and Client Command (0x0C) already confirmed. Body is the command line without its
  * leading slash, one {@code writeUtf} string ({@code ServerboundChatCommandPacket}).

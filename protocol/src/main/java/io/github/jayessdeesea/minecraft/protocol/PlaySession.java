@@ -29,6 +29,13 @@ public interface PlaySession {
     void reportPosition(double x, double y, double z, boolean onGround);
 
     /**
+     * Ends this client's tick, as a vanilla client does after every one. The server accepts at
+     * most one {@link #reportPosition} per tick - a second before the next {@code endTick}
+     * disconnects the player - so a caller reporting every tick must end every tick.
+     */
+    void endTick();
+
+    /**
      * Asks the server to respawn this (dead) player. Whether and when to respawn is the caller's
      * decision, not {@code protocol}'s - see docs/protocol-pipeline.md on game decisions staying out
      * of the control plane. A dead player is sent no chunks or entities until it does.

@@ -9,14 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class QuartermasterTest {
 
-    private static final int BOW = 922;
-    private static final int STONE_SWORD = 949;
-    private static final int IRON_SWORD = 959;
-    private static final int IRON_AXE = 962;
-    private static final int IRON_HELMET = 994;
-    private static final int IRON_BOOTS = 997;
-    private static final int LEATHER_HELMET = 982;
-    private static final int ARROW = 923;
+    private static final int BOW = 1008;
+    private static final int STONE_SWORD = 1035;
+    private static final int IRON_SWORD = 1045;
+    private static final int IRON_AXE = 1048;
+    private static final int IRON_HELMET = 1080;
+    private static final int IRON_BOOTS = 1083;
+    private static final int LEATHER_HELMET = 1068;
+    private static final int ARROW = 1009;
 
     @Test
     void aBareSoldierTakesTheBestMeleeWeaponAndOnePieceForEachArmourSlot() {

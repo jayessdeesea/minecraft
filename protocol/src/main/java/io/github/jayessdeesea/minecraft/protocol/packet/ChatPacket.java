@@ -3,7 +3,7 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Serverbound Play-state packet, officially "Chat" (protocol 776), 0x09 - ID from
+ * Serverbound Play-state packet, officially "Chat" (protocol 777), 0x09 - ID from
  * {@code GameProtocols}' serverbound registration order, layout from
  * {@code ServerboundChatPacket.write}: message ({@code writeUtf}, at most 256 characters), long
  * timestamp (epoch millis), long salt, optional signature (boolean, then 256 bytes), then

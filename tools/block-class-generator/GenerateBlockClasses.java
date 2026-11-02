@@ -3,6 +3,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -11,7 +14,9 @@ import java.util.TreeMap;
 /**
  * One-off, dev-time generator - NOT part of the Maven build (it depends on Jackson, which nothing at
  * runtime needs). Reads the pinned server jar's own {@code generated/reports/blocks.json} (produced
- * by {@code --reports}; see DEVELOPMENT.md section 7) and classifies every block state for movement,
+ * by {@code --reports}; see DEVELOPMENT.md section 7) for each block's states and properties, and
+ * {@code tools/block-type-dumper}'s output for each block's type, and classifies every block state
+ * for movement,
  * emitting {@code bot/src/main/resources/.../block-classes-<version>.txt}, which
  * {@code bot.world.BlockClassRegistry} loads at runtime.
  *
@@ -42,7 +47,7 @@ public class GenerateBlockClasses {
             "nether_sprouts", "attached_stem", "stem", "small_dripleaf", "sweet_berry_bush",
             "light", "structure_void", "end_portal", "end_gateway", "nether_portal",
             "leaf_litter", "firefly_bush", "flower_bed", "spore_blossom", "cactus_flower",
-            "wither_rose", "eyeblossom", "tripwire", "wall_sign", "wall_hanging_sign", "wall_banner"
+            "wither_rose", "eyeblossom", "trip_wire", "wall_sign", "wall_hanging_sign", "wall_banner"
     );
 
     private static final Set<String> TALL_TYPES = Set.of("fence", "wall", "fence_gate");
@@ -56,12 +61,21 @@ public class GenerateBlockClasses {
     );
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 2) {
-            System.err.println("Usage: GenerateBlockClasses <blocks.json> <output.txt>");
+        if (args.length != 3) {
+            System.err.println("Usage: GenerateBlockClasses <blocks.json> <block-types.txt> <output.txt>");
             System.exit(1);
         }
 
         JsonNode root = new ObjectMapper().readTree(new File(args[0]));
+        Map<String, String> types = new HashMap<>();
+        for (String line : Files.readAllLines(Path.of(args[1]))) {
+            int at = line.indexOf("[STDOUT]: ");
+            String entry = (at >= 0 ? line.substring(at + "[STDOUT]: ".length()) : line).strip();
+            if (entry.startsWith("minecraft:")) {
+                String[] parts = entry.split(" ");
+                types.put(parts[0], parts[1]);
+            }
+        }
         Map<Integer, String> classes = new TreeMap<>(); // stateId -> "<class> <blockName>"
         Map<Character, Integer> counts = new TreeMap<>();
         int totalStates = 0;
@@ -70,7 +84,10 @@ public class GenerateBlockClasses {
         while (blocks.hasNext()) {
             Map.Entry<String, JsonNode> block = blocks.next();
             String blockName = block.getKey().replace("minecraft:", "");
-            String type = block.getValue().get("definition").get("type").asText().replace("minecraft:", "");
+            String type = types.get(block.getKey());
+            if (type == null) {
+                throw new IllegalStateException("no type for " + block.getKey() + " - block types from another version?");
+            }
             for (JsonNode state : block.getValue().get("states")) {
                 totalStates++;
                 char cls = classify(type, state.path("properties"));
@@ -81,7 +98,7 @@ public class GenerateBlockClasses {
             }
         }
 
-        try (PrintWriter out = new PrintWriter(args[1])) {
+        try (PrintWriter out = new PrintWriter(args[2])) {
             out.println("# Generated from the pinned server jar's `--reports` blocks.json by");
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
             out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...).");

@@ -3,7 +3,7 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * The Play packets for using a container block such as a chest (protocol 776), IDs from
+ * The Play packets for using a container block such as a chest (protocol 777), IDs from
  * {@code GameProtocols}' registration order, layouts from each packet's stream codec. A chest is
  * opened with {@link UseItemOn}; the server answers {@link OpenScreen} and then the chest's
  * Container Set Content ({@link InventoryPackets}, under the new container ID).
@@ -94,10 +94,10 @@ public final class ContainerPackets {
         }
     }
 
-    /** Serverbound "Set Carried Item", 0x35 ({@code ServerboundSetCarriedItemPacket}): short hotbar slot, 0-8. */
+    /** Serverbound "Set Carried Item", 0x36 ({@code ServerboundSetCarriedItemPacket}): short hotbar slot, 0-8. */
     public record SetCarriedItem(int hotbarSlot) implements Packet {
 
-        public static final int PACKET_ID = 0x35;
+        public static final int PACKET_ID = 0x36;
 
         @Override
         public int packetId() {
@@ -111,13 +111,13 @@ public final class ContainerPackets {
     }
 
     /**
-     * Clientbound "Open Screen", 0x3B ({@code ClientboundOpenScreenPacket}): VarInt container ID,
+     * Clientbound "Open Screen", 0x3C ({@code ClientboundOpenScreenPacket}): VarInt container ID,
      * VarInt menu type (registry ID; {@code generic_9x3} is a single chest), then the title as an
      * NBT text component - left unread, the frame being length-isolated.
      */
     public record OpenScreen(int containerId, int menuType) implements Packet {
 
-        public static final int PACKET_ID = 0x3B;
+        public static final int PACKET_ID = 0x3C;
 
         public static OpenScreen decode(ByteBuf in) {
             return new OpenScreen(ProtocolCodec.readVarInt(in), ProtocolCodec.readVarInt(in));

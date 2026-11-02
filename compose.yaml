@@ -4,7 +4,7 @@
 services:
   minecraft:
     build: docker/minecraft-server
-    image: minecraft-dev-server:26.2
+    image: minecraft-dev-server:26.3
     ports:
       - "25565:25565"
     volumes:

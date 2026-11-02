@@ -154,10 +154,9 @@ never supposed to creep in.
 
 ## Target environment
 
-- **Protocol version: pinned, not negotiated.** Pinned to Minecraft Java Edition 26.2 ("Chaos
-  Cubed", protocol 776). Track the current release, but bump the pin deliberately
-  (backlog/bump-to-26-3.md), never let it drift. No multi-version support, no
-  version-negotiation/compat layer — one version, one protocol.
+- **Protocol version: pinned, not negotiated.** Pinned to Minecraft Java Edition 26.3 (protocol
+  777). Track the current release, but bump the pin deliberately, never let it drift. No
+  multi-version support, no version-negotiation/compat layer — one version, one protocol.
 - **Auth: self-hosted, offline-mode dev server only.** No Mojang/Xbox Live OAuth device-code flow,
   no session server, no login encryption request/response — offline mode skips that handshake
   entirely. Revisit this decision if bots ever need to join a real online-mode server.

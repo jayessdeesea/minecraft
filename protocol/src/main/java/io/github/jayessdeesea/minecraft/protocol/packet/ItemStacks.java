@@ -8,7 +8,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.Optional;
 
 /**
- * Reads an item stack as {@code ItemStack.OPTIONAL_STREAM_CODEC} writes it (protocol 776): VarInt
+ * Reads an item stack as {@code ItemStack.OPTIONAL_STREAM_CODEC} writes it (protocol 777): VarInt
  * count; if positive, VarInt item ID ({@code Item.STREAM_CODEC}, a registry holder), then a
  * component patch ({@code DataComponentPatch}'s stream codec): VarInt added count, VarInt removed
  * count, each added component as VarInt type then its value, each removed one as VarInt type.

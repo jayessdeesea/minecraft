@@ -6,13 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Clientbound Play-state packet, officially "Remove Entities" (protocol 776), 0x4D - ID confirmed
+ * Clientbound Play-state packet, officially "Remove Entities" (protocol 777), 0x4E - ID confirmed
  * the same way as {@link AddEntityPacket}'s; layout is {@code FriendlyByteBuf.readIntIdList}: a
  * VarInt count followed by that many VarInt entity IDs.
  */
 public record RemoveEntitiesPacket(List<Integer> entityIds) implements Packet {
 
-    public static final int PACKET_ID = 0x4D;
+    public static final int PACKET_ID = 0x4E;
 
     public static RemoveEntitiesPacket decode(ByteBuf in) {
         // Every VarInt is at least one byte, so the remaining payload length is a hard upper bound.

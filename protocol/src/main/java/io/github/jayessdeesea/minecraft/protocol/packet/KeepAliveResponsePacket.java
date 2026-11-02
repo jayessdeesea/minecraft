@@ -16,7 +16,7 @@ import io.netty.buffer.ByteBuf;
  * {@code handleDisconnection() called twice} warning server-side - that looked like desync rather
  * than acceptance, so it was left unconfirmed pending a real client capture.
  *
- * <p>Cross-checked afterward against minecraft.wiki's Java Edition protocol page for protocol 776
+ * <p>Cross-checked afterward against minecraft.wiki's Java Edition protocol page for protocol 777
  * (our pinned version, AGENTS.md § Target environment): it lists serverbound Keep Alive at 0x1C -
  * the same candidate flagged ambiguous, not one of the two cleanly ruled out. That reframes the
  * earlier result: a wrong packet ID produces a decoder exception (as it did for the other two
@@ -28,7 +28,7 @@ import io.netty.buffer.ByteBuf;
  */
 public record KeepAliveResponsePacket(long id) implements Packet {
 
-    /** Confirmed via minecraft.wiki (protocol 776) and live round-trip against the dev server. */
+    /** Confirmed via minecraft.wiki (protocol 777) and live round-trip against the dev server. */
     public static final int PACKET_ID = 0x1C;
 
     @Override

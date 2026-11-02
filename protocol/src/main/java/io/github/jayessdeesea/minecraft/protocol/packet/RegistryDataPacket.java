@@ -6,12 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Clientbound Configuration-state packet, officially "Registry Data" (protocol 776), 0x07 -
- * confirmed two independent ways: minecraft.wiki states Configuration ID 7 for this packet, and
- * decompiling the real server jar's {@code ConfigurationProtocols} shows it at registration index
- * 7 in the clientbound list - the same list where index 14 lands on {@code
- * CLIENTBOUND_SELECT_KNOWN_PACKS}, matching this codebase's already-independently-confirmed
- * {@link KnownPacksPacket#CLIENTBOUND_PACKET_ID} (0x0E) exactly.
+ * Clientbound Configuration-state packet, officially "Registry Data" (protocol 777), 0x07 - ID
+ * from {@code ConfigurationProtocols}' clientbound registration order.
  *
  * <p>Sent once per data-driven registry during Configuration (dimension_type, biome, damage_type,
  * and a dozen or so others) - a registry name, then a list of entries, each an identifier plus an

@@ -3,7 +3,7 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Clientbound Play-state packet, ID 0x2C (docs/protocol-spec.md § 3.5) - an opaque Long the client
+ * Clientbound Play-state packet, ID 0x2D (docs/protocol-spec.md § 3.5) - an opaque Long the client
  * must echo back via {@link KeepAliveResponsePacket} to avoid being kicked for timing out.
  * Confirmed empirically against the live dev server by content and timing, not any external spec:
  * an 8-byte payload appearing in isolation ~15 seconds after Play began (well after the initial
@@ -14,7 +14,7 @@ import io.netty.buffer.ByteBuf;
  */
 public record KeepAliveRequestPacket(long id) implements Packet {
 
-    public static final int PACKET_ID = 0x2C;
+    public static final int PACKET_ID = 0x2D;
 
     public static KeepAliveRequestPacket decode(ByteBuf in) {
         return new KeepAliveRequestPacket(in.readLong());

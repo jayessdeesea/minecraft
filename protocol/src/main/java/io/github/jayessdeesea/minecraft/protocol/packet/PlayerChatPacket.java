@@ -5,7 +5,7 @@ import io.netty.buffer.ByteBuf;
 import java.util.UUID;
 
 /**
- * Clientbound Play-state packet, officially "Player Chat" (protocol 776), 0x41 - ID from
+ * Clientbound Play-state packet, officially "Player Chat" (protocol 777), 0x42 - ID from
  * {@code GameProtocols}' clientbound registration order, layout from
  * {@code ClientboundPlayerChatPacket}'s wire constructor: VarInt global index, UUID sender, VarInt
  * index, optional signature (boolean, then 256 bytes - {@code MessageSignature.read}), then the
@@ -20,7 +20,7 @@ import java.util.UUID;
  */
 public record PlayerChatPacket(UUID sender, String message) implements Packet {
 
-    public static final int PACKET_ID = 0x41;
+    public static final int PACKET_ID = 0x42;
 
     /** {@code SignedMessageBody.Packed} reads the message with {@code readUtf(256)}. */
     static final int MAX_MESSAGE_LENGTH = 256;

@@ -70,6 +70,6 @@ class PlayClientHandlerTest {
         return new EmbeddedChannel(
                 new MarshallingDecoder(),
                 new SessionStateManager(),
-                new PlayClientHandler(776, "localhost", 25565, "TestBot", result, listeners));
+                new PlayClientHandler(777, "localhost", 25565, "TestBot", result, listeners));
     }
 }

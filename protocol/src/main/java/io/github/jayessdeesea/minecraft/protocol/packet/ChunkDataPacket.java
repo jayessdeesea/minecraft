@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Clientbound Play-state packet, officially "Chunk Data and Update Light" (protocol 776,
+ * Clientbound Play-state packet, officially "Chunk Data and Update Light" (protocol 777,
  * docs/world-data-spec.md § 1/§ 2). Decodes chunk X/Z and, per vertical section, its block-state
  * array (4096 global state IDs, one per block) - exactly what {@code bot.world}'s chunk cache
  * needs for collision queries.
@@ -39,7 +39,7 @@ import java.util.List;
  */
 public record ChunkDataPacket(int chunkX, int chunkZ, List<int[]> sectionBlockStates) implements Packet {
 
-    public static final int PACKET_ID = 0x2D;
+    public static final int PACKET_ID = 0x2E;
 
     private static final int BLOCK_STATES_PER_SECTION = 4096;
     private static final int BLOCK_STATES_INDIRECT_MAX_BITS = 8;

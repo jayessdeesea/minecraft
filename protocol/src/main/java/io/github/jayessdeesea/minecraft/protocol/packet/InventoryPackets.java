@@ -9,13 +9,13 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The three clientbound Play packets that keep this player's inventory current (protocol 776), IDs
+ * The three clientbound Play packets that keep this player's inventory current (protocol 777), IDs
  * from {@code GameProtocols}' registration order, layouts from their stream codecs:
  * <ul>
  *   <li>Container Set Content, 0x12: VarInt container ID, VarInt state ID, VarInt-counted list of
  *       item stacks, then the cursor's stack;</li>
  *   <li>Container Set Slot, 0x14: VarInt container ID, VarInt state ID, short slot, item stack;</li>
- *   <li>Set Held Slot, 0x69: VarInt hotbar slot.</li>
+ *   <li>Set Held Slot, 0x6B: VarInt hotbar slot.</li>
  * </ul>
  * Decoded straight into the {@link InventoryUpdate} a caller sees; the control handler reports
  * container 0, the player's own, as an inventory change and any other (a chest the player opened)
@@ -25,7 +25,7 @@ public record InventoryPackets(int packetId, int containerId, int stateId, Inven
 
     public static final int SET_CONTENT_PACKET_ID = 0x12;
     public static final int SET_SLOT_PACKET_ID = 0x14;
-    public static final int SET_HELD_SLOT_PACKET_ID = 0x69;
+    public static final int SET_HELD_SLOT_PACKET_ID = 0x6B;
 
     /** More than any container has (a double chest plus the player inventory is 90). */
     static final int MAX_SLOTS = 256;

@@ -13,7 +13,7 @@ import java.util.List;
  * <p>The server sends its known packs (clientbound "Select Known Packs") and waits for the
  * client to reply in kind before continuing the Configuration sequence - confirmed empirically
  * against the local dev server: {@link #CLIENTBOUND_PACKET_ID} content decodes cleanly as one
- * {@code (minecraft, core, 26.2)} entry, and it was the last packet before the server went quiet.
+ * {@code (minecraft, core, 26.3)} entry, and it was the last packet before the server went quiet.
  *
  * <p>{@link #SERVERBOUND_PACKET_ID} was the commonly documented value for this exchange, unconfirmed
  * by content since our own reply doesn't echo back - confirmed instead by behavior: sending it is
@@ -21,7 +21,7 @@ import java.util.List;
  */
 public record KnownPacksPacket(List<KnownPack> packs) implements Packet {
 
-    public static final int CLIENTBOUND_PACKET_ID = 0x0E;
+    public static final int CLIENTBOUND_PACKET_ID = 0x0F;
     public static final int SERVERBOUND_PACKET_ID = 0x07;
 
     /** Generous - we've only ever observed 1 in practice - but bounded against a hostile/buggy count. */

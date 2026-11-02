@@ -6,8 +6,9 @@ import io.github.jayessdeesea.minecraft.protocol.packet.AttackPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChatCommandPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientCommandPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ClientTickEndPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
-import io.github.jayessdeesea.minecraft.protocol.packet.SwingPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PunchPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MovePlayerPosPacket;
 import io.netty.channel.Channel;
 
@@ -39,6 +40,11 @@ final class NettyPlaySession implements PlaySession {
     }
 
     @Override
+    public void endTick() {
+        channel.writeAndFlush(new ClientTickEndPacket());
+    }
+
+    @Override
     public void respawn() {
         channel.writeAndFlush(new ClientCommandPacket(ClientCommandPacket.PERFORM_RESPAWN));
     }
@@ -46,7 +52,7 @@ final class NettyPlaySession implements PlaySession {
     @Override
     public void attack(int entityId) {
         channel.write(new AttackPacket(entityId));
-        channel.writeAndFlush(new SwingPacket());
+        channel.writeAndFlush(new PunchPacket());
     }
 
     @Override

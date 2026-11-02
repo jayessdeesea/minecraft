@@ -11,10 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class InventoryTest {
 
-    private static final int IRON_SWORD = 959;
-    private static final int ARROW = 923;
-    private static final int IRON_HELMET = 994;
-    private static final int ROTTEN_FLESH = 1143;
+    private static final int IRON_SWORD = 1045;
+    private static final int ARROW = 1009;
+    private static final int IRON_HELMET = 1080;
+    private static final int ROTTEN_FLESH = 1264;
 
     @Test
     void anEmptyInventoryIsABareHandedSoldier() {

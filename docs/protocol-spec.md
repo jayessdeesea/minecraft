@@ -202,33 +202,26 @@ pushes synchronization data — registry data, tags, feature flags, known resour
 cookies — and the client acknowledges. Ends when the server sends Finish Configuration and the
 client replies with Acknowledge Finish Configuration, which switches the state to Play.
 
-**Packet IDs below are not from any written spec** — none of the usual references
-(wiki.vg-successor, minecraft.wiki) were consulted for this section; they were derived by
-connecting an instrumented client to our own real, running 26.2 dev server, decoding raw payload
-bytes by hand, and observing which packet the server's send sequence stalls on until we reply.
-Confirmed this way, against 26.2 specifically — clientbound unless noted:
+IDs are positions in the server's own `ConfigurationProtocols` registration lists, cross-checked
+against the `packets.json` report the server's data generator writes (DEVELOPMENT.md § 7), and
+confirmed live by a real join. Clientbound unless noted:
 
-| ID | Packet | How it was identified |
+| ID | Packet | Notes |
 |---|---|---|
-| `0x01` | Plugin Message | payload decodes as two length-prefixed strings: `"minecraft:brand"`, `"vanilla"` |
-| `0x07` | Registry Data | ~30 packets of this ID, 67–32,084 bytes each, arrived immediately after our Known Packs reply |
-| `0x0C` | Feature Flags | payload decodes as VarInt count `1` + string `"minecraft:vanilla"` |
-| `0x0D` | Update Tags | one 35,203-byte packet, arrived last in the registry/tag burst |
-| `0x0E` | Select Known Packs | payload decodes as VarInt count `1` + one (namespace, id, version) triple `(minecraft, core, 26.2)`; server sent nothing further until we replied |
-| `0x03` | Finish Configuration | empty-body packet; arrived once we'd sent Client Information, and nothing followed until we acknowledged it |
-| `0x00` (serverbound) | Client Information | unconfirmed by content — inferred from commonly-documented numbering; confirmed working: sending it is what unblocked Registry Data/Update Tags/Finish Configuration at all |
-| `0x07` (serverbound) | Known Packs (reply) | same as above — sending an empty list here is what unblocked Registry Data/Update Tags |
-| `0x03` (serverbound) | Acknowledge Finish Configuration | same inference; confirmed working: sending it after Finish Configuration is what put the server into Play (see below) |
+| `0x01` | Plugin Message | `"minecraft:brand"`, `"vanilla"`; not decoded |
+| `0x03` | Finish Configuration | empty body; acknowledged with Acknowledge Finish Configuration |
+| `0x07` | Registry Data | ~30 of them, one per synced registry |
+| `0x0D` | Feature Flags | not decoded |
+| `0x0E` | Update Tags | not decoded |
+| `0x0F` | Select Known Packs | one pack, `(minecraft, core, 26.3)`; the server waits for the reply |
+| `0x00` (serverbound) | Client Information | sending it starts the registry and tag burst |
+| `0x03` (serverbound) | Acknowledge Finish Configuration | switches the connection to Play |
+| `0x07` (serverbound) | Known Packs (reply) | an empty list |
 
-**Registry Data (`0x07`) is now actually decoded**, not just identified by size - `RegistryDataPacket`
-reads the registry name and every entry's identifier (each entry's own NBT payload is skipped, not
-parsed - see that class's javadoc for why). Cross-checked a second, independent way beyond the
-by-content method above: decompiling the real server jar's `ConfigurationProtocols` puts this
-packet at clientbound registration index 7, and the same list's index 14 lands on `Select Known
-Packs` - matching this table's own already-confirmed `0x0E` exactly. Confirmed live against the dev
-server: all ~30 registries synced during a real join decode cleanly with plausible names and entry
-counts (`minecraft:worldgen/biome` 66 entries, `minecraft:dimension_type` 4, `minecraft:damage_type`
-51, etc.) - see DEVELOPMENT.md's "Confirming wire formats against the real server" for the method.
+**Registry Data (`0x07`) is decoded**: `RegistryDataPacket` reads the registry name and every
+entry's identifier (each entry's own NBT payload is skipped, not parsed - see that class's javadoc
+for why). Live, all ~30 registries synced during a join decode cleanly (`minecraft:worldgen/biome`,
+`minecraft:dimension_type`, `minecraft:damage_type` and so on).
 
 **Play was reached and confirmed end to end.** After acknowledging Finish Configuration, the
 server's own log showed:
@@ -248,43 +241,49 @@ packet, as we implement the features that need them; not enumerated in this docu
 **This table is the authoritative list of confirmed Play packet IDs** - add a row here when a
 packet is confirmed; the packet class's javadoc carries its field layout. IDs are positions in the
 server's own `GameProtocols` registration lists (read with `javap` - see DEVELOPMENT.md's
-"Confirming wire formats against the real server"); each new one is accepted only once
-previously-confirmed IDs in the same list land where expected.
+"Confirming wire formats against the real server"), cross-checked against the data generator's
+`packets.json` report.
 
 | Dir | ID | Packet | Class | Confirmation |
 |---|---|---|---|---|
-| ← | `0x01` | Add Entity | `AddEntityPacket` | registration order; live (real entities decode with zero trailing bytes) |
-| ← | `0x0B` | Chunk Batch Finished | `ChunkBatchFinishedPacket` | registration order; live (chunks keep streaming once acked) |
-| ← | `0x23` | Entity Position Sync | `EntityPositionPacket` | registration order; live |
-| ← | `0x25` | Forget Level Chunk | `ForgetLevelChunkPacket` | registration order |
-| ← | `0x2C` | Keep Alive | `KeepAliveRequestPacket` | by content: 8-byte payload ~15s into Play |
-| ← | `0x2D` | Chunk Data and Update Light | `ChunkDataPacket` | decompiled layout; live across many chunks |
-| ← | `0x31` | Login (play) | `PlayLoginPacket` | by content: entity ID matched the server console's "logged in with entity id N", other fields matched server.properties |
-| ← | `0x35` | Move Entity Pos | `MoveEntityPacket` | registration order; live (resolved positions continuous) |
-| ← | `0x36` | Move Entity Pos Rot | `MoveEntityPacket` | registration order; live |
-| ← | `0x3B` | Open Screen | `ContainerPackets.OpenScreen` | registration order; live (a chest: menu type 2, `generic_9x3`) |
-| ← | `0x41` | Player Chat | `PlayerChatPacket` | registration order; live (plain chat from another client) |
-| ← | `0x48` | Player Position | `PlayerPositionPacket` | registration order; live spawn coordinates |
-| ← | `0x4D` | Remove Entities | `RemoveEntitiesPacket` | registration order |
+| ← | `0x01` | Add Entity | `AddEntityPacket` | live (real entities decode with zero trailing bytes) |
+| ← | `0x0B` | Chunk Batch Finished | `ChunkBatchFinishedPacket` | live (chunks keep streaming once acked) |
 | ← | `0x11` | Container Close | `ContainerPackets.ContainerClosed` | registration order |
-| ← | `0x12` | Container Set Content | `InventoryPackets` | registration order; live |
-| ← | `0x14` | Container Set Slot | `InventoryPackets` | registration order; live (`/give`) |
-| ← | `0x68` | Set Health | `SetHealthPacket` | registration order; live (`0.0` for a dead player) |
-| ← | `0x69` | Set Held Slot | `InventoryPackets` | registration order |
-| ← | `0x7D` | Teleport Entity | `EntityPositionPacket` | registration order |
-| → | `0x00` | Accept Teleportation | `AcceptTeleportationPacket` | registration order; server keeps the session after it |
-| → | `0x01` | Attack | `AttackPacket` | registration order |
-| → | `0x07` | Chat Command | `ChatCommandPacket` | registration order; live (`/me` lines in the server log) |
-| → | `0x09` | Chat | `ChatPacket` | registration order; live (relayed to other clients as Player Chat) |
-| → | `0x12` | Container Click | `ContainerPackets.ContainerClick` | registration order; live (quick move, chest and inventory) |
-| → | `0x13` | Container Close | `ContainerPackets.CloseContainer` | registration order; live |
-| → | `0x0B` | Chunk Batch Received | `ChunkBatchReceivedPacket` | registration order; live |
-| → | `0x0C` | Client Command | `ClientCommandPacket` | registration order; live respawn |
-| → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | wiki + live round-trip |
-| → | `0x1E` | Move Player Pos | `MovePlayerPosPacket` | registration order; live movement |
+| ← | `0x12` | Container Set Content | `InventoryPackets` | live |
+| ← | `0x14` | Container Set Slot | `InventoryPackets` | live (`/give`) |
+| ← | `0x23` | Entity Position Sync | `EntityPositionPacket` | live |
+| ← | `0x26` | Forget Level Chunk | `ForgetLevelChunkPacket` | registration order |
+| ← | `0x2D` | Keep Alive | `KeepAliveRequestPacket` | live round trip |
+| ← | `0x2E` | Chunk Data and Update Light | `ChunkDataPacket` | live across many chunks |
+| ← | `0x32` | Login (play) | `PlayLoginPacket` | live (entity ID matches the server console's "logged in with entity id N") |
+| ← | `0x36` | Move Entity Pos | `MoveEntityPacket` | live (resolved positions continuous) |
+| ← | `0x37` | Move Entity Pos Rot | `MoveEntityPacket` | live |
+| ← | `0x3C` | Open Screen | `ContainerPackets.OpenScreen` | live (a chest: menu type 2, `generic_9x3`) |
+| ← | `0x42` | Player Chat | `PlayerChatPacket` | live (plain chat from another client) |
+| ← | `0x49` | Player Position | `PlayerPositionPacket` | live spawn coordinates |
+| ← | `0x4E` | Remove Entities | `RemoveEntitiesPacket` | registration order |
+| ← | `0x6A` | Set Health | `SetHealthPacket` | live (`0.0` for a dead player) |
+| ← | `0x6B` | Set Held Slot | `InventoryPackets` | registration order |
+| ← | `0x80` | Teleport Entity | `EntityPositionPacket` | registration order |
+| → | `0x00` | Accept Teleportation | `AcceptTeleportationPacket` | live (server keeps the session after it) |
+| → | `0x01` | Attack | `AttackPacket` | live |
+| → | `0x07` | Chat Command | `ChatCommandPacket` | live (`/me` lines in the server log) |
+| → | `0x09` | Chat | `ChatPacket` | live (relayed to other clients as Player Chat) |
+| → | `0x0B` | Chunk Batch Received | `ChunkBatchReceivedPacket` | live |
+| → | `0x0C` | Client Command | `ClientCommandPacket` | live respawn |
+| → | `0x0D` | Client Tick End | `ClientTickEndPacket` | live (see below) |
+| → | `0x12` | Container Click | `ContainerPackets.ContainerClick` | live (quick move, chest and inventory) |
+| → | `0x13` | Container Close | `ContainerPackets.CloseContainer` | live |
+| → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | live round trip |
+| → | `0x1E` | Move Player Pos | `MovePlayerPosPacket` | live movement |
 | → | `0x2C` | Player Loaded | `PlayerLoadedPacket` | registration order; empty body |
-| → | `0x35` | Set Carried Item | `ContainerPackets.SetCarriedItem` | registration order; live |
-| → | `0x3F` | Swing | `SwingPacket` | registration order |
+| → | `0x2E` | Punch | `PunchPacket` | registration order; empty body, sent after each attack |
+| → | `0x36` | Set Carried Item | `ContainerPackets.SetCarriedItem` | live |
+| → | `0x42` | Use Item On | `ContainerPackets.UseItemOn` | live (opens a chest) |
+
+**One position report per client tick.** The server disconnects a player that sends a second Move
+Player before the next Client Tick End ("Invalid move player packet received"), so a client that
+reports its position every tick ends every tick (`PlaySession.endTick`).
 
 **Chat.** Player Chat is decoded only as far as the sender UUID and the message, which come
 before the NBT text component and the registry-bound chat type; the rest of the frame is left
@@ -293,8 +292,6 @@ the sender identifies the player without decoding player info. Plain chat from a
 chat session arrives as Player Chat with no signature. An unsigned chat *command* such as `/me` -
 the squad's own radio lines - arrives instead as Disguised Chat (`0x21`), whose only sender is a
 name inside an NBT component; it isn't decoded.
-
-| → | `0x42` | Use Item On | `ContainerPackets.UseItemOn` | registration order; live (opens a chest) |
 
 **Containers.** Using a chest (Use Item On) gets Open Screen and then the chest's Container Set
 Content under the new container ID: the chest's own slots, then the player's 27 main slots and 9

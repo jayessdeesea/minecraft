@@ -3,7 +3,7 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Serverbound Play-state "Attack" (protocol 776), 0x01 - ID from {@code GameProtocols}' serverbound
+ * Serverbound Play-state "Attack" (protocol 777), 0x01 - ID from {@code GameProtocols}' serverbound
  * registration order; body is a single VarInt entity ID ({@code ServerboundAttackPacket.STREAM_CODEC}).
  * The server only honours it once the client has sent {@link PlayerLoadedPacket}, and only within
  * attack range ({@code ServerPlayer.isWithinAttackRange}) - an out-of-range attack is silently ignored.

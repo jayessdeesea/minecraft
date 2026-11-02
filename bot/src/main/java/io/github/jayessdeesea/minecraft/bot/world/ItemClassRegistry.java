@@ -19,14 +19,14 @@ import java.util.OptionalInt;
  * else is just carried; an item missing from the list goes uncounted, a tracked gap (grow the
  * generator's list), not a violated invariant.
  *
- * <p>Pinned to protocol 776 by filename - regenerate and rename deliberately when the pin bumps.
+ * <p>Pinned to protocol 777 by filename - regenerate and rename deliberately when the pin bumps.
  */
 public final class ItemClassRegistry {
 
     /** What an item counts as. */
     public enum ItemClass { WEAPON, ARMOUR, ARROWS }
 
-    private static final String RESOURCE_NAME = "item-classes-776.txt";
+    private static final String RESOURCE_NAME = "item-classes-777.txt";
 
     private record Entry(ItemClass itemClass, String name) {
     }

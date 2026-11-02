@@ -3,11 +3,9 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Clientbound Play-state packet, officially "Add Entity" (protocol 776), 0x01 - ID and layout
- * confirmed with {@code javap} against the real server jar: {@code GameProtocols}' clientbound
- * registration order puts it at index 1 (the same list whose indices 0x2C/0x2D/0x31/0x48 match
- * this codebase's already-confirmed Keep Alive/Chunk Data/Login/Player Position), and
- * {@code ClientboundAddEntityPacket}'s wire constructor reads: VarInt entity ID, UUID, VarInt
+ * Clientbound Play-state packet, officially "Add Entity" (protocol 777), 0x01 - ID and layout
+ * confirmed with {@code javap} against the real server jar: index 1 in {@code GameProtocols}'
+ * clientbound registration order, and {@code ClientboundAddEntityPacket}'s wire constructor reads: VarInt entity ID, UUID, VarInt
  * entity-type registry ID, double x/y/z, velocity ({@code LpVec3} - see {@link #skipLpVec3}),
  * byte xRot/yRot/yHeadRot, VarInt data.
  *

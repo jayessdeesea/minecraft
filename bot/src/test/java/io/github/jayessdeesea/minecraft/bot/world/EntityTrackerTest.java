@@ -8,10 +8,10 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Type IDs are real protocol-776 IDs - see {@link HostileMobRegistryTest}. */
+/** Type IDs are real protocol-777 IDs - see {@link HostileMobRegistryTest}. */
 class EntityTrackerTest {
 
-    private static final int ZOMBIE = 151;
+    private static final int ZOMBIE = 154;
     private static final int CREEPER = 32;
     private static final int COW = 30;
 
