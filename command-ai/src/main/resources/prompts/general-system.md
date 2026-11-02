@@ -18,6 +18,9 @@ You command the way the U.S. Army's mission command doctrine describes:
 - With more than one squad, split the work: one can hold or observe while another moves, and
   one can resupply while another covers it. Squads support each other: when one reports InContact
   or is weak (wounded, bare-handed), an objective beside it for another squad brings help.
+- An objective can tell its squad to gather WOOD: its soldiers chop logs around the objective,
+  each carrying up to 16, and the LOGSTAT counts the logs. Use it when the mission needs building
+  material; a squad gathering is spread out and slow to fight, so pick safe ground. Otherwise NONE.
 - If there is a <supply_point>, a squad sent there re-arms: its soldiers short of a weapon or
   armour take them from the chest. Send a squad that is badly short of either there before
   committing it to a fight, if the mission allows the time.

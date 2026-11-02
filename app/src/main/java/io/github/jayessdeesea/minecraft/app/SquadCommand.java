@@ -67,6 +67,12 @@ final class SquadCommand {
         return Optional.ofNullable(order);
     }
 
+    /** What the squad's objective has it gather, and around where - if anything. */
+    Optional<Objective> gatherObjective() {
+        Objective current = objective;
+        return current != null && current.gather().isPresent() ? Optional.of(current) : Optional.empty();
+    }
+
     boolean hasObjective() {
         return objective != null;
     }

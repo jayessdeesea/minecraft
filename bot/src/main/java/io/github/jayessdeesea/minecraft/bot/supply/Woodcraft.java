@@ -11,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * A bare-handed soldier making itself a wooden sword - doctrine's pre-combat checks
@@ -32,17 +33,9 @@ public final class Woodcraft {
 
     private static final Logger LOG = LogManager.getLogger(Woodcraft.class);
 
-    /** How far a soldier looks for a tree. */
-    static final int SEARCH_RADIUS = 16;
-    /** Logs from the stand cell's floor up to this many blocks above it are within reach. */
-    static final int REACH_UP = 3;
     /** Two logs make eight planks: four for the table, two for sticks, two for the sword. */
     static final int LOGS_NEEDED = 2;
-    /** A log by hand: hardness 2, so 3 seconds - with a margin, since the server times it. */
-    static final int DIG_TICKS = 70;
-    static final int PICKUP_TICKS = 20;
     static final int SETTLE_TICKS = 20;
-    static final int WALK_TIMEOUT_TICKS = 400;
     static final int OPEN_TIMEOUT_TICKS = 40;
     static final int COOLDOWN_TICKS = 1200;
     /** Menu registry ID of the crafting table's window ({@code minecraft:crafting}). */
@@ -52,11 +45,7 @@ public final class Woodcraft {
     /** The table's window: result and nine grid slots come before the inventory's. */
     private static final int TABLE_WINDOW_SLOTS = 10;
 
-    /** Where to stand, and the log to chop from there. */
-    record Tree(BlockPos stand, BlockPos log) {
-    }
-
-    private enum State { IDLE, WALKING, DIGGING, PICKING_UP, PLANKS, STICKS, TABLE, PLACE, OPEN, SWORD, EQUIP }
+    private enum State { IDLE, CHOPPING, PLANKS, STICKS, TABLE, PLACE, OPEN, SWORD, EQUIP }
 
     private final String name;
     private final PlaySession session;
@@ -66,14 +55,17 @@ public final class Woodcraft {
     private State state = State.IDLE;
     private int ticksInState;
     private int cooldown;
-    private Tree tree;
+    private Chopper chopper;
     private BlockPos table;
     /** Cells a table was tried in this run and didn't land - something the block data can't show (a squadmate) was there. */
     private final java.util.Set<BlockPos> blockedCells = new java.util.HashSet<>();
     private int windowId = -1;
     private int windowState;
 
-    public Woodcraft(String name, PlaySession session, Inventory inventory, Runnable kitChanged) {
+    private final Set<BlockPos> claims;
+
+    public Woodcraft(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Runnable kitChanged) {
+        this.claims = claims;
         this.name = name;
         this.session = session;
         this.inventory = inventory;
@@ -86,9 +78,7 @@ public final class Woodcraft {
 
     /** Where the soldier should be standing while the routine runs, if it needs to be somewhere. */
     public synchronized Optional<Position> standAt() {
-        return state == State.WALKING || state == State.DIGGING || state == State.PICKING_UP
-                ? Optional.of(new Position(tree.stand().x() + 0.5, tree.stand().y(), tree.stand().z() + 0.5))
-                : Optional.empty();
+        return state == State.CHOPPING ? Optional.of(chopper.standAt()) : Optional.empty();
     }
 
     /**
@@ -110,23 +100,15 @@ public final class Woodcraft {
                     gather(soldier, world);
                 }
             }
-            case WALKING -> {
-                if (at(soldier, tree.stand())) {
-                    session.startDigging(tree.log().x(), tree.log().y(), tree.log().z());
-                    enter(State.DIGGING);
-                } else if (ticksInState > WALK_TIMEOUT_TICKS) {
-                    giveUp("couldn't reach the tree at " + tree.log());
-                }
-            }
-            case DIGGING -> {
-                if (ticksInState >= DIG_TICKS) {
-                    session.finishDigging(tree.log().x(), tree.log().y(), tree.log().z());
-                    enter(State.PICKING_UP);
-                }
-            }
-            case PICKING_UP -> {
-                if (ticksInState >= PICKUP_TICKS) {
-                    gather(soldier, world);
+            case CHOPPING -> {
+                switch (chopper.tick(soldier, world)) {
+                    case Chopper.Progress.Working working -> {
+                    }
+                    case Chopper.Progress.Done done -> {
+                        chopper.release();
+                        gather(soldier, world);
+                    }
+                    case Chopper.Progress.Failed(String why) -> giveUp(why);
                 }
             }
             case PLANKS -> settled(() -> {
@@ -267,55 +249,16 @@ public final class Woodcraft {
             enter(State.PLANKS);
             return;
         }
-        Optional<Tree> next = findTree(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()));
+        Optional<Chopper.Tree> next = Chopper.findTree(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), claims);
         if (next.isEmpty()) {
-            giveUp("no tree within " + SEARCH_RADIUS + " blocks");
+            giveUp("no tree within " + Chopper.SEARCH_RADIUS + " blocks");
             return;
         }
-        if (tree == null) {
+        if (chopper == null) {
             LOG.info("{} goes to chop wood at {}", name, next.get().log());
         }
-        tree = next.get();
-        enter(State.WALKING);
-    }
-
-    /**
-     * The nearest log within {@link #SEARCH_RADIUS} of {@code from} that a soldier can chop: one
-     * beside a cell it can stand in (solid below, room for its body), at most {@link #REACH_UP}
-     * above that cell's floor. Nearest by the stand cell's distance.
-     */
-    static Optional<Tree> findTree(WorldView world, BlockPos from) {
-        Tree best = null;
-        double bestDistance = Double.MAX_VALUE;
-        int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-        for (int dx = -SEARCH_RADIUS; dx <= SEARCH_RADIUS; dx++) {
-            for (int dz = -SEARCH_RADIUS; dz <= SEARCH_RADIUS; dz++) {
-                for (int dy = -4; dy <= 4; dy++) {
-                    BlockPos stand = from.offset(dx, dy, dz);
-                    if (!standable(world, stand)) {
-                        continue;
-                    }
-                    for (int[] side : sides) {
-                        for (int up = 0; up <= REACH_UP; up++) {
-                            BlockPos log = stand.offset(side[0], up, side[1]);
-                            if (world.isLog(log.x(), log.y(), log.z())) {
-                                double distance = Math.hypot(dx, dz) + Math.abs(dy) + up * 0.1;
-                                if (distance < bestDistance) {
-                                    best = new Tree(stand, log);
-                                    bestDistance = distance;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return Optional.ofNullable(best);
-    }
-
-    private static boolean standable(WorldView world, BlockPos cell) {
-        return world.isSolid(cell.x(), cell.y() - 1, cell.z()) && !world.isSolid(cell.x(), cell.y(), cell.z())
-                && !world.isSolid(cell.x(), cell.y() + 1, cell.z()) && !world.isHazard(cell.x(), cell.y(), cell.z());
+        chopper = new Chopper(session, inventory, claims, next.get());
+        enter(State.CHOPPING);
     }
 
     /** A player's body is 0.6 wide: the server won't place a block where it overlaps. */
@@ -338,11 +281,6 @@ public final class Woodcraft {
 
     private static int[] stack(Optional<io.github.jayessdeesea.minecraft.protocol.ItemSlot> item) {
         return item.map(i -> new int[]{i.itemId(), i.count()}).orElse(null);
-    }
-
-    private static boolean at(Position soldier, BlockPos cell) {
-        return Math.hypot(soldier.x() - (cell.x() + 0.5), soldier.z() - (cell.z() + 0.5)) < 0.6
-                && Math.abs(soldier.y() - cell.y()) < 0.6;
     }
 
     /** Runs {@code phase} once the inventory has settled after the last one; gives up if it throws. */
@@ -376,7 +314,10 @@ public final class Woodcraft {
 
     private void finish() {
         blockedCells.clear();
-        tree = null;
+        if (chopper != null) {
+            chopper.release();
+        }
+        chopper = null;
         table = null;
         windowId = -1;
         cooldown = COOLDOWN_TICKS;

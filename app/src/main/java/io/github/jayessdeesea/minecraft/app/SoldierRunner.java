@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
+import io.github.jayessdeesea.minecraft.bot.supply.Gatherer;
 import io.github.jayessdeesea.minecraft.bot.supply.SupplyRun;
 import io.github.jayessdeesea.minecraft.bot.supply.Woodcraft;
 import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
@@ -114,6 +115,12 @@ public class SoldierRunner implements CommandLineRunner {
     private final Map<String, Woodcraft> woodcrafts = new ConcurrentHashMap<>();
     /** Whether each soldier's squad leader lets it stop to rearm, with its squad out of contact - squad loop writes, tick reads. */
     private final Map<String, Boolean> rearmAllowed = new ConcurrentHashMap<>();
+    /** Logs and stand cells a soldier is working, shared so soldiers pick different trees. */
+    private final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> treeClaims = ConcurrentHashMap.newKeySet();
+    /** Each connected soldier's gathering routine, by name. */
+    private final Map<String, Gatherer> gatherers = new ConcurrentHashMap<>();
+    /** What each soldier's squad is gathering, and around where - squad loop writes, tick reads; absent when nothing. */
+    private final Map<String, io.github.jayessdeesea.minecraft.command.Objective> gathering = new ConcurrentHashMap<>();
     /** No hostile this close to a soldier, nor any squadmate in contact, before it stops to make a sword. */
     private static final double REARM_CLEAR_RADIUS = 16;
 
@@ -222,9 +229,16 @@ public class SoldierRunner implements CommandLineRunner {
         for (int i = 0; i < statuses.size(); i++) {
             String soldierName = statuses.get(i).name();
             rearmAllowed.put(soldierName, order.rearm() && !squadInContact);
+            Optional<io.github.jayessdeesea.minecraft.command.Objective> gather = squadInContact
+                    ? Optional.empty() : chainOfCommand.gatherObjective(squadName);
+            gather.ifPresentOrElse(o -> gathering.put(soldierName, o), () -> gathering.remove(soldierName));
             Order given = orders.get(i);
             Woodcraft woodcraft = woodcrafts.get(soldierName);
+            Gatherer gatherer = gatherers.get(soldierName);
             Optional<Position> stand = woodcraft == null ? Optional.empty() : woodcraft.standAt();
+            if (stand.isEmpty() && gatherer != null) {
+                stand = gatherer.standAt();
+            }
             if (stand.isPresent()) {
                 given = new Order.MoveTo(stand.get().x(), stand.get().y(), stand.get().z(), 0.3, 0.5, Risk.LOW);
             }
@@ -410,12 +424,14 @@ public class SoldierRunner implements CommandLineRunner {
             soldier.reportKit(drawn);
         });
         supplyRun.set(run);
-        Woodcraft woodcraft = new Woodcraft(name, session, inventory, () -> {
+        Woodcraft woodcraft = new Woodcraft(name, session, inventory, treeClaims, () -> {
             Kit made = inventory.kit();
             lastKit.set(made);
             soldier.reportKit(made);
         });
         woodcrafts.put(name, woodcraft);
+        Gatherer gatherer = new Gatherer(name, session, inventory, treeClaims);
+        gatherers.put(name, gatherer);
         woodcraftRef.set(woodcraft);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
@@ -432,7 +448,14 @@ public class SoldierRunner implements CommandLineRunner {
             woodcraft.tick(status.position(), world, bareHanded && rearmAllowed.getOrDefault(name, false)
                     && !(status.report() instanceof Report.InContact) && !run.active()
                     && world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).isEmpty());
-            soldier.rearming(woodcraft.active());
+            io.github.jayessdeesea.minecraft.command.Objective gather = gathering.get(name);
+            gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
+                    gather == null ? status.position() : gather.location(),
+                    !(status.report() instanceof Report.InContact) && !woodcraft.active() && !run.active());
+            soldier.task(woodcraft.active() ? new Report.Rearming()
+                    : gatherer.active() ? new Report.Gathering(gather.gather().orElseThrow())
+                    : gather != null && gatherer.exhausted()
+                    ? new Report.Cantco("nothing left to gather within 16 blocks of the objective") : null);
             Position current = status.position();
             session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
             session.endTick();

@@ -96,6 +96,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
                 .append("Mission: ").append(objective.mission()).append('\n')
                 .append("Location: ").append(describe(objective.location())).append('\n')
                 .append("Intent: ").append(objective.intent()).append('\n')
+                .append(objective.gather().map(r -> "Gather: " + r + " - your soldiers collect it around the objective on their own\n").orElse(""))
                 .append("</objective>\n\n");
         prompt.append("<current_order>\n")
                 .append(lastOrder == null ? "None yet." : describe(lastOrder) + String.format(Locale.ROOT,
@@ -259,6 +260,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
         String kit = c.kit().map(k -> ", " + k.weapon().map(w -> "armed with " + w).orElse("bare-handed")
                         + String.format(Locale.ROOT, ", armour %d/%d", k.armour(), Kit.ARMOUR_SLOTS)
                         + (k.arrows() == 0 ? "" : ", " + k.arrows() + " arrows")
+                        + (k.logs() == 0 ? "" : ", " + k.logs() + " logs")
                         + (k.fallProtection() == 0 ? "" : String.format(Locale.ROOT, ", falls cost him %.0f%%", 100 * k.fallDamageFactor())))
                 .orElse(", kit not reported yet");
         return String.format(Locale.ROOT, "health %.0f/%.0f, food %d/%d%s%s", c.health(), Condition.MAX_HEALTH, c.food(),
@@ -273,6 +275,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             case Report.InContact(int hostiles) -> "InContact with " + hostiles + " hostile(s)";
             case Report.LinkingUp() -> "LinkingUp (respawned, rejoining the squad)";
             case Report.Rearming() -> "Rearming (making himself a wooden sword)";
+            case Report.Gathering(var resource) -> "Gathering " + resource;
             case Report.Cantco(String reason) -> "Cantco: " + reason;
         };
     }

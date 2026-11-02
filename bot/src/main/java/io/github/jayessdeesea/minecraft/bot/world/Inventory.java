@@ -130,22 +130,32 @@ public final class Inventory {
     }
 
     public synchronized Kit kit() {
+        // Armed means a weapon at hand: the one held, or else one on the hotbar - a soldier that put
+        // its sword away to chop wood draws it in a moment. One in the main inventory doesn't count.
         int held = itemIds[HOTBAR_FIRST + heldHotbarSlot];
         Optional<String> weapon = ItemClassRegistry.classOf(held).filter(c -> c == ItemClassRegistry.ItemClass.WEAPON)
                 .flatMap(c -> ItemClassRegistry.nameOf(held));
+        for (int slot = HOTBAR_FIRST; weapon.isEmpty() && slot <= HOTBAR_LAST; slot++) {
+            int item = itemIds[slot];
+            weapon = ItemClassRegistry.classOf(item).filter(c -> c == ItemClassRegistry.ItemClass.WEAPON)
+                    .flatMap(c -> ItemClassRegistry.nameOf(item));
+        }
         int arrows = 0;
         int armour = 0;
         int fallProtection = 0;
+        int logs = 0;
         for (int slot = 0; slot < SLOTS; slot++) {
             Optional<ItemClassRegistry.ItemClass> itemClass = ItemClassRegistry.classOf(itemIds[slot]);
             if (itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.ARROWS))) {
                 arrows += counts[slot];
+            } else if (itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.LOG))) {
+                logs += counts[slot];
             } else if (slot >= ARMOUR_FIRST && slot <= ARMOUR_LAST && itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.ARMOUR))) {
                 armour++;
                 fallProtection += 3 * enchantments[slot].getOrDefault("minecraft:feather_falling", 0)
                         + enchantments[slot].getOrDefault("minecraft:protection", 0);
             }
         }
-        return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION));
+        return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs);
     }
 }

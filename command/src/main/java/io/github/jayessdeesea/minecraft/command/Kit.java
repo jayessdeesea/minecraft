@@ -12,8 +12,9 @@ import java.util.Optional;
  * @param armour  armour pieces worn, 0 to {@link #ARMOUR_SLOTS}
  * @param fallProtection  the worn armour's enchantment protection against falls, 0 to
  *        {@link #MAX_PROTECTION}: 3 per level of Feather Falling, 1 per level of Protection
+ * @param logs  logs carried - the materials a squad gathers (docs/military-doctrine.md §12)
  */
-public record Kit(Optional<String> weapon, int arrows, int armour, int fallProtection) {
+public record Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs) {
 
     public static final int ARMOUR_SLOTS = 4;
     /** Vanilla caps enchantment protection at 20 points, each taking 4% off the damage. */
@@ -25,9 +26,14 @@ public record Kit(Optional<String> weapon, int arrows, int armour, int fallProte
         }
     }
 
-    /** Kit with no protective enchantments. */
+    /** Kit with no protective enchantments and no materials. */
     public Kit(Optional<String> weapon, int arrows, int armour) {
-        this(weapon, arrows, armour, 0);
+        this(weapon, arrows, armour, 0, 0);
+    }
+
+    /** Kit with no materials. */
+    public Kit(Optional<String> weapon, int arrows, int armour, int fallProtection) {
+        this(weapon, arrows, armour, fallProtection, 0);
     }
 
     /** The share of fall damage that gets through, 1 with no protection down to 0.2. */

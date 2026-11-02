@@ -93,7 +93,8 @@ public final class SpringAiGeneral implements General {
             line.append(String.format(Locale.ROOT, "weapons - %d of %d bare-handed, %d arrows; armour - %d of %d slots empty; ",
                     l.unarmed(), l.kitReported(), l.arrows(), l.armourEmpty(), l.armourSlots()));
         }
-        line.append(String.format(Locale.ROOT, "casualties - %d below half health, %d deaths so far.", l.wounded(), l.deaths()));
+        line.append(String.format(Locale.ROOT, "casualties - %d below half health, %d deaths so far; materials - %d logs.",
+                l.wounded(), l.deaths(), l.logs()));
         return line.toString();
     }
 
@@ -129,8 +130,14 @@ public final class SpringAiGeneral implements General {
                     || objective.intent() == null || objective.intent().isBlank()) {
                 throw new IllegalStateException("objective without mission or intent for squad " + squad.squadName() + ": " + reply);
             }
+            if (objective.gather() == null) {
+                throw new IllegalStateException("objective without gather (NONE if nothing) for squad " + squad.squadName() + ": " + reply);
+            }
             objectives.add(new Objective(objective.mission(), new Position(objective.x(), objective.y(), objective.z()),
-                    objective.intent()));
+                    objective.intent(), switch (objective.gather()) {
+                        case NONE -> java.util.Optional.empty();
+                        case WOOD -> java.util.Optional.of(io.github.jayessdeesea.minecraft.command.Resource.WOOD);
+                    }));
         }
         if (bySquad.size() != squadStatuses.size()) {
             throw new IllegalStateException("objectives for squads that weren't listed: " + reply);

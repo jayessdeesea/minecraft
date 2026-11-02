@@ -21,6 +21,6 @@ class LogstatTest {
                 soldier(Optional.of(new Condition(15, 18, 1, Optional.empty()))),
                 soldier(Optional.empty())));
 
-        assertEquals(new Logstat(4, 3, 1, 1, 3, 2, 1, 3, 8, 18), logstat);
+        assertEquals(new Logstat(4, 3, 1, 1, 3, 2, 1, 3, 8, 18, 0), logstat);
     }
 }

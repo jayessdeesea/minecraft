@@ -34,10 +34,11 @@ class InventoryTest {
         slots.set(40, new int[]{ARROW, 5});
         slots.set(37, new int[]{IRON_SWORD, 1});   // hotbar slot 1
         slots.set(36, new int[]{ROTTEN_FLESH, 3}); // hotbar slot 0
+        slots.set(15, new int[]{IRON_SWORD, 1});   // main inventory: not at hand
 
-        assertEquals(new Kit(Optional.empty(), 21, 1), inventory.replaceAll(slots), "holding rotten flesh");
+        assertEquals(new Kit(Optional.of("iron_sword"), 21, 1), inventory.replaceAll(slots), "holding rotten flesh, sword on the hotbar");
         assertEquals(new Kit(Optional.of("iron_sword"), 21, 1), inventory.selectHotbar(1));
-        assertEquals(new Kit(Optional.empty(), 21, 1), inventory.setSlot(37, null), "sword dropped");
+        assertEquals(new Kit(Optional.empty(), 21, 1), inventory.setSlot(37, null), "the one at hand dropped");
     }
 
     @Test

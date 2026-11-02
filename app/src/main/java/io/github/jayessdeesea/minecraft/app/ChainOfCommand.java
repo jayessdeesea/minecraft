@@ -124,6 +124,11 @@ public class ChainOfCommand {
         return squads.get(squad).escort();
     }
 
+    /** {@code squad}'s objective, when it has the squad gather a material (docs/military-doctrine.md §12). */
+    public Optional<Objective> gatherObjective(String squad) {
+        return squads.get(squad).gatherObjective();
+    }
+
     /** {@code squad}'s standing order, if its squad leader has issued one. */
     public Optional<SquadOrder> currentOrder(String squad) {
         return squads.get(squad).order();

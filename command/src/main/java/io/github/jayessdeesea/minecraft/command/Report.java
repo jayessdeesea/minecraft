@@ -46,4 +46,8 @@ public sealed interface Report {
      */
     record Rearming() implements Report {
     }
+
+    /** Gathering a material around the squad's objective (docs/military-doctrine.md §12). */
+    record Gathering(Resource resource) implements Report {
+    }
 }

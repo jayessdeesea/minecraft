@@ -225,6 +225,20 @@ and nobody in its squad is in contact. A soldier at it reports `Rearming`, and t
 halt for it. Anything that goes wrong - no tree in reach, a table that won't land - ends the attempt
 and puts any half-crafted items back in the inventory; the soldier tries again a minute later.
 
+## 12. Gathering materials
+
+| Practice | Content | Source |
+|---|---|---|
+| **Class IV supply** | Construction and barrier materials - lumber, sandbags, wire - requisitioned or, in the field, obtained locally. | FM 4-0, *Sustainment Operations* |
+
+*How we use it:* the general can give a squad an objective with `gather: WOOD`
+(`command.Objective.gather`). Its soldiers chop logs within 16 blocks of the objective on their own
+(`bot.supply.Gatherer`, sharing `Chopper` with §11): each puts its weapon away to chop, works a tree
+no squadmate has claimed, checks each log actually broke, and stops at 16 logs or when anything
+nears. A soldier at it reports `Gathering`; one that finds nothing left in reach reports CANTCO,
+which the squad leader passes up so the general can choose another place. Logs carried show in each
+soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
+
 ## Sources
 
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)
@@ -236,5 +250,6 @@ and puts any half-crafted items back in the inventory; the soldier tries again a
 - LACE: [Kentucky National Guard photo caption](https://ky.ng.mil/News/Photos/igphoto/2003751897/), [RallyPoint discussion](https://rallypoint.com/answers/what-s-the-difference-between-each-of-these-reports-salute-lace-salt-spot-report-sit-rep) (secondary sources)
 - Link-up procedure: FM 3-21.9 ch. 7 - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/3-21-9/chap7.htm)
 - ATP 5-19, *Risk Management* - [Army Publishing Directorate](https://armypubs.army.mil/)
+- FM 4-0, *Sustainment Operations* (classes of supply) - [Army Publishing Directorate](https://armypubs.army.mil/)
 - ATP 3-39.35, *Protective Services* - [Army Publishing Directorate](https://armypubs.army.mil/)
 - ATP 1-02.1 multi-service brevity codes (CANTCO) - [ALSSA](https://www.alssa.mil/MTTPs/Brevity/)
