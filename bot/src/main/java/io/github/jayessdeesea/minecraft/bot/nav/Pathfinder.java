@@ -19,8 +19,10 @@ import java.util.PriorityQueue;
  * on the same level (diagonals only when both orthogonal cells are clear, so the 0.6-wide body
  * doesn't clip a corner), jump up one block orthogonally (needs headroom above the takeoff cell),
  * or walk off an edge and drop up to {@link #MAX_DROP} blocks orthogonally - further only within a
- * {@link FallAllowance}, at a cost per point of fall damage. Hazards (water, lava, fire) are never
- * entered - no swimming, no ladders.
+ * {@link FallAllowance}, at a cost per point of fall damage. A soldier carrying blocks can also
+ * pillar: jump and place a block under itself, rising one block straight up - the way up a wall
+ * or cliff, repeated, then a step off onto the top. Hazards (water, lava, fire) are never entered -
+ * no swimming, no ladders.
  *
  * <p>A goal outside the budget isn't a failure: the result is a path to the explored cell that
  * got closest, flagged {@code reachesGoal = false}, and the caller re-plans from there. That's how
@@ -35,6 +37,8 @@ public final class Pathfinder {
 
     private static final double DIAGONAL = Math.sqrt(2);
     private static final double JUMP_COST = 2.0;
+    /** A pillar step costs a block and a jump's worth of time: dearer than walking round, cheaper than no way at all. */
+    static final double PILLAR_COST = 4.0;
     private static final int[][] ORTHOGONAL = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
     private static final int[][] DIAGONALS = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 
@@ -62,6 +66,15 @@ public final class Pathfinder {
     }
 
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls) {
+        return find(world, start, goal, maxExpanded, falls, false);
+    }
+
+    /**
+     * As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance)}, with pillar steps when
+     * {@code canPillar} - the soldier carries blocks to stand on. How many a route needs isn't
+     * counted against how many are carried: a soldier that runs out stops climbing and re-plans.
+     */
+    public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, boolean canPillar) {
         if (goal.contains(start)) {
             return new Result(List.of(), true);
         }
@@ -89,7 +102,7 @@ public final class Pathfinder {
             }
 
             double base = costSoFar.get(current);
-            for (Move move : moves(world, current, falls)) {
+            for (Move move : moves(world, current, falls, canPillar)) {
                 double cost = base + move.cost();
                 Double known = costSoFar.get(move.to());
                 if (known == null || cost < known) {
@@ -119,7 +132,7 @@ public final class Pathfinder {
         frontier.add(start);
         while (!frontier.isEmpty() && seen.size() < maxExpanded) {
             BlockPos current = frontier.poll();
-            for (Move move : moves(world, current, FallAllowance.NONE)) {
+            for (Move move : moves(world, current, FallAllowance.NONE, false)) {
                 BlockPos next = move.to();
                 if (Math.abs(next.x() - start.x()) <= maxHorizontalDistance
                         && Math.abs(next.z() - start.z()) <= maxHorizontalDistance
@@ -131,8 +144,11 @@ public final class Pathfinder {
         return seen;
     }
 
-    private static List<Move> moves(WorldView world, BlockPos from, FallAllowance falls) {
-        List<Move> moves = new ArrayList<>(8);
+    private static List<Move> moves(WorldView world, BlockPos from, FallAllowance falls, boolean canPillar) {
+        List<Move> moves = new ArrayList<>(9);
+        if (canPillar && open(world, from.x(), from.y() + 2, from.z())) {
+            moves.add(new Move(from.offset(0, 1, 0), PILLAR_COST)); // a block placed where it stood
+        }
         for (int[] d : ORTHOGONAL) {
             BlockPos level = from.offset(d[0], 0, d[1]);
             if (standable(world, level)) {

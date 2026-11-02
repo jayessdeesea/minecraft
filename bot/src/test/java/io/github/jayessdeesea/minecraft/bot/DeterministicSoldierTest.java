@@ -1,9 +1,11 @@
 package io.github.jayessdeesea.minecraft.bot;
 
+import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
 import io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
@@ -550,6 +552,40 @@ class DeterministicSoldierTest {
     }
 
     /** Flat ground (solid below y=64); at and above it, every block is {@code solid} or not. No hostiles. */
+    @Test
+    void withCobblestoneItPillarsUpAWallTooHighToStepUp() {
+        // A wall three blocks high from x=3 east, its top at y=67.
+        java.util.Set<BlockPos> placed = new java.util.HashSet<>();
+        WorldView cliff = blocks((x, y, z) -> y < GROUND || x >= 3 && y < GROUND + 3 || placed.contains(new BlockPos(x, y, z)));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(new Kit(java.util.Optional.of("wooden_sword"), 0, 0, 0, 0, 16));
+        alice.receiveOrder(new Order.MoveTo(5.5, GROUND + 3, 0.5, 0.5, 0.5, Risk.LOW));
+
+        for (int tick = 0; tick < 400; tick++) {
+            alice.tick(cliff);
+            alice.takePlacement().ifPresent(placed::add); // the server takes it
+        }
+
+        assertEquals(new Report.InPosition(), alice.status().report(), "on top: " + alice.status().position());
+        // Two blocks up beside the wall, then an ordinary step up onto its top.
+        assertEquals(java.util.Set.of(new BlockPos(2, GROUND, 0), new BlockPos(2, GROUND + 1, 0)), placed);
+    }
+
+    @Test
+    void withoutBlocksAWallTooHighToStepUpHasNoRoute() {
+        WorldView cliff = blocks((x, y, z) -> y < GROUND || x >= 3 && y < GROUND + 3);
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(new Kit(java.util.Optional.of("wooden_sword"), 0, 0));
+        alice.receiveOrder(new Order.MoveTo(5.5, GROUND + 3, 0.5, 0.5, 0.5, Risk.LOW));
+
+        for (int tick = 0; tick < 400; tick++) {
+            alice.tick(cliff);
+            assertTrue(alice.takePlacement().isEmpty());
+        }
+
+        assertTrue(alice.status().report() instanceof Report.Cantco, "" + alice.status().report());
+    }
+
     private static WorldView terrain(boolean solid) {
         return blocks((x, y, z) -> y < GROUND || solid);
     }

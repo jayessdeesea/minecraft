@@ -16,6 +16,7 @@ import io.github.jayessdeesea.minecraft.command.Soldier;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -410,8 +411,9 @@ public final class DeterministicSoldier implements Soldier {
         if (replan && onGround) {
             boolean stuck = stuckTicks >= STUCK_TICKS;
             Pathfinder.Result plan = Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), goal,
-                    PLAN_BUDGET, fallAllowance(current));
+                    PLAN_BUDGET, fallAllowance(current), canPillar());
             route = plan.path();
+            pillarFrom = null;
             assessPlan(world, plan, stuck);
             lastPlan = (plan.reachesGoal() ? "to goal" : "partial") + ", " + route.size() + " steps"
                     + (route.isEmpty() ? "" : " ending " + route.getLast());
@@ -424,6 +426,12 @@ public final class DeterministicSoldier implements Soldier {
         }
 
         BlockPos waypoint = route.get(routeIndex);
+        BlockPos here = BlockPos.containing(position.x(), position.y() + EPSILON, position.z());
+        if (waypoint.x() == here.x() && waypoint.z() == here.z() && waypoint.y() == here.y() + 1
+                || pillarFrom != null && waypoint.equals(pillarFrom.offset(0, 1, 0))) {
+            pillar(world, waypoint);
+            return;
+        }
         double centreX = waypoint.x() + 0.5;
         double centreZ = waypoint.z() + 0.5;
         if (Math.hypot(centreX - position.x(), centreZ - position.z()) < WAYPOINT_REACHED
@@ -441,6 +449,61 @@ public final class DeterministicSoldier implements Soldier {
         Condition known = condition;
         sprinting = far && (known == null || known.food() > SPRINT_FOOD_FLOOR);
         stepToward(world, centreX, centreZ, sprinting ? SPRINT_STEP : STEP);
+    }
+
+    /** The cell a pillar step rises from, while one is under way. */
+    private BlockPos pillarFrom;
+    /** A block to place this tick, under the soldier - tick thread writes, its caller takes it. */
+    private BlockPos placement;
+
+    /**
+     * One tick of a pillar step to {@code top}: jump from the cell below it, and once the feet are
+     * clear of that cell - the server won't place a block where a body is - ask for a block there,
+     * then land on it.
+     */
+    private void pillar(WorldView world, BlockPos top) {
+        BlockPos from = top.offset(0, -1, 0);
+        if (pillarFrom == null) {
+            if (!onGround) {
+                return;
+            }
+            pillarFrom = from;
+            verticalVelocity = JUMP_VELOCITY;
+            onGround = false;
+            return;
+        }
+        if (world.isSolid(from.x(), from.y(), from.z())) {
+            if (onGround) {
+                pillarFrom = null; // standing on it: the step is done
+                routeIndex++;
+            }
+            return;
+        }
+        if (position.y() >= from.y() + 1) {
+            placement = from;
+        } else if (onGround) {
+            pillarFrom = null; // landed back where it started - the block never went in; try again
+        }
+    }
+
+    /**
+     * Whether a pillar step can be planned: the soldier carries cobblestone to stand on. Logs are
+     * kept for tools.
+     */
+    private boolean canPillar() {
+        Kit carried = kit;
+        return carried != null && carried.stone() > 0;
+    }
+
+    /**
+     * The block to place this tick, if a pillar step wants one - taken, so it's asked for once. The
+     * caller places it after reporting the soldier's new height, and adds it to the world model so
+     * the soldier can land on it before the server confirms.
+     */
+    public Optional<BlockPos> takePlacement() {
+        BlockPos taken = placement;
+        placement = null;
+        return Optional.ofNullable(taken);
     }
 
     /**

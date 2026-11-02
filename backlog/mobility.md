@@ -1,7 +1,6 @@
 ---
 status: proposed
 priority: P1
-doctrine: ATP 3-34.80 / mobility operations (engineers' mobility support)
 ---
 
 # Mobility: climbing by digging steps and building them
@@ -18,19 +17,19 @@ report CANTCO. A player in the same spot would dig a staircase into the hillside
 down and jump onto it.
 
 ## Done when
-- **Building a step:** a soldier blocked by a ledge two blocks high, carrying a block, places one
-  at the foot of the ledge and climbs.
-- **Pillaring:** with no wall to step against, a soldier jumps and places a block under itself.
-  Vanilla allows it; it's the standard way up.
+Pillaring is live: a soldier carrying cobblestone jumps and places a block under itself, one block
+up per step, and the pathfinder plans those steps at a price (`Pathfinder`, `DeterministicSoldier`,
+`bot.supply.Footing`). What's left:
 - **Digging steps:** facing a hillside it can't climb, a soldier digs a staircase. It removes the
-  two cells above each step and goes up one block per step.
-- **The pathfinder knows these moves,** priced by the time and blocks they cost. A route that
-  needs them is found, not reported as "no route". Climbing becomes a cost in the plan, the way
-  falling already is.
+  two cells above each step and goes up one block per step. Pillaring needs blocks; digging
+  doesn't, and leaves a way back down.
 - **The survey counts ground reachable by these moves,** so the squad leader and the general see
-  the high ground as reachable at a price, not walled off.
-- Measured in `SoldierScenarioTest` with a cliff family: 2-, 4- and 8-block walls with nothing to
-  step on, crossed by building or digging.
+  the high ground as reachable at a price, not walled off. Today the survey's flood fill uses
+  walking moves only.
+- **Blocks budgeted:** a route's pillar steps are checked against the blocks carried. Today a
+  soldier that runs out mid-climb stops and re-plans.
+- Measured in `SoldierScenarioTest` with a cliff family: 2-, 4- and 8-block walls, crossed with
+  blocks or by digging.
 
 ## Notes
 - Blocks come from what the soldier carries (`Builder`'s cobblestone, planks, logs), or from what

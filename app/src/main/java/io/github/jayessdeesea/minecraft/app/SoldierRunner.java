@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
 import io.github.jayessdeesea.minecraft.bot.supply.Builder;
 import io.github.jayessdeesea.minecraft.bot.supply.Depositor;
 import io.github.jayessdeesea.minecraft.bot.supply.Doorway;
+import io.github.jayessdeesea.minecraft.bot.supply.Footing;
 import io.github.jayessdeesea.minecraft.bot.supply.Gatherer;
 import io.github.jayessdeesea.minecraft.bot.supply.Handover;
 import io.github.jayessdeesea.minecraft.bot.supply.Rations;
@@ -418,6 +419,8 @@ public class SoldierRunner implements CommandLineRunner {
     }
 
     private static final int GROUND_SEARCH = 8;
+    /** {@code minecraft:cobblestone}'s block state in protocol 777 - a placed pillar block, until the server's update. */
+    private static final int COBBLESTONE_STATE = 14;
 
     /** Whether a soldier can step into {@code cell} from beside it: room for a body, and ground at most a block down. */
     private boolean walkable(Position cell) {
@@ -638,6 +641,7 @@ public class SoldierRunner implements CommandLineRunner {
         builders.put(name, builder);
         Rations rations = new Rations(name, session, inventory);
         Doorway doorway = new Doorway(name, session, inventory);
+        Footing footing = new Footing(session, inventory);
         // What the server was last told about sprinting: a new connection starts walking.
         java.util.concurrent.atomic.AtomicBoolean sprintingSent = new java.util.concurrent.atomic.AtomicBoolean();
         woodcraftRef.set(woodcraft);
@@ -726,6 +730,15 @@ public class SoldierRunner implements CommandLineRunner {
                 session.setSprinting(soldier.sprinting());
             }
             session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
+            // A pillar step's block goes in after the server has the soldier's new height - it won't
+            // place a block where a body is - and into the world model at once, so the soldier lands
+            // on it before the server's block update arrives.
+            soldier.takePlacement().ifPresent(cell -> {
+                if (footing.place(cell)) {
+                    chunkCache.setBlock(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE);
+                }
+            });
+            footing.tick();
             session.endTick();
         }, 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
         scheduler.scheduleAtFixedRate(
