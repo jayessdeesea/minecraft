@@ -35,7 +35,7 @@ class TerrainProbeIT {
         PlaySession session = MinecraftClient.join("localhost", 25565, "Probe", new PlaySessionListeners(
                 update -> cache.load(update.chunkX(), update.chunkZ(), update.sectionBlockStates(), "probe"),
                 unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { },
-                health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, cause -> { })).get(30, TimeUnit.SECONDS);
+                health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, blocks -> { }, cause -> { })).get(30, TimeUnit.SECONDS);
         try {
             Thread.sleep(8_000);
             StringBuilder out = new StringBuilder(String.format("%nAround (%d, %d, %d), north at the top, x increasing to the right:%n", px, py, pz));

@@ -75,6 +75,16 @@ public interface PlaySession {
     /** Swaps {@code slot} of a container with hotbar slot {@code hotbarSlot}, like a number key. */
     void swapWithHotbar(int containerId, int stateId, int slot, int hotbarSlot);
 
+    /**
+     * Starts digging the block at ({@code x}, {@code y}, {@code z}). It breaks only when
+     * {@link #finishDigging} follows after the block's break time - bare-handed, a log takes 3
+     * seconds; the server times it and ignores an early finish.
+     */
+    void startDigging(int x, int y, int z);
+
+    /** Finishes digging the block {@link #startDigging} started: breaks it if enough time has passed. */
+    void finishDigging(int x, int y, int z);
+
     /** Closes the container this player has open. */
     void closeContainer(int containerId);
 

@@ -10,6 +10,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.ClientTickEndPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.PunchPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MovePlayerPosRotPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayerActionPacket;
 import io.netty.channel.Channel;
 
 /**
@@ -78,6 +79,16 @@ final class NettyPlaySession implements PlaySession {
     @Override
     public void swapWithHotbar(int containerId, int stateId, int slot, int hotbarSlot) {
         channel.writeAndFlush(new ContainerPackets.ContainerClick(containerId, stateId, slot, hotbarSlot, ContainerPackets.ContainerClick.SWAP));
+    }
+
+    @Override
+    public void startDigging(int x, int y, int z) {
+        channel.writeAndFlush(new PlayerActionPacket(PlayerActionPacket.START_DESTROY_BLOCK, x, y, z, sequence.incrementAndGet()));
+    }
+
+    @Override
+    public void finishDigging(int x, int y, int z) {
+        channel.writeAndFlush(new PlayerActionPacket(PlayerActionPacket.STOP_DESTROY_BLOCK, x, y, z, sequence.incrementAndGet()));
     }
 
     @Override

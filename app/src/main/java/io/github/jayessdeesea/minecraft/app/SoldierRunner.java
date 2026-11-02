@@ -329,6 +329,8 @@ public class SoldierRunner implements CommandLineRunner {
                         enchantmentNames.set(List.copyOf(entries));
                     }
                 },
+                // Every connection sees the change; applying it twice is harmless.
+                blocks -> blocks.forEach(b -> chunkCache.setBlock(b.x(), b.y(), b.z(), b.stateId())),
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
         joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun))

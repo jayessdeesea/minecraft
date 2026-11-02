@@ -32,9 +32,10 @@ public record PlaySessionListeners(Consumer<ChunkUpdate> onChunkUpdate,
                                     Consumer<ChatMessage> onChat,
                                     Consumer<ContainerUpdate> onContainer,
                                     BiConsumer<String, List<String>> onRegistry,
+                                    Consumer<List<BlockChange>> onBlockChanges,
                                     Consumer<Throwable> onDisconnect) {
 
     public static PlaySessionListeners none() {
-        return new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, cause -> { });
+        return new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, blocks -> { }, cause -> { });
     }
 }

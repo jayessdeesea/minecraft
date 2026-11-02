@@ -27,6 +27,8 @@ import java.util.TreeMap;
  *       jumped onto, so movement treats it as also blocking the block above.
  *   <li>{@code H} hazard - never stand in or walk through: liquids, anything waterlogged or
  *       underwater, fire, powder snow.
+ *   <li>{@code L} log - solid like any other block, but wood a soldier can chop: every
+ *       {@code *_log} block.
  * </ul>
  * The type lists are from well-established vanilla mechanics, not guessed. Deliberately not
  * exhaustive - an unlisted type stays SOLID, the same "unknown = blocked" policy as unloaded chunks.
@@ -90,7 +92,8 @@ public class GenerateBlockClasses {
             }
             for (JsonNode state : block.getValue().get("states")) {
                 totalStates++;
-                char cls = classify(type, state.path("properties"));
+                char cls = blockName.endsWith("_log") && !"true".equals(state.path("properties").path("waterlogged").asText())
+                        ? 'L' : classify(type, state.path("properties"));
                 if (cls != 'S') {
                     classes.put(state.get("id").asInt(), cls + " " + blockName);
                     counts.merge(cls, 1, Integer::sum);
@@ -101,7 +104,7 @@ public class GenerateBlockClasses {
         try (PrintWriter out = new PrintWriter(args[2])) {
             out.println("# Generated from the pinned server jar's `--reports` blocks.json by");
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
-            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...).");
+            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log (solid).");
             out.println("# Every state NOT listed is solid (the safe default).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));
         }

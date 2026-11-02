@@ -25,6 +25,14 @@ public interface WorldView {
     /** Somewhere never to stand in or walk through: water, lava, fire, powder snow. Not solid either. */
     boolean isHazard(int x, int y, int z);
 
+    /**
+     * Whether the block is a log a soldier can chop (it's also {@link #isSolid}). A view that knows
+     * no blocks' identity - a test's synthetic terrain - has no logs.
+     */
+    default boolean isLog(int x, int y, int z) {
+        return false;
+    }
+
     /** Hostile entities within {@code radius} of {@code center}, nearest first. */
     List<TrackedEntity> nearbyHostiles(Position center, double radius);
 }

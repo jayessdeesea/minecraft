@@ -1,6 +1,6 @@
 # Generated from the pinned server jar's `--reports` blocks.json by
 # tools/block-class-generator. One block state per line: <id> <class> <blockName>,
-# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...).
+# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log (solid).
 # Every state NOT listed is solid (the safe default).
 0 P air
 30 P oak_sapling
@@ -73,7 +73,67 @@
 118 H lava
 119 H lava
 120 H lava
+139 L oak_log
+140 L oak_log
+141 L oak_log
+142 L spruce_log
+143 L spruce_log
+144 L spruce_log
+145 L birch_log
+146 L birch_log
+147 L birch_log
+148 L jungle_log
+149 L jungle_log
+150 L jungle_log
+151 L acacia_log
+152 L acacia_log
+153 L acacia_log
+154 L cherry_log
+155 L cherry_log
+156 L cherry_log
+157 L dark_oak_log
+158 L dark_oak_log
+159 L dark_oak_log
+160 L pale_oak_log
+161 L pale_oak_log
+162 L pale_oak_log
+163 L mangrove_log
+164 L mangrove_log
+165 L mangrove_log
+166 L poplar_log
+167 L poplar_log
+168 L poplar_log
 169 H mangrove_roots
+177 L stripped_spruce_log
+178 L stripped_spruce_log
+179 L stripped_spruce_log
+180 L stripped_birch_log
+181 L stripped_birch_log
+182 L stripped_birch_log
+183 L stripped_jungle_log
+184 L stripped_jungle_log
+185 L stripped_jungle_log
+186 L stripped_acacia_log
+187 L stripped_acacia_log
+188 L stripped_acacia_log
+189 L stripped_cherry_log
+190 L stripped_cherry_log
+191 L stripped_cherry_log
+192 L stripped_dark_oak_log
+193 L stripped_dark_oak_log
+194 L stripped_dark_oak_log
+195 L stripped_pale_oak_log
+196 L stripped_pale_oak_log
+197 L stripped_pale_oak_log
+198 L stripped_oak_log
+199 L stripped_oak_log
+200 L stripped_oak_log
+201 L stripped_mangrove_log
+202 L stripped_mangrove_log
+203 L stripped_mangrove_log
+204 L stripped_poplar_log
+205 L stripped_poplar_log
+206 L stripped_poplar_log
 267 H oak_leaves
 269 H oak_leaves
 271 H oak_leaves

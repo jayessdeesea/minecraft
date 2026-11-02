@@ -63,7 +63,7 @@ class PersistentJoinLiveIT {
         List<ChunkUpdate> updates = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "ChunkTestBot",
-                        new PlaySessionListeners(updates::add, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, cause -> { }))
+                        new PlaySessionListeners(updates::add, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, blocks -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         // Chunks around spawn arrive within the first second or two of reaching Play - no need to
@@ -93,7 +93,7 @@ class PersistentJoinLiveIT {
         List<EntityUpdate> entities = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "EntityTestBot",
-                        new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entities::add, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, cause -> { }))
+                        new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entities::add, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, blocks -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         for (int i = 0; i < 50 && entities.isEmpty(); i++) {
@@ -131,7 +131,7 @@ class PersistentJoinLiveIT {
                                         jumps.add(move + " from " + previous[0] + "," + previous[1] + "," + previous[2]);
                                     }
                                 },
-                                ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, cause -> { }))
+                                ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, blocks -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         Thread.sleep(10_000);
@@ -148,7 +148,7 @@ class PersistentJoinLiveIT {
         List<PlayerPosition> positions = new CopyOnWriteArrayList<>();
 
         PlaySession session = MinecraftClient.join("localhost", 25565, "PositionTestBot",
-                        new PlaySessionListeners(update -> { }, unload -> { }, positions::add, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, cause -> { }))
+                        new PlaySessionListeners(update -> { }, unload -> { }, positions::add, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, blocks -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
 
         for (int i = 0; i < 50 && positions.isEmpty(); i++) {
@@ -178,7 +178,7 @@ class PersistentJoinLiveIT {
         List<ChatMessage> heard = new CopyOnWriteArrayList<>();
         PlaySession listener = MinecraftClient.join("localhost", 25565, "ChatListenerBot",
                         new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { },
-                                health -> { }, inventory -> { }, heard::add, container -> { }, (registry, entries) -> { }, cause -> { }))
+                                health -> { }, inventory -> { }, heard::add, container -> { }, (registry, entries) -> { }, blocks -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
         PlaySession speaker = MinecraftClient.join("localhost", 25565, "ChatSpeakerBot").get(15, TimeUnit.SECONDS);
         Thread.sleep(1_000);

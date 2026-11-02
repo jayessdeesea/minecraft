@@ -37,6 +37,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.PlayerLoadedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RegistryDataPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.BlockUpdatePackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
@@ -223,6 +224,8 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
                         new ContainerUpdate.Slot(container.containerId(), container.stateId(), slot, item));
                 case InventoryUpdate.HeldSlot held -> throw new IllegalStateException("held slot under container " + container.containerId());
             }
+        } else if (packet instanceof BlockUpdatePackets blocks) {
+            listeners.onBlockChanges().accept(blocks.changes());
         } else if (packet instanceof ContainerPackets.OpenScreen open) {
             listeners.onContainer().accept(new ContainerUpdate.Opened(open.containerId(), open.menuType()));
         } else if (packet instanceof ContainerPackets.ContainerClosed closed) {

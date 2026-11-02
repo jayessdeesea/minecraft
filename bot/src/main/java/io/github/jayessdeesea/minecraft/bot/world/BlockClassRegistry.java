@@ -24,6 +24,8 @@ final class BlockClassRegistry {
         PASSABLE,
         /** A full collision box - the default. */
         SOLID,
+        /** A log: solid like {@link #SOLID}, and wood a soldier can chop. */
+        LOG,
         /** Collision 1.5 blocks high (fences, walls, closed gates): blocks the cell above too. */
         TALL,
         /** Never stand in or walk through: liquids, waterlogged or underwater blocks, fire, powder snow. */
@@ -62,6 +64,7 @@ final class BlockClassRegistry {
                         case "P" -> BlockClass.PASSABLE;
                         case "T" -> BlockClass.TALL;
                         case "H" -> BlockClass.HAZARD;
+                        case "L" -> BlockClass.LOG;
                         default -> throw new IllegalStateException("Unknown block class '" + fields[1] + "' in " + RESOURCE_NAME + ": " + line);
                     };
                 }

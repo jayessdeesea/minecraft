@@ -75,8 +75,15 @@ public final class ChunkCache {
 
     public boolean isSolid(int x, int y, int z) {
         BlockClassRegistry.BlockClass here = classAt(x, y, z);
-        return here == BlockClassRegistry.BlockClass.SOLID || here == BlockClassRegistry.BlockClass.TALL
+        return here == BlockClassRegistry.BlockClass.SOLID || here == BlockClassRegistry.BlockClass.LOG
+                || here == BlockClassRegistry.BlockClass.TALL
                 || classAt(x, y - 1, z) == BlockClassRegistry.BlockClass.TALL;
+    }
+
+    /** Whether the block is a log - unknown blocks aren't. */
+    public boolean isLog(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.LOG;
     }
 
     public boolean isHazard(int x, int y, int z) {
@@ -93,6 +100,23 @@ public final class ChunkCache {
     /** Number of distinct chunks currently cached - observability only, not used by any query. */
     public int loadedChunkCount() {
         return chunks.size();
+    }
+
+    /**
+     * One block in a cached chunk became {@code stateId} - a block broken, placed, or grown. A
+     * block in a chunk nobody has cached is ignored: there's nothing to keep current, and the chunk
+     * arrives whole when it loads. Written inside the chunk's {@code compute} like loading; the
+     * tick loops' lock-free reads see it at their next read (an int write is atomic).
+     */
+    public void setBlock(int x, int y, int z, int stateId) {
+        chunks.computeIfPresent(chunkKey(Math.floorDiv(x, SECTION_SIZE), Math.floorDiv(z, SECTION_SIZE)), (key, chunk) -> {
+            int sectionIndex = Math.floorDiv(y, SECTION_SIZE) - MIN_SECTION_Y;
+            if (sectionIndex >= 0 && sectionIndex < chunk.sectionBlockStates.size()) {
+                int index = (Math.floorMod(y, SECTION_SIZE) << 8) | (Math.floorMod(z, SECTION_SIZE) << 4) | Math.floorMod(x, SECTION_SIZE);
+                chunk.sectionBlockStates.get(sectionIndex)[index] = stateId;
+            }
+            return chunk;
+        });
     }
 
     /**

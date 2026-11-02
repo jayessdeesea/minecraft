@@ -24,6 +24,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public boolean isLog(int x, int y, int z) {
+        return chunks.isLog(x, y, z);
+    }
+
+    @Override
     public boolean isHazard(int x, int y, int z) {
         return chunks.isHazard(x, y, z);
     }
