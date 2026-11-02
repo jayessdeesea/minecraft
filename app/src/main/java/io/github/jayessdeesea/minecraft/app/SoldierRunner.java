@@ -186,7 +186,8 @@ public class SoldierRunner implements CommandLineRunner {
             List<Position> threats = entityTracker.nearbyHostiles(principal, Escort.THREAT_RADIUS).stream()
                     .map(io.github.jayessdeesea.minecraft.bot.world.TrackedEntity::position).toList();
             orders = ReactToContact.orders(statuses, Escort.intercept(statuses,
-                    Resupply.orders(statuses, state.linkUp.orders(statuses, Escort.slots(statuses, order, principal)),
+                    // No link-up: a replacement's place is its slot in the ring, not beside the point man.
+                    Resupply.orders(statuses, Escort.slots(statuses, order, principal),
                             principal, supplyPoint),
                     principal, threats));
         } else {

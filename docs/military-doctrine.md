@@ -202,7 +202,9 @@ recomputed each squad cycle from where the principal is now:
 - **Interception:** each hostile within 12 blocks of the principal draws the nearest soldier not
   already fighting, stuck or linking up. The soldier's own reflex (§8) takes over once it's close.
 
-The squad leader still chooses the interval and the risk. The soldiers find the principal by its
+A soldier who respawns goes straight to its slot in the ring rather than linking up with the point
+man first (§6), and any soldier more than 8 blocks from its goal sprints, so the ring keeps up with
+a principal on the move. The squad leader still chooses the interval and the risk. The soldiers find the principal by its
 offline-mode UUID among the entities they see; if none of them can see it, the squad holds the last
 known position. `!mission` ends the escort and hands the squad back to the general.
 

@@ -36,6 +36,10 @@ public final class DeterministicSoldier implements Soldier {
     /** Blocks per tick - 4 blocks/s at 20Hz, just under vanilla walk speed (~4.3), not tuned.
      * Revisit if the server starts correcting reported positions (it would send Player Position). */
     private static final double STEP = 0.2;
+    /** Sprinting, vanilla's 5.6 blocks/s: used when the goal is more than {@link #SPRINT_DISTANCE} away. */
+    static final double SPRINT_STEP = 0.28;
+    /** Far enough from its goal that a soldier sprints to catch up - a moving principal, a distant slot. */
+    static final double SPRINT_DISTANCE = 8;
 
     // Vanilla player physics constants (LivingEntity): per tick, velocity -= 0.08 then *= 0.98;
     // a jump starts at 0.42 (peaks ~1.25 blocks - enough for one block, not two).
@@ -367,7 +371,8 @@ public final class DeterministicSoldier implements Soldier {
             centreX = waypoint.x() + 0.5;
             centreZ = waypoint.z() + 0.5;
         }
-        stepToward(world, centreX, centreZ);
+        boolean far = Math.hypot(goal.x() - position.x(), goal.z() - position.z()) > SPRINT_DISTANCE;
+        stepToward(world, centreX, centreZ, far ? SPRINT_STEP : STEP);
     }
 
     /**
@@ -533,15 +538,20 @@ public final class DeterministicSoldier implements Soldier {
     }
 
     private void stepToward(WorldView world, double targetX, double targetZ) {
+        stepToward(world, targetX, targetZ, STEP);
+    }
+
+    private void stepToward(WorldView world, double targetX, double targetZ, double step) {
         double dx = targetX - position.x();
         double dz = targetZ - position.z();
         double distance = Math.hypot(dx, dz);
-        if (distance < STEP) {
+        if (distance < EPSILON) {
             return;
         }
+        double move = Math.min(step, distance); // never overshoot - nor stall just short of the target
 
-        double stepX = (dx / distance) * STEP;
-        double stepZ = (dz / distance) * STEP;
+        double stepX = (dx / distance) * move;
+        double stepZ = (dz / distance) * move;
         double nextX = position.x() + stepX;
         double nextZ = position.z() + stepZ;
         double y = position.y();

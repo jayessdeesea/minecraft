@@ -60,6 +60,23 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void sprintsToAFarGoalAndWalksTheLastStretch() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
+        alice.tick(terrain(false)); // plans
+        double before = alice.status().position().x();
+        alice.tick(terrain(false));
+        assertEquals(DeterministicSoldier.SPRINT_STEP, before - alice.status().position().x(), 1e-6, "30 blocks out: sprint");
+
+        DeterministicSoldier bob = new DeterministicSoldier("Bob", new Position(0.5, GROUND, 0.5));
+        bob.receiveOrder(new Order.MoveTo(-4.5, GROUND, 0.5, 1, 256, Risk.LOW));
+        bob.tick(terrain(false));
+        before = bob.status().position().x();
+        bob.tick(terrain(false));
+        assertTrue(before - bob.status().position().x() < DeterministicSoldier.SPRINT_STEP - 1e-6, "5 blocks out: walk");
+    }
+
+    @Test
     void facesWhereItWalksAndThenTheHostileItFights() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
         alice.receiveOrder(new Order.MoveTo(-9.5, GROUND, 0.5, 1, 256, Risk.LOW)); // due west
