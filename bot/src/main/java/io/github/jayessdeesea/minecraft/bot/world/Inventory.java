@@ -114,6 +114,11 @@ public final class Inventory {
         return itemIds[slot];
     }
 
+    /** How many items {@code slot} holds, 0 if it's empty. */
+    public synchronized int countAt(int slot) {
+        return counts[slot];
+    }
+
     public synchronized int heldHotbarSlot() {
         return heldHotbarSlot;
     }

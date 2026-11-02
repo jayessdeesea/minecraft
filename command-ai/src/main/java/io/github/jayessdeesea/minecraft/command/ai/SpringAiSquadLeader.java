@@ -277,6 +277,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             case Report.LinkingUp() -> "LinkingUp (respawned, rejoining the squad)";
             case Report.Rearming() -> "Rearming (making himself a wooden sword)";
             case Report.Gathering(var resource) -> "Gathering " + resource;
+            case Report.CrossLeveling(String to, int logs) -> "CrossLeveling (handing " + logs + " logs to " + to + ")";
             case Report.Cantco(String reason) -> "Cantco: " + reason;
         };
     }

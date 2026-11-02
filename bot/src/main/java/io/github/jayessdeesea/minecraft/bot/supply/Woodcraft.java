@@ -56,6 +56,11 @@ public final class Woodcraft {
             this.makes = makes;
             this.hold = hold;
         }
+
+        /** Logs it takes to make. */
+        public int logs() {
+            return logs;
+        }
     }
     static final int SETTLE_TICKS = 20;
     static final int OPEN_TIMEOUT_TICKS = 40;
@@ -140,7 +145,9 @@ public final class Woodcraft {
         }
         switch (state) {
             case IDLE -> {
-                if (wanted.isPresent() && cooldown == 0) {
+                // A failed attempt waits out its cooldown - unless the wood has since arrived (a
+                // squadmate handed it over, §13).
+                if (wanted.isPresent() && (cooldown == 0 || inventory.count(ItemClass.LOG) >= wanted.get().logs)) {
                     tool = wanted.get();
                     failure = null;
                     gather(soldier, world);

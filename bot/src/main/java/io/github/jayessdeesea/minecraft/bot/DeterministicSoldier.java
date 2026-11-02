@@ -276,6 +276,14 @@ public final class DeterministicSoldier implements Soldier {
         return attack;
     }
 
+    /**
+     * Turns to face a squadmate standing at {@code target} - before handing something across, which
+     * flies the way the soldier faces. The next step or fight turns it again.
+     */
+    public void lookAt(Position target) {
+        look(target);
+    }
+
     private void look(Position target) {
         double dx = target.x() - position.x();
         double dz = target.z() - position.z();

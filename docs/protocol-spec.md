@@ -272,7 +272,7 @@ server's own `GameProtocols` registration lists (read with `javap` - see DEVELOP
 | → | `0x0B` | Chunk Batch Received | `ChunkBatchReceivedPacket` | live |
 | → | `0x0C` | Client Command | `ClientCommandPacket` | live respawn |
 | → | `0x0D` | Client Tick End | `ClientTickEndPacket` | live (see below) |
-| → | `0x12` | Container Click | `ContainerPackets.ContainerClick` | live (quick move, chest and inventory) |
+| → | `0x12` | Container Click | `ContainerPackets.ContainerClick` | live (pickup, quick move, swap, throw; chest, table and inventory) |
 | → | `0x13` | Container Close | `ContainerPackets.CloseContainer` | live |
 | → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | live round trip |
 | → | `0x1F` | Move Player Pos Rot | `MovePlayerPosRotPacket` | live movement; soldiers turn to face their travel or their target |
@@ -299,7 +299,9 @@ hotbar slots. Changes to the player's slots while a chest is open arrive only fo
 window - the server doesn't repeat them for container 0 on close - so the client applies them to
 its inventory as they come. A Container Click carries the client's prediction of what changed;
 the server applies the click itself regardless, compares, and resends what differs - with a
-stale state ID, the whole container. This client predicts nothing.
+stale state ID, the whole container. This client predicts nothing. A THROW click (mode 4, button 0)
+drops one item from a slot the way the player faces; the server spawns it as an item entity
+(type `minecraft:item`) that any player can pick up two seconds later by touching it.
 
 `0x00` clientbound is the bundle delimiter: vanilla brackets related packets (e.g. an entity spawn
 and its metadata) in a pair of them but still sends each inner packet as its own frame, so it's

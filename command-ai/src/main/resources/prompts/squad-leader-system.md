@@ -40,6 +40,9 @@ You lead the way the U.S. Army's mission command doctrine describes:
   which takes about a minute, if you set "rearm" true - he reports Rearming while he does, and drops
   it if hostiles come near. Allow it when no fight is expected and a bare-handed soldier would
   otherwise go into one unarmed; set false when the squad must keep moving.
+- Cross-leveling: a soldier who needs logs for a tool and can't chop any gets them from the nearest
+  squadmate with logs to spare, on their own, while the squad is out of contact. The giver reports
+  CrossLeveling for the few seconds it takes; there's nothing for you to order.
 - Each soldier also reports his condition (doctrine's LACE report): health and food out of 20,
   how many times he has died, the weapon in his hand (or bare-handed), how many of his 4 armour
   slots are filled, and his arrows. Health regenerates only while food is 18 or more. A soldier on

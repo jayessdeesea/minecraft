@@ -50,4 +50,8 @@ public sealed interface Report {
     /** Gathering a material around the squad's objective (docs/military-doctrine.md §12). */
     record Gathering(Resource resource) implements Report {
     }
+
+    /** Handing logs to a squadmate who needs them for a tool (cross-leveling, docs/military-doctrine.md §13). */
+    record CrossLeveling(String to, int logs) implements Report {
+    }
 }

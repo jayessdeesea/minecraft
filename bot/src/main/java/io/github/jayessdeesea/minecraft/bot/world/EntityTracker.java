@@ -72,6 +72,23 @@ public final class EntityTracker {
     }
 
     /**
+     * Dropped item stacks within {@code radius} of {@code center}, nearest first - what a soldier
+     * walks onto to pick up what a squadmate threw it. What each stack holds isn't decoded.
+     */
+    public List<Position> nearbyItems(Position center, double radius) {
+        double radiusSquared = radius * radius;
+        return entities.values().stream()
+                .filter(entry -> entry.typeId == ITEM_TYPE_ID)
+                .map(entry -> entry.position)
+                .filter(position -> distanceSquared(center, position) <= radiusSquared)
+                .sorted(Comparator.comparingDouble(position -> distanceSquared(center, position)))
+                .toList();
+    }
+
+    /** The entity type of a dropped item stack, {@code minecraft:item}, in protocol 777's registry. */
+    static final int ITEM_TYPE_ID = 72;
+
+    /**
      * Where the entity with this UUID is, if any connection sees it - how the squad finds a player
      * it's escorting. A scan, not an index: called once per squad cycle, not per tick.
      */

@@ -84,6 +84,12 @@ public interface PlaySession {
     void swapWithHotbar(int containerId, int stateId, int slot, int hotbarSlot);
 
     /**
+     * Throws one item from {@code slot} of a container, like the drop key over it: the server drops
+     * it in front of the player, the way it faces, and any player can pick it up two seconds later.
+     */
+    void throwOne(int containerId, int stateId, int slot);
+
+    /**
      * Starts digging the block at ({@code x}, {@code y}, {@code z}). It breaks only when
      * {@link #finishDigging} follows after the block's break time - bare-handed, a log takes 3
      * seconds; the server times it and ignores an early finish.

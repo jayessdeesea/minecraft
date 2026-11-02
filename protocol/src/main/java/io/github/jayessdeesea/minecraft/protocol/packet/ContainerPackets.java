@@ -62,6 +62,8 @@ public final class ContainerPackets {
         public static final int QUICK_MOVE = 1;
         /** Number key: swaps the slot with hotbar slot {@code button}. */
         public static final int SWAP = 2;
+        /** Drop key: button 0 throws one item from the slot, button 1 the whole stack. */
+        public static final int THROW = 4;
 
         @Override
         public int packetId() {

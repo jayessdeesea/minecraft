@@ -253,6 +253,27 @@ keeps the logs for its next pickaxe, which wears out in 59 blocks. What the ches
 opened goes to the general (`General.receiveStockpile`), shown with the supply point. Logs carried show in each
 soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
 
+## 13. Cross-leveling
+
+| Practice | Content | Source |
+|---|---|---|
+| **Reorganization** | After contact the leader redistributes ammunition and equipment, so no one fighter runs dry while others have plenty. | ATP 3-21.8, consolidation and reorganization |
+| **Cross-leveling** | Supplies move laterally, between units at the same echelon, rather than waiting on resupply from above. Doctrine describes it at company level and up; here it's the same idea within a squad. | FM 4-0; FM 4-93.51 ch. 9 |
+
+*How we use it:* a soldier that needs logs for a tool (§11, §12), has tried to chop them and found
+no tree in reach, is short. `command.CrossLevel` pairs it with the nearest squadmate carrying more
+than it needs: a giver keeps 3 logs, enough for its own next pickaxe, and serves one soldier at a
+time. Nobody cross-levels while the squad is in contact, or from a soldier linking up.
+
+The giver (`bot.supply.Handover`) walks to 2 blocks short of the receiver, faces it, and throws the
+logs across one at a time (a THROW click on its inventory). It then backs off, because the server
+gives a thrown stack, two seconds after the throw, to whichever player touches it first. The
+receiver walks onto dropped items within 4 blocks of it. With the logs in hand, its tool attempt
+restarts at once instead of waiting out the minute's cooldown after a failure.
+
+The giver reports `CrossLeveling`; each soldier's LACE shows the logs move. The squad leader isn't
+asked: pairing is bookkeeping, done deterministically like the other drills.
+
 ## Sources
 
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)
@@ -265,5 +286,6 @@ soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
 - Link-up procedure: FM 3-21.9 ch. 7 - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/3-21-9/chap7.htm)
 - ATP 5-19, *Risk Management* - [Army Publishing Directorate](https://armypubs.army.mil/)
 - FM 4-0, *Sustainment Operations* (classes of supply) - [Army Publishing Directorate](https://armypubs.army.mil/)
+- FM 4-93.51 ch. 9 (cross-leveling ammunition within the company) - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/4-93-51/ch9.htm)
 - ATP 3-39.35, *Protective Services* - [Army Publishing Directorate](https://armypubs.army.mil/)
 - ATP 1-02.1 multi-service brevity codes (CANTCO) - [ALSSA](https://www.alssa.mil/MTTPs/Brevity/)

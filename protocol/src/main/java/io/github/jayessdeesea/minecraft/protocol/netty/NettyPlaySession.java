@@ -87,6 +87,11 @@ final class NettyPlaySession implements PlaySession {
     }
 
     @Override
+    public void throwOne(int containerId, int stateId, int slot) {
+        channel.writeAndFlush(new ContainerPackets.ContainerClick(containerId, stateId, slot, 0, ContainerPackets.ContainerClick.THROW));
+    }
+
+    @Override
     public void startDigging(int x, int y, int z) {
         channel.writeAndFlush(new PlayerActionPacket(PlayerActionPacket.START_DESTROY_BLOCK, x, y, z, sequence.incrementAndGet()));
     }

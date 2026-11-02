@@ -11,6 +11,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Type IDs are real protocol-777 IDs - see {@link HostileMobRegistryTest}. */
 class EntityTrackerTest {
 
+    @Test
+    void droppedItemsNearbyAreFoundNearestFirst() {
+        EntityTracker tracker = new EntityTracker();
+        tracker.spawn(1, java.util.UUID.randomUUID(), EntityTracker.ITEM_TYPE_ID, 3, 64, 0, "Alice");
+        tracker.spawn(2, java.util.UUID.randomUUID(), EntityTracker.ITEM_TYPE_ID, 1, 64, 0, "Alice");
+        tracker.spawn(3, java.util.UUID.randomUUID(), EntityTracker.ITEM_TYPE_ID, 9, 64, 0, "Alice");
+        tracker.spawn(4, java.util.UUID.randomUUID(), HostileMobRegistry.typeIdOf("zombie"), 1, 64, 0, "Alice");
+
+        assertEquals(java.util.List.of(new Position(1, 64, 0), new Position(3, 64, 0)),
+                tracker.nearbyItems(new Position(0, 64, 0), 4));
+    }
+
     private static final int ZOMBIE = 154;
     private static final int CREEPER = 32;
     private static final int COW = 30;

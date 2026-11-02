@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
 import io.github.jayessdeesea.minecraft.bot.supply.Depositor;
 import io.github.jayessdeesea.minecraft.bot.supply.Gatherer;
+import io.github.jayessdeesea.minecraft.bot.supply.Handover;
 import io.github.jayessdeesea.minecraft.bot.supply.SupplyRun;
 import io.github.jayessdeesea.minecraft.bot.supply.Woodcraft;
 import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
@@ -11,6 +12,7 @@ import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
 import io.github.jayessdeesea.minecraft.command.Formations;
 import io.github.jayessdeesea.minecraft.command.Cohesion;
+import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.command.Escort;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
 import io.github.jayessdeesea.minecraft.command.ReactToContact;
@@ -104,6 +106,7 @@ public class SoldierRunner implements CommandLineRunner {
         final LinkUp linkUp = new LinkUp();
         java.util.Set<String> linkingUp = java.util.Set.of();
         String haltedFor;
+        java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.of();
     }
 
     private static final long SQUAD_PERIOD_MILLIS = 1000;
@@ -120,12 +123,20 @@ public class SoldierRunner implements CommandLineRunner {
     private final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> treeClaims = ConcurrentHashMap.newKeySet();
     /** Each connected soldier's trips to the stockpile, by name. */
     private final Map<String, Depositor> depositors = new ConcurrentHashMap<>();
+    /** Each connected soldier's handing of logs to a squadmate, by name. */
+    private final Map<String, Handover> handovers = new ConcurrentHashMap<>();
+    /** Logs each soldier is short of for a tool it can't chop wood for - tick writes, squad loop reads; absent when none. */
+    private final Map<String, Integer> logsWanted = new ConcurrentHashMap<>();
+    /** What each soldier is to hand over, by giver - squad loop writes, tick reads; absent when nothing. */
+    private final Map<String, CrossLevel.Transfer> deliveries = new ConcurrentHashMap<>();
     /** Each connected soldier's gathering routine, by name. */
     private final Map<String, Gatherer> gatherers = new ConcurrentHashMap<>();
     /** What each soldier's squad is gathering, and around where - squad loop writes, tick reads; absent when nothing. */
     private final Map<String, io.github.jayessdeesea.minecraft.command.Objective> gathering = new ConcurrentHashMap<>();
     /** No hostile this close to a soldier, nor any squadmate in contact, before it stops to make a sword. */
     private static final double REARM_CLEAR_RADIUS = 16;
+    /** A soldier being handed logs goes for dropped items this close - where a throw lands. */
+    private static final double PICKUP_RADIUS = 4;
 
     private final OperatorOrders operatorOrders;
     /** The chest soldiers draw kit from, if the operator set one up (docs/military-doctrine.md §4). */
@@ -230,8 +241,26 @@ public class SoldierRunner implements CommandLineRunner {
         boolean squadInContact = statuses.stream().anyMatch(s -> s.report() instanceof Report.InContact);
         Map<String, DeterministicSoldier> byName = new HashMap<>();
         squad.forEach(soldier -> byName.put(soldier.status().name(), soldier));
+        // Cross-leveling (docs/military-doctrine.md §13): logs from a squadmate with some to spare
+        // to one that needs them for a tool and can't chop any.
+        Map<String, Integer> wanted = new HashMap<>();
+        statuses.forEach(s -> {
+            Integer logs = logsWanted.get(s.name());
+            if (logs != null) {
+                wanted.put(s.name(), logs);
+            }
+        });
+        List<CrossLevel.Transfer> transfers = CrossLevel.pair(statuses, wanted);
+        java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.copyOf(transfers);
+        crossLeveling.stream().filter(t -> !state.crossLeveling.contains(t))
+                .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL: {} logs to {}", t.giver(), squadName, t.logs(), t.receiver()));
+        state.crossLeveling = crossLeveling;
+        java.util.Set<String> receiving = transfers.stream().map(CrossLevel.Transfer::receiver)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
         for (int i = 0; i < statuses.size(); i++) {
             String soldierName = statuses.get(i).name();
+            transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
+                    .ifPresentOrElse(t -> deliveries.put(soldierName, t), () -> deliveries.remove(soldierName));
             rearmAllowed.put(soldierName, order.rearm() && !squadInContact);
             Optional<io.github.jayessdeesea.minecraft.command.Objective> gather = squadInContact
                     ? Optional.empty() : chainOfCommand.gatherObjective(squadName);
@@ -242,6 +271,13 @@ public class SoldierRunner implements CommandLineRunner {
             Optional<Position> stand = woodcraft == null ? Optional.empty() : woodcraft.standAt();
             if (stand.isEmpty() && depositors.containsKey(soldierName)) {
                 stand = depositors.get(soldierName).standAt();
+            }
+            if (stand.isEmpty() && handovers.containsKey(soldierName)) {
+                stand = handovers.get(soldierName).standAt();
+            }
+            if (stand.isEmpty() && receiving.contains(soldierName)) {
+                // Walk onto what's been thrown: the server hands a dropped stack to whoever touches it.
+                stand = entityTracker.nearbyItems(statuses.get(i).position(), PICKUP_RADIUS).stream().findFirst();
             }
             if (stand.isEmpty() && gatherer != null) {
                 stand = gatherer.standAt();
@@ -447,6 +483,8 @@ public class SoldierRunner implements CommandLineRunner {
         Depositor depositor = new Depositor(name, session, inventory, chainOfCommand::onStockpile);
         depositors.put(name, depositor);
         depositorRef.set(depositor);
+        Handover handover = new Handover(name, session, inventory);
+        handovers.put(name, handover);
         woodcraftRef.set(woodcraft);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
@@ -470,17 +508,34 @@ public class SoldierRunner implements CommandLineRunner {
                     : bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
                     : needsPickaxe ? Optional.of(Woodcraft.Tool.WOODEN_PICKAXE) : Optional.empty();
             woodcraft.tick(status.position(), world, tool);
+            // Short of logs for a tool it tried and failed to chop wood for: a squadmate may have
+            // some to spare (§13).
+            Optional<Woodcraft.Tool> needed = bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
+                    : needsPickaxe ? Optional.of(Woodcraft.Tool.WOODEN_PICKAXE) : Optional.empty();
+            int logsCarried = inventory.count(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.LOG);
+            if (needed.isPresent() && !woodcraft.active() && woodcraft.failure().isPresent() && logsCarried < needed.get().logs()) {
+                logsWanted.put(name, needed.get().logs() - logsCarried);
+            } else {
+                logsWanted.remove(name);
+            }
             Kit carried = status.condition().flatMap(c -> c.kit()).orElse(null);
             boolean fullLoad = carried != null && (carried.logs() >= Gatherer.CARRY_LOGS || carried.stone() >= Gatherer.CARRY_STONE);
-            depositor.tick(status.position(), supplyPoint, fullLoad && clear && !woodcraft.active());
+            depositor.tick(status.position(), supplyPoint, fullLoad && clear && !woodcraft.active() && !handover.active());
+            CrossLevel.Transfer giving = deliveries.get(name);
+            Optional<Handover.Delivery> delivery = giving == null || !clear || woodcraft.active() || depositor.active() ? Optional.empty()
+                    : Optional.ofNullable(activeSoldiers.get(giving.receiver()))
+                            .map(receiver -> new Handover.Delivery(giving.receiver(), receiver.status().position(), giving.logs()));
+            handover.tick(status.position(), delivery).ifPresent(soldier::lookAt);
             gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
                     gather == null ? status.position() : gather.location(),
-                    !(status.report() instanceof Report.InContact) && !woodcraft.active() && !run.active() && !depositor.active());
+                    !(status.report() instanceof Report.InContact) && !woodcraft.active() && !run.active() && !depositor.active()
+                            && !handover.active());
             soldier.task(woodcraft.active()
                     ? (woodcraft.tool() == Woodcraft.Tool.WOODEN_SWORD ? new Report.Rearming()
                             : new Report.Gathering(io.github.jayessdeesea.minecraft.command.Resource.STONE))
                     : depositor.active() ? new Report.Gathering(carried != null && carried.stone() >= Gatherer.CARRY_STONE
                             ? io.github.jayessdeesea.minecraft.command.Resource.STONE : io.github.jayessdeesea.minecraft.command.Resource.WOOD)
+                    : handover.active() ? handover.report().orElseThrow()
                     : gatherer.active() ? new Report.Gathering(gather.gather().orElseThrow())
                     : gather != null && gatherer.exhausted()
                     ? new Report.Cantco("nothing left to gather within 16 blocks of the objective")
