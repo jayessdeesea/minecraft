@@ -1,0 +1,145 @@
+package io.github.jayessdeesea.minecraft.bot.supply;
+
+import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.world.Inventory;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
+import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.protocol.BlockFace;
+import io.github.jayessdeesea.minecraft.protocol.PlaySession;
+import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.IntStream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class BuilderTest {
+
+    /** Flat ground at y=63: the soldier stands at y=64. */
+    private final Set<BlockPos> solid = new HashSet<>();
+    private final WorldView world = new WorldView() {
+        @Override
+        public boolean isSolid(int x, int y, int z) {
+            return y <= 63 || solid.contains(new BlockPos(x, y, z));
+        }
+
+        @Override
+        public boolean isHazard(int x, int y, int z) {
+            return false;
+        }
+
+        @Override
+        public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+            return List.of();
+        }
+    };
+    private final List<String> calls = new ArrayList<>();
+    /** Whether the server lets a placement land. */
+    private boolean placementsLand = true;
+    /** The soldier's inventory, which the fake server swaps items in as the real one would. */
+    private final Inventory inventory = armedWithCobblestone();
+    private final PlaySession session = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(),
+            new Class<?>[]{PlaySession.class}, (proxy, method, args) -> {
+                switch (method.getName()) {
+                    case "useBlockFace" -> {
+                        BlockFace face = (BlockFace) args[3];
+                        BlockPos placed = new BlockPos((int) args[0] + face.dx, (int) args[1] + face.dy, (int) args[2] + face.dz);
+                        calls.add("place " + placed);
+                        if (placementsLand) {
+                            solid.add(placed);
+                        }
+                    }
+                    case "swapWithHotbar" -> {
+                        int slot = (int) args[2];
+                        int hotbar = Inventory.HOTBAR_FIRST + (int) args[3];
+                        int[] moving = stack(inventory, slot);
+                        inventory.setSlot(slot, stack(inventory, hotbar));
+                        inventory.setSlot(hotbar, moving);
+                        calls.add("swap " + slot + " to hotbar " + args[3]);
+                    }
+                    case "selectHotbarSlot" -> calls.add("select " + args[0]);
+                    default -> throw new AssertionError("unexpected " + method.getName());
+                }
+                return null;
+            });
+
+    private static int itemOf(ItemClass itemClass) {
+        return IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(itemClass))).findFirst().orElseThrow();
+    }
+
+    private static int[] stack(Inventory inventory, int slot) {
+        return inventory.itemAt(slot) < 0 ? null : new int[]{inventory.itemAt(slot), inventory.countAt(slot)};
+    }
+
+    private static Inventory armedWithCobblestone() {
+        Inventory inventory = new Inventory();
+        inventory.setSlot(Inventory.HOTBAR_FIRST, new int[]{itemOf(ItemClass.WEAPON), 1});
+        inventory.setSlot(20, new int[]{itemOf(ItemClass.COBBLESTONE), 32});
+        return inventory;
+    }
+
+    private Builder.Progress run(Builder builder, Position soldier, List<BlockPos> plan, int ticks) {
+        Builder.Progress progress = null;
+        for (int i = 0; i < ticks; i++) {
+            progress = builder.tick(soldier, world, plan);
+            if (!(progress instanceof Builder.Progress.Working)) {
+                return progress;
+            }
+        }
+        return progress;
+    }
+
+    @Test
+    void buildsAWallBesideItFromCobblestoneThenTakesItsSwordBack() {
+        Builder builder = new Builder("Alice", session, inventory);
+        List<BlockPos> wall = List.of(new BlockPos(2, 64, 0), new BlockPos(2, 65, 0), new BlockPos(2, 64, 1));
+
+        Builder.Progress progress = run(builder, new Position(0.5, 64, 0.5), wall, 100);
+
+        assertInstanceOf(Builder.Progress.Done.class, progress);
+        assertEquals(List.of("swap 20 to hotbar 8", "select 8",
+                "place BlockPos[x=2, y=64, z=0]", "place BlockPos[x=2, y=65, z=0]", "place BlockPos[x=2, y=64, z=1]",
+                "select 0"), calls);
+        assertEquals(0, inventory.heldHotbarSlot());
+    }
+
+    @Test
+    void aCellThatWontTakeABlockIsSkippedAfterAFewTries() {
+        placementsLand = false;
+        Builder builder = new Builder("Alice", session, inventory);
+
+        Builder.Progress progress = run(builder, new Position(0.5, 64, 0.5), List.of(new BlockPos(2, 64, 0)), 100);
+
+        assertEquals(new Builder.Progress.Failed("1 cell(s) wouldn't take a block"), progress);
+        assertEquals(Builder.ATTEMPTS, calls.stream().filter(c -> c.startsWith("place")).count());
+    }
+
+    @Test
+    void withNoBlocksItCantBuild() {
+        Builder builder = new Builder("Alice", session, new Inventory());
+
+        assertEquals(new Builder.Progress.Failed("no blocks to build with"),
+                builder.tick(new Position(0.5, 64, 0.5), world, List.of(new BlockPos(2, 64, 0))));
+    }
+
+    @Test
+    void outOfReachItWalksToASpotBesideTheCellNotIntoIt() {
+        Builder builder = new Builder("Alice", session, inventory);
+        BlockPos cell = new BlockPos(20, 64, 0);
+
+        builder.tick(new Position(0.5, 64, 0.5), world, List.of(cell));
+
+        Position spot = builder.standAt().orElseThrow();
+        assertTrue(Builder.withinReach(spot, cell) && !Builder.overlaps(spot, cell), "stands at " + spot);
+    }
+}

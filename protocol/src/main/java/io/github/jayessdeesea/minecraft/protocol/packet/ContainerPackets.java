@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.protocol.packet;
 
+import io.github.jayessdeesea.minecraft.protocol.BlockFace;
 import io.netty.buffer.ByteBuf;
 
 /**
@@ -16,14 +17,13 @@ public final class ContainerPackets {
     /**
      * Serverbound "Use Item On", 0x42 ({@code ServerboundUseItemOnPacket}): VarInt hand, block
      * position (packed long), VarInt face, cursor position within the block as three floats,
-     * boolean inside, boolean world-border hit, VarInt sequence. Always the main hand, on the top
-     * face, at its centre. The server checks reach (about 4.5 blocks from the eyes).
+     * boolean inside, boolean world-border hit, VarInt sequence. Always the main hand, at the
+     * centre of {@code face}. The server checks reach (about 4.5 blocks from the eyes).
      */
-    public record UseItemOn(int x, int y, int z, int sequence) implements Packet {
+    public record UseItemOn(int x, int y, int z, BlockFace face, int sequence) implements Packet {
 
         public static final int PACKET_ID = 0x42;
         private static final int MAIN_HAND = 0;
-        private static final int FACE_UP = 1; // Direction: DOWN, UP, NORTH, SOUTH, WEST, EAST
 
         @Override
         public int packetId() {
@@ -34,10 +34,10 @@ public final class ContainerPackets {
         public void encode(ByteBuf out) {
             ProtocolCodec.writeVarInt(out, MAIN_HAND);
             out.writeLong(((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF));
-            ProtocolCodec.writeVarInt(out, FACE_UP);
-            out.writeFloat(0.5f);
-            out.writeFloat(1.0f);
-            out.writeFloat(0.5f);
+            ProtocolCodec.writeVarInt(out, face.ordinal());
+            out.writeFloat(0.5f + face.dx * 0.5f);
+            out.writeFloat(0.5f + face.dy * 0.5f);
+            out.writeFloat(0.5f + face.dz * 0.5f);
             out.writeBoolean(false);
             out.writeBoolean(false);
             ProtocolCodec.writeVarInt(out, sequence);

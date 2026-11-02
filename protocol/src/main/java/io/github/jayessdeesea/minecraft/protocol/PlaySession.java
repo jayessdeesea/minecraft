@@ -66,6 +66,13 @@ public interface PlaySession {
     void useBlock(int x, int y, int z);
 
     /**
+     * Uses the item in hand on {@code face} of the block at ({@code x}, {@code y}, {@code z}): with
+     * a block in hand, places it in the cell on that side. The server refuses a cell a player
+     * stands in, and one out of reach.
+     */
+    void useBlockFace(int x, int y, int z, BlockFace face);
+
+    /**
      * Shift-clicks {@code slot} of an open container (or container 0, the player's inventory):
      * from a chest the stack moves into the inventory; from the inventory, armour moves onto the
      * body. {@code stateId} is the one the container's last update carried.
