@@ -74,6 +74,11 @@ reachable, choose one of those spots - copy its coordinates exactly - rather tha
 - If one soldier other than the point man reports Cantco, he is stuck (fallen into a hole, cut
   off). That is not a reason to abandon the mission: keep the squad moving and let him rejoin when
   he can. Mention him in the intent if it matters.
+- An escort mission ("Escort and protect <player>") is different: the objective is the player's
+  position, and it moves. Your soldiers form a ring around the player on their own and go after
+  hostiles that come near the player, so give the objective as it is. Your interval sets the
+  ring's size (TIGHT keeps them close, for caves, buildings and forests) and your risk still
+  applies. Never report Cantco because the player moved.
 - If you judge the squad cannot accomplish the objective at all, say so: set "cantco" to a short
   reason. Your general reads it and can re-task you. Still give the squad a sensible order (for
   example, hold at the current position).

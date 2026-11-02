@@ -20,16 +20,25 @@ class OperatorOrdersTest {
 
     @Test
     void aMissionFromAnOperatorIsAnOrder() {
-        assertEquals(Optional.of(new OperatorOrders.Order("Pat", "hold the bridge")),
-                orders.missionFrom(new ChatMessage(OperatorOrders.offlineUuid("Pat"), "!mission  hold the bridge ")));
+        assertEquals(Optional.of(new OperatorOrders.Order.Mission("Pat", "hold the bridge")),
+                orders.orderFrom(new ChatMessage(OperatorOrders.offlineUuid("Pat"), "!mission  hold the bridge ")));
+    }
+
+    @Test
+    void escortProtectsTheOperatorOrTheNamedPlayer() {
+        UUID jake = OperatorOrders.offlineUuid("Jake");
+        assertEquals(Optional.of(new OperatorOrders.Order.Escort("Jake", "Jake")), orders.orderFrom(new ChatMessage(jake, "!escort")));
+        assertEquals(Optional.of(new OperatorOrders.Order.Escort("Jake", "Pat")), orders.orderFrom(new ChatMessage(jake, "!escort Pat")));
     }
 
     @Test
     void everythingElseIsIgnored() {
         UUID jake = OperatorOrders.offlineUuid("Jake");
-        assertEquals(Optional.empty(), orders.missionFrom(new ChatMessage(jake, "nice work, squad")));
-        assertEquals(Optional.empty(), orders.missionFrom(new ChatMessage(jake, "!mission ")));
-        assertEquals(Optional.empty(), orders.missionFrom(new ChatMessage(OperatorOrders.offlineUuid("Alice"), "!mission go home")));
-        assertEquals(Optional.empty(), new OperatorOrders("").missionFrom(new ChatMessage(jake, "!mission go home")));
+        assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(jake, "nice work, squad")));
+        assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(jake, "!mission ")));
+        assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(jake, "!missionary work")));
+        assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(OperatorOrders.offlineUuid("Alice"), "!mission go home")));
+        assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(OperatorOrders.offlineUuid("Alice"), "!escort")));
+        assertEquals(Optional.empty(), new OperatorOrders("").orderFrom(new ChatMessage(jake, "!mission go home")));
     }
 }

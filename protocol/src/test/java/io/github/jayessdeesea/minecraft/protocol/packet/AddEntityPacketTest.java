@@ -24,7 +24,7 @@ class AddEntityPacketTest {
 
         AddEntityPacket packet = AddEntityPacket.decode(buf);
 
-        assertEquals(new AddEntityPacket(42, 7, 10.5, 64.0, -3.25), packet);
+        assertEquals(new AddEntityPacket(42, new UUID(42, 7), 7, 10.5, 64.0, -3.25), packet);
         assertEquals(0, buf.readableBytes(), "decode should consume exactly what was written");
     }
 
@@ -64,7 +64,7 @@ class AddEntityPacketTest {
     private static ByteBuf header(int entityId, int typeId, double x, double y, double z) {
         ByteBuf buf = Unpooled.buffer();
         ProtocolCodec.writeVarInt(buf, entityId);
-        ProtocolCodec.writeUuid(buf, UUID.randomUUID());
+        ProtocolCodec.writeUuid(buf, new UUID(entityId, typeId));
         ProtocolCodec.writeVarInt(buf, typeId);
         buf.writeDouble(x).writeDouble(y).writeDouble(z);
         return buf;

@@ -15,10 +15,14 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Which chat lines are orders from a human operator: {@code !mission <text>} from a player named
- * in {@code minecraft.operators}. Everything else in chat - the squad's own radio net, other
- * players talking - is ignored; a {@code !mission} line from anyone not on the list is logged and
- * ignored.
+ * Which chat lines are orders from a human operator - from a player named in
+ * {@code minecraft.operators}:
+ * <ul>
+ *   <li>{@code !mission <text>} - a new mission for the general (and the end of any escort);</li>
+ *   <li>{@code !escort} - the squad escorts the operator; {@code !escort <player>} - that player.</li>
+ * </ul>
+ * Everything else in chat - the squad's own radio net, other players talking - is ignored; an
+ * order from anyone not on the list is logged and ignored.
  *
  * <p>The sender is matched by UUID: in offline mode the server derives each player's UUID from
  * its name ({@code "OfflinePlayer:" + name}, a version-3 UUID), so the list of names is the list
@@ -30,9 +34,18 @@ public class OperatorOrders {
 
     private static final Logger LOG = LogManager.getLogger(OperatorOrders.class);
 
-    static final String PREFIX = "!mission ";
+    static final String MISSION = "!mission";
+    static final String ESCORT = "!escort";
 
-    public record Order(String operator, String mission) {
+    /** An order from the operator. */
+    public sealed interface Order {
+        String operator();
+
+        record Mission(String operator, String mission) implements Order {
+        }
+
+        record Escort(String operator, String principal) implements Order {
+        }
     }
 
     private final Map<UUID, String> operators;
@@ -46,20 +59,25 @@ public class OperatorOrders {
         return UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes(StandardCharsets.UTF_8));
     }
 
-    public Optional<Order> missionFrom(ChatMessage chat) {
-        if (!chat.message().startsWith(PREFIX)) {
+    public Optional<Order> orderFrom(ChatMessage chat) {
+        String[] words = chat.message().strip().split("\\s+", 2);
+        String command = words[0];
+        String argument = words.length > 1 ? words[1].strip() : "";
+        if (!command.equals(MISSION) && !command.equals(ESCORT)) {
             return Optional.empty();
         }
-        String mission = chat.message().substring(PREFIX.length()).trim();
         String operator = operators.get(chat.sender());
         if (operator == null) {
-            LOG.warn("Ignoring a mission from {}, who isn't in minecraft.operators: {}", chat.sender(), mission);
+            LOG.warn("Ignoring {} from {}, who isn't in minecraft.operators: {}", command, chat.sender(), argument);
             return Optional.empty();
         }
-        if (mission.isEmpty()) {
+        if (command.equals(ESCORT)) {
+            return Optional.of(new Order.Escort(operator, argument.isEmpty() ? operator : argument));
+        }
+        if (argument.isEmpty()) {
             LOG.warn("Ignoring an empty mission from {}", operator);
             return Optional.empty();
         }
-        return Optional.of(new Order(operator, mission));
+        return Optional.of(new Order.Mission(operator, argument));
     }
 }

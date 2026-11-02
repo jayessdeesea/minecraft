@@ -13,7 +13,7 @@ import io.netty.buffer.ByteBuf;
  * Vanilla brackets these in bundle-delimiter packets (0x00), but still sends each one as its own
  * frame, so no bundle handling is needed to decode them.
  */
-public record AddEntityPacket(int entityId, int typeId, double x, double y, double z) implements Packet {
+public record AddEntityPacket(int entityId, java.util.UUID uuid, int typeId, double x, double y, double z) implements Packet {
 
     public static final int PACKET_ID = 0x01;
 
@@ -22,7 +22,7 @@ public record AddEntityPacket(int entityId, int typeId, double x, double y, doub
 
     public static AddEntityPacket decode(ByteBuf in) {
         int entityId = ProtocolCodec.readVarInt(in);
-        ProtocolCodec.readUuid(in);
+        java.util.UUID uuid = ProtocolCodec.readUuid(in);
         int typeId = ProtocolCodec.readVarInt(in);
         double x = in.readDouble();
         double y = in.readDouble();
@@ -34,7 +34,7 @@ public record AddEntityPacket(int entityId, int typeId, double x, double y, doub
         if (in.isReadable()) {
             throw new IllegalStateException("Add Entity has " + in.readableBytes() + " unread trailing byte(s)");
         }
-        return new AddEntityPacket(entityId, typeId, x, y, z);
+        return new AddEntityPacket(entityId, uuid, typeId, x, y, z);
     }
 
     /**

@@ -103,6 +103,10 @@ doesn't authenticate names, so the list guards against accidents, not impostors.
 absolute coordinates ("hold x=-40 z=0"): the general re-reads the mission at every re-plan, so
 "40 blocks west of here" moves the objective another 40 blocks each time.
 
+`!escort` attaches the squad to you as a protective detail, and `!escort <player>` to another
+player: the soldiers ring the player and go after hostiles that come near them
+(docs/military-doctrine.md § 10). `!mission <text>` ends it.
+
 ```bash
 java -jar app/target/app.jar --minecraft.operators=YourName
 ```

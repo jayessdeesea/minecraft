@@ -8,6 +8,7 @@ import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
 import io.github.jayessdeesea.minecraft.command.Formations;
 import io.github.jayessdeesea.minecraft.command.Cohesion;
+import io.github.jayessdeesea.minecraft.command.Escort;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
 import io.github.jayessdeesea.minecraft.command.ReactToContact;
 import io.github.jayessdeesea.minecraft.command.Resupply;
@@ -34,6 +35,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -149,18 +151,32 @@ public class SoldierRunner implements CommandLineRunner {
                 .forEach(name -> LOG.info("[{} -> {}] LINKED UP", name, ChainOfCommand.SQUAD_NAME));
         linkingUp = linking;
         Position pointMan = statuses.get(0).position();
-        chainOfCommand.onSitrep(statuses, () -> TerrainSurveyor.survey(world, pointMan));
+        Optional<Position> principalAt = chainOfCommand.escort()
+                .flatMap(principal -> entityTracker.positionOf(OperatorOrders.offlineUuid(principal)));
+        chainOfCommand.onSitrep(statuses, () -> TerrainSurveyor.survey(world, pointMan), principalAt);
         SquadOrder order = chainOfCommand.currentOrder().orElse(null);
         if (order == null) {
             return;
         }
         // Formation slots, then replacements' link-up, then pace control (the point man halts for
         // a straggler), then resupply at the supply point, then the react-to-contact drill, which
-        // overrides all of them.
-        List<Order> orders = ReactToContact.orders(statuses,
-                Resupply.orders(statuses, Cohesion.orders(statuses, linkUp.orders(statuses, Formations.assign(order, statuses))),
-                        order.objective(), supplyPoint));
-        String straggler = Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
+        // overrides all of them. Escorting, the ring around the principal replaces the formation
+        // and pace control, and interceptors go after threats to the principal before contact.
+        List<Order> orders;
+        if (principalAt.isPresent()) {
+            Position principal = principalAt.get();
+            List<Position> threats = entityTracker.nearbyHostiles(principal, Escort.THREAT_RADIUS).stream()
+                    .map(io.github.jayessdeesea.minecraft.bot.world.TrackedEntity::position).toList();
+            orders = ReactToContact.orders(statuses, Escort.intercept(statuses,
+                    Resupply.orders(statuses, linkUp.orders(statuses, Escort.slots(statuses, order, principal)),
+                            principal, supplyPoint),
+                    principal, threats));
+        } else {
+            orders = ReactToContact.orders(statuses,
+                    Resupply.orders(statuses, Cohesion.orders(statuses, linkUp.orders(statuses, Formations.assign(order, statuses))),
+                            order.objective(), supplyPoint));
+        }
+        String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
         if (!java.util.Objects.equals(straggler, haltedFor)) {
             if (straggler != null) {
                 LOG.info("[{}] HALT: point man waits for {}", ChainOfCommand.SQUAD_NAME, straggler);
@@ -230,7 +246,7 @@ public class SoldierRunner implements CommandLineRunner {
                         }
                     }
                 },
-                entity -> entityTracker.spawn(entity.entityId(), entity.typeId(), entity.x(), entity.y(), entity.z(), name),
+                entity -> entityTracker.spawn(entity.entityId(), entity.uuid(), entity.typeId(), entity.x(), entity.y(), entity.z(), name),
                 move -> entityTracker.move(move.entityId(), move.x(), move.y(), move.z()),
                 ids -> entityTracker.remove(ids, name),
                 health -> {
@@ -264,7 +280,14 @@ public class SoldierRunner implements CommandLineRunner {
                 // Every connection hears every chat line; only the radio operator's passes it on.
                 chat -> {
                     if (definition == SOLDIERS.getFirst()) {
-                        operatorOrders.missionFrom(chat).ifPresent(order -> chainOfCommand.onOperatorMission(order.operator(), order.mission()));
+                        operatorOrders.orderFrom(chat).ifPresent(order -> {
+                            switch (order) {
+                                case OperatorOrders.Order.Mission(String operator, String mission) ->
+                                        chainOfCommand.onOperatorMission(operator, mission);
+                                case OperatorOrders.Order.Escort(String operator, String principal) ->
+                                        chainOfCommand.onOperatorEscort(operator, principal);
+                            }
+                        });
                     }
                 },
                 container -> {

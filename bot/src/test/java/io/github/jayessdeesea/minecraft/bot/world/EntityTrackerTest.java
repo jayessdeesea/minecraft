@@ -23,8 +23,8 @@ class EntityTrackerTest {
     @Test
     void reportsHostilesWithinRadiusNearestFirst() {
         EntityTracker tracker = new EntityTracker();
-        tracker.spawn(1, ZOMBIE, 5, 64, 0, ALICE);
-        tracker.spawn(2, CREEPER, 2, 64, 0, ALICE);
+        tracker.spawn(1, new java.util.UUID(0, 1), ZOMBIE, 5, 64, 0, ALICE);
+        tracker.spawn(2, new java.util.UUID(0, 2), CREEPER, 2, 64, 0, ALICE);
 
         List<TrackedEntity> hostiles = tracker.nearbyHostiles(ORIGIN, 8);
 
@@ -34,7 +34,7 @@ class EntityTrackerTest {
     @Test
     void ignoresNonHostileEntities() {
         EntityTracker tracker = new EntityTracker();
-        tracker.spawn(1, COW, 1, 64, 0, ALICE);
+        tracker.spawn(1, new java.util.UUID(0, 1), COW, 1, 64, 0, ALICE);
 
         assertTrue(tracker.nearbyHostiles(ORIGIN, 8).isEmpty());
     }
@@ -42,7 +42,7 @@ class EntityTrackerTest {
     @Test
     void ignoresHostilesOutsideRadius() {
         EntityTracker tracker = new EntityTracker();
-        tracker.spawn(1, ZOMBIE, 9, 64, 0, ALICE);
+        tracker.spawn(1, new java.util.UUID(0, 1), ZOMBIE, 9, 64, 0, ALICE);
 
         assertTrue(tracker.nearbyHostiles(ORIGIN, 8).isEmpty());
     }
@@ -50,7 +50,7 @@ class EntityTrackerTest {
     @Test
     void radiusIsThreeDimensional() {
         EntityTracker tracker = new EntityTracker();
-        tracker.spawn(1, ZOMBIE, 0, 30, 0, ALICE); // directly below, deep underground
+        tracker.spawn(1, new java.util.UUID(0, 1), ZOMBIE, 0, 30, 0, ALICE); // directly below, deep underground
 
         assertTrue(tracker.nearbyHostiles(ORIGIN, 8).isEmpty());
     }
@@ -58,8 +58,8 @@ class EntityTrackerTest {
     @Test
     void removedEntitiesAreNoLongerReported() {
         EntityTracker tracker = new EntityTracker();
-        tracker.spawn(1, ZOMBIE, 1, 64, 0, ALICE);
-        tracker.spawn(2, ZOMBIE, 2, 64, 0, ALICE);
+        tracker.spawn(1, new java.util.UUID(0, 1), ZOMBIE, 1, 64, 0, ALICE);
+        tracker.spawn(2, new java.util.UUID(0, 2), ZOMBIE, 2, 64, 0, ALICE);
 
         tracker.remove(List.of(1), ALICE);
 
@@ -70,8 +70,8 @@ class EntityTrackerTest {
     @Test
     void respawningTheSameIdReplacesItsPosition() {
         EntityTracker tracker = new EntityTracker();
-        tracker.spawn(1, ZOMBIE, 100, 64, 0, ALICE);
-        tracker.spawn(1, ZOMBIE, 1, 64, 0, ALICE);
+        tracker.spawn(1, new java.util.UUID(0, 1), ZOMBIE, 100, 64, 0, ALICE);
+        tracker.spawn(1, new java.util.UUID(0, 1), ZOMBIE, 1, 64, 0, ALICE);
 
         assertEquals(1, tracker.nearbyHostiles(ORIGIN, 8).size());
     }
@@ -79,7 +79,7 @@ class EntityTrackerTest {
     @Test
     void moveUpdatesATrackedEntitysPosition() {
         EntityTracker tracker = new EntityTracker();
-        tracker.spawn(1, ZOMBIE, 100, 64, 0, ALICE);
+        tracker.spawn(1, new java.util.UUID(0, 1), ZOMBIE, 100, 64, 0, ALICE);
 
         tracker.move(1, 3, 64, 0);
 
@@ -98,8 +98,8 @@ class EntityTrackerTest {
     @Test
     void anEntityStaysTrackedUntilEveryOwnerHasRemovedIt() {
         EntityTracker tracker = new EntityTracker();
-        tracker.spawn(1, ZOMBIE, 1, 64, 0, ALICE);
-        tracker.spawn(1, ZOMBIE, 1, 64, 0, BOB);
+        tracker.spawn(1, new java.util.UUID(0, 1), ZOMBIE, 1, 64, 0, ALICE);
+        tracker.spawn(1, new java.util.UUID(0, 1), ZOMBIE, 1, 64, 0, BOB);
 
         tracker.remove(List.of(1), ALICE);
         assertEquals(1, tracker.nearbyHostiles(ORIGIN, 8).size(), "Bob still sees it");
@@ -111,9 +111,9 @@ class EntityTrackerTest {
     @Test
     void removeOwnerDropsOnlyThatOwnersView() {
         EntityTracker tracker = new EntityTracker();
-        tracker.spawn(1, ZOMBIE, 1, 64, 0, ALICE);
-        tracker.spawn(2, ZOMBIE, 2, 64, 0, ALICE);
-        tracker.spawn(2, ZOMBIE, 2, 64, 0, BOB);
+        tracker.spawn(1, new java.util.UUID(0, 1), ZOMBIE, 1, 64, 0, ALICE);
+        tracker.spawn(2, new java.util.UUID(0, 2), ZOMBIE, 2, 64, 0, ALICE);
+        tracker.spawn(2, new java.util.UUID(0, 2), ZOMBIE, 2, 64, 0, BOB);
 
         tracker.removeOwner(ALICE);
 

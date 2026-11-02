@@ -177,7 +177,7 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             LOG.debug("Add Entity received: id={} type={} at ({}, {}, {})",
                     entity.entityId(), entity.typeId(), entity.x(), entity.y(), entity.z());
             entityPositions.put(entity.entityId(), new double[]{entity.x(), entity.y(), entity.z()});
-            listeners.onEntitySpawn().accept(new EntityUpdate(entity.entityId(), entity.typeId(), entity.x(), entity.y(), entity.z()));
+            listeners.onEntitySpawn().accept(new EntityUpdate(entity.entityId(), entity.uuid(), entity.typeId(), entity.x(), entity.y(), entity.z()));
         } else if (packet instanceof MoveEntityPacket move) {
             double[] position = entityPositions.get(move.entityId());
             if (position == null) {

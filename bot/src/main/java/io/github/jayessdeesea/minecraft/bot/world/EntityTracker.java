@@ -5,7 +5,9 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -25,9 +27,9 @@ public final class EntityTracker {
 
     private final ConcurrentHashMap<Integer, Entry> entities = new ConcurrentHashMap<>();
 
-    public void spawn(int entityId, int typeId, double x, double y, double z, Object owner) {
+    public void spawn(int entityId, UUID uuid, int typeId, double x, double y, double z, Object owner) {
         entities.compute(entityId, (id, existing) -> {
-            Entry entry = existing != null ? existing : new Entry(typeId);
+            Entry entry = existing != null ? existing : new Entry(uuid, typeId);
             entry.position = new Position(x, y, z);
             entry.owners.add(owner);
             return entry;
@@ -69,6 +71,14 @@ public final class EntityTracker {
                 .toList();
     }
 
+    /**
+     * Where the entity with this UUID is, if any connection sees it - how the squad finds a player
+     * it's escorting. A scan, not an index: called once per squad cycle, not per tick.
+     */
+    public Optional<Position> positionOf(UUID uuid) {
+        return entities.values().stream().filter(entry -> entry.uuid.equals(uuid)).map(entry -> entry.position).findFirst();
+    }
+
     /** Number of tracked entities - observability only. */
     public int trackedEntityCount() {
         return entities.size();
@@ -82,6 +92,7 @@ public final class EntityTracker {
     }
 
     private static final class Entry {
+        final UUID uuid;
         final int typeId;
         // Written only inside compute()/computeIfPresent() for this key; volatile so tick-loop
         // readers outside those functions see the latest position.
@@ -90,7 +101,8 @@ public final class EntityTracker {
         // ChunkCache's owner sets.
         final Set<Object> owners = new HashSet<>();
 
-        Entry(int typeId) {
+        Entry(UUID uuid, int typeId) {
+            this.uuid = uuid;
             this.typeId = typeId;
         }
     }

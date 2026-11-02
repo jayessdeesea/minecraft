@@ -1,7 +1,9 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
+import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
@@ -75,6 +77,12 @@ public class ChainOfCommand {
     private volatile Report squadReportAnswered = new Report.Idle();
     private volatile java.util.Set<String> cantcosAnswered = java.util.Set.of();
     private volatile Consumer<String> radio;
+    /** The player the squad is escorting, or null - set by the operator's thread, read by the squad's. */
+    private volatile String escort;
+    private volatile boolean principalOutOfSight;
+
+    /** How far the principal moves before the squad leader is given its new position. */
+    static final double ESCORT_RETASK_DISTANCE = 8;
 
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient) {
         this.general = general;
@@ -95,10 +103,29 @@ public class ChainOfCommand {
      */
     public void onOperatorMission(String operator, String mission) {
         general.receiveMission(mission);
+        escort = null;
         missionVersion.incrementAndGet();
         lastGeneralMillis = Long.MIN_VALUE / 2;
         LOG.info("[{} -> General] MISSION: {}", operator, mission);
         transmit("[General -> " + operator + "] WILCO: " + mission);
+    }
+
+    /**
+     * The operator attaches the squad to {@code principal} as its escort (docs/military-doctrine.md
+     * §10): until the next {@code !mission}, the general is set aside and the squad leader's
+     * objective follows the principal (see {@link #onSitrep}). Acknowledged on the radio.
+     */
+    public void onOperatorEscort(String operator, String principal) {
+        escort = principal;
+        missionVersion.incrementAndGet(); // a general's decision in flight no longer applies
+        principalOutOfSight = false;
+        LOG.info("[{} -> {}] ESCORT: {}", operator, SQUAD_NAME, principal);
+        transmit("[" + SQUAD_NAME + " -> " + operator + "] WILCO: escorting " + principal);
+    }
+
+    /** Who the squad is escorting, if anyone. */
+    public Optional<String> escort() {
+        return Optional.ofNullable(escort);
     }
 
     /** The squad's standing order, if the squad leader has issued one. */
@@ -111,17 +138,21 @@ public class ChainOfCommand {
      * most kicks off a model call on its echelon's own thread and returns. {@code terrain} is only
      * evaluated - on the squad leader's thread - when the squad leader is actually about to decide.
      */
-    public void onSitrep(List<SoldierStatus> squad, Supplier<TerrainSurvey> terrain) {
+    public void onSitrep(List<SoldierStatus> squad, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt) {
         if (squad.isEmpty()) {
             return;
         }
         long now = System.currentTimeMillis();
+        String principal = escort;
+        if (principal != null) {
+            followPrincipal(principal, principalAt);
+        }
         Report squadReport = squadLeader.report();
         // New = the squad went from able to unable. A CANTCO re-worded on the next decision is the
         // same CANTCO; comparing the text re-tasked the squad every few seconds.
         boolean newSquadCantco = squadReport instanceof Report.Cantco && !(squadReportAnswered instanceof Report.Cantco);
-        if (objective == null || since(lastGeneralMillis, now) >= GENERAL_PERIOD_MILLIS
-                || (newSquadCantco && since(lastGeneralMillis, now) >= MIN_GAP_MILLIS)) {
+        if (principal == null && (objective == null || since(lastGeneralMillis, now) >= GENERAL_PERIOD_MILLIS
+                || (newSquadCantco && since(lastGeneralMillis, now) >= MIN_GAP_MILLIS))) {
             askGeneral(squad, now);
         }
         squadReportAnswered = squadReport;
@@ -133,6 +164,39 @@ public class ChainOfCommand {
             cantcosAnswered = cantcos;
             askSquadLeader(squad, terrain, now);
         }
+    }
+
+    /**
+     * While escorting, the squad leader's objective is the principal's position - re-issued once
+     * the principal has moved {@link #ESCORT_RETASK_DISTANCE} from it, so the squad leader's view
+     * keeps up without a decision every second (the escort drill follows the live position in
+     * between). A principal nobody in the squad can see keeps the last objective.
+     */
+    private void followPrincipal(String principal, Optional<Position> principalAt) {
+        if (principalAt.isEmpty()) {
+            if (!principalOutOfSight) {
+                LOG.warn("[{}] can't see {} - holding the last known position", SQUAD_NAME, principal);
+                principalOutOfSight = true;
+            }
+            return;
+        }
+        principalOutOfSight = false;
+        Position at = principalAt.get();
+        Objective current = objective;
+        if (current != null && current.mission().equals(escortMission(principal))
+                && Cohesion.distance(current.location(), at) < ESCORT_RETASK_DISTANCE) {
+            return;
+        }
+        Objective follow = new Objective(escortMission(principal), at,
+                "Keep " + principal + " safe: stay close around them and intercept hostiles that come near them.");
+        LOG.info("[{}] escort objective follows {} to {}", SQUAD_NAME, principal, at(at));
+        squadLeader.receiveObjective(follow);
+        objective = follow;
+        newObjective = true;
+    }
+
+    private static String escortMission(String principal) {
+        return "Escort and protect " + principal;
     }
 
     private void askGeneral(List<SoldierStatus> squad, long now) {
@@ -221,7 +285,7 @@ public class ChainOfCommand {
         return clean.toString();
     }
 
-    private static String at(io.github.jayessdeesea.minecraft.command.Position p) {
+    private static String at(Position p) {
         return "(" + Math.round(p.x()) + ", " + Math.round(p.y()) + ", " + Math.round(p.z()) + ")";
     }
 

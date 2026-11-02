@@ -183,6 +183,26 @@ replacements linking up and soldiers in contact don't hold the squad; each has i
 The squad leader's prompt shows each soldier's distance from the point man, and the log reads
 `[Alpha] HALT: point man waits for Bob`.
 
+## 10. Close protection
+
+| Practice | Content | Source |
+|---|---|---|
+| **Protective detail** | A team assigned to a principal moves with them, keeps a perimeter around them, and meets a threat before it reaches them. | ATP 3-39.35, *Protective Services* |
+
+*How we use it:* the operator attaches the squad to a player with `!escort` (or `!escort <player>`)
+in game chat. `ChainOfCommand` sets the general aside and gives the squad leader the principal's
+position as its objective, re-issued whenever the principal has moved 8 blocks. The principal
+moves every tick, faster than any LLM decides, so `command.Escort` - a drill like the others - is
+recomputed each squad cycle from where the principal is now:
+- **The ring:** the soldiers stand evenly around the principal at half the squad leader's interval,
+  at least 2 blocks out. TIGHT keeps them at arm's reach.
+- **Interception:** each hostile within 12 blocks of the principal draws the nearest soldier not
+  already fighting, stuck or linking up. The soldier's own reflex (§8) takes over once it's close.
+
+The squad leader still chooses the interval and the risk. The soldiers find the principal by its
+offline-mode UUID among the entities they see; if none of them can see it, the squad holds the last
+known position. `!mission` ends the escort and hands the squad back to the general.
+
 ## Sources
 
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)
@@ -194,4 +214,5 @@ The squad leader's prompt shows each soldier's distance from the point man, and 
 - LACE: [Kentucky National Guard photo caption](https://ky.ng.mil/News/Photos/igphoto/2003751897/), [RallyPoint discussion](https://rallypoint.com/answers/what-s-the-difference-between-each-of-these-reports-salute-lace-salt-spot-report-sit-rep) (secondary sources)
 - Link-up procedure: FM 3-21.9 ch. 7 - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/3-21-9/chap7.htm)
 - ATP 5-19, *Risk Management* - [Army Publishing Directorate](https://armypubs.army.mil/)
+- ATP 3-39.35, *Protective Services* - [Army Publishing Directorate](https://armypubs.army.mil/)
 - ATP 1-02.1 multi-service brevity codes (CANTCO) - [ALSSA](https://www.alssa.mil/MTTPs/Brevity/)
