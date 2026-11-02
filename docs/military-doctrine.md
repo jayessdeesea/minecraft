@@ -309,6 +309,12 @@ or sapling there blocks a placement until it is broken. A soldier at it reports 
 out of blocks. The general's LOGSTAT says whether the squad carries enough for a base, so the
 model never has to add up the numbers itself.
 
+When the general moves the squad on, the soldier inside nearest the doorway breaks a doorway out
+(`bot.supply.Doorway`): two wall blocks, on the side facing the general's new objective, preferring
+a side whose outside cell has room to stand and ground under it (`PatrolBase.Plan.doorway`). It
+uses a pickaxe if it has one (1.5 seconds a block), bare hands if not (10). A fight only pauses the
+base, so the squad doesn't cut its way out mid-contact.
+
 ## Sources
 
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)

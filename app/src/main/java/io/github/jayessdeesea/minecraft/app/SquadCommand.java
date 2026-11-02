@@ -67,6 +67,11 @@ final class SquadCommand {
         return Optional.ofNullable(order);
     }
 
+    /** The general's objective for the squad, once it has one. */
+    Optional<Objective> objective() {
+        return Optional.ofNullable(objective);
+    }
+
     /** What the squad's objective has it gather, and around where - if anything. */
     Optional<Objective> gatherObjective() {
         Objective current = objective;

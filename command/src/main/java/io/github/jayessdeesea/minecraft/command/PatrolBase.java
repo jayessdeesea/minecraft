@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.command;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * The hasty patrol base (docs/military-doctrine.md §14): a hut just big enough for the squad, walls
@@ -21,6 +22,45 @@ public final class PatrolBase {
      * @param cells   blocks to place, bottom up: walls, then the roof's rim, then the roof
      */
     public record Plan(List<Position> stands, List<Position> floor, List<Position> cells) {
+
+        /**
+         * The way out toward {@code toward}: the two wall blocks, floor level and above, of a wall cell
+         * beside the floor - never a corner, which no floor cell touches. Of the walls whose outside
+         * cell a soldier can step onto ({@code walkable}, which knows the ground), the one nearest
+         * {@code toward}; if none, the nearest anyway - a doorway onto a hillside, which the
+         * soldiers' route-finding then reports.
+         */
+        public List<Position> doorway(Position toward, Predicate<Position> walkable) {
+            Position best = null;
+            double bestScore = Double.MAX_VALUE;
+            for (Position cell : floor) {
+                for (int[] side : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                    Position wall = new Position(cell.x() + side[0], cell.y(), cell.z() + side[1]);
+                    if (floor.contains(wall)) {
+                        continue;
+                    }
+                    Position outside = new Position(wall.x() + side[0], wall.y(), wall.z() + side[1]);
+                    double score = Math.hypot(wall.x() + 0.5 - toward.x(), wall.z() + 0.5 - toward.z())
+                            + (walkable.test(outside) ? 0 : BLOCKED_PENALTY);
+                    if (score < bestScore) {
+                        best = wall;
+                        bestScore = score;
+                    }
+                }
+            }
+            return List.of(best, new Position(best.x(), best.y() + 1, best.z()));
+        }
+
+        /** Enough to rank any doorway onto open ground ahead of every one onto a hillside. */
+        private static final double BLOCKED_PENALTY = 1e6;
+
+        /** The floor cell's centre beside {@code doorway}'s lower block - where the soldier opening it stands. */
+        public Position insideOf(List<Position> doorway) {
+            Position wall = doorway.getFirst();
+            return floor.stream()
+                    .filter(cell -> Math.abs(cell.x() - wall.x()) + Math.abs(cell.z() - wall.z()) == 1)
+                    .findFirst().map(cell -> new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5)).orElseThrow();
+        }
 
         /** Whether {@code soldier} stands on the floor inside the walls. */
         public boolean inside(Position soldier) {

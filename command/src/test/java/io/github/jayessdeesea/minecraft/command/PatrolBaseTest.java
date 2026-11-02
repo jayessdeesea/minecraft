@@ -50,6 +50,29 @@ class PatrolBaseTest {
     }
 
     @Test
+    void theDoorwayOpensTowardWhereTheSquadGoesNext() {
+        PatrolBase.Plan plan = PatrolBase.hasty(new Position(0, 64, 0), 4); // floor x 0..1, z 0..1
+
+        List<Position> east = plan.doorway(new Position(50, 64, 0.5), outside -> true);
+
+        assertEquals(List.of(new Position(2, 64, 0), new Position(2, 65, 0)), east);
+        assertTrue(plan.cells().containsAll(east), "a doorway is cut through the wall");
+        assertEquals(new Position(1.5, 64, 0.5), plan.insideOf(east));
+        assertEquals(new Position(0, 64, -1), plan.doorway(new Position(0.5, 64, -50), outside -> true).getFirst());
+    }
+
+    @Test
+    void aDoorwayOntoAHillsideGivesWayToOneOntoOpenGround() {
+        PatrolBase.Plan plan = PatrolBase.hasty(new Position(0, 64, 0), 4); // floor x 0..1, z 0..1
+        // A hill presses on the east wall: nothing to step onto at x=3.
+        List<Position> door = plan.doorway(new Position(50, 64, 0.5), outside -> outside.x() < 3);
+
+        assertTrue(door.getFirst().x() != 2, "not through the east wall: " + door);
+        assertEquals(new Position(2, 64, 0), plan.doorway(new Position(50, 64, 0.5), outside -> false).getFirst(),
+                "walled in on every side: the nearest anyway");
+    }
+
+    @Test
     void moreThanNineDontFit() {
         assertThrows(IllegalArgumentException.class, () -> PatrolBase.hasty(new Position(0, 64, 0), 10));
     }

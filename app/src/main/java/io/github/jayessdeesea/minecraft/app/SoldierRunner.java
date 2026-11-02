@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
 import io.github.jayessdeesea.minecraft.bot.supply.Builder;
 import io.github.jayessdeesea.minecraft.bot.supply.Depositor;
+import io.github.jayessdeesea.minecraft.bot.supply.Doorway;
 import io.github.jayessdeesea.minecraft.bot.supply.Gatherer;
 import io.github.jayessdeesea.minecraft.bot.supply.Handover;
 import io.github.jayessdeesea.minecraft.bot.supply.Rations;
@@ -115,6 +116,8 @@ public class SoldierRunner implements CommandLineRunner {
         boolean allInside;
         /** Where the squad's patrol base is laid out, once it is. */
         Position baseSite;
+        /** The last patrol base the squad built - to cut its way out of, once it moves on. */
+        PatrolBase.Plan builtBase;
         java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.of();
     }
 
@@ -141,6 +144,10 @@ public class SoldierRunner implements CommandLineRunner {
     }
     /** What each soldier is building, while its squad builds a patrol base - squad loop writes, tick reads. */
     private final Map<String, Fortify> fortifying = new ConcurrentHashMap<>();
+    /** The doorway a soldier is cutting out of its squad's base, and where it stands to - squad loop writes, tick reads. */
+    private record Opening(Position stand, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells) {
+    }
+    private final Map<String, Opening> opening = new ConcurrentHashMap<>();
     /** Logs each soldier is short of for a tool it can't chop wood for - tick writes, squad loop reads; absent when none. */
     private final Map<String, Integer> logsWanted = new ConcurrentHashMap<>();
     /** What each soldier is to hand over, by giver - squad loop writes, tick reads; absent when nothing. */
@@ -304,6 +311,27 @@ public class SoldierRunner implements CommandLineRunner {
             LOG.info("[{}] all inside the patrol base - building", squadName);
         }
         state.allInside = allInside;
+        // Moving on from a base: cut a doorway toward the next objective. Not while only paused for
+        // contact - the base is still the squad's.
+        String opener = null;
+        if (plan != null) {
+            state.builtBase = plan;
+        } else if (state.builtBase != null && chainOfCommand.patrolBaseObjective(squadName).isEmpty()) {
+            PatrolBase.Plan built = state.builtBase;
+            // Toward where the general is sending the squad: the squad leader's own order can still
+            // point inside the hut, since from in there it sees no ground it can reach.
+            List<Position> door = built.doorway(chainOfCommand.objective(squadName).orElseThrow().location(), this::walkable);
+            boolean open = door.stream().noneMatch(c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z()));
+            Optional<SoldierStatus> inside = statuses.stream().filter(st -> built.inside(st.position())).findFirst();
+            if (open || inside.isEmpty()) {
+                LOG.info("[{}] {}", squadName, open ? "doorway open - moving out of the patrol base" : "nobody left in the patrol base");
+                state.builtBase = null;
+            } else {
+                opener = inside.get().name();
+                opening.put(opener, new Opening(built.insideOf(door), door.stream()
+                        .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) c.x(), (int) c.y(), (int) c.z())).toList()));
+            }
+        }
         for (int i = 0; i < statuses.size(); i++) {
             String soldierName = statuses.get(i).name();
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
@@ -324,6 +352,12 @@ public class SoldierRunner implements CommandLineRunner {
                 continue;
             }
             fortifying.remove(soldierName);
+            if (soldierName.equals(opener)) {
+                Position place = opening.get(soldierName).stand();
+                byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(), 0.3, 0.5, Risk.LOW));
+                continue;
+            }
+            opening.remove(soldierName);
             Woodcraft woodcraft = woodcrafts.get(soldierName);
             Gatherer gatherer = gatherers.get(soldierName);
             Optional<Position> stand = woodcraft == null ? Optional.empty() : woodcraft.standAt();
@@ -384,6 +418,15 @@ public class SoldierRunner implements CommandLineRunner {
     }
 
     private static final int GROUND_SEARCH = 8;
+
+    /** Whether a soldier can step into {@code cell} from beside it: room for a body, and ground at most a block down. */
+    private boolean walkable(Position cell) {
+        int x = (int) cell.x();
+        int y = (int) cell.y();
+        int z = (int) cell.z();
+        return !world.isSolid(x, y, z) && !world.isSolid(x, y + 1, z) && !world.isHazard(x, y, z)
+                && (world.isSolid(x, y - 1, z) || !world.isSolid(x, y - 1, z) && world.isSolid(x, y - 2, z));
+    }
 
     /** A squad's connected soldiers in formation order (the first present one is the point man). */
     private List<DeterministicSoldier> presentSoldiers(String squad) {
@@ -594,6 +637,7 @@ public class SoldierRunner implements CommandLineRunner {
         Builder builder = new Builder(name, session, inventory);
         builders.put(name, builder);
         Rations rations = new Rations(name, session, inventory);
+        Doorway doorway = new Doorway(name, session, inventory);
         // What the server was last told about sprinting: a new connection starts walking.
         java.util.concurrent.atomic.AtomicBoolean sprintingSent = new java.util.concurrent.atomic.AtomicBoolean();
         woodcraftRef.set(woodcraft);
@@ -619,7 +663,13 @@ public class SoldierRunner implements CommandLineRunner {
                     : bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
                     : needsPickaxe ? Optional.of(Woodcraft.Tool.WOODEN_PICKAXE) : Optional.empty();
             Fortify fort = fortifying.get(name);
-            boolean building = fort != null && fort.allInside() && !builder.done();
+            Opening exit = opening.get(name);
+            if (exit != null && Math.hypot(status.position().x() - exit.stand().x(), status.position().z() - exit.stand().z()) < 0.5) {
+                doorway.tick(world, exit.cells());
+            } else {
+                doorway.stop();
+            }
+            boolean building = fort != null && fort.allInside() && !builder.done() || exit != null;
             rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD),
                     clear && !woodcraft.active() && !depositor.active() && !handover.active() && !building,
                     soldier.yaw(), soldier.pitch());

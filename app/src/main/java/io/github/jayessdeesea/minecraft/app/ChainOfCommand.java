@@ -143,6 +143,11 @@ public class ChainOfCommand {
                 : objective.gather().map(r -> ", gather " + r.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
     }
 
+    /** The general's objective for {@code squad}, once it has one. */
+    public Optional<Objective> objective(String squad) {
+        return squads.get(squad).objective();
+    }
+
     /** {@code squad}'s objective, when it has the squad build a patrol base (docs/military-doctrine.md §14). */
     public Optional<Objective> patrolBaseObjective(String squad) {
         return squads.get(squad).patrolBaseObjective();

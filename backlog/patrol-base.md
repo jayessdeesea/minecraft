@@ -62,9 +62,6 @@ The hasty hut, the general's PATROL_BASE task and the time of day are live (docs
   so block light > 0 on every floor block.
 - **Deliberate base on a later night.** The squad improves the base with a wider perimeter and more
   light. The improvement is measured by a test that counts lit, walled floor blocks.
-- **A way out in the morning.** Today the squad stays sealed in until the general gives another
-  objective, and then nothing opens the walls. It needs a door, or breaking a wall block when the
-  base stands down.
 
 ## Notes
 - **The order needs a standard.** A patrol base order carries its standard as data (radius, light,
