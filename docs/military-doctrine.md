@@ -301,7 +301,8 @@ minutes until that changes.
 An objective's task can be `PATROL_BASE`. `command.PatrolBase` lays out a hasty hut around the
 squad: a 2x2 floor for up to four soldiers (3x3 for up to nine), walls two high, and a roof over
 walls and floor, so each roof block has a neighbour to go against. That's 40 blocks for a squad of
-four. The site is placed on the ground actually there, since the model's height is a guess. A
+four. The site is the nearest level footing within 8 blocks of the general's point: every floor
+cell standable at one height, never rubble or a slope, since the model's point is a guess. A
 re-issued objective within 8 blocks keeps the site already laid out, so the outline doesn't move
 under the soldiers.
 
@@ -312,6 +313,19 @@ block after three tries is skipped; after the first miss the soldier digs the ce
 or sapling there blocks a placement until it is broken. A soldier at it reports `Fortifying`, or CANTCO when it runs
 out of blocks. The general's LOGSTAT says whether the squad carries enough for a base, so the
 model never has to add up the numbers itself.
+
+The standard is re-checked every second while the squad holds its base, not just once, since
+anything can break a wall after it's built (`PatrolBase.Plan.breaches`). A flood fill from the
+floor finds every way in: a missing wall or roof block, a dip under a wall, a hole in the floor.
+Each goes back on the build list. A soldier whose finished build loses a block logs the repair,
+usually within a second. Soldiers stand on the exact centre of their places, since a body off
+centre leans into the wall cell beside it and the server won't place a block there. While the
+squad holds its sealed base, its squad leader isn't asked to decide anything and the squad reports
+InPosition. From inside a sealed hut no ground is reachable, which would otherwise read upward as
+CANTCO.
+
+The base is not yet lit. The log says so whenever it reports the base sealed: the floor is spawn
+ground once the squad leaves. Torches are backlog/patrol-base.md.
 
 When the general moves the squad on, the soldier inside nearest the doorway breaks a doorway out
 (`bot.supply.Doorway`): two wall blocks, on the side facing the general's new objective, preferring

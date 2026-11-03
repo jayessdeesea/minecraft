@@ -64,9 +64,17 @@ final class SquadCommand {
         this.thread = Executors.newSingleThreadExecutor(r -> new Thread(r, "squad-leader-" + name));
     }
 
+    /**
+     * The squad's report upward. Holding its sealed patrol base, the squad is doing what it was
+     * ordered - whatever its squad leader last said: from inside a sealed hut no ground is
+     * reachable, and that reads as CANTCO if anyone asks.
+     */
     Report report() {
-        return squadLeader.report();
+        return holdingBase ? new Report.InPosition() : squadLeader.report();
     }
+
+    /** Whether the squad is all inside its sealed patrol base - nothing for its squad leader to decide. */
+    private volatile boolean holdingBase;
 
     Optional<SquadOrder> order() {
         return Optional.ofNullable(order);
@@ -103,7 +111,7 @@ final class SquadCommand {
 
     /** True the first time the squad leader's own report turns to CANTCO - the general's early trigger. */
     boolean newCantco() {
-        Report report = squadLeader.report();
+        Report report = report();
         boolean fresh = report instanceof Report.Cantco && !(reportAnswered instanceof Report.Cantco);
         reportAnswered = report;
         return fresh;
@@ -117,7 +125,11 @@ final class SquadCommand {
 
     /** A SITREP from this squad's soldiers: decides whether its squad leader should think now. */
     void onSitrep(List<SoldierStatus> squad, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt,
-                  long now, long minGapMillis) {
+                  boolean holdingBase, long now, long minGapMillis) {
+        this.holdingBase = holdingBase;
+        if (holdingBase) {
+            return; // the order is being met: no model call, and no terrain survey from inside a box
+        }
         String principal = escort;
         if (principal != null) {
             followPrincipal(principal, principalAt);

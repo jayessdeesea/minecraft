@@ -66,7 +66,8 @@ public class ChainOfCommand {
      * decides), its principal, and what it can see to gather (surveyed only if the general decides).
      */
     public record Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain,
-                         Optional<Position> principalAt, Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources) {
+                         Optional<Position> principalAt, Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources,
+                         boolean holdingBase) {
     }
 
     private final General general;
@@ -186,7 +187,8 @@ public class ChainOfCommand {
             askGeneral(underGeneral, now);
         }
         for (Sitrep sitrep : sitreps) {
-            squads.get(sitrep.squad()).onSitrep(sitrep.soldiers(), sitrep.terrain(), sitrep.principalAt(), now, MIN_GAP_MILLIS);
+            squads.get(sitrep.squad()).onSitrep(sitrep.soldiers(), sitrep.terrain(), sitrep.principalAt(), sitrep.holdingBase(),
+                    now, MIN_GAP_MILLIS);
         }
     }
 
