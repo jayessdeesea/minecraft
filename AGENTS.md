@@ -115,6 +115,13 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   hand the model a grid to decode. Measured: no local model that fits on a 16 GB GPU read
   reachability off the terrain table, and with the lookup done for it `qwen3:14b` chose
   correctly.
+- **A routine waits on the server as an expect script, never on elapsed time.** Multi-step
+  routines that act and then need the server's answer (crafting, placing, opening a window,
+  smelting) are `bot.script.Script`s. Each step names the event that confirms it, observed through
+  the soldier's own world/inventory model, and a deadline derived from server timing. A missed
+  deadline, or an answer that rules the step out, fails the run loudly with the step and what was
+  expected. Steps are pure apart from their actions, so routines are tested against a fake server
+  (`TorchmakerTest`). Remaining fixed-delay routines: backlog/expect-scripts.md.
 - **Borrowed from the actor model's discipline, not its runtime.** An actor's single-threaded
   mailbox processing is *one* way to guarantee a unit of state is never touched by two threads at
   once; a per-tick loop that's the sole writer of its own Soldier's state is another. We get the

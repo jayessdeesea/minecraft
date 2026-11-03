@@ -1,6 +1,9 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.script.Script;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
@@ -12,7 +15,9 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -23,21 +28,24 @@ import java.util.Set;
  * into charcoal with a plank for fuel; then charcoal over a stick, in the 2x2 grid again: 4
  * torches. The table and furnace stay where they're put - a camp's kit.
  *
- * <p>Like {@link Woodcraft}: every click goes out with a stale state ID, so the server answers with
- * the whole window and {@link Inventory} stays exact; each phase reads the inventory afresh after
- * {@link #SETTLE_TICKS}; anything unexpected gives up, puts the grid back and waits
- * {@link #COOLDOWN_TICKS}. Held items go through a hotbar slot with no weapon or tool, so the
- * soldier stays armed. Driven by the soldier's tick and its connection's container updates;
- * synchronized because those are two threads.
+ * <p>An expect {@link Script}: each step's clicks go out with a stale state ID, so the server
+ * answers with the whole window and {@link Inventory} stays exact, and the step waits for that
+ * answer to show what it made - planks, a table in the world, the furnace's window - within a
+ * deadline. A missed deadline, or an answer that rules the step out, fails the run loudly with
+ * the step and what was expected; the grid goes back and the soldier waits {@link #COOLDOWN_TICKS}
+ * before trying again. A cell that wouldn't take a table or furnace isn't tried again. Held items
+ * go through a hotbar slot with no weapon or tool, so the soldier stays armed. Driven by the
+ * soldier's tick and its connection's container updates; synchronized because those are two
+ * threads.
  */
 public final class Torchmaker {
 
     private static final Logger LOG = LogManager.getLogger(Torchmaker.class);
 
-    static final int SETTLE_TICKS = 20;
-    static final int OPEN_TIMEOUT_TICKS = 40;
+    /** The server answers a click, a placement or an open within a tick or two; this is the margin. */
+    static final int ANSWER_TICKS = 40;
     /** A log smelts in 200 ticks; the margin covers the furnace lighting its fuel. */
-    static final int SMELT_TIMEOUT_TICKS = 400;
+    static final int SMELT_TICKS = 400;
     static final int COOLDOWN_TICKS = 1200;
     /** Menu registry IDs: {@code minecraft:crafting} and {@code minecraft:furnace}. */
     static final int CRAFTING_MENU = 12;
@@ -55,22 +63,23 @@ public final class Torchmaker {
     /** The furnace's 3x3 recipe: cobblestone in every slot but the centre. */
     private static final int[] FURNACE_PATTERN = {1, 2, 3, 4, 6, 7, 8, 9};
 
-    private enum State { IDLE, PLANKS, STICKS, TABLE_ITEM, PLACE_TABLE, OPEN_TABLE, FURNACE_ITEM, PLACE_FURNACE, OPEN_FURNACE, SMELT, WAIT, TORCHES }
-
     private final String name;
     private final PlaySession session;
     private final Inventory inventory;
 
-    private State state = State.IDLE;
-    private int ticksInState;
+    private Script script;
     private int cooldown;
     private String failure;
+    private Position soldier;
+    private WorldView world;
     private BlockPos table;
     private BlockPos furnace;
+    /** Cells a table or furnace wouldn't go into, kept across attempts. */
     private final Set<BlockPos> blocked = new HashSet<>();
     private int windowId = -1;
     private int windowSlots;
-    private boolean charcoalReady;
+    private int openedMenu = -1;
+    private final Optional<ItemClass>[] furnaceSlots = emptyFurnace();
     private int previousHotbar = -1;
 
     public Torchmaker(String name, PlaySession session, Inventory inventory) {
@@ -80,7 +89,7 @@ public final class Torchmaker {
     }
 
     public synchronized boolean active() {
-        return state != State.IDLE;
+        return script != null;
     }
 
     /** Why the last attempt failed, while the soldier waits out its cooldown. */
@@ -90,44 +99,51 @@ public final class Torchmaker {
 
     /** Logs it needs before it can start, given what it already carries. */
     public static int logsNeeded(Inventory inventory) {
-        int planks = (inventory.slotOf(ItemClass.CRAFTING_TABLE) >= 0 ? 0 : TABLE_PLANKS)
-                + (inventory.count(ItemClass.STICK) > 0 ? 0 : STICK_PLANKS) + FUEL_PLANKS;
-        int short_ = Math.max(0, planks - inventory.count(ItemClass.PLANKS));
+        int short_ = Math.max(0, planksWanted(inventory) - inventory.count(ItemClass.PLANKS));
         return 1 + (short_ + 3) / 4; // one to smelt, the rest at 4 planks a log
     }
 
     /** Whether it carries what torches take: the logs, and a furnace's cobblestone or a furnace. */
     public static boolean canMake(Inventory inventory) {
         return inventory.count(ItemClass.LOG) >= logsNeeded(inventory)
-                && (inventory.slotOf(ItemClass.FURNACE) >= 0 || inventory.count(ItemClass.COBBLESTONE) >= FURNACE_COBBLESTONE);
+                && (has(inventory, ItemClass.FURNACE) || inventory.count(ItemClass.COBBLESTONE) >= FURNACE_COBBLESTONE);
     }
 
     /** Each tick: starts when {@code wanted} and it can, advances, and abandons a run no longer wanted. */
     public synchronized void tick(Position soldier, WorldView world, boolean wanted) {
-        ticksInState++;
+        this.soldier = soldier;
+        this.world = world;
         if (cooldown > 0) {
             cooldown--;
         }
-        if (state != State.IDLE && !wanted) {
-            giveUp("no longer wanted");
+        if (script == null) {
+            // Not if it carries torches already: its own tick can come round before the squad loop
+            // has seen the last batch.
+            if (wanted && cooldown == 0 && canMake(inventory) && inventory.count(ItemClass.TORCH) == 0) {
+                LOG.info("{} makes torches - {}", name, inventory.summary());
+                failure = null;
+                script = new Script(name, steps());
+            }
             return;
         }
-        switch (state) {
-            case IDLE -> {
-                // Not if it carries torches already: its own tick can come round before the squad
-                // loop has seen the last batch.
-                if (wanted && cooldown == 0 && canMake(inventory) && inventory.count(ItemClass.TORCH) == 0) {
-                    LOG.info("{} makes torches - {}", name, inventory.summary());
-                    failure = null;
-                    blocked.clear();
-                    enter(State.PLANKS);
-                }
+        Script.Status status = wanted ? script.tick() : script.cancel("no longer wanted");
+        switch (status) {
+            case Script.Status.Running() -> {
             }
-            case PLANKS -> settled(() -> {
-                int planksWanted = (inventory.slotOf(ItemClass.CRAFTING_TABLE) >= 0 ? 0 : TABLE_PLANKS)
-                        + (inventory.count(ItemClass.STICK) > 0 ? 0 : STICK_PLANKS) + FUEL_PLANKS;
-                int logs = (Math.max(0, planksWanted - inventory.count(ItemClass.PLANKS)) + 3) / 4;
-                if (logs > 0) {
+            case Script.Status.Done() -> {
+                LOG.info("{} made torches - {}", name, inventory.summary());
+                blocked.clear();
+                finish(0);
+            }
+            case Script.Status.Failed(String step, String reason) -> giveUp(step, reason);
+        }
+    }
+
+    private List<Step> steps() {
+        int planks = planksWanted(inventory);
+        return List.of(
+                new Step("planks", () -> inventory.count(ItemClass.PLANKS) >= planks, () -> {
+                    int logs = (planks - inventory.count(ItemClass.PLANKS) + 3) / 4;
                     int log = need(ItemClass.LOG);
                     session.click(0, 0, log, false);
                     for (int i = 0; i < logs; i++) {
@@ -135,117 +151,92 @@ public final class Torchmaker {
                     }
                     session.click(0, 0, log, false);
                     session.quickMove(0, 0, RESULT);
-                }
-                enter(State.STICKS);
-            });
-            case STICKS -> settled(() -> {
-                if (inventory.count(ItemClass.STICK) == 0) {
-                    int planks = need(ItemClass.PLANKS);
-                    session.click(0, 0, planks, false);
+                }, new Expect(planks + " planks in the inventory", () -> inventory.count(ItemClass.PLANKS) >= planks), ANSWER_TICKS),
+                new Step("sticks", () -> has(inventory, ItemClass.STICK), () -> {
+                    int plank = need(ItemClass.PLANKS);
+                    session.click(0, 0, plank, false);
                     session.click(0, 0, 1, true); // a plank over
                     session.click(0, 0, 3, true); // a plank: sticks
-                    session.click(0, 0, planks, false);
+                    session.click(0, 0, plank, false);
                     session.quickMove(0, 0, RESULT);
-                }
-                enter(State.TABLE_ITEM);
-            });
-            case TABLE_ITEM -> settled(() -> {
-                if (inventory.slotOf(ItemClass.CRAFTING_TABLE) < 0 && inventory.slotOf(ItemClass.FURNACE) < 0) {
-                    int planks = need(ItemClass.PLANKS);
-                    session.click(0, 0, planks, false);
+                }, new Expect("sticks in the inventory", () -> has(inventory, ItemClass.STICK)), ANSWER_TICKS),
+                new Step("craft a crafting table", () -> has(inventory, ItemClass.CRAFTING_TABLE) || has(inventory, ItemClass.FURNACE), () -> {
+                    int plank = need(ItemClass.PLANKS);
+                    session.click(0, 0, plank, false);
                     for (int grid = 1; grid <= 4; grid++) {
                         session.click(0, 0, grid, true);
                     }
-                    session.click(0, 0, planks, false);
+                    session.click(0, 0, plank, false);
                     session.quickMove(0, 0, RESULT);
-                }
-                session.closeContainer(0);
-                enter(inventory.slotOf(ItemClass.FURNACE) >= 0 ? State.PLACE_FURNACE : State.PLACE_TABLE);
-            });
-            case PLACE_TABLE -> settled(() -> {
-                table = Woodcraft.placement(soldier, world, blocked);
-                hold(need(ItemClass.CRAFTING_TABLE));
-                session.useBlock(table.x(), table.y() - 1, table.z());
-                enter(State.OPEN_TABLE);
-                ticksInState = -SETTLE_TICKS;
-            });
-            case OPEN_TABLE -> open(world, table, State.PLACE_TABLE, "crafting table");
-            case FURNACE_ITEM -> settled(() -> {
-                int cobblestone = need(ItemClass.COBBLESTONE) + 1; // the table's window puts inventory after its 10 slots
-                session.click(windowId, 0, cobblestone, false);
-                for (int slot : FURNACE_PATTERN) {
-                    session.click(windowId, 0, slot, true);
-                }
-                session.click(windowId, 0, cobblestone, false);
-                session.quickMove(windowId, 0, RESULT);
-                // Closed, but its ID kept: the server's answer to these clicks - the furnace into the
-                // inventory - still arrives through this window, and isn't repeated after it closes.
-                session.closeContainer(windowId);
-                blocked.add(table);
-                enter(State.PLACE_FURNACE);
-            });
-            case PLACE_FURNACE -> settled(() -> {
-                furnace = Woodcraft.placement(soldier, world, blocked);
-                hold(need(ItemClass.FURNACE));
-                session.useBlock(furnace.x(), furnace.y() - 1, furnace.z());
-                enter(State.OPEN_FURNACE);
-                ticksInState = -SETTLE_TICKS;
-            });
-            case OPEN_FURNACE -> open(world, furnace, State.PLACE_FURNACE, "furnace");
-            case SMELT -> settled(() -> {
-                // The furnace's window puts inventory slot 9 at 3: window slot = inventory slot - 6.
-                int log = need(ItemClass.LOG) - 6;
-                session.click(windowId, 0, log, false);
-                session.click(windowId, 0, 0, true); // one log to smelt
-                session.click(windowId, 0, log, false);
-                int planks = need(ItemClass.PLANKS) - 6;
-                session.click(windowId, 0, planks, false);
-                session.click(windowId, 0, 1, true); // one plank to burn
-                session.click(windowId, 0, planks, false);
-                charcoalReady = false;
-                enter(State.WAIT);
-            });
-            case WAIT -> {
-                if (charcoalReady) {
-                    session.quickMove(windowId, 0, 2);
-                    session.closeContainer(windowId); // its ID kept, as for the table: the charcoal arrives through it
-                    enter(State.TORCHES);
-                } else if (ticksInState > SMELT_TIMEOUT_TICKS) {
-                    giveUp("no charcoal came out of the furnace");
-                }
-            }
-            case TORCHES -> settled(() -> {
-                int coal = need(ItemClass.COAL);
-                session.click(0, 0, coal, false);
-                session.click(0, 0, 1, true); // charcoal over
-                session.click(0, 0, coal, false);
-                int sticks = need(ItemClass.STICK);
-                session.click(0, 0, sticks, false);
-                session.click(0, 0, 3, true); // a stick: torches
-                session.click(0, 0, sticks, false);
-                session.quickMove(0, 0, RESULT);
-                session.closeContainer(0);
-                LOG.info("{} made torches", name);
-                finish(0);
-            });
-        }
+                    session.closeContainer(0); // anything left in the grid back to the inventory
+                }, new Expect("a crafting table in the inventory", () -> has(inventory, ItemClass.CRAFTING_TABLE)), ANSWER_TICKS),
+                new Step("place the crafting table", () -> has(inventory, ItemClass.FURNACE), () -> {
+                    table = Woodcraft.placement(soldier, world, blocked);
+                    hold(need(ItemClass.CRAFTING_TABLE));
+                    session.useBlock(table.x(), table.y() - 1, table.z());
+                }, new Expect("a crafting table in the world", () -> placed(table)), ANSWER_TICKS),
+                new Step("open the crafting table", () -> has(inventory, ItemClass.FURNACE), () -> open(table),
+                        new Expect("the crafting table's window", () -> opened(CRAFTING_MENU)), ANSWER_TICKS),
+                new Step("craft a furnace", () -> has(inventory, ItemClass.FURNACE), () -> {
+                    int cobblestone = need(ItemClass.COBBLESTONE) + 1; // the table's window puts inventory after its 10 slots
+                    session.click(windowId, 0, cobblestone, false);
+                    for (int slot : FURNACE_PATTERN) {
+                        session.click(windowId, 0, slot, true);
+                    }
+                    session.click(windowId, 0, cobblestone, false);
+                    session.quickMove(windowId, 0, RESULT);
+                }, new Expect("a furnace in the inventory", () -> has(inventory, ItemClass.FURNACE)), ANSWER_TICKS),
+                new Step("place the furnace", () -> {
+                    close();
+                    if (table != null) {
+                        blocked.add(table);
+                    }
+                    furnace = Woodcraft.placement(soldier, world, blocked);
+                    hold(need(ItemClass.FURNACE));
+                    session.useBlock(furnace.x(), furnace.y() - 1, furnace.z());
+                }, new Expect("a furnace in the world", () -> placed(furnace)), ANSWER_TICKS),
+                new Step("open the furnace", () -> open(furnace),
+                        new Expect("the furnace's window", () -> opened(FURNACE_MENU)), ANSWER_TICKS),
+                new Step("load the furnace", () -> {
+                    // The furnace's window puts inventory slot 9 at 3: window slot = inventory slot - 6.
+                    int log = need(ItemClass.LOG) - 6;
+                    session.click(windowId, 0, log, false);
+                    session.click(windowId, 0, 0, true); // one log to smelt
+                    session.click(windowId, 0, log, false);
+                    int plank = need(ItemClass.PLANKS) - 6;
+                    session.click(windowId, 0, plank, false);
+                    session.click(windowId, 0, 1, true); // one plank to burn
+                    session.click(windowId, 0, plank, false);
+                }, new Expect("a log in the furnace", () -> furnaceSlots[0].equals(Optional.of(ItemClass.LOG))
+                        || furnaceSlots[2].equals(Optional.of(ItemClass.COAL))), ANSWER_TICKS),
+                new Step("smelt", () -> { },
+                        new Expect("charcoal in the furnace", () -> furnaceSlots[2].equals(Optional.of(ItemClass.COAL))), SMELT_TICKS),
+                new Step("take the charcoal", () -> session.quickMove(windowId, 0, 2),
+                        new Expect("charcoal in the inventory", () -> has(inventory, ItemClass.COAL)), ANSWER_TICKS),
+                new Step("craft torches", () -> {
+                    close();
+                    int coal = need(ItemClass.COAL);
+                    session.click(0, 0, coal, false);
+                    session.click(0, 0, 1, true); // charcoal over
+                    session.click(0, 0, coal, false);
+                    int sticks = need(ItemClass.STICK);
+                    session.click(0, 0, sticks, false);
+                    session.click(0, 0, 3, true); // a stick: torches
+                    session.click(0, 0, sticks, false);
+                    session.quickMove(0, 0, RESULT);
+                    session.closeContainer(0);
+                }, new Expect("torches in the inventory", () -> has(inventory, ItemClass.TORCH)), ANSWER_TICKS));
     }
 
     public synchronized void onContainer(ContainerUpdate update) {
         switch (update) {
             case ContainerUpdate.Opened(int id, int menuType) -> {
-                int expected = state == State.OPEN_TABLE ? CRAFTING_MENU : state == State.OPEN_FURNACE ? FURNACE_MENU : -1;
-                if (expected < 0) {
-                    return;
+                if (script != null) {
+                    windowId = id;
+                    openedMenu = menuType;
+                    windowSlots = menuType == FURNACE_MENU ? FURNACE_SLOTS : TABLE_SLOTS;
+                    Arrays.fill(furnaceSlots, Optional.empty());
                 }
-                if (menuType != expected) {
-                    session.closeContainer(id);
-                    giveUp("opened menu type " + menuType + ", not " + expected);
-                    return;
-                }
-                windowId = id;
-                windowSlots = menuType == CRAFTING_MENU ? TABLE_SLOTS : FURNACE_SLOTS;
-                enter(menuType == CRAFTING_MENU ? State.FURNACE_ITEM : State.SMELT);
             }
             // While a table or furnace is open, the inventory's changes arrive only through its window.
             case ContainerUpdate.Contents(int id, int stateId, var slots, boolean complete) -> {
@@ -261,36 +252,45 @@ public final class Torchmaker {
                 }
             }
             case ContainerUpdate.Closed(int id) -> {
-                if (id == windowId && state != State.IDLE) {
-                    giveUp("the server closed the " + (windowSlots == FURNACE_SLOTS ? "furnace" : "crafting table"));
+                if (id == windowId && script != null) {
+                    script.cancel("the server closed the " + (windowSlots == FURNACE_SLOTS ? "furnace" : "crafting table"));
                 }
             }
         }
     }
 
     private void apply(int slot, Optional<ItemSlot> item) {
-        if (windowSlots == FURNACE_SLOTS && slot == 2) {
-            charcoalReady = item.map(i -> ItemClassRegistry.classOf(i.itemId()).equals(Optional.of(ItemClass.COAL))).orElse(false);
+        if (windowSlots == FURNACE_SLOTS && slot < FURNACE_SLOTS) {
+            furnaceSlots[slot] = item.flatMap(i -> ItemClassRegistry.classOf(i.itemId()));
         } else if (slot >= windowSlots) {
             inventory.setWindowSlot(slot, windowSlots, item.map(i -> new int[]{i.itemId(), i.count()}).orElse(null));
         }
     }
 
-    /** Opens the block placed at {@code at} once it's there; places again beside it if it didn't land. */
-    private void open(WorldView world, BlockPos at, State placeAgain, String what) {
-        if (ticksInState == 0) {
-            if (!world.isSolid(at.x(), at.y(), at.z())) {
-                blocked.add(at);
-                if (blocked.size() >= 6) {
-                    giveUp("no cell around would take the " + what);
-                } else {
-                    enter(placeAgain);
-                }
-                return;
-            }
-            session.useBlock(at.x(), at.y(), at.z());
-        } else if (ticksInState > OPEN_TIMEOUT_TICKS) {
-            giveUp("the " + what + " at " + at + " didn't open");
+    /** Uses the block at {@code at}, after any window still open is closed. */
+    private void open(BlockPos at) {
+        close();
+        openedMenu = -1;
+        session.useBlock(at.x(), at.y(), at.z());
+    }
+
+    /** Whether the window it asked for is open; throws if a different one opened. */
+    private boolean opened(int menu) {
+        if (openedMenu >= 0 && openedMenu != menu) {
+            throw new IllegalStateException("menu type " + openedMenu + " opened, not " + menu);
+        }
+        return openedMenu == menu;
+    }
+
+    /** Whether the block placed at {@code at} is there. One that never lands fails the step; {@link #giveUp} marks the cell. */
+    private boolean placed(BlockPos at) {
+        return world.isSolid(at.x(), at.y(), at.z());
+    }
+
+    private void close() {
+        if (windowId >= 0) {
+            session.closeContainer(windowId);
+            windowId = -1;
         }
     }
 
@@ -313,17 +313,6 @@ public final class Torchmaker {
         inventory.selectHotbar(hotbar);
     }
 
-    private void settled(Runnable phase) {
-        if (ticksInState < SETTLE_TICKS) {
-            return;
-        }
-        try {
-            phase.run();
-        } catch (IllegalStateException e) {
-            giveUp(e.getMessage());
-        }
-    }
-
     private int need(ItemClass itemClass) {
         int slot = inventory.slotOf(itemClass);
         if (slot < 0) {
@@ -332,29 +321,44 @@ public final class Torchmaker {
         return slot;
     }
 
-    private void giveUp(String why) {
-        LOG.warn("{} gives up making torches ({}) - {}", name, state, why);
-        failure = "can't make torches: " + why;
-        if (windowId >= 0) {
-            session.closeContainer(windowId);
+    private void giveUp(String step, String reason) {
+        LOG.warn("{} gives up making torches at '{}' - {} - {}", name, step, reason, inventory.summary());
+        failure = "can't make torches: " + step + ": " + reason;
+        if (step.equals("place the crafting table") && table != null) {
+            blocked.add(table);
+        } else if (step.equals("place the furnace") && furnace != null) {
+            blocked.add(furnace);
         }
+        close();
         session.closeContainer(0);
         finish(COOLDOWN_TICKS);
     }
 
     private void finish(int cooldownTicks) {
-        windowId = -1;
+        script = null;
+        table = null;
+        furnace = null;
         if (previousHotbar >= 0) {
             session.selectHotbarSlot(previousHotbar);
             inventory.selectHotbar(previousHotbar);
             previousHotbar = -1;
         }
         cooldown = cooldownTicks;
-        enter(State.IDLE);
     }
 
-    private void enter(State next) {
-        state = next;
-        ticksInState = 0;
+    private static int planksWanted(Inventory inventory) {
+        return (has(inventory, ItemClass.CRAFTING_TABLE) || has(inventory, ItemClass.FURNACE) ? 0 : TABLE_PLANKS)
+                + (has(inventory, ItemClass.STICK) ? 0 : STICK_PLANKS) + FUEL_PLANKS;
+    }
+
+    private static boolean has(Inventory inventory, ItemClass itemClass) {
+        return inventory.slotOf(itemClass) >= 0;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Optional<ItemClass>[] emptyFurnace() {
+        Optional<ItemClass>[] slots = new Optional[FURNACE_SLOTS];
+        Arrays.fill(slots, Optional.empty());
+        return slots;
     }
 }

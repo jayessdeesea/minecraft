@@ -63,6 +63,12 @@ The hasty hut, the general's PATROL_BASE task and the time of day are live (docs
 - **Remember the base across a restart.** The base a squad built is kept in memory only. After a
   restart, a squad sealed in its hut doesn't know to cut its way out when ordered elsewhere.
 
+- **Light a base that's sealed dark.** A torchbearer is chosen only before the squad seals itself
+  in. A squad that is sealed in, has no torch and has no light (for example after a restart, or
+  after its torchbearer's run failed) stays dark. One soldier should cut a doorway, make torches
+  at a workshop outside, come back in and reseal. The camp's table and furnace, if still standing,
+  should be reused rather than built again.
+
 ## Notes
 - **The order needs a standard.** A patrol base order carries its standard as data (radius, light,
   deadline). Then "done" is computed, not reported. That reuses the existing pattern: a pure check

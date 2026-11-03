@@ -124,6 +124,8 @@ public class SoldierRunner implements CommandLineRunner {
         Position unbuildable;
         /** Whether the base was lit at the last check. */
         boolean lit;
+        /** Who the squad's torchbearer was last cycle: kept while it still can, so a run isn't handed over half done. */
+        String torchbearer;
         /** The base's breaches at the last check - logged when they change. */
         List<Position> breaches;
         java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.of();
@@ -347,9 +349,12 @@ public class SoldierRunner implements CommandLineRunner {
         boolean lit = plan != null && unlit.isEmpty();
         if (breaches != null && allInside && (!breaches.equals(state.breaches) || lit != state.lit)) {
             if (breaches.isEmpty()) {
-                LOG.info(lit ? "[{}] patrol base SEALED and LIT - nothing can get in or spawn inside"
-                        : "[{}] patrol base SEALED - but UNLIT at {}: its floor is spawn ground once the squad leaves{}", squadName, unlit,
-                        squadHasTorchNow(statuses) ? "" : " - and no torch in the squad to light it");
+                if (lit) {
+                    LOG.info("[{}] patrol base SEALED and LIT - nothing can get in or spawn inside", squadName);
+                } else {
+                    LOG.info("[{}] patrol base SEALED - but UNLIT at {}: its floor is spawn ground once the squad leaves{}", squadName,
+                            unlit, squadHasTorchNow(statuses) ? "" : " - and no torch in the squad to light it");
+                }
             } else {
                 LOG.warn("[{}] patrol base BREACHED at {} - rebuilding", squadName, breaches);
                 statuses.forEach(st -> Optional.ofNullable(builders.get(st.name())).ifPresent(Builder::retrySkipped));
@@ -363,7 +368,9 @@ public class SoldierRunner implements CommandLineRunner {
         // Before the squad seals itself in: a torchbearer works outside, and a sealed hut has no door.
         boolean sealedIn = allInside && breaches != null && breaches.isEmpty();
         String torchbearer = plan == null || squadHasTorch || lit || sealedIn ? null : statuses.stream().map(SoldierStatus::name)
-                .filter(n -> canMakeTorches.getOrDefault(n, false)).findFirst().orElse(null);
+                .filter(n -> canMakeTorches.getOrDefault(n, false))
+                .min(java.util.Comparator.comparing(n -> !n.equals(state.torchbearer))).orElse(null);
+        state.torchbearer = torchbearer;
         Position workshop = torchbearer == null ? null : workshop(plan).orElse(null);
         // Sealed and dark: the first soldier inside with a torch puts one down where it stands.
         String lighter = plan == null || lit || breaches == null || !breaches.isEmpty() || !allInside ? null
@@ -809,7 +816,8 @@ public class SoldierRunner implements CommandLineRunner {
                 doorway.stop();
             }
             torchesCarried.put(name, inventory.count(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.TORCH));
-            canMakeTorches.put(name, Torchmaker.canMake(inventory));
+            // A run under way has spent what canMake looks for - its furnace is in the world now.
+            canMakeTorches.put(name, torchmaker.active() || Torchmaker.canMake(inventory));
             boolean atWorkshop = fort != null && fort.makeTorches()
                     && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.6;
             torchmaker.tick(status.position(), world, atWorkshop && clear);
