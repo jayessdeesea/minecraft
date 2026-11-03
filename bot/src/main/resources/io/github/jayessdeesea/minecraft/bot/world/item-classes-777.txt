@@ -1,7 +1,8 @@
 # Generated from the pinned server jar's `--reports` registries.json by
 # tools/item-class-generator. One counted item per line: <id> <class> <name>,
 # W weapon, A armour, R arrows; and what a wooden sword is made from: L logs, P planks,
-# S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations.
+# S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;
+# U furnace, O coal or charcoal, T torch.
 # Everything NOT listed is just carried.
 62 K cobblestone
 63 P oak_planks
@@ -37,11 +38,15 @@
 185 L stripped_pale_oak_log
 186 L stripped_mangrove_log
 187 L stripped_poplar_log
+395 T torch
 405 C crafting_table
+407 U furnace
 1001 A turtle_helmet
 1007 F apple
 1008 W bow
 1009 R arrow
+1010 O coal
+1011 O charcoal
 1025 W wooden_sword
 1027 X wooden_pickaxe
 1028 W wooden_axe

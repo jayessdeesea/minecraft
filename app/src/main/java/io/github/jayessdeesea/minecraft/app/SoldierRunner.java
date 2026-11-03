@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.bot.supply.Footing;
 import io.github.jayessdeesea.minecraft.bot.supply.Gatherer;
 import io.github.jayessdeesea.minecraft.bot.supply.Handover;
 import io.github.jayessdeesea.minecraft.bot.supply.Rations;
+import io.github.jayessdeesea.minecraft.bot.supply.Torchmaker;
 import io.github.jayessdeesea.minecraft.bot.supply.SupplyRun;
 import io.github.jayessdeesea.minecraft.bot.supply.Woodcraft;
 import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
@@ -121,6 +122,8 @@ public class SoldierRunner implements CommandLineRunner {
         PatrolBase.Plan builtBase;
         /** A patrol base point with no level ground near it - logged once. */
         Position unbuildable;
+        /** Whether the base was lit at the last check. */
+        boolean lit;
         /** The base's breaches at the last check - logged when they change. */
         List<Position> breaches;
         java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.of();
@@ -145,10 +148,14 @@ public class SoldierRunner implements CommandLineRunner {
     /** Each connected soldier's building, by name. */
     private final Map<String, Builder> builders = new ConcurrentHashMap<>();
     /** A soldier's part in building its squad's patrol base. */
-    private record Fortify(Position stand, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells, boolean allInside) {
+    private record Fortify(Position stand, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells, boolean allInside,
+                           boolean makeTorches, boolean placeTorch) {
     }
     /** What each soldier is building, while its squad builds a patrol base - squad loop writes, tick reads. */
     private final Map<String, Fortify> fortifying = new ConcurrentHashMap<>();
+    /** Torches each soldier carries, and whether it could make some - tick writes, squad loop reads. */
+    private final Map<String, Integer> torchesCarried = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> canMakeTorches = new ConcurrentHashMap<>();
     /** The doorway a soldier is cutting out of its squad's base, and where it stands to - squad loop writes, tick reads. */
     private record Opening(Position stand, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells) {
     }
@@ -333,10 +340,16 @@ public class SoldierRunner implements CommandLineRunner {
         // after it's built: every way into the room is a breach, and goes back on the build list.
         List<Position> breaches = plan == null ? null
                 : plan.breaches(c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z()));
-        if (breaches != null && allInside && !breaches.equals(state.breaches)) {
+        // And lit: every floor cell with block light, so nothing spawns there once the squad leaves.
+        List<Position> unlit = plan == null ? List.of() : plan.unlit(c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z()),
+                plan.floor().stream().flatMap(f -> java.util.stream.Stream.of(f, new Position(f.x(), f.y() + 1, f.z())))
+                        .filter(c -> world.isTorch((int) c.x(), (int) c.y(), (int) c.z())).toList());
+        boolean lit = plan != null && unlit.isEmpty();
+        if (breaches != null && allInside && (!breaches.equals(state.breaches) || lit != state.lit)) {
             if (breaches.isEmpty()) {
-                LOG.info("[{}] patrol base SEALED - but UNLIT: no torches yet, so its floor is spawn ground once the squad leaves",
-                        squadName);
+                LOG.info(lit ? "[{}] patrol base SEALED and LIT - nothing can get in or spawn inside"
+                        : "[{}] patrol base SEALED - but UNLIT at {}: its floor is spawn ground once the squad leaves{}", squadName, unlit,
+                        squadHasTorchNow(statuses) ? "" : " - and no torch in the squad to light it");
             } else {
                 LOG.warn("[{}] patrol base BREACHED at {} - rebuilding", squadName, breaches);
                 statuses.forEach(st -> Optional.ofNullable(builders.get(st.name())).ifPresent(Builder::retrySkipped));
@@ -344,12 +357,26 @@ public class SoldierRunner implements CommandLineRunner {
         }
         // What was last logged - reset while the squad isn't all in, so entering always says which.
         state.breaches = allInside ? breaches : null;
+        state.lit = lit;
+        // A squad with a base to light and no torch: one soldier who can make them does, outside the walls.
+        boolean squadHasTorch = statuses.stream().anyMatch(st -> torchesCarried.getOrDefault(st.name(), 0) > 0);
+        // Before the squad seals itself in: a torchbearer works outside, and a sealed hut has no door.
+        boolean sealedIn = allInside && breaches != null && breaches.isEmpty();
+        String torchbearer = plan == null || squadHasTorch || lit || sealedIn ? null : statuses.stream().map(SoldierStatus::name)
+                .filter(n -> canMakeTorches.getOrDefault(n, false)).findFirst().orElse(null);
+        Position workshop = torchbearer == null ? null : workshop(plan).orElse(null);
+        // Sealed and dark: the first soldier inside with a torch puts one down where it stands.
+        String lighter = plan == null || lit || breaches == null || !breaches.isEmpty() || !allInside ? null
+                : statuses.stream().map(SoldierStatus::name).filter(n -> torchesCarried.getOrDefault(n, 0) > 0).findFirst().orElse(null);
         // Moving on from a base: cut a doorway toward the next objective. Not while only paused for
         // contact - the base is still the squad's.
         String opener = null;
-        if (plan != null) {
+        // Leaving a base the squad built - for no base, or for one somewhere else - starts with a way out.
+        boolean newSite = plan != null && state.builtBase != null && !plan.floor().equals(state.builtBase.floor());
+        boolean stillCutting = false;
+        if (plan != null && !newSite) {
             state.builtBase = plan;
-        } else if (state.builtBase != null && chainOfCommand.patrolBaseObjective(squadName).isEmpty()) {
+        } else if (state.builtBase != null && (newSite || chainOfCommand.patrolBaseObjective(squadName).isEmpty())) {
             PatrolBase.Plan built = state.builtBase;
             // Toward where the general is sending the squad: the squad leader's own order can still
             // point inside the hut, since from in there it sees no ground it can reach.
@@ -358,13 +385,15 @@ public class SoldierRunner implements CommandLineRunner {
             Optional<SoldierStatus> inside = statuses.stream().filter(st -> built.inside(st.position())).findFirst();
             if (open || inside.isEmpty()) {
                 LOG.info("[{}] {}", squadName, open ? "doorway open - moving out of the patrol base" : "nobody left in the patrol base");
-                state.builtBase = null;
+                state.builtBase = newSite ? plan : null;
             } else {
+                stillCutting = true;
                 opener = inside.get().name();
                 opening.put(opener, new Opening(built.insideOf(door), door.stream()
                         .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) c.x(), (int) c.y(), (int) c.z())).toList()));
             }
         }
+        final PatrolBase.Plan building = newSite && stillCutting ? null : plan;
         for (int i = 0; i < statuses.size(); i++) {
             String soldierName = statuses.get(i).name();
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
@@ -374,15 +403,21 @@ public class SoldierRunner implements CommandLineRunner {
                     ? Optional.empty() : chainOfCommand.gatherObjective(squadName);
             gather.ifPresentOrElse(o -> gathering.put(soldierName, o), () -> gathering.remove(soldierName));
             Order given = orders.get(i);
-            if (plan != null) {
+            if (building != null) {
                 List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = new java.util.ArrayList<>(
-                        java.util.stream.Stream.concat(plan.cells().stream(), breaches.stream().filter(b -> !plan.cells().contains(b)))
+                        java.util.stream.Stream.concat(building.cells().stream(), breaches.stream().filter(b -> !building.cells().contains(b)))
                         .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) c.x(), (int) c.y(), (int) c.z())).toList());
                 // Each soldier starts at a different point round the walls, so they don't all go for the same block.
                 java.util.Collections.rotate(cells, -i * cells.size() / statuses.size());
-                fortifying.put(soldierName, new Fortify(plan.stands().get(i), List.copyOf(cells), allInside));
-                Position place = plan.stands().get(i);
-                byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(), HUT_PLACE_TOLERANCE, 0.5, Risk.LOW));
+                boolean makeTorches = soldierName.equals(torchbearer) && workshop != null;
+                Position place = makeTorches ? workshop : building.stands().get(i);
+                fortifying.put(soldierName, new Fortify(place, List.copyOf(cells), allInside, makeTorches,
+                        soldierName.equals(lighter)));
+                // Rearming while it waits: it goes where its sword-making takes it, then back to its place.
+                Optional<Position> rearming = Optional.ofNullable(woodcrafts.get(soldierName)).flatMap(Woodcraft::standAt);
+                byName.get(soldierName).receiveOrder(rearming
+                        .map(r -> (Order) new Order.MoveTo(r.x(), r.y(), r.z(), 0.3, 0.5, Risk.LOW))
+                        .orElse(new Order.MoveTo(place.x(), place.y(), place.z(), HUT_PLACE_TOLERANCE, 0.5, Risk.LOW)));
                 continue;
             }
             fortifying.remove(soldierName);
@@ -433,7 +468,38 @@ public class SoldierRunner implements CommandLineRunner {
         }
     }
 
+    private boolean squadHasTorchNow(List<SoldierStatus> statuses) {
+        return statuses.stream().anyMatch(st -> torchesCarried.getOrDefault(st.name(), 0) > 0);
+    }
+
     private static final int GROUND_SEARCH = 8;
+
+    /**
+     * Where a torchbearer works: a standing spot a few blocks out from the hut's walls, so the table
+     * and furnace it puts down beside it land clear of the hut and everyone's places.
+     */
+    private Optional<Position> workshop(PatrolBase.Plan plan) {
+        double minX = plan.floor().stream().mapToDouble(Position::x).min().orElseThrow();
+        double maxX = plan.floor().stream().mapToDouble(Position::x).max().orElseThrow();
+        double minZ = plan.floor().stream().mapToDouble(Position::z).min().orElseThrow();
+        double maxZ = plan.floor().stream().mapToDouble(Position::z).max().orElseThrow();
+        int y = (int) plan.floor().getFirst().y();
+        for (int out = 4; out <= 6; out++) {
+            for (double[] c : new double[][]{{maxX + out, minZ}, {minX - out, minZ}, {minX, maxZ + out}, {minX, minZ - out}}) {
+                for (int dy = 0; dy <= 2; dy++) {
+                    for (int cy : new int[]{y + dy, y - dy}) {
+                        int cx = (int) c[0];
+                        int cz = (int) c[1];
+                        if (world.isSolid(cx, cy - 1, cz) && !world.isSolid(cx, cy, cz) && !world.isSolid(cx, cy + 1, cz)
+                                && !world.isHazard(cx, cy, cz)) {
+                            return Optional.of(new Position(cx + 0.5, cy, cz + 0.5));
+                        }
+                    }
+                }
+            }
+        }
+        return Optional.empty();
+    }
     /** How far from the general's point to look for level ground for a patrol base. */
     private static final int SITE_SEARCH = 8;
     /**
@@ -519,6 +585,7 @@ public class SoldierRunner implements CommandLineRunner {
         // Created with the session (onJoined); container updates before then can't be a supply run.
         AtomicReference<SupplyRun> supplyRun = new AtomicReference<>();
         AtomicReference<Woodcraft> woodcraftRef = new AtomicReference<>();
+        AtomicReference<Torchmaker> torchmakerRef = new AtomicReference<>();
         AtomicReference<Depositor> depositorRef = new AtomicReference<>();
         CompletableFuture<PlaySession> sessionReady = new CompletableFuture<>();
 
@@ -585,6 +652,10 @@ public class SoldierRunner implements CommandLineRunner {
                     if (run != null) {
                         run.onContainer(container);
                     }
+                    Torchmaker torchmaker = torchmakerRef.get();
+                    if (torchmaker != null) {
+                        torchmaker.onContainer(container);
+                    }
                     Woodcraft woodcraft = woodcraftRef.get();
                     if (woodcraft != null) {
                         woodcraft.onContainer(container);
@@ -612,7 +683,7 @@ public class SoldierRunner implements CommandLineRunner {
                 },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
-        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, woodcraftRef, depositorRef))
+        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, woodcraftRef, depositorRef, torchmakerRef))
                 .exceptionally(cause -> {
                     LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
                     return null;
@@ -657,7 +728,8 @@ public class SoldierRunner implements CommandLineRunner {
                            AtomicReference<ScheduledExecutorService> activeScheduler,
                            AtomicReference<DeterministicSoldier> activeSoldier, AtomicReference<HealthUpdate> lastHealth,
                            AtomicReference<Kit> lastKit, Inventory inventory, AtomicReference<SupplyRun> supplyRun,
-                           AtomicReference<Woodcraft> woodcraftRef, AtomicReference<Depositor> depositorRef) {
+                           AtomicReference<Woodcraft> woodcraftRef, AtomicReference<Depositor> depositorRef,
+                           AtomicReference<Torchmaker> torchmakerRef) {
         String name = definition.name();
         LOG.info("{} joined at real spawn ({}, {}, {}): {}", name, spawn.x(), spawn.y(), spawn.z(), session.playState());
 
@@ -704,6 +776,10 @@ public class SoldierRunner implements CommandLineRunner {
         // What the server was last told about sprinting: a new connection starts walking.
         java.util.concurrent.atomic.AtomicBoolean sprintingSent = new java.util.concurrent.atomic.AtomicBoolean();
         woodcraftRef.set(woodcraft);
+        Torchmaker torchmaker = new Torchmaker(name, session, inventory);
+        // Ticks while told to light the base: one torch tried a second, until the light check sees it.
+        java.util.concurrent.atomic.AtomicInteger torchTicks = new java.util.concurrent.atomic.AtomicInteger();
+        torchmakerRef.set(torchmaker);
 
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
                 runnable -> new Thread(runnable, name + "-tick"));
@@ -732,11 +808,27 @@ public class SoldierRunner implements CommandLineRunner {
             } else {
                 doorway.stop();
             }
-            boolean building = fort != null && fort.allInside() && !builder.done() || exit != null;
+            torchesCarried.put(name, inventory.count(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.TORCH));
+            canMakeTorches.put(name, Torchmaker.canMake(inventory));
+            boolean atWorkshop = fort != null && fort.makeTorches()
+                    && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.6;
+            torchmaker.tick(status.position(), world, atWorkshop && clear);
+            if (fort != null && fort.placeTorch() && !torchmaker.active() && torchTicks.incrementAndGet() % 20 == 0) {
+                io.github.jayessdeesea.minecraft.bot.nav.BlockPos feet = io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(
+                        status.position().x(), status.position().y() + 0.01, status.position().z());
+                if (footing.place(feet, io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.TORCH)) {
+                    LOG.info("{} lights the patrol base with a torch at {}", name, feet);
+                }
+            }
+            boolean building = fort != null && fort.allInside() && !builder.done() || exit != null || torchmaker.active();
             rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD),
                     clear && !woodcraft.active() && !depositor.active() && !handover.active() && !building,
                     soldier.yaw(), soldier.pitch());
-            woodcraft.tick(status.position(), world, fort == null && !rations.active() ? tool : Optional.empty());
+            // Pre-combat checks come first: a bare-handed soldier waiting on its squad's base - not
+            // yet building, not the torchbearer - may make its sword meanwhile.
+            boolean waiting = fort != null && !fort.allInside() && !fort.makeTorches();
+            woodcraft.tick(status.position(), world, (fort == null || waiting && tool.equals(Optional.of(Woodcraft.Tool.WOODEN_SWORD)))
+                    && !rations.active() ? tool : Optional.empty());
             // Short of logs for a tool it tried and failed to chop wood for: a squadmate may have
             // some to spare (§13).
             Optional<Woodcraft.Tool> needed = bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)

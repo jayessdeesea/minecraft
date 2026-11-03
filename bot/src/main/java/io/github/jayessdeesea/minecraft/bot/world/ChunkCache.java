@@ -82,6 +82,12 @@ public final class ChunkCache {
     }
 
     /** Whether the block is a log - unknown blocks aren't. */
+    /** Whether the block at (x, y, z) is a torch. False for a block nobody has cached. */
+    public boolean isTorch(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId != UNKNOWN && BlockClassRegistry.isTorch(stateId);
+    }
+
     public boolean isLog(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
         return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.LOG;

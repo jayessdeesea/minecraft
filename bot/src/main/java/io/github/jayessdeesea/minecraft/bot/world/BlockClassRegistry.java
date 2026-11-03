@@ -36,7 +36,14 @@ final class BlockClassRegistry {
 
     private static final String RESOURCE_NAME = "block-classes-777.txt";
 
+    /** Block states that are torches - the light a patrol base is lit by. Filled while loading. */
+    private static final java.util.BitSet TORCHES = new java.util.BitSet();
     private static final BlockClass[] CLASSES = load();
+
+    /** Whether {@code stateId} is a torch, standing or on a wall. */
+    static boolean isTorch(int stateId) {
+        return stateId >= 0 && TORCHES.get(stateId);
+    }
 
     private BlockClassRegistry() {
     }
@@ -61,6 +68,9 @@ final class BlockClassRegistry {
                     int stateId = Integer.parseInt(fields[0]);
                     if (stateId >= classes.length) {
                         classes = Arrays.copyOf(classes, Math.max(stateId + 1, classes.length * 2));
+                    }
+                    if (fields.length > 2 && (fields[2].equals("torch") || fields[2].equals("wall_torch"))) {
+                        TORCHES.set(stateId);
                     }
                     classes[stateId] = switch (fields[1]) {
                         case "P" -> BlockClass.PASSABLE;

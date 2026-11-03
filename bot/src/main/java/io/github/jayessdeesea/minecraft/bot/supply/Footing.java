@@ -33,10 +33,18 @@ public final class Footing {
 
     /** Places a block in {@code cell}, against the one under it. False when there's no cobblestone to place. */
     public synchronized boolean place(BlockPos cell) {
+        return place(cell, ItemClass.COBBLESTONE);
+    }
+
+    /**
+     * Places an item of {@code item} - cobblestone to climb on, a torch to light a patrol base - in
+     * {@code cell}, on top of the block under it. False when there's none to place.
+     */
+    public synchronized boolean place(BlockPos cell, ItemClass item) {
         idleTicks = 0;
         int held = Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot();
-        if (!ItemClassRegistry.classOf(inventory.itemAt(held)).equals(Optional.of(ItemClass.COBBLESTONE))) {
-            int slot = inventory.slotOf(ItemClass.COBBLESTONE);
+        if (!ItemClassRegistry.classOf(inventory.itemAt(held)).equals(Optional.of(item))) {
+            int slot = inventory.slotOf(item);
             if (slot < 0) {
                 return false;
             }

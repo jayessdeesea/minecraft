@@ -324,8 +324,24 @@ squad holds its sealed base, its squad leader isn't asked to decide anything and
 InPosition. From inside a sealed hut no ground is reachable, which would otherwise read upward as
 CANTCO.
 
-The base is not yet lit. The log says so whenever it reports the base sealed: the floor is spawn
-ground once the squad leaves. Torches are backlog/patrol-base.md.
+The base is lit as well as sealed. Light is checked alongside breaches (`PatrolBase.Plan.unlit`):
+a torch gives its cell block light 14, which falls by one a block through open cells. A floor cell
+left at 0 is ground a monster can spawn on once no soldier is within 24 blocks. Overworld monsters
+spawn only at block light 0, and never within 24 blocks of a player.
+
+A squad with a base to light and no torch has one soldier make them before it seals itself in
+(`bot.supply.Torchmaker`), using what squads carry: 3 logs and 8 cobblestone. The soldier works 4-6
+blocks outside the walls, so its table and furnace land clear of the hut:
+1. Planks and sticks in the 2x2 grid.
+2. A crafting table, placed.
+3. A furnace from 8 cobblestone, made at the table and placed.
+4. A log smelted to charcoal, with a plank for fuel.
+5. Charcoal over a stick: 4 torches.
+The table and furnace stay behind as the camp's kit. The others wait inside, since building starts
+only once all are in, and a bare-handed one may make its sword meanwhile. Once the base is sealed
+and dark, a soldier inside with a torch puts it down where it stands.
+
+The log reports "SEALED and LIT", or "UNLIT at" with the dark cells.
 
 When the general moves the squad on, the soldier inside nearest the doorway breaks a doorway out
 (`bot.supply.Doorway`): two wall blocks, on the side facing the general's new objective, preferring

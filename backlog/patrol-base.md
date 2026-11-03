@@ -57,17 +57,16 @@ registry classifies all logs as LOG.
 ## Done when
 The hasty hut, the general's PATROL_BASE task and the time of day are live (docs/military-doctrine.md
 § 14). What's left:
-- **Torches.** Soldiers make torches from coal they dig or charcoal they smelt, and light the base
-  so block light > 0 on every floor block.
 - **Deliberate base on a later night.** The squad improves the base with a wider perimeter and more
   light. The improvement is measured by a test that counts lit, walled floor blocks.
+
+- **Remember the base across a restart.** The base a squad built is kept in memory only. After a
+  restart, a squad sealed in its hut doesn't know to cut its way out when ordered elsewhere.
 
 ## Notes
 - **The order needs a standard.** A patrol base order carries its standard as data (radius, light,
   deadline). Then "done" is computed, not reported. That reuses the existing pattern: a pure check
   in `command`, executed by `bot`.
-- **Mapping lightness:** we receive block light per section in chunk data (docs/world-data-spec.md)
-  but don't store it. Either keep it, or compute torch coverage ourselves from torch positions
-  (light falls off by 1 per block). Prefer the server's data: it's ground truth.
-- **Uneven ground:** the floor goes on the ground at the site's centre. A wall cell over a dip has
-  nothing under it, and is skipped if no neighbour is solid either.
+- **Light is computed, not read:** the light check works from torch positions (falloff of 1 per
+  block). The server sends real block light in chunk data (docs/world-data-spec.md), which we don't
+  store. Reading it would catch light from anything else, such as lava or glowstone.

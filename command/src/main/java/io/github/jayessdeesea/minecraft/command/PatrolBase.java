@@ -105,6 +105,38 @@ public final class PatrolBase {
             return List.copyOf(breaches);
         }
 
+        /** Block light a torch gives its own cell; it falls by one a block, through open cells. */
+        public static final int TORCH_LIGHT = 14;
+
+        /**
+         * The floor cells no torch lights - each one, with block light 0, is ground a monster can
+         * spawn on once no soldier is within 24 blocks. Light spreads from each torch in {@code torches}
+         * through cells that aren't {@code solid}, losing one per block.
+         */
+        public List<Position> unlit(Predicate<Position> solid, List<Position> torches) {
+            java.util.Map<Position, Integer> light = new java.util.HashMap<>();
+            java.util.ArrayDeque<Position> frontier = new java.util.ArrayDeque<>();
+            for (Position torch : torches) {
+                light.put(torch, TORCH_LIGHT);
+                frontier.add(torch);
+            }
+            while (!frontier.isEmpty()) {
+                Position cell = frontier.poll();
+                int level = light.get(cell) - 1;
+                if (level <= 0) {
+                    continue;
+                }
+                for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+                    Position next = new Position(cell.x() + d[0], cell.y() + d[1], cell.z() + d[2]);
+                    if (!solid.test(next) && light.getOrDefault(next, 0) < level) {
+                        light.put(next, level);
+                        frontier.add(next);
+                    }
+                }
+            }
+            return floor.stream().filter(cell -> light.getOrDefault(cell, 0) == 0).toList();
+        }
+
         /** Whether {@code soldier} stands on the floor inside the walls. */
         public boolean inside(Position soldier) {
             return floor.stream().anyMatch(cell -> cell.x() == Math.floor(soldier.x()) && cell.z() == Math.floor(soldier.z())

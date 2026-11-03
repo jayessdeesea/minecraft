@@ -24,7 +24,7 @@ import java.util.OptionalInt;
 public final class ItemClassRegistry {
 
     /** What an item counts as. */
-    public enum ItemClass { WEAPON, ARMOUR, ARROWS, LOG, PLANKS, STICK, CRAFTING_TABLE, COBBLESTONE, PICKAXE, FOOD }
+    public enum ItemClass { WEAPON, ARMOUR, ARROWS, LOG, PLANKS, STICK, CRAFTING_TABLE, COBBLESTONE, PICKAXE, FOOD, FURNACE, COAL, TORCH }
 
     private static final String RESOURCE_NAME = "item-classes-777.txt";
 
@@ -114,6 +114,9 @@ public final class ItemClassRegistry {
                         case "K" -> ItemClass.COBBLESTONE;
                         case "X" -> ItemClass.PICKAXE;
                         case "F" -> ItemClass.FOOD;
+                        case "U" -> ItemClass.FURNACE;
+                        case "O" -> ItemClass.COAL;
+                        case "T" -> ItemClass.TORCH;
                         default -> throw new IllegalStateException("Unknown item class in " + RESOURCE_NAME + ": " + line);
                     };
                     items.put(Integer.parseInt(parts[0]), new Entry(itemClass, parts[2]));

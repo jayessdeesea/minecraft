@@ -100,6 +100,26 @@ class PatrolBaseTest {
     }
 
     @Test
+    void oneTorchLightsTheWholeFloorAndNoTorchLightsNone() {
+        PatrolBase.Plan plan = PatrolBase.hasty(new Position(0, 64, 0), 9); // a 3x3 floor
+        Set<Position> built = new HashSet<>(plan.cells());
+        java.util.function.Predicate<Position> solid = cell -> cell.y() < 64 || built.contains(cell);
+
+        assertEquals(plan.floor(), plan.unlit(solid, List.of()), "dark: every floor cell is spawn ground");
+        assertEquals(List.of(), plan.unlit(solid, List.of(new Position(-1, 64, -1))), "a torch in a corner lights it all");
+    }
+
+    @Test
+    void lightDoesntPassThroughWalls() {
+        PatrolBase.Plan plan = PatrolBase.hasty(new Position(0, 64, 0), 4);
+        Set<Position> built = new HashSet<>(plan.cells());
+        java.util.function.Predicate<Position> solid = cell -> cell.y() < 64 || built.contains(cell);
+
+        // A torch outside the walls lights nothing inside.
+        assertEquals(plan.floor(), plan.unlit(solid, List.of(new Position(5, 64, 0))));
+    }
+
+    @Test
     void moreThanNineDontFit() {
         assertThrows(IllegalArgumentException.class, () -> PatrolBase.hasty(new Position(0, 64, 0), 10));
     }

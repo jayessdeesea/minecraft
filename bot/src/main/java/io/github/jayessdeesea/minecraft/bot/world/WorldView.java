@@ -29,6 +29,11 @@ public interface WorldView {
      * Whether the block is a log a soldier can chop (it's also {@link #isSolid}). A view that knows
      * no blocks' identity - a test's synthetic terrain - has no logs.
      */
+    /** Whether the block at (x, y, z) is a torch - a light a patrol base is lit by. */
+    default boolean isTorch(int x, int y, int z) {
+        return false;
+    }
+
     default boolean isLog(int x, int y, int z) {
         return false;
     }

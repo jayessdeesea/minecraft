@@ -335,7 +335,7 @@ public final class Woodcraft {
     private static final double HALF_WIDTH = 0.3;
 
     /** Where to put the table: a free cell beside the soldier, clear of its body, with ground under it. */
-    private static BlockPos placement(Position soldier, WorldView world, java.util.Set<BlockPos> blocked) {
+    static BlockPos placement(Position soldier, WorldView world, java.util.Set<BlockPos> blocked) {
         BlockPos at = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
         for (int[] side : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
             BlockPos cell = at.offset(side[0], 0, side[1]);
