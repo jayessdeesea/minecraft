@@ -80,6 +80,54 @@ class ScriptTest {
     }
 
     @Test
+    void aGuardThatStopsHoldingInterruptsWithoutFaultAndARerunResumes() {
+        AtomicBoolean clear = new AtomicBoolean(true);
+        java.util.concurrent.atomic.AtomicInteger planks = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.function.Supplier<Script> script = () -> new Script("Alice", List.of(
+                new Script.Step("planks", () -> planks.get() > 0, () -> done.add("planks"),
+                        new Script.Expect("planks", () -> {
+                            planks.set(4);
+                            return true;
+                        }), 40),
+                new Script.Step("table", () -> done.add("table"), new Script.Expect("a table", () -> false), 40)),
+                List.of(new Script.Guard("a hostile near", clear::get)));
+
+        Script first = script.get();
+        first.tick(); // planks
+        first.tick(); // confirmed
+        first.tick(); // table
+        clear.set(false);
+        assertEquals(new Script.Status.Interrupted("table", "a hostile near"), first.tick());
+
+        clear.set(true);
+        Script second = script.get();
+        second.tick(); // planks already there: skipped
+        second.tick(); // table
+        assertEquals(List.of("planks", "table", "table"), done, "the re-run picks up at the table");
+    }
+
+    @Test
+    void aRepeatStepGoesRoundUntilItsGoalHoldsEachRoundConfirmed() {
+        java.util.concurrent.atomic.AtomicInteger torches = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger before = new java.util.concurrent.atomic.AtomicInteger();
+        Script script = new Script("Alice", List.of(Script.Step.until("craft 12 torches", () -> torches.get() >= 12, () -> {
+            before.set(torches.get());
+            done.add("craft");
+        }, new Script.Expect("more torches", () -> {
+            torches.set(before.get() + 4); // the server's answer
+            return true;
+        }), 40)));
+
+        Script.Status status = new Script.Status.Running();
+        for (int i = 0; i < 20 && status instanceof Script.Status.Running; i++) {
+            status = script.tick();
+        }
+
+        assertEquals(new Script.Status.Done(), status);
+        assertEquals(List.of("craft", "craft", "craft"), done);
+    }
+
+    @Test
     void everyStepNeedsADeadline() {
         assertThrows(IllegalArgumentException.class,
                 () -> new Script.Step("wait forever", () -> { }, new Script.Expect("anything", () -> false), 0));

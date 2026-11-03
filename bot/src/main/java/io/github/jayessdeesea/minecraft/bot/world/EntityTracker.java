@@ -85,6 +85,19 @@ public final class EntityTracker {
                 .toList();
     }
 
+    /**
+     * Where every entity but a dropped item is within {@code radius} of {@code center} - squadmates,
+     * mobs: bodies the server won't place a block into.
+     */
+    public List<Position> nearbyBodies(Position center, double radius) {
+        double radiusSquared = radius * radius;
+        return entities.values().stream()
+                .filter(entry -> entry.typeId != ITEM_TYPE_ID)
+                .map(entry -> entry.position)
+                .filter(position -> distanceSquared(center, position) <= radiusSquared)
+                .toList();
+    }
+
     /** The entity type of a dropped item stack, {@code minecraft:item}, in protocol 777's registry. */
     static final int ITEM_TYPE_ID = 72;
 

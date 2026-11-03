@@ -1,6 +1,6 @@
 # Generated from the pinned server jar's `--reports` blocks.json by
 # tools/block-class-generator. One block state per line: <id> <class> <blockName>,
-# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone (both solid).
+# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation (all solid).
 # Every state NOT listed is solid (the safe default).
 0 P air
 1 Q stone
@@ -3375,6 +3375,7 @@
 6860 P redstone_wire
 6861 P redstone_wire
 6862 P redstone_wire
+6866 W crafting_table
 6867 P wheat
 6868 P wheat
 6869 P wheat
@@ -3383,6 +3384,14 @@
 6872 P wheat
 6873 P wheat
 6874 P wheat
+6883 W furnace
+6884 W furnace
+6885 W furnace
+6886 W furnace
+6887 W furnace
+6888 W furnace
+6889 W furnace
+6890 W furnace
 6891 H oak_sign
 6893 H oak_sign
 6895 H oak_sign

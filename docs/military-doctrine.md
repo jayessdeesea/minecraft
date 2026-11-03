@@ -229,14 +229,19 @@ known position. `!mission` ends the escort and hands the squad back to the gener
 | **Pre-combat checks and inspections** | Before a unit is employed, every soldier is checked for the equipment the mission needs, and shortfalls are made good. | ATP 3-21.8, troop leading procedures |
 
 *How we use it:* a bare-handed soldier makes itself a wooden sword (`bot.supply.Woodcraft`, which
-also makes the pickaxe of §12): it
-finds the nearest log within 16 blocks that it can stand beside, chops two logs, crafts planks,
-sticks and a crafting table in its 2x2 inventory grid, places the table, crafts the sword in it, and
-holds it - about a minute. The squad leader decides whether there's time: its order's `rearm` lets
-bare-handed soldiers do it, and it only happens while no hostile is within 16 blocks of the soldier
-and nobody in its squad is in contact. A soldier at it reports `Rearming`, and the squad doesn't
-halt for it. Anything that goes wrong - no tree in reach, a table that won't land - ends the attempt
-and puts any half-crafted items back in the inventory; the soldier tries again a minute later.
+also makes the pickaxe of §12, and both at one opening of the table when it needs both). It chops
+the logs it's short of from the nearest tree within 16 blocks it can stand beside. It then crafts
+planks, sticks and a crafting table in its 2x2 inventory grid, places the table (or uses one already
+within reach), crafts the sword in it, and holds it. The whole job takes about a minute. The squad
+leader decides whether there's time: its order's `rearm` lets bare-handed soldiers do it. A soldier
+at it reports `Rearming`, and the squad doesn't halt for it.
+
+Contact outranks this work, as the react-to-contact drill (§8) outranks priorities of work. A
+hostile within 16 blocks, or the squad in contact, pauses the job: windows close, and the soldier
+fights with what it has. Once clear, it picks up where it stopped. The exception is a soldier with
+no weapon standing at an open table: the sword is a click away, so it finishes it first. A fault,
+such as no tree in reach or an answer from the server that never comes, ends the attempt. Any
+half-crafted items go back in the inventory, and the soldier tries again a minute later.
 
 ## 12. Gathering materials
 
@@ -331,13 +336,16 @@ spawn only at block light 0, and never within 24 blocks of a player.
 
 A squad with a base to light and no torch has one soldier make them before it seals itself in
 (`bot.supply.Torchmaker`), using what squads carry: 3 logs and 8 cobblestone. The soldier works 4-6
-blocks outside the walls, so its table and furnace land clear of the hut:
+blocks outside the walls, so its table and furnace land clear of the hut. A table or furnace
+already within reach is used rather than made:
 1. Planks and sticks in the 2x2 grid.
 2. A crafting table, placed.
 3. A furnace from 8 cobblestone, made at the table and placed.
 4. A log smelted to charcoal, with a plank for fuel.
 5. Charcoal over a stick: 4 torches.
-The table and furnace stay behind as the camp's kit. The others wait inside, since building starts
+The table and furnace stay behind as the camp's kit. Contact pauses the work as it does a sword
+(§11). A furnace keeps smelting with nobody at it, so the soldier collects what it left there before
+anything else when it comes back. The others wait inside, since building starts
 only once all are in, and a bare-handed one may make its sword meanwhile. Once the base is sealed
 and dark, a soldier inside with a torch puts it down where it stands.
 

@@ -799,15 +799,21 @@ public class SoldierRunner implements CommandLineRunner {
             SoldierStatus status = soldier.status();
             run.tick(status.position(), supplyPoint, Resupply.isShort(status) && !(status.report() instanceof Report.InContact));
             boolean bareHanded = status.condition().flatMap(c -> c.kit()).map(k -> k.weapon().isEmpty()).orElse(false);
-            boolean clear = !(status.report() instanceof Report.InContact) && !run.active()
-                    && world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).isEmpty();
+            // Under threat, routines pause - they pick up where they left off once it's gone.
+            boolean threatened = status.report() instanceof Report.InContact
+                    || !world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).isEmpty();
+            boolean clear = !threatened && !run.active();
             io.github.jayessdeesea.minecraft.command.Objective gather = gathering.get(name);
             boolean needsPickaxe = gather != null && gather.gather().equals(Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE))
                     && inventory.slotOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.PICKAXE) < 0;
-            // A sword first, if bare-handed and allowed; then a pickaxe, if sent for stone without one.
-            Optional<Woodcraft.Tool> tool = !clear ? Optional.empty()
-                    : bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
-                    : needsPickaxe ? Optional.of(Woodcraft.Tool.WOODEN_PICKAXE) : Optional.empty();
+            // A sword, if bare-handed and allowed; a pickaxe, if sent for stone without one - both at one table.
+            java.util.Set<Woodcraft.Tool> tools = java.util.EnumSet.noneOf(Woodcraft.Tool.class);
+            if (bareHanded && rearmAllowed.getOrDefault(name, false)) {
+                tools.add(Woodcraft.Tool.WOODEN_SWORD);
+            }
+            if (needsPickaxe) {
+                tools.add(Woodcraft.Tool.WOODEN_PICKAXE);
+            }
             Fortify fort = fortifying.get(name);
             Opening exit = opening.get(name);
             if (exit != null && Math.hypot(status.position().x() - exit.stand().x(), status.position().z() - exit.stand().z()) < 0.5) {
@@ -820,7 +826,7 @@ public class SoldierRunner implements CommandLineRunner {
             canMakeTorches.put(name, torchmaker.active() || Torchmaker.canMake(inventory));
             boolean atWorkshop = fort != null && fort.makeTorches()
                     && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.6;
-            torchmaker.tick(status.position(), world, atWorkshop && clear);
+            torchmaker.tick(status.position(), world, atWorkshop && !run.active(), threatened);
             if (fort != null && fort.placeTorch() && !torchmaker.active() && torchTicks.incrementAndGet() % 20 == 0) {
                 io.github.jayessdeesea.minecraft.bot.nav.BlockPos feet = io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(
                         status.position().x(), status.position().y() + 0.01, status.position().z());
@@ -835,15 +841,16 @@ public class SoldierRunner implements CommandLineRunner {
             // Pre-combat checks come first: a bare-handed soldier waiting on its squad's base - not
             // yet building, not the torchbearer - may make its sword meanwhile.
             boolean waiting = fort != null && !fort.allInside() && !fort.makeTorches();
-            woodcraft.tick(status.position(), world, (fort == null || waiting && tool.equals(Optional.of(Woodcraft.Tool.WOODEN_SWORD)))
-                    && !rations.active() ? tool : Optional.empty());
-            // Short of logs for a tool it tried and failed to chop wood for: a squadmate may have
+            java.util.Set<Woodcraft.Tool> allowed = run.active() || rations.active() ? java.util.Set.of()
+                    : fort == null ? tools
+                    : waiting && tools.contains(Woodcraft.Tool.WOODEN_SWORD) ? java.util.Set.of(Woodcraft.Tool.WOODEN_SWORD)
+                    : java.util.Set.of();
+            woodcraft.tick(status.position(), world, allowed, threatened);
+            // Short of logs for tools it tried and failed to chop wood for: a squadmate may have
             // some to spare (§13).
-            Optional<Woodcraft.Tool> needed = bareHanded && rearmAllowed.getOrDefault(name, false) ? Optional.of(Woodcraft.Tool.WOODEN_SWORD)
-                    : needsPickaxe ? Optional.of(Woodcraft.Tool.WOODEN_PICKAXE) : Optional.empty();
-            int logsCarried = inventory.count(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.LOG);
-            if (needed.isPresent() && !woodcraft.active() && woodcraft.failure().isPresent() && logsCarried < needed.get().logs()) {
-                logsWanted.put(name, needed.get().logs() - logsCarried);
+            int logsShort = tools.isEmpty() ? 0 : Woodcraft.logsShort(inventory, tools);
+            if (logsShort > 0 && !woodcraft.active() && woodcraft.failure().isPresent()) {
+                logsWanted.put(name, logsShort);
             } else {
                 logsWanted.remove(name);
             }
@@ -880,7 +887,7 @@ public class SoldierRunner implements CommandLineRunner {
                     ? (built instanceof Builder.Progress.Failed(String why) ? new Report.Cantco("can't finish the patrol base: " + why)
                             : built instanceof Builder.Progress.Done ? null : new Report.Fortifying())
                     : woodcraft.active()
-                    ? (woodcraft.tool() == Woodcraft.Tool.WOODEN_SWORD ? new Report.Rearming()
+                    ? (woodcraft.tools().contains(Woodcraft.Tool.WOODEN_SWORD) ? new Report.Rearming()
                             : new Report.Gathering(io.github.jayessdeesea.minecraft.command.Resource.STONE))
                     : depositor.active() ? new Report.Gathering(carried != null && carried.stone() >= Gatherer.CARRY_STONE
                             ? io.github.jayessdeesea.minecraft.command.Resource.STONE : io.github.jayessdeesea.minecraft.command.Resource.WOOD)
@@ -888,7 +895,7 @@ public class SoldierRunner implements CommandLineRunner {
                     : gatherer.active() ? new Report.Gathering(gather.gather().orElseThrow())
                     : gather != null && gatherer.exhausted()
                     ? new Report.Cantco("nothing left to gather within 16 blocks of the objective")
-                    : tool.isPresent() && woodcraft.failure().isPresent() ? new Report.Cantco(woodcraft.failure().get()) : null);
+                    : !tools.isEmpty() && woodcraft.failure().isPresent() ? new Report.Cantco(woodcraft.failure().get()) : null);
             Position current = status.position();
             if (soldier.sprinting() != sprintingSent.get()) {
                 sprintingSent.set(soldier.sprinting());

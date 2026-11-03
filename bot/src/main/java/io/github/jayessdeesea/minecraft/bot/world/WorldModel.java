@@ -29,6 +29,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public java.util.Optional<Workstation> workstation(int x, int y, int z) {
+        return chunks.workstation(x, y, z);
+    }
+
+    @Override
     public boolean isLog(int x, int y, int z) {
         return chunks.isLog(x, y, z);
     }
@@ -41,6 +46,11 @@ public final class WorldModel implements WorldView {
     @Override
     public boolean isHazard(int x, int y, int z) {
         return chunks.isHazard(x, y, z);
+    }
+
+    @Override
+    public List<Position> bodiesNear(Position center, double radius) {
+        return entities.nearbyBodies(center, radius);
     }
 
     @Override

@@ -25,15 +25,20 @@ public interface WorldView {
     /** Somewhere never to stand in or walk through: water, lava, fire, powder snow. Not solid either. */
     boolean isHazard(int x, int y, int z);
 
-    /**
-     * Whether the block is a log a soldier can chop (it's also {@link #isSolid}). A view that knows
-     * no blocks' identity - a test's synthetic terrain - has no logs.
-     */
     /** Whether the block at (x, y, z) is a torch - a light a patrol base is lit by. */
     default boolean isTorch(int x, int y, int z) {
         return false;
     }
 
+    /** The crafting table or furnace at (x, y, z), if there is one (it's also {@link #isSolid}). */
+    default java.util.Optional<Workstation> workstation(int x, int y, int z) {
+        return java.util.Optional.empty();
+    }
+
+    /**
+     * Whether the block is a log a soldier can chop (it's also {@link #isSolid}). A view that knows
+     * no blocks' identity - a test's synthetic terrain - has no logs.
+     */
     default boolean isLog(int x, int y, int z) {
         return false;
     }
@@ -41,6 +46,14 @@ public interface WorldView {
     /** Whether the block is plain stone a soldier can quarry (it's also {@link #isSolid}). */
     default boolean isStone(int x, int y, int z) {
         return false;
+    }
+
+    /**
+     * Where the bodies within {@code radius} of {@code center} are - squadmates and mobs, which a
+     * block can't be placed into. A view that tracks no entities sees none.
+     */
+    default List<Position> bodiesNear(Position center, double radius) {
+        return List.of();
     }
 
     /** Hostile entities within {@code radius} of {@code center}, nearest first. */

@@ -115,19 +115,37 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   hand the model a grid to decode. Measured: no local model that fits on a 16 GB GPU read
   reachability off the terrain table, and with the lookup done for it `qwen3:14b` chose
   correctly.
-- **A routine waits on the server as an expect script, never on elapsed time.** Multi-step
-  routines that act and then need the server's answer (crafting, placing, opening a window,
-  smelting) are `bot.script.Script`s. Each step names the event that confirms it, observed through
-  the soldier's own world/inventory model, and a deadline derived from server timing. A missed
-  deadline, or an answer that rules the step out, fails the run loudly with the step and what was
-  expected. Steps are pure apart from their actions, so routines are tested against a fake server
-  (`TorchmakerTest`). Remaining fixed-delay routines: backlog/expect-scripts.md.
+- **A routine is an expect script: act, then wait for the confirming event - never for time.**
+  Anything that acts and then needs the server's answer (crafting, placing, opening a window,
+  smelting) is a `bot.script.Script` of steps. Each step names the event that confirms it, read
+  from the soldier's own world/inventory model, and a deadline derived from server timing. The
+  rules:
+  - **Resumable by construction.** A step whose result is already there is skipped, so a routine
+    is restarted rather than resumed. Its state lives in the world and the inventory, not in a
+    program counter.
+  - **Guards interrupt; faults fail.** A guard that stops holding (a hostile near, the work no
+    longer wanted) *interrupts*: windows close, there's no backoff, and the next run picks up where
+    this one stopped. A missed deadline, or an answer that rules the step out, *fails* loudly with
+    the step and what was expected, then backs off. An answer already in is recorded before guards
+    are checked. Exceptions to a guard belong in the guard itself: the unarmed soldier at an open
+    table finishes its sword (`bot.craft.Crafter`).
+  - **Plan, then act.** Work out the whole job first, then batch it so each station is visited once
+    (`bot.craft.CraftPlan`): 20 torches are one furnace load and one round of crafting, and a sword
+    and a pickaxe come from one opening of the table. Use what is already standing within reach.
+  - **Tested against a fake server** that answers as the real one does (`FakeCraftingServer`),
+    including one that never answers.
+
+  Routines still on fixed delays: backlog/expect-scripts.md.
 - **Borrowed from the actor model's discipline, not its runtime.** An actor's single-threaded
   mailbox processing is *one* way to guarantee a unit of state is never touched by two threads at
   once; a per-tick loop that's the sole writer of its own Soldier's state is another. We get the
   guarantee `Soldier` needs (no shared mutable state, no locking) from the tick loop already being
   the sole caller, without pulling in an actor runtime (Akka/Pekko) that would sit awkwardly
   alongside Spring Boot's own threading model and isn't needed to solve a problem this narrow.
+  The one cross-thread seam is container updates arriving on Netty's I/O thread for a routine the
+  tick is driving; routines `synchronize` on it. If that seam ever races, a per-soldier mailbox
+  (Netty enqueues, the tick drains) is the fix. Running ticks on Netty's event loop is not: that
+  puts pathfinding on an I/O thread shared by several connections, and Netty outside `protocol`.
 
 **Where world state fits:** a soldier's `tick` depends on `WorldView` (a narrow, read-only query —
 is this block solid, which hostiles are near), not on the shared structures behind it. Its real

@@ -76,18 +76,24 @@ public final class ChunkCache {
     public boolean isSolid(int x, int y, int z) {
         BlockClassRegistry.BlockClass here = classAt(x, y, z);
         return here == BlockClassRegistry.BlockClass.SOLID || here == BlockClassRegistry.BlockClass.LOG
-                || here == BlockClassRegistry.BlockClass.STONE
+                || here == BlockClassRegistry.BlockClass.STONE || here == BlockClassRegistry.BlockClass.WORKSTATION
                 || here == BlockClassRegistry.BlockClass.TALL
                 || classAt(x, y - 1, z) == BlockClassRegistry.BlockClass.TALL;
     }
 
-    /** Whether the block is a log - unknown blocks aren't. */
     /** Whether the block at (x, y, z) is a torch. False for a block nobody has cached. */
     public boolean isTorch(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
         return stateId != UNKNOWN && BlockClassRegistry.isTorch(stateId);
     }
 
+    /** The workstation at (x, y, z), if there is one. Empty for a block nobody has cached. */
+    public java.util.Optional<Workstation> workstation(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId == UNKNOWN ? java.util.Optional.empty() : BlockClassRegistry.workstation(stateId);
+    }
+
+    /** Whether the block is a log - unknown blocks aren't. */
     public boolean isLog(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
         return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.LOG;

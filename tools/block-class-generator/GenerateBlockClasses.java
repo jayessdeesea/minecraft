@@ -31,6 +31,8 @@ import java.util.TreeMap;
  *       {@code *_log} block.
  *   <li>{@code Q} stone - solid, and quarried with a pickaxe for cobblestone: {@code stone}
  *       itself.
+ *   <li>{@code W} workstation - solid, and opened to craft or smelt: {@code crafting_table},
+ *       {@code furnace}. Named, so a soldier knows its camp's table from any other block.
  * </ul>
  * The type lists are from well-established vanilla mechanics, not guessed. Deliberately not
  * exhaustive - an unlisted type stays SOLID, the same "unknown = blocked" policy as unloaded chunks.
@@ -95,7 +97,9 @@ public class GenerateBlockClasses {
             for (JsonNode state : block.getValue().get("states")) {
                 totalStates++;
                 char cls = blockName.endsWith("_log") && !"true".equals(state.path("properties").path("waterlogged").asText())
-                        ? 'L' : blockName.equals("stone") ? 'Q' : classify(type, state.path("properties"));
+                        ? 'L' : blockName.equals("stone") ? 'Q'
+                        : blockName.equals("crafting_table") || blockName.equals("furnace") ? 'W'
+                        : classify(type, state.path("properties"));
                 if (cls != 'S') {
                     classes.put(state.get("id").asInt(), cls + " " + blockName);
                     counts.merge(cls, 1, Integer::sum);
@@ -106,7 +110,7 @@ public class GenerateBlockClasses {
         try (PrintWriter out = new PrintWriter(args[2])) {
             out.println("# Generated from the pinned server jar's `--reports` blocks.json by");
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
-            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone (both solid).");
+            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation (all solid).");
             out.println("# Every state NOT listed is solid (the safe default).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));
         }

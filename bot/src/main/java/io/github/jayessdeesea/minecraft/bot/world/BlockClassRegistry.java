@@ -28,6 +28,8 @@ final class BlockClassRegistry {
         LOG,
         /** Plain stone: solid like {@link #SOLID}, and quarried with a pickaxe for cobblestone. */
         STONE,
+        /** A crafting table or furnace: solid like {@link #SOLID}, and opened to craft or smelt. */
+        WORKSTATION,
         /** Collision 1.5 blocks high (fences, walls, closed gates): blocks the cell above too. */
         TALL,
         /** Never stand in or walk through: liquids, waterlogged or underwater blocks, fire, powder snow. */
@@ -38,7 +40,14 @@ final class BlockClassRegistry {
 
     /** Block states that are torches - the light a patrol base is lit by. Filled while loading. */
     private static final java.util.BitSet TORCHES = new java.util.BitSet();
+    /** Which workstation each {@link BlockClass#WORKSTATION} state is. Filled while loading. */
+    private static final java.util.Map<Integer, Workstation> WORKSTATIONS = new java.util.HashMap<>();
     private static final BlockClass[] CLASSES = load();
+
+    /** The workstation {@code stateId} is, if it's one. */
+    static java.util.Optional<Workstation> workstation(int stateId) {
+        return java.util.Optional.ofNullable(WORKSTATIONS.get(stateId));
+    }
 
     /** Whether {@code stateId} is a torch, standing or on a wall. */
     static boolean isTorch(int stateId) {
@@ -78,6 +87,10 @@ final class BlockClassRegistry {
                         case "H" -> BlockClass.HAZARD;
                         case "L" -> BlockClass.LOG;
                         case "Q" -> BlockClass.STONE;
+                        case "W" -> {
+                            WORKSTATIONS.put(stateId, Workstation.valueOf(fields[2].toUpperCase(java.util.Locale.ROOT)));
+                            yield BlockClass.WORKSTATION;
+                        }
                         default -> throw new IllegalStateException("Unknown block class '" + fields[1] + "' in " + RESOURCE_NAME + ": " + line);
                     };
                 }
