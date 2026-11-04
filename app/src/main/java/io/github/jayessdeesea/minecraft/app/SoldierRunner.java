@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
 import io.github.jayessdeesea.minecraft.bot.supply.Builder;
 import io.github.jayessdeesea.minecraft.bot.supply.Depositor;
+import io.github.jayessdeesea.minecraft.bot.Hands;
 import io.github.jayessdeesea.minecraft.bot.supply.Doorway;
 import io.github.jayessdeesea.minecraft.bot.supply.Footing;
 import io.github.jayessdeesea.minecraft.bot.supply.Gatherer;
@@ -378,6 +379,17 @@ public class SoldierRunner implements CommandLineRunner {
         // Moving on from a base: cut a doorway toward the next objective. Not while only paused for
         // contact - the base is still the squad's.
         String opener = null;
+        // A soldier shut in a room the squad has no record of - a base built before a restart, say -
+        // leaves it the same way as one it remembers: the room is read from the world.
+        if (state.builtBase == null && chainOfCommand.objective(squadName).isPresent()) {
+            statuses.stream().filter(st -> plan == null || !plan.inside(st.position()))
+                    .flatMap(st -> PatrolBase.enclosing(st.position(), c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z()))
+                            .map(room -> java.util.Map.entry(st.name(), room)).stream())
+                    .findFirst().ifPresent(shutIn -> {
+                        LOG.warn("[{}] {} is shut in at {} - cutting a way out", squadName, shutIn.getKey(), shutIn.getValue().floor());
+                        state.builtBase = shutIn.getValue();
+                    });
+        }
         // Leaving a base the squad built - for no base, or for one somewhere else - starts with a way out.
         boolean newSite = plan != null && state.builtBase != null && !plan.floor().equals(state.builtBase.floor());
         boolean stillCutting = false;
@@ -797,12 +809,10 @@ public class SoldierRunner implements CommandLineRunner {
                 session.attack(target);
             });
             SoldierStatus status = soldier.status();
-            run.tick(status.position(), supplyPoint, Resupply.isShort(status) && !(status.report() instanceof Report.InContact));
             boolean bareHanded = status.condition().flatMap(c -> c.kit()).map(k -> k.weapon().isEmpty()).orElse(false);
+            boolean inContact = status.report() instanceof Report.InContact;
             // Under threat, routines pause - they pick up where they left off once it's gone.
-            boolean threatened = status.report() instanceof Report.InContact
-                    || !world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).isEmpty();
-            boolean clear = !threatened && !run.active();
+            boolean threatened = inContact || !world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).isEmpty();
             io.github.jayessdeesea.minecraft.command.Objective gather = gathering.get(name);
             boolean needsPickaxe = gather != null && gather.gather().equals(Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE))
                     && inventory.slotOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.PICKAXE) < 0;
@@ -816,17 +826,11 @@ public class SoldierRunner implements CommandLineRunner {
             }
             Fortify fort = fortifying.get(name);
             Opening exit = opening.get(name);
-            if (exit != null && Math.hypot(status.position().x() - exit.stand().x(), status.position().z() - exit.stand().z()) < 0.5) {
-                doorway.tick(world, exit.cells());
-            } else {
-                doorway.stop();
-            }
             torchesCarried.put(name, inventory.count(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.TORCH));
             // A run under way has spent what canMake looks for - its furnace is in the world now.
             canMakeTorches.put(name, torchmaker.active() || Torchmaker.canMake(inventory));
             boolean atWorkshop = fort != null && fort.makeTorches()
                     && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.6;
-            torchmaker.tick(status.position(), world, atWorkshop && !run.active(), threatened);
             if (fort != null && fort.placeTorch() && !torchmaker.active() && torchTicks.incrementAndGet() % 20 == 0) {
                 io.github.jayessdeesea.minecraft.bot.nav.BlockPos feet = io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(
                         status.position().x(), status.position().y() + 0.01, status.position().z());
@@ -834,18 +838,64 @@ public class SoldierRunner implements CommandLineRunner {
                     LOG.info("{} lights the patrol base with a torch at {}", name, feet);
                 }
             }
-            boolean building = fort != null && fort.allInside() && !builder.done() || exit != null || torchmaker.active();
-            rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD),
-                    clear && !woodcraft.active() && !depositor.active() && !handover.active() && !building,
-                    soldier.yaw(), soldier.pitch());
             // Pre-combat checks come first: a bare-handed soldier waiting on its squad's base - not
             // yet building, not the torchbearer - may make its sword meanwhile.
             boolean waiting = fort != null && !fort.allInside() && !fort.makeTorches();
-            java.util.Set<Woodcraft.Tool> allowed = run.active() || rations.active() ? java.util.Set.of()
-                    : fort == null ? tools
+            java.util.Set<Woodcraft.Tool> craftable = fort == null ? tools
                     : waiting && tools.contains(Woodcraft.Tool.WOODEN_SWORD) ? java.util.Set.of(Woodcraft.Tool.WOODEN_SWORD)
                     : java.util.Set.of();
-            woodcraft.tick(status.position(), world, allowed, threatened);
+            Kit carried = status.condition().flatMap(c -> c.kit()).orElse(null);
+            boolean fullLoad = carried != null && (carried.logs() >= Gatherer.CARRY_LOGS || carried.stone() >= Gatherer.CARRY_STONE);
+            CrossLevel.Transfer giving = deliveries.get(name);
+            boolean atBuildPlace = fort != null && fort.allInside() && !inContact
+                    && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.2;
+            AtomicReference<Builder.Progress> built = new AtomicReference<>();
+            // Who has the soldier's hands this tick: each routine says whether it's under way and
+            // what it would do if free; Hands decides who's free, in its one priority order.
+            Map<Hands.Routine, Hands.Turn> turns = new java.util.EnumMap<>(Hands.Routine.class);
+            turns.put(Hands.Routine.SUPPLY_RUN, turn(run::active,
+                    free -> run.tick(status.position(), supplyPoint, free && Resupply.isShort(status) && !inContact)));
+            turns.put(Hands.Routine.DOORWAY, turn(() -> exit != null, free -> {
+                if (free && exit != null && Math.hypot(status.position().x() - exit.stand().x(), status.position().z() - exit.stand().z()) < 0.5) {
+                    doorway.tick(world, exit.cells());
+                } else {
+                    doorway.stop();
+                }
+            }));
+            turns.put(Hands.Routine.TORCHMAKER, turn(torchmaker::active,
+                    free -> torchmaker.tick(status.position(), world, free && atWorkshop, threatened)));
+            turns.put(Hands.Routine.RATIONS, turn(rations::active,
+                    free -> rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD), free && !threatened,
+                            soldier.yaw(), soldier.pitch())));
+            turns.put(Hands.Routine.WOODCRAFT, turn(woodcraft::active,
+                    free -> woodcraft.tick(status.position(), world, free ? craftable : java.util.Set.of(), threatened)));
+            turns.put(Hands.Routine.BUILDER, turn(() -> fort != null && fort.allInside() && !builder.done(), free -> {
+                if (free && atBuildPlace) {
+                    boolean wasDone = builder.done();
+                    built.set(builder.tickInPlace(status.position(), world, fort.cells()));
+                    if (wasDone && built.get() instanceof Builder.Progress.Working) {
+                        // A finished base lost a block - knocked out, blown up, dug through. Faster than
+                        // the once-a-second breach check sees it, so say so here.
+                        LOG.warn("{} repairing the patrol base - a block is gone", name);
+                    }
+                    builder.lookAt().ifPresent(soldier::lookAt);
+                } else {
+                    builder.stop();
+                }
+            }));
+            turns.put(Hands.Routine.DEPOSITOR, turn(depositor::active,
+                    free -> depositor.tick(status.position(), supplyPoint, free && fullLoad && !threatened && fort == null)));
+            turns.put(Hands.Routine.HANDOVER, turn(handover::active, free -> {
+                Optional<Handover.Delivery> delivery = !free || giving == null || threatened || fort != null
+                        ? Optional.empty()
+                        : Optional.ofNullable(activeSoldiers.get(giving.receiver()))
+                                .map(receiver -> new Handover.Delivery(giving.receiver(), receiver.status().position(), giving.logs()));
+                handover.tick(status.position(), delivery).ifPresent(soldier::lookAt);
+            }));
+            turns.put(Hands.Routine.GATHERER, turn(gatherer::active,
+                    free -> gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
+                            gather == null ? status.position() : gather.location(), free && !inContact)));
+            Hands.tick(turns);
             // Short of logs for tools it tried and failed to chop wood for: a squadmate may have
             // some to spare (§13).
             int logsShort = tools.isEmpty() ? 0 : Woodcraft.logsShort(inventory, tools);
@@ -854,38 +904,9 @@ public class SoldierRunner implements CommandLineRunner {
             } else {
                 logsWanted.remove(name);
             }
-            Kit carried = status.condition().flatMap(c -> c.kit()).orElse(null);
-            boolean fullLoad = carried != null && (carried.logs() >= Gatherer.CARRY_LOGS || carried.stone() >= Gatherer.CARRY_STONE);
-            depositor.tick(status.position(), supplyPoint, fullLoad && clear && !woodcraft.active() && !handover.active() && fort == null
-                    && !rations.active());
-            CrossLevel.Transfer giving = deliveries.get(name);
-            Optional<Handover.Delivery> delivery = giving == null || !clear || woodcraft.active() || depositor.active() || fort != null
-                    || rations.active()
-                    ? Optional.empty()
-                    : Optional.ofNullable(activeSoldiers.get(giving.receiver()))
-                            .map(receiver -> new Handover.Delivery(giving.receiver(), receiver.status().position(), giving.logs()));
-            handover.tick(status.position(), delivery).ifPresent(soldier::lookAt);
-            Builder.Progress built = null;
-            if (fort != null && fort.allInside() && !(status.report() instanceof Report.InContact) && !rations.active()
-                    && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.2) {
-                boolean wasDone = builder.done();
-                built = builder.tickInPlace(status.position(), world, fort.cells());
-                if (wasDone && built instanceof Builder.Progress.Working) {
-                    // A finished base lost a block - knocked out, blown up, dug through. Faster than
-                    // the once-a-second breach check sees it, so say so here.
-                    LOG.warn("{} repairing the patrol base - a block is gone", name);
-                }
-                builder.lookAt().ifPresent(soldier::lookAt);
-            } else {
-                builder.stop();
-            }
-            gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
-                    gather == null ? status.position() : gather.location(),
-                    !(status.report() instanceof Report.InContact) && !woodcraft.active() && !run.active() && !depositor.active()
-                            && !handover.active() && !rations.active());
             soldier.task(fort != null
-                    ? (built instanceof Builder.Progress.Failed(String why) ? new Report.Cantco("can't finish the patrol base: " + why)
-                            : built instanceof Builder.Progress.Done ? null : new Report.Fortifying())
+                    ? (built.get() instanceof Builder.Progress.Failed(String why) ? new Report.Cantco("can't finish the patrol base: " + why)
+                            : built.get() instanceof Builder.Progress.Done ? null : new Report.Fortifying())
                     : woodcraft.active()
                     ? (woodcraft.tools().contains(Woodcraft.Tool.WOODEN_SWORD) ? new Report.Rearming()
                             : new Report.Gathering(io.github.jayessdeesea.minecraft.command.Resource.STONE))
@@ -916,6 +937,21 @@ public class SoldierRunner implements CommandLineRunner {
         scheduler.scheduleAtFixedRate(
                 () -> LOG.debug("{} status: {} - plan: {} - session open: {}", name, soldier.status(), soldier.lastPlan(), session.isOpen()),
                 STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
+    }
+
+    /** One routine's turn at the soldier's hands. */
+    private static Hands.Turn turn(java.util.function.BooleanSupplier active, java.util.function.Consumer<Boolean> tick) {
+        return new Hands.Turn() {
+            @Override
+            public boolean active() {
+                return active.getAsBoolean();
+            }
+
+            @Override
+            public void tick(boolean free) {
+                tick.accept(free);
+            }
+        };
     }
 
     /**

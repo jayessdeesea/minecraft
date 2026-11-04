@@ -34,8 +34,13 @@ final class Digger {
     static final int WALK_TIMEOUT_TICKS = 400;
     /** For the server to answer: the inventory resent, a block update. */
     static final int ANSWER_TICKS = 40;
-    /** A dropped block's pickup delay (10 ticks), with a margin for it to fall and the update to arrive. */
-    static final int PICKUP_TICKS = 40;
+    /**
+     * A dropped block's pickup delay (10 ticks), with a margin for it to fall, for the soldier to walk
+     * onto it where it landed, and for the update to arrive.
+     */
+    static final int PICKUP_TICKS = 100;
+    /** How far from the dug block a drop is looked for: one knocked off a trunk lands a block or two out. */
+    static final double DROP_RADIUS = 4;
 
     /**
      * What to dig, and how. Break times are the server's: hardness 2 for a log, 1.5 for stone;
@@ -97,6 +102,9 @@ final class Digger {
     private int ticks;
     private int digStarted;
     private int dropsBefore;
+    private boolean pickingUp;
+    /** Whether the drop has been seen on the ground since the block broke. */
+    private boolean dropSeen;
 
     /** Starts a dig at {@code spot}, claiming its block and stand cell until {@link #release}. */
     Digger(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Spot spot) {
@@ -126,8 +134,16 @@ final class Digger {
                 }, new Expect("the break time to pass", () -> ticks - digStarted >= target.digTicks), target.digTicks + 1),
                 new Step("break the " + target, () -> session.finishDigging(block.x(), block.y(), block.z()),
                         new Expect("the " + target + " at " + block + " broken", () -> !target.at(world, block)), ANSWER_TICKS),
-                new Step("pick up the " + target.drop, () -> {
-                }, new Expect("more " + target.drop + " carried", () -> inventory.count(target.drop) > dropsBefore), PICKUP_TICKS)));
+                // Done once the drop is off the ground: in the pack, or in a squadmate's, which
+                // working the same trees often gets there first. Never seen at all is the fault.
+                new Step("pick up the " + target.drop, () -> pickingUp = true, new Expect("the " + target.drop + " picked up", () -> {
+                    if (inventory.count(target.drop) > dropsBefore) {
+                        return true;
+                    }
+                    boolean onGround = !dropsNear().isEmpty();
+                    dropSeen |= onGround;
+                    return dropSeen && !onGround;
+                }), PICKUP_TICKS)));
     }
 
     /** Gives up this dig's claims - call once it's done, failed, or abandoned. */
@@ -140,9 +156,19 @@ final class Digger {
         return spot;
     }
 
-    /** Where the soldier should stand while digging. */
+    /** Where the soldier should stand: beside the block while digging, then on the drop wherever it landed. */
     Position standAt() {
-        return new Position(spot.stand().x() + 0.5, spot.stand().y(), spot.stand().z() + 0.5);
+        Position stand = new Position(spot.stand().x() + 0.5, spot.stand().y(), spot.stand().z() + 0.5);
+        if (!pickingUp) {
+            return stand;
+        }
+        return dropsNear().stream().findFirst().orElse(stand);
+    }
+
+    /** Dropped items around the dug block, nearest first. */
+    private List<Position> dropsNear() {
+        BlockPos block = spot.block();
+        return world.itemsNear(new Position(block.x() + 0.5, block.y() + 0.5, block.z() + 0.5), DROP_RADIUS);
     }
 
     Progress tick(Position soldier, WorldView world) {

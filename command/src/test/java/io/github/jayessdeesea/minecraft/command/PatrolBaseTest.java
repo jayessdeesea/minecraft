@@ -120,6 +120,39 @@ class PatrolBaseTest {
     }
 
     @Test
+    void aSoldierInASealedHutIsShutInItsRoomAndCanCutItsWayOut() {
+        PatrolBase.Plan hut = PatrolBase.hasty(new Position(0, 64, 0), 4);
+        Set<Position> built = new HashSet<>(hut.cells());
+        java.util.function.Predicate<Position> solid = cell -> cell.y() < 64 || built.contains(cell);
+
+        PatrolBase.Plan room = PatrolBase.enclosing(new Position(1.3, 64, 0.7), solid).orElseThrow();
+
+        assertEquals(hut.floor(), room.floor(), "the room is the hut's floor, found from the world");
+        assertEquals(List.of(), room.cells(), "nothing to build");
+        assertEquals(List.of(new Position(2, 64, 0), new Position(2, 65, 0)), room.doorway(new Position(50, 64, 0.5), outside -> true));
+    }
+
+    @Test
+    void aSoldierInTheOpenOrInAHoledHutIsntShutIn() {
+        PatrolBase.Plan hut = PatrolBase.hasty(new Position(0, 64, 0), 4);
+        Set<Position> built = new HashSet<>(hut.cells());
+        java.util.function.Predicate<Position> solid = cell -> cell.y() < 64 || built.contains(cell);
+
+        assertTrue(PatrolBase.enclosing(new Position(10.5, 64, 10.5), solid).isEmpty(), "open ground");
+        built.remove(new Position(2, 65, 1));
+        assertTrue(PatrolBase.enclosing(new Position(0.5, 64, 0.5), solid).isEmpty(), "a hole in the wall");
+    }
+
+    @Test
+    void groundNobodyKnowsShutsNobodyIn() {
+        // Only the hut's own walls are known: everything else - even below the floor - reads as open.
+        PatrolBase.Plan hut = PatrolBase.hasty(new Position(0, 64, 0), 4);
+        Set<Position> built = new HashSet<>(hut.cells());
+
+        assertTrue(PatrolBase.enclosing(new Position(0.5, 64, 0.5), built::contains).isEmpty());
+    }
+
+    @Test
     void moreThanNineDontFit() {
         assertThrows(IllegalArgumentException.class, () -> PatrolBase.hasty(new Position(0, 64, 0), 10));
     }

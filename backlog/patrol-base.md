@@ -60,9 +60,6 @@ The hasty hut, the general's PATROL_BASE task and the time of day are live (docs
 - **Deliberate base on a later night.** The squad improves the base with a wider perimeter and more
   light. The improvement is measured by a test that counts lit, walled floor blocks.
 
-- **Remember the base across a restart.** The base a squad built is kept in memory only. After a
-  restart, a squad sealed in its hut doesn't know to cut its way out when ordered elsewhere.
-
 - **Don't quarry the base.** `Builder` builds walls from logs as well as cobblestone, and
   `Digger.findSpot` takes any log as a tree. A soldier inside short of wood for a sword chops its
   own wall: Carol did, live. Cells of a base the squad holds should be off-limits to `Digger`.

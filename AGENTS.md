@@ -138,7 +138,9 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
     select and place, can go out in one tick without waiting between them; one answer confirms
     them all (`SupplyRun`, `Footing`).
 
-  The arbiter that picks which routine runs: backlog/expect-scripts.md.
+- **One routine has the hands at a time, by one priority order** (`bot.Hands`). Routines tick in
+  that order, each told whether it's free: free while no other is under way. Nothing preempts;
+  a routine that should give way mid-run says so in its own guard.
 - **Borrowed from the actor model's discipline, not its runtime.** An actor's single-threaded
   mailbox processing is *one* way to guarantee a unit of state is never touched by two threads at
   once; a per-tick loop that's the sole writer of its own Soldier's state is another. We get the

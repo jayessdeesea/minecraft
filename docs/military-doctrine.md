@@ -252,7 +252,9 @@ half-crafted items go back in the inventory, and the soldier tries again a minut
 *How we use it:* the general can give a squad an objective with `gather: WOOD` or `STONE`
 (`command.Objective.gather`). Its soldiers gather within 16 blocks of the objective on their own
 (`bot.supply.Gatherer`, digging with `Digger`, shared with §11): each works a log or a block of
-stone no squadmate has claimed, checks it actually broke, and stops at its load (16 logs, 32
+stone no squadmate has claimed, checks it actually broke, walks onto the drop wherever it landed
+(done once it's off the ground - a squadmate working the same trees often gets there first), and
+stops at its load (16 logs, 32
 cobblestone) or when anything nears. Logs are chopped bare-handed - a sword wears, and digs no
 faster. Stone needs a pickaxe, or it drops nothing: a soldier without one makes a wooden pickaxe
 first, the way it makes a sword (§11), from logs it carries or chops. Break times are the
@@ -355,7 +357,10 @@ When the general moves the squad on, the soldier inside nearest the doorway brea
 (`bot.supply.Doorway`): two wall blocks, on the side facing the general's new objective, preferring
 a side whose outside cell has room to stand and ground under it (`PatrolBase.Plan.doorway`). It
 uses a pickaxe if it has one (1.5 seconds a block), bare hands if not (10). A fight only pauses the
-base, so the squad doesn't cut its way out mid-contact.
+base, so the squad doesn't cut its way out mid-contact. A squad needn't remember its base to leave
+it: a soldier the world shows shut in a small room (`PatrolBase.enclosing`: a flood fill from where
+it stands runs out within 32 open cells) cuts its way out the same way, so a squad that wakes up
+sealed in after a restart, or in a room it never built, walks out.
 
 ## Sources
 
