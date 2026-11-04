@@ -300,8 +300,8 @@ asked: pairing is bookkeeping, done deterministically like the other drills.
 | **Patrol base** | A defensible position held for a set time. Security first, then the leader's *priorities of work*, each a task with a time and a measurable standard. | ATP 3-21.8 ch. 7; FM 3-21.8 (2007) |
 | **Survivability** | Positions start hasty and are improved toward deliberate; overhead cover matters most. | ATP 3-37.34 |
 
-*How we use it:* the general knows the time of day: Set Time's overworld clock becomes
-`command.TimeOfDay`. Dark is when the server's day timeline dims sky light enough for monsters to
+*How we use it:* the general knows the time of day: Set Time's overworld clock, advanced with the
+game time between the updates that carry it (`app.OverworldClock`), becomes `command.TimeOfDay`. Dark is when the server's day timeline dims sky light enough for monsters to
 spawn in the open, ticks 13178 to 22822. The general's and squad leaders' prompts say how many
 minutes until that changes.
 

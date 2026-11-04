@@ -211,4 +211,9 @@ final class SquadCommand {
         return order.soldierRisk().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
                 .map(e -> ", " + e.getKey() + " at " + e.getValue() + " risk").collect(Collectors.joining());
     }
+
+    /** Stops the squad leader's thread - a decision in flight is abandoned. */
+    void stop() {
+        thread.shutdownNow();
+    }
 }

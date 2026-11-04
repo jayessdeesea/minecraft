@@ -89,7 +89,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * silently-dead connection," not a full resume/backoff policy.
  */
 @Component
-public class SoldierRunner implements CommandLineRunner {
+public class SoldierRunner implements CommandLineRunner, org.springframework.beans.factory.DisposableBean {
 
     private static final Logger LOG = LogManager.getLogger(SoldierRunner.class);
 
@@ -136,6 +136,49 @@ public class SoldierRunner implements CommandLineRunner {
 
     /** Currently connected soldiers by name - written by connect/disconnect, read by the squad loop. */
     private final Map<String, DeterministicSoldier> activeSoldiers = new ConcurrentHashMap<>();
+
+    /**
+     * A squad's patrol base as its last check found it - squad loop writes, anyone reads.
+     *
+     * @param allInside every soldier of the squad on the base's floor
+     * @param sealed    no way into the room (meaningful once all are inside)
+     * @param lit       no floor cell a monster could spawn on
+     */
+    public record BaseReport(boolean allInside, boolean sealed, boolean lit) {
+    }
+
+    private final Map<String, BaseReport> baseReports = new ConcurrentHashMap<>();
+    /** The overworld's time of day, followed from the radio operator's connection. */
+    private final OverworldClock overworldClock = new OverworldClock();
+
+    /** Set as the app shuts down: a connection closing then is no reason to reconnect. */
+    private volatile boolean stopping;
+    /** Every loop and connection running, so shutting down stops them all. */
+    private final java.util.Set<ScheduledExecutorService> schedulers = ConcurrentHashMap.newKeySet();
+    private final java.util.Set<PlaySession> sessions = ConcurrentHashMap.newKeySet();
+
+    /** Stops every loop and closes every connection, so the soldiers leave the server. */
+    @Override
+    public void destroy() {
+        stopping = true;
+        schedulers.forEach(ScheduledExecutorService::shutdownNow);
+        sessions.forEach(PlaySession::close);
+    }
+
+    /** The squad's patrol base, while it has one laid out. */
+    public Optional<BaseReport> base(String squad) {
+        return Optional.ofNullable(baseReports.get(squad));
+    }
+
+    /** Who is connected now, by username. */
+    public java.util.Set<String> connected() {
+        return java.util.Set.copyOf(activeSoldiers.keySet());
+    }
+
+    /** Where {@code soldier} is now, while connected. */
+    public Optional<Position> position(String soldier) {
+        return Optional.ofNullable(activeSoldiers.get(soldier)).map(s -> s.status().position());
+    }
     private final ChainOfCommand chainOfCommand;
     private final Map<String, SquadState> squadStates = new HashMap<>(); // squad thread only
     /** Each connected soldier's sword-making routine, by name - set on join, read by the squad loop. */
@@ -199,6 +242,7 @@ public class SoldierRunner implements CommandLineRunner {
             connect(definition);
         }
         ScheduledExecutorService squad = Executors.newSingleThreadScheduledExecutor(runnable -> new Thread(runnable, "squad"));
+        schedulers.add(squad);
         squad.scheduleAtFixedRate(this::leadSquad, SQUAD_PERIOD_MILLIS, SQUAD_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
         squad.scheduleAtFixedRate(this::logSquadSitrep, STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
     }
@@ -331,8 +375,11 @@ public class SoldierRunner implements CommandLineRunner {
         PatrolBase.Plan plan = site == null ? null : PatrolBase.hasty(site, statuses.size());
         boolean allInside = plan != null && statuses.stream().allMatch(s -> plan.inside(s.position()));
         if ((plan != null) != state.fortifying) {
-            LOG.info(plan != null ? "[{}] PATROL BASE at {}: {} blocks to build" : "[{}] patrol base stood down",
-                    squadName, site, plan == null ? 0 : plan.cells().size());
+            if (plan != null) {
+                LOG.info("[{}] PATROL BASE at {}: {} blocks to build", squadName, site, plan.cells().size());
+            } else {
+                LOG.info("[{}] patrol base stood down", squadName);
+            }
             state.fortifying = plan != null;
         }
         if (allInside && !state.allInside) {
@@ -364,6 +411,11 @@ public class SoldierRunner implements CommandLineRunner {
         // What was last logged - reset while the squad isn't all in, so entering always says which.
         state.breaches = allInside ? breaches : null;
         state.lit = lit;
+        if (plan == null) {
+            baseReports.remove(squadName);
+        } else {
+            baseReports.put(squadName, new BaseReport(allInside, breaches.isEmpty(), lit));
+        }
         // A squad with a base to light and no torch: one soldier who can make them does, outside the walls.
         boolean squadHasTorch = statuses.stream().anyMatch(st -> torchesCarried.getOrDefault(st.name(), 0) > 0);
         // Before the squad seals itself in: a torchbearer works outside, and a sealed hut has no door.
@@ -697,7 +749,7 @@ public class SoldierRunner implements CommandLineRunner {
                 // Every connection hears the same clock; the radio operator's passes it up.
                 time -> {
                     if (definition == SOLDIERS.getFirst()) {
-                        overworldClock(time, clockNames.get()).ifPresent(chainOfCommand::onTime);
+                        overworldClock.update(time, clockNames.get()).ifPresent(chainOfCommand::onTime);
                     }
                 },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
@@ -707,25 +759,6 @@ public class SoldierRunner implements CommandLineRunner {
                     LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
                     return null;
                 });
-    }
-
-    /**
-     * The overworld's time of day from a Set Time, its clocks named through this session's synced
-     * registry - empty when this update doesn't carry the overworld clock (it only sends clocks that
-     * changed).
-     */
-    static Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> overworldClock(TimeUpdate time, List<String> clockNames) {
-        for (Map.Entry<Integer, TimeUpdate.Clock> clock : time.clocks().entrySet()) {
-            int id = clock.getKey();
-            if (id < 0 || id >= clockNames.size()) {
-                throw new IllegalStateException("world clock " + id + " isn't in the synced registry of " + clockNames.size());
-            }
-            if (clockNames.get(id).equals("minecraft:overworld")) {
-                return Optional.of(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(clock.getValue().totalTicks(),
-                        clock.getValue().rate() > 0));
-            }
-        }
-        return Optional.empty();
     }
 
     /** One inventory slot, its enchantments named through this session's synced registry. */
@@ -803,6 +836,8 @@ public class SoldierRunner implements CommandLineRunner {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
                 runnable -> new Thread(runnable, name + "-tick"));
         activeScheduler.set(scheduler);
+        schedulers.add(scheduler);
+        sessions.add(session);
         scheduler.scheduleAtFixedRate(() -> {
             soldier.tick(world).ifPresent(target -> {
                 LOG.info("{} attacks entity {}", name, target);
@@ -966,12 +1001,16 @@ public class SoldierRunner implements CommandLineRunner {
     private void onDisconnected(SoldierDefinition definition,
                                  AtomicReference<ScheduledExecutorService> activeScheduler, Throwable cause) {
         String name = definition.name();
-        LOG.warn("{} disconnected unexpectedly ({}) - reconnecting", name, cause.getMessage());
         activeSoldiers.remove(name);
         ScheduledExecutorService scheduler = activeScheduler.get();
         if (scheduler != null) {
             scheduler.shutdownNow();
+            schedulers.remove(scheduler);
         }
+        if (stopping) {
+            return;
+        }
+        LOG.warn("{} disconnected unexpectedly ({}) - reconnecting", name, cause.getMessage());
         // The new connection re-receives Add Entity for everything in view; drop this one's stale view.
         entityTracker.removeOwner(name);
         chunkCache.removeOwner(name);

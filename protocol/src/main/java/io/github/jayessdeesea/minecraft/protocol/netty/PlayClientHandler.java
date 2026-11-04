@@ -217,7 +217,7 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             LOG.debug("Set Health received: health={} food={}", health.health(), health.food());
             listeners.onHealth().accept(new HealthUpdate(health.health(), health.food()));
         } else if (packet instanceof SetTimePacket time) {
-            listeners.onTime().accept(new TimeUpdate(time.clocks()));
+            listeners.onTime().accept(new TimeUpdate(time.gameTime(), time.clocks()));
         } else if (packet instanceof InventoryPackets inventory && inventory.containerId() == 0) {
             listeners.onInventory().accept(inventory.update());
         } else if (packet instanceof InventoryPackets container) {

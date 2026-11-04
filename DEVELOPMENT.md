@@ -86,6 +86,25 @@ mvn -q install -DskipTests
 mvn -pl app test -Dtest=SquadLeaderScenarioIT -Dsurefire.failIfNoSpecifiedTests=false -Deval.seeds=5 [-Deval.model=...]
 ```
 
+**Whole-chain scenarios.** `app`'s `ChainScenarioLiveIT` runs the real general, squad leaders and
+soldiers against the dev server on a named scenario, and prints a pass rate. Each run makes these
+changes to the dev world:
+- builds a stone arena at x=3000 z=3000;
+- teleports the soldiers onto it;
+- replaces their inventories;
+- sets the time of day.
+
+It needs the server and model up and nothing else connected as the soldiers. The scenarios and
+their judges are in the class.
+
+```bash
+mvn -q install -DskipTests
+mvn -pl app test -Dtest=ChainScenarioLiveIT -Dsurefire.failIfNoSpecifiedTests=false -Dscenario=patrol-base-before-dark [-Dscenario.runs=5]
+```
+
+Add `-Dminecraft.general.chat-model=anthropic` (with `ANTHROPIC_API_KEY`) to run the general on a
+frontier model.
+
 ## 3. Run the chain of command
 
 ```bash

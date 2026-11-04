@@ -51,7 +51,7 @@ import java.util.function.Supplier;
  * decision tries again.
  */
 @Component
-public class ChainOfCommand {
+public class ChainOfCommand implements org.springframework.beans.factory.DisposableBean {
 
     private static final Logger LOG = LogManager.getLogger(ChainOfCommand.class);
 
@@ -79,6 +79,7 @@ public class ChainOfCommand {
 
     private volatile long lastGeneralMillis = Long.MIN_VALUE / 2;
     private volatile Consumer<String> radio;
+    private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time;
 
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient) {
         this.general = general;
@@ -130,8 +131,21 @@ public class ChainOfCommand {
 
     /** The server sent the time of day - the general plans around nightfall. */
     public void onTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
+        this.time = time;
         general.receiveTime(time);
         squads.values().forEach(squad -> squad.receiveTime(time));
+    }
+
+    /** Stops the general's and the squad leaders' threads - a decision in flight is abandoned. */
+    @Override
+    public void destroy() {
+        generalThread.shutdownNow();
+        squads.values().forEach(SquadCommand::stop);
+    }
+
+    /** The time of day the server last sent, if it has. */
+    public Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time() {
+        return Optional.ofNullable(time);
     }
 
     /** Who {@code squad} is escorting, if anyone. */

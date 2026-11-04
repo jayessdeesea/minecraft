@@ -13,13 +13,15 @@ command or two, reading the log. Three offline suites exist:
 - `SquadLeaderScenarioIT`: the real squad leader model against those scenarios, as a pass rate.
 
 Nothing covers:
-- the general;
-- the whole chain on a real server;
+- the general offline;
 - variation in biome, time of day, difficulty, squad size or number of squads.
 
 A regression in one of those shows up only if someone happens to run that case by hand.
 
 ## Done when
+The live tier has a harness (`app`'s `ChainScenarioLiveIT`, DEVELOPMENT.md § 2) and one scenario,
+`patrol-base-before-dark`. What's left is below; scenarios join the harness's list.
+
 A named list of scenarios, each a fixed setup plus seeded variation, runs in two tiers:
 - **Offline, every build:** simulated world, scripted or faked model. Cheap and deterministic.
   This is the existing suites, extended.
