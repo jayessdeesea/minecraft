@@ -60,10 +60,6 @@ The hasty hut, the general's PATROL_BASE task and the time of day are live (docs
 - **Deliberate base on a later night.** The squad improves the base with a wider perimeter and more
   light. The improvement is measured by a test that counts lit, walled floor blocks.
 
-- **Don't quarry the base.** `Builder` builds walls from logs as well as cobblestone, and
-  `Digger.findSpot` takes any log as a tree. A soldier inside short of wood for a sword chops its
-  own wall: Carol did, live. Cells of a base the squad holds should be off-limits to `Digger`.
-
 - **Light a base that's sealed dark.** A torchbearer is chosen only before the squad seals itself
   in. A squad that is sealed in, has no torch and has no light (for example after a restart, or
   after its torchbearer's run failed) stays dark. One soldier should cut a doorway, make torches

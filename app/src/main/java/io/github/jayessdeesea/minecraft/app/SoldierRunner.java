@@ -130,6 +130,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         /** The base's breaches at the last check - logged when they change. */
         List<Position> breaches;
         java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.of();
+        /** The walls and roof of the base the squad holds, kept off-limits to digging. */
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> baseCells = java.util.Set.of();
     }
 
     private static final long SQUAD_PERIOD_MILLIS = 1000;
@@ -465,6 +467,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
         }
         final PatrolBase.Plan building = newSite && stillCutting ? null : plan;
+        // A base the squad holds isn't a quarry: its walls go in the claims every dig skips, or a
+        // soldier short of wood chops the wall it shelters behind. Re-added every cycle, since a
+        // dig releasing its own claims can't take a wall's with them for longer than that.
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> held = java.util.stream.Stream.of(plan, state.builtBase)
+                .filter(java.util.Objects::nonNull).flatMap(p -> p.cells().stream())
+                .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) c.x(), (int) c.y(), (int) c.z()))
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        state.baseCells.stream().filter(c -> !held.contains(c)).forEach(treeClaims::remove);
+        treeClaims.addAll(held);
+        state.baseCells = held;
         for (int i = 0; i < statuses.size(); i++) {
             String soldierName = statuses.get(i).name();
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()

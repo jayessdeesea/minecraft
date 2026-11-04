@@ -351,7 +351,9 @@ anything else when it comes back. The others wait inside, since building starts
 only once all are in, and a bare-handed one may make its sword meanwhile. Once the base is sealed
 and dark, a soldier inside with a torch puts it down where it stands.
 
-The log reports "SEALED and LIT", or "UNLIT at" with the dark cells.
+The log reports "SEALED and LIT", or "UNLIT at" with the dark cells. While the squad holds the
+base, its walls and roof are off-limits to digging: a soldier short of wood looks for a tree, not
+the log wall it shelters behind.
 
 When the general moves the squad on, the soldier inside nearest the doorway breaks a doorway out
 (`bot.supply.Doorway`): two wall blocks, on the side facing the general's new objective, preferring
