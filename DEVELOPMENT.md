@@ -44,10 +44,14 @@ non-interactively. Forcing night or summoning a mob makes a combat check immedia
 waiting for night. In Git Bash, prefix any command that passes container paths with
 `MSYS_NO_PATHCONV=1`, or the paths get rewritten to Windows ones.
 
-**Choosing the model.** `qwen3:14b` with thinking off is the default (`app/src/main/resources/application.yml`).
-Each decision takes 1-2.5 s on a 16 GB GPU; with thinking on it takes ~20 s. Larger local models
-(`gpt-oss:20b`, `qwen3:30b-a3b`) chose no better on the squad leader's prompt. To use Claude
-instead, set `spring.ai.model.chat: anthropic` and `ANTHROPIC_API_KEY`.
+**Choosing the model.** Each echelon picks its own provider in `app/src/main/resources/application.yml`:
+`minecraft.general.chat-model` and `minecraft.squad-leader.chat-model`, each `ollama` or `anthropic`.
+Both default to `ollama` (`qwen3:14b`, thinking off), so nothing needs an API key. To put the general
+on a frontier model, as the project intends, set `ANTHROPIC_API_KEY` and run with
+`--minecraft.general.chat-model=anthropic`. The startup log says which each echelon got
+(`The general thinks with anthropic`); a name with no provider behind it stops startup.
+On a 16 GB GPU, `qwen3:14b` takes 1-2.5 s per decision; with thinking on it takes ~20 s. Larger local
+models (`gpt-oss:20b`, `qwen3:30b-a3b`) chose no better on the squad leader's prompt.
 
 ## 2. Build and test
 

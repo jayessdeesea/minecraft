@@ -168,10 +168,11 @@ never supposed to creep in.
 
 - **Java 25** (Amazon Corretto)
 - **Maven**
-- **Spring AI 2.0** — all LLM calls go through the `ChatModel`/`ChatClient` abstraction. The
-  default provider is a local model served by Ollama (`compose.yaml`); Anthropic Claude is the
-  config-switchable alternative (`spring.ai.model.chat`). Because of that: keep provider selection
-  in config, never hardcode
+- **Spring AI 2.0** — all LLM calls go through the `ChatModel`/`ChatClient` abstraction. Each
+  echelon picks its provider in config (`minecraft.general.chat-model`,
+  `minecraft.squad-leader.chat-model`: a local model served by Ollama, `compose.yaml`, or
+  Anthropic Claude). The intended split is a frontier general over open-weight squad leaders.
+  Because of that: keep provider selection in config, never hardcode
   Anthropic-specific request/response shapes, message formats, or tool-call conventions into
   General/Squad Leader logic. If it only works with Claude, it's not written against the
   abstraction correctly.
@@ -364,6 +365,8 @@ Before writing code, update or delete the item, or raise the mismatch with the u
 - [docs/military-doctrine.md](docs/military-doctrine.md) — the military doctrine the chain of
   command emulates (mission command, formations, prowords, reports, orders), with manual
   citations and how each maps onto code.
+- [docs/entry-docs.md](docs/entry-docs.md) — what README.md and DEVELOPMENT.md each say, and when
+  to update them.
 - [docs/world-data-spec.md](docs/world-data-spec.md) — canonical chunk/block-state/light data
   format the client decodes from the server. Explicitly client-decode-only; world generation,
   storage, and light propagation are the (self-hosted vanilla) server's job, not ours.

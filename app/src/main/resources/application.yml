@@ -1,9 +1,7 @@
 spring:
   ai:
-    model:
-      # Which ChatModel the chain of command talks to: "ollama" (local, see compose.yaml) or
-      # "anthropic" (needs ANTHROPIC_API_KEY). Provider choice lives here, never in code.
-      chat: ollama
+    # Every provider is configured; each echelon picks one below (minecraft.*.chat-model).
+    # Provider choice lives here, never in code.
     ollama:
       base-url: http://localhost:11434
       chat:
@@ -15,10 +13,16 @@ spring:
 
 minecraft:
   general:
+    # The model the general thinks with: "anthropic" (a frontier model; needs ANTHROPIC_API_KEY)
+    # or "ollama" (the local open-weight model, see compose.yaml).
+    chat-model: ollama
     # The operator's intent - the one order that comes from outside the chain of command.
     mission: >-
       Reconnoitre the terrain around the squad's start point and establish an observation post
       on high ground within 80 blocks, from which the squad can watch for hostile activity.
+  squad-leader:
+    # The model every squad leader thinks with: "ollama" or "anthropic", as for the general.
+    chat-model: ollama
   # Players who may replace the mission from game chat with "!mission <text>", comma-separated.
   # Empty: nobody.
   # Offline mode doesn't authenticate names, so this guards against accidents, not impostors.
