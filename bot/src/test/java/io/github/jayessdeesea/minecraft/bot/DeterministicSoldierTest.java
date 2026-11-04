@@ -64,6 +64,7 @@ class DeterministicSoldierTest {
     @Test
     void sprintsToAFarGoalAndWalksTheLastStretch() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(RATIONED);
         alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
         alice.tick(terrain(false)); // plans
         double before = alice.status().position().x();
@@ -71,6 +72,7 @@ class DeterministicSoldierTest {
         assertEquals(DeterministicSoldier.SPRINT_STEP, before - alice.status().position().x(), 1e-6, "30 blocks out: sprint");
 
         DeterministicSoldier bob = new DeterministicSoldier("Bob", new Position(0.5, GROUND, 0.5));
+        bob.reportKit(RATIONED);
         bob.receiveOrder(new Order.MoveTo(-4.5, GROUND, 0.5, 1, 256, Risk.LOW));
         bob.tick(terrain(false));
         before = bob.status().position().x();
@@ -80,9 +82,25 @@ class DeterministicSoldierTest {
         assertTrue(!bob.sprinting());
     }
 
+    /** Carrying rations: food spent sprinting can be made up. */
+    private static final io.github.jayessdeesea.minecraft.command.Kit RATIONED =
+            new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.empty(), 0, 0, 0, 0, 0, 4);
+
+    @Test
+    void aSoldierWithoutRationsWalksEvenFar() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.empty(), 0, 0, 0, 0, 0, 0));
+        alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
+        alice.tick(terrain(false));
+        alice.tick(terrain(false));
+
+        assertTrue(!alice.sprinting(), "nothing to make the food up with");
+    }
+
     @Test
     void aSoldierAtFoodSixOrBelowCantSprint() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(RATIONED);
         alice.reportHealth(20, DeterministicSoldier.SPRINT_FOOD_FLOOR);
         alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
         alice.tick(terrain(false));

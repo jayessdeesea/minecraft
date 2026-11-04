@@ -48,6 +48,11 @@ public interface WorldView {
         return false;
     }
 
+    /** Whether the block is soil - dirt, grass, clay - that a soldier digs by hand (it's also {@link #isSolid}). */
+    default boolean isSoil(int x, int y, int z) {
+        return false;
+    }
+
     /**
      * Where the bodies within {@code radius} of {@code center} are - squadmates and mobs, which a
      * block can't be placed into. A view that tracks no entities sees none.

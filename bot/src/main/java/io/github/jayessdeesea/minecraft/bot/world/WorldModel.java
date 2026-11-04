@@ -44,6 +44,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public boolean isSoil(int x, int y, int z) {
+        return chunks.isSoil(x, y, z);
+    }
+
+    @Override
     public boolean isHazard(int x, int y, int z) {
         return chunks.isHazard(x, y, z);
     }

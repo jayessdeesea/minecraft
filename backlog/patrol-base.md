@@ -60,13 +60,6 @@ The hasty hut, the general's PATROL_BASE task and the time of day are live (docs
 - **Deliberate base on a later night.** The squad improves the base with a wider perimeter and more
   light. The improvement is measured by a test that counts lit, walled floor blocks.
 
-- **Light a base that's sealed dark.** A torchbearer is chosen only before the squad seals itself
-  in. A squad that is sealed in, has no torch and has no light (for example after a restart, or
-  after its torchbearer's run failed) stays dark. One soldier should cut a doorway, make torches
-  at a workshop outside, come back in and reseal. The camp's table and furnace are reused if the
-  torchbearer's workshop is within reach of them (`Crafter` uses any in reach), so the workshop
-  should be the old one.
-
 ## Notes
 - **The order needs a standard.** A patrol base order carries its standard as data (radius, light,
   deadline). Then "done" is computed, not reported. That reuses the existing pattern: a pure check

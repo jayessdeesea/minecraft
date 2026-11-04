@@ -7,7 +7,7 @@ import io.github.jayessdeesea.minecraft.command.TerrainSurvey.Ground;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 /**
  * Builds a {@link TerrainSurvey} for a squad leader from the shared world model: ground height at
@@ -27,16 +27,16 @@ public final class TerrainSurveyor {
     }
 
     public static TerrainSurvey survey(WorldView world, Position pointMan) {
-        return survey(world, pointMan, false);
+        return survey(world, pointMan, 0);
     }
 
     /**
-     * As {@link #survey(WorldView, Position)}; with {@code canClimb} - the point man carries blocks to
-     * pillar with - ground up a wall or cliff counts as reachable too.
+     * As {@link #survey(WorldView, Position)}, for a point man carrying {@code blocks} to pillar
+     * with: ground up a wall or cliff counts as reachable too, priced in the blocks it takes.
      */
-    public static TerrainSurvey survey(WorldView world, Position pointMan, boolean canClimb) {
+    public static TerrainSurvey survey(WorldView world, Position pointMan, int blocks) {
         BlockPos start = groundUnder(world, BlockPos.containing(pointMan.x(), pointMan.y(), pointMan.z()));
-        Set<BlockPos> reachable = Pathfinder.reachable(world, start, RADIUS + 2, FLOOD_BUDGET, canClimb);
+        Map<BlockPos, Integer> reachable = Pathfinder.climbs(world, start, RADIUS + 2, FLOOD_BUDGET, blocks);
 
         List<TerrainSurvey.Sample> samples = new ArrayList<>();
         for (int dz = -RADIUS; dz <= RADIUS; dz += SPACING) {
@@ -61,14 +61,15 @@ public final class TerrainSurveyor {
         return cell;
     }
 
-    private static TerrainSurvey.Sample sample(WorldView world, int x, int z, int aroundY, Set<BlockPos> reachable) {
+    private static TerrainSurvey.Sample sample(WorldView world, int x, int z, int aroundY, Map<BlockPos, Integer> reachable) {
         for (int y = aroundY + VERTICAL_SCAN; y >= aroundY - VERTICAL_SCAN; y--) {
             if (world.isHazard(x, y, z)) {
                 return new TerrainSurvey.Sample(x, z, Ground.WATER, y, false);
             }
             BlockPos cell = new BlockPos(x, y, z);
             if (Pathfinder.standable(world, cell)) {
-                return new TerrainSurvey.Sample(x, z, Ground.LAND, y, reachable.contains(cell));
+                Integer climb = reachable.get(cell);
+                return new TerrainSurvey.Sample(x, z, Ground.LAND, y, climb != null, climb == null ? 0 : climb);
             }
         }
         return new TerrainSurvey.Sample(x, z, Ground.UNKNOWN, aroundY, false);

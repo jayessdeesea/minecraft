@@ -75,9 +75,8 @@ public final class ChunkCache {
 
     public boolean isSolid(int x, int y, int z) {
         BlockClassRegistry.BlockClass here = classAt(x, y, z);
-        return here == BlockClassRegistry.BlockClass.SOLID || here == BlockClassRegistry.BlockClass.LOG
-                || here == BlockClassRegistry.BlockClass.STONE || here == BlockClassRegistry.BlockClass.WORKSTATION
-                || here == BlockClassRegistry.BlockClass.TALL
+        // Every class but these two has collision - so a class added later is solid unless it says otherwise.
+        return here != BlockClassRegistry.BlockClass.PASSABLE && here != BlockClassRegistry.BlockClass.HAZARD
                 || classAt(x, y - 1, z) == BlockClassRegistry.BlockClass.TALL;
     }
 
@@ -103,6 +102,12 @@ public final class ChunkCache {
     public boolean isStone(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
         return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.STONE;
+    }
+
+    /** Whether the block is soil, dug by hand - unknown blocks aren't. */
+    public boolean isSoil(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.SOIL;
     }
 
     public boolean isHazard(int x, int y, int z) {

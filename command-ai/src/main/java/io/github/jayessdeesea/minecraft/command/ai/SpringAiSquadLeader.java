@@ -179,8 +179,9 @@ public final class SpringAiSquadLeader implements SquadLeader {
 
     /**
      * The survey as a compact table: one row per z (north at the top), one column per x, each cell
-     * the ground height - suffixed {@code x} if the point man can't reach it - or {@code ~~} for
-     * water and {@code ??} for unknown. The system prompt explains the notation.
+     * the ground height - suffixed {@code x} if the point man can't reach it, {@code ^} if he climbs
+     * to it on blocks - or {@code ~~} for water and {@code ??} for unknown. The system prompt
+     * explains the notation.
      */
     static String describe(TerrainSurvey terrain) {
         StringBuilder table = new StringBuilder("<terrain>\n      ");
@@ -194,7 +195,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             for (int c = 0; c < columns; c++) {
                 TerrainSurvey.Sample sample = terrain.samples().get(r * columns + c);
                 String cell = switch (sample.ground()) {
-                    case LAND -> sample.height() + (sample.reachable() ? "" : "x");
+                    case LAND -> sample.height() + (!sample.reachable() ? "x" : sample.climb() > 0 ? "^" : "");
                     case WATER -> "~~";
                     case UNKNOWN -> "??";
                 };
@@ -223,7 +224,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             out.append(String.format(Locale.ROOT, "The objective is outside the surveyed area, %.0f blocks beyond its edge.\n",
                     distance(nearest, objective)));
         } else if (nearest.ground() == TerrainSurvey.Ground.LAND && nearest.reachable()) {
-            out.append("The objective is on reachable land at height ").append(nearest.height()).append(".\n");
+            out.append("The objective is on reachable land at height ").append(nearest.height()).append(climb(nearest)).append(".\n");
         } else {
             out.append("The objective is NOT reachable: ").append(switch (nearest.ground()) {
                 case WATER -> "water";
@@ -236,14 +237,20 @@ public final class SpringAiSquadLeader implements SquadLeader {
         }
         out.append("Reachable spots nearest the objective:\n");
         reachable.stream().sorted(Comparator.comparingDouble(s -> distance(s, objective))).limit(5).forEach(s ->
-                out.append(String.format(Locale.ROOT, "- x=%d y=%d z=%d: %.0f blocks from the objective\n",
-                        s.x(), s.height(), s.z(), distance(s, objective))));
+                out.append(String.format(Locale.ROOT, "- x=%d y=%d z=%d: %.0f blocks from the objective%s\n",
+                        s.x(), s.height(), s.z(), distance(s, objective), climb(s))));
         TerrainSurvey.Sample highest = reachable.stream()
                 .max(Comparator.comparingInt(TerrainSurvey.Sample::height)
                         .thenComparing(Comparator.comparingDouble((TerrainSurvey.Sample s) -> distance(s, objective)).reversed()))
                 .orElseThrow();
-        out.append(String.format(Locale.ROOT, "Highest reachable spot: x=%d y=%d z=%d.\n", highest.x(), highest.height(), highest.z()));
+        out.append(String.format(Locale.ROOT, "Highest reachable spot: x=%d y=%d z=%d%s.\n", highest.x(), highest.height(), highest.z(),
+                climb(highest)));
         return out.append("</objective_ground>\n").toString();
+    }
+
+    /** What getting there costs beyond walking: nothing to say for a walk. */
+    private static String climb(TerrainSurvey.Sample sample) {
+        return sample.climb() == 0 ? "" : String.format(Locale.ROOT, " (a climb: %d cobblestone to pillar up)", sample.climb());
     }
 
     private static double distance(TerrainSurvey.Sample sample, Position position) {

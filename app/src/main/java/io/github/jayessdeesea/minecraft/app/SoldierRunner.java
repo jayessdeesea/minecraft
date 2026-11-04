@@ -5,7 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
 import io.github.jayessdeesea.minecraft.bot.supply.Builder;
 import io.github.jayessdeesea.minecraft.bot.supply.Depositor;
 import io.github.jayessdeesea.minecraft.bot.Hands;
-import io.github.jayessdeesea.minecraft.bot.supply.Doorway;
+import io.github.jayessdeesea.minecraft.bot.supply.Breacher;
 import io.github.jayessdeesea.minecraft.bot.supply.Footing;
 import io.github.jayessdeesea.minecraft.bot.supply.Gatherer;
 import io.github.jayessdeesea.minecraft.bot.supply.Handover;
@@ -127,6 +127,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         boolean lit;
         /** Who the squad's torchbearer was last cycle: kept while it still can, so a run isn't handed over half done. */
         String torchbearer;
+        /** Blocks of the laid-out base still to place, at the last check - empty with none laid out. */
+        java.util.OptionalInt baseBlocksLeft = java.util.OptionalInt.empty();
+        /** The doorway cut to let a torchbearer out of a sealed, dark base - left open until it's back with torches. */
+        List<Position> torchDoor;
         /** The base's breaches at the last check - logged when they change. */
         List<Position> breaches;
         java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.of();
@@ -283,11 +287,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         chainOfCommand.onSitreps(present.stream().map(p -> {
             Position pointMan = p.statuses().get(0).position();
             // Climbing counts when the point man carries cobblestone to pillar with.
-            boolean canClimb = p.statuses().get(0).condition().flatMap(c -> c.kit()).map(k -> k.stone() > 0).orElse(false);
+            int climbBlocks = p.statuses().get(0).condition().flatMap(c -> c.kit()).map(k -> k.stone()).orElse(0);
             SquadState state = squadStates.get(p.squad());
             boolean holdingBase = state.allInside && state.breaches != null && state.breaches.isEmpty();
-            return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan, canClimb), p.principalAt(),
-                    () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, pointMan), holdingBase);
+            return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan, climbBlocks), p.principalAt(),
+                    () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, pointMan), holdingBase,
+                    holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft);
         }).toList());
         for (Present p : present) {
             chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
@@ -362,7 +367,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // nearest level footing for the whole floor - never on rubble or a slope, where
             // soldiers can't all stand in their places.
             Position asked = site;
-            site = levelSite(site, statuses.size()).orElse(null);
+            site = levelSite(site, statuses.size(), squadName).orElse(null);
             if (site == null) {
                 if (!asked.equals(state.unbuildable)) {
                     LOG.warn("[{}] no level ground for a patrol base within {} blocks of {} - not building", squadName,
@@ -375,6 +380,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         state.baseSite = site;
         PatrolBase.Plan plan = site == null ? null : PatrolBase.hasty(site, statuses.size());
+        if (plan == null) {
+            baseFootprints.remove(squadName);
+            state.baseBlocksLeft = java.util.OptionalInt.empty();
+        } else {
+            baseFootprints.put(squadName, footprint(plan));
+            state.baseBlocksLeft = java.util.OptionalInt.of((int) plan.cells().stream()
+                    .filter(c -> !world.isSolid((int) c.x(), (int) c.y(), (int) c.z())).count());
+        }
         boolean allInside = plan != null && statuses.stream().allMatch(s -> plan.inside(s.position()));
         if ((plan != null) != state.fortifying) {
             if (plan != null) {
@@ -427,6 +440,30 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 .min(java.util.Comparator.comparing(n -> !n.equals(state.torchbearer))).orElse(null);
         state.torchbearer = torchbearer;
         Position workshop = torchbearer == null ? null : workshop(plan).orElse(null);
+        // Sealed in and dark, with no torch but the makings of some: a soldier who can make them cuts
+        // a doorway toward the workshop and goes out. Once it's open the base isn't sealed, so the
+        // torchbearer above takes over; the doorway goes back on the build list when it returns.
+        if (plan == null || squadHasTorch || lit) {
+            state.torchDoor = null;
+        }
+        String torchCutter = null;
+        if (plan != null && sealedIn && !lit && !squadHasTorch) {
+            Optional<String> maker = statuses.stream().map(SoldierStatus::name).filter(n -> canMakeTorches.getOrDefault(n, false))
+                    .min(java.util.Comparator.comparing(n -> !n.equals(state.torchbearer)));
+            Optional<Position> outside = maker.isEmpty() ? Optional.empty() : workshop(plan);
+            if (outside.isPresent()) {
+                List<Position> door = plan.doorway(outside.get(), this::walkable);
+                if (state.torchDoor == null) {
+                    LOG.info("[{}] patrol base sealed DARK - {} cuts a doorway to go and make torches", squadName, maker.get());
+                }
+                state.torchDoor = door;
+                state.torchbearer = maker.get();
+                torchCutter = maker.get();
+                opening.put(torchCutter, new Opening(plan.insideOf(door), door.stream()
+                        .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) c.x(), (int) c.y(), (int) c.z())).toList()));
+            }
+        }
+        java.util.Set<Position> leftOpen = state.torchDoor == null ? java.util.Set.of() : java.util.Set.copyOf(state.torchDoor);
         // Sealed and dark: the first soldier inside with a torch puts one down where it stands.
         String lighter = plan == null || lit || breaches == null || !breaches.isEmpty() || !allInside ? null
                 : statuses.stream().map(SoldierStatus::name).filter(n -> torchesCarried.getOrDefault(n, 0) > 0).findFirst().orElse(null);
@@ -486,9 +523,19 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     ? Optional.empty() : chainOfCommand.gatherObjective(squadName);
             gather.ifPresentOrElse(o -> gathering.put(soldierName, o), () -> gathering.remove(soldierName));
             Order given = orders.get(i);
+            if (building != null && soldierName.equals(torchCutter)) {
+                fortifying.remove(soldierName);
+                Position place = opening.get(soldierName).stand();
+                byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(), HUT_PLACE_TOLERANCE, 0.5, Risk.LOW));
+                continue;
+            }
             if (building != null) {
+                if (!soldierName.equals(opener)) {
+                    opening.remove(soldierName);
+                }
                 List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = new java.util.ArrayList<>(
                         java.util.stream.Stream.concat(building.cells().stream(), breaches.stream().filter(b -> !building.cells().contains(b)))
+                        .filter(c -> !leftOpen.contains(c))
                         .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) c.x(), (int) c.y(), (int) c.z())).toList());
                 // Each soldier starts at a different point round the walls, so they don't all go for the same block.
                 java.util.Collections.rotate(cells, -i * cells.size() / statuses.size());
@@ -592,11 +639,34 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final double HUT_PLACE_TOLERANCE = 0.15;
 
     /**
+     * The columns each squad's patrol base stands on, walls included - squad loop only. The general
+     * may send two squads to one point; their huts go side by side, not one inside the other.
+     */
+    private final Map<String, java.util.Set<Long>> baseFootprints = new ConcurrentHashMap<>();
+
+    private static java.util.Set<Long> footprint(PatrolBase.Plan plan) {
+        return java.util.stream.Stream.concat(plan.floor().stream(), plan.cells().stream())
+                .map(c -> column((int) Math.floor(c.x()), (int) Math.floor(c.z())))
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    private static long column(int x, int z) {
+        return ((long) x << 32) | (z & 0xffffffffL);
+    }
+
+    /**
      * The nearest point to {@code asked}, within {@value #SITE_SEARCH} blocks across and
      * {@value #GROUND_SEARCH} up or down, where every floor cell of a hut for {@code soldiers} is
-     * standable at one height: solid below, room for a body above.
+     * standable at one height: solid below, room for a body above - and the hut's walls stand at
+     * least a block clear of every other squad's, so each keeps a side to cut a doorway through.
      */
-    private Optional<Position> levelSite(Position asked, int soldiers) {
+    private Optional<Position> levelSite(Position asked, int soldiers, String squadName) {
+        java.util.Set<Long> taken = new java.util.HashSet<>();
+        baseFootprints.forEach((other, columns) -> {
+            if (!other.equals(squadName)) {
+                taken.addAll(columns);
+            }
+        });
         int ax = (int) Math.floor(asked.x());
         int az = (int) Math.floor(asked.z());
         int ay = (int) Math.floor(asked.y());
@@ -607,7 +677,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 for (int dy = 0; dy <= GROUND_SEARCH; dy++) {
                     for (int y : new int[]{ay + dy, ay - dy}) {
                         Position candidate = new Position(ax + dx, y, az + dz);
-                        boolean level = PatrolBase.hasty(candidate, soldiers).floor().stream().allMatch(cell -> {
+                        PatrolBase.Plan hut = PatrolBase.hasty(candidate, soldiers);
+                        boolean clear = taken.isEmpty() || footprint(hut).stream().noneMatch(c -> {
+                            int cx = (int) (c >> 32);
+                            int cz = (int) (long) c;
+                            return taken.contains(c) || taken.contains(column(cx + 1, cz)) || taken.contains(column(cx - 1, cz))
+                                    || taken.contains(column(cx, cz + 1)) || taken.contains(column(cx, cz - 1));
+                        });
+                        boolean level = clear && hut.floor().stream().allMatch(cell -> {
                             int cx = (int) cell.x();
                             int cy = (int) cell.y();
                             int cz = (int) cell.z();
@@ -835,7 +912,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         Builder builder = new Builder(name, session, inventory);
         builders.put(name, builder);
         Rations rations = new Rations(name, session, inventory);
-        Doorway doorway = new Doorway(name, session, inventory);
+        Breacher doorway = new Breacher(name, session, inventory);
+        // Cutting steps is part of moving, like a pillar step's block: no routine has the hands for it.
+        Breacher stepCutter = new Breacher(name, session, inventory);
         Footing footing = new Footing(session, inventory);
         // What the server was last told about sprinting: a new connection starts walking.
         java.util.concurrent.atomic.AtomicBoolean sprintingSent = new java.util.concurrent.atomic.AtomicBoolean();
@@ -963,7 +1042,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     : gatherer.active() ? new Report.Gathering(gather.gather().orElseThrow())
                     : gather != null && gatherer.exhausted()
                     ? new Report.Cantco("nothing left to gather within 16 blocks of the objective")
-                    : !tools.isEmpty() && woodcraft.failure().isPresent() ? new Report.Cantco(woodcraft.failure().get()) : null);
+                    // Only a tool the order needs makes its failure the order's: a pickaxe to quarry with.
+                    // A sword is the soldier's own pre-combat check - going without shows in the LOGSTAT
+                    // as bare-handed, not as CANTCO of the mission.
+                    : needsPickaxe && woodcraft.failure().isPresent() ? new Report.Cantco(woodcraft.failure().get()) : null);
             Position current = status.position();
             if (soldier.sprinting() != sprintingSent.get()) {
                 sprintingSent.set(soldier.sprinting());
@@ -973,6 +1055,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // A pillar step's block goes in after the server has the soldier's new height - it won't
             // place a block where a body is - and into the world model at once, so the soldier lands
             // on it before the server's block update arrives.
+            List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cut = soldier.cutting();
+            if (!cut.isEmpty()) {
+                stepCutter.tick(world, cut);
+            } else {
+                stepCutter.stop();
+            }
             soldier.takePlacement().ifPresent(cell -> {
                 if (footing.place(cell)) {
                     chunkCache.setBlock(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE);

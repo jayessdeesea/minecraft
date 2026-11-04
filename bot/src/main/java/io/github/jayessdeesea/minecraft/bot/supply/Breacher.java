@@ -17,24 +17,28 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * One soldier opening a doorway out of the squad's patrol base (docs/military-doctrine.md §14):
- * breaking the wall blocks in the way, from inside, where it stands. Which blocks is
- * {@code command.PatrolBase}'s; this only breaks them. With a pickaxe a cobblestone wall block takes
- * 1.5 seconds; bare-handed, 10 - the server's break time, with a margin, since it times every dig.
+ * One soldier breaching an obstacle: breaking the blocks in its way, from where it stands. A doorway
+ * out of the squad's patrol base (docs/military-doctrine.md §14), whose blocks are
+ * {@code command.PatrolBase}'s, or a step cut into a slope, whose blocks are
+ * {@code nav.Pathfinder#stepCut}'s; this only breaks them. With a pickaxe a cobblestone wall block
+ * takes 1.5 seconds; bare-handed, 10. Soil takes about one second by hand. Each is the server's break
+ * time with a margin, since the server times every dig.
  *
  * <p>An expect script (AGENTS.md § Behavior modeling): the pickaxe is in hand when the server's
  * resent inventory says so, and a block is broken when the server's block update says so. A block
  * the server won't break fails the run loudly; it's tried again after a pause. Driven by the
  * soldier's tick.
  */
-public final class Doorway {
+public final class Breacher {
 
-    private static final Logger LOG = LogManager.getLogger(Doorway.class);
+    private static final Logger LOG = LogManager.getLogger(Breacher.class);
 
     /** Cobblestone, hardness 2: a wooden pickaxe (speed 2) breaks it in 30 ticks. */
     static final int PICKAXE_TICKS = 40;
     /** By hand, the wrong tool: speed 1 over hardness 2, at a hundredth a tick - 200 ticks. */
     static final int HAND_TICKS = 220;
+    /** Soil, hardness 0.65 at most, needs no tool: speed 1 over 0.65, at a thirtieth a tick - 20 ticks. */
+    static final int SOIL_TICKS = 25;
     /** For the server to answer: the inventory resent, a block update. */
     static final int ANSWER_TICKS = 40;
     /** Before trying again after a block the server wouldn't break. */
@@ -53,7 +57,7 @@ public final class Doorway {
     private int digStarted;
     private int digTicks;
 
-    public Doorway(String name, PlaySession session, Inventory inventory) {
+    public Breacher(String name, PlaySession session, Inventory inventory) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
@@ -108,7 +112,7 @@ public final class Doorway {
         for (BlockPos cell : cells) {
             // The server times the dig itself: finishing early is refused, so wait out its break time.
             steps.add(new Step("dig " + cell, () -> !solid(cell), () -> {
-                digTicks = pickaxeInHand() ? PICKAXE_TICKS : HAND_TICKS;
+                digTicks = world.isSoil(cell.x(), cell.y(), cell.z()) ? SOIL_TICKS : pickaxeInHand() ? PICKAXE_TICKS : HAND_TICKS;
                 digStarted = ticks;
                 session.startDigging(cell.x(), cell.y(), cell.z());
             }, new Expect("the break time to pass", () -> ticks - digStarted >= digTicks), HAND_TICKS + 1));

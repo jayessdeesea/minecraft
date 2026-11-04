@@ -1,9 +1,15 @@
 # Generated from the pinned server jar's `--reports` blocks.json by
 # tools/block-class-generator. One block state per line: <id> <class> <blockName>,
-# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation (all solid).
+# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil (all solid).
 # Every state NOT listed is solid (the safe default).
 0 P air
 1 Q stone
+8 D grass_block
+9 D grass_block
+10 D dirt
+11 D coarse_dirt
+12 D podzol
+13 D podzol
 30 P oak_sapling
 31 P oak_sapling
 32 P spruce_sapling
@@ -3384,6 +3390,14 @@
 6872 P wheat
 6873 P wheat
 6874 P wheat
+6875 D farmland
+6876 D farmland
+6877 D farmland
+6878 D farmland
+6879 D farmland
+6880 D farmland
+6881 D farmland
+6882 D farmland
 6883 W furnace
 6884 W furnace
 6885 W furnace
@@ -4339,7 +4353,9 @@
 8563 P redstone_wall_torch
 8564 P redstone_wall_torch
 8589 P snow
+8598 D snow_block
 8615 P cactus_flower
+8616 D clay
 8635 H oak_fence
 8636 H oak_fence
 8637 T oak_fence
@@ -5323,6 +5339,8 @@
 10646 H mud_brick_stairs
 10648 H mud_brick_stairs
 10650 H mud_brick_stairs
+10652 D mycelium
+10653 D mycelium
 10654 P lily_pad
 10657 H resin_brick_stairs
 10659 H resin_brick_stairs
@@ -8830,6 +8848,7 @@
 16793 P beetroots
 16794 P beetroots
 16795 P beetroots
+16796 D dirt_path
 16797 P end_gateway
 16832 P structure_void
 17027 H white_concrete_stairs
@@ -21280,6 +21299,7 @@
 33709 P leaf_litter
 33710 P leaf_litter
 33711 P leaf_litter
+33712 D moss_block
 33713 H big_dripleaf
 33715 H big_dripleaf
 33717 H big_dripleaf
@@ -21318,6 +21338,7 @@
 33768 P small_dripleaf
 33769 H hanging_roots
 33770 P hanging_roots
+33771 D rooted_dirt
 33777 H cobbled_deepslate_stairs
 33779 H cobbled_deepslate_stairs
 33781 H cobbled_deepslate_stairs

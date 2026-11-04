@@ -23,6 +23,10 @@ public final class SyntheticWorld implements WorldView {
     private final int[][] ground = new int[MAX - MIN + 1][MAX - MIN + 1];
     private final Set<BlockPos> solids = new HashSet<>();
     private final Set<BlockPos> hazards = new HashSet<>();
+    /** Ground cells dug out. */
+    private final Set<BlockPos> dug = new HashSet<>();
+    /** Whether the ground columns are soil, dug by hand - otherwise they're nothing a soldier digs. */
+    private boolean soilGround;
 
     SyntheticWorld(int baseGround) {
         for (int[] column : ground) {
@@ -52,6 +56,19 @@ public final class SyntheticWorld implements WorldView {
         }
     }
 
+    /** Makes the ground columns soil: steps can be cut into them. */
+    void soilGround() {
+        soilGround = true;
+    }
+
+    /** Digs out a block, as the server would on a finished dig. */
+    void dig(int x, int y, int z) {
+        solids.remove(new BlockPos(x, y, z));
+        if (inBounds(x, z) && y <= ground(x, z)) {
+            dug.add(new BlockPos(x, y, z));
+        }
+    }
+
     void hazard(int x, int y, int z) {
         if (inBounds(x, z)) {
             hazards.add(new BlockPos(x, y, z));
@@ -72,7 +89,12 @@ public final class SyntheticWorld implements WorldView {
         if (!inBounds(x, z)) {
             return true;
         }
-        return y <= ground(x, z) || solids.contains(new BlockPos(x, y, z));
+        return y <= ground(x, z) && !dug.contains(new BlockPos(x, y, z)) || solids.contains(new BlockPos(x, y, z));
+    }
+
+    @Override
+    public boolean isSoil(int x, int y, int z) {
+        return soilGround && inBounds(x, z) && y <= ground(x, z) && !dug.contains(new BlockPos(x, y, z));
     }
 
     @Override

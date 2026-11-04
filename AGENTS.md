@@ -114,7 +114,11 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   prompt: precompute lookups (which nearby ground is reachable, `<objective_ground>`) rather than
   hand the model a grid to decode. Measured: no local model that fits on a 16 GB GPU read
   reachability off the terrain table, and with the lookup done for it `qwen3:14b` chose
-  correctly.
+  correctly. When an echelon decides wrongly, read its prompt before blaming the model: every
+  bad hold-or-leave call the local general made traced to a line that misled it (a built base
+  reported as a shortage, a soldier's failed sword reported as the squad's CANTCO), and with
+  those fixed it passed every `GeneralScenarioIT` situation. Turn each live miss into a
+  situation there first.
 - **A routine is an expect script: act, then wait for the confirming event - never for time.**
   Anything that acts and then needs the server's answer (crafting, placing, opening a window,
   smelting) is a `bot.script.Script` of steps. Each step names the event that confirms it, read

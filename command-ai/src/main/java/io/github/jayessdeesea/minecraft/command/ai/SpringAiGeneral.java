@@ -113,7 +113,7 @@ public final class SpringAiGeneral implements General {
                 prompt.append("- ").append(soldier.name()).append(" at ").append(SpringAiSquadLeader.describe(soldier.position()))
                         .append(": ").append(SpringAiSquadLeader.describe(soldier.report())).append('\n');
             }
-            prompt.append(describe(Logstat.of(squad.soldiers()))).append('\n');
+            prompt.append(describe(Logstat.of(squad.soldiers()), squad.baseBlocksLeft())).append('\n');
             prompt.append(describeResources(squad)).append('\n');
             prompt.append("</squad>\n\n");
         }
@@ -132,8 +132,11 @@ public final class SpringAiGeneral implements General {
                 .append(" at ").append(SpringAiSquadLeader.describe(standing.location()))
                 .append(". Intent: ").append(standing.intent());
         if (standing.patrolBase()) {
+            int left = squad.baseBlocksLeft().orElse(-1);
             line.append(squad.holdingBase() ? " Status: the patrol base is built and sealed, the squad inside it."
-                    : " Status: the patrol base isn't finished, or not everyone is inside.");
+                    : left < 0 ? " Status: the squad hasn't laid the patrol base out yet."
+                    : left == 0 ? " Status: the patrol base is built, but not everyone is inside."
+                    : String.format(Locale.ROOT, " Status: the patrol base is laid out, %d blocks of it still to place.", left));
         }
         return line.toString();
     }
@@ -166,8 +169,17 @@ public final class SpringAiGeneral implements General {
         return points[(int) Math.floorMod(Math.round(degrees / 45), 8)];
     }
 
-    /** The LOGSTAT line: what the squad is short of, by class of supply. */
+    /** The LOGSTAT line of a squad with no patrol base laid out. */
     static String describe(Logstat l) {
+        return describe(l, java.util.OptionalInt.empty());
+    }
+
+    /**
+     * The LOGSTAT line: what the squad is short of, by class of supply. Its materials are measured
+     * against the patrol base it has still to build: all of one with none laid out, what's left of
+     * one under way, nothing once one is built - its blocks went into the walls.
+     */
+    static String describe(Logstat l, java.util.OptionalInt baseBlocksLeft) {
         if (l.reporting() == 0) {
             return "LOGSTAT: no soldier has reported his condition yet.";
         }
@@ -181,9 +193,19 @@ public final class SpringAiGeneral implements General {
         }
         line.append(String.format(Locale.ROOT, "casualties - %d below half health, %d deaths so far; materials - %d logs, %d cobblestone",
                 l.wounded(), l.deaths(), l.logs(), l.stone()));
+        if (baseBlocksLeft.isPresent() && baseBlocksLeft.getAsInt() == 0) {
+            return line.append(" - their patrol base is already built.").toString();
+        }
         // Worked out here, not left to the model: whether what they carry builds their shelter.
-        int needed = PatrolBase.hasty(new Position(0, 0, 0), Math.max(1, Math.min(l.soldiers(), 9))).cells().size();
         int blocks = l.logs() + l.stone();
+        if (baseBlocksLeft.isPresent()) {
+            int left = baseBlocksLeft.getAsInt();
+            return line.append(blocks >= left
+                    ? String.format(Locale.ROOT, " - enough for the %d blocks of their patrol base still to place.", left)
+                    : String.format(Locale.ROOT, " - %d short of the %d blocks of their patrol base still to place.", left - blocks, left))
+                    .toString();
+        }
+        int needed = PatrolBase.hasty(new Position(0, 0, 0), Math.max(1, Math.min(l.soldiers(), 9))).cells().size();
         line.append(blocks >= needed
                 ? String.format(Locale.ROOT, " - enough to build a patrol base (%d blocks).", needed)
                 : String.format(Locale.ROOT, " - %d short of the %d blocks a patrol base takes.", needed - blocks, needed));

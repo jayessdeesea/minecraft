@@ -137,6 +137,26 @@ class SpringAiGeneralTest {
     }
 
     @Test
+    void aSquadHoldingItsBaseIsntToldItsShortOfOne() {
+        io.github.jayessdeesea.minecraft.command.Logstat spent = new io.github.jayessdeesea.minecraft.command.Logstat(4, 4, 0, 0, 0, 4, 0, 0, 16, 0, 0, 3);
+
+        assertTrue(SpringAiGeneral.describe(spent, java.util.OptionalInt.of(0))
+                .endsWith("materials - 0 logs, 3 cobblestone - their patrol base is already built."));
+        assertTrue(SpringAiGeneral.describe(spent, java.util.OptionalInt.empty()).contains("short of the 40 blocks"));
+    }
+
+    @Test
+    void aSquadPartWayThroughItsBaseIsMeasuredAgainstWhatsLeft() {
+        io.github.jayessdeesea.minecraft.command.Logstat carrying = new io.github.jayessdeesea.minecraft.command.Logstat(4, 4, 0, 0, 0, 4, 0, 0, 16, 0, 0, 24);
+
+        assertTrue(SpringAiGeneral.describe(carrying, java.util.OptionalInt.of(20))
+                .endsWith("materials - 0 logs, 24 cobblestone - enough for the 20 blocks of their patrol base still to place."));
+        SquadStatus building = new SquadStatus("Bravo", new Report.Moving(), BRAVO.soldiers(), List.of(), java.util.Optional.of(BASE), false,
+                java.util.OptionalInt.of(20));
+        assertTrue(SpringAiGeneral.describeStanding(building).endsWith("Status: the patrol base is laid out, 20 blocks of it still to place."));
+    }
+
+    @Test
     void decideRoundTripsStructuredOutputInSquadOrder() {
         String reply = """
                 {"objectives": [

@@ -34,8 +34,8 @@ Questions it can answer:
 - How far can deterministic code below the models carry an order without asking?
 
 Every order, acknowledgement and report is logged as a radio net (`[General -> Alpha] OPORD`,
-`[Bravo -> General] CANTCO`). The squad leader also has a repeatable evaluation against generated
-scenarios.
+`[Bravo -> General] CANTCO`). The squad leader and the general each have a repeatable evaluation
+of their decisions, and whole-chain scenarios run the full hierarchy against the dev server.
 
 ## How it's built
 

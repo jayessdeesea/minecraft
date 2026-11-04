@@ -20,7 +20,22 @@ public record TerrainSurvey(int originX, int originZ, int spacing, int radius, L
         UNKNOWN
     }
 
-    /** {@code height} is the y a soldier's feet would be at (LAND) or the liquid's top (WATER). */
-    public record Sample(int x, int z, Ground ground, int height, boolean reachable) {
+    /**
+     * {@code height} is the y a soldier's feet would be at (LAND) or the liquid's top (WATER).
+     * {@code climb} is how many blocks the point man spends pillaring to get there - 0 for a walk,
+     * and for anywhere unreachable.
+     */
+    public record Sample(int x, int z, Ground ground, int height, boolean reachable, int climb) {
+
+        public Sample {
+            if (climb < 0 || climb > 0 && !reachable) {
+                throw new IllegalArgumentException("a climb of " + climb + " to " + (reachable ? "" : "un") + "reachable ground");
+            }
+        }
+
+        /** Ground the point man walks to, or can't reach. */
+        public Sample(int x, int z, Ground ground, int height, boolean reachable) {
+            this(x, z, ground, height, reachable, 0);
+        }
     }
 }

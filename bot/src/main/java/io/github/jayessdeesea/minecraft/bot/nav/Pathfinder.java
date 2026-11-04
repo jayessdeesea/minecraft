@@ -22,8 +22,9 @@ import java.util.PriorityQueue;
  * {@link FallAllowance}, at a cost per point of fall damage. A soldier carrying blocks can also
  * pillar: jump and place a block under itself, rising one block straight up - the way up a wall
  * or cliff, repeated, then a step off onto the top. Pillar steps are offered only beside a wall,
- * where they get somewhere a walk can't; anywhere else they'd spend the search on open air. Hazards (water, lava, fire) are never entered -
- * no swimming, no ladders.
+ * where they get somewhere a walk can't; anywhere else they'd spend the search on open air. And any
+ * soldier can dig a step into a slope too steep to jump: {@link #stepCut} cells of soil, by hand.
+ * Hazards (water, lava, fire) are never entered - no swimming, no ladders.
  *
  * <p>A goal outside the budget isn't a failure: the result is a path to the explored cell that
  * got closest, flagged {@code reachesGoal = false}, and the caller re-plans from there. That's how
@@ -40,6 +41,8 @@ public final class Pathfinder {
     private static final double JUMP_COST = 2.0;
     /** A pillar step costs a block and a jump's worth of time: dearer than walking round, cheaper than no way at all. */
     static final double PILLAR_COST = 4.0;
+    /** Each block of soil dug for a step: about a second by hand, five blocks' walk. */
+    static final double DIG_COST = 5.0;
     private static final int[][] ORTHOGONAL = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
     private static final int[][] DIAGONALS = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 
@@ -67,21 +70,24 @@ public final class Pathfinder {
     }
 
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls) {
-        return find(world, start, goal, maxExpanded, falls, false);
+        return find(world, start, goal, maxExpanded, falls, 0);
     }
 
     /**
-     * As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance)}, with pillar steps when
-     * {@code canPillar} - the soldier carries blocks to stand on. How many a route needs isn't
-     * counted against how many are carried: a soldier that runs out stops climbing and re-plans.
+     * As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance)}, with up to {@code blocks}
+     * pillar steps - one block each, from what the soldier carries. A route is never planned on
+     * more blocks than that: one that needs more goes round, or gets as close as it can.
      */
-    public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, boolean canPillar) {
+    public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks) {
         if (goal.contains(start)) {
             return new Result(List.of(), true);
         }
 
         Map<BlockPos, Double> costSoFar = new HashMap<>();
         Map<BlockPos, BlockPos> cameFrom = new HashMap<>();
+        // Blocks spent on the cheapest way found to each cell: a pillar step needs one left.
+        Map<BlockPos, Integer> spent = new HashMap<>();
+        spent.put(start, 0);
         PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingDouble(Node::priority));
         costSoFar.put(start, 0.0);
         open.add(new Node(start, goal.estimate(start)));
@@ -103,12 +109,14 @@ public final class Pathfinder {
             }
 
             double base = costSoFar.get(current);
+            int used = spent.get(current);
             // Pillar steps only beside a wall: anywhere else they spend the search budget on open air.
-            for (Move move : moves(world, current, falls, canPillar && besideWall(world, current))) {
+            for (Move move : moves(world, current, falls, used < blocks && besideWall(world, current))) {
                 double cost = base + move.cost();
                 Double known = costSoFar.get(move.to());
                 if (known == null || cost < known) {
                     costSoFar.put(move.to(), cost);
+                    spent.put(move.to(), used + (move.pillar() ? 1 : 0));
                     cameFrom.put(move.to(), current);
                     open.add(new Node(move.to(), cost + goal.estimate(move.to())));
                 }
@@ -125,41 +133,55 @@ public final class Pathfinder {
      * get there?" for a whole area at once.
      */
     public static java.util.Set<BlockPos> reachable(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded) {
-        return reachable(world, start, maxHorizontalDistance, maxExpanded, false);
+        return climbs(world, start, maxHorizontalDistance, maxExpanded, 0).keySet();
     }
 
     /**
-     * As {@link #reachable(WorldView, BlockPos, int, int)}, with pillar steps when {@code canPillar} -
-     * but only beside a wall, the one place a pillar step gets anywhere a walk can't. Without that
-     * limit the fill would climb every open column into the sky.
+     * As {@link #reachable(WorldView, BlockPos, int, int)}, with up to {@code blocks} pillar steps,
+     * each cell mapped to the fewest blocks it takes to get there - 0 for a walk. Pillar steps only
+     * beside a wall, the one place one gets anywhere a walk can't: without that limit the fill would
+     * climb every open column into the sky.
      */
-    public static java.util.Set<BlockPos> reachable(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded,
-                                                     boolean canPillar) {
-        java.util.Set<BlockPos> seen = new java.util.HashSet<>();
-        java.util.ArrayDeque<BlockPos> frontier = new java.util.ArrayDeque<>();
+    public static Map<BlockPos, Integer> climbs(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded,
+                                                int blocks) {
+        Map<BlockPos, Integer> fewest = new HashMap<>();
         if (!standable(world, start)) {
-            return seen;
+            return fewest;
         }
-        seen.add(start);
+        // 0-1 breadth-first: a walk costs no blocks and goes to the front, a pillar step one and
+        // goes to the back, so each cell is settled at the fewest blocks.
+        java.util.ArrayDeque<BlockPos> frontier = new java.util.ArrayDeque<>();
+        java.util.Set<BlockPos> settled = new java.util.HashSet<>();
+        fewest.put(start, 0);
         frontier.add(start);
-        while (!frontier.isEmpty() && seen.size() < maxExpanded) {
+        while (!frontier.isEmpty() && settled.size() < maxExpanded) {
             BlockPos current = frontier.poll();
-            for (Move move : moves(world, current, FallAllowance.NONE, canPillar && besideWall(world, current))) {
+            if (!settled.add(current)) {
+                continue;
+            }
+            int used = fewest.get(current);
+            for (Move move : moves(world, current, FallAllowance.NONE, used < blocks && besideWall(world, current))) {
                 BlockPos next = move.to();
+                int cost = used + (move.pillar() ? 1 : 0);
                 if (Math.abs(next.x() - start.x()) <= maxHorizontalDistance
                         && Math.abs(next.z() - start.z()) <= maxHorizontalDistance
-                        && seen.add(next)) {
-                    frontier.add(next);
+                        && cost < fewest.getOrDefault(next, Integer.MAX_VALUE)) {
+                    fewest.put(next, cost);
+                    if (move.pillar()) {
+                        frontier.addLast(next);
+                    } else {
+                        frontier.addFirst(next);
+                    }
                 }
             }
         }
-        return seen;
+        return fewest;
     }
 
     private static List<Move> moves(WorldView world, BlockPos from, FallAllowance falls, boolean canPillar) {
         List<Move> moves = new ArrayList<>(9);
         if (canPillar && open(world, from.x(), from.y() + 2, from.z())) {
-            moves.add(new Move(from.offset(0, 1, 0), PILLAR_COST)); // a block placed where it stood
+            moves.add(new Move(from.offset(0, 1, 0), PILLAR_COST, true)); // a block placed where it stood
         }
         for (int[] d : ORTHOGONAL) {
             BlockPos level = from.offset(d[0], 0, d[1]);
@@ -170,6 +192,14 @@ public final class Pathfinder {
             BlockPos up = from.offset(d[0], 1, d[1]);
             if (standable(world, up) && !world.isSolid(from.x(), from.y() + 2, from.z())) {
                 moves.add(new Move(up, JUMP_COST));
+                continue;
+            }
+            if (world.isSolid(level.x(), level.y(), level.z())) {
+                // A step too high to jump: cut it lower.
+                List<BlockPos> cut = stepCut(world, from, up);
+                if (!cut.isEmpty()) {
+                    moves.add(new Move(up, JUMP_COST + DIG_COST * cut.size()));
+                }
                 continue;
             }
             if (clear(world, level)) {
@@ -196,6 +226,54 @@ public final class Pathfinder {
             }
         }
         return moves;
+    }
+
+    /**
+     * The blocks to dig so a soldier at {@code from} can jump up onto {@code up}: room for the body at
+     * {@code up}, and headroom over {@code from} for the jump - in that order, the order they're dug.
+     * Empty when that can't be done by hand, or when there's nothing to dig.
+     *
+     * <p>A step is cut only into the face of a slope - the cell over the soldier's head at {@code up}
+     * must already be open - so the cut is at most three blocks and the planner never tunnels. Only
+     * soil (not stone, not sand or gravel that would fall into the gap), with no liquid beside a cell
+     * to flow in, and nothing that falls resting on one.
+     */
+    public static List<BlockPos> stepCut(WorldView world, BlockPos from, BlockPos up) {
+        if (up.y() != from.y() + 1 || Math.abs(up.x() - from.x()) + Math.abs(up.z() - from.z()) != 1
+                || !world.isSolid(up.x(), up.y() - 1, up.z()) || !open(world, up.x(), up.y() + 2, up.z())) {
+            return List.of();
+        }
+        List<BlockPos> cells = List.of(up, up.offset(0, 1, 0), from.offset(0, 2, 0));
+        List<BlockPos> cut = new ArrayList<>(3);
+        for (BlockPos cell : cells) {
+            if (world.isHazard(cell.x(), cell.y(), cell.z())) {
+                return List.of();
+            }
+            if (world.isSolid(cell.x(), cell.y(), cell.z())) {
+                if (!world.isSoil(cell.x(), cell.y(), cell.z())) {
+                    return List.of();
+                }
+                cut.add(cell);
+            }
+        }
+        for (BlockPos cell : cut) {
+            for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+                if (world.isHazard(cell.x() + d[0], cell.y() + d[1], cell.z() + d[2])) {
+                    return List.of();
+                }
+            }
+            BlockPos above = cell.offset(0, 1, 0);
+            if (world.isSolid(above.x(), above.y(), above.z()) && !cut.contains(above) && !holdsUp(world, above)) {
+                return List.of();
+            }
+        }
+        return List.copyOf(cut);
+    }
+
+    /** Whether a block stays put with the one under it dug out: soil, stone and logs do; sand and gravel - or anything unknown - might not. */
+    private static boolean holdsUp(WorldView world, BlockPos cell) {
+        return world.isSoil(cell.x(), cell.y(), cell.z()) || world.isStone(cell.x(), cell.y(), cell.z())
+                || world.isLog(cell.x(), cell.y(), cell.z());
     }
 
     /** Whether a block one up from {@code cell} is solid on some side - a wall to climb beside. */
@@ -231,6 +309,9 @@ public final class Pathfinder {
     private record Node(BlockPos cell, double priority) {
     }
 
-    private record Move(BlockPos to, double cost) {
+    private record Move(BlockPos to, double cost, boolean pillar) {
+        Move(BlockPos to, double cost) {
+            this(to, cost, false);
+        }
     }
 }

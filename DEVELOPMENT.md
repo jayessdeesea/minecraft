@@ -86,6 +86,15 @@ mvn -q install -DskipTests
 mvn -pl app test -Dtest=SquadLeaderScenarioIT -Dsurefire.failIfNoSpecifiedTests=false -Deval.seeds=5 [-Deval.model=...]
 ```
 
+**General evaluation.** `app`'s `GeneralScenarioIT` does the same for the general: fixed
+situations, each asking one policy question (build before dark, hold a sealed base, leave it when
+the mission says so), at a few seconds a decision. Try a change to the general's prompt or context
+here before spending a whole-chain run on it:
+
+```bash
+mvn -pl app test -Dtest=GeneralScenarioIT -Dsurefire.failIfNoSpecifiedTests=false -Deval.runs=5 [-Deval.model=...]
+```
+
 **Whole-chain scenarios.** `app`'s `ChainScenarioLiveIT` runs the real general, squad leaders and
 soldiers against the dev server on a named scenario, and prints a pass rate. Each run makes these
 changes to the dev world:
@@ -101,6 +110,10 @@ their judges are in the class.
 mvn -q install -DskipTests
 mvn -pl app test -Dtest=ChainScenarioLiveIT -Dsurefire.failIfNoSpecifiedTests=false -Dscenario=patrol-base-before-dark [-Dscenario.runs=5]
 ```
+
+`-Dscenario=hold-base-through-the-night` holds the bases until dawn (about 15 minutes a run). Add
+`-Dlogging.level.io.github.jayessdeesea.minecraft.command.ai.SpringAiGeneral=DEBUG` to log every
+prompt the general sees and its reply.
 
 Add `-Dminecraft.general.chat-model=anthropic` (with `ANTHROPIC_API_KEY`) to run the general on a
 frontier model.

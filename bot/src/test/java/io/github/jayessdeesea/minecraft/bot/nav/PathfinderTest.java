@@ -44,6 +44,58 @@ class PathfinderTest {
         };
     }
 
+    /** Flat soil ground, raised {@code height} blocks for x of 2 and beyond - a bank, sand on it where {@code sandTop}. */
+    private static WorldView bank(int height, boolean sandTop) {
+        return new WorldView() {
+            private boolean ground(int x, int y) {
+                return y < GROUND || x >= 2 && y < GROUND + height;
+            }
+
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return ground(x, y) || sandTop && x >= 2 && y == GROUND + height;
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return ground(x, y);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    @Test
+    void aSoilBankTooHighToJumpHasAStepCutIntoIt() {
+        BlockPos foot = new BlockPos(1, GROUND, 0);
+        BlockPos step = new BlockPos(2, GROUND + 1, 0);
+
+        assertEquals(List.of(step), Pathfinder.stepCut(bank(2, false), foot, step), "one block out of a 2-high bank");
+        assertEquals(List.of(step, step.offset(0, 1, 0)), Pathfinder.stepCut(bank(3, false), foot, step),
+                "two out of a 3-high one: the step and the head room over it");
+        assertTrue(Pathfinder.find(bank(3, false), START, exactly(5, GROUND + 3, 0), 5000).reachesGoal());
+    }
+
+    @Test
+    void noStepIsCutWhereItWouldTunnelOrBringSandDown() {
+        BlockPos foot = new BlockPos(1, GROUND, 0);
+        BlockPos step = new BlockPos(2, GROUND + 1, 0);
+
+        assertEquals(List.of(), Pathfinder.stepCut(bank(4, false), foot, step), "a 4-high face is a tunnel, not a step");
+        assertEquals(List.of(), Pathfinder.stepCut(bank(2, true), foot, step), "sand isn't dug");
+        assertFalse(Pathfinder.find(bank(4, false), START, exactly(5, GROUND + 4, 0), 5000).reachesGoal());
+        assertFalse(Pathfinder.find(world((x, y, z) -> x >= 2 && y < GROUND + 2), START, exactly(5, GROUND + 2, 0), 5000).reachesGoal(),
+                "stone isn't dug");
+    }
+
     private static Goal exactly(int x, int y, int z) {
         return new Goal(x + 0.5, y, z + 0.5, 0.1, 0);
     }

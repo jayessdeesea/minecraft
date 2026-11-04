@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Against a fake server that answers as the real one does: it breaks a block only once its full
  * break time has passed, and says so - and resends the inventory after a swap - a tick later.
  */
-class DoorwayTest {
+class BreacherTest {
 
     private static final List<BlockPos> CELLS = List.of(new BlockPos(2, 64, 0), new BlockPos(2, 65, 0));
 
@@ -85,7 +85,7 @@ class DoorwayTest {
                 return null;
             });
 
-    private boolean run(Doorway doorway, int ticks) {
+    private boolean run(Breacher doorway, int ticks) {
         boolean open = false;
         for (int i = 0; i < ticks && !open; i++, tick++) {
             answers.forEach(Runnable::run);
@@ -97,7 +97,7 @@ class DoorwayTest {
 
     @Test
     void bareHandedItBreaksBothBlocksOfTheDoorway() {
-        Doorway doorway = new Doorway("Alice", session, inventory);
+        Breacher doorway = new Breacher("Alice", session, inventory);
 
         assertTrue(run(doorway, 1000));
         assertEquals(List.of("start " + CELLS.get(0), "finish " + CELLS.get(0), "start " + CELLS.get(1), "finish " + CELLS.get(1)), calls);
@@ -108,9 +108,9 @@ class DoorwayTest {
         int pickaxe = IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(ItemClass.PICKAXE)))
                 .findFirst().orElseThrow();
         inventory.setSlot(20, new int[]{pickaxe, 1});
-        Doorway doorway = new Doorway("Alice", session, inventory);
+        Breacher doorway = new Breacher("Alice", session, inventory);
 
-        assertTrue(run(doorway, 2 * (Doorway.PICKAXE_TICKS + 8)));
+        assertTrue(run(doorway, 2 * (Breacher.PICKAXE_TICKS + 8)));
         assertEquals(List.of("swap 20 to hotbar 8", "select 8"), calls.subList(0, 2));
         doorway.stop();
         assertEquals("select 0", calls.getLast(), "the weapon hand back");
@@ -119,11 +119,11 @@ class DoorwayTest {
     @Test
     void aBlockTheServerWontBreakFailsLoudlyThenPausesBeforeTryingAgain() {
         unbreakable = true;
-        Doorway doorway = new Doorway("Alice", session, inventory);
+        Breacher doorway = new Breacher("Alice", session, inventory);
 
-        assertFalse(run(doorway, Doorway.HAND_TICKS + Doorway.ANSWER_TICKS + 5));
+        assertFalse(run(doorway, Breacher.HAND_TICKS + Breacher.ANSWER_TICKS + 5));
         assertEquals(List.of("start " + CELLS.get(0), "finish " + CELLS.get(0)), calls);
-        assertFalse(run(doorway, Doorway.COOLDOWN_TICKS - 10));
+        assertFalse(run(doorway, Breacher.COOLDOWN_TICKS - 10));
         assertEquals(2, calls.size(), "pausing, not hammering at it");
     }
 }

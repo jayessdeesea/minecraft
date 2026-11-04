@@ -33,6 +33,8 @@ import java.util.TreeMap;
  *       itself.
  *   <li>{@code W} workstation - solid, and opened to craft or smelt: {@code crafting_table},
  *       {@code furnace}. Named, so a soldier knows its camp's table from any other block.
+ *   <li>{@code D} soil - solid, and dug by hand in about a second: the dirt family, clay, moss and
+ *       snow blocks, hardness 0.65 or less. Not sand or gravel: they fall into what's dug under them.
  * </ul>
  * The type lists are from well-established vanilla mechanics, not guessed. Deliberately not
  * exhaustive - an unlisted type stays SOLID, the same "unknown = blocked" policy as unloaded chunks.
@@ -54,6 +56,12 @@ public class GenerateBlockClasses {
             "light", "structure_void", "end_portal", "end_gateway", "nether_portal",
             "leaf_litter", "firefly_bush", "flower_bed", "spore_blossom", "cactus_flower",
             "wither_rose", "eyeblossom", "trip_wire", "wall_sign", "wall_hanging_sign", "wall_banner"
+    );
+
+    /** Hardness at most 0.65 (a dirt path), none of them falling blocks. */
+    private static final Set<String> SOIL_BLOCKS = Set.of(
+            "dirt", "grass_block", "coarse_dirt", "podzol", "rooted_dirt", "mycelium", "farmland", "dirt_path",
+            "clay", "moss_block", "snow_block"
     );
 
     private static final Set<String> TALL_TYPES = Set.of("fence", "wall", "fence_gate");
@@ -99,6 +107,7 @@ public class GenerateBlockClasses {
                 char cls = blockName.endsWith("_log") && !"true".equals(state.path("properties").path("waterlogged").asText())
                         ? 'L' : blockName.equals("stone") ? 'Q'
                         : blockName.equals("crafting_table") || blockName.equals("furnace") ? 'W'
+                        : SOIL_BLOCKS.contains(blockName) && !"true".equals(state.path("properties").path("waterlogged").asText()) ? 'D'
                         : classify(type, state.path("properties"));
                 if (cls != 'S') {
                     classes.put(state.get("id").asInt(), cls + " " + blockName);
@@ -110,7 +119,7 @@ public class GenerateBlockClasses {
         try (PrintWriter out = new PrintWriter(args[2])) {
             out.println("# Generated from the pinned server jar's `--reports` blocks.json by");
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
-            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation (all solid).");
+            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil (all solid).");
             out.println("# Every state NOT listed is solid (the safe default).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));
         }

@@ -11,16 +11,15 @@ command or two, reading the log. Three offline suites exist:
 - `SoldierScenarioTest`: terrain families, seeded.
 - `CombatScenarioTest`: simulated zombie, skeleton, creeper, and a pack.
 - `SquadLeaderScenarioIT`: the real squad leader model against those scenarios, as a pass rate.
+- `GeneralScenarioIT`: the real general model on fixed policy situations, as a pass rate.
 
-Nothing covers:
-- the general offline;
-- variation in biome, time of day, difficulty, squad size or number of squads.
+Nothing covers variation in biome, time of day, difficulty, squad size or number of squads.
 
 A regression in one of those shows up only if someone happens to run that case by hand.
 
 ## Done when
 The live tier has a harness (`app`'s `ChainScenarioLiveIT`, DEVELOPMENT.md § 2) and one scenario,
-`patrol-base-before-dark`. What's left is below; scenarios join the harness's list.
+`patrol-base-before-dark` and `hold-base-through-the-night`. What's left is below; scenarios join the harness's list.
 
 A named list of scenarios, each a fixed setup plus seeded variation, runs in two tiers:
 - **Offline, every build:** simulated world, scripted or faked model. Cheap and deterministic.

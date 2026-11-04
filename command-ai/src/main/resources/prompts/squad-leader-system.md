@@ -67,6 +67,8 @@ Each situation includes a <terrain> table: the ground around your point man, sam
 blocks. Columns are x (west to east), rows are z (north at the top). Each cell is the ground
 height (y) there:
 - a number like 72: land your point man can walk to, at height 72;
+- a number with a ^, like 72^: land he can reach only by climbing - pillaring up on cobblestone
+  the squad carries, which it then no longer has for building. A walk is better when there is one;
 - a number with an x, like 72x: land he cannot reach from where he is (cliff, wall, water between);
 - ~~ : water or lava - soldiers don't swim;
 - ?? : unknown (not loaded yet).

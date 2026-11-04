@@ -66,10 +66,18 @@ class TerrainSurveyorTest {
 
     @Test
     void aPointManCarryingBlocksCanClimbTheWall() {
-        TerrainSurvey survey = TerrainSurveyor.survey(WORLD, new Position(0.5, GROUND, 0.5), true);
+        TerrainSurvey survey = TerrainSurveyor.survey(WORLD, new Position(0.5, GROUND, 0.5), 64);
 
         assertTrue(at(survey, 24, 0).reachable(), "pillar up beside the wall, over, and down the other side");
+        assertEquals(2, at(survey, 24, 0).climb(), "two steps up beside the 3-high wall, then a jump onto it");
+        assertEquals(0, at(survey, 8, 0).climb(), "a walk spends nothing");
         assertEquals(Ground.WATER, at(survey, -24, 0).ground(), "climbing doesn't make water land");
+    }
+
+    @Test
+    void aClimbNeedsTheBlocksForIt() {
+        assertFalse(at(TerrainSurveyor.survey(WORLD, new Position(0.5, GROUND, 0.5), 1), 24, 0).reachable(),
+                "one block doesn't climb a 3-high wall");
     }
 
     @Test

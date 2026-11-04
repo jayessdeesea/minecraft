@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * The whole chain of command - real general, real squad leaders, real soldiers - against the dev
@@ -52,29 +53,60 @@ class ChainScenarioLiveIT {
      * @param kit     console commands per soldier, {@code %s} for its name, once all have joined
      * @param time    the time of day to set before the mission is given
      * @param mission the operator's mission to the general
-     * @param judge   the verdict from what the app knows now
+     * @param judge   a fresh judge for each run, giving the verdict from what the app knows now
      * @param limit   wall-clock time before the run is judged failed
      */
-    record Scenario(String name, List<String> kit, long time, String mission, Function<Harness, Verdict> judge, Duration limit) {
+    record Scenario(String name, List<String> kit, long time, String mission, Supplier<Function<Harness, Verdict>> judge,
+                    Duration limit) {
+    }
+
+    /** The kit both patrol-base scenarios start with: enough cobblestone between four for a hut. */
+    private static final List<String> BASE_KIT = List.of("clear %s", "give %s cobblestone 16", "give %s bread 4");
+
+    /** How long a base may stand open or part-empty at night before the squad is judged to have left it. */
+    static final Duration NIGHT_GRACE = Duration.ofSeconds(30);
+
+    private static boolean everySquadSealedIn(Harness harness) {
+        return Roster.SQUADS.stream().allMatch(squad -> harness.runner.base(squad.name())
+                .filter(b -> b.allInside() && b.sealed()).isPresent());
     }
 
     static final Map<String, Scenario> SCENARIOS = java.util.stream.Stream.of(
-            new Scenario("patrol-base-before-dark",
-                    List.of("clear %s", "give %s cobblestone 16", "give %s bread 4"),
+            new Scenario("patrol-base-before-dark", BASE_KIT,
                     // About six minutes of daylight left: the hut is 40 blocks a squad.
                     6000,
                     "Each squad builds a patrol base on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z
                             + " and is sealed inside it before dark. Stay on the platform.",
                     // Judged when dark comes, not the moment both are in: a squad ordered out of its
                     // base before then hasn't met the mission.
-                    harness -> {
-                        if (harness.chain.time().filter(TimeOfDay::dark).isEmpty()) {
+                    () -> harness -> harness.chain.time().filter(TimeOfDay::dark).isEmpty() ? Verdict.PENDING
+                            : everySquadSealedIn(harness) ? Verdict.PASS : Verdict.FAIL,
+                    Duration.ofMinutes(10)),
+            new Scenario("hold-base-through-the-night", BASE_KIT, 6000,
+                    "Each squad builds a patrol base on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z
+                            + ", is sealed inside it before dark, and stays inside until dawn. Stay on the platform.",
+                    // Watched all night, judged at first light. A base can read open for a moment
+                    // while a soldier shifts inside it, so only an absence longer than the grace fails.
+                    () -> {
+                        boolean[] nightFell = {false};
+                        long[] openSince = {0};
+                        return harness -> {
+                            boolean dark = harness.chain.time().filter(TimeOfDay::dark).isPresent();
+                            if (!dark) {
+                                return nightFell[0] ? Verdict.PASS : Verdict.PENDING;
+                            }
+                            nightFell[0] = true;
+                            if (everySquadSealedIn(harness)) {
+                                openSince[0] = 0;
+                            } else if (openSince[0] == 0) {
+                                openSince[0] = System.nanoTime();
+                            } else if (System.nanoTime() - openSince[0] > NIGHT_GRACE.toNanos()) {
+                                return Verdict.FAIL;
+                            }
                             return Verdict.PENDING;
-                        }
-                        return Roster.SQUADS.stream().allMatch(squad -> harness.runner.base(squad.name())
-                                .filter(b -> b.allInside() && b.sealed()).isPresent()) ? Verdict.PASS : Verdict.FAIL;
+                        };
                     },
-                    Duration.ofMinutes(10)))
+                    Duration.ofMinutes(20)))
             .collect(java.util.stream.Collectors.toMap(Scenario::name, scenario -> scenario));
 
     /** The running app, as a judge sees it. */
@@ -124,9 +156,10 @@ class ChainScenarioLiveIT {
             awaitUntil(Duration.ofSeconds(30), "the new time of day", () -> harness.chain.time()
                     .filter(t -> Math.abs(t.ticks() - scenario.time()) < 400).isPresent());
             harness.chain.onOperatorMission("harness", scenario.mission());
+            Function<Harness, Verdict> judge = scenario.judge().get();
             long deadline = System.nanoTime() + scenario.limit().toNanos();
             while (System.nanoTime() < deadline) {
-                Verdict verdict = scenario.judge().apply(harness);
+                Verdict verdict = judge.apply(harness);
                 if (verdict != Verdict.PENDING) {
                     return verdict + " at time of day " + harness.chain.time().map(TimeOfDay::ticks).orElse(-1L) + ", " + bases(harness);
                 }

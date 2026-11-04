@@ -126,6 +126,15 @@ class SpringAiSquadLeaderTest {
     }
 
     @Test
+    void groundReachedOnlyByClimbingSaysWhatTheClimbCosts() {
+        TerrainSurvey climb = new TerrainSurvey(0, 0, 8, 0, List.of(new TerrainSurvey.Sample(0, 0, TerrainSurvey.Ground.LAND, 70, true, 6)));
+
+        assertTrue(SpringAiSquadLeader.describe(climb).contains("70^"));
+        assertTrue(SpringAiSquadLeader.describeObjectiveGround(climb, new Position(0, 70, 0))
+                .contains("The objective is on reachable land at height 70 (a climb: 6 cobblestone to pillar up)."));
+    }
+
+    @Test
     void objectiveGroundSaysWhenTheObjectiveIsBeyondTheSurvey() {
         assertTrue(SpringAiSquadLeader.describeObjectiveGround(TERRAIN, new Position(0, 64, -40))
                 .contains("outside the surveyed area, 32 blocks beyond its edge"));

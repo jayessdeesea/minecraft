@@ -34,22 +34,32 @@ import static org.junit.jupiter.api.Assertions.fail;
  * oracle checks that the soldier's bounded, re-planning, physics-driven execution delivers what
  * the planner says is possible, not that the planner itself is right.
  *
- * <p>Every case runs twice: on foot, and climbing - carrying cobblestone, so it can pillar up a
- * wall (the oracle plans pillar steps too, and each block the soldier places goes into the world).
+ * <p>Every case runs three ways ({@link Means}): on foot; climbing - carrying cobblestone, so it can
+ * pillar up a wall (the oracle plans pillar steps too, and each block the soldier places goes into
+ * the world); and digging - the ground is soil, so it can cut steps into a slope (each block it asks
+ * dug is taken out after soil's break time).
  *
  * <p>Each case is named {@code <family> seed=<n>} and is fully reproducible from that. Run more
  * seeds with {@code -Dscenario.seeds=200}, or one case with {@code -Dscenario.only=forest:7} (or
- * {@code forest:7:climbing}). A
+ * {@code forest:7:climbing}, {@code cliff:3:digging}). A
  * failing seed worth keeping becomes an entry in {@link #REGRESSIONS}.
  */
 class SoldierScenarioTest {
 
     private static final int DEFAULT_SEEDS = 20;
     private static final int ORACLE_BUDGET = 500_000;
+    /** Cobblestone the climbing run carries: a stack, enough for every cliff the generator makes. */
+    private static final int CARRIED_STONE = 64;
     private static final int UNREACHABLE_TICK_BUDGET = 2_000;
     private static final double HALF_WIDTH = 0.3;
     private static final double BODY_HEIGHT = 1.8;
     private static final double EPSILON = 1e-6;
+
+    /** Ticks a block of soil takes to dig by hand - the server's answer to a cut step. */
+    private static final int SOIL_DIG_TICKS = 25;
+
+    /** What the soldier can do to get somewhere a walk can't. */
+    enum Means { ON_FOOT, CLIMBING, DIGGING }
 
     /** Seeds that once failed, kept so they keep passing: "family:seed". */
     private static final List<String> REGRESSIONS = List.of();
@@ -59,51 +69,73 @@ class SoldierScenarioTest {
         String only = System.getProperty("scenario.only");
         if (only != null) {
             String[] parts = only.split(":");
-            return Stream.of(test(Scenario.generate(Terrain.valueOf(parts[0].toUpperCase()), Long.parseLong(parts[1])),
-                    parts.length > 2 && parts[2].equals("climbing")));
+            return Stream.of(test(Scenario.generate(Terrain.valueOf(parts[0].toUpperCase()), Long.parseLong(parts[1])), means(parts)));
         }
         int seeds = Integer.getInteger("scenario.seeds", DEFAULT_SEEDS);
         List<DynamicTest> tests = new ArrayList<>();
         for (Terrain terrain : Terrain.values()) {
             for (long seed = 1; seed <= seeds; seed++) {
-                tests.add(test(Scenario.generate(terrain, seed), false));
-                tests.add(test(Scenario.generate(terrain, seed), true));
+                for (Means means : Means.values()) {
+                    tests.add(test(Scenario.generate(terrain, seed), means));
+                }
             }
         }
         for (String regression : REGRESSIONS) {
             String[] parts = regression.split(":");
-            tests.add(test(Scenario.generate(Terrain.valueOf(parts[0].toUpperCase()), Long.parseLong(parts[1])),
-                    parts.length > 2 && parts[2].equals("climbing")));
+            tests.add(test(Scenario.generate(Terrain.valueOf(parts[0].toUpperCase()), Long.parseLong(parts[1])), means(parts)));
         }
         return tests.stream();
     }
 
-    private static DynamicTest test(Scenario scenario, boolean climbing) {
-        return DynamicTest.dynamicTest(scenario + (climbing ? " climbing" : ""), () -> run(scenario, climbing));
+    private static Means means(String[] parts) {
+        return parts.length > 2 ? Means.valueOf(parts[2].toUpperCase()) : Means.ON_FOOT;
+    }
+
+    private static DynamicTest test(Scenario scenario, Means means) {
+        return DynamicTest.dynamicTest(scenario + (means == Means.ON_FOOT ? "" : " " + means.name().toLowerCase()),
+                () -> run(scenario, means));
     }
 
     static void run(Scenario scenario) {
-        run(scenario, false);
+        run(scenario, Means.ON_FOOT);
     }
 
-    static void run(Scenario scenario, boolean climbing) {
+    static void run(Scenario scenario, Means means) {
+        boolean climbing = means == Means.CLIMBING;
         SyntheticWorld world = scenario.world();
+        if (means == Means.DIGGING) {
+            world.soilGround();
+        }
         BlockPos start = scenario.start();
         BlockPos objective = scenario.objective();
         Goal goal = new Goal(objective.x() + 0.5, objective.y(), objective.z() + 0.5, 1.5, 1);
-        Pathfinder.Result oracle = Pathfinder.find(world, start, goal, ORACLE_BUDGET, FallAllowance.NONE, climbing);
+        Pathfinder.Result oracle = Pathfinder.find(world, start, goal, ORACLE_BUDGET, FallAllowance.NONE, climbing ? CARRIED_STONE : 0);
         boolean reachable = oracle.reachesGoal();
-        int budget = reachable ? 400 + 15 * oracle.path().size() : UNREACHABLE_TICK_BUDGET;
+        int digs = 0;
+        BlockPos previous = start;
+        for (BlockPos step : oracle.path()) {
+            digs += Pathfinder.stepCut(world, previous, step).size();
+            previous = step;
+        }
+        int budget = reachable ? 400 + 15 * oracle.path().size() + 2 * SOIL_DIG_TICKS * digs : UNREACHABLE_TICK_BUDGET;
 
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
         if (climbing) {
-            soldier.reportKit(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 64));
+            soldier.reportKit(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, CARRIED_STONE));
         }
         soldier.receiveOrder(new Order.MoveTo(goal.x(), goal.y(), goal.z(), goal.horizontalTolerance(), goal.verticalTolerance(), Risk.LOW));
         Set<BlockPos> trail = new LinkedHashSet<>();
 
+        int digging = 0;
         for (int tick = 0; tick < budget; tick++) {
             soldier.tick(world);
+            List<BlockPos> cut = soldier.cutting();
+            if (cut.isEmpty()) {
+                digging = 0;
+            } else if (++digging >= SOIL_DIG_TICKS) {
+                world.dig(cut.getFirst().x(), cut.getFirst().y(), cut.getFirst().z()); // the server breaks it
+                digging = 0;
+            }
             soldier.takePlacement().ifPresent(cell -> world.solid(cell.x(), cell.y(), cell.z())); // the server takes it
             Position p = soldier.status().position();
             trail.add(BlockPos.containing(p.x(), p.y(), p.z()));
@@ -156,7 +188,7 @@ class SoldierScenarioTest {
                 + "\n  final " + soldier.status()
                 + "\n  last plan " + soldier.lastPlan()
                 + "\n  reproduce: -Dscenario.only=" + scenario.terrain().name().toLowerCase() + ":" + scenario.seed()
-                + " (add :climbing for the climbing run)"
+                + " (add :climbing or :digging for those runs)"
                 + "\n" + scenario.world().render(scenario.start(), scenario.objective(), trail);
     }
 }

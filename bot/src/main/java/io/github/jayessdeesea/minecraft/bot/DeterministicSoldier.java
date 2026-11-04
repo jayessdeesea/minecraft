@@ -38,7 +38,7 @@ public final class DeterministicSoldier implements Soldier {
     /** Blocks per tick - 4 blocks/s at 20Hz, just under vanilla walk speed (~4.3), not tuned.
      * Revisit if the server starts correcting reported positions (it would send Player Position). */
     private static final double STEP = 0.2;
-    /** Sprinting, vanilla's 5.6 blocks/s: used when the goal is more than {@link #SPRINT_DISTANCE} away. */
+    /** Sprinting, vanilla's 5.6 blocks/s: used when the goal is more than {@link #SPRINT_DISTANCE} away, by a soldier carrying rations. */
     static final double SPRINT_STEP = 0.28;
     /** Far enough from its goal that a soldier sprints to catch up - a moving principal, a distant slot. */
     static final double SPRINT_DISTANCE = 8;
@@ -253,6 +253,7 @@ public final class DeterministicSoldier implements Soldier {
         if (underFireTicks > 0) {
             underFireTicks--;
         }
+        cutting = List.of(); // set again below only while navigating onto a step being cut
         if (!threats.isEmpty()) {
             TrackedEntity nearest = threats.get(0);
             Position threat = nearest.position();
@@ -423,6 +424,21 @@ public final class DeterministicSoldier implements Soldier {
     private int failedPlans;
     private Position lastPartialPlanFrom;
 
+    /** Cutting a step counts as headway for this long - past it, a dig that isn't happening is being stuck. */
+    static final int CUT_PATIENCE_TICKS = 300;
+    /** The blocks to dig for the step the soldier is on - tick thread writes, its caller reads. */
+    private volatile List<BlockPos> cutting = List.of();
+    private int cuttingTicks;
+
+    /**
+     * The blocks the soldier needs dug to take its next step up a slope, in the order to dig them -
+     * empty unless it's stopped to cut one ({@link Pathfinder#stepCut}). Its caller digs them; the
+     * soldier waits, then jumps up once they're gone.
+     */
+    public List<BlockPos> cutting() {
+        return cutting;
+    }
+
     /** Observability only: the most recent route plan, e.g. "partial, 12 steps ending BlockPos[...]". */
     public String lastPlan() {
         return lastPlan;
@@ -466,12 +482,15 @@ public final class DeterministicSoldier implements Soldier {
 
         ticksSincePlan++;
         trackProgress();
+        if (cuttingTicks > 0 && cuttingTicks < CUT_PATIENCE_TICKS) {
+            stuckTicks = 0; // standing still to cut a step is headway
+        }
         boolean replan = route == null || routeIndex >= route.size()
                 || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS;
         if (replan && onGround) {
             boolean stuck = stuckTicks >= STUCK_TICKS;
             Pathfinder.Result plan = Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), goal,
-                    PLAN_BUDGET, fallAllowance(current), canPillar());
+                    PLAN_BUDGET, fallAllowance(current), pillarBlocks());
             route = plan.path();
             pillarFrom = null;
             assessPlan(world, plan, stuck);
@@ -487,6 +506,14 @@ public final class DeterministicSoldier implements Soldier {
 
         BlockPos waypoint = route.get(routeIndex);
         BlockPos here = BlockPos.containing(position.x(), position.y() + EPSILON, position.z());
+        List<BlockPos> cut = onGround ? toCut(world, here, waypoint) : List.of();
+        if (!cut.isEmpty()) {
+            cutting = cut;
+            cuttingTicks++;
+            report = new Report.Moving();
+            return;
+        }
+        cuttingTicks = 0;
         if (waypoint.x() == here.x() && waypoint.z() == here.z() && waypoint.y() == here.y() + 1
                 || pillarFrom != null && waypoint.equals(pillarFrom.offset(0, 1, 0))) {
             pillar(world, waypoint);
@@ -506,9 +533,23 @@ public final class DeterministicSoldier implements Soldier {
         }
         boolean far = Math.hypot(goal.x() - position.x(), goal.z() - position.z()) > SPRINT_DISTANCE;
         // Vanilla won't let a player sprint at food 6 or below; the server charges for every metre.
+        // The time saved is worth that food only while there's food to make it up: rations carried.
         Condition known = condition;
-        sprinting = far && (known == null || known.food() > SPRINT_FOOD_FLOOR);
+        Kit carried = kit;
+        sprinting = far && (known == null || known.food() > SPRINT_FOOD_FLOOR) && carried != null && carried.rations() > 0;
         stepToward(world, centreX, centreZ, sprinting ? SPRINT_STEP : STEP);
+    }
+
+    /** What's still in the way of a step up from {@code here} onto {@code next}: the cells {@link Pathfinder#stepCut} plans to dig. */
+    private static List<BlockPos> toCut(WorldView world, BlockPos here, BlockPos next) {
+        if (next.y() != here.y() + 1 || Math.abs(next.x() - here.x()) + Math.abs(next.z() - here.z()) != 1) {
+            return List.of();
+        }
+        List<BlockPos> solid = java.util.stream.Stream.of(next, next.offset(0, 1, 0), here.offset(0, 2, 0))
+                .filter(c -> world.isSolid(c.x(), c.y(), c.z())).toList();
+        // Only soil is ever dug: anything else put there since the plan - a wall, say - is left be,
+        // and the soldier re-plans round it once it's stuck.
+        return solid.stream().allMatch(c -> world.isSoil(c.x(), c.y(), c.z())) ? solid : List.of();
     }
 
     /** The cell a pillar step rises from, while one is under way. */
@@ -547,12 +588,12 @@ public final class DeterministicSoldier implements Soldier {
     }
 
     /**
-     * Whether a pillar step can be planned: the soldier carries cobblestone to stand on. Logs are
-     * kept for tools.
+     * How many pillar steps a route can be planned on: one per cobblestone carried. Logs are kept
+     * for tools.
      */
-    private boolean canPillar() {
+    private int pillarBlocks() {
         Kit carried = kit;
-        return carried != null && carried.stone() > 0;
+        return carried == null ? 0 : carried.stone();
     }
 
     /**

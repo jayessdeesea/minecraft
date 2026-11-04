@@ -118,7 +118,8 @@ one decision, so it divides the mission between them; its prompt says one squad 
 observe while another moves, and that a squad beside one in contact or weak brings it help.
 
 An order stands until changed, and changed for a reason. The general sees each squad's standing
-order and how it is going (for a patrol base, whether it is sealed with the squad inside), and for
+order and how it is going (for a patrol base: not laid out yet, how many blocks are still to place,
+or sealed with the squad inside), and for
 each squad either keeps it, exactly as given, or gives a new objective with the reason why, which
 is logged (`[General -> Bravo] changing the objective: ...`). A change with no reason is rejected
 and the squads keep their orders. A kept order isn't re-sent: the log says `holds`.
@@ -223,8 +224,9 @@ recomputed each squad cycle from where the principal is now:
 A soldier who respawns goes straight to its slot in the ring rather than linking up with the point
 man first (§6), and any soldier more than 8 blocks from its goal sprints, so the ring keeps up with
 a principal on the move. Sprinting is the game's, at the game's price: the soldier tells the
-server it's sprinting (Player Command), so the server charges the food it costs, and it doesn't
-sprint at food 6 or below, where vanilla won't let a player. The squad leader still chooses the interval and the risk. The soldiers find the principal by its
+server it's sprinting (Player Command), so the server charges the food it costs. It sprints only
+while it carries rations to make that food up, and never at food 6 or below, where vanilla won't
+let a player. The squad leader still chooses the interval and the risk. The soldiers find the principal by its
 offline-mode UUID among the entities they see; if none of them can see it, the squad holds the last
 known position. `!mission` ends the escort and hands the squad back to the general.
 
@@ -247,7 +249,9 @@ hostile within 16 blocks, or the squad in contact, pauses the job: windows close
 fights with what it has. Once clear, it picks up where it stopped. The exception is a soldier with
 no weapon standing at an open table: the sword is a click away, so it finishes it first. A fault,
 such as no tree in reach or an answer from the server that never comes, ends the attempt. Any
-half-crafted items go back in the inventory, and the soldier tries again a minute later.
+half-crafted items go back in the inventory, and the soldier tries again a minute later. A failed
+sword isn't reported as CANTCO: the check is the soldier's own, not its order, and the squad's
+LOGSTAT already shows it bare-handed. A failed pickaxe is, when the order is to quarry stone.
 
 ## 12. Gathering materials
 
@@ -315,7 +319,8 @@ An objective's task can be `PATROL_BASE`. `command.PatrolBase` lays out a hasty 
 squad: a 2x2 floor for up to four soldiers (3x3 for up to nine), walls two high, and a roof over
 walls and floor, so each roof block has a neighbour to go against. That's 40 blocks for a squad of
 four. The site is the nearest level footing within 8 blocks of the general's point: every floor
-cell standable at one height, never rubble or a slope, since the model's point is a guess. A
+cell standable at one height, never rubble or a slope, since the model's point is a guess - and a
+block clear of any other squad's hut, since the general may send two squads to one point. A
 re-issued objective within 8 blocks keeps the site already laid out, so the outline doesn't move
 under the soldiers.
 
@@ -324,8 +329,9 @@ Each soldier goes to its own floor cell. Once all are inside, each builds from w
 solid neighbour's face and checked against the server's block updates; a cell that won't take a
 block after three tries is skipped; after the first miss the soldier digs the cell, since a flower
 or sapling there blocks a placement until it is broken. A soldier at it reports `Fortifying`, or CANTCO when it runs
-out of blocks. The general's LOGSTAT says whether the squad carries enough for a base, so the
-model never has to add up the numbers itself.
+out of blocks. The general's LOGSTAT says whether the squad carries enough for the base it still
+has to build - a whole one, what's left of one under way, or nothing once it's built - so the model
+never has to add up the numbers itself, nor read blocks spent on walls as a shortage.
 
 The standard is re-checked every second while the squad holds its base, not just once, since
 anything can break a wall after it's built (`PatrolBase.Plan.breaches`). A flood fill from the
@@ -357,12 +363,18 @@ anything else when it comes back. The others wait inside, since building starts
 only once all are in, and a bare-handed one may make its sword meanwhile. Once the base is sealed
 and dark, a soldier inside with a torch puts it down where it stands.
 
+A squad sealed in with no torch - after a restart, or after its torchbearer's run failed - lights
+the base the same way. A soldier who carries the makings cuts a doorway toward the workshop spot
+and goes out; the doorway stays off the build list until a torch is back inside, then is rebuilt
+and the torch goes down. A table and furnace left from the first run are used again if they're in
+reach.
+
 The log reports "SEALED and LIT", or "UNLIT at" with the dark cells. While the squad holds the
 base, its walls and roof are off-limits to digging: a soldier short of wood looks for a tree, not
 the log wall it shelters behind.
 
 When the general moves the squad on, the soldier inside nearest the doorway breaks a doorway out
-(`bot.supply.Doorway`): two wall blocks, on the side facing the general's new objective, preferring
+(`bot.supply.Breacher`): two wall blocks, on the side facing the general's new objective, preferring
 a side whose outside cell has room to stand and ground under it (`PatrolBase.Plan.doorway`). It
 uses a pickaxe if it has one (1.5 seconds a block), bare hands if not (10). A fight only pauses the
 base, so the squad doesn't cut its way out mid-contact. A squad needn't remember its base to leave

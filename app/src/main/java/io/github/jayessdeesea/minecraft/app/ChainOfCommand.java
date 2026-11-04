@@ -63,11 +63,12 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
 
     /**
      * One squad's SITREP for a cycle: its soldiers, its terrain (surveyed only if its leader
-     * decides), its principal, and what it can see to gather (surveyed only if the general decides).
+     * decides), its principal, what it can see to gather (surveyed only if the general decides), and
+     * how its patrol base stands.
      */
     public record Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain,
                          Optional<Position> principalAt, Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources,
-                         boolean holdingBase) {
+                         boolean holdingBase, java.util.OptionalInt baseBlocksLeft) {
     }
 
     private final General general;
@@ -217,7 +218,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                 long started = System.currentTimeMillis();
                 List<SquadStatus> statuses = sitreps.stream().map(s -> new SquadStatus(s.squad(),
                         squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
-                        s.holdingBase())).toList();
+                        s.holdingBase(), s.baseBlocksLeft())).toList();
                 List<Objective> objectives = general.decide(statuses);
                 if (missionVersion.get() != missionAsked) {
                     LOG.info("[General] discarding a decision made under superseded orders");

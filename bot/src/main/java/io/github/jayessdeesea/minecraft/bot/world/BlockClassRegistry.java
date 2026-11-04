@@ -28,6 +28,8 @@ final class BlockClassRegistry {
         LOG,
         /** Plain stone: solid like {@link #SOLID}, and quarried with a pickaxe for cobblestone. */
         STONE,
+        /** Dirt, grass, clay and the like: solid like {@link #SOLID}, and dug by hand in about a second. */
+        SOIL,
         /** A crafting table or furnace: solid like {@link #SOLID}, and opened to craft or smelt. */
         WORKSTATION,
         /** Collision 1.5 blocks high (fences, walls, closed gates): blocks the cell above too. */
@@ -87,6 +89,7 @@ final class BlockClassRegistry {
                         case "H" -> BlockClass.HAZARD;
                         case "L" -> BlockClass.LOG;
                         case "Q" -> BlockClass.STONE;
+                        case "D" -> BlockClass.SOIL;
                         case "W" -> {
                             WORKSTATIONS.put(stateId, Workstation.valueOf(fields[2].toUpperCase(java.util.Locale.ROOT)));
                             yield BlockClass.WORKSTATION;
