@@ -168,7 +168,7 @@ public final class Woodcraft {
                 return;
             }
             LOG.info("{} goes to chop wood for {} - {} logs short - at {}", name, tools, logs, next.get().block());
-            digger = new Digger(session, inventory, claims, next.get());
+            digger = new Digger(name, session, inventory, claims, next.get());
         }
         switch (digger.tick(soldier, world)) {
             case Digger.Progress.Working working -> {

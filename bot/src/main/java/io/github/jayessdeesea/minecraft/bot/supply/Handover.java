@@ -1,5 +1,9 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
+import io.github.jayessdeesea.minecraft.bot.script.Script;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Guard;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -8,14 +12,20 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
  * One soldier handing logs to a squadmate - cross-leveling (docs/military-doctrine.md §13): walk up
- * to it, face it, throw the logs across one at a time, then step back so the receiver, not the
+ * to it, face it, throw the logs across a slot at a time, then step back so the receiver, not the
  * giver, picks them up once the server lets anyone (two seconds after the throw). Who gives what to
- * whom is {@code command.CrossLevel}'s; this only carries it out. Driven by the soldier's tick, like
- * {@link Depositor}.
+ * whom is {@code command.CrossLevel}'s; this only carries it out.
+ *
+ * <p>An expect script (AGENTS.md § Behavior modeling): a throw is confirmed by the server's resent
+ * inventory showing the logs gone, so the next slot is thrown from counts the server has answered
+ * for. A delivery withdrawn before the first throw (the squad in contact, the receiver no longer
+ * short) interrupts it; once logs are on the ground the giver finishes stepping back. Driven by the
+ * soldier's tick.
  */
 public final class Handover {
 
@@ -23,11 +33,15 @@ public final class Handover {
 
     /** Close enough to throw: a thrown item flies about two and a half blocks before it lands. */
     static final double THROW_DISTANCE = 2.5;
+    /** Where the giver stands to throw. */
+    static final double STAND_OFF = 2;
     /** How far the giver backs off after throwing - out of its own pickup reach of what it threw. */
     static final double BACK_OFF = 3;
-    static final int BACK_OFF_TICKS = 60;
+    /** A thrown item's pickup delay (40 ticks), with a margin for the receiver to walk over it. */
+    static final int PICKUP_DELAY_TICKS = 60;
     static final int WALK_TIMEOUT_TICKS = 600;
-    static final int SETTLE_TICKS = 5;
+    /** For the server to resend the inventory after a throw. */
+    static final int ANSWER_TICKS = 40;
     /**
      * Before giving again: long enough for the receiver to pick the logs up and stop asking for
      * them, so one shortfall isn't covered twice.
@@ -38,21 +52,25 @@ public final class Handover {
     public record Delivery(String receiver, Position at, int logs) {
     }
 
-    private enum State { IDLE, WALKING, THROWING, BACKING_OFF }
+    private enum Phase { WALKING, THROWING, BACKING_OFF }
 
     private final String name;
     private final PlaySession session;
     private final Inventory inventory;
 
-    private State state = State.IDLE;
-    private int ticksInState;
+    private Script script;
+    private Phase phase;
     private int cooldown;
     private String receiver;
     private Position receiverAt;
     private Position soldierAt;
+    private Optional<Delivery> offered = Optional.empty();
     private int logs;
     private int remaining;
     private Position backTo;
+    private int sinceThrow;
+    /** Logs the giver kept, once the throws are answered for. */
+    private int kept;
 
     public Handover(String name, PlaySession session, Inventory inventory) {
         this.name = name;
@@ -61,7 +79,7 @@ public final class Handover {
     }
 
     public synchronized boolean active() {
-        return state != State.IDLE;
+        return script != null;
     }
 
     /** What the soldier is doing, for its SITREP, while {@link #active}. */
@@ -74,16 +92,15 @@ public final class Handover {
      * past someone standing right beside it - then nowhere while it throws, then back off.
      */
     public synchronized Optional<Position> standAt() {
-        return switch (state) {
-            case WALKING -> Optional.of(awayFromReceiver(STAND_OFF));
-            case THROWING -> Optional.of(soldierAt);
-            case BACKING_OFF -> Optional.of(backTo);
-            case IDLE -> Optional.empty();
-        };
+        if (script == null) {
+            return Optional.empty();
+        }
+        return Optional.of(switch (phase) {
+            case WALKING -> awayFromReceiver(STAND_OFF);
+            case THROWING -> soldierAt;
+            case BACKING_OFF -> backTo;
+        });
     }
-
-    /** Where the giver stands to throw. */
-    static final double STAND_OFF = 2;
 
     /** The point {@code distance} from the receiver, on the giver's side of it. */
     private Position awayFromReceiver(double distance) {
@@ -98,90 +115,96 @@ public final class Handover {
     }
 
     /**
-     * Each tick: starts {@code delivery} when there is one, and advances one under way; a delivery
-     * withdrawn before the throw (the squad in contact, the receiver no longer short) is dropped.
+     * Each tick: starts {@code delivery} when there is one, and advances one under way.
      *
      * @return where to face this tick - the receiver, while throwing
      */
     public synchronized Optional<Position> tick(Position soldier, Optional<Delivery> delivery) {
-        ticksInState++;
         if (cooldown > 0) {
             cooldown--;
         }
         soldierAt = soldier;
-        switch (state) {
-            case IDLE -> {
-                if (delivery.isPresent() && cooldown == 0) {
-                    receiver = delivery.get().receiver();
-                    receiverAt = delivery.get().at();
-                    logs = delivery.get().logs();
-                    remaining = logs;
-                    LOG.info("{} takes {} logs over to {}", name, remaining, receiver);
-                    enter(State.WALKING);
-                }
+        offered = delivery;
+        sinceThrow++;
+        if (script == null) {
+            if (delivery.isEmpty() || cooldown > 0) {
+                return Optional.empty();
             }
-            case WALKING -> {
-                if (delivery.isEmpty() || !delivery.get().receiver().equals(receiver)) {
-                    finish();
-                } else {
-                    receiverAt = delivery.get().at();
-                    if (horizontalDistance(soldier, receiverAt) <= THROW_DISTANCE) {
-                        enter(State.THROWING);
-                    } else if (ticksInState > WALK_TIMEOUT_TICKS) {
-                        LOG.warn("{} couldn't reach {} to hand over logs", name, receiver);
-                        finish();
-                    }
-                }
+            start(delivery.get());
+        }
+        delivery.filter(d -> d.receiver().equals(receiver)).ifPresent(d -> receiverAt = d.at());
+        Script.Status status = script.tick();
+        Optional<Position> facing = phase == Phase.THROWING ? Optional.of(receiverAt) : Optional.empty();
+        switch (status) {
+            case Script.Status.Running _ -> {
             }
-            case THROWING -> {
-                delivery.filter(d -> d.receiver().equals(receiver)).ifPresent(d -> receiverAt = d.at());
-                if (ticksInState < SETTLE_TICKS) {
-                    return Optional.of(receiverAt); // turn first: a throw goes the way the soldier faces
-                }
-                int slot = inventory.slotOf(ItemClass.LOG);
-                if (slot < 0) {
-                    LOG.warn("{} ran out of logs with {} still to give {}", name, remaining, receiver);
-                    backOff();
-                    return Optional.of(receiverAt);
-                }
-                // One slot per settle: the next slot's count is only right once the server has
-                // answered for this one.
-                int throwing = Math.min(remaining, inventory.countAt(slot));
-                for (int i = 0; i < throwing; i++) {
-                    session.throwOne(0, 0, slot);
-                }
-                remaining -= throwing;
-                if (remaining > 0) {
-                    enter(State.THROWING);
-                } else {
-                    LOG.info("{} handed the logs to {}", name, receiver);
-                    backOff();
-                }
-                return Optional.of(receiverAt);
+            case Script.Status.Done _ -> {
+                LOG.info("{} handed {} logs to {}", name, logs, receiver);
+                finish();
             }
-            case BACKING_OFF -> {
-                if (ticksInState >= BACK_OFF_TICKS) {
-                    finish();
-                }
+            case Script.Status.Interrupted _ -> finish();
+            case Script.Status.Failed failed -> {
+                LOG.warn("{} couldn't hand logs to {}: {}: {}", name, receiver, failed.step(), failed.reason());
+                finish();
             }
         }
-        return Optional.empty();
+        return facing;
+    }
+
+    private void start(Delivery delivery) {
+        receiver = delivery.receiver();
+        receiverAt = delivery.at();
+        logs = delivery.logs();
+        remaining = logs;
+        phase = Phase.WALKING;
+        LOG.info("{} takes {} logs over to {}", name, remaining, receiver);
+        script = new Script(name, List.of(
+                new Step("walk up to " + receiver, () -> phase = Phase.WALKING,
+                        new Expect("within a throw of " + receiver, () -> horizontalDistance(soldierAt, receiverAt) <= THROW_DISTANCE),
+                        WALK_TIMEOUT_TICKS),
+                // Facing goes out with this tick's position report, ahead of the first throw: a
+                // throw goes the way the server thinks the soldier faces.
+                new Step("face " + receiver, () -> phase = Phase.THROWING, new Expect("facing " + receiver, () -> true), 1),
+                Step.untilEach("throw the logs", () -> remaining == 0, this::throwSlot, ANSWER_TICKS),
+                // Done when the receiver stops asking - it has them - not when the giver gets clear:
+                // inside a hut there may be nowhere clear to go.
+                new Step("back off", this::backOff,
+                        new Expect(receiver + " to pick the logs up", () -> {
+                            if (inventory.count(ItemClass.LOG) > kept) {
+                                throw new IllegalStateException("picked its own logs back up");
+                            }
+                            return sinceThrow >= PICKUP_DELAY_TICKS && offered.filter(d -> d.receiver().equals(receiver)).isEmpty();
+                        }), PICKUP_DELAY_TICKS + WALK_TIMEOUT_TICKS)),
+                List.of(new Guard("the delivery is off", () -> remaining < logs
+                        || offered.filter(d -> d.receiver().equals(receiver)).isPresent())));
+    }
+
+    /** Throws the first slot of logs, as many as are still to give; confirmed by the server's count. */
+    private Expect throwSlot() {
+        int slot = inventory.slotOf(ItemClass.LOG);
+        if (slot < 0) {
+            throw new IllegalStateException("out of logs with " + remaining + " still to give");
+        }
+        int before = inventory.count(ItemClass.LOG);
+        int throwing = Math.min(remaining, inventory.countAt(slot));
+        for (int i = 0; i < throwing; i++) {
+            session.throwOne(0, 0, slot); // stale state: the server resends the inventory
+        }
+        remaining -= throwing;
+        sinceThrow = 0;
+        return new Expect(throwing + " logs gone from slot " + slot, () -> inventory.count(ItemClass.LOG) <= before - throwing);
     }
 
     private void backOff() {
+        phase = Phase.BACKING_OFF;
+        kept = inventory.count(ItemClass.LOG);
         backTo = awayFromReceiver(BACK_OFF + horizontalDistance(soldierAt, receiverAt));
-        enter(State.BACKING_OFF);
     }
 
     private void finish() {
         receiver = null;
+        script = null;
         cooldown = COOLDOWN_TICKS;
-        enter(State.IDLE);
-    }
-
-    private void enter(State next) {
-        state = next;
-        ticksInState = 0;
     }
 
     private static double horizontalDistance(Position a, Position b) {

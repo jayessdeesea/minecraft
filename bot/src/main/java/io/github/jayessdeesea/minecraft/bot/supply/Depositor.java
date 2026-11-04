@@ -1,212 +1,153 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
+import io.github.jayessdeesea.minecraft.bot.script.Script;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Guard;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Stockpile;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
-import io.github.jayessdeesea.minecraft.protocol.ItemSlot;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
  * One soldier carrying gathered materials to the stockpile - the supply point's chest
  * (docs/military-doctrine.md §12): walk to it, open it, shift-click in the material it has a full
  * load of, close it. Only that: a soldier quarrying stone keeps the logs it carries, because its
- * wooden pickaxe wears out in 59 blocks and the next one is made from them. What the chest holds once it's done is reported ({@code stockpileSeen}), so the chain of
- * command knows the stockpile without anyone counting it by hand. Driven like {@link SupplyRun}, by
- * the soldier's tick and its connection's container updates; synchronized for the same reason.
+ * wooden pickaxe wears out in 59 blocks and the next one is made from them. What the chest holds
+ * once it's done is reported ({@code stockpileSeen}), so the chain of command knows the stockpile
+ * without anyone counting it by hand. Driven like {@link SupplyRun}, by the soldier's tick and its
+ * connection's container updates; synchronized for the same reason.
  *
- * <p>The chest's window shows the soldier's own inventory after the chest's slots; its changes
- * arrive only there while the chest is open, and are applied to {@link Inventory} as they come.
+ * <p>An expect script (AGENTS.md § Behavior modeling): the chest is open when its contents arrive,
+ * and the load is in when the inventory, as the chest's window shows it, holds none of it. A chest
+ * too full to take it all fails the run loudly. A trip that stops being wanted on the way - before
+ * the chest is open - is interrupted.
  */
 public final class Depositor {
 
     private static final Logger LOG = LogManager.getLogger(Depositor.class);
 
     static final int WALK_TIMEOUT_TICKS = 600;
-    static final int OPEN_TIMEOUT_TICKS = 40;
-    static final int SETTLE_TICKS = 10;
     static final int COOLDOWN_TICKS = 200;
-    /** Menu registry IDs 0-5 are generic_9x1 to generic_9x6. */
-    private static final int GENERIC_9X6 = 5;
-
-    private enum State { IDLE, WALKING, OPENING, SETTLING }
 
     private final String name;
-    private final PlaySession session;
     private final Inventory inventory;
+    private final ChestWindow chest;
     private final Consumer<Stockpile> stockpileSeen;
 
-    private State state = State.IDLE;
-    private int ticksInState;
+    private Script script;
     private int cooldown;
-    private Position chest;
-    private int containerId = -1;
-    private int containerSize;
-    private int[] chestItems = new int[0];
-    private int[] chestCounts = new int[0];
+    private Position at;
+    private Position soldierAt;
+    private boolean wanted;
+    private boolean walking;
+    private Set<ItemClass> load = Set.of();
 
     public Depositor(String name, PlaySession session, Inventory inventory, Consumer<Stockpile> stockpileSeen) {
         this.name = name;
-        this.session = session;
         this.inventory = inventory;
+        this.chest = new ChestWindow(session, inventory);
         this.stockpileSeen = stockpileSeen;
     }
 
     public synchronized boolean active() {
-        return state != State.IDLE;
+        return script != null;
     }
 
     /** Where the soldier should go while it carries its load in. */
     public synchronized Optional<Position> standAt() {
-        return state == State.WALKING ? Optional.of(chest) : Optional.empty();
+        return script != null && walking ? Optional.of(at) : Optional.empty();
     }
 
     /**
      * Each tick: starts a trip to {@code stockpile} when {@code wanted} (a full load, nothing near),
-     * and advances one under way. A trip that stops being wanted on the way is dropped.
+     * and advances one under way.
      */
     public synchronized void tick(Position soldier, Optional<Position> stockpile, boolean wanted) {
-        ticksInState++;
+        this.soldierAt = soldier;
+        this.wanted = wanted;
         if (cooldown > 0) {
             cooldown--;
         }
-        switch (state) {
-            case IDLE -> {
-                if (wanted && cooldown == 0 && stockpile.isPresent()) {
-                    chest = stockpile.get();
-                    LOG.info("{} carries a load to the stockpile at {} - {}", name, chest, inventory.summary());
-                    enter(State.WALKING);
-                }
+        if (script == null) {
+            if (!wanted || cooldown > 0 || stockpile.isEmpty()) {
+                return;
             }
-            case WALKING -> {
-                if (!wanted) {
-                    finish();
-                } else if (withinReach(soldier, chest)) {
-                    session.useBlock((int) Math.floor(chest.x()), (int) Math.floor(chest.y()), (int) Math.floor(chest.z()));
-                    enter(State.OPENING);
-                } else if (ticksInState > WALK_TIMEOUT_TICKS) {
-                    LOG.warn("{} couldn't reach the stockpile at {}", name, chest);
-                    finish();
-                }
+            at = stockpile.get();
+            LOG.info("{} carries a load to the stockpile at {} - {}", name, at, inventory.summary());
+            script = trip();
+        }
+        switch (script.tick()) {
+            case Script.Status.Running _ -> {
             }
-            case OPENING -> {
-                if (ticksInState > OPEN_TIMEOUT_TICKS) {
-                    LOG.warn("{}: the stockpile's chest didn't open", name);
-                    finish();
-                }
+            case Script.Status.Done _ -> {
+                Stockpile seen = new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE));
+                LOG.info("{} stockpiled its load - the chest holds {} logs, {} cobblestone", name, seen.logs(), seen.stone());
+                stockpileSeen.accept(seen);
+                finish();
             }
-            case SETTLING -> {
-                if (ticksInState >= SETTLE_TICKS) {
-                    session.closeContainer(containerId);
-                    Stockpile seen = tally();
-                    LOG.info("{} stockpiled its load - the chest holds {} logs, {} cobblestone", name, seen.logs(), seen.stone());
-                    stockpileSeen.accept(seen);
-                    finish();
-                }
+            case Script.Status.Interrupted _ -> finish();
+            case Script.Status.Failed failed -> {
+                LOG.warn("{} couldn't stockpile its load: {}: {}", name, failed.step(), failed.reason());
+                finish();
+            }
+        }
+    }
+
+    private Script trip() {
+        walking = true;
+        return new Script(name, List.of(
+                new Step("walk to the stockpile", () -> walking = true,
+                        new Expect("the chest in reach", () -> ChestWindow.withinReach(soldierAt, at)), WALK_TIMEOUT_TICKS),
+                new Step("open the chest", () -> {
+                    walking = false;
+                    chest.open(at);
+                }, new Expect("the chest's contents", chest::isOpen), ChestWindow.ANSWER_TICKS),
+                new Step("put the load in", this::deposit,
+                        new Expect("the load in the chest", () -> load.stream().allMatch(c -> inventory.count(c) == 0)),
+                        ChestWindow.ANSWER_TICKS)),
+                List.of(new Guard("the trip is no longer wanted", () -> wanted || !walking)));
+    }
+
+    /** Shift-clicks across every stack of the material there's a full load of. */
+    private void deposit() {
+        load = EnumSet.noneOf(ItemClass.class);
+        if (inventory.count(ItemClass.LOG) >= Gatherer.CARRY_LOGS) {
+            load.add(ItemClass.LOG);
+        }
+        if (inventory.count(ItemClass.COBBLESTONE) >= Gatherer.CARRY_STONE) {
+            load.add(ItemClass.COBBLESTONE);
+        }
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            Optional<ItemClass> itemClass = ItemClassRegistry.classOf(inventory.itemAt(slot));
+            if (itemClass.isPresent() && load.contains(itemClass.get())) {
+                chest.quickMove(chest.windowSlotOf(slot));
             }
         }
     }
 
     public synchronized void onContainer(ContainerUpdate update) {
-        switch (update) {
-            case ContainerUpdate.Opened(int id, int menuType) -> {
-                if (state != State.OPENING) {
-                    return;
-                }
-                if (menuType < 0 || menuType > GENERIC_9X6) {
-                    session.closeContainer(id);
-                    LOG.warn("{}: the stockpile opened menu type {}, not a chest", name, menuType);
-                    finish();
-                    return;
-                }
-                containerId = id;
-                containerSize = (menuType + 1) * 9;
-                chestItems = new int[containerSize];
-                chestCounts = new int[containerSize];
-            }
-            case ContainerUpdate.Contents(int id, int stateId, var slots, boolean complete) -> {
-                if (id != containerId) {
-                    return;
-                }
-                for (int slot = 0; slot < slots.size(); slot++) {
-                    apply(slot, slots.get(slot));
-                }
-                if (state == State.OPENING) {
-                    deposit(slots, stateId);
-                }
-            }
-            case ContainerUpdate.Slot(int id, int stateId, int slot, var item) -> {
-                if (id == containerId) {
-                    apply(slot, item);
-                }
-            }
-            case ContainerUpdate.Closed(int id) -> {
-                if (id == containerId && state == State.OPENING) {
-                    finish();
-                }
-            }
+        if (script != null) {
+            chest.onContainer(update);
         }
-    }
-
-    private void deposit(List<Optional<ItemSlot>> slots, int stateId) {
-        boolean logs = inventory.count(ItemClass.LOG) >= Gatherer.CARRY_LOGS;
-        boolean stone = inventory.count(ItemClass.COBBLESTONE) >= Gatherer.CARRY_STONE;
-        for (int slot = containerSize; slot < slots.size(); slot++) {
-            Optional<ItemClass> itemClass = slots.get(slot).flatMap(i -> ItemClassRegistry.classOf(i.itemId()));
-            if ((logs && itemClass.equals(Optional.of(ItemClass.LOG))) || (stone && itemClass.equals(Optional.of(ItemClass.COBBLESTONE)))) {
-                session.quickMove(containerId, stateId, slot);
-            }
-        }
-        enter(State.SETTLING);
-    }
-
-    /** One slot of the chest's window: the chest's own slots are tallied, the rest are the soldier's inventory. */
-    private void apply(int slot, Optional<ItemSlot> item) {
-        if (slot < containerSize) {
-            chestItems[slot] = item.map(ItemSlot::itemId).orElse(-1);
-            chestCounts[slot] = item.map(ItemSlot::count).orElse(0);
-        } else {
-            inventory.setWindowSlot(slot, containerSize, item.map(i -> new int[]{i.itemId(), i.count()}).orElse(null));
-        }
-    }
-
-    private Stockpile tally() {
-        int logs = 0;
-        int stone = 0;
-        for (int slot = 0; slot < containerSize; slot++) {
-            Optional<ItemClass> itemClass = ItemClassRegistry.classOf(chestItems[slot]);
-            if (itemClass.equals(Optional.of(ItemClass.LOG))) {
-                logs += chestCounts[slot];
-            } else if (itemClass.equals(Optional.of(ItemClass.COBBLESTONE))) {
-                stone += chestCounts[slot];
-            }
-        }
-        return new Stockpile(logs, stone);
     }
 
     private void finish() {
-        containerId = -1;
+        chest.close();
+        script = null;
+        walking = false;
+        load = Set.of();
         cooldown = COOLDOWN_TICKS;
-        enter(State.IDLE);
-    }
-
-    private void enter(State next) {
-        state = next;
-        ticksInState = 0;
-    }
-
-    private static boolean withinReach(Position soldier, Position chest) {
-        double dx = soldier.x() - (Math.floor(chest.x()) + 0.5);
-        double dy = soldier.y() - Math.floor(chest.y());
-        double dz = soldier.z() - (Math.floor(chest.z()) + 0.5);
-        return Math.sqrt(dx * dx + dy * dy + dz * dz) <= SupplyRun.REACH;
     }
 }

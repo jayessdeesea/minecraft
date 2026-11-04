@@ -150,6 +150,6 @@ public final class Gatherer {
             return;
         }
         exhausted = false;
-        digger = new Digger(session, inventory, claims, spot.get());
+        digger = new Digger(name, session, inventory, claims, spot.get());
     }
 }

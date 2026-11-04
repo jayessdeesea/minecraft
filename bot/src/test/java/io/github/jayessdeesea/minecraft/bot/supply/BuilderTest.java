@@ -44,10 +44,13 @@ class BuilderTest {
         }
     };
     private final List<String> calls = new ArrayList<>();
+    /** What the server sends next tick: it answers a placement or a swap a tick after it's asked. */
+    private final List<Runnable> answers = new ArrayList<>();
     /** Cells holding something not solid that a block can't replace until it's broken. */
     private final Set<BlockPos> flowers = new HashSet<>();
     /** Whether the server lets a placement land. */
     private boolean placementsLand = true;
+    private boolean swapsUnanswered;
     /** The soldier's inventory, which the fake server swaps items in as the real one would. */
     private final Inventory inventory = armedWithCobblestone();
     private final PlaySession session = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(),
@@ -58,15 +61,21 @@ class BuilderTest {
                         BlockPos placed = new BlockPos((int) args[0] + face.dx, (int) args[1] + face.dy, (int) args[2] + face.dz);
                         calls.add("place " + placed);
                         if (placementsLand && !flowers.contains(placed)) {
-                            solid.add(placed);
+                            answers.add(() -> solid.add(placed));
                         }
                     }
                     case "swapWithHotbar" -> {
                         int slot = (int) args[2];
                         int hotbar = Inventory.HOTBAR_FIRST + (int) args[3];
                         int[] moving = stack(inventory, slot);
-                        inventory.setSlot(slot, stack(inventory, hotbar));
-                        inventory.setSlot(hotbar, moving);
+                        int[] staying = stack(inventory, hotbar);
+                        answers.add(() -> {
+                            if (swapsUnanswered) {
+                                return;
+                            }
+                            inventory.setSlot(slot, staying);
+                            inventory.setSlot(hotbar, moving);
+                        });
                         calls.add("swap " + slot + " to hotbar " + args[3]);
                     }
                     case "selectHotbarSlot" -> calls.add("select " + args[0]);
@@ -95,6 +104,8 @@ class BuilderTest {
     private Builder.Progress run(Builder builder, Position soldier, List<BlockPos> plan, int ticks) {
         Builder.Progress progress = null;
         for (int i = 0; i < ticks; i++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
             progress = builder.tick(soldier, world, plan);
             if (!(progress instanceof Builder.Progress.Working)) {
                 return progress;
@@ -138,6 +149,18 @@ class BuilderTest {
 
         assertInstanceOf(Builder.Progress.Done.class, progress);
         assertEquals(List.of("swap 20 to hotbar 8", "select 8", "place " + cell, "dig " + cell, "place " + cell, "select 0"), calls);
+    }
+
+    @Test
+    void aSwapTheServerNeverAnswersStopsTheBuildingLoudly() {
+        swapsUnanswered = true;
+        Builder builder = new Builder("Alice", session, inventory);
+
+        Builder.Progress progress = run(builder, new Position(0.5, 64, 0.5), List.of(new BlockPos(2, 64, 0)), 100);
+
+        assertInstanceOf(Builder.Progress.Failed.class, progress);
+        assertTrue(((Builder.Progress.Failed) progress).why().contains("building material in hand"), progress.toString());
+        assertEquals(List.of("swap 20 to hotbar 8", "select 8", "select 0"), calls);
     }
 
     @Test

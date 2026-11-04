@@ -132,10 +132,13 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   - **Plan, then act.** Work out the whole job first, then batch it so each station is visited once
     (`bot.craft.CraftPlan`): 20 torches are one furnace load and one round of crafting, and a sword
     and a pickaxe come from one opening of the table. Use what is already standing within reach.
-  - **Tested against a fake server** that answers as the real one does (`FakeCraftingServer`),
-    including one that never answers.
+  - **Tested against a fake server** that answers as the real one does (`FakeCraftingServer`,
+    `FakeChestServer`), a tick late, including one that never answers.
+  - **Sending back to back is fine when the server applies in order.** Several clicks, or a swap,
+    select and place, can go out in one tick without waiting between them; one answer confirms
+    them all (`SupplyRun`, `Footing`).
 
-  Routines still on fixed delays: backlog/expect-scripts.md.
+  The arbiter that picks which routine runs: backlog/expect-scripts.md.
 - **Borrowed from the actor model's discipline, not its runtime.** An actor's single-threaded
   mailbox processing is *one* way to guarantee a unit of state is never touched by two threads at
   once; a per-tick loop that's the sole writer of its own Soldier's state is another. We get the

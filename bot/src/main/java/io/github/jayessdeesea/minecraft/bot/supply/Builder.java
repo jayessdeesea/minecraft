@@ -1,6 +1,9 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.script.Script;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
@@ -19,9 +22,14 @@ import java.util.Set;
 /**
  * One soldier building: filling a plan of cells with blocks it carries - cobblestone first, then
  * planks, then logs, which it would rather keep for tools. Each cell is placed against a solid
- * neighbour, from within reach and clear of the soldier's own body, and checked against the server's
- * block updates; a cell that won't take a block after a few tries is skipped. What to build is
- * decided elsewhere; this only lays it. Driven by the soldier's tick, like {@link Handover}.
+ * neighbour, from within reach and clear of the soldier's own body; a cell that won't take a block
+ * after a few tries is skipped. What to build is decided elsewhere; this only lays it. Driven by the
+ * soldier's tick, like {@link Handover}.
+ *
+ * <p>A loop of short expect scripts, one per cell (AGENTS.md § Behavior modeling): the material is
+ * in hand when the server's resent inventory says so, and a block is in when the server's block
+ * update says so. A placement with no block update by {@link #PLACE_TICKS} is a try that didn't
+ * land; a material swap that's never answered stops the building, loudly.
  *
  * <p>The material goes into a hotbar slot holding no weapon or tool, so the soldier stays armed;
  * the slot it held before is selected again when the building stops.
@@ -36,7 +44,13 @@ public final class Builder {
     static final double REACH = 4.0;
     static final double EYE_HEIGHT = 1.62;
     static final double HALF_WIDTH = 0.3;
-    static final int SETTLE_TICKS = 6;
+    /** For the server to resend the inventory after a swap. */
+    static final int ANSWER_TICKS = 40;
+    /**
+     * For a placement's block update: the server handles it on its next tick and sends the update
+     * the same tick, so a block not in after half a second didn't land.
+     */
+    static final int PLACE_TICKS = 10;
     static final int ATTEMPTS = 3;
 
     /** How a tick went. */
@@ -61,7 +75,8 @@ public final class Builder {
     private final Set<BlockPos> skipped = new HashSet<>();
     private BlockPos target;
     private int attempts;
-    private int ticksSinceAction = SETTLE_TICKS;
+    private Script script;
+    private WorldView world;
     private int previousHotbar = -1;
     private Position standAt;
     private Position lookAt;
@@ -102,11 +117,24 @@ public final class Builder {
     }
 
     private Progress tick(Position soldier, WorldView world, List<BlockPos> plan, boolean inPlace) {
-        ticksSinceAction++;
+        this.world = world;
         lookAt = null;
         done = false;
-        if (ticksSinceAction < SETTLE_TICKS) {
-            return new Progress.Working(); // the last swap or placement is still being answered
+        if (script != null) {
+            switch (script.tick()) {
+                case Script.Status.Running _, Script.Status.Interrupted _ -> {
+                    return new Progress.Working();
+                }
+                case Script.Status.Done _ -> script = null; // on to the next cell
+                case Script.Status.Failed(String step, String reason) -> {
+                    script = null;
+                    if (step.equals(MATERIAL_IN_HAND)) {
+                        stop();
+                        return new Progress.Failed("couldn't take a block in hand: " + reason);
+                    }
+                    // A try that didn't land: counted, and tried again next tick, up to ATTEMPTS.
+                }
+            }
         }
         if (target != null && solid(world, target)) {
             target = null;
@@ -145,36 +173,51 @@ public final class Builder {
             return new Progress.Working();
         }
         standAt = null;
-        int hand = Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot();
-        if (!MATERIALS.stream().anyMatch(c -> ItemClassRegistry.classOf(inventory.itemAt(hand)).equals(Optional.of(c)))) {
-            int hotbar = freeHotbarSlot();
-            if (previousHotbar < 0) {
-                previousHotbar = inventory.heldHotbarSlot();
-            }
-            if (material != Inventory.HOTBAR_FIRST + hotbar) {
-                session.swapWithHotbar(0, 0, material, hotbar);
-            }
-            session.selectHotbarSlot(hotbar);
-            inventory.selectHotbar(hotbar);
-            ticksSinceAction = 0;
-            return new Progress.Working();
-        }
-        BlockFace face = support(world, target).orElseThrow();
-        BlockPos against = target.offset(face.dx, face.dy, face.dz);
-        BlockFace toward = face.opposite();
-        // DeterministicSoldier.lookAt aims at chest height above the position it's given.
-        lookAt = new Position(against.x() + 0.5 + toward.dx * 0.5, against.y() + 0.5 + toward.dy * 0.5 - 1.2,
-                against.z() + 0.5 + toward.dz * 0.5);
-        if (attempts > 0) {
-            // A block that didn't land: something not solid but not replaceable either - a flower,
-            // a sapling - fills the cell. Those break at a touch; an empty cell ignores the dig.
-            session.startDigging(target.x(), target.y(), target.z());
-            session.finishDigging(target.x(), target.y(), target.z());
-        }
-        session.useBlockFace(against.x(), against.y(), against.z(), toward);
-        attempts++;
-        ticksSinceAction = 0;
+        script = place(target);
+        script.tick();
         return new Progress.Working();
+    }
+
+    private static final String MATERIAL_IN_HAND = "a block in hand";
+
+    /** Material in hand, then one try at putting a block in {@code cell}. */
+    private Script place(BlockPos cell) {
+        return new Script(name, List.of(
+                new Step(MATERIAL_IN_HAND, this::materialInHand, () -> {
+                    int material = MATERIALS.stream().mapToInt(inventory::slotOf).filter(slot -> slot >= 0).findFirst()
+                            .orElseThrow(() -> new IllegalStateException("no blocks to build with"));
+                    int hotbar = freeHotbarSlot();
+                    if (previousHotbar < 0) {
+                        previousHotbar = inventory.heldHotbarSlot();
+                    }
+                    if (material != Inventory.HOTBAR_FIRST + hotbar) {
+                        session.swapWithHotbar(0, 0, material, hotbar); // stale state: the server resends the inventory
+                    }
+                    session.selectHotbarSlot(hotbar);
+                    inventory.selectHotbar(hotbar);
+                }, new Expect("building material in hand", this::materialInHand), ANSWER_TICKS),
+                new Step("place a block at " + cell, () -> {
+                    BlockFace face = support(world, cell).orElseThrow(() -> new IllegalStateException("nothing to build against"));
+                    BlockPos against = cell.offset(face.dx, face.dy, face.dz);
+                    BlockFace toward = face.opposite();
+                    // DeterministicSoldier.lookAt aims at chest height above the position it's given.
+                    lookAt = new Position(against.x() + 0.5 + toward.dx * 0.5, against.y() + 0.5 + toward.dy * 0.5 - 1.2,
+                            against.z() + 0.5 + toward.dz * 0.5);
+                    if (attempts > 0) {
+                        // A block that didn't land: something not solid but not replaceable either - a
+                        // flower, a sapling - fills the cell. Those break at a touch; an empty cell
+                        // ignores the dig.
+                        session.startDigging(cell.x(), cell.y(), cell.z());
+                        session.finishDigging(cell.x(), cell.y(), cell.z());
+                    }
+                    session.useBlockFace(against.x(), against.y(), against.z(), toward);
+                    attempts++;
+                }, new Expect("the block at " + cell + " in", () -> solid(world, cell), PLACE_TICKS), PLACE_TICKS)));
+    }
+
+    private boolean materialInHand() {
+        Optional<ItemClass> held = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot()));
+        return held.isPresent() && MATERIALS.contains(held.get());
     }
 
     /** Tries again every cell given up on - the ground changed (a breach found), so a cell that wouldn't take a block may now. */
@@ -185,6 +228,7 @@ public final class Builder {
     /** Stops building: the weapon or tool held before goes back in hand. */
     public synchronized void stop() {
         standAt = null;
+        script = null;
         target = null;
         attempts = 0;
         if (previousHotbar >= 0) {

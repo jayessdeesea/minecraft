@@ -1,6 +1,9 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.script.Script;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
@@ -8,26 +11,31 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 /**
  * Digging out one block of a material: walk to a cell beside it, take the right thing in hand, dig
- * it for its break time, and wait for the drop to be picked up. The step {@link Woodcraft} and
- * {@link Gatherer} repeat; neither owns its timing. Ticked from the owning routine, which is
- * synchronized - this holds no lock of its own.
+ * it for its break time, and pick up what drops. The step {@link Woodcraft} and {@link Gatherer}
+ * repeat; neither owns its timing. Ticked from the owning routine, which is synchronized - this
+ * holds no lock of its own.
  *
- * <p>A dig is checked, not assumed: if the world model (kept current by block updates) still has
- * the block there afterwards, the dig failed. Soldiers working the same ground share a set of
- * {@code claims} - blocks and stand cells in use - so each picks a different one; a dig releases
- * its claims when it ends.
+ * <p>An expect script (AGENTS.md § Behavior modeling), one per block: the tool is in hand when the
+ * server's resent inventory says so, the block is broken when the server's block update says so,
+ * and the drop is in when the inventory's count of it rises. Soldiers working the same ground share
+ * a set of {@code claims} - blocks and stand cells in use - so each picks a different one; a dig
+ * releases its claims when it ends.
  */
 final class Digger {
 
     /** How far a soldier looks for something to dig. */
     static final int SEARCH_RADIUS = 16;
-    static final int PICKUP_TICKS = 20;
     static final int WALK_TIMEOUT_TICKS = 400;
+    /** For the server to answer: the inventory resent, a block update. */
+    static final int ANSWER_TICKS = 40;
+    /** A dropped block's pickup delay (10 ticks), with a margin for it to fall and the update to arrive. */
+    static final int PICKUP_TICKS = 40;
 
     /**
      * What to dig, and how. Break times are the server's: hardness 2 for a log, 1.5 for stone;
@@ -37,19 +45,22 @@ final class Digger {
      */
     enum Target {
         /** A log, bare-handed: a sword wears and digs no faster. Reached up to 3 blocks above the feet. */
-        LOG(70, 3, null),
+        LOG(70, 3, null, ItemClass.LOG),
         /** Plain stone, with a pickaxe - by hand it drops nothing. At feet or head height. */
-        STONE(35, 1, ItemClass.PICKAXE);
+        STONE(35, 1, ItemClass.PICKAXE, ItemClass.COBBLESTONE);
 
         final int digTicks;
         final int reachUp;
         /** What must be in hand, or null for an empty hand. */
         final ItemClass tool;
+        /** What it drops. */
+        final ItemClass drop;
 
-        Target(int digTicks, int reachUp, ItemClass tool) {
+        Target(int digTicks, int reachUp, ItemClass tool, ItemClass drop) {
             this.digTicks = digTicks;
             this.reachUp = reachUp;
             this.tool = tool;
+            this.drop = drop;
         }
 
         boolean at(WorldView world, BlockPos block) {
@@ -76,23 +87,47 @@ final class Digger {
         }
     }
 
-    private enum Step { WALKING, DIGGING, PICKING_UP }
-
     private final PlaySession session;
     private final Inventory inventory;
     private final Set<BlockPos> claims;
     private final Spot spot;
-    private Step step = Step.WALKING;
+    private final Script script;
+    private Position soldierAt;
+    private WorldView world;
     private int ticks;
+    private int digStarted;
+    private int dropsBefore;
 
     /** Starts a dig at {@code spot}, claiming its block and stand cell until {@link #release}. */
-    Digger(PlaySession session, Inventory inventory, Set<BlockPos> claims, Spot spot) {
+    Digger(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Spot spot) {
         this.session = session;
         this.inventory = inventory;
         this.claims = claims;
         this.spot = spot;
         claims.add(spot.block());
         claims.add(spot.stand());
+        Target target = spot.target();
+        BlockPos block = spot.block();
+        this.script = new Script(name, List.of(
+                new Step("walk to " + spot.stand(), () -> {
+                }, new Expect("standing beside the " + target, () -> {
+                    if (!target.at(world, block)) {
+                        throw new IllegalStateException("the " + target + " at " + block + " is gone");
+                    }
+                    return at(soldierAt, spot.stand());
+                }), WALK_TIMEOUT_TICKS),
+                new Step("take " + (target.tool == null ? "an empty hand" : target.tool) + " in hand", this::inHand, this::takeInHand,
+                        new Expect((target.tool == null ? "an empty hand" : target.tool) + " in hand", this::inHand), ANSWER_TICKS),
+                // The server times the dig itself: finishing early is refused, so wait out its break time.
+                new Step("dig the " + target + " at " + block, () -> {
+                    digStarted = ticks;
+                    dropsBefore = inventory.count(target.drop);
+                    session.startDigging(block.x(), block.y(), block.z());
+                }, new Expect("the break time to pass", () -> ticks - digStarted >= target.digTicks), target.digTicks + 1),
+                new Step("break the " + target, () -> session.finishDigging(block.x(), block.y(), block.z()),
+                        new Expect("the " + target + " at " + block + " broken", () -> !target.at(world, block)), ANSWER_TICKS),
+                new Step("pick up the " + target.drop, () -> {
+                }, new Expect("more " + target.drop + " carried", () -> inventory.count(target.drop) > dropsBefore), PICKUP_TICKS)));
     }
 
     /** Gives up this dig's claims - call once it's done, failed, or abandoned. */
@@ -111,52 +146,30 @@ final class Digger {
     }
 
     Progress tick(Position soldier, WorldView world) {
+        this.soldierAt = soldier;
+        this.world = world;
         ticks++;
-        BlockPos block = spot.block();
-        switch (step) {
-            case WALKING -> {
-                if (!spot.target().at(world, block)) {
-                    return new Progress.Failed("the " + spot.target() + " at " + block + " is gone");
-                }
-                if (at(soldier, spot.stand())) {
-                    if (!takeInHand(spot.target().tool)) {
-                        return new Progress.Failed("no " + spot.target().tool + " to dig " + spot.target() + " with");
-                    }
-                    session.startDigging(block.x(), block.y(), block.z());
-                    next(Step.DIGGING);
-                } else if (ticks > WALK_TIMEOUT_TICKS) {
-                    return new Progress.Failed("couldn't reach the " + spot.target() + " at " + block);
-                }
-            }
-            case DIGGING -> {
-                if (ticks >= spot.target().digTicks) {
-                    session.finishDigging(block.x(), block.y(), block.z());
-                    next(Step.PICKING_UP);
-                }
-            }
-            case PICKING_UP -> {
-                if (ticks >= PICKUP_TICKS) {
-                    return spot.target().at(world, block)
-                            ? new Progress.Failed("the " + spot.target() + " at " + block + " didn't break")
-                            : new Progress.Done();
-                }
-            }
-        }
-        return new Progress.Working();
+        return switch (script.tick()) {
+            case Script.Status.Running _ -> new Progress.Working();
+            case Script.Status.Done _ -> new Progress.Done();
+            case Script.Status.Failed(String step, String reason) -> new Progress.Failed(step + ": " + reason);
+            case Script.Status.Interrupted(String step, String guard) -> new Progress.Failed(step + ": " + guard);
+        };
+    }
+
+    private boolean inHand() {
+        Optional<ItemClass> held = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot()));
+        ItemClass tool = spot.target().tool;
+        return tool == null ? held.filter(c -> c == ItemClass.WEAPON).isEmpty() : held.equals(Optional.of(tool));
     }
 
     /**
-     * Holds {@code tool} from the hotbar (bringing one up from the main inventory if need be), or for
-     * no tool an empty hand - an empty hotbar slot, or failing that anything but a weapon. False if
-     * the tool isn't carried.
+     * Holds the target's tool from the hotbar (bringing one up from the main inventory if need be),
+     * or for no tool an empty hand - an empty hotbar slot, or failing that anything but a weapon.
      */
-    private boolean takeInHand(ItemClass tool) {
-        int held = inventory.heldHotbarSlot();
-        int heldItem = inventory.itemAt(Inventory.HOTBAR_FIRST + held);
+    private void takeInHand() {
+        ItemClass tool = spot.target().tool;
         if (tool == null) {
-            if (ItemClassRegistry.classOf(heldItem).filter(c -> c == ItemClass.WEAPON).isEmpty()) {
-                return true;
-            }
             int choice = -1;
             for (int slot = 0; slot < 9; slot++) {
                 int item = inventory.itemAt(Inventory.HOTBAR_FIRST + slot);
@@ -168,34 +181,26 @@ final class Digger {
                     choice = slot;
                 }
             }
-            if (choice >= 0) {
-                hold(choice);
+            if (choice < 0) {
+                throw new IllegalStateException("every hotbar slot holds a weapon");
             }
-            return true;
-        }
-        if (ItemClassRegistry.classOf(heldItem).filter(c -> c == tool).isPresent()) {
-            return true;
+            hold(choice);
+            return;
         }
         int slot = inventory.slotOf(tool);
         if (slot < 0) {
-            return false;
+            throw new IllegalStateException("no " + tool + " to dig " + spot.target() + " with");
         }
         if (slot >= Inventory.HOTBAR_FIRST) {
             hold(slot - Inventory.HOTBAR_FIRST);
         } else {
-            session.swapWithHotbar(0, 0, slot, held); // the server resends the inventory
+            session.swapWithHotbar(0, 0, slot, inventory.heldHotbarSlot()); // stale state: the server resends the inventory
         }
-        return true;
     }
 
     private void hold(int hotbarSlot) {
         session.selectHotbarSlot(hotbarSlot);
         inventory.selectHotbar(hotbarSlot);
-    }
-
-    private void next(Step next) {
-        step = next;
-        ticks = 0;
     }
 
     /**

@@ -1,5 +1,9 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
+import io.github.jayessdeesea.minecraft.bot.script.Script;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Guard;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
@@ -8,36 +12,40 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
  * One soldier eating (docs/military-doctrine.md §4, Class I): below the food level health
  * regenerates at, out of contact, with food in its pack, it takes the food in hand, eats it -
  * the server times the meal - and takes its weapon back. The food goes into a hotbar slot holding
- * no weapon or tool, as {@link Builder}'s blocks do, so the soldier stays armed. Driven by the
- * soldier's tick.
+ * no weapon or tool, as {@link Builder}'s blocks do, so the soldier stays armed.
+ *
+ * <p>An expect script (AGENTS.md § Behavior modeling): the food is in hand when the server's
+ * resent inventory says so, and eaten when its food level rises. Driven by the soldier's tick.
  */
 public final class Rations {
 
     private static final Logger LOG = LogManager.getLogger(Rations.class);
 
-    /** Ticks to hold the food: vanilla's 32-tick meal, with a margin for the server's own timing. */
-    static final int EAT_TICKS = 40;
-    static final int SETTLE_TICKS = 6;
-    /** Before trying again after a meal that didn't raise the food level. */
+    /** For the server to resend the inventory after a swap. */
+    static final int ANSWER_TICKS = 40;
+    /** For a meal to raise the food level: vanilla's 32-tick meal, with a margin for the server's own timing. */
+    static final int EAT_TICKS = 50;
+    /** Before trying again after a meal that failed. */
     static final int COOLDOWN_TICKS = 200;
-
-    private enum State { IDLE, TO_HAND, EATING }
 
     private final String name;
     private final PlaySession session;
     private final Inventory inventory;
 
-    private State state = State.IDLE;
-    private int ticksInState;
+    private Script script;
     private int cooldown;
     private int previousHotbar = -1;
-    private int foodBefore;
+    private int food;
+    private boolean free;
+    private float yaw;
+    private float pitch;
 
     public Rations(String name, PlaySession session, Inventory inventory) {
         this.name = name;
@@ -46,62 +54,66 @@ public final class Rations {
     }
 
     public synchronized boolean active() {
-        return state != State.IDLE;
+        return script != null;
     }
 
     /**
      * Each tick: starts a meal when {@code food} (the server's 0-20) is below the regeneration level
      * and the soldier is {@code free} to stop; advances one under way. A meal interrupted - the
-     * soldier no longer free - is abandoned and its weapon taken back.
+     * soldier no longer free - ends with the weapon back in hand and no backoff.
      */
     public synchronized void tick(int food, boolean free, float yaw, float pitch) {
-        ticksInState++;
+        this.food = food;
+        this.free = free;
+        this.yaw = yaw;
+        this.pitch = pitch;
         if (cooldown > 0) {
             cooldown--;
         }
-        if (state != State.IDLE && !free) {
-            finish(0);
-            return;
+        if (script == null) {
+            if (!free || cooldown > 0 || food >= Condition.REGENERATION_FOOD || inventory.slotOf(ItemClass.FOOD) < 0) {
+                return;
+            }
+            script = meal(food);
         }
-        switch (state) {
-            case IDLE -> {
-                int slot = inventory.slotOf(ItemClass.FOOD);
-                if (free && cooldown == 0 && food < Condition.REGENERATION_FOOD && slot >= 0) {
+        switch (script.tick()) {
+            case Script.Status.Running _ -> {
+            }
+            case Script.Status.Done _ -> {
+                LOG.info("{} ate - food now {}", name, this.food);
+                finish(0);
+            }
+            case Script.Status.Interrupted _ -> finish(0);
+            case Script.Status.Failed failed -> {
+                LOG.warn("{} couldn't eat: {}: {}", name, failed.step(), failed.reason());
+                finish(COOLDOWN_TICKS);
+            }
+        }
+    }
+
+    private Script meal(int foodBefore) {
+        previousHotbar = inventory.heldHotbarSlot();
+        return new Script(name, List.of(
+                new Step("take food in hand", this::foodInHand, () -> {
+                    int slot = inventory.slotOf(ItemClass.FOOD);
+                    if (slot < 0) {
+                        throw new IllegalStateException("no food in the pack - " + inventory.summary());
+                    }
                     int hotbar = spareHotbarSlot();
-                    previousHotbar = inventory.heldHotbarSlot();
                     if (slot != Inventory.HOTBAR_FIRST + hotbar) {
-                        session.swapWithHotbar(0, 0, slot, hotbar);
+                        session.swapWithHotbar(0, 0, slot, hotbar); // stale state: the server resends the inventory
                     }
                     session.selectHotbarSlot(hotbar);
                     inventory.selectHotbar(hotbar);
-                    foodBefore = food;
-                    enter(State.TO_HAND);
-                }
-            }
-            case TO_HAND -> {
-                if (ticksInState >= SETTLE_TICKS) {
-                    int held = inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
-                    if (!ItemClassRegistry.classOf(held).equals(Optional.of(ItemClass.FOOD))) {
-                        LOG.warn("{}: no food in hand to eat", name);
-                        finish(COOLDOWN_TICKS);
-                        return;
-                    }
-                    session.useItem(yaw, pitch);
-                    enter(State.EATING);
-                }
-            }
-            case EATING -> {
-                if (ticksInState >= EAT_TICKS) {
-                    if (food > foodBefore) {
-                        LOG.info("{} ate - food {} -> {}", name, foodBefore, food);
-                        finish(0);
-                    } else {
-                        LOG.warn("{} ate but food stayed at {}", name, food);
-                        finish(COOLDOWN_TICKS);
-                    }
-                }
-            }
-        }
+                }, new Expect("food in hand", this::foodInHand), ANSWER_TICKS),
+                new Step("eat", () -> session.useItem(yaw, pitch),
+                        new Expect("the food level to rise above " + foodBefore, () -> food > foodBefore), EAT_TICKS)),
+                List.of(new Guard("no longer free to stop", () -> free)));
+    }
+
+    private boolean foodInHand() {
+        int held = inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
+        return ItemClassRegistry.classOf(held).equals(Optional.of(ItemClass.FOOD));
     }
 
     /** A hotbar slot holding no weapon or tool - the last such - for the food. */
@@ -122,11 +134,6 @@ public final class Rations {
             previousHotbar = -1;
         }
         cooldown = cooldownTicks;
-        enter(State.IDLE);
-    }
-
-    private void enter(State next) {
-        state = next;
-        ticksInState = 0;
+        script = null;
     }
 }
