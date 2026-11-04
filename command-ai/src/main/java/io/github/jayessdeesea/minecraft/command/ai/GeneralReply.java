@@ -12,6 +12,10 @@ record GeneralReply(@JsonPropertyDescription("Exactly one objective per squad") 
 
     record ObjectiveReply(
             @JsonPropertyDescription("The squad's name, exactly as listed") String squad,
+            @JsonPropertyDescription("true to keep the squad's standing order exactly as it is - the fields below are then "
+                    + "ignored; false to give it a new objective") boolean keep,
+            @JsonPropertyDescription("Why the objective changes, when keep is false and the squad has a standing order; "
+                    + "empty when keeping it") String reason,
             @JsonPropertyDescription("The squad's task at the objective - this field, not the mission's wording, sets it: "
                     + "NONE; WOOD to chop logs around the objective; STONE to quarry it; PATROL_BASE to build a small "
                     + "roofed shelter at the objective and spend the night in it")

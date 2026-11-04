@@ -117,6 +117,12 @@ objective, formation, or interval against the standing mission. The general orde
 one decision, so it divides the mission between them; its prompt says one squad can hold or
 observe while another moves, and that a squad beside one in contact or weak brings it help.
 
+An order stands until changed, and changed for a reason. The general sees each squad's standing
+order and how it is going (for a patrol base, whether it is sealed with the squad inside), and for
+each squad either keeps it, exactly as given, or gives a new objective with the reason why, which
+is logged (`[General -> Bravo] changing the objective: ...`). A change with no reason is rejected
+and the squads keep their orders. A kept order isn't re-sent: the log says `holds`.
+
 ## 6. Replacements: rally point and link-up
 
 | Practice | Content | Source |

@@ -216,7 +216,8 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             try {
                 long started = System.currentTimeMillis();
                 List<SquadStatus> statuses = sitreps.stream().map(s -> new SquadStatus(s.squad(),
-                        squads.get(s.squad()).report(), s.soldiers(), s.resources().get())).toList();
+                        squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
+                        s.holdingBase())).toList();
                 List<Objective> objectives = general.decide(statuses);
                 if (missionVersion.get() != missionAsked) {
                     LOG.info("[General] discarding a decision made under superseded orders");
@@ -226,6 +227,10 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
                     Objective given = objectives.get(i);
+                    if (squads.get(name).objective().filter(given::equals).isPresent()) {
+                        LOG.info("[General -> {}] ({} ms) holds: {}", name, millis, given.mission());
+                        continue;
+                    }
                     LOG.info("[General -> {}] ({} ms) OPORD: {} at {}{}. Intent: {}", name, millis, given.mission(),
                             at(given.location()), task(given), given.intent());
                     transmit("[General -> " + name + "] OPORD: " + given.mission() + " at " + at(given.location())

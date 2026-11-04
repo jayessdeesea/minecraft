@@ -107,6 +107,7 @@ public final class SpringAiGeneral implements General {
                 .append("\n</supply_point>\n\n"));
         for (SquadStatus squad : squadStatuses) {
             prompt.append("<squad name=\"").append(squad.squadName()).append("\">\n")
+                    .append(describeStanding(squad)).append('\n')
                     .append("Squad leader reports: ").append(SpringAiSquadLeader.describe(squad.report())).append('\n');
             for (SoldierStatus soldier : squad.soldiers()) {
                 prompt.append("- ").append(soldier.name()).append(" at ").append(SpringAiSquadLeader.describe(soldier.position()))
@@ -118,6 +119,23 @@ public final class SpringAiGeneral implements General {
         }
         prompt.append("Give each squad its objective now.");
         return new PromptContext(prompt.toString());
+    }
+
+    /** The order the squad is carrying out, and - where it can be told - how far along it is. */
+    static String describeStanding(SquadStatus squad) {
+        if (squad.standing().isEmpty()) {
+            return "Standing order: none yet.";
+        }
+        Objective standing = squad.standing().get();
+        String task = standing.patrolBase() ? "PATROL_BASE" : standing.gather().map(Enum::name).orElse("NONE");
+        StringBuilder line = new StringBuilder("Standing order: ").append(task).append(" - ").append(standing.mission())
+                .append(" at ").append(SpringAiSquadLeader.describe(standing.location()))
+                .append(". Intent: ").append(standing.intent());
+        if (standing.patrolBase()) {
+            line.append(squad.holdingBase() ? " Status: the patrol base is built and sealed, the squad inside it."
+                    : " Status: the patrol base isn't finished, or not everyone is inside.");
+        }
+        return line.toString();
     }
 
     /** What the squad can see to gather, with distance and direction from its point man. */
@@ -198,6 +216,17 @@ public final class SpringAiGeneral implements General {
             GeneralReply.ObjectiveReply objective = bySquad.get(squad.squadName());
             if (objective == null) {
                 throw new IllegalStateException("no objective for squad " + squad.squadName() + ": " + reply);
+            }
+            if (objective.keep()) {
+                objectives.add(squad.standing().orElseThrow(() -> new IllegalStateException(
+                        "kept a standing order squad " + squad.squadName() + " doesn't have: " + reply)));
+                continue;
+            }
+            if (squad.standing().isPresent()) {
+                if (objective.reason() == null || objective.reason().isBlank()) {
+                    throw new IllegalStateException("changed squad " + squad.squadName() + "'s objective without a reason: " + reply);
+                }
+                LOG.info("[General -> {}] changing the objective: {}", squad.squadName(), objective.reason());
             }
             if (!Double.isFinite(objective.x()) || !Double.isFinite(objective.y()) || !Double.isFinite(objective.z())
                     || objective.y() < -64 || objective.y() > 320) {

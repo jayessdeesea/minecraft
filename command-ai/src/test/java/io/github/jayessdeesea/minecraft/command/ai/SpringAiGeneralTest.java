@@ -25,7 +25,47 @@ class SpringAiGeneralTest {
             new SoldierStatus("Bob", new Position(3, 64, 4), new Order.Idle(), new Report.Moving(), java.util.Optional.empty())));
 
     private static GeneralReply.ObjectiveReply objective(String squad) {
-        return new GeneralReply.ObjectiveReply(squad, GeneralReply.Task.NONE, "scout", 0, 64, -50, "find the village");
+        return new GeneralReply.ObjectiveReply(squad, false, "", GeneralReply.Task.NONE, "scout", 0, 64, -50, "find the village");
+    }
+
+    private static final io.github.jayessdeesea.minecraft.command.Objective BASE = new io.github.jayessdeesea.minecraft.command.Objective(
+            "Build a shelter", new Position(10, 64, 10), "safe until dawn", java.util.Optional.empty(), true);
+
+    /** Bravo, sealed in the patrol base it was ordered to build. */
+    private static final SquadStatus BRAVO_IN_BASE = new SquadStatus("Bravo", new Report.InPosition(), BRAVO.soldiers(), List.of(),
+            java.util.Optional.of(BASE), true);
+
+    @Test
+    void theGeneralSeesEachSquadsStandingOrderAndHowItsGoing() {
+        String prompt = SpringAiGeneral.buildContext("hold", java.util.Optional.empty(), java.util.Optional.empty(),
+                java.util.Optional.empty(), List.of(ALPHA, BRAVO_IN_BASE)).prompt();
+
+        assertTrue(prompt.contains("Standing order: none yet."), prompt);
+        assertTrue(prompt.contains("Standing order: PATROL_BASE - Build a shelter at (10, 64, 10). Intent: safe until dawn "
+                + "Status: the patrol base is built and sealed, the squad inside it."), prompt);
+    }
+
+    @Test
+    void keepingAnOrderKeepsItExactly() {
+        GeneralReply reply = new GeneralReply(List.of(
+                new GeneralReply.ObjectiveReply("Bravo", true, "", GeneralReply.Task.NONE, "wander", 99, 70, 99, "whatever")));
+
+        assertEquals(List.of(BASE), SpringAiGeneral.toObjectives(reply, List.of(BRAVO_IN_BASE)));
+    }
+
+    @Test
+    void changingAnOrderWithoutAReasonIsRejected() {
+        GeneralReply reply = new GeneralReply(List.of(objective("Bravo")));
+
+        assertThrows(IllegalStateException.class, () -> SpringAiGeneral.toObjectives(reply, List.of(BRAVO_IN_BASE)));
+    }
+
+    @Test
+    void keepingAnOrderThatWasNeverGivenIsRejected() {
+        GeneralReply reply = new GeneralReply(List.of(
+                new GeneralReply.ObjectiveReply("Bravo", true, "", GeneralReply.Task.NONE, "scout", 0, 64, 0, "look")));
+
+        assertThrows(IllegalStateException.class, () -> SpringAiGeneral.toObjectives(reply, List.of(BRAVO)));
     }
 
     @Test
@@ -40,7 +80,7 @@ class SpringAiGeneralTest {
         String prompt = SpringAiGeneral.buildContext("secure the village", java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty(), List.of(ALPHA, BRAVO)).prompt();
 
         assertTrue(prompt.contains("<mission>\nsecure the village\n</mission>"));
-        assertTrue(prompt.contains("<squad name=\"Alpha\">\nSquad leader reports: Cantco: ravine in the way"));
+        assertTrue(prompt.contains("<squad name=\"Alpha\">\nStanding order: none yet.\nSquad leader reports: Cantco: ravine in the way"));
         assertTrue(prompt.contains("- Bob at (3, 64, 4): Moving"));
         assertTrue(prompt.contains("LOGSTAT: no soldier has reported his condition yet."));
         assertTrue(!prompt.contains("<supply_point>"));
@@ -100,8 +140,8 @@ class SpringAiGeneralTest {
     void decideRoundTripsStructuredOutputInSquadOrder() {
         String reply = """
                 {"objectives": [
-                  {"squad": "Bravo", "mission": "hold", "x": 5, "y": 64, "z": 5, "intent": "cover Alpha", "task": "WOOD"},
-                  {"squad": "Alpha", "mission": "scout north", "x": 0, "y": 70, "z": -60, "intent": "find a way around", "task": "NONE"}
+                  {"squad": "Bravo", "keep": false, "reason": "", "mission": "hold", "x": 5, "y": 64, "z": 5, "intent": "cover Alpha", "task": "WOOD"},
+                  {"squad": "Alpha", "keep": false, "reason": "", "mission": "scout north", "x": 0, "y": 70, "z": -60, "intent": "find a way around", "task": "NONE"}
                 ]}
                 """;
         SpringAiGeneral general = new SpringAiGeneral(ChatClient.create(FakeChatModels.replying(reply, new AtomicReference<>())), "win", "");

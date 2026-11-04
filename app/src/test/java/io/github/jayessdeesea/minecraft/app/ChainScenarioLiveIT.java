@@ -65,13 +65,14 @@ class ChainScenarioLiveIT {
                     6000,
                     "Each squad builds a patrol base on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z
                             + " and is sealed inside it before dark. Stay on the platform.",
+                    // Judged when dark comes, not the moment both are in: a squad ordered out of its
+                    // base before then hasn't met the mission.
                     harness -> {
-                        boolean allSealed = Roster.SQUADS.stream().allMatch(squad -> harness.runner.base(squad.name())
-                                .filter(b -> b.allInside() && b.sealed()).isPresent());
-                        if (allSealed) {
-                            return Verdict.PASS;
+                        if (harness.chain.time().filter(TimeOfDay::dark).isEmpty()) {
+                            return Verdict.PENDING;
                         }
-                        return harness.chain.time().filter(TimeOfDay::dark).isPresent() ? Verdict.FAIL : Verdict.PENDING;
+                        return Roster.SQUADS.stream().allMatch(squad -> harness.runner.base(squad.name())
+                                .filter(b -> b.allInside() && b.sealed()).isPresent()) ? Verdict.PASS : Verdict.FAIL;
                     },
                     Duration.ofMinutes(10)))
             .collect(java.util.stream.Collectors.toMap(Scenario::name, scenario -> scenario));

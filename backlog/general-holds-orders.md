@@ -6,22 +6,18 @@ priority: P2
 # The general holds a completed order
 
 ## Why
-Once a squad finishes its task, the general re-plans it away, even against a mission that says to
-stay. Live: the moment Bravo's patrol base sealed, the general moved Bravo to "nearby high ground",
-then to gathering wood. The mission said "stay in it". The squad cut a doorway and left the shelter
-it had just built.
-
-The general is re-deciding from scratch every cycle, and a squad reporting InPosition reads to it
-as idle. Doctrine expects the opposite: an order stands until changed, and a leader changes it for
-a reason (a FRAGO that says why).
+The general sees each squad's standing order and must keep it or give a reason to change it
+(docs/military-doctrine.md § 5). With `qwen3:14b` as general it still pulls squads out of finished
+patrol bases. The reasons it gives contradict what it was shown: "unable to complete the patrol base
+due to lack of materials", for a squad whose standing order reads sealed with the squad inside.
+`patrol-base-before-dark` (`ChainScenarioLiveIT`) passed 1 of 2 runs judged at dusk.
 
 ## Done when
-- The general sees each squad's standing objective, and how it's going (done, under way, CANTCO),
-  in its prompt. It keeps the objective unless the mission or the situation calls for a change.
-- A change of objective carries a reason in the OPORD.
-- Measured: a live run where a squad finishes a patrol base at noon under a "stay in it" mission
-  keeps it until dark and through the night.
+- `patrol-base-before-dark` passes most runs, with the general on the local model or on a frontier
+  model, and the difference between the two is recorded.
+- A scenario that holds the base through the night, not only until dusk.
 
 ## Notes
-- This also makes live evals pin-able (backlog/scenario-matrix.md): a mission the general holds is
-  a scenario that holds still.
+- Whether to close the gap with the model (a frontier general) or with code (a deterministic rule
+  that a sealed base is held until dawn unless the mission changes) is the experiment's call, not
+  a default: a rule hides the model's judgement, which is what's being measured.
