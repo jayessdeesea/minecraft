@@ -73,4 +73,12 @@ public interface WorldView {
 
     /** Hostile entities within {@code radius} of {@code center}, nearest first. */
     List<TrackedEntity> nearbyHostiles(Position center, double radius);
+
+    /**
+     * Arrows in flight within {@code radius} of {@code center}, nearest first - what a raised shield
+     * is for. A view that tracks no entities sees none.
+     */
+    default List<Position> arrowsNear(Position center, double radius) {
+        return List.of();
+    }
 }

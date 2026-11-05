@@ -26,6 +26,8 @@ import java.util.function.Predicate;
  *   <li><b>A stone sword</b> - 2 cobblestone for a hit of 5, not 4: cheap, though worth little
  *       against a skeleton, whose arrows on the way in do most of the harm.
  *   <li><b>A stone pickaxe</b> - 3 cobblestone, and it mines iron ore.
+ *   <li><b>A shield</b> - 1 iron ingot and 6 planks, raised against arrows in flight: against a
+ *       skeleton it's worth what a chestplate is, for an eighth of the iron.
  *   <li><b>Iron armour</b>, chestplate, leggings, boots, helmet - by protection per ingot (6 points
  *       for 8, 5 for 7, 2 for 4, 2 for 5). Each point takes 4% off a blow; against a skeleton a
  *       chestplate is worth six times what the stone sword is.
@@ -47,6 +49,7 @@ public final class Ladder {
             new Rung("a weapon", i -> bestMelee(i) >= 0, List.of(Recipe.STONE_SWORD, Recipe.WOODEN_SWORD)),
             new Rung("a stone sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("stone_sword"), List.of(Recipe.STONE_SWORD)),
             new Rung("a stone pickaxe", i -> bestPickaxe(i) >= 1, List.of(Recipe.STONE_PICKAXE)),
+            new Rung("a shield", i -> Stock.of(i).classes().getOrDefault(ItemClass.SHIELD, 0) > 0, List.of(Recipe.SHIELD)),
             new Rung("an iron chestplate", i -> armour(i, Recipe.IRON_CHESTPLATE), List.of(Recipe.IRON_CHESTPLATE)),
             new Rung("iron leggings", i -> armour(i, Recipe.IRON_LEGGINGS), List.of(Recipe.IRON_LEGGINGS)),
             new Rung("iron boots", i -> armour(i, Recipe.IRON_BOOTS), List.of(Recipe.IRON_BOOTS)),

@@ -82,7 +82,17 @@ final class NettyPlaySession implements PlaySession {
 
     @Override
     public void useItem(float yaw, float pitch) {
-        channel.writeAndFlush(new UseItemPacket(sequence.incrementAndGet(), yaw, pitch));
+        channel.writeAndFlush(new UseItemPacket(UseItemPacket.MAIN_HAND, sequence.incrementAndGet(), yaw, pitch));
+    }
+
+    @Override
+    public void raiseShield(float yaw, float pitch) {
+        channel.writeAndFlush(new UseItemPacket(UseItemPacket.OFF_HAND, sequence.incrementAndGet(), yaw, pitch));
+    }
+
+    @Override
+    public void releaseUseItem() {
+        channel.writeAndFlush(PlayerActionPacket.releaseUseItem());
     }
 
     @Override
@@ -112,12 +122,12 @@ final class NettyPlaySession implements PlaySession {
 
     @Override
     public void startDigging(int x, int y, int z) {
-        channel.writeAndFlush(new PlayerActionPacket(PlayerActionPacket.START_DESTROY_BLOCK, x, y, z, sequence.incrementAndGet()));
+        channel.writeAndFlush(PlayerActionPacket.dig(PlayerActionPacket.START_DESTROY_BLOCK, x, y, z, sequence.incrementAndGet()));
     }
 
     @Override
     public void finishDigging(int x, int y, int z) {
-        channel.writeAndFlush(new PlayerActionPacket(PlayerActionPacket.STOP_DESTROY_BLOCK, x, y, z, sequence.incrementAndGet()));
+        channel.writeAndFlush(PlayerActionPacket.dig(PlayerActionPacket.STOP_DESTROY_BLOCK, x, y, z, sequence.incrementAndGet()));
     }
 
     @Override

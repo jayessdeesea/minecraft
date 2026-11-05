@@ -16,6 +16,8 @@ class QuartermasterTest {
     private static final int IRON_HELMET = 1080;
     private static final int IRON_BOOTS = 1083;
     private static final int LEATHER_HELMET = 1068;
+    private static final int LEATHER_BOOTS = 1071;
+    private static final int SHIELD = 1446;
     private static final int ARROW = 1009;
 
     @Test
@@ -44,6 +46,18 @@ class QuartermasterTest {
 
         assertEquals(List.of(new Quartermaster.Step.Wear(42), new Quartermaster.Step.Wear(43), new Quartermaster.Step.Hold(8)),
                 Quartermaster.equip(inventory));
+    }
+
+    @Test
+    void aBetterPieceReplacesAWorseOneWornAndAShieldGoesInTheOffHand() {
+        Inventory inventory = new Inventory();
+        inventory.setSlot(5, new int[]{LEATHER_HELMET, 1});
+        inventory.setSlot(8, new int[]{IRON_BOOTS, 1});
+        inventory.setSlot(20, new int[]{IRON_HELMET, 1});
+        inventory.setSlot(21, new int[]{LEATHER_BOOTS, 1}); // worse than what's worn: stays in the pack
+        inventory.setSlot(22, new int[]{SHIELD, 1});
+
+        assertEquals(List.of(new Quartermaster.Step.Replace(20, 5), new Quartermaster.Step.ToOffHand(22)), Quartermaster.equip(inventory));
     }
 
     @Test

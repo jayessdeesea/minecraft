@@ -98,6 +98,76 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void anArrowFromOutOfSightRaisesTheShieldFacingItAndItDropsOnceItsPast() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.of("stone_sword"), 0, 0, 0, 0, 0, 0, true));
+        alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
+        boolean[] arrow = {true};
+        WorldView shotAt = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+
+            @Override
+            public List<Position> arrowsNear(Position center, double radius) {
+                return arrow[0] ? List.of(new Position(10.5, GROUND + 1, 0.5)) : List.of();
+            }
+        };
+        alice.tick(shotAt);
+        double before = alice.status().position().x();
+        alice.tick(shotAt);
+
+        assertTrue(alice.shieldRaised());
+        assertEquals(before, alice.status().position().x(), 1e-9, "no shooter in sight: it holds behind the shield");
+        assertEquals(-90, alice.yaw(), 1e-3, "facing where the arrow came from, east");
+        arrow[0] = false;
+        for (int i = 0; i <= DeterministicSoldier.SHIELD_HOLD_TICKS; i++) {
+            alice.tick(shotAt);
+        }
+        assertTrue(!alice.shieldRaised(), "lowered once the arrow's past");
+    }
+
+    @Test
+    void aSoldierWithoutAShieldDoesntRaiseOne() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.of("stone_sword"), 0, 0));
+        alice.tick(new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+
+            @Override
+            public List<Position> arrowsNear(Position center, double radius) {
+                return List.of(new Position(10.5, GROUND + 1, 0.5));
+            }
+        });
+
+        assertTrue(!alice.shieldRaised());
+    }
+
+    @Test
     void aSoldierAtFoodSixOrBelowCantSprint() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
         alice.reportKit(RATIONED);

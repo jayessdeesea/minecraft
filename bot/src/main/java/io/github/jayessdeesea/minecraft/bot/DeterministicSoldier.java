@@ -53,6 +53,33 @@ public final class DeterministicSoldier implements Soldier {
         return sprinting;
     }
 
+    /**
+     * How far out an arrow in flight raises the shield: at 1.6 blocks a tick, one loosed from a
+     * skeleton's 13 blocks arrives in 8 ticks, and a shield blocks only once it's been up 5.
+     */
+    public static final double ARROW_WATCH = 16;
+    /**
+     * Ticks the shield stays up after the last arrow seen: none to speak of. Raised, the soldier
+     * closes on the archer at a fifth of its pace, and an archer it can't close on keeps shooting -
+     * measured in {@code CombatScenarioTest}, holding it up longer only loses ground.
+     */
+    static final int SHIELD_HOLD_TICKS = 1;
+    /** A player with an item in use moves at a fifth of its speed - the vanilla client's rule. */
+    static final double SHIELD_SLOWDOWN = 0.2;
+
+    /**
+     * Whether the soldier holds its shield up - to be told to the server (raise it, or release it).
+     * Up while arrows fly near it, for {@link #SHIELD_HOLD_TICKS} after the last; meanwhile it walks
+     * at {@link #SHIELD_SLOWDOWN} of its pace and doesn't swing, as the vanilla client can't. An
+     * arrow seen counts as being shot at, as a hit does: the soldier goes for the archer.
+     */
+    public boolean shieldRaised() {
+        return shieldTicks > 0;
+    }
+
+    /** Ticks left with the shield up; 0 when it's down. */
+    private int shieldTicks;
+
     // Vanilla player physics constants (LivingEntity): per tick, velocity -= 0.08 then *= 0.98;
     // a jump starts at 0.42 (peaks ~1.25 blocks - enough for one block, not two).
     private static final double GRAVITY = 0.08;
@@ -242,7 +269,15 @@ public final class DeterministicSoldier implements Soldier {
         OptionalInt attack = OptionalInt.empty();
         sprinting = false; // only a long move sprints; fighting and short moves walk
         Position before = position;
-        if (hurt.getAndSet(false)) {
+        Kit worn = kit;
+        List<Position> arrows = worn != null && worn.shield() ? world.arrowsNear(position, ARROW_WATCH) : List.of();
+        if (!arrows.isEmpty()) {
+            shieldTicks = SHIELD_HOLD_TICKS;
+        } else if (shieldTicks > 0) {
+            shieldTicks--;
+        }
+        // Hurt, or an arrow on its way that a shield will take: either way, being shot at.
+        if (hurt.getAndSet(false) || !arrows.isEmpty()) {
             underFireTicks = UNDER_FIRE_TICKS;
         }
         List<TrackedEntity> threats = visible(world, world.nearbyHostiles(position, CONTACT_RADIUS));
@@ -271,7 +306,7 @@ public final class DeterministicSoldier implements Soldier {
                 }
                 holdCoverTicks = UNDER_FIRE_TICKS;
             } else {
-                if (ticksUntilAttack == 0 && range <= ATTACK_REACH) {
+                if (ticksUntilAttack == 0 && range <= ATTACK_REACH && !shieldRaised()) {
                     attack = OptionalInt.of(nearest.entityId());
                     // A hit's damage scales with the swing's charge: wait for the held weapon's full one.
                     Kit carried = kit;
@@ -286,6 +321,9 @@ public final class DeterministicSoldier implements Soldier {
             route = null; // wherever the fight ends up, the old route no longer starts here
             report = new Report.InContact(threats.size());
             look(threat);
+        } else if (shieldRaised() && !arrows.isEmpty()) {
+            // Shot at from out of sight: face where the arrow came from, and hold.
+            look(arrows.getFirst());
         } else if (holdCoverTicks > 0) {
             // In cover from an archer it can't fight: out of its sight isn't out of its range. Hold.
             holdCoverTicks--;
@@ -780,7 +818,8 @@ public final class DeterministicSoldier implements Soldier {
         stepToward(world, targetX, targetZ, STEP);
     }
 
-    private void stepToward(WorldView world, double targetX, double targetZ, double step) {
+    private void stepToward(WorldView world, double targetX, double targetZ, double pace) {
+        double step = shieldRaised() ? pace * SHIELD_SLOWDOWN : pace;
         double dx = targetX - position.x();
         double dz = targetZ - position.z();
         double distance = Math.hypot(dx, dz);

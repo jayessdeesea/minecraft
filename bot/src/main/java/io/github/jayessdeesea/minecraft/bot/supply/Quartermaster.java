@@ -2,17 +2,23 @@ package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.TreeMap;
 
 /**
- * What a soldier at the supply point takes and how it puts it on - pure decisions over item IDs,
- * so they're tested without a server; {@link SupplyRun} carries them out. docs/military-doctrine.md
- * §4 (Class II and Class V).
+ * What a soldier at the supply point takes and how it puts on what it has - pure decisions over
+ * item IDs, so they're tested without a server; {@link #perform} sends each step.
+ * docs/military-doctrine.md §4 (Class II and Class V).
  *
  * <p>Takes only what fills a gap: the best melee weapon if it has none in reach, and one piece of
  * armour for each empty armour slot. Nothing else - a supply point is shared, and a soldier that
@@ -35,6 +41,38 @@ public final class Quartermaster {
 
         /** Swap inventory slot {@code slot} into hotbar slot {@code hotbarSlot}, then hold it. */
         record BringToHand(int slot, int hotbarSlot) implements Step {
+        }
+
+        /** Swap the piece in {@code slot} for the worse one worn in {@code armourSlot}, which goes where it was. */
+        record Replace(int slot, int armourSlot) implements Step {
+        }
+
+        /** Swap {@code slot} into the off hand: a shield goes where it's raised from. */
+        record ToOffHand(int slot) implements Step {
+        }
+    }
+
+    /** The swap button a container click uses for the off hand, as the swap-hands key does. */
+    private static final int OFF_HAND_BUTTON = 40;
+
+    /**
+     * Sends {@code step} through {@code session}. State ID 0 is almost certainly stale: the server
+     * then resends the whole inventory, which confirms what the soldier is wearing and holding.
+     */
+    public static void perform(Step step, PlaySession session, Inventory inventory) {
+        switch (step) {
+            case Step.Wear(int slot) -> session.quickMove(0, 0, slot);
+            case Step.Hold(int hotbarSlot) -> {
+                session.selectHotbarSlot(hotbarSlot);
+                inventory.selectHotbar(hotbarSlot);
+            }
+            case Step.BringToHand(int slot, int hotbarSlot) -> session.swapWithHotbar(0, 0, slot, hotbarSlot);
+            case Step.Replace(int slot, int armourSlot) -> {
+                session.click(0, 0, slot, false);       // the better piece onto the cursor,
+                session.click(0, 0, armourSlot, false); // swapped for the one worn,
+                session.click(0, 0, slot, false);       // which goes where the better one was
+            }
+            case Step.ToOffHand(int slot) -> session.swapWithHotbar(0, 0, slot, OFF_HAND_BUTTON);
         }
     }
 
@@ -76,19 +114,34 @@ public final class Quartermaster {
         return take;
     }
 
-    /** Wear every carried piece that fills an empty armour slot, then hold the best melee weapon. */
+    /**
+     * Wear the best carried piece for each armour slot that's empty or holds a worse one, put a
+     * carried shield in the off hand, then hold the best melee weapon.
+     */
     public static List<Step> equip(Inventory inventory) {
         List<Step> steps = new ArrayList<>();
-        Set<Integer> filled = new HashSet<>();
+        // For each armour slot, the carried piece that beats what's worn there, the best of them.
+        Map<Integer, Integer> wear = new TreeMap<>();
+        Map<Integer, Integer> grade = new HashMap<>();
         for (int slot = Inventory.ARMOUR_FIRST; slot <= Inventory.ARMOUR_LAST; slot++) {
-            if (inventory.itemAt(slot) >= 0) {
-                filled.add(slot);
-            }
+            int worn = inventory.itemAt(slot);
+            grade.put(slot, worn < 0 ? -1 : ItemClassRegistry.armourGrade(worn).orElse(Integer.MAX_VALUE));
         }
         for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
             OptionalInt fits = ItemClassRegistry.armourSlot(inventory.itemAt(slot));
-            if (fits.isPresent() && filled.add(fits.getAsInt())) {
-                steps.add(new Step.Wear(slot));
+            int better = ItemClassRegistry.armourGrade(inventory.itemAt(slot)).orElse(-1);
+            if (fits.isPresent() && better > grade.get(fits.getAsInt())) {
+                grade.put(fits.getAsInt(), better);
+                wear.put(fits.getAsInt(), slot);
+            }
+        }
+        wear.entrySet().stream().sorted(Map.Entry.comparingByValue()).forEach(e -> steps.add(inventory.itemAt(e.getKey()) < 0
+                ? new Step.Wear(e.getValue()) : new Step.Replace(e.getValue(), e.getKey())));
+        boolean shieldOn = ItemClassRegistry.classOf(inventory.itemAt(Inventory.OFF_HAND)).equals(Optional.of(ItemClass.SHIELD));
+        for (int slot = Inventory.MAIN_FIRST; !shieldOn && slot <= Inventory.HOTBAR_LAST; slot++) {
+            if (ItemClassRegistry.classOf(inventory.itemAt(slot)).equals(Optional.of(ItemClass.SHIELD))) {
+                steps.add(new Step.ToOffHand(slot));
+                shieldOn = true;
             }
         }
         OptionalInt weapon = bestWeaponSlot(inventory);

@@ -936,6 +936,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         Footing footing = new Footing(session, inventory);
         // What the server was last told about sprinting: a new connection starts walking.
         java.util.concurrent.atomic.AtomicBoolean sprintingSent = new java.util.concurrent.atomic.AtomicBoolean();
+        // Likewise its shield: a new connection starts with it lowered.
+        java.util.concurrent.atomic.AtomicBoolean shieldSent = new java.util.concurrent.atomic.AtomicBoolean();
         armourerRef.set(armourer);
         Torchmaker torchmaker = new Torchmaker(name, session, inventory);
         java.util.concurrent.atomic.AtomicInteger ladderTicks = new java.util.concurrent.atomic.AtomicInteger();
@@ -1076,6 +1078,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (soldier.sprinting() != sprintingSent.get()) {
                 sprintingSent.set(soldier.sprinting());
                 session.setSprinting(soldier.sprinting());
+            }
+            if (soldier.shieldRaised() != shieldSent.get()) {
+                shieldSent.set(soldier.shieldRaised());
+                if (soldier.shieldRaised()) {
+                    session.raiseShield(soldier.yaw(), soldier.pitch());
+                } else {
+                    session.releaseUseItem();
+                }
             }
             session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
             // A pillar step's block goes in after the server has the soldier's new height - it won't

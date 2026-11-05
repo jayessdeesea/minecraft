@@ -111,16 +111,7 @@ public final class SupplyRun {
         chest.close();
         for (Quartermaster.Step step : Quartermaster.equip(inventory)) {
             LOG.info("{} {}", name, step);
-            switch (step) {
-                // State ID 0 is almost certainly stale: the server then resends the whole
-                // inventory, which confirms what the soldier is wearing and holding.
-                case Quartermaster.Step.Wear(int slot) -> session.quickMove(0, 0, slot);
-                case Quartermaster.Step.Hold(int hotbarSlot) -> {
-                    session.selectHotbarSlot(hotbarSlot);
-                    inventory.selectHotbar(hotbarSlot);
-                }
-                case Quartermaster.Step.BringToHand(int slot, int hotbarSlot) -> session.swapWithHotbar(0, 0, slot, hotbarSlot);
-            }
+            Quartermaster.perform(step, session, inventory);
         }
     }
 

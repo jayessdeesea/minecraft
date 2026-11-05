@@ -29,7 +29,7 @@ public final class EntityTracker {
 
     public void spawn(int entityId, UUID uuid, int typeId, double x, double y, double z, Object owner) {
         entities.compute(entityId, (id, existing) -> {
-            Entry entry = existing != null ? existing : new Entry(uuid, typeId);
+            Entry entry = existing != null ? existing : new Entry(uuid, typeId, System.nanoTime());
             entry.position = new Position(x, y, z);
             entry.owners.add(owner);
             return entry;
@@ -86,13 +86,13 @@ public final class EntityTracker {
     }
 
     /**
-     * Where every entity but a dropped item is within {@code radius} of {@code center} - squadmates,
-     * mobs: bodies the server won't place a block into.
+     * Where every entity but a dropped item or an arrow is within {@code radius} of {@code center} -
+     * squadmates, mobs: bodies the server won't place a block into.
      */
     public List<Position> nearbyBodies(Position center, double radius) {
         double radiusSquared = radius * radius;
         return entities.values().stream()
-                .filter(entry -> entry.typeId != ITEM_TYPE_ID)
+                .filter(entry -> entry.typeId != ITEM_TYPE_ID && !ARROW_TYPE_IDS.contains(entry.typeId))
                 .map(entry -> entry.position)
                 .filter(position -> distanceSquared(center, position) <= radiusSquared)
                 .toList();
@@ -100,6 +100,26 @@ public final class EntityTracker {
 
     /** The entity type of a dropped item stack, {@code minecraft:item}, in protocol 777's registry. */
     static final int ITEM_TYPE_ID = 72;
+    /** {@code minecraft:arrow} and {@code minecraft:spectral_arrow}, in protocol 777's registry: what skeletons and strays loose. */
+    static final Set<Integer> ARROW_TYPE_IDS = Set.of(6, 126);
+    /**
+     * How long after it appears an arrow counts as in flight. One loosed from a bow's 15 blocks
+     * lands within half a second; one lying where it fell lies there a minute. An arrow already on
+     * the ground that comes into view counts too, briefly - a shield raised for a moment.
+     */
+    static final long ARROW_FLIGHT_NANOS = 1_000_000_000L;
+
+    /** Arrows that appeared within the last {@link #ARROW_FLIGHT_NANOS} within {@code radius} of {@code center}, nearest first. */
+    public List<Position> nearbyArrows(Position center, double radius) {
+        double radiusSquared = radius * radius;
+        long now = System.nanoTime();
+        return entities.values().stream()
+                .filter(entry -> ARROW_TYPE_IDS.contains(entry.typeId) && now - entry.seenAt <= ARROW_FLIGHT_NANOS)
+                .map(entry -> entry.position)
+                .filter(position -> distanceSquared(center, position) <= radiusSquared)
+                .sorted(Comparator.comparingDouble(position -> distanceSquared(center, position)))
+                .toList();
+    }
 
     /**
      * Where the entity with this UUID is, if any connection sees it - how the squad finds a player
@@ -130,8 +150,11 @@ public final class EntityTracker {
         // Only touched inside compute()/computeIfPresent() for this key - exclusive access, like
         // ChunkCache's owner sets.
         final Set<Object> owners = new HashSet<>();
+        /** When it first came into any connection's view, by {@link System#nanoTime}. */
+        final long seenAt;
 
-        Entry(UUID uuid, int typeId) {
+        Entry(UUID uuid, int typeId, long seenAt) {
+            this.seenAt = seenAt;
             this.uuid = uuid;
             this.typeId = typeId;
         }

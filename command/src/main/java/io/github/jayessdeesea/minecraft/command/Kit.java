@@ -15,8 +15,10 @@ import java.util.Optional;
  * @param logs  logs carried - the materials a squad gathers (docs/military-doctrine.md §12)
  * @param stone  cobblestone carried
  * @param rations  food items carried that a soldier eats - the <b>L</b>iquids line's supply
+ * @param shield  whether a shield is in the off hand, to raise against arrows
  */
-public record Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations) {
+public record Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations,
+                  boolean shield) {
 
     public static final int ARMOUR_SLOTS = 4;
     /** Vanilla caps enchantment protection at 20 points, each taking 4% off the damage. */
@@ -26,6 +28,11 @@ public record Kit(Optional<String> weapon, int arrows, int armour, int fallProte
         if (fallProtection < 0 || fallProtection > MAX_PROTECTION) {
             throw new IllegalArgumentException("fall protection out of range: " + fallProtection);
         }
+    }
+
+    /** Kit with no shield. */
+    public Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations) {
+        this(weapon, arrows, armour, fallProtection, logs, stone, rations, false);
     }
 
     /** Kit with no protective enchantments, materials or rations. */

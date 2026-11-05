@@ -80,6 +80,17 @@ public interface PlaySession {
     void useItem(float yaw, float pitch);
 
     /**
+     * Raises the shield in the off hand, looking along {@code yaw} and {@code pitch}. It blocks a
+     * blow from in front once it has been up five ticks, and stays up until {@link #releaseUseItem}.
+     * The vanilla client moves at a fifth of its speed meanwhile and can't attack; that's the
+     * client's to honour.
+     */
+    void raiseShield(float yaw, float pitch);
+
+    /** Stops using the item in use - lowers a raised shield. */
+    void releaseUseItem();
+
+    /**
      * Tells the server this player is (or stops) sprinting. Movement speed is the client's own; the
      * flag is what makes the server charge sprinting's food cost, so a client that moves at sprint
      * speed must set it.

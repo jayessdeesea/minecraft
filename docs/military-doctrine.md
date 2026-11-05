@@ -183,6 +183,12 @@ the squad to falls.
   blocks the archer can't see, or backs off if there's none, and holds there while it's under
   fire. It swings each weapon at its full recharge, since a hit's damage scales with the charge
   (`bot.world.WeaponStats`, measured on the live server).
+- **The shield.** A soldier with a shield in its off hand raises it while an arrow is in flight
+  within 16 blocks, facing it, and lowers it as soon as the arrow is past. An arrow seen counts
+  as being shot at, as a hit does, so it goes for the archer. A raised shield stops a blow from
+  in front once it has been up 5 ticks. Meanwhile the soldier walks at a fifth of its pace and
+  can't swing, as the vanilla client can't, which is why it isn't held up longer: an archer it
+  can't close on keeps shooting.
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
 - **The squad leader** sees the contact in its next SITREP and can order something else.
@@ -243,13 +249,15 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 1. A weapon: a stone sword if it carries the cobblestone, a wooden one if not.
 2. A stone sword.
 3. A stone pickaxe, which mines iron ore.
-4. Iron armour: chestplate, leggings, boots, helmet.
-5. An iron sword.
-6. An iron pickaxe.
+4. A shield, worn in the off hand and raised against arrows (§8).
+5. Iron armour: chestplate, leggings, boots, helmet.
+6. An iron sword.
+7. An iron pickaxe.
 
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
-Against a skeleton, a stone sword over a wooden one saves 0.3 health a fight, an iron chestplate
-1.9 more, and full iron 5.9: the arrows on the way in do the harm, not the melee. A rung is held
+Against a skeleton, a stone sword over a wooden one saves 0.3 health a fight. A shield saves
+2.1 more for one iron ingot, about what a chestplate saves for eight, and full iron armour 5.9:
+the arrows on the way in do the harm, not the melee. A rung is held
 once something as good is, and one whose materials can't be had is passed over, not waited on.
 A tool that wears out is made again, since it no longer holds its rung.
 

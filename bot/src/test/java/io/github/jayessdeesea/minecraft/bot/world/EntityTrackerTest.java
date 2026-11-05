@@ -23,6 +23,16 @@ class EntityTrackerTest {
                 tracker.nearbyItems(new Position(0, 64, 0), 4));
     }
 
+    @Test
+    void anArrowJustLoosedIsInFlightAndNeitherAnItemNorABody() {
+        EntityTracker tracker = new EntityTracker();
+        tracker.spawn(1, java.util.UUID.randomUUID(), 6, 5, 64, 0, "Alice");
+
+        assertEquals(java.util.List.of(new Position(5, 64, 0)), tracker.nearbyArrows(new Position(0, 64, 0), 16));
+        assertEquals(java.util.List.of(), tracker.nearbyBodies(new Position(0, 64, 0), 16));
+        assertEquals(java.util.List.of(), tracker.nearbyArrows(new Position(40, 64, 0), 16));
+    }
+
     private static final int ZOMBIE = 154;
     private static final int CREEPER = 32;
     private static final int COW = 30;

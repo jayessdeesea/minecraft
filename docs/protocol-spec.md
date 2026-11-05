@@ -277,10 +277,12 @@ server's own `GameProtocols` registration lists (read with `javap` - see DEVELOP
 | → | `0x13` | Container Close | `ContainerPackets.CloseContainer` | live |
 | → | `0x1C` | Keep Alive | `KeepAliveResponsePacket` | live round trip |
 | → | `0x1F` | Move Player Pos Rot | `MovePlayerPosRotPacket` | live movement; soldiers turn to face their travel or their target |
+| → | `0x29` | Player Action | `PlayerActionPacket` | live digging; releasing a used item (lowering a shield) checked against the jar's `Action` enum, not yet seen live |
 | → | `0x2C` | Player Loaded | `PlayerLoadedPacket` | registration order; empty body |
 | → | `0x2E` | Punch | `PunchPacket` | registration order; empty body, sent after each attack |
 | → | `0x36` | Set Carried Item | `ContainerPackets.SetCarriedItem` | live |
 | → | `0x42` | Use Item On | `ContainerPackets.UseItemOn` | live (opens a chest; places blocks against any face) |
+| → | `0x43` | Use Item | `UseItemPacket` | live eating (main hand); raising an off-hand shield checked against the jar's codec, not yet seen live |
 
 **One position report per client tick.** The server disconnects a player that sends a second Move
 Player before the next Client Tick End ("Invalid move player packet received"), so a client that

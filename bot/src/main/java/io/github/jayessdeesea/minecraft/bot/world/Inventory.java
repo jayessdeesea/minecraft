@@ -24,6 +24,7 @@ public final class Inventory {
     public static final int MAIN_FIRST = 9;
     public static final int HOTBAR_FIRST = 36;
     public static final int HOTBAR_LAST = 44;
+    public static final int OFF_HAND = 45;
 
     private final int[] itemIds = new int[SLOTS];
     private final int[] counts = new int[SLOTS];
@@ -167,6 +168,7 @@ public final class Inventory {
                         + enchantments[slot].getOrDefault("minecraft:protection", 0);
             }
         }
-        return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs, stone, rations);
+        boolean shield = ItemClassRegistry.classOf(itemIds[OFF_HAND]).equals(Optional.of(ItemClassRegistry.ItemClass.SHIELD));
+        return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs, stone, rations, shield);
     }
 }

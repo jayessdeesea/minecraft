@@ -7,7 +7,8 @@ doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
 # Dodging, cover, and when sprinting is worth the food
 
 ## Why
-- **Nobody dodges.** A skeleton's arrows land on soldiers that stand still or walk straight at it.
+- **Nobody dodges.** A skeleton's arrows land on soldiers that stand still or walk straight at it,
+  unless they carry a shield to raise (docs/military-doctrine.md § 8).
 - **Sprinting is weighed only crudely.** The server is told, so it charges the food; a soldier
   sprints to a goal more than 8 blocks away only while it carries rations, and never at food 6 or
   below (docs/military-doctrine.md § 10). Nothing marks a move as urgent, so a soldier without

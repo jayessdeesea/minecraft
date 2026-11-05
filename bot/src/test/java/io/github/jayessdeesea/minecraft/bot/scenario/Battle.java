@@ -154,6 +154,45 @@ public final class Battle implements WorldView {
         return step(List.of(soldier))[0];
     }
 
+    /** A shield must be up this long before it blocks ({@code BlocksAttacks}' block delay). */
+    static final int SHIELD_DELAY_TICKS = 5;
+
+    /**
+     * {@link #step(Position)} for a soldier whose shield, if {@code shieldFacing} is present, has
+     * been up {@link #SHIELD_DELAY_TICKS} or more, facing that yaw: an arrow from within 90 degrees
+     * of where it faces is stopped.
+     */
+    public double step(Position soldier, java.util.OptionalDouble shieldFacing) {
+        if (shieldFacing.isPresent()) {
+            double yaw = Math.toRadians(shieldFacing.getAsDouble());
+            double lookX = -Math.sin(yaw);
+            double lookZ = Math.cos(yaw);
+            arrows.removeIf(a -> a.ticksLeft() <= 1 && (a.ox() - soldier.x()) * lookX + (a.oz() - soldier.z()) * lookZ > 0
+                    && offLine(a, soldier) <= ARROW_HIT_RADIUS && ++blocked > 0);
+        }
+        return step(soldier);
+    }
+
+    /** Arrows a shield has stopped. */
+    int blocked;
+
+    @Override
+    public List<Position> arrowsNear(Position center, double radius) {
+        List<Position> near = new ArrayList<>();
+        for (Arrow a : arrows) {
+            double lx = a.ax() - a.ox();
+            double lz = a.az() - a.oz();
+            double length = Math.max(1e-9, Math.hypot(lx, lz));
+            double back = Math.min(length, a.ticksLeft() * ARROW_SPEED);
+            Position at = new Position(a.ax() - lx / length * back, center.y() + 1, a.az() - lz / length * back);
+            if (horizontal(at, center) <= radius) {
+                near.add(at);
+            }
+        }
+        near.sort(java.util.Comparator.comparingDouble(p -> horizontal(p, center)));
+        return near;
+    }
+
     /**
      * Advances every live hostile one tick, each against the nearest of {@code soldiers}, and
      * returns the damage each soldier took this tick (a creeper's blast hits everyone near it).

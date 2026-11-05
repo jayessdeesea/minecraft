@@ -156,16 +156,7 @@ public final class Armourer {
         if (outcome != Crafter.Outcome.MADE) {
             return;
         }
-        for (Quartermaster.Step step : Quartermaster.equip(inventory)) {
-            switch (step) {
-                case Quartermaster.Step.Wear(int slot) -> session.quickMove(0, 0, slot);
-                case Quartermaster.Step.Hold(int hotbarSlot) -> {
-                    session.selectHotbarSlot(hotbarSlot);
-                    inventory.selectHotbar(hotbarSlot);
-                }
-                case Quartermaster.Step.BringToHand(int slot, int hotbarSlot) -> session.swapWithHotbar(0, 0, slot, hotbarSlot);
-            }
-        }
+        Quartermaster.equip(inventory).forEach(step -> Quartermaster.perform(step, session, inventory));
         LOG.info("{} made {}", name, describe(making));
         failure = null;
         kitChanged.run();

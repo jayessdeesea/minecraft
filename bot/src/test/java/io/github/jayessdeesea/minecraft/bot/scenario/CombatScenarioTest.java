@@ -177,7 +177,7 @@ class CombatScenarioTest {
     }
 
     static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain) {
-        return fight(archetype, seed, weapon, terrain, Armour.NONE);
+        return fight(archetype, seed, weapon, terrain, Armour.NONE, false);
     }
 
     /** What a soldier wears, by the equipment ladder's iron rungs: pieces, and their armour points. */
@@ -203,24 +203,26 @@ class CombatScenarioTest {
     @Test
     void armourAgainstEachArchetype() {
         int seeds = Integer.getInteger("combat.seeds", DEFAULT_SEEDS);
-        StringBuilder table = new StringBuilder("\nA stone sword and iron armour, " + seeds + " seeds each:\n");
+        StringBuilder table = new StringBuilder("\nA stone sword, iron armour and a shield, " + seeds + " seeds each:\n");
         for (Armour armour : Armour.values()) {
-            for (Battle.Archetype archetype : Battle.Archetype.values()) {
-                Map<Ending, Integer> endings = new EnumMap<>(Ending.class);
-                double health = 0;
-                for (long seed = 1; seed <= seeds; seed++) {
-                    Fight fight = fight(archetype, seed, Optional.of("stone_sword"), Terrain.FLAT, armour);
-                    endings.merge(fight.ending(), 1, Integer::sum);
-                    health += fight.healthLeft();
+            for (boolean shield : new boolean[]{false, true}) {
+                for (Battle.Archetype archetype : Battle.Archetype.values()) {
+                    Map<Ending, Integer> endings = new EnumMap<>(Ending.class);
+                    double health = 0;
+                    for (long seed = 1; seed <= seeds; seed++) {
+                        Fight fight = fight(archetype, seed, Optional.of("stone_sword"), Terrain.FLAT, armour, shield);
+                        endings.merge(fight.ending(), 1, Integer::sum);
+                        health += fight.healthLeft();
+                    }
+                    table.append(String.format(Locale.ROOT, "  %-14s %-9s %-9s %s, %.1f health left on average%n",
+                            armour, shield ? "shield" : "", archetype, endings, health / seeds));
                 }
-                table.append(String.format(Locale.ROOT, "  %-14s %-9s %s, %.1f health left on average%n",
-                        armour, archetype, endings, health / seeds));
             }
         }
         System.out.println(table);
     }
 
-    static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain, Armour armour) {
+    static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain, Armour armour, boolean shield) {
         Scenario scenario = Scenario.generate(terrain, seed);
         Battle battle = new Battle(scenario.world(), seed);
         // Start mid-map: the synthetic world is a closed box, and a retreat that backs into its
@@ -236,7 +238,8 @@ class CombatScenarioTest {
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
         double health = 20;
         soldier.reportHealth(health, 20);
-        soldier.reportKit(new Kit(weapon, 0, armour.pieces));
+        soldier.reportKit(new Kit(weapon, 0, armour.pieces, 0, 0, 0, 0, shield));
+        int shieldUp = 0;
         double blow = WeaponStats.melee(weapon).damage();
         BlockPos objective = scenario.objective();
         soldier.receiveOrder(new Order.MoveTo(objective.x() + 0.5, objective.y(), objective.z() + 0.5, 1.5, 1, Risk.LOW));
@@ -255,7 +258,9 @@ class CombatScenarioTest {
             }
             Position now = soldier.status().position();
             attack.ifPresent(id -> battle.strike(id, now, DeterministicSoldier.ATTACK_REACH, blow));
-            double damage = armour.absorb(battle.step(now));
+            shieldUp = soldier.shieldRaised() ? shieldUp + 1 : 0;
+            double damage = armour.absorb(battle.step(now, shieldUp > Battle.SHIELD_DELAY_TICKS
+                    ? java.util.OptionalDouble.of(soldier.yaw()) : java.util.OptionalDouble.empty()));
             double healed = tick % REGEN_TICKS == 0 && health < 20 ? 1 : 0;
             if (damage > 0 || healed > 0) {
                 health = Math.min(20, health - damage + healed);

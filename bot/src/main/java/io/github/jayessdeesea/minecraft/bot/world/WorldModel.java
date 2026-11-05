@@ -69,6 +69,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public List<Position> arrowsNear(Position center, double radius) {
+        return entities.nearbyArrows(center, radius);
+    }
+
+    @Override
     public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
         return entities.nearbyHostiles(center, radius);
     }
