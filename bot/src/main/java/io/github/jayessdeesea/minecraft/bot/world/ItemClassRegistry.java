@@ -118,6 +118,27 @@ public final class ItemClassRegistry {
         };
     }
 
+    /**
+     * How fast an axe chops, as its material's mining speed - a bare hand is 1: wooden 2, stone 4,
+     * copper 5, iron 6, diamond 8, netherite 9, golden 12. Empty for anything but an axe.
+     */
+    public static java.util.OptionalDouble axeSpeed(int itemId) {
+        Entry entry = ITEMS.get(itemId);
+        if (entry == null || !entry.name().endsWith("_axe")) {
+            return java.util.OptionalDouble.empty();
+        }
+        return switch (entry.name().replace("_axe", "")) {
+            case "wooden" -> java.util.OptionalDouble.of(2);
+            case "stone" -> java.util.OptionalDouble.of(4);
+            case "copper" -> java.util.OptionalDouble.of(5);
+            case "iron" -> java.util.OptionalDouble.of(6);
+            case "diamond" -> java.util.OptionalDouble.of(8);
+            case "netherite" -> java.util.OptionalDouble.of(9);
+            case "golden" -> java.util.OptionalDouble.of(12);
+            default -> throw new IllegalStateException("axe " + entry.name() + " has no speed - extend axeSpeed");
+        };
+    }
+
     /** Armour materials, worst to best by the protection a full set gives; a turtle shell is an iron helmet's equal. */
     private static final List<String> ARMOUR_GRADES = List.of("leather", "copper", "golden", "chainmail", "iron", "diamond", "netherite");
 

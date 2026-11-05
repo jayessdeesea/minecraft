@@ -102,6 +102,19 @@ class DiggerTest {
         assertEquals(Inventory.MAIN_FIRST + 1, Digger.Target.bestTool(inventory));
     }
 
+    @Test
+    void aLogIsChoppedWithTheFastestAxeCarriedInASixthOfTheTime() {
+        Inventory inventory = new Inventory();
+        assertEquals(Digger.Target.LOG.digTicks, Digger.Target.LOG.digTicks(inventory), "by hand");
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item("stone_axe"), 1});
+        inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item("iron_axe"), 1});
+        inventory.setSlot(Inventory.MAIN_FIRST + 2, new int[]{item("iron_pickaxe"), 1});
+
+        assertEquals(Inventory.MAIN_FIRST + 1, Digger.Target.bestAxe(inventory));
+        assertEquals((int) Math.ceil(Digger.Target.LOG.digTicks / 6.0), Digger.Target.LOG.digTicks(inventory));
+        assertEquals(Digger.Target.STONE.digTicks, Digger.Target.STONE.digTicks(inventory), "an axe is no use on stone");
+    }
+
     private static int item(String name) {
         return IntStream.range(0, 4096).filter(i -> ItemClassRegistry.nameOf(i).equals(Optional.of(name))).findFirst().orElseThrow();
     }

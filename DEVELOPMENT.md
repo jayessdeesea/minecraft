@@ -113,7 +113,8 @@ mvn -pl app test -Dtest=ChainScenarioLiveIT -Dsurefire.failIfNoSpecifiedTests=fa
 
 `-Dscenario=hold-base-through-the-night` holds the bases until dawn (about 15 minutes a run).
 `-Dscenario=rearm-to-iron` gives the squads a quiet morning, cobblestone, logs and a row of iron ore
-to climb the equipment ladder to a shield (up to 9 minutes a run). Add
+to climb the equipment ladder to a shield (up to 9 minutes a run). `-Dscenario=shield-against-skeletons`
+sets armed, shielded squads against two skeletons in daylight (a few minutes). Add
 `-Dlogging.level.io.github.jayessdeesea.minecraft.command.ai.SpringAiGeneral=DEBUG` to log every
 prompt the general sees and its reply.
 

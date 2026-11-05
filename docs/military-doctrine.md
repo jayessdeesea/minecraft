@@ -253,6 +253,7 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 5. Iron armour: chestplate, leggings, boots, helmet.
 6. An iron sword.
 7. An iron pickaxe.
+8. An iron axe, which chops a log in a sixth of the bare-handed time.
 
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
 Against a skeleton, a stone sword over a wooden one saves 0.3 health a fight. A shield saves
@@ -262,7 +263,7 @@ once something as good is, and one whose materials can't be had is passed over, 
 A tool that wears out is made again, since it no longer holds its rung.
 
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
-stand beside, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
+stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
 It crafts planks, sticks and a crafting table in its 2x2 inventory grid, places the table (or uses
 one already within reach), smelts ore in a furnace it makes or finds, and crafts the rest at the
 table. What's made is put on: armour worn, the best weapon in hand. A first wooden sword takes

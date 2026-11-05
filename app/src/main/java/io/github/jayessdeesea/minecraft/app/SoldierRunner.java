@@ -187,6 +187,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     }
 
     /** Where {@code soldier} is now, while connected. */
+    /** Hostiles any soldier can see within {@code radius} of {@code center} - for a live scenario's judge. */
+    public int hostilesNear(Position center, double radius) {
+        return world.nearbyHostiles(center, radius).size();
+    }
+
     /** What a connected soldier last reported carrying, if it has - for a live scenario's judge. */
     public Optional<Kit> kit(String soldier) {
         return Optional.ofNullable(activeSoldiers.get(soldier)).flatMap(s -> s.status().condition()).flatMap(c -> c.kit());
@@ -1091,6 +1096,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (soldier.shieldRaised() != shieldSent.get()) {
                 shieldSent.set(soldier.shieldRaised());
                 if (soldier.shieldRaised()) {
+                    LOG.info("{} raises its shield", name);
                     session.raiseShield(soldier.yaw(), soldier.pitch());
                 } else {
                     session.releaseUseItem();

@@ -56,6 +56,8 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
     public static final Recipe STONE_PICKAXE = pickaxe("stone", 'C', ItemClass.COBBLESTONE);
     public static final Recipe IRON_SWORD = sword("iron", 'I', ItemClass.IRON_INGOT);
     public static final Recipe IRON_PICKAXE = pickaxe("iron", 'I', ItemClass.IRON_INGOT);
+    public static final Recipe IRON_AXE = new Recipe("iron axe", ItemClass.WEAPON, Optional.of("iron_axe"), 1, Station.TABLE,
+            List.of("II", "IS", " S"), Map.of('I', ItemClass.IRON_INGOT, 'S', ItemClass.STICK));
     public static final Recipe IRON_HELMET = armour("iron_helmet", List.of("III", "I I"));
     public static final Recipe IRON_CHESTPLATE = armour("iron_chestplate", List.of("I I", "III", "III"));
     public static final Recipe IRON_LEGGINGS = armour("iron_leggings", List.of("III", "I I", "I I"));
@@ -63,7 +65,7 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
 
     /** Every recipe a soldier knows. */
     public static final List<Recipe> ALL = List.of(PLANKS, STICKS, CRAFTING_TABLE, TORCHES, FURNACE, CHARCOAL, IRON_INGOT, SHIELD,
-            WOODEN_SWORD, WOODEN_PICKAXE, STONE_SWORD, STONE_PICKAXE, IRON_SWORD, IRON_PICKAXE,
+            WOODEN_SWORD, WOODEN_PICKAXE, STONE_SWORD, STONE_PICKAXE, IRON_SWORD, IRON_PICKAXE, IRON_AXE,
             IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS);
 
     private static Recipe material(String name, ItemClass makes, int yield, Station station, List<String> rows, Map<Character, ItemClass> key) {

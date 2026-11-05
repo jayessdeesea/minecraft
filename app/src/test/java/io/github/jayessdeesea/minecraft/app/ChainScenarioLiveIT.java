@@ -123,7 +123,28 @@ class ChainScenarioLiveIT {
                             .allMatch(name -> harness.runner.kit(name).filter(k -> k.shield() && k.weapon().filter(w -> w.startsWith("stone_")
                                     || w.startsWith("iron_") || w.startsWith("diamond_")).isPresent()).isPresent())
                             ? Verdict.PASS : Verdict.PENDING,
-                    Duration.ofMinutes(9)))
+                    Duration.ofMinutes(9)),
+            // The shield (docs/military-doctrine.md § 8): armed and shielded, against skeletons that
+            // daylight doesn't burn. Met when every skeleton is dead; how often the shields went up
+            // shows in the log ("raises its shield").
+            new Scenario("shield-against-skeletons", List.of("clear %s", "give %s stone_sword", "item replace entity %s weapon.offhand with shield",
+                    "give %s bread 4"),
+                    // No quoted item id: the console drops quotes. A helmet keeps daylight off a skeleton.
+                    List.of("summon skeleton %d %d %d".formatted(ARENA_X + 12, FLOOR_Y + 1, ARENA_Z + 12),
+                            "summon skeleton %d %d %d".formatted(ARENA_X - 12, FLOOR_Y + 1, ARENA_Z + 12),
+                            "item replace entity @e[type=skeleton,x=%d,y=%d,z=%d,distance=..30] armor.head with leather_helmet"
+                                    .formatted(ARENA_X, FLOOR_Y + 1, ARENA_Z)),
+                    1000,
+                    "Both squads hold the stone platform around x=" + ARENA_X + " z=" + ARENA_Z + " and clear it of hostiles.",
+                    () -> {
+                        boolean[] seen = {false};
+                        return harness -> {
+                            int left = harness.runner.hostilesNear(new Position(ARENA_X, FLOOR_Y + 1, ARENA_Z), ARENA_HALF + 8);
+                            seen[0] |= left > 0;
+                            return seen[0] && left == 0 ? Verdict.PASS : Verdict.PENDING;
+                        };
+                    },
+                    Duration.ofMinutes(4)))
             .collect(java.util.stream.Collectors.toMap(Scenario::name, scenario -> scenario));
 
     /** The running app, as a judge sees it. */

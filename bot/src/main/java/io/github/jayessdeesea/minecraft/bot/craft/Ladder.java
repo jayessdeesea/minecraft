@@ -34,6 +34,7 @@ import java.util.function.Predicate;
  *   <li><b>An iron sword</b> - 2 ingots for a hit of 6, not 5. Late, because against the common
  *       hostiles it rarely saves a blow: 20 health still takes 4.
  *   <li><b>An iron pickaxe</b> - 3 ingots, for durability.
+ *   <li><b>An iron axe</b> - 3 ingots, and a log chops in a sixth of the bare-handed time.
  * </ol>
  * A rung is held once something as good is - an iron sword holds the stone-sword rung too. A rung
  * whose materials can't be had is passed over for the next, not waited on. Materials set aside for
@@ -55,7 +56,8 @@ public final class Ladder {
             new Rung("iron boots", i -> armour(i, Recipe.IRON_BOOTS), List.of(Recipe.IRON_BOOTS)),
             new Rung("an iron helmet", i -> armour(i, Recipe.IRON_HELMET), List.of(Recipe.IRON_HELMET)),
             new Rung("an iron sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("iron_sword"), List.of(Recipe.IRON_SWORD)),
-            new Rung("an iron pickaxe", i -> bestPickaxe(i) >= 2, List.of(Recipe.IRON_PICKAXE)));
+            new Rung("an iron pickaxe", i -> bestPickaxe(i) >= 2, List.of(Recipe.IRON_PICKAXE)),
+            new Rung("an iron axe", i -> bestAxeSpeed(i) >= 6, List.of(Recipe.IRON_AXE)));
 
     private Ladder() {
     }
@@ -115,6 +117,15 @@ public final class Ladder {
             if (rank.isPresent()) {
                 best = Math.max(best, rank.getAsInt());
             }
+        }
+        return best;
+    }
+
+    /** The fastest axe's speed, or 0 with none. */
+    private static double bestAxeSpeed(Inventory inventory) {
+        double best = 0;
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            best = Math.max(best, ItemClassRegistry.axeSpeed(inventory.itemAt(slot)).orElse(0));
         }
         return best;
     }

@@ -50,7 +50,10 @@ final class Digger {
      * margin, since the server times every dig and refuses an early finish.
      */
     enum Target {
-        /** A log, bare-handed: a sword wears and digs no faster. Reached up to 3 blocks above the feet. */
+        /**
+         * A log, with the best axe carried - or bare-handed, since a sword wears and digs no faster.
+         * Reached up to 3 blocks above the feet.
+         */
         LOG(70, 3, null, 0, ItemClass.LOG),
         /** Plain stone, with a pickaxe - by hand it drops nothing. At feet or head height. */
         STONE(35, 1, ItemClass.PICKAXE, 0, ItemClass.COBBLESTONE),
@@ -86,6 +89,32 @@ final class Digger {
         boolean canDig(Inventory inventory) {
             return tool == null || bestTool(inventory) >= 0 && ItemClassRegistry.miningTier(inventory.itemAt(bestTool(inventory)))
                     .orElse(-1) >= tier;
+        }
+
+        /** The inventory slot of the fastest axe, or -1. */
+        static int bestAxe(Inventory inventory) {
+            int best = -1;
+            double bestSpeed = 0;
+            for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+                double speed = ItemClassRegistry.axeSpeed(inventory.itemAt(slot)).orElse(0);
+                if (speed > bestSpeed) {
+                    best = slot;
+                    bestSpeed = speed;
+                }
+            }
+            return best;
+        }
+
+        /**
+         * Ticks to dig this with what's carried: a log by hand is 60 ticks, with an axe 60 / its
+         * speed - given the same margin as the bare-hand time, since the server refuses an early finish.
+         */
+        int digTicks(Inventory inventory) {
+            int axe = this == LOG ? bestAxe(inventory) : -1;
+            if (axe < 0) {
+                return digTicks;
+            }
+            return (int) Math.ceil(digTicks / ItemClassRegistry.axeSpeed(inventory.itemAt(axe)).getAsDouble());
         }
 
         /** The inventory slot of the best pickaxe, or -1. */
@@ -128,6 +157,8 @@ final class Digger {
     private WorldView world;
     private int ticks;
     private int digStarted;
+    /** The break time of the dig under way, for what's in hand. */
+    private int digTicks;
     private int dropsBefore;
     private boolean pickingUp;
     /** Whether the drop has been seen on the ground since the block broke. */
@@ -156,9 +187,10 @@ final class Digger {
                 // The server times the dig itself: finishing early is refused, so wait out its break time.
                 new Step("dig the " + target + " at " + block, () -> {
                     digStarted = ticks;
+                    digTicks = target.digTicks(inventory);
                     dropsBefore = inventory.count(target.drop);
                     session.startDigging(block.x(), block.y(), block.z());
-                }, new Expect("the break time to pass", () -> ticks - digStarted >= target.digTicks), target.digTicks + 1),
+                }, new Expect("the break time to pass", () -> ticks - digStarted >= digTicks), target.digTicks + 1),
                 new Step("break the " + target, () -> session.finishDigging(block.x(), block.y(), block.z()),
                         new Expect("the " + target + " at " + block + " broken", () -> !target.at(world, block)), ANSWER_TICKS),
                 // Done once the drop is off the ground: in the pack, or in a squadmate's, which
@@ -214,6 +246,10 @@ final class Digger {
         int item = inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
         Optional<ItemClass> held = ItemClassRegistry.classOf(item);
         ItemClass tool = spot.target().tool;
+        int axe = spot.target() == Target.LOG ? Target.bestAxe(inventory) : -1;
+        if (axe >= 0) {
+            return item == inventory.itemAt(axe);
+        }
         return tool == null ? held.filter(c -> c == ItemClass.WEAPON).isEmpty()
                 : held.equals(Optional.of(tool)) && ItemClassRegistry.miningTier(item).orElse(-1) >= spot.target().tier;
     }
@@ -224,6 +260,15 @@ final class Digger {
      */
     private void takeInHand() {
         ItemClass tool = spot.target().tool;
+        int axe = spot.target() == Target.LOG ? Target.bestAxe(inventory) : -1;
+        if (axe >= 0) {
+            if (axe >= Inventory.HOTBAR_FIRST) {
+                hold(axe - Inventory.HOTBAR_FIRST);
+            } else {
+                session.swapWithHotbar(0, 0, axe, inventory.heldHotbarSlot());
+            }
+            return;
+        }
         if (tool == null) {
             int choice = -1;
             for (int slot = 0; slot < 9; slot++) {
