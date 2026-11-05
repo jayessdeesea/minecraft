@@ -338,7 +338,7 @@ final class Digger {
         return Optional.ofNullable(best);
     }
 
-    private static boolean standable(WorldView world, BlockPos cell) {
+    static boolean standable(WorldView world, BlockPos cell) {
         return world.isSolid(cell.x(), cell.y() - 1, cell.z()) && !world.isSolid(cell.x(), cell.y(), cell.z())
                 && !world.isSolid(cell.x(), cell.y() + 1, cell.z()) && !world.isHazard(cell.x(), cell.y(), cell.z());
     }

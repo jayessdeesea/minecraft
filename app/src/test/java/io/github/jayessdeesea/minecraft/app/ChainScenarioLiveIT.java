@@ -124,6 +124,18 @@ class ChainScenarioLiveIT {
                                     || w.startsWith("iron_") || w.startsWith("diamond_")).isPresent()).isPresent())
                             ? Verdict.PASS : Verdict.PENDING,
                     Duration.ofMinutes(9)),
+            // Further up the ladder: enough ore for a shield and a chestplate each, and the logs to
+            // burn for nine smelts. Met when every soldier wears armour and has its shield.
+            new Scenario("rearm-to-chestplate", List.of("clear %s", "give %s cobblestone 16", "give %s oak_log 10", "give %s bread 4"),
+                    java.util.stream.IntStream.of(10, 12, 14).mapToObj(dz -> "fill %d %d %d %d %d %d iron_ore".formatted(
+                            ARENA_X - ARENA_HALF, FLOOR_Y + 1, ARENA_Z + dz, ARENA_X + ARENA_HALF, FLOOR_Y + 1, ARENA_Z + dz)).toList(),
+                    0,
+                    "No fight is expected today. Both squads stay on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z
+                            + " and use the time to rearm: improve weapons and armour from what they carry and the iron ore there.",
+                    () -> harness -> Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
+                            .allMatch(name -> harness.runner.kit(name).filter(k -> k.shield() && k.armour() > 0).isPresent())
+                            ? Verdict.PASS : Verdict.PENDING,
+                    Duration.ofMinutes(9)),
             // The shield (docs/military-doctrine.md § 8): armed and shielded, against skeletons that
             // daylight doesn't burn. Met when every skeleton is dead; how often the shields went up
             // shows in the log ("raises its shield").
@@ -223,7 +235,8 @@ class ChainScenarioLiveIT {
 
     private static String kits(Harness harness) {
         return Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
-                .map(name -> name + " " + harness.runner.kit(name).map(k -> k.weapon().orElse("bare") + (k.shield() ? "+shield" : ""))
+                .map(name -> name + " " + harness.runner.kit(name).map(k -> k.weapon().orElse("bare") + (k.shield() ? "+shield" : "")
+                        + (k.armour() > 0 ? "+" + k.armour() + " armour" : ""))
                         .orElse("?")).toList().toString();
     }
 

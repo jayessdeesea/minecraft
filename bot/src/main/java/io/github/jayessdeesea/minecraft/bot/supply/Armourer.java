@@ -8,6 +8,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.bot.world.Workstation;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
@@ -15,6 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -95,7 +97,25 @@ public final class Armourer {
         if (digger != null) {
             return Optional.of(digger.standAt());
         }
-        return crafter.active() ? Optional.ofNullable(craftingAt) : Optional.empty();
+        if (crafter.active()) {
+            return Optional.ofNullable(craftingAt);
+        }
+        return Optional.ofNullable(toStation);
+    }
+
+    /** Beside a table or furnace standing nearby, while the soldier walks to it to use it. */
+    private Position toStation;
+
+    /**
+     * The tables and furnaces it may use within {@link Digger#SEARCH_RADIUS} - in reach, or a walk
+     * away: what it needn't make again.
+     */
+    public synchronized Set<Workstation> stationsNear(WorldView world, Position soldier) {
+        Set<Workstation> near = java.util.EnumSet.noneOf(Workstation.class);
+        for (Workstation station : Workstation.values()) {
+            crafter.nearestUsable(world, soldier, station, Digger.SEARCH_RADIUS).ifPresent(at -> near.add(station));
+        }
+        return near;
     }
 
     /** Where the crafter's run under way began. */
@@ -144,14 +164,21 @@ public final class Armourer {
             stopDigging(); // back to it once clear
             return;
         }
-        CraftPlan plan = crafter.plan(items, world, soldier);
+        // Planned with the tables and furnaces a walk away as well as those in reach: one standing
+        // nearby is gone to and used, not made again.
+        CraftPlan plan = CraftPlan.of(items, Stock.of(inventory), stationsNear(world, soldier));
         if (plan.nothingToDo()) {
             return;
         }
         Map<ItemClass, Integer> short_ = plan.short_();
         if (short_.isEmpty()) {
             stopDigging();
-            made(crafter.tick(soldier, world, items, false));
+            if (crafter.plan(items, world, soldier).feasible()) {
+                toStation = null;
+                made(crafter.tick(soldier, world, items, false));
+            } else if (cooldown == 0) {
+                walkToStation(soldier, world);
+            }
             return;
         }
         Optional<ItemClass> next = DUG.keySet().stream().filter(short_::containsKey).findFirst();
@@ -160,6 +187,28 @@ public final class Armourer {
         } else if (digger != null || cooldown == 0) {
             dig(soldier, world, DUG.get(next.get()), short_.get(next.get()));
         }
+    }
+
+    /** Walks to beside the nearest usable station a walk away - a furnace first, the scarcer - and not yet in reach. */
+    private void walkToStation(Position soldier, WorldView world) {
+        for (Workstation station : List.of(Workstation.FURNACE, Workstation.CRAFTING_TABLE)) {
+            Optional<BlockPos> at = crafter.nearestUsable(world, soldier, station, Digger.SEARCH_RADIUS);
+            if (at.isEmpty() || crafter.usableInReach(world, soldier, station)) {
+                continue;
+            }
+            for (int[] side : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                BlockPos cell = at.get().offset(side[0], 0, side[1]);
+                if (Digger.standable(world, cell)) {
+                    if (toStation == null) {
+                        LOG.info("{} walks to the {} at {} for {}", name, station, at.get(), describe(making));
+                    }
+                    toStation = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
+                    return;
+                }
+            }
+        }
+        // Nothing to walk to after all - the station went, or there's nowhere to stand by it.
+        giveUp("no table or furnace to use within " + Digger.SEARCH_RADIUS + " blocks, and not the makings of one");
     }
 
     public synchronized void onContainer(ContainerUpdate update) {

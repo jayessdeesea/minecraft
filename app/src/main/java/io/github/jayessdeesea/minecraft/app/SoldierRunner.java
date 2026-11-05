@@ -1145,10 +1145,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 .map(d -> rungsWanted.get(d.name())).filter(java.util.Objects::nonNull)
                 .mapToInt(Integer::intValue).min().orElse(Ladder.RUNGS - 1);
         Map<ItemClass, Integer> setAside = Map.of(ItemClass.COBBLESTONE, stoneSetAside.getOrDefault(name, 0));
-        java.util.Set<Workstation> inReach = java.util.EnumSet.noneOf(Workstation.class);
-        for (Workstation station : Workstation.values()) {
-            Crafter.inReach(world, at, station).ifPresent(cell -> inReach.add(station));
-        }
+        // A station a walk away counts: the armourer goes to it rather than make another.
+        java.util.Set<Workstation> inReach = armourers.get(name).stationsNear(world, at);
         java.util.function.Predicate<ItemClass> canDig = material ->
                 setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims);
         Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig, upgradeAllowed.getOrDefault(name, false) ? highest : 0);

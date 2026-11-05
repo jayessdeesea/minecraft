@@ -163,6 +163,35 @@ public final class Crafter {
         return inReach;
     }
 
+    /**
+     * The nearest {@code station} block within {@code radius} blocks across (and four up or down) of
+     * {@code soldier} that this soldier may use - one to walk to rather than make again.
+     */
+    public synchronized Optional<BlockPos> nearestUsable(WorldView world, Position soldier, Workstation station, int radius) {
+        BlockPos feet = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                for (int dy = -4; dy <= 4; dy++) {
+                    BlockPos cell = feet.offset(dx, dy, dz);
+                    double distance = dx * dx + dy * dy + dz * dz;
+                    if (distance < bestDistance && world.workstation(cell.x(), cell.y(), cell.z()).equals(Optional.of(station))
+                            && furnaces.getOrDefault(cell, name).equals(name)) {
+                        best = cell;
+                        bestDistance = distance;
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** Whether a {@code station} this soldier may use is within reach of {@code soldier}. */
+    public synchronized boolean usableInReach(WorldView world, Position soldier, Workstation station) {
+        return usable(world, soldier, station).isPresent();
+    }
+
     /** The nearest {@code station} in reach this soldier may use: any table, a furnace nobody else holds. */
     private Optional<BlockPos> usable(WorldView world, Position soldier, Workstation station) {
         if (station != Workstation.FURNACE) {

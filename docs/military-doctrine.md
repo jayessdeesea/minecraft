@@ -264,8 +264,8 @@ A tool that wears out is made again, since it no longer holds its rung.
 
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
-It crafts planks, sticks and a crafting table in its 2x2 inventory grid, places the table (or uses
-one already within reach), smelts ore in a furnace it makes or finds, and crafts the rest at the
+It crafts planks, sticks and a crafting table in its 2x2 inventory grid, places the table (or walks
+to one standing within 16 blocks), smelts ore in a furnace it makes or walks to, and crafts the rest at the
 table. What's made is put on: armour worn, the best weapon in hand. A first wooden sword takes
 about a minute. While crafting or smelting, the soldier stays where it began, since a window closes
 on a player who walks away from it.
