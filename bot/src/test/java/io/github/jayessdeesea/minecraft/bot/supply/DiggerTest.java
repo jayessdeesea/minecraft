@@ -90,6 +90,22 @@ class DiggerTest {
         assertEquals(Optional.empty(), Digger.findSpot(forest(Set.of(new BlockPos(40, GROUND, 0))), new BlockPos(0, GROUND, 0), Set.of(), Digger.Target.LOG));
     }
 
+    @Test
+    void ironOreTakesAStonePickaxeAndTheBestOneCarriedIsUsed() {
+        Inventory inventory = new Inventory();
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item("wooden_pickaxe"), 1});
+        assertTrue(Digger.Target.STONE.canDig(inventory));
+        assertEquals(false, Digger.Target.IRON_ORE.canDig(inventory), "a wooden pickaxe breaks iron ore for nothing");
+
+        inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item("stone_pickaxe"), 1});
+        assertTrue(Digger.Target.IRON_ORE.canDig(inventory));
+        assertEquals(Inventory.MAIN_FIRST + 1, Digger.Target.bestTool(inventory));
+    }
+
+    private static int item(String name) {
+        return IntStream.range(0, 4096).filter(i -> ItemClassRegistry.nameOf(i).equals(Optional.of(name))).findFirst().orElseThrow();
+    }
+
     /**
      * A server that breaks a block only once its break time has passed, says so a tick later, and
      * puts the drop in the inventory ten ticks after that - unless the inventory is {@code full}.

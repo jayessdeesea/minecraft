@@ -132,8 +132,9 @@ final class FakeCraftingServer {
             state[0]--;
             if (++state[1] >= 200) {
                 state[1] = 0;
+                int out = smelted(f[0][0]);
                 take(f, 0);
-                f[2] = f[2] == null ? new int[]{itemOf(ItemClass.COAL, 0), 1} : new int[]{f[2][0], f[2][1] + 1};
+                f[2] = f[2] == null ? new int[]{out, 1} : new int[]{f[2][0], f[2][1] + 1};
                 if (at.equals(open)) {
                     sendWindow();
                 }
@@ -187,7 +188,7 @@ final class FakeCraftingServer {
                         take(grid, cell);
                     }
                 }
-                store(new int[]{itemOf(r.makes(), 0), r.yield()});
+                store(new int[]{r.item().map(FakeCraftingServer::itemNamed).orElseGet(() -> itemOf(r.makes(), 0)), r.yield()});
                 log.add("crafted " + r.name());
             }
         }
@@ -372,6 +373,18 @@ final class FakeCraftingServer {
     }
 
     /** The {@code nth} item of {@code itemClass} in the registry - two kinds of log, say. */
+    /** What smelting {@code input} makes: the furnace recipe for its class. */
+    private static int smelted(int input) {
+        ItemClass in = ItemClassRegistry.classOf(input).orElseThrow();
+        Recipe recipe = Recipe.ALL.stream().filter(r -> r.station() == Recipe.Station.FURNACE && r.key().containsValue(in)).findFirst()
+                .orElseThrow(() -> new AssertionError("nothing smelts " + in));
+        return itemOf(recipe.makes(), 0);
+    }
+
+    static int itemNamed(String name) {
+        return IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of(name))).findFirst().orElseThrow();
+    }
+
     static int itemOf(ItemClass itemClass, int nth) {
         return IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(itemClass)))
                 .skip(nth).findFirst().orElseThrow();

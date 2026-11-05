@@ -88,8 +88,8 @@ public final class Crafter {
 
     private Script script;
     private CraftPlan plan;
-    private Map<ItemClass, Integer> wanted = Map.of();
-    private Map<ItemClass, Integer> asked = Map.of();
+    private Map<Recipe, Integer> wanted = Map.of();
+    private Map<Recipe, Integer> asked = Map.of();
     private boolean threatened;
     private int cooldown;
     private String failure;
@@ -127,13 +127,13 @@ public final class Crafter {
     }
 
     /** What the run under way makes, empty when none is. */
-    public synchronized Map<ItemClass, Integer> making() {
+    public synchronized Map<Recipe, Integer> making() {
         return script == null ? Map.of() : wanted;
     }
 
     /** The plan for having {@code wanted}, from what {@code inventory} carries and the stations within reach of {@code soldier}. */
-    public static CraftPlan plan(Map<ItemClass, Integer> wanted, Inventory inventory, WorldView world, Position soldier) {
-        return CraftPlan.of(wanted, carried(inventory), stationsInReach(world, soldier));
+    public static CraftPlan plan(Map<Recipe, Integer> wanted, Inventory inventory, WorldView world, Position soldier) {
+        return CraftPlan.of(wanted, Stock.of(inventory), stationsInReach(world, soldier));
     }
 
     private static Set<Workstation> stationsInReach(WorldView world, Position soldier) {
@@ -146,23 +146,11 @@ public final class Crafter {
         return inReach;
     }
 
-    /** Every class the inventory holds, and how many. */
-    public static Map<ItemClass, Integer> carried(Inventory inventory) {
-        Map<ItemClass, Integer> counts = new EnumMap<>(ItemClass.class);
-        for (ItemClass itemClass : ItemClass.values()) {
-            int count = inventory.count(itemClass);
-            if (count > 0) {
-                counts.put(itemClass, count);
-            }
-        }
-        return counts;
-    }
-
     /**
-     * Each tick: starts making {@code wanted} - at least that many of each class - when it can and
+     * Each tick: starts making {@code wanted} - at least that many of what each recipe makes - when it can and
      * isn't {@code threatened}, and advances the run under way. Empty {@code wanted} asks for nothing.
      */
-    public synchronized Outcome tick(Position soldier, WorldView world, Map<ItemClass, Integer> wanted, boolean threatened) {
+    public synchronized Outcome tick(Position soldier, WorldView world, Map<Recipe, Integer> wanted, boolean threatened) {
         this.soldier = soldier;
         this.world = world;
         this.asked = wanted;
@@ -181,9 +169,9 @@ public final class Crafter {
                     collecting.put(at, items);
                 }
             });
-            Map<ItemClass, Integer> counted = carried(inventory);
-            collecting.values().forEach(items -> items.forEach((itemClass, count) -> counted.merge(itemClass, count, Integer::sum)));
-            CraftPlan next = CraftPlan.of(wanted, counted, stationsInReach(world, soldier));
+            Map<ItemClass, Integer> collected = new EnumMap<>(ItemClass.class);
+            collecting.values().forEach(items -> items.forEach((itemClass, count) -> collected.merge(itemClass, count, Integer::sum)));
+            CraftPlan next = CraftPlan.of(wanted, Stock.of(inventory).plus(collected), stationsInReach(world, soldier));
             List<Step> steps = new ArrayList<>();
             collecting.keySet().forEach(at -> {
                 steps.add(open(Workstation.FURNACE, FURNACE_MENU, Optional.of(at)));
@@ -361,7 +349,7 @@ public final class Crafter {
             }
             if (furnace[FURNACE_IN].isEmpty()) {
                 smelting.remove(at);
-                throw new IllegalStateException("the furnace at " + at + " holds none of the " + describe(items) + " left smelting in it");
+                throw new IllegalStateException("the furnace at " + at + " holds none of the " + describeItems(items) + " left smelting in it");
             }
             return smeltDone();
         }, SMELT_TICKS);
@@ -627,8 +615,12 @@ public final class Crafter {
         return station == Workstation.CRAFTING_TABLE ? "crafting table" : "furnace";
     }
 
-    static String describe(Map<ItemClass, Integer> wanted) {
-        return wanted.entrySet().stream().map(e -> e.getValue() + " " + e.getKey()).collect(Collectors.joining(", "));
+    static String describe(Map<Recipe, Integer> wanted) {
+        return wanted.entrySet().stream().map(e -> e.getValue() + " " + e.getKey().name()).collect(Collectors.joining(", "));
+    }
+
+    private static String describeItems(Map<ItemClass, Integer> items) {
+        return items.entrySet().stream().map(e -> e.getValue() + " " + e.getKey()).collect(Collectors.joining(", "));
     }
 
     static String describe(CraftPlan plan) {

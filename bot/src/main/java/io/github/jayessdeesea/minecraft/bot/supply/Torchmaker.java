@@ -2,8 +2,9 @@ package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.craft.CraftPlan;
 import io.github.jayessdeesea.minecraft.bot.craft.Crafter;
+import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
+import io.github.jayessdeesea.minecraft.bot.craft.Stock;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
-import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
@@ -24,7 +25,7 @@ public final class Torchmaker {
 
     /** Torches a patrol base's torchbearer makes: one charcoal's worth, enough to light a hasty hut. */
     public static final int TORCHES = 4;
-    private static final Map<ItemClass, Integer> WANTED = Map.of(ItemClass.TORCH, TORCHES);
+    private static final Map<Recipe, Integer> WANTED = Map.of(Recipe.TORCHES, TORCHES);
 
     private final Crafter crafter;
 
@@ -43,7 +44,7 @@ public final class Torchmaker {
 
     /** Whether it carries what torches take, with no table or furnace to hand: the logs, and a furnace's cobblestone or a furnace. */
     public static boolean canMake(Inventory inventory) {
-        CraftPlan plan = CraftPlan.of(WANTED, Crafter.carried(inventory), Set.of());
+        CraftPlan plan = CraftPlan.of(WANTED, Stock.of(inventory), Set.of());
         return plan.feasible() && !plan.nothingToDo();
     }
 

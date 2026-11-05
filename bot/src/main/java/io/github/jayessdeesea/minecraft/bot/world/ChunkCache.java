@@ -104,6 +104,12 @@ public final class ChunkCache {
         return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.STONE;
     }
 
+    /** Whether the block is iron ore - unknown blocks aren't. */
+    public boolean isIronOre(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.IRON_ORE;
+    }
+
     /** Whether the block is soil, dug by hand - unknown blocks aren't. */
     public boolean isSoil(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);

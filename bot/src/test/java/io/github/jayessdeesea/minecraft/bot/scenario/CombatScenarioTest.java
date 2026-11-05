@@ -49,7 +49,7 @@ class CombatScenarioTest {
     void contactReflexAgainstEachArchetype() {
         int seeds = Integer.getInteger("combat.seeds", DEFAULT_SEEDS);
         StringBuilder table = new StringBuilder("\nOne soldier vs one hostile, " + seeds + " seeds each:\n");
-        for (Optional<String> weapon : List.of(Optional.<String>empty(), Optional.of("wooden_sword"))) {
+        for (Optional<String> weapon : List.of(Optional.<String>empty(), Optional.of("wooden_sword"), Optional.of("stone_sword"))) {
             for (Battle.Archetype archetype : Battle.Archetype.values()) {
                 Map<Ending, Integer> endings = new EnumMap<>(Ending.class);
                 double health = 0;
@@ -177,6 +177,50 @@ class CombatScenarioTest {
     }
 
     static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain) {
+        return fight(archetype, seed, weapon, terrain, Armour.NONE);
+    }
+
+    /** What a soldier wears, by the equipment ladder's iron rungs: pieces, and their armour points. */
+    enum Armour {
+        NONE(0, 0), CHESTPLATE(1, 6), CHEST_AND_LEGS(2, 11), FULL_IRON(4, 15);
+
+        final int pieces;
+        final int points;
+
+        Armour(int pieces, int points) {
+            this.pieces = pieces;
+            this.points = points;
+        }
+
+        /** Vanilla's armour formula, no toughness: each effective point takes 4% off, and a heavy blow gets more through. */
+        double absorb(double damage) {
+            double effective = Math.min(20, Math.max(points / 5.0, points - damage / 2));
+            return damage * (1 - effective / 25);
+        }
+    }
+
+    /** What iron armour is worth, a rung at a time, under a stone sword. */
+    @Test
+    void armourAgainstEachArchetype() {
+        int seeds = Integer.getInteger("combat.seeds", DEFAULT_SEEDS);
+        StringBuilder table = new StringBuilder("\nA stone sword and iron armour, " + seeds + " seeds each:\n");
+        for (Armour armour : Armour.values()) {
+            for (Battle.Archetype archetype : Battle.Archetype.values()) {
+                Map<Ending, Integer> endings = new EnumMap<>(Ending.class);
+                double health = 0;
+                for (long seed = 1; seed <= seeds; seed++) {
+                    Fight fight = fight(archetype, seed, Optional.of("stone_sword"), Terrain.FLAT, armour);
+                    endings.merge(fight.ending(), 1, Integer::sum);
+                    health += fight.healthLeft();
+                }
+                table.append(String.format(Locale.ROOT, "  %-14s %-9s %s, %.1f health left on average%n",
+                        armour, archetype, endings, health / seeds));
+            }
+        }
+        System.out.println(table);
+    }
+
+    static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain, Armour armour) {
         Scenario scenario = Scenario.generate(terrain, seed);
         Battle battle = new Battle(scenario.world(), seed);
         // Start mid-map: the synthetic world is a closed box, and a retreat that backs into its
@@ -192,7 +236,7 @@ class CombatScenarioTest {
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
         double health = 20;
         soldier.reportHealth(health, 20);
-        soldier.reportKit(new Kit(weapon, 0, 0));
+        soldier.reportKit(new Kit(weapon, 0, armour.pieces));
         double blow = WeaponStats.melee(weapon).damage();
         BlockPos objective = scenario.objective();
         soldier.receiveOrder(new Order.MoveTo(objective.x() + 0.5, objective.y(), objective.z() + 0.5, 1.5, 1, Risk.LOW));
@@ -211,7 +255,7 @@ class CombatScenarioTest {
             }
             Position now = soldier.status().position();
             attack.ifPresent(id -> battle.strike(id, now, DeterministicSoldier.ATTACK_REACH, blow));
-            double damage = battle.step(now);
+            double damage = armour.absorb(battle.step(now));
             double healed = tick % REGEN_TICKS == 0 && health < 20 ? 1 : 0;
             if (damage > 0 || healed > 0) {
                 health = Math.min(20, health - damage + healed);

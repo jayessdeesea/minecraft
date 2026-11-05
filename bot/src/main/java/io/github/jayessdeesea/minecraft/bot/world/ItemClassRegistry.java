@@ -24,7 +24,8 @@ import java.util.OptionalInt;
 public final class ItemClassRegistry {
 
     /** What an item counts as. */
-    public enum ItemClass { WEAPON, ARMOUR, ARROWS, LOG, PLANKS, STICK, CRAFTING_TABLE, COBBLESTONE, PICKAXE, FOOD, FURNACE, COAL, TORCH }
+    public enum ItemClass { WEAPON, ARMOUR, ARROWS, LOG, PLANKS, STICK, CRAFTING_TABLE, COBBLESTONE, PICKAXE, FOOD, FURNACE, COAL, TORCH, RAW_IRON, IRON_INGOT,
+        SHIELD }
 
     private static final String RESOURCE_NAME = "item-classes-777.txt";
 
@@ -90,6 +91,55 @@ public final class ItemClassRegistry {
         return kind == 0 ? OptionalInt.empty() : OptionalInt.of(kind * 10 + MELEE_MATERIALS.indexOf(parts[0]));
     }
 
+    /** The melee rank {@link #meleeRank} gives the named weapon - for comparing against a grade, not an item in hand. */
+    public static int meleeRank(String weapon) {
+        return ITEMS.entrySet().stream().filter(e -> e.getValue().name().equals(weapon)).findFirst()
+                .map(e -> meleeRank(e.getKey())).filter(OptionalInt::isPresent).map(OptionalInt::getAsInt)
+                .orElseThrow(() -> new IllegalArgumentException(weapon + " isn't a melee weapon"));
+    }
+
+    /**
+     * What a pickaxe can mine, by its material's mining level: 0 wooden or golden (stone, coal),
+     * 1 stone or copper (iron ore), 2 iron (diamond ore), 3 diamond, 4 netherite. Empty for anything
+     * but a pickaxe.
+     */
+    public static OptionalInt miningTier(int itemId) {
+        Entry entry = ITEMS.get(itemId);
+        if (entry == null || entry.itemClass() != ItemClass.PICKAXE) {
+            return OptionalInt.empty();
+        }
+        return switch (entry.name().replace("_pickaxe", "")) {
+            case "wooden", "golden" -> OptionalInt.of(0);
+            case "stone", "copper" -> OptionalInt.of(1);
+            case "iron" -> OptionalInt.of(2);
+            case "diamond" -> OptionalInt.of(3);
+            case "netherite" -> OptionalInt.of(4);
+            default -> throw new IllegalStateException("pickaxe " + entry.name() + " has no mining tier - extend miningTier");
+        };
+    }
+
+    /** Armour materials, worst to best by the protection a full set gives; a turtle shell is an iron helmet's equal. */
+    private static final List<String> ARMOUR_GRADES = List.of("leather", "copper", "golden", "chainmail", "iron", "diamond", "netherite");
+
+    /** How good a piece of armour is, by its material - {@link #armourGrade(String)} of the material. Empty for anything else. */
+    public static OptionalInt armourGrade(int itemId) {
+        Entry entry = ITEMS.get(itemId);
+        if (entry == null || entry.itemClass() != ItemClass.ARMOUR) {
+            return OptionalInt.empty();
+        }
+        String material = entry.name().substring(0, entry.name().lastIndexOf('_'));
+        return OptionalInt.of(armourGrade(material.equals("turtle") ? "iron" : material));
+    }
+
+    /** A material's place among armour grades, worst first. */
+    public static int armourGrade(String material) {
+        int grade = ARMOUR_GRADES.indexOf(material);
+        if (grade < 0) {
+            throw new IllegalStateException("armour material " + material + " has no grade - extend ARMOUR_GRADES");
+        }
+        return grade;
+    }
+
     private static Map<Integer, Entry> load() {
         Map<Integer, Entry> items = new HashMap<>();
         try (InputStream in = ItemClassRegistry.class.getResourceAsStream(RESOURCE_NAME)) {
@@ -117,6 +167,9 @@ public final class ItemClassRegistry {
                         case "U" -> ItemClass.FURNACE;
                         case "O" -> ItemClass.COAL;
                         case "T" -> ItemClass.TORCH;
+                        case "M" -> ItemClass.RAW_IRON;
+                        case "N" -> ItemClass.IRON_INGOT;
+                        case "H" -> ItemClass.SHIELD;
                         default -> throw new IllegalStateException("Unknown item class in " + RESOURCE_NAME + ": " + line);
                     };
                     items.put(Integer.parseInt(parts[0]), new Entry(itemClass, parts[2]));

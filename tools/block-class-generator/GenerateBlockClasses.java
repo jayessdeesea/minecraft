@@ -35,6 +35,8 @@ import java.util.TreeMap;
  *       {@code furnace}. Named, so a soldier knows its camp's table from any other block.
  *   <li>{@code D} soil - solid, and dug by hand in about a second: the dirt family, clay, moss and
  *       snow blocks, hardness 0.65 or less. Not sand or gravel: they fall into what's dug under them.
+ *   <li>{@code O} iron ore - solid, and mined with a stone pickaxe or better for raw iron:
+ *       {@code iron_ore}, {@code deepslate_iron_ore}.
  * </ul>
  * The type lists are from well-established vanilla mechanics, not guessed. Deliberately not
  * exhaustive - an unlisted type stays SOLID, the same "unknown = blocked" policy as unloaded chunks.
@@ -107,6 +109,7 @@ public class GenerateBlockClasses {
                 char cls = blockName.endsWith("_log") && !"true".equals(state.path("properties").path("waterlogged").asText())
                         ? 'L' : blockName.equals("stone") ? 'Q'
                         : blockName.equals("crafting_table") || blockName.equals("furnace") ? 'W'
+                        : blockName.equals("iron_ore") || blockName.equals("deepslate_iron_ore") ? 'O'
                         : SOIL_BLOCKS.contains(blockName) && !"true".equals(state.path("properties").path("waterlogged").asText()) ? 'D'
                         : classify(type, state.path("properties"));
                 if (cls != 'S') {
@@ -119,7 +122,7 @@ public class GenerateBlockClasses {
         try (PrintWriter out = new PrintWriter(args[2])) {
             out.println("# Generated from the pinned server jar's `--reports` blocks.json by");
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
-            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil (all solid).");
+            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore (all solid).");
             out.println("# Every state NOT listed is solid (the safe default).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));
         }

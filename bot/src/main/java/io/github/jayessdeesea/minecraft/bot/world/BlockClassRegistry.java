@@ -30,6 +30,8 @@ final class BlockClassRegistry {
         STONE,
         /** Dirt, grass, clay and the like: solid like {@link #SOLID}, and dug by hand in about a second. */
         SOIL,
+        /** Iron ore: solid like {@link #SOLID}, and mined with a stone pickaxe or better for raw iron. */
+        IRON_ORE,
         /** A crafting table or furnace: solid like {@link #SOLID}, and opened to craft or smelt. */
         WORKSTATION,
         /** Collision 1.5 blocks high (fences, walls, closed gates): blocks the cell above too. */
@@ -90,6 +92,7 @@ final class BlockClassRegistry {
                         case "L" -> BlockClass.LOG;
                         case "Q" -> BlockClass.STONE;
                         case "D" -> BlockClass.SOIL;
+                        case "O" -> BlockClass.IRON_ORE;
                         case "W" -> {
                             WORKSTATIONS.put(stateId, Workstation.valueOf(fields[2].toUpperCase(java.util.Locale.ROOT)));
                             yield BlockClass.WORKSTATION;

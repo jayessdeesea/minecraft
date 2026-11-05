@@ -27,8 +27,8 @@ public final class Hands {
         TORCHMAKER,
         /** Eating. */
         RATIONS,
-        /** Making a sword or a pickaxe. */
-        WOODCRAFT,
+        /** Making its own kit: a weapon, tools, armour. */
+        ARMOURER,
         /** Walling in a patrol base. */
         BUILDER,
         /** Taking a full load to the stockpile. */

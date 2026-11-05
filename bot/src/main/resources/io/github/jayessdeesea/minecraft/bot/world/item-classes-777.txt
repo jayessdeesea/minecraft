@@ -2,7 +2,7 @@
 # tools/item-class-generator. One counted item per line: <id> <class> <name>,
 # W weapon, A armour, R arrows; and what a wooden sword is made from: L logs, P planks,
 # S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;
-# U furnace, O coal or charcoal, T torch.
+# U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield.
 # Everything NOT listed is just carried.
 62 K cobblestone
 63 P oak_planks
@@ -47,6 +47,8 @@
 1009 R arrow
 1010 O coal
 1011 O charcoal
+1017 M raw_iron
+1018 N iron_ingot
 1025 W wooden_sword
 1027 X wooden_pickaxe
 1028 W wooden_axe
@@ -128,6 +130,7 @@
 1440 F beetroot_soup
 1443 R spectral_arrow
 1444 R tipped_arrow
+1446 H shield
 1447 W wooden_spear
 1448 W stone_spear
 1449 W copper_spear

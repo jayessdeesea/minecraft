@@ -60,12 +60,12 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_) 
     }
 
     /**
-     * The plan for having at least {@code wanted} of each class, from {@code carried} counts, with
-     * {@code inReach} stations already standing within reach.
+     * The plan for having at least {@code wanted} of what each recipe makes, from what's
+     * {@code carried}, with {@code inReach} stations already standing within reach.
      */
-    public static CraftPlan of(Map<ItemClass, Integer> wanted, Map<ItemClass, Integer> carried, Set<Workstation> inReach) {
+    public static CraftPlan of(Map<Recipe, Integer> wanted, Stock carried, Set<Workstation> inReach) {
         Planner planner = new Planner(carried, inReach);
-        wanted.forEach(planner::need);
+        wanted.forEach(planner::want);
         return planner.plan();
     }
 
@@ -79,9 +79,24 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_) 
         private final Map<Recipe, Set<Recipe>> uses = new LinkedHashMap<>();
         private final Map<ItemClass, Integer> short_ = new EnumMap<>(ItemClass.class);
 
-        Planner(Map<ItemClass, Integer> carried, Set<Workstation> inReach) {
-            free.putAll(carried);
+        private final Stock carried;
+
+        Planner(Stock carried, Set<Workstation> inReach) {
+            this.carried = carried;
+            free.putAll(carried.classes());
             stations = new HashSet<>(inReach);
+        }
+
+        /** At least {@code count} of what {@code recipe} makes, wanted for itself. */
+        void want(Recipe recipe, int count) {
+            if (recipe.item().isEmpty()) {
+                need(recipe.makes(), count);
+                return;
+            }
+            int more = count - carried.count(recipe);
+            if (more > 0) {
+                make(recipe, more);
+            }
         }
 
         /** Has {@code count} more of {@code itemClass} spoken for; returns the batch that made any of it. */
@@ -97,6 +112,12 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_) 
                 short_.merge(itemClass, more, Integer::sum);
                 return null;
             }
+            return make(recipe, more);
+        }
+
+        /** Batches of {@code recipe} for {@code more} of what it makes, and what they take. */
+        private Recipe make(Recipe recipe, int more) {
+            ItemClass itemClass = recipe.makes();
             int crafts = (more + recipe.yield() - 1) / recipe.yield();
             Set<Recipe> used = new HashSet<>();
             recipe.ingredients().forEach((ingredient, each) -> addUse(used, need(ingredient, each * crafts)));
@@ -106,7 +127,9 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_) 
             station(recipe.station()).ifPresent(item -> addUse(used, item));
             times.merge(recipe, crafts, Integer::sum);
             uses.computeIfAbsent(recipe, r -> new HashSet<>()).addAll(used);
-            free.merge(itemClass, crafts * recipe.yield() - more, Integer::sum);
+            if (recipe.item().isEmpty()) {
+                free.merge(itemClass, crafts * recipe.yield() - more, Integer::sum);
+            }
             return recipe;
         }
 

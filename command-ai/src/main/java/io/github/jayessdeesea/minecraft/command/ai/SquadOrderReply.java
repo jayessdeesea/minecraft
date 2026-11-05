@@ -25,7 +25,7 @@ record SquadOrderReply(
         Risk risk,
         @JsonPropertyDescription("Usually empty. Soldiers who move at a different risk than the squad's - for example one stuck soldier freed at MEDIUM while the rest stay LOW")
         List<SoldierRisk> soldierRisks,
-        @JsonPropertyDescription("true lets bare-handed soldiers stop to chop wood and make a wooden sword (about a minute each) while no fight is near; false keeps everyone moving")
+        @JsonPropertyDescription("true lets soldiers stop to make themselves better kit while no fight is near - a bare-handed one a sword (about a minute), and away from a patrol base iron armour and weapons from wood and ore they dig nearby (several minutes); false keeps everyone moving")
         boolean rearm,
         @JsonPropertyDescription("One sentence: why the squad is doing this") String intent,
         @JsonPropertyDescription("Empty if the mission is achievable; otherwise a short reason the squad cannot accomplish it")

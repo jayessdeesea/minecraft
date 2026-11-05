@@ -18,7 +18,7 @@ class CraftPlanTest {
 
     @Test
     void twentyTorchesAreOneFurnaceLoadAndOneRoundInTheGrid() {
-        CraftPlan plan = CraftPlan.of(Map.of(ItemClass.TORCH, 20), Map.of(ItemClass.LOG, 8, ItemClass.COBBLESTONE, 8), Set.of());
+        CraftPlan plan = CraftPlan.of(Map.of(Recipe.TORCHES, 20), Stock.of(Map.of(ItemClass.LOG, 8, ItemClass.COBBLESTONE, 8)), Set.of());
 
         assertTrue(plan.feasible(), plan.short_().toString());
         assertEquals(List.of(
@@ -30,7 +30,7 @@ class CraftPlanTest {
 
     @Test
     void aSwordAndAPickaxeAreMadeAtOneOpeningOfTheTable() {
-        CraftPlan plan = CraftPlan.of(Map.of(ItemClass.WEAPON, 1, ItemClass.PICKAXE, 1), Map.of(ItemClass.LOG, 5), Set.of());
+        CraftPlan plan = CraftPlan.of(Map.of(Recipe.WOODEN_SWORD, 1, Recipe.WOODEN_PICKAXE, 1), Stock.of(Map.of(ItemClass.LOG, 5)), Set.of());
 
         assertTrue(plan.feasible(), plan.short_().toString());
         assertEquals(1, plan.sessions().stream().filter(s -> s.station() == Station.TABLE).count());
@@ -40,7 +40,7 @@ class CraftPlanTest {
 
     @Test
     void aStationInReachIsUsedNotMadeAndWhatsCarriedIsntMadeAgain() {
-        CraftPlan plan = CraftPlan.of(Map.of(ItemClass.WEAPON, 1), Map.of(ItemClass.PLANKS, 2, ItemClass.STICK, 1),
+        CraftPlan plan = CraftPlan.of(Map.of(Recipe.WOODEN_SWORD, 1), Stock.of(Map.of(ItemClass.PLANKS, 2, ItemClass.STICK, 1)),
                 Set.of(Workstation.CRAFTING_TABLE));
 
         assertEquals(List.of(new Session(Station.TABLE, List.of(new Batch(Recipe.WOODEN_SWORD, 1)))), plan.sessions());
@@ -48,13 +48,36 @@ class CraftPlanTest {
 
     @Test
     void whatNothingCarriedCanMakeIsShort() {
-        CraftPlan plan = CraftPlan.of(Map.of(ItemClass.TORCH, 20), Map.of(ItemClass.LOG, 1), Set.of());
+        CraftPlan plan = CraftPlan.of(Map.of(Recipe.TORCHES, 20), Stock.of(Map.of(ItemClass.LOG, 1)), Set.of());
 
         assertEquals(Map.of(ItemClass.LOG, 7, ItemClass.COBBLESTONE, 8), plan.short_());
     }
 
     @Test
+    void aGradedItemCountsOnlyItselfNotItsClass() {
+        Stock woodenSword = new Stock(Map.of(ItemClass.WEAPON, 1, ItemClass.COBBLESTONE, 2, ItemClass.STICK, 1), Map.of("wooden_sword", 1));
+
+        CraftPlan plan = CraftPlan.of(Map.of(Recipe.STONE_SWORD, 1), woodenSword, Set.of(Workstation.CRAFTING_TABLE));
+
+        assertEquals(List.of(new Session(Station.TABLE, List.of(new Batch(Recipe.STONE_SWORD, 1)))), plan.sessions());
+        assertTrue(CraftPlan.of(Map.of(Recipe.WOODEN_SWORD, 1), woodenSword, Set.of()).nothingToDo());
+    }
+
+    @Test
+    void anIronChestplateIsEightOreSmeltedAtOneLoadThenCraftedAtTheTable() {
+        CraftPlan plan = CraftPlan.of(Map.of(Recipe.IRON_CHESTPLATE, 1),
+                Stock.of(Map.of(ItemClass.RAW_IRON, 8, ItemClass.LOG, 3, ItemClass.COBBLESTONE, 8)), Set.of());
+
+        assertTrue(plan.feasible(), plan.short_().toString());
+        assertEquals(List.of(new Batch(Recipe.IRON_INGOT, 8)), plan.sessions().stream()
+                .filter(s -> s.station() == Station.FURNACE).flatMap(s -> s.batches().stream()).toList());
+        assertEquals(Station.TABLE, plan.sessions().getLast().station());
+        assertEquals(Map.of(ItemClass.RAW_IRON, 1), CraftPlan.of(Map.of(Recipe.IRON_CHESTPLATE, 1),
+                Stock.of(Map.of(ItemClass.RAW_IRON, 7, ItemClass.LOG, 3, ItemClass.COBBLESTONE, 8)), Set.of()).short_());
+    }
+
+    @Test
     void nothingToDoWhenItsAlreadyCarried() {
-        assertTrue(CraftPlan.of(Map.of(ItemClass.TORCH, 4), Map.of(ItemClass.TORCH, 9), Set.of()).nothingToDo());
+        assertTrue(CraftPlan.of(Map.of(Recipe.TORCHES, 4), Stock.of(Map.of(ItemClass.TORCH, 9)), Set.of()).nothingToDo());
     }
 }

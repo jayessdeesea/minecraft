@@ -15,7 +15,7 @@ import java.util.Set;
 
 /**
  * One soldier gathering a material around its squad's objective (docs/military-doctrine.md §12):
- * dig the nearest log - or stone, with a pickaxe it makes first if it has none ({@link Woodcraft}) -
+ * dig the nearest log - or stone, with a pickaxe it makes first if it has none ({@link Armourer}) -
  * within {@link Digger#SEARCH_RADIUS} of the objective, again and again, until it carries its load. Ticked by the soldier's tick loop; synchronized
  * like the other routines in this package.
  *
@@ -82,7 +82,7 @@ public final class Gatherer {
         ItemClass item = resource.get() == Resource.WOOD ? ItemClass.LOG : ItemClass.COBBLESTONE;
         int load = resource.get() == Resource.WOOD ? CARRY_LOGS : CARRY_STONE;
         if (resource.get() == Resource.STONE && inventory.slotOf(ItemClass.PICKAXE) < 0) {
-            stop(); // a pickaxe first - Woodcraft makes one
+            stop(); // a pickaxe first - Armourer makes one
             return;
         }
         if (inventory.count(item) >= load) {

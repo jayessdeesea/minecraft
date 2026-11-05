@@ -12,8 +12,8 @@ import java.util.Objects;
  * small to keep everyone on one floor of a building, large in open hills. {@code risk} is how much
  * health the mission justifies spending to get there ({@link Risk}); {@code soldierRisk} overrides
  * it for named soldiers - typically one stuck soldier freed at MEDIUM without the whole squad
- * taking falls (docs/military-doctrine.md §7). {@code rearm} lets bare-handed soldiers stop to make
- * themselves a wooden sword when no fight is near (§11).
+ * taking falls (docs/military-doctrine.md §7). {@code rearm} lets soldiers stop to make themselves
+ * better kit, by the equipment ladder, when no fight is near (§11).
  * {@link Formations#assign} turns this into each soldier's {@link Order}.
  */
 public record SquadOrder(Position objective, Formation formation, Interval interval,

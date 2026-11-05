@@ -1,6 +1,6 @@
 # Generated from the pinned server jar's `--reports` blocks.json by
 # tools/block-class-generator. One block state per line: <id> <class> <blockName>,
-# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil (all solid).
+# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore (all solid).
 # Every state NOT listed is solid (the safe default).
 0 P air
 1 Q stone
@@ -80,6 +80,8 @@
 118 H lava
 119 H lava
 120 H lava
+134 O iron_ore
+135 O deepslate_iron_ore
 139 L oak_log
 140 L oak_log
 141 L oak_log

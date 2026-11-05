@@ -17,7 +17,7 @@ import java.util.Set;
 
 /**
  * Digging out one block of a material: walk to a cell beside it, take the right thing in hand, dig
- * it for its break time, and pick up what drops. The step {@link Woodcraft} and {@link Gatherer}
+ * it for its break time, and pick up what drops. The step {@link Armourer} and {@link Gatherer}
  * repeat; neither owns its timing. Ticked from the owning routine, which is synchronized - this
  * holds no lock of its own.
  *
@@ -43,28 +43,34 @@ final class Digger {
     static final double DROP_RADIUS = 4;
 
     /**
-     * What to dig, and how. Break times are the server's: hardness 2 for a log, 1.5 for stone;
-     * progress per tick is tool speed / hardness / 30 when the tool is right for the block, so a log
-     * by hand (speed 1) takes 60 ticks and stone with a wooden pickaxe (speed 2) 22.5 - each given a
+     * What to dig, and how. Break times are the server's: hardness 2 for a log, 1.5 for stone, 3
+     * for iron ore and 4.5 in deepslate; progress per tick is tool speed / hardness / 30 when the
+     * tool is right for the block, so a log by hand (speed 1) takes 60 ticks, stone with a wooden
+     * pickaxe (speed 2) 22.5 and deepslate iron ore with a stone one (speed 4) 34 - each given a
      * margin, since the server times every dig and refuses an early finish.
      */
     enum Target {
         /** A log, bare-handed: a sword wears and digs no faster. Reached up to 3 blocks above the feet. */
-        LOG(70, 3, null, ItemClass.LOG),
+        LOG(70, 3, null, 0, ItemClass.LOG),
         /** Plain stone, with a pickaxe - by hand it drops nothing. At feet or head height. */
-        STONE(35, 1, ItemClass.PICKAXE, ItemClass.COBBLESTONE);
+        STONE(35, 1, ItemClass.PICKAXE, 0, ItemClass.COBBLESTONE),
+        /** Iron ore, with a stone pickaxe or better - a wooden one breaks it for nothing. At feet or head height. */
+        IRON_ORE(45, 1, ItemClass.PICKAXE, 1, ItemClass.RAW_IRON);
 
         final int digTicks;
         final int reachUp;
         /** What must be in hand, or null for an empty hand. */
         final ItemClass tool;
+        /** The pickaxe's least mining tier (ItemClassRegistry.miningTier) that gets the drop. */
+        final int tier;
         /** What it drops. */
         final ItemClass drop;
 
-        Target(int digTicks, int reachUp, ItemClass tool, ItemClass drop) {
+        Target(int digTicks, int reachUp, ItemClass tool, int tier, ItemClass drop) {
             this.digTicks = digTicks;
             this.reachUp = reachUp;
             this.tool = tool;
+            this.tier = tier;
             this.drop = drop;
         }
 
@@ -72,7 +78,28 @@ final class Digger {
             return switch (this) {
                 case LOG -> world.isLog(block.x(), block.y(), block.z());
                 case STONE -> world.isStone(block.x(), block.y(), block.z());
+                case IRON_ORE -> world.isIronOre(block.x(), block.y(), block.z());
             };
+        }
+
+        /** What digs this for its drop, if the soldier's tools can: its best pickaxe meets the tier. */
+        boolean canDig(Inventory inventory) {
+            return tool == null || bestTool(inventory) >= 0 && ItemClassRegistry.miningTier(inventory.itemAt(bestTool(inventory)))
+                    .orElse(-1) >= tier;
+        }
+
+        /** The inventory slot of the best pickaxe, or -1. */
+        static int bestTool(Inventory inventory) {
+            int best = -1;
+            int bestTier = -1;
+            for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+                int tier = ItemClassRegistry.miningTier(inventory.itemAt(slot)).orElse(-1);
+                if (tier > bestTier) {
+                    best = slot;
+                    bestTier = tier;
+                }
+            }
+            return best;
         }
     }
 
@@ -184,9 +211,11 @@ final class Digger {
     }
 
     private boolean inHand() {
-        Optional<ItemClass> held = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot()));
+        int item = inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
+        Optional<ItemClass> held = ItemClassRegistry.classOf(item);
         ItemClass tool = spot.target().tool;
-        return tool == null ? held.filter(c -> c == ItemClass.WEAPON).isEmpty() : held.equals(Optional.of(tool));
+        return tool == null ? held.filter(c -> c == ItemClass.WEAPON).isEmpty()
+                : held.equals(Optional.of(tool)) && ItemClassRegistry.miningTier(item).orElse(-1) >= spot.target().tier;
     }
 
     /**
@@ -213,9 +242,9 @@ final class Digger {
             hold(choice);
             return;
         }
-        int slot = inventory.slotOf(tool);
-        if (slot < 0) {
-            throw new IllegalStateException("no " + tool + " to dig " + spot.target() + " with");
+        int slot = Target.bestTool(inventory);
+        if (!spot.target().canDig(inventory)) {
+            throw new IllegalStateException("no " + tool + " good enough to dig " + spot.target() + " with - " + inventory.summary());
         }
         if (slot >= Inventory.HOTBAR_FIRST) {
             hold(slot - Inventory.HOTBAR_FIRST);

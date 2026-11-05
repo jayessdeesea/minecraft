@@ -236,18 +236,40 @@ known position. `!mission` ends the escort and hands the squad back to the gener
 |---|---|---|
 | **Pre-combat checks and inspections** | Before a unit is employed, every soldier is checked for the equipment the mission needs, and shortfalls are made good. | ATP 3-21.8, troop leading procedures |
 
-*How we use it:* a bare-handed soldier makes itself a wooden sword (`bot.supply.Woodcraft`, which
-also makes the pickaxe of §12, and both at one opening of the table when it needs both). It chops
-the logs it's short of from the nearest tree within 16 blocks it can stand beside. It then crafts
-planks, sticks and a crafting table in its 2x2 inventory grid, places the table (or uses one already
-within reach), crafts the sword in it, and holds it. The whole job takes about a minute. The squad
-leader decides whether there's time: its order's `rearm` lets bare-handed soldiers do it. A soldier
-at it reports `Rearming`, and the squad doesn't halt for it.
+*How we use it:* a soldier makes its own kit (`bot.supply.Armourer`, which also makes the pickaxe
+of §12, several things at one opening of the table when it needs several). What it makes next is
+a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision:
+
+1. A weapon: a stone sword if it carries the cobblestone, a wooden one if not.
+2. A stone sword.
+3. A stone pickaxe, which mines iron ore.
+4. Iron armour: chestplate, leggings, boots, helmet.
+5. An iron sword.
+6. An iron pickaxe.
+
+The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
+Against a skeleton, a stone sword over a wooden one saves 0.3 health a fight, an iron chestplate
+1.9 more, and full iron 5.9: the arrows on the way in do the harm, not the melee. A rung is held
+once something as good is, and one whose materials can't be had is passed over, not waited on.
+A tool that wears out is made again, since it no longer holds its rung.
+
+It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
+stand beside, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
+It crafts planks, sticks and a crafting table in its 2x2 inventory grid, places the table (or uses
+one already within reach), smelts ore in a furnace it makes or finds, and crafts the rest at the
+table. What's made is put on: armour worn, the best weapon in hand. A first wooden sword takes
+about a minute.
+
+The squad leader decides whether there's time: its order's `rearm` lets soldiers make a weapon.
+Climbing past it waits until the squad isn't ordered to a patrol base, since shelter comes first
+and digging iron isn't building it. Each soldier also keeps back its share of the cobblestone its
+squad's base still needs, so a stone sword never costs a wall. A soldier at it reports `Rearming`,
+and the squad doesn't halt for it.
 
 Contact outranks this work, as the react-to-contact drill (§8) outranks priorities of work. A
 hostile within 16 blocks, or the squad in contact, pauses the job: windows close, and the soldier
 fights with what it has. Once clear, it picks up where it stopped. The exception is a soldier with
-no weapon standing at an open table: the sword is a click away, so it finishes it first. A fault,
+no weapon standing at an open table: the weapon is a click away, so it finishes it first. A fault,
 such as no tree in reach or an answer from the server that never comes, ends the attempt. Any
 half-crafted items go back in the inventory, and the soldier tries again a minute later. A failed
 sword isn't reported as CANTCO: the check is the soldier's own, not its order, and the squad's

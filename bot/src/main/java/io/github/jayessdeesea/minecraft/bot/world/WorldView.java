@@ -48,6 +48,11 @@ public interface WorldView {
         return false;
     }
 
+    /** Whether the block is iron ore a soldier can mine with a stone pickaxe (it's also {@link #isSolid}). */
+    default boolean isIronOre(int x, int y, int z) {
+        return false;
+    }
+
     /** Whether the block is soil - dirt, grass, clay - that a soldier digs by hand (it's also {@link #isSolid}). */
     default boolean isSoil(int x, int y, int z) {
         return false;

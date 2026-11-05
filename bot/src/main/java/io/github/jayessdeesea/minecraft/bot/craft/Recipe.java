@@ -13,11 +13,18 @@ import java.util.Optional;
  * server's {@code data/minecraft/recipe/*.json}); a class stands for any item of it, which the
  * recipes allow - any planks for a table, coal or charcoal for a torch.
  *
+ * <p>What's made is counted by its class, except where a class holds grades of one thing - a
+ * stone sword and a wooden one are both {@link ItemClass#WEAPON} - where it names its {@code item},
+ * and only that item counts as having it. Such an item is only ever made for itself, never as an
+ * ingredient of something else.
+ *
+ * @param item   the exact item made, when its class holds better and worse ones
  * @param rows   the pattern, row by row, one character a cell; a space is an empty cell. A
  *               furnace recipe is its one ingredient.
  * @param key    what each pattern character stands for
  */
-public record Recipe(String name, ItemClass makes, int yield, Station station, List<String> rows, Map<Character, ItemClass> key) {
+public record Recipe(String name, ItemClass makes, Optional<String> item, int yield, Station station, List<String> rows,
+                     Map<Character, ItemClass> key) {
 
     /** Where a recipe is made. */
     public enum Station {
@@ -29,22 +36,53 @@ public record Recipe(String name, ItemClass makes, int yield, Station station, L
         FURNACE
     }
 
-    public static final Recipe PLANKS = new Recipe("planks", ItemClass.PLANKS, 4, Station.GRID, List.of("L"), Map.of('L', ItemClass.LOG));
-    public static final Recipe STICKS = new Recipe("sticks", ItemClass.STICK, 4, Station.GRID, List.of("P", "P"), Map.of('P', ItemClass.PLANKS));
-    public static final Recipe CRAFTING_TABLE = new Recipe("crafting table", ItemClass.CRAFTING_TABLE, 1, Station.GRID,
+    public static final Recipe PLANKS = material("planks", ItemClass.PLANKS, 4, Station.GRID, List.of("L"), Map.of('L', ItemClass.LOG));
+    public static final Recipe STICKS = material("sticks", ItemClass.STICK, 4, Station.GRID, List.of("P", "P"), Map.of('P', ItemClass.PLANKS));
+    public static final Recipe CRAFTING_TABLE = material("crafting table", ItemClass.CRAFTING_TABLE, 1, Station.GRID,
             List.of("PP", "PP"), Map.of('P', ItemClass.PLANKS));
-    public static final Recipe TORCHES = new Recipe("torches", ItemClass.TORCH, 4, Station.GRID, List.of("C", "S"),
+    public static final Recipe TORCHES = material("torches", ItemClass.TORCH, 4, Station.GRID, List.of("C", "S"),
             Map.of('C', ItemClass.COAL, 'S', ItemClass.STICK));
-    public static final Recipe FURNACE = new Recipe("furnace", ItemClass.FURNACE, 1, Station.TABLE, List.of("CCC", "C C", "CCC"),
+    public static final Recipe FURNACE = material("furnace", ItemClass.FURNACE, 1, Station.TABLE, List.of("CCC", "C C", "CCC"),
             Map.of('C', ItemClass.COBBLESTONE));
-    public static final Recipe WOODEN_SWORD = new Recipe("wooden sword", ItemClass.WEAPON, 1, Station.TABLE, List.of("P", "P", "S"),
-            Map.of('P', ItemClass.PLANKS, 'S', ItemClass.STICK));
-    public static final Recipe WOODEN_PICKAXE = new Recipe("wooden pickaxe", ItemClass.PICKAXE, 1, Station.TABLE, List.of("PPP", " S ", " S "),
-            Map.of('P', ItemClass.PLANKS, 'S', ItemClass.STICK));
-    public static final Recipe CHARCOAL = new Recipe("charcoal", ItemClass.COAL, 1, Station.FURNACE, List.of("L"), Map.of('L', ItemClass.LOG));
+    public static final Recipe CHARCOAL = material("charcoal", ItemClass.COAL, 1, Station.FURNACE, List.of("L"), Map.of('L', ItemClass.LOG));
+    public static final Recipe IRON_INGOT = material("iron ingot", ItemClass.IRON_INGOT, 1, Station.FURNACE, List.of("M"),
+            Map.of('M', ItemClass.RAW_IRON));
 
-    /** Every recipe, at most one for each class made. */
-    public static final List<Recipe> ALL = List.of(PLANKS, STICKS, CRAFTING_TABLE, TORCHES, FURNACE, WOODEN_SWORD, WOODEN_PICKAXE, CHARCOAL);
+    public static final Recipe WOODEN_SWORD = sword("wooden", 'P', ItemClass.PLANKS);
+    public static final Recipe WOODEN_PICKAXE = pickaxe("wooden", 'P', ItemClass.PLANKS);
+    public static final Recipe STONE_SWORD = sword("stone", 'C', ItemClass.COBBLESTONE);
+    public static final Recipe STONE_PICKAXE = pickaxe("stone", 'C', ItemClass.COBBLESTONE);
+    public static final Recipe IRON_SWORD = sword("iron", 'I', ItemClass.IRON_INGOT);
+    public static final Recipe IRON_PICKAXE = pickaxe("iron", 'I', ItemClass.IRON_INGOT);
+    public static final Recipe IRON_HELMET = armour("iron_helmet", List.of("III", "I I"));
+    public static final Recipe IRON_CHESTPLATE = armour("iron_chestplate", List.of("I I", "III", "III"));
+    public static final Recipe IRON_LEGGINGS = armour("iron_leggings", List.of("III", "I I", "I I"));
+    public static final Recipe IRON_BOOTS = armour("iron_boots", List.of("I I", "I I"));
+
+    /** Every recipe a soldier knows. */
+    public static final List<Recipe> ALL = List.of(PLANKS, STICKS, CRAFTING_TABLE, TORCHES, FURNACE, CHARCOAL, IRON_INGOT,
+            WOODEN_SWORD, WOODEN_PICKAXE, STONE_SWORD, STONE_PICKAXE, IRON_SWORD, IRON_PICKAXE,
+            IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS);
+
+    private static Recipe material(String name, ItemClass makes, int yield, Station station, List<String> rows, Map<Character, ItemClass> key) {
+        return new Recipe(name, makes, Optional.empty(), yield, station, rows, key);
+    }
+
+    private static Recipe sword(String material, char c, ItemClass head) {
+        return new Recipe(material + " sword", ItemClass.WEAPON, Optional.of(material + "_sword"), 1, Station.TABLE,
+                List.of(String.valueOf(c), String.valueOf(c), "S"), Map.of(c, head, 'S', ItemClass.STICK));
+    }
+
+    private static Recipe pickaxe(String material, char c, ItemClass head) {
+        String h = String.valueOf(c);
+        return new Recipe(material + " pickaxe", ItemClass.PICKAXE, Optional.of(material + "_pickaxe"), 1, Station.TABLE,
+                List.of(h + h + h, " S ", " S "), Map.of(c, head, 'S', ItemClass.STICK));
+    }
+
+    private static Recipe armour(String item, List<String> rows) {
+        return new Recipe(item.replace('_', ' '), ItemClass.ARMOUR, Optional.of(item), 1, Station.TABLE, rows,
+                Map.of('I', ItemClass.IRON_INGOT));
+    }
 
     /** Planks a furnace burns a smelt: one plank burns 300 ticks, a smelt takes 200. */
     public static final double SMELTS_PER_PLANK = 1.5;
@@ -58,9 +96,9 @@ public record Recipe(String name, ItemClass makes, int yield, Station station, L
         }
     }
 
-    /** The recipe that makes {@code itemClass}, if a soldier knows one. */
+    /** The recipe that makes {@code itemClass} as a material - counted by class - if a soldier knows one. */
     public static Optional<Recipe> making(ItemClass itemClass) {
-        return ALL.stream().filter(r -> r.makes == itemClass).findFirst();
+        return ALL.stream().filter(r -> r.makes == itemClass && r.item.isEmpty()).findFirst();
     }
 
     /** What one craft takes: each class and how many. */
