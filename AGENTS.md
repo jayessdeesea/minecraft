@@ -118,7 +118,8 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   bad hold-or-leave call the local general made traced to a line that misled it (a built base
   reported as a shortage, a soldier's failed sword reported as the squad's CANTCO), and with
   those fixed it passed every `GeneralScenarioIT` situation. Turn each live miss into a
-  situation there first.
+  situation there first. A coordinate written out is a coordinate the model copies: give
+  positions it shouldn't reuse (an old order's, a resource's) relative to the squad, not as a y.
 - **A routine is an expect script: act, then wait for the confirming event - never for time.**
   Anything that acts and then needs the server's answer (crafting, placing, opening a window,
   smelting) is a `bot.script.Script` of steps. Each step names the event that confirms it, read

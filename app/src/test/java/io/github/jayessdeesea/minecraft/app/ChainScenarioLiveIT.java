@@ -51,13 +51,14 @@ class ChainScenarioLiveIT {
      * A fixed setup, a mission, and a judge.
      *
      * @param kit     console commands per soldier, {@code %s} for its name, once all have joined
+     * @param arena   console commands that furnish the arena once it's built
      * @param time    the time of day to set before the mission is given
      * @param mission the operator's mission to the general
      * @param judge   a fresh judge for each run, giving the verdict from what the app knows now
      * @param limit   wall-clock time before the run is judged failed
      */
-    record Scenario(String name, List<String> kit, long time, String mission, Supplier<Function<Harness, Verdict>> judge,
-                    Duration limit) {
+    record Scenario(String name, List<String> kit, List<String> arena, long time, String mission,
+                    Supplier<Function<Harness, Verdict>> judge, Duration limit) {
     }
 
     /** The kit both patrol-base scenarios start with: enough cobblestone between four for a hut. */
@@ -72,7 +73,7 @@ class ChainScenarioLiveIT {
     }
 
     static final Map<String, Scenario> SCENARIOS = java.util.stream.Stream.of(
-            new Scenario("patrol-base-before-dark", BASE_KIT,
+            new Scenario("patrol-base-before-dark", BASE_KIT, List.of(),
                     // About six minutes of daylight left: the hut is 40 blocks a squad.
                     6000,
                     "Each squad builds a patrol base on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z
@@ -82,7 +83,7 @@ class ChainScenarioLiveIT {
                     () -> harness -> harness.chain.time().filter(TimeOfDay::dark).isEmpty() ? Verdict.PENDING
                             : everySquadSealedIn(harness) ? Verdict.PASS : Verdict.FAIL,
                     Duration.ofMinutes(10)),
-            new Scenario("hold-base-through-the-night", BASE_KIT, 6000,
+            new Scenario("hold-base-through-the-night", BASE_KIT, List.of(), 6000,
                     "Each squad builds a patrol base on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z
                             + ", is sealed inside it before dark, and stays inside until dawn. Stay on the platform.",
                     // Watched all night, judged at first light. A base can read open for a moment
@@ -106,7 +107,23 @@ class ChainScenarioLiveIT {
                             return Verdict.PENDING;
                         };
                     },
-                    Duration.ofMinutes(20)))
+                    Duration.ofMinutes(20)),
+            // The equipment ladder (docs/military-doctrine.md § 11): cobblestone and logs in hand,
+            // a row of iron ore on the platform, and a quiet morning to rearm in. Met when every
+            // soldier has climbed to a stone sword and a shield in its off hand - the shield's ingot
+            // came from ore only a stone pickaxe mines.
+            new Scenario("rearm-to-iron", List.of("clear %s", "give %s cobblestone 16", "give %s oak_log 6", "give %s bread 4"),
+                    List.of("fill %d %d %d %d %d %d iron_ore".formatted(ARENA_X - 8, FLOOR_Y + 1, ARENA_Z + 10, ARENA_X + 7, FLOOR_Y + 1,
+                            ARENA_Z + 10)),
+                    // Dawn: ten minutes of daylight, so the run is judged before monsters come out.
+                    0,
+                    "No fight is expected today. Both squads stay on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z
+                            + " and use the time to rearm: improve weapons and armour from what they carry and the iron ore there.",
+                    () -> harness -> Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
+                            .allMatch(name -> harness.runner.kit(name).filter(k -> k.shield() && k.weapon().filter(w -> w.startsWith("stone_")
+                                    || w.startsWith("iron_") || w.startsWith("diamond_")).isPresent()).isPresent())
+                            ? Verdict.PASS : Verdict.PENDING,
+                    Duration.ofMinutes(9)))
             .collect(java.util.stream.Collectors.toMap(Scenario::name, scenario -> scenario));
 
     /** The running app, as a judge sees it. */
@@ -137,16 +154,14 @@ class ChainScenarioLiveIT {
     private static String runOnce(Scenario scenario) throws Exception {
         buildArena();
         try (ConfigurableApplicationContext app = SpringApplication.run(Application.class,
-                "--minecraft.general.mission=Hold your positions and wait for orders.")) {
+                "--minecraft.general.mission=Hold your positions and wait for orders. Build nothing and gather nothing until then.")) {
             Harness harness = new Harness(app.getBean(SoldierRunner.class), app.getBean(ChainOfCommand.class));
             List<String> soldiers = Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream()).toList();
             awaitUntil(Duration.ofMinutes(2), "every soldier connected", () -> harness.runner.connected().containsAll(soldiers));
             // Each squad on its own half of the platform, a few blocks apart.
             for (int i = 0; i < soldiers.size(); i++) {
                 String name = soldiers.get(i);
-                for (String command : scenario.kit()) {
-                    console(command.formatted(name));
-                }
+                console("clear " + name);
                 int squad = i / 4;
                 console("tp %s %d %d %d".formatted(name, ARENA_X - 6 + squad * 12 + i % 2 * 2, FLOOR_Y + 1, ARENA_Z - 2 + i % 4 / 2 * 2));
             }
@@ -155,23 +170,40 @@ class ChainScenarioLiveIT {
             console("time set " + scenario.time());
             awaitUntil(Duration.ofSeconds(30), "the new time of day", () -> harness.chain.time()
                     .filter(t -> Math.abs(t.ticks() - scenario.time()) < 400).isPresent());
+            for (String command : scenario.arena()) {
+                console(command);
+            }
+            // The kit goes out just before the mission: early enough that the general's first look
+            // at the mission sees it, late enough that orders under the harness's holding mission
+            // don't spend it.
+            for (String name : soldiers) {
+                for (String command : scenario.kit()) {
+                    console(command.formatted(name));
+                }
+            }
             harness.chain.onOperatorMission("harness", scenario.mission());
             Function<Harness, Verdict> judge = scenario.judge().get();
             long deadline = System.nanoTime() + scenario.limit().toNanos();
             while (System.nanoTime() < deadline) {
                 Verdict verdict = judge.apply(harness);
                 if (verdict != Verdict.PENDING) {
-                    return verdict + " at time of day " + harness.chain.time().map(TimeOfDay::ticks).orElse(-1L) + ", " + bases(harness);
+                    return verdict + " at time of day " + harness.chain.time().map(TimeOfDay::ticks).orElse(-1L) + ", " + bases(harness) + ", " + kits(harness);
                 }
                 TimeUnit.SECONDS.sleep(1);
             }
-            return "FAIL: out of time, " + bases(harness);
+            return "FAIL: out of time, " + bases(harness) + ", " + kits(harness);
         }
     }
 
     private static String bases(Harness harness) {
         return Roster.SQUADS.stream().map(squad -> squad.name() + " " + harness.runner.base(squad.name())
                 .map(Object::toString).orElse("no base")).toList().toString();
+    }
+
+    private static String kits(Harness harness) {
+        return Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
+                .map(name -> name + " " + harness.runner.kit(name).map(k -> k.weapon().orElse("bare") + (k.shield() ? "+shield" : ""))
+                        .orElse("?")).toList().toString();
     }
 
     private static boolean onPlatform(Position p) {

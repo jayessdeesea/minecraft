@@ -16,10 +16,8 @@ still missing.
   a luxury tool (a diamond hoe) while the armour is leather or missing.
 - **Iron axe,** once chopping takes the best axe in hand. Today `Digger` chops bare-handed, so an
   axe would buy nothing.
-- **Seen live:**
-  - A squad told to rearm, away from a patrol base, with trees and stone in reach, climbs to stone
-    tools.
-  - One with exposed iron ore in reach climbs to a shield and an iron chestplate.
+- **Seen live,** past what `rearm-to-iron` shows (stone tools and a shield for every soldier):
+  - An iron chestplate made and worn. The scenario's 16 ore run out first.
   - A soldier with a shield raises it at a skeleton's arrows and the server blocks them.
 
 ## Notes

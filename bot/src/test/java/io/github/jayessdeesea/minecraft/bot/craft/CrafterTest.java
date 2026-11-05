@@ -20,7 +20,7 @@ class CrafterTest {
     private static final Position SOLDIER = new Position(0.5, 64, 0.5);
 
     private final FakeCraftingServer server = new FakeCraftingServer();
-    private final Crafter crafter = new Crafter("Dana", server.session, server.inventory);
+    private final Crafter crafter = new Crafter("Dana", server.session, server.inventory, new java.util.HashMap<>(), java.util.Set.of());
     private int tick;
 
     CrafterTest() {
@@ -66,6 +66,27 @@ class CrafterTest {
         assertEquals(Outcome.MADE, outcome, crafter.failure().orElse(""));
         assertEquals(0, server.logged("placed CRAFTING_TABLE"));
         assertEquals(1, server.logged("opened CRAFTING_TABLE"));
+    }
+
+    @Test
+    void aFurnaceASquadmateHoldsIsLeftAloneAndItsOwnIsFreedOnceEmptied() {
+        Map<BlockPos, String> claims = new java.util.HashMap<>();
+        BlockPos theirs = new BlockPos(2, 64, 0);
+        claims.put(theirs, "Eli");
+        server.stations.put(theirs, Workstation.FURNACE);
+        Crafter dana = new Crafter("Dana", server.session, server.inventory, claims, java.util.Set.of());
+        server.client = dana::onContainer;
+        server.give(9, ItemClass.LOG, 4).give(10, ItemClass.COBBLESTONE, 8);
+
+        Outcome outcome = Outcome.IDLE;
+        for (tick = 0; tick < 3000 && outcome != Outcome.MADE && outcome != Outcome.FAILED; tick++) {
+            server.tick();
+            outcome = dana.tick(SOLDIER, server.world, Map.of(Recipe.TORCHES, 4), false);
+        }
+
+        assertEquals(Outcome.MADE, outcome, dana.failure().orElse(""));
+        assertEquals(1, server.logged("placed FURNACE"), "its own, not the squadmate's");
+        assertEquals(Map.of(theirs, "Eli"), claims, "the squadmate's hold stands; its own, emptied, is let go");
     }
 
     @Test

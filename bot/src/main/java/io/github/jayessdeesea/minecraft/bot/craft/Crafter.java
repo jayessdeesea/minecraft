@@ -39,7 +39,9 @@ import java.util.stream.Collectors;
  * furnace already standing within reach is used, whoever put it there; one is placed only when
  * none is.
  *
- * <p>It runs under two guards. <b>Still wanted</b>: what it was asked for hasn't changed. <b>No
+ * <p>It runs under three guards. <b>Still wanted</b>: what it was asked for hasn't changed. <b>Stations
+ * still in reach</b>: a table or furnace the plan found standing, and so doesn't make, hasn't gone
+ * out of reach. <b>No
  * threat</b>: a hostile near interrupts it - the windows close and the soldier is free to fight
  * with what it has - except when it has no weapon, a weapon is part of the plan, and the table is
  * open: then the weapon is a click away, and it finishes it first. An interruption isn't a fault:
@@ -47,6 +49,12 @@ import java.util.stream.Collectors;
  * what's already made - and what it left smelting in a furnace still in reach, which the next run
  * collects first: a furnace keeps smelting with nobody at it. A fault - an answer that doesn't come - fails loudly and backs off
  * {@link #COOLDOWN_TICKS}.
+ *
+ * <p>A table is shared - each player's grid is its own - but a furnace isn't: what's in it is
+ * whoever's takes it. So a soldier holds the furnace it smelts in, in the {@code furnaces} every
+ * soldier shares, until it has collected what it left there; another soldier finds a held furnace
+ * as good as absent, and puts down its own. A furnace is held by the soldier, not by one of its
+ * crafters: its torchmaking and its armourer use the same one.
  *
  * <p>Every click goes out with a stale state ID, so the server answers with the whole window and
  * {@link Inventory} stays exact. Held items go through a hotbar slot with no weapon or tool, so the
@@ -88,6 +96,8 @@ public final class Crafter {
 
     private Script script;
     private CraftPlan plan;
+    /** The stations the plan under way found within reach, and so doesn't make. */
+    private Set<Workstation> plannedOn = Set.of();
     private Map<Recipe, Integer> wanted = Map.of();
     private Map<Recipe, Integer> asked = Map.of();
     private boolean threatened;
@@ -110,10 +120,17 @@ public final class Crafter {
     /** What it left smelting, by furnace: made by now or soon, though not yet in the inventory. */
     private final Map<BlockPos, Map<ItemClass, Integer>> smelting = new HashMap<>();
 
-    public Crafter(String name, PlaySession session, Inventory inventory) {
+    /** Each furnace in use, and the soldier holding it - shared between soldiers. */
+    private final Map<BlockPos, String> furnaces;
+    /** Cells squadmates have claimed to dig from or stand in: no table or furnace goes there. */
+    private final Set<BlockPos> claims;
+
+    public Crafter(String name, PlaySession session, Inventory inventory, Map<BlockPos, String> furnaces, Set<BlockPos> claims) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
+        this.furnaces = furnaces;
+        this.claims = claims;
         Arrays.fill(furnace, Optional.empty());
     }
 
@@ -131,19 +148,33 @@ public final class Crafter {
         return script == null ? Map.of() : wanted;
     }
 
-    /** The plan for having {@code wanted}, from what {@code inventory} carries and the stations within reach of {@code soldier}. */
-    public static CraftPlan plan(Map<Recipe, Integer> wanted, Inventory inventory, WorldView world, Position soldier) {
+    /** The plan for having {@code wanted}, from what's carried and the stations within reach of {@code soldier} it may use. */
+    public synchronized CraftPlan plan(Map<Recipe, Integer> wanted, WorldView world, Position soldier) {
         return CraftPlan.of(wanted, Stock.of(inventory), stationsInReach(world, soldier));
     }
 
-    private static Set<Workstation> stationsInReach(WorldView world, Position soldier) {
+    private Set<Workstation> stationsInReach(WorldView world, Position soldier) {
         Set<Workstation> inReach = EnumSet.noneOf(Workstation.class);
         for (Workstation station : Workstation.values()) {
-            if (inReach(world, soldier, station).isPresent()) {
+            if (usable(world, soldier, station).isPresent()) {
                 inReach.add(station);
             }
         }
         return inReach;
+    }
+
+    /** The nearest {@code station} in reach this soldier may use: any table, a furnace nobody else holds. */
+    private Optional<BlockPos> usable(WorldView world, Position soldier, Workstation station) {
+        if (station != Workstation.FURNACE) {
+            return inReach(world, soldier, station);
+        }
+        Set<BlockPos> others = new HashSet<>();
+        furnaces.forEach((at, holder) -> {
+            if (!holder.equals(name)) {
+                others.add(at);
+            }
+        });
+        return inReach(world, soldier, station, others);
     }
 
     /**
@@ -171,7 +202,8 @@ public final class Crafter {
             });
             Map<ItemClass, Integer> collected = new EnumMap<>(ItemClass.class);
             collecting.values().forEach(items -> items.forEach((itemClass, count) -> collected.merge(itemClass, count, Integer::sum)));
-            CraftPlan next = CraftPlan.of(wanted, Stock.of(inventory).plus(collected), stationsInReach(world, soldier));
+            Set<Workstation> inReach = stationsInReach(world, soldier);
+            CraftPlan next = CraftPlan.of(wanted, Stock.of(inventory).plus(collected), inReach);
             List<Step> steps = new ArrayList<>();
             collecting.keySet().forEach(at -> {
                 steps.add(open(Workstation.FURNACE, FURNACE_MENU, Optional.of(at)));
@@ -184,12 +216,16 @@ public final class Crafter {
                 return Outcome.IDLE;
             }
             plan = next;
+            plannedOn = inReach;
             this.wanted = Map.copyOf(wanted);
             failure = null;
             LOG.info("{} crafts {} - {}{} - {}", name, describe(wanted), collecting.isEmpty() ? "" : "collecting " + collecting + " first, then ",
                     next.feasible() ? describe(next) : "short of " + next.short_(), inventory.summary());
             script = new Script(name, steps, List.of(
                     new Guard("no longer wanted", () -> this.asked.equals(this.wanted)),
+                    // The plan didn't make what it found standing: gone out of reach, it's planned again.
+                    new Guard("a station it planned on still in reach", () -> plannedOn.stream()
+                            .allMatch(s -> usable(this.world, this.soldier, s).isPresent())),
                     new Guard("a hostile near", () -> !this.threatened || finishingWeapon())));
         }
         return switch (script.tick()) {
@@ -435,16 +471,26 @@ public final class Crafter {
     /** A table or furnace put down beside the soldier - skipped when one is already within reach. */
     private Step place(Workstation station, ItemClass item) {
         String label = label(station);
-        return new Step("place a " + label, () -> inReach(world, soldier, station).isPresent(), () -> {
+        return new Step("place a " + label, () -> usable(world, soldier, station).isPresent(), () -> {
             close();
-            placing = placement(soldier, world, blocked);
+            Set<BlockPos> notThere = new HashSet<>(blocked);
+            notThere.addAll(claims);
+            placing = placement(soldier, world, notThere);
             hold(need(item));
             session.useBlock(placing.x(), placing.y() - 1, placing.z()); // the top of the ground there
         }, new Expect("a " + label + " in the world", () -> placed(station)), ANSWER_TICKS);
     }
 
     private boolean placed(Workstation station) {
-        return world.workstation(placing.x(), placing.y(), placing.z()).equals(Optional.of(station));
+        boolean placed = world.workstation(placing.x(), placing.y(), placing.z()).equals(Optional.of(station));
+        if (placed && station == Workstation.FURNACE) {
+            claim(placing);
+        }
+        return placed;
+    }
+
+    private void claim(BlockPos furnaceAt) {
+        furnaces.put(furnaceAt, name);
     }
 
     /** The table or furnace {@code which}, or the nearest in reach, opened: confirmed by its window and contents. */
@@ -452,9 +498,12 @@ public final class Crafter {
         String label = label(station);
         return new Step("open the " + label, () -> {
             close();
-            BlockPos at = which.or(() -> inReach(world, soldier, station))
+            BlockPos at = which.or(() -> usable(world, soldier, station))
                     .orElseThrow(() -> new IllegalStateException("no " + label + " within reach of " + soldier));
             furnaceAt = station == Workstation.FURNACE ? at : null;
+            if (furnaceAt != null) {
+                claim(furnaceAt);
+            }
             openedMenu = -1;
             contentsSeen = false;
             session.useBlock(at.x(), at.y(), at.z());
@@ -519,6 +568,11 @@ public final class Crafter {
 
     /** The nearest {@code station} block whose centre is within reach of the soldier's eyes. */
     public static Optional<BlockPos> inReach(WorldView world, Position soldier, Workstation station) {
+        return inReach(world, soldier, station, Set.of());
+    }
+
+    /** {@link #inReach}, passing over the blocks in {@code excluded}. */
+    private static Optional<BlockPos> inReach(WorldView world, Position soldier, Workstation station, Set<BlockPos> excluded) {
         BlockPos feet = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
         int r = (int) Math.ceil(REACH);
         BlockPos best = null;
@@ -531,7 +585,8 @@ public final class Crafter {
                     double ey = cell.y() + 0.5 - (soldier.y() + EYE_HEIGHT);
                     double ez = cell.z() + 0.5 - soldier.z();
                     double distance = ex * ex + ey * ey + ez * ez;
-                    if (distance <= bestDistance && world.workstation(cell.x(), cell.y(), cell.z()).equals(Optional.of(station))) {
+                    if (distance <= bestDistance && !excluded.contains(cell)
+                            && world.workstation(cell.x(), cell.y(), cell.z()).equals(Optional.of(station))) {
                         best = cell;
                         bestDistance = distance;
                     }
@@ -608,6 +663,11 @@ public final class Crafter {
         script = null;
         plan = null;
         placing = null;
+        // A furnace this run left nothing in is free for the next soldier.
+        if (furnaceAt != null && !smelting.containsKey(furnaceAt)) {
+            furnaces.remove(furnaceAt, name);
+        }
+        smelting.keySet().forEach(this::claim);
         cooldown = cooldownTicks;
     }
 

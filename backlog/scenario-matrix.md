@@ -18,8 +18,9 @@ Nothing covers variation in biome, time of day, difficulty, squad size or number
 A regression in one of those shows up only if someone happens to run that case by hand.
 
 ## Done when
-The live tier has a harness (`app`'s `ChainScenarioLiveIT`, DEVELOPMENT.md § 2) and one scenario,
-`patrol-base-before-dark` and `hold-base-through-the-night`. What's left is below; scenarios join the harness's list.
+The live tier has a harness (`app`'s `ChainScenarioLiveIT`, DEVELOPMENT.md § 2) and three scenarios:
+`patrol-base-before-dark`, `hold-base-through-the-night` and `rearm-to-iron`. What's left is below;
+scenarios join the harness's list.
 
 A named list of scenarios, each a fixed setup plus seeded variation, runs in two tiers:
 - **Offline, every build:** simulated world, scripted or faked model. Cheap and deterministic.

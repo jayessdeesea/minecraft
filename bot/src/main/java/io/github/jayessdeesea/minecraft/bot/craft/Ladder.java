@@ -45,7 +45,7 @@ public final class Ladder {
     record Rung(String name, Predicate<Inventory> held, List<Recipe> options) {
     }
 
-    static final List<Rung> RUNGS = List.of(
+    static final List<Rung> LADDER = List.of(
             new Rung("a weapon", i -> bestMelee(i) >= 0, List.of(Recipe.STONE_SWORD, Recipe.WOODEN_SWORD)),
             new Rung("a stone sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("stone_sword"), List.of(Recipe.STONE_SWORD)),
             new Rung("a stone pickaxe", i -> bestPickaxe(i) >= 1, List.of(Recipe.STONE_PICKAXE)),
@@ -67,19 +67,33 @@ public final class Ladder {
      */
     public static Optional<Recipe> next(Inventory inventory, Map<ItemClass, Integer> setAside, Set<Workstation> inReach,
                                         Predicate<ItemClass> canGather) {
-        return next(inventory, setAside, inReach, canGather, RUNGS.size());
+        return upTo(inventory, setAside, inReach, canGather, RUNGS - 1);
     }
 
     /** A weapon to fight with, if bare-handed: the first rung only. */
     public static Optional<Recipe> weapon(Inventory inventory, Map<ItemClass, Integer> setAside, Set<Workstation> inReach,
                                           Predicate<ItemClass> canGather) {
-        return next(inventory, setAside, inReach, canGather, 1);
+        return upTo(inventory, setAside, inReach, canGather, 0);
     }
 
-    private static Optional<Recipe> next(Inventory inventory, Map<ItemClass, Integer> setAside, Set<Workstation> inReach,
-                                         Predicate<ItemClass> canGather, int rungs) {
+    /** How many rungs there are. */
+    public static final int RUNGS = LADDER.size();
+
+    /** Which rung {@code recipe} is made for, counted from 0 - the first that offers it. */
+    public static int rungOf(Recipe recipe) {
+        for (int i = 0; i < LADDER.size(); i++) {
+            if (LADDER.get(i).options().contains(recipe)) {
+                return i;
+            }
+        }
+        throw new IllegalArgumentException(recipe.name() + " is on no rung of the ladder");
+    }
+
+    /** {@link #next}, looking no higher than rung {@code highest} (from 0). */
+    public static Optional<Recipe> upTo(Inventory inventory, Map<ItemClass, Integer> setAside, Set<Workstation> inReach,
+                                        Predicate<ItemClass> canGather, int highest) {
         Stock stock = Stock.of(inventory).less(setAside);
-        for (Rung rung : RUNGS.subList(0, rungs)) {
+        for (Rung rung : LADDER.subList(0, Math.max(0, Math.min(LADDER.size(), highest + 1)))) {
             if (rung.held().test(inventory)) {
                 continue;
             }

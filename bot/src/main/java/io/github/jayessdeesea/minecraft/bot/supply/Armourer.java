@@ -59,13 +59,14 @@ public final class Armourer {
     private int cooldown;
     private String failure;
 
-    public Armourer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Runnable kitChanged) {
+    public Armourer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Map<BlockPos, String> furnaces,
+                    Runnable kitChanged) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
         this.claims = claims;
         this.kitChanged = kitChanged;
-        this.crafter = new Crafter(name, session, inventory);
+        this.crafter = new Crafter(name, session, inventory, furnaces, claims);
     }
 
     public synchronized boolean active() {
@@ -85,10 +86,20 @@ public final class Armourer {
         return active() ? making : Set.of();
     }
 
-    /** Where the soldier should be standing while the routine runs, if it needs to be somewhere. */
+    /**
+     * Where the soldier should be standing while the routine runs, if it needs to be somewhere:
+     * beside what it digs, or where it began crafting - its table and furnace are within reach of
+     * there, and a window closes on a player who walks away from it.
+     */
     public synchronized Optional<Position> standAt() {
-        return digger == null ? Optional.empty() : Optional.of(digger.standAt());
+        if (digger != null) {
+            return Optional.of(digger.standAt());
+        }
+        return crafter.active() ? Optional.ofNullable(craftingAt) : Optional.empty();
     }
+
+    /** Where the crafter's run under way began. */
+    private Position craftingAt;
 
     /** Logs it's short of to make {@code wanted} from what it carries, with no table to hand. */
     public static int logsShort(Inventory inventory, Set<Recipe> wanted) {
@@ -122,6 +133,9 @@ public final class Armourer {
             making = Set.copyOf(wanted);
         }
         Map<Recipe, Integer> items = once(making);
+        if (!crafter.active()) {
+            craftingAt = soldier;
+        }
         if (crafter.active() || making.isEmpty()) {
             made(crafter.tick(soldier, world, items, threatened));
             return;
@@ -130,7 +144,7 @@ public final class Armourer {
             stopDigging(); // back to it once clear
             return;
         }
-        CraftPlan plan = Crafter.plan(items, inventory, world, soldier);
+        CraftPlan plan = crafter.plan(items, world, soldier);
         if (plan.nothingToDo()) {
             return;
         }

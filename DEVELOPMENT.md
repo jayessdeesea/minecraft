@@ -111,7 +111,9 @@ mvn -q install -DskipTests
 mvn -pl app test -Dtest=ChainScenarioLiveIT -Dsurefire.failIfNoSpecifiedTests=false -Dscenario=patrol-base-before-dark [-Dscenario.runs=5]
 ```
 
-`-Dscenario=hold-base-through-the-night` holds the bases until dawn (about 15 minutes a run). Add
+`-Dscenario=hold-base-through-the-night` holds the bases until dawn (about 15 minutes a run).
+`-Dscenario=rearm-to-iron` gives the squads a quiet morning, cobblestone, logs and a row of iron ore
+to climb the equipment ladder to a shield (up to 9 minutes a run). Add
 `-Dlogging.level.io.github.jayessdeesea.minecraft.command.ai.SpringAiGeneral=DEBUG` to log every
 prompt the general sees and its reply.
 

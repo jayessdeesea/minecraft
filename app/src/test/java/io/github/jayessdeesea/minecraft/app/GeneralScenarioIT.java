@@ -58,10 +58,20 @@ class GeneralScenarioIT {
     private static final List<Situation> SITUATIONS = List.of(
             new Situation("fresh-start", BASE_MISSION, TimeOfDay.of(6000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())), GeneralScenarioIT::buildsOnThePlatform),
+            // The live failure: the base ordered at the height of the trees below the platform.
+            new Situation("fresh-start-trees-below", BASE_MISSION, TimeOfDay.of(6000, true),
+                    List.of(withTrees(fresh("Alpha", 2996, Optional.empty())), withTrees(fresh("Bravo", 3004, Optional.empty()))),
+                    GeneralScenarioIT::buildsOnThePlatform),
             // The live failure: orders given under the operator's earlier mission outlive it.
             new Situation("mission-replaced", BASE_MISSION, TimeOfDay.of(6200, true),
                     List.of(fresh("Alpha", 2996, Optional.of(GATHER_WOOD)), fresh("Bravo", 3004, Optional.of(GATHER_WOOD))),
                     GeneralScenarioIT::buildsOnThePlatform),
+            // The live failure: a mission to stay put read as "keep" a standing order that isn't there.
+            new Situation("stay-with-no-orders", "No fight is expected today. Both squads stay on the stone platform around "
+                    + "x=3000 z=3000 and use the time to rearm.", TimeOfDay.of(1000, true),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
+                    (squads, given) -> given.stream().filter(o -> distance(o.location(), new Position(3000, 151, 3000)) > 16)
+                            .map(o -> "sent off the platform: " + o.mission() + " at " + o.location()).toList()),
             new Situation("walking-to-site", BASE_MISSION, TimeOfDay.of(7000, true),
                     List.of(fresh("Alpha", 2996, Optional.of(ALPHA_BASE)), fresh("Bravo", 3004, Optional.of(BRAVO_BASE))),
                     GeneralScenarioIT::buildsOnThePlatform),
@@ -132,12 +142,13 @@ class GeneralScenarioIT {
         System.out.printf(Locale.ROOT, "%n%s: %d/%d pass%n%s%n", model, passed, runs * SITUATIONS.size(), String.join("\n", summary));
     }
 
-    /** Every squad, carrying enough for a hut, is set to build one on the platform - not sent to gather. */
+    /** Every squad, carrying enough for a hut, is set to build one on the platform - not sent to gather, nor below it. */
     private static List<String> buildsOnThePlatform(List<SquadStatus> squads, List<Objective> given) {
         List<String> failures = new ArrayList<>();
         for (int i = 0; i < squads.size(); i++) {
             Objective objective = given.get(i);
-            if (!objective.patrolBase() || distance(objective.location(), new Position(3000, 151, 3000)) > 16) {
+            if (!objective.patrolBase() || distance(objective.location(), new Position(3000, 151, 3000)) > 16
+                    || Math.abs(objective.location().y() - 151) > 3) {
                 failures.add(squads.get(i).squadName() + " wasn't set to build on the platform: " + objective.mission() + " at "
                         + objective.location() + objective.gather().map(r -> ", gathering " + r).orElse(""));
             }

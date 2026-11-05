@@ -29,8 +29,10 @@ public final class Torchmaker {
 
     private final Crafter crafter;
 
-    public Torchmaker(String name, PlaySession session, Inventory inventory) {
-        this.crafter = new Crafter(name, session, inventory);
+    public Torchmaker(String name, PlaySession session, Inventory inventory,
+                      Map<io.github.jayessdeesea.minecraft.bot.nav.BlockPos, String> furnaces,
+                      java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> claims) {
+        this.crafter = new Crafter(name, session, inventory, furnaces, claims);
     }
 
     public boolean active() {

@@ -40,8 +40,8 @@ class SpringAiGeneralTest {
         String prompt = SpringAiGeneral.buildContext("hold", java.util.Optional.empty(), java.util.Optional.empty(),
                 java.util.Optional.empty(), List.of(ALPHA, BRAVO_IN_BASE)).prompt();
 
-        assertTrue(prompt.contains("Standing order: none yet."), prompt);
-        assertTrue(prompt.contains("Standing order: PATROL_BASE - Build a shelter at (10, 64, 10). Intent: safe until dawn "
+        assertTrue(prompt.contains("Standing order: none yet - there is nothing to keep"), prompt);
+        assertTrue(prompt.contains("Standing order: PATROL_BASE - Build a shelter at x=10 z=10, about level with the squad. Intent: safe until dawn "
                 + "Status: the patrol base is built and sealed, the squad inside it."), prompt);
     }
 
@@ -80,7 +80,7 @@ class SpringAiGeneralTest {
         String prompt = SpringAiGeneral.buildContext("secure the village", java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty(), List.of(ALPHA, BRAVO)).prompt();
 
         assertTrue(prompt.contains("<mission>\nsecure the village\n</mission>"));
-        assertTrue(prompt.contains("<squad name=\"Alpha\">\nStanding order: none yet.\nSquad leader reports: Cantco: ravine in the way"));
+        assertTrue(prompt.contains("<squad name=\"Alpha\">\nStanding order: none yet - there is nothing to keep: give it an objective, with \"keep\": false.\nSquad leader reports: Cantco: ravine in the way"));
         assertTrue(prompt.contains("- Bob at (3, 64, 4): Moving"));
         assertTrue(prompt.contains("LOGSTAT: no soldier has reported his condition yet."));
         assertTrue(!prompt.contains("<supply_point>"));
@@ -117,7 +117,12 @@ class SpringAiGeneralTest {
                 List.of(new io.github.jayessdeesea.minecraft.command.ResourceSite(io.github.jayessdeesea.minecraft.command.Resource.WOOD,
                         new Position(30, 66, -40), 23)));
 
-        assertEquals("Resources seen: 23 logs around (30, 66, -40) (50 blocks NE).", SpringAiGeneral.describeResources(squad));
+        assertEquals("Resources seen: 23 logs around x=30 z=-40, about level with the squad (50 blocks NE).",
+                SpringAiGeneral.describeResources(squad));
+        SquadStatus onAPlatform = new SquadStatus("Bravo", new Report.Moving(), List.of(
+                new SoldierStatus("Dana", new Position(0, 151, 0), new Order.Idle(), new Report.Moving(), java.util.Optional.empty())),
+                squad.resources());
+        assertTrue(SpringAiGeneral.describeResources(onAPlatform).contains("around x=30 z=-40, 85 below the squad (50 blocks NE)"));
         assertTrue(SpringAiGeneral.describeResources(new SquadStatus("Alpha", new Report.Idle(), List.of()))
                 .contains("no trees or exposed stone"));
     }

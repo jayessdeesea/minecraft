@@ -124,12 +124,13 @@ public final class SpringAiGeneral implements General {
     /** The order the squad is carrying out, and - where it can be told - how far along it is. */
     static String describeStanding(SquadStatus squad) {
         if (squad.standing().isEmpty()) {
-            return "Standing order: none yet.";
+            return "Standing order: none yet - there is nothing to keep: give it an objective, with \"keep\": false.";
         }
         Objective standing = squad.standing().get();
         String task = standing.patrolBase() ? "PATROL_BASE" : standing.gather().map(Enum::name).orElse("NONE");
         StringBuilder line = new StringBuilder("Standing order: ").append(task).append(" - ").append(standing.mission())
-                .append(" at ").append(SpringAiSquadLeader.describe(standing.location()))
+                .append(" at ").append(squad.soldiers().isEmpty() ? SpringAiSquadLeader.describe(standing.location())
+                        : relative(standing.location(), squad.soldiers().getFirst().position()))
                 .append(". Intent: ").append(standing.intent());
         if (standing.patrolBase()) {
             int left = squad.baseBlocksLeft().orElse(-1);
@@ -150,7 +151,7 @@ public final class SpringAiGeneral implements General {
         StringBuilder line = new StringBuilder("Resources seen:");
         for (io.github.jayessdeesea.minecraft.command.ResourceSite site : squad.resources()) {
             line.append(' ').append(site.amount()).append(' ').append(site.resource() == io.github.jayessdeesea.minecraft.command.Resource.WOOD ? "logs" : "exposed stone")
-                    .append(" around ").append(SpringAiSquadLeader.describe(site.location()));
+                    .append(" around ").append(from == null ? SpringAiSquadLeader.describe(site.location()) : relative(site.location(), from));
             if (from != null) {
                 double dx = site.location().x() - from.x();
                 double dz = site.location().z() - from.z();
@@ -160,6 +161,17 @@ public final class SpringAiGeneral implements General {
         }
         line.setCharAt(line.length() - 1, '.');
         return line.toString();
+    }
+
+    /**
+     * Where {@code point} is, its height given against the squad at {@code squad} rather than as a
+     * y: a resource's height is where it grows, and an old order's where that was - neither is ground
+     * to send the squad to, and a y written out is a y the model copies.
+     */
+    static String relative(Position point, Position squad) {
+        long dy = Math.round(point.y() - squad.y());
+        String level = Math.abs(dy) < 3 ? "about level with the squad" : Math.abs(dy) + (dy < 0 ? " below the squad" : " above the squad");
+        return String.format(Locale.ROOT, "x=%d z=%d, %s", Math.round(point.x()), Math.round(point.z()), level);
     }
 
     /** The eight-point compass direction of a horizontal offset (north is -z). */

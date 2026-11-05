@@ -187,6 +187,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     }
 
     /** Where {@code soldier} is now, while connected. */
+    /** What a connected soldier last reported carrying, if it has - for a live scenario's judge. */
+    public Optional<Kit> kit(String soldier) {
+        return Optional.ofNullable(activeSoldiers.get(soldier)).flatMap(s -> s.status().condition()).flatMap(c -> c.kit());
+    }
+
     public Optional<Position> position(String soldier) {
         return Optional.ofNullable(activeSoldiers.get(soldier)).map(s -> s.status().position());
     }
@@ -204,6 +209,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, Boolean> upgradeAllowed = new ConcurrentHashMap<>();
     /** Cobblestone each soldier keeps for its share of its squad's patrol base still to build - squad loop writes, tick reads. */
     private final Map<String, Integer> stoneSetAside = new ConcurrentHashMap<>();
+    /** Each furnace a soldier is smelting in, and who: a furnace's contents are whoever's takes them. */
+    private final Map<io.github.jayessdeesea.minecraft.bot.nav.BlockPos, String> furnaces = new ConcurrentHashMap<>();
     /** Logs and stand cells a soldier is working, shared so soldiers pick different trees. */
     private final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> treeClaims = ConcurrentHashMap.newKeySet();
     /** Each connected soldier's trips to the stockpile, by name. */
@@ -914,7 +921,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             soldier.reportKit(drawn);
         });
         supplyRun.set(run);
-        Armourer armourer = new Armourer(name, session, inventory, treeClaims, () -> {
+        Armourer armourer = new Armourer(name, session, inventory, treeClaims, furnaces, () -> {
             Kit made = inventory.kit();
             lastKit.set(made);
             soldier.reportKit(made);
@@ -939,7 +946,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // Likewise its shield: a new connection starts with it lowered.
         java.util.concurrent.atomic.AtomicBoolean shieldSent = new java.util.concurrent.atomic.AtomicBoolean();
         armourerRef.set(armourer);
-        Torchmaker torchmaker = new Torchmaker(name, session, inventory);
+        Torchmaker torchmaker = new Torchmaker(name, session, inventory, furnaces, treeClaims);
         java.util.concurrent.atomic.AtomicInteger ladderTicks = new java.util.concurrent.atomic.AtomicInteger();
         AtomicReference<Optional<Recipe>> ladderStep = new AtomicReference<>(Optional.empty());
         // Ticks while told to light the base: one torch tried a second, until the light check sees it.
@@ -966,7 +973,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     && inventory.slotOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.PICKAXE) < 0;
             // The next rung of the equipment ladder, worked out once a second (it looks for ore to
             // dig): a weapon if bare-handed and allowed to rearm, more only if allowed to upgrade.
-            if (ladderTicks.getAndIncrement() % 20 == 0) {
+            // Not while the armourer is at the last one: its own claim on the ore it's digging hides
+            // that ore from the look for more, and the rung would read as out of reach mid-job.
+            if (ladderTicks.getAndIncrement() % 20 == 0 && !armourer.active()) {
                 ladderStep.set(nextRung(name, inventory, status.position()));
             }
             // The ladder's next rung, if allowed; a pickaxe, if sent for stone without one - both at one table.
@@ -1120,8 +1129,15 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      */
     private Optional<Recipe> nextRung(String name, Inventory inventory, Position at) {
         if (!rearmAllowed.getOrDefault(name, false)) {
+            rungsWanted.remove(name);
             return Optional.empty();
         }
+        // The squad climbs together: nobody works above the lowest rung a squadmate is working toward,
+        // so the first up the ladder doesn't dig out the ore the rest need for theirs.
+        String squad = SOLDIERS.stream().filter(d -> d.name().equals(name)).findFirst().orElseThrow().squad();
+        int highest = SOLDIERS.stream().filter(d -> d.squad().equals(squad) && !d.name().equals(name))
+                .map(d -> rungsWanted.get(d.name())).filter(java.util.Objects::nonNull)
+                .mapToInt(Integer::intValue).min().orElse(Ladder.RUNGS - 1);
         Map<ItemClass, Integer> setAside = Map.of(ItemClass.COBBLESTONE, stoneSetAside.getOrDefault(name, 0));
         java.util.Set<Workstation> inReach = java.util.EnumSet.noneOf(Workstation.class);
         for (Workstation station : Workstation.values()) {
@@ -1129,9 +1145,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         java.util.function.Predicate<ItemClass> canDig = material ->
                 setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims);
-        return upgradeAllowed.getOrDefault(name, false) ? Ladder.next(inventory, setAside, inReach, canDig)
-                : Ladder.weapon(inventory, setAside, inReach, canDig);
+        Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig, upgradeAllowed.getOrDefault(name, false) ? highest : 0);
+        next.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));
+        return next;
     }
+
+    /** The rung of the ladder each soldier is working toward, by name, while it is - tick loops write and read. */
+    private final Map<String, Integer> rungsWanted = new ConcurrentHashMap<>();
 
     /** One routine's turn at the soldier's hands. */
     private static Hands.Turn turn(java.util.function.BooleanSupplier active, java.util.function.Consumer<Boolean> tick) {

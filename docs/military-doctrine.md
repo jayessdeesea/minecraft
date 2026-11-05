@@ -266,7 +266,14 @@ stand beside, and cobblestone or iron ore when its pickaxe is good enough and so
 It crafts planks, sticks and a crafting table in its 2x2 inventory grid, places the table (or uses
 one already within reach), smelts ore in a furnace it makes or finds, and crafts the rest at the
 table. What's made is put on: armour worn, the best weapon in hand. A first wooden sword takes
-about a minute.
+about a minute. While crafting or smelting, the soldier stays where it began, since a window closes
+on a player who walks away from it.
+
+The squad climbs together. Nobody works above the lowest rung a squadmate is still working toward,
+so the first soldier up the ladder doesn't dig out the ore the rest need for their shields. A
+table is shared, since each player's crafting grid is its own, but a furnace isn't: whoever opens
+it can take what's in it. So a soldier holds the furnace it smelts in until it has collected what
+it left there, and a squadmate puts down its own.
 
 The squad leader decides whether there's time: its order's `rearm` lets soldiers make a weapon.
 Climbing past it waits until the squad isn't ordered to a patrol base, since shelter comes first

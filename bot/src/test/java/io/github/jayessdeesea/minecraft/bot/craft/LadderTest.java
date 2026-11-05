@@ -91,6 +91,15 @@ class LadderTest {
     }
 
     @Test
+    void noHigherThanTheRungItsToldToStopAt() {
+        carrying("stone_sword", 1).carrying("stone_pickaxe", 1).carrying("iron_ingot", 30).carrying("oak_log", 4);
+
+        assertEquals(Optional.empty(), Ladder.upTo(inventory, Map.of(), NONE, LOGS_ONLY, Ladder.rungOf(Recipe.STONE_PICKAXE)),
+                "a squadmate still wants a stone pickaxe: nothing above it");
+        assertEquals(Optional.of(Recipe.SHIELD), Ladder.upTo(inventory, Map.of(), NONE, LOGS_ONLY, Ladder.rungOf(Recipe.SHIELD)));
+    }
+
+    @Test
     void aRungThatCantBeHadIsPassedOverNotWaitedOn() {
         // No cobblestone to be had for a stone pickaxe, but iron in hand for what comes after.
         carrying("stone_sword", 1).carrying("shield", 1).carrying("iron_ingot", 4).carrying("oak_log", 4);
