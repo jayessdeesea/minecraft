@@ -57,10 +57,9 @@ registry classifies all logs as LOG.
 ## Done when
 The hasty hut, the general's PATROL_BASE task and the time of day are live (docs/military-doctrine.md
 § 14). What's left:
-- **Deliberate base on a later night.** The ground round a camp is lit by the SECURE task
-  (docs/military-doctrine.md § 15); what's left is the wall: a perimeter two high with a lip,
-  around the lit ground, so nothing walks in from the dark. Measured by a test that counts walled,
-  lit floor blocks.
+- **Deliberate base, the rest.** The ground round a camp is lit (SECURE) and walled (FORTIFY,
+  docs/military-doctrine.md § 15). What's left: a lip on the wall so spiders can't climb it, a gate
+  the squads close behind them, and the wall's own light, so nothing spawns on top of it.
 - **A camp outlives a restart.** A squad's base is known only in memory, so a restarted app sites a
   new hut and spends its blocks again, leaving the old one standing empty: seen live with the
   garrison at spawn. The squad should find the hut it built - a standing shell of the right shape

@@ -166,6 +166,16 @@ class ChainScenarioLiveIT {
                         };
                     },
                     Duration.ofMinutes(4)),
+            // A deliberate base: the ground round the camp walled in, two high. Met when a squad's wall
+            // has no block left to place.
+            new Scenario("wall-the-camp", List.of("clear %s", "give %s stone_sword", "give %s cobblestone 64", "give %s bread 4"),
+                    List.of(),
+                    1000,
+                    "The camp is on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z + ". Both squads wall in the camp's "
+                            + "ground today, at x=" + ARENA_X + " z=" + ARENA_Z + ".",
+                    () -> harness -> harness.roster().squads().stream()
+                            .anyMatch(squad -> harness.runner.wallLeft(squad.name()).equals(java.util.OptionalInt.of(0))) ? Verdict.PASS : Verdict.PENDING,
+                    Duration.ofMinutes(6)),
             // Skeletons on stone pillars six high, out of any sword's reach: only arrows bring them
             // down. Met when every skeleton is dead; the log says who loosed how often.
             new Scenario("bow-against-skeletons", List.of("clear %s", "give %s stone_sword", "give %s bow", "give %s arrow 64",

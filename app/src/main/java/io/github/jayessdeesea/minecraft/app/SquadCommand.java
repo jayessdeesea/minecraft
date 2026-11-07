@@ -112,6 +112,11 @@ final class SquadCommand {
         return current != null && current.treeFarm() ? Optional.of(current) : Optional.empty();
     }
 
+    Optional<Objective> fortifyObjective() {
+        Objective current = objective;
+        return current != null && current.fortify() ? Optional.of(current) : Optional.empty();
+    }
+
     Optional<Objective> mineObjective() {
         Objective current = objective;
         return current != null && current.mine() ? Optional.of(current) : Optional.empty();

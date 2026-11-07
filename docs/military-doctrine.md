@@ -518,6 +518,16 @@ the objective: logs, then the cobblestone for a furnace (making itself a pickaxe
 still can't make any reports CANTCO with why.
 The log says how many torches are still to put down.
 
+A lit camp still lets in what walks in from the dark beyond the light. An objective's task can be
+`FORTIFY`, which makes the camp a deliberate base: a wall two blocks high - one more than a
+jump - on a square 8 blocks out from the objective, laid on the ground of each of its columns
+(`bot.supply.Perimeter`). It's laid out once, when the objective is given, since laid out again
+after a row the ground would be the wall's top. Each soldier takes the nearest open cell of the
+lowest row no squadmate has taken, stands just inside it, and puts a block there, cobblestone
+first, then dirt (`bot.supply.Mason`); one with neither digs dirt outside the wall. The log says
+how many blocks are still to place. Seen live in `wall-the-camp`: two squads close a 128-block wall
+together.
+
 ## 16. Mining down
 
 | Practice | Content | Source |

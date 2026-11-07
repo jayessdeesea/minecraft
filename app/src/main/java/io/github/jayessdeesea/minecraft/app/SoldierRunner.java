@@ -139,6 +139,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs;
         /** Torches left to put down round a SECURE objective, at the last check: -1 before the first. */
         int torchesLeft = -1;
+        /** The squad's wall, laid out once round its FORTIFY objective's ground. */
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall;
+        /** The ground its wall is laid out round. */
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos wallCentre;
+        /** Wall cells left to fill at the last check: -1 before the first. */
+        int wallLeft = -1;
         /** The squad's tree farm, while it has one. */
         io.github.jayessdeesea.minecraft.bot.farm.TreeFarm trees;
         /** The squad's farm, while it has one. */
@@ -199,6 +205,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
 
     /** Where {@code soldier} is now, while connected. */
     /** Hostiles any soldier can see within {@code radius} of {@code center} - for a live scenario's judge. */
+    /** How many blocks of {@code squad}'s wall are still to place, while it has one laid out - for scenario checks. */
+    public java.util.OptionalInt wallLeft(String squad) {
+        SquadState state = squadStates.get(squad);
+        return state == null || state.wall == null || state.wallLeft < 0 ? java.util.OptionalInt.empty()
+                : java.util.OptionalInt.of(state.wallLeft);
+    }
+
     public int hostilesNear(Position center, double radius) {
         return world.nearbyHostiles(center, radius).size();
     }
@@ -265,6 +278,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final int ARROWS_WANTED = 32;
     /** Each connected soldier's picking up of what lies near, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Scavenger> scavengers = new ConcurrentHashMap<>();
+    /** Each connected soldier's wall building, by name. */
+    private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Mason> masons = new ConcurrentHashMap<>();
+    /** The wall cells each soldier's squad still has to fill, while its objective is FORTIFY - squad loop writes, tick reads. */
+    private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> walling = new ConcurrentHashMap<>();
+    /** The centre of the wall each soldier's squad builds - squad loop writes, tick reads. */
+    private final Map<String, io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wallCentres = new ConcurrentHashMap<>();
+    /** How far out from a FORTIFY objective its wall stands. */
+    static final int WALL_RADIUS = 8;
     /** Each connected soldier's hunting, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Hunter> hunters = new ConcurrentHashMap<>();
     /** Soldiers free to hunt when hungry: by day, out of contact, not walling in a base - squad loop writes, tick reads. */
@@ -672,6 +693,29 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             return sited;
         }).orElse(null);
         state.trees = trees;
+        // The wall: laid out once round the objective's ground, then filled in - laid out again
+        // after a row, the ground would be the wall's top.
+        Optional<io.github.jayessdeesea.minecraft.command.Objective> fortify = chainOfCommand.fortifyObjective(squadName);
+        if (fortify.isEmpty()) {
+            state.wall = null;
+            state.wallCentre = null;
+            state.wallLeft = -1;
+        } else {
+            io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
+                    io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(fortify.get().location().x(), fortify.get().location().y(),
+                            fortify.get().location().z()));
+            if (state.wallCentre == null || state.wallCentre.x() != at.x() || state.wallCentre.z() != at.z()) {
+                state.wall = io.github.jayessdeesea.minecraft.bot.supply.Perimeter.layout(world, at, WALL_RADIUS);
+                state.wallCentre = at;
+                LOG.info("[{}] FORTIFY: a wall laid out round {}, {} blocks", squadName, at, state.wall.size());
+            }
+        }
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wallLeft = state.wall == null ? List.of()
+                : io.github.jayessdeesea.minecraft.bot.supply.Perimeter.open(world, state.wall);
+        if (state.wall != null && wallLeft.size() != state.wallLeft) {
+            LOG.info("[{}] FORTIFY: {} of {} wall blocks still to place", squadName, wallLeft.size(), state.wall.size());
+            state.wallLeft = wallLeft.size();
+        }
         // Mining: the staircase at the objective's x and z, down to its y - kept while the objective
         // stays put, its head where the ground is when first sited.
         io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs = chainOfCommand.mineObjective(squadName).map(o -> {
@@ -725,6 +769,20 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 farming.put(soldierName, farm);
             } else {
                 farming.remove(soldierName);
+            }
+            if (!wallLeft.isEmpty() && !squadInContact) {
+                walling.put(soldierName, wallLeft);
+                wallCentres.put(soldierName, state.wallCentre);
+                Kit bricks = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
+                if (bricks != null && bricks.stone() + bricks.dirt() == 0) {
+                    // Nothing to build with: dirt, dug outside the wall so the ground inside stays whole.
+                    gathering.put(soldierName, new io.github.jayessdeesea.minecraft.command.Objective("Dig dirt for the wall",
+                            new Position(state.wallCentre.x() + WALL_RADIUS + SOIL_OFFSET, state.wallCentre.y(), state.wallCentre.z()),
+                            "Blocks to wall the camp in",
+                            new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.SOIL)));
+                }
+            } else {
+                walling.remove(soldierName);
             }
             boolean night = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
             if (!night && !squadInContact && building == null) {
@@ -844,6 +902,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (stand.isEmpty() && receiving.contains(soldierName)) {
                 // Walk onto what's been thrown: the server hands a dropped stack to whoever touches it.
                 stand = entityTracker.nearbyItems(statuses.get(i).position(), PICKUP_RADIUS).stream().findFirst();
+            }
+            if (stand.isEmpty() && masons.containsKey(soldierName)) {
+                stand = masons.get(soldierName).standAt();
             }
             if (stand.isEmpty() && lamplighters.containsKey(soldierName)) {
                 stand = lamplighters.get(soldierName).standAt();
@@ -1256,6 +1317,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         lamplighters.put(name, lamplighter);
         io.github.jayessdeesea.minecraft.bot.supply.Hunter hunter = new io.github.jayessdeesea.minecraft.bot.supply.Hunter(name);
         hunters.put(name, hunter);
+        io.github.jayessdeesea.minecraft.bot.supply.Mason mason = new io.github.jayessdeesea.minecraft.bot.supply.Mason(name, inventory, footing,
+                treeClaims);
+        masons.put(name, mason);
         io.github.jayessdeesea.minecraft.bot.supply.Scavenger scavenger = new io.github.jayessdeesea.minecraft.bot.supply.Scavenger(name);
         scavengers.put(name, scavenger);
         io.github.jayessdeesea.minecraft.bot.supply.Miner miner = new io.github.jayessdeesea.minecraft.bot.supply.Miner(name, session, inventory);
@@ -1399,6 +1463,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     stairsProgress.put(name, miner.tick(status.position(), world, stairs, free && !threatened));
                 }
             }));
+            List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walling.getOrDefault(name, List.of());
+            turns.put(Hands.Routine.MASON, turn(mason::active, free -> mason.tick(status.position(), world,
+                    wallCentres.getOrDefault(name, io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(status.position().x(),
+                            status.position().y(), status.position().z())), wall, free && !threatened)));
             turns.put(Hands.Routine.LAMPLIGHTER, turn(lamplighter::active,
                     free -> lamplighter.tick(status.position(), world, lights, free && !threatened)));
             io.github.jayessdeesea.minecraft.bot.farm.TreeFarm grove = planting.get(name);
@@ -1428,6 +1496,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     : stairs != null && stairsProgress.get(name) instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Stopped(String why)
                     ? new Report.Cantco("can't cut the staircase further: " + why)
                     : hunter.active() ? new Report.Hunting()
+                    : mason.active() ? new Report.Fortifying()
                     : forester.active() ? new Report.Planting()
                     : grove != null && forester.failure().isPresent() && !io.github.jayessdeesea.minecraft.bot.supply.Forester.planted(world, grove)
                     ? new Report.Cantco("can't plant the tree farm: " + forester.failure().get())

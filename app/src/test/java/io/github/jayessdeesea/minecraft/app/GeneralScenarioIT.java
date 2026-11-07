@@ -98,6 +98,11 @@ class GeneralScenarioIT {
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
                     (squads, given) -> given.stream().filter(o -> !o.secure() || distance(o.location(), new Position(3000, 151, 3000)) > 16)
                             .map(o -> "not set to secure the camp: " + o.task() + " " + o.mission() + " at " + o.location()).toList()),
+            new Situation("wall-the-camp", "The camp is on the stone platform around x=3000 z=3000, its ground already lit. "
+                    + "Both squads wall the camp in today.", TimeOfDay.of(2000, true),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
+                    (squads, given) -> given.stream().anyMatch(o -> o.fortify() && distance(o.location(), new Position(3000, 151, 3000)) <= 16)
+                            ? List.of() : List.of("no squad set to wall the camp in: " + given.stream().map(o -> o.task() + " at " + o.location()).toList())),
             new Situation("mine-for-iron", "The camp is on the stone platform around x=3000 z=3000. Alpha cuts a mine down "
                     + "at the camp to where the iron is. Bravo holds the camp.", TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),

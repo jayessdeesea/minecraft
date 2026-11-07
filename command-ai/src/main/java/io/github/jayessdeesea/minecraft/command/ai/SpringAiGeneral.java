@@ -171,6 +171,7 @@ public final class SpringAiGeneral implements General {
             case Objective.Task.Farm() -> "FARM";
             case Objective.Task.TreeFarm() -> "TREE_FARM";
             case Objective.Task.Secure() -> "SECURE";
+            case Objective.Task.Fortify() -> "FORTIFY";
             case Objective.Task.Mine() -> "MINE";
         };
         StringBuilder line = new StringBuilder("Standing order: ").append(task).append(" - ").append(standing.mission())
@@ -345,6 +346,7 @@ public final class SpringAiGeneral implements General {
                         case FARM -> new Objective.Task.Farm();
                         case TREE_FARM -> new Objective.Task.TreeFarm();
                         case SECURE -> new Objective.Task.Secure();
+                        case FORTIFY -> new Objective.Task.Fortify();
                         case MINE -> new Objective.Task.Mine();
                     }));
         }

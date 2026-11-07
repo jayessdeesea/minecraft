@@ -263,6 +263,10 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         return squads.get(squad).treeFarmObjective();
     }
 
+    public Optional<Objective> fortifyObjective(String squad) {
+        return squads.get(squad).fortifyObjective();
+    }
+
     public Optional<Objective> mineObjective(String squad) {
         return squads.get(squad).mineObjective();
     }
