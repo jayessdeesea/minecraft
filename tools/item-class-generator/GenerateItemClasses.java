@@ -48,7 +48,8 @@ public class GenerateItemClasses {
         Set<String> unmatched = new TreeSet<>(WEAPONS);
         unmatched.addAll(ROUNDS);
         unmatched.addAll(Set.of("stick", "crafting_table", "cobblestone", "wooden_pickaxe", "furnace", "coal", "charcoal", "torch",
-                "raw_iron", "iron_ingot", "shield", "wheat_seeds", "wheat", "wooden_hoe", "dirt"));
+                "raw_iron", "iron_ingot", "shield", "wheat_seeds", "wheat", "wooden_hoe", "dirt",
+                "string", "flint", "feather"));
         unmatched.addAll(food);
         Iterator<Map.Entry<String, JsonNode>> it = entries.fields();
         while (it.hasNext()) {
@@ -75,6 +76,9 @@ public class GenerateItemClasses {
                     : name.endsWith("_hoe") ? 'Z'
                     : name.endsWith("_sapling") ? 'B'
                     : name.equals("dirt") ? 'D'
+                    : name.equals("string") ? 'J'
+                    : name.equals("flint") ? 'Q'
+                    : name.equals("feather") ? 'V'
                     : '-';
             if (kind != '-') {
                 classes.put(entry.getValue().get("protocol_id").asInt(), kind + " " + name);
@@ -92,7 +96,7 @@ public class GenerateItemClasses {
             out.println("# W weapon, A armour, R arrows; and what a wooden sword is made from: L logs, P planks,");
             out.println("# S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;");
             out.println("# U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;");
-            out.println("# E wheat seeds, Y wheat, Z hoes, B saplings, D dirt.");
+            out.println("# E wheat seeds, Y wheat, Z hoes, B saplings, D dirt; J string, Q flint, V feathers.");
             out.println("# Everything NOT listed is just carried.");
             classes.forEach((id, line) -> out.println(id + " " + line));
         }

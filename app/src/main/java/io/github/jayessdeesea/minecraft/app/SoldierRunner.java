@@ -261,6 +261,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, Gatherer> gatherers = new ConcurrentHashMap<>();
     /** Each connected soldier's farm work, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Farmer> farmers = new ConcurrentHashMap<>();
+    /** Arrows a soldier with a bow makes up to, when it carries flint and feathers. */
+    private static final int ARROWS_WANTED = 32;
+    /** Each connected soldier's picking up of what lies near, by name. */
+    private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Scavenger> scavengers = new ConcurrentHashMap<>();
     /** Each connected soldier's hunting, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Hunter> hunters = new ConcurrentHashMap<>();
     /** Soldiers free to hunt when hungry: by day, out of contact, not walling in a base - squad loop writes, tick reads. */
@@ -834,6 +838,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (stand.isEmpty() && handovers.containsKey(soldierName)) {
                 stand = handovers.get(soldierName).standAt();
             }
+            if (stand.isEmpty() && scavengers.containsKey(soldierName)) {
+                stand = scavengers.get(soldierName).standAt();
+            }
             if (stand.isEmpty() && receiving.contains(soldierName)) {
                 // Walk onto what's been thrown: the server hands a dropped stack to whoever touches it.
                 stand = entityTracker.nearbyItems(statuses.get(i).position(), PICKUP_RADIUS).stream().findFirst();
@@ -1249,6 +1256,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         lamplighters.put(name, lamplighter);
         io.github.jayessdeesea.minecraft.bot.supply.Hunter hunter = new io.github.jayessdeesea.minecraft.bot.supply.Hunter(name);
         hunters.put(name, hunter);
+        io.github.jayessdeesea.minecraft.bot.supply.Scavenger scavenger = new io.github.jayessdeesea.minecraft.bot.supply.Scavenger(name);
+        scavengers.put(name, scavenger);
         io.github.jayessdeesea.minecraft.bot.supply.Miner miner = new io.github.jayessdeesea.minecraft.bot.supply.Miner(name, session, inventory);
         miners.put(name, miner);
 
@@ -1293,6 +1302,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
             if (field != null && inventory.count(ItemClass.WHEAT) >= 3) {
                 tools.add(Recipe.BREAD);
+            }
+            // Arrows from the flint and feathers it has picked up, while it has a bow to shoot them.
+            if (inventory.slotOfNamed("bow") >= 0 && inventory.count(ItemClass.FLINT) > 0 && inventory.count(ItemClass.FEATHER) > 0
+                    && inventory.count(ItemClass.ARROWS) < ARROWS_WANTED) {
+                tools.add(Recipe.ARROWS);
             }
             boolean rearming = rung.filter(r -> bareHanded && r.makes() == io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.WEAPON)
                     .isPresent();
@@ -1395,6 +1409,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             turns.put(Hands.Routine.GATHERER, turn(gatherer::active,
                     free -> gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
                             gather == null ? status.position() : gather.location(), free && !inContact)));
+            turns.put(Hands.Routine.SCAVENGER, turn(scavenger::active,
+                    free -> scavenger.tick(status.position(), world, free && !threatened && fort == null)));
             Hands.tick(turns);
             // Short of logs for tools it tried and failed to chop wood for: a squadmate may have
             // some to spare (§13).

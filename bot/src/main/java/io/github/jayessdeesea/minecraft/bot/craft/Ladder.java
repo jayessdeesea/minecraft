@@ -49,6 +49,8 @@ public final class Ladder {
     static final List<Rung> LADDER = List.of(
             new Rung("a weapon", i -> bestMelee(i) >= 0, List.of(Recipe.STONE_SWORD, Recipe.WOODEN_SWORD)),
             new Rung("a stone sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("stone_sword"), List.of(Recipe.STONE_SWORD)),
+            // Only with the string in hand: string is a spider's drop, not something to go and fetch.
+            new Rung("a bow", i -> i.slotOfNamed("bow") >= 0, List.of(Recipe.BOW)),
             new Rung("a stone pickaxe", i -> bestPickaxe(i) >= 1, List.of(Recipe.STONE_PICKAXE)),
             new Rung("a shield", i -> Stock.of(i).classes().getOrDefault(ItemClass.SHIELD, 0) > 0, List.of(Recipe.SHIELD)),
             new Rung("an iron chestplate", i -> armour(i, Recipe.IRON_CHESTPLATE), List.of(Recipe.IRON_CHESTPLATE)),

@@ -275,17 +275,22 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 
 1. A weapon: a stone sword if it carries the cobblestone, a wooden one if not.
 2. A stone sword.
-3. A stone pickaxe, which mines iron ore.
-4. A shield, worn in the off hand and raised against arrows (§8).
-5. Iron armour: chestplate, leggings, boots, helmet.
-6. An iron sword.
-7. An iron pickaxe.
-8. An iron axe, which chops a log in a sixth of the bare-handed time.
+3. A bow, from three sticks and three string, once it carries the string: string is a spider's
+   drop, not something it goes and fetches. A soldier with a bow makes arrows - flint, a stick, a
+   feather, four at a time - while it carries flint and feathers, up to 32.
+4. A stone pickaxe, which mines iron ore.
+5. A shield, worn in the off hand and raised against arrows (§8).
+6. Iron armour: chestplate, leggings, boots, helmet.
+7. An iron sword.
+8. An iron pickaxe.
+9. An iron axe, which chops a log in a sixth of the bare-handed time.
 
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
 Against a skeleton, a stone sword over a wooden one saves 0.3 health a fight. A shield saves
 2.1 more for one iron ingot, about what a chestplate saves for eight, and full iron armour 5.9:
-the arrows on the way in do the harm, not the melee. A rung is held
+the arrows on the way in do the harm, not the melee. Out of contact and out of a patrol base, a
+soldier walks onto whatever lies within 6 blocks - a spider's string, a chicken's feather - and
+leaves for a while what it can't reach (`bot.supply.Scavenger`). A rung is held
 once something as good is, and one whose materials can't be had is passed over, not waited on.
 A tool that wears out is made again, since it no longer holds its rung.
 

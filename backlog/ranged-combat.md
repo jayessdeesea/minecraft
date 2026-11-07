@@ -22,7 +22,8 @@ Built: shooting a bow, with the reflex choosing it beyond sword range or where i
     already exist.
 - **Shooting, the rest:** aim leading a moving target, a shorter draw for a close one, and the
   crossbow: load, then fire.
-- **Making them:**
+- **Making them, the rest** (a bow from carried string, and arrows from carried flint and
+  feathers, are built - § 11; what's left is fetching the materials on purpose):
   - A bow is 3 sticks and 3 string. String comes from spiders, or from cobwebs broken with a
     sword.
   - Arrows are flint, a stick and a feather. Flint comes from gravel, feathers from chickens.

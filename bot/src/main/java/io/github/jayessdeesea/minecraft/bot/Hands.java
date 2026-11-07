@@ -46,7 +46,9 @@ public final class Hands {
         /** Planting the squad's tree farm. */
         FORESTER,
         /** Chopping or quarrying for the squad. */
-        GATHERER
+        GATHERER,
+        /** Picking up what lies near: a spider's string, a chicken's feather. */
+        SCAVENGER
     }
 
     /** One routine's turn: whether it's under way, and its tick, told whether it's free. */

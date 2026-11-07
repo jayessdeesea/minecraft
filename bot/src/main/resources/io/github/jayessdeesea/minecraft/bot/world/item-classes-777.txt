@@ -3,7 +3,7 @@
 # W weapon, A armour, R arrows; and what a wooden sword is made from: L logs, P planks,
 # S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;
 # U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;
-# E wheat seeds, Y wheat, Z hoes, B saplings, D dirt.
+# E wheat seeds, Y wheat, Z hoes, B saplings, D dirt; J string, Q flint, V feathers.
 # Everything NOT listed is just carried.
 55 D dirt
 62 K cobblestone
@@ -90,6 +90,8 @@
 1059 Z netherite_hoe
 1060 S stick
 1061 F mushroom_stew
+1062 J string
+1063 V feather
 1065 E wheat_seeds
 1066 Y wheat
 1067 F bread
@@ -121,6 +123,7 @@
 1093 A netherite_chestplate
 1094 A netherite_leggings
 1095 A netherite_boots
+1096 Q flint
 1097 F porkchop
 1098 F cooked_porkchop
 1190 F cod

@@ -53,6 +53,13 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
     public static final Recipe SHIELD = material("shield", ItemClass.SHIELD, 1, Station.TABLE, List.of("PIP", "PPP", " P "),
             Map.of('P', ItemClass.PLANKS, 'I', ItemClass.IRON_INGOT));
 
+    /** String from spiders: the bow a soldier shoots back with (docs/military-doctrine.md § 8). */
+    public static final Recipe BOW = new Recipe("bow", ItemClass.WEAPON, Optional.of("bow"), 1, Station.TABLE,
+            List.of(" SX", "S X", " SX"), Map.of('S', ItemClass.STICK, 'X', ItemClass.STRING));
+    /** Flint from gravel, a feather from a chicken: four arrows. */
+    public static final Recipe ARROWS = material("arrows", ItemClass.ARROWS, 4, Station.TABLE, List.of("F", "S", "E"),
+            Map.of('F', ItemClass.FLINT, 'S', ItemClass.STICK, 'E', ItemClass.FEATHER));
+
     public static final Recipe WOODEN_SWORD = sword("wooden", 'P', ItemClass.PLANKS);
     public static final Recipe WOODEN_PICKAXE = pickaxe("wooden", 'P', ItemClass.PLANKS);
     public static final Recipe STONE_SWORD = sword("stone", 'C', ItemClass.COBBLESTONE);
@@ -68,6 +75,7 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
 
     /** Every recipe a soldier knows. */
     public static final List<Recipe> ALL = List.of(PLANKS, STICKS, CRAFTING_TABLE, TORCHES, FURNACE, CHARCOAL, IRON_INGOT, SHIELD, WOODEN_HOE, BREAD,
+            BOW, ARROWS,
             WOODEN_SWORD, WOODEN_PICKAXE, STONE_SWORD, STONE_PICKAXE, IRON_SWORD, IRON_PICKAXE, IRON_AXE,
             IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS);
 

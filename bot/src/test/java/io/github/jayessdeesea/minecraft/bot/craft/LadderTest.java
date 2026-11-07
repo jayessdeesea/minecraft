@@ -76,7 +76,15 @@ class LadderTest {
         carrying("stone_sword", 1).carrying("stone_pickaxe", 1).carrying("oak_log", 4).carrying("cobblestone", 16);
 
         assertEquals(Optional.empty(), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY), "no ore in reach: nothing more to make");
-        assertEquals(Optional.of(Recipe.SHIELD), Ladder.next(inventory, Map.of(), NONE, ANYTHING));
+        assertEquals(Optional.of(Recipe.BOW), Ladder.next(inventory, Map.of(), NONE, ANYTHING), "string to be had, a bow first");
+        assertEquals(Optional.of(Recipe.SHIELD), Ladder.next(inventory, Map.of(), NONE, c -> c != ItemClass.STRING));
+    }
+
+    @Test
+    void aBowWaitsOnStringCarried() {
+        carrying("stone_sword", 1).carrying("oak_log", 2).carrying("string", 3);
+
+        assertEquals(Optional.of(Recipe.BOW), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY));
     }
 
     @Test
