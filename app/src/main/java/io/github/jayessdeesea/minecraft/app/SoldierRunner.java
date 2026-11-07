@@ -843,8 +843,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // Short of its share of the hut's blocks: dirt, dug beside the site, makes up the rest -
             // a squad with nothing to build with still shelters by night.
             Kit carried = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
-            if (building != null && !allInside && carried != null && !squadInContact
-                    && carried.stone() + carried.dirt() + carried.logs() < stoneShare) {
+            // And one that runs out mid-build, with the hut still open, goes out for more: an open
+            // hut shelters nobody, and waiting inside it for blocks that won't come is a night lost.
+            int carriedBlocks = carried == null ? 0 : carried.stone() + carried.dirt() + carried.logs();
+            if (building != null && carried != null && !squadInContact && baseBlocks > 0
+                    && (allInside ? carriedBlocks == 0 : carriedBlocks < stoneShare)) {
                 Position hutPlace = building.stands().get(i);
                 Position dirtPlace = new Position(hutPlace.x() + SOIL_OFFSET, hutPlace.y(), hutPlace.z());
                 gathering.put(soldierName, new io.github.jayessdeesea.minecraft.command.Objective("Dig dirt for the patrol base",

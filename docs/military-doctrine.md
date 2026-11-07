@@ -424,7 +424,8 @@ under the soldiers.
 Each soldier goes to its own floor cell. Once all are inside, each builds from where it stands
 (`bot.supply.Builder`): cobblestone first, then dirt, then planks, then logs. A soldier carrying
 less than its share of the hut's blocks first digs dirt by hand a few blocks off the site, clear of
-the walls (`Resource.SOIL`), so a squad with nothing to build with still shelters by night; the
+the walls (`Resource.SOIL`), and one that runs out with the hut still open goes out for more, so a
+squad with nothing to build with still shelters by night; the
 general's LOGSTAT counts dirt, and tells it so. Each block is placed against a
 solid neighbour's face and checked against the server's block updates; a cell that won't take a
 block after three tries is skipped; after the first miss the soldier digs the cell, since a flower
