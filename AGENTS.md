@@ -122,7 +122,9 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   positions it shouldn't reuse (an old order's, a resource's) relative to the squad, not as a y.
   Worked examples are copied the same way - their coordinates and their choices: one example of a
   sealed squad sent to SECURE pulled every sealed squad out. Put a rule in the paragraph of the
-  task it sets, not in a general section after it.
+  task it sets, not in a general section after it. And a section that explains itself needs no
+  paragraph about it: a two-line note on `<foothold>` in the doctrine took the night rule from 6 of
+  6 to 0 of 6.
 - **A routine is an expect script: act, then wait for the confirming event - never for time.**
   Anything that acts and then needs the server's answer (crafting, placing, opening a window,
   smelting) is a `bot.script.Script` of steps. Each step names the event that confirms it, read

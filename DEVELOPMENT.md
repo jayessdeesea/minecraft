@@ -171,9 +171,13 @@ use the arena. Start them there and give them a mission about it:
 
 ```bash
 docker compose exec minecraft console "spreadplayers 0 0 2 8 false @a[name=!YourName]"   # once they've joined
-java -jar app/target/app.jar --minecraft.operators=YourName --minecraft.yield-to-experiments=true --minecraft.general.shelter-at-night=true \
-  "--minecraft.general.mission=Make camp around x=0 z=0 and stay within 48 blocks of it. Each squad spends the night sealed inside a patrol base near there, until dawn. By day, secure the camp's ground with torches, then wall the camp in, gather the wood and stone the camp needs from nearby, keep a wheat farm by the water for bread, plant a tree farm near the camp where no trees are left (spruce preferred), and cut a mine down at the camp for stone and iron."
+java -jar app/target/app.jar --minecraft.operators=YourName --minecraft.yield-to-experiments=true \
+  --minecraft.general.shelter-at-night=true --minecraft.camp=0,0 \
+  "--minecraft.general.mission=Make camp around x=0 z=0 and stay within 48 blocks of it, and build it up into a lodgment. Each squad spends the night sealed inside a patrol base near there, until dawn."
 ```
+
+`minecraft.camp` has the general build the camp up phase by phase, each phase measured
+(docs/military-doctrine.md § 17), so the mission needn't list the work.
 
 A soldier rejoins where it last logged out, so a squad that last ran a scenario starts on the
 arena; `spreadplayers` puts them back on the ground. `minecraft.yield-to-experiments` stands the
