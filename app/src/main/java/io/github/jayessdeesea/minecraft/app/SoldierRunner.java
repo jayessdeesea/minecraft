@@ -333,7 +333,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         long hungry = everyone.stream().filter(s -> s.condition().map(c -> c.food() <= HUNT_BELOW_FOOD
                 && c.kit().map(k -> k.rations() == 0).orElse(true)).orElse(false)).count();
         Optional<io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> farm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at,
-                CAMP_FARM_RADIUS, CAMP_FARM_RADIUS / 2);
+                CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
         standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "food", growing >= FARM_GROWING,
                 (farm.isEmpty() ? "no ground to farm by water near the camp" : growing + " of " + farm.get().plot().size() + " farm cells growing wheat")
@@ -391,6 +391,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final int CAMP_RADIUS = 24;
     /** How far round the camp its farm is looked for: the water it needs can be a way off. */
     private static final int CAMP_FARM_RADIUS = 48;
+    /** And how far up or down: a camp on a hill farms by the water below it. */
+    private static final int CAMP_FARM_VERTICAL = 32;
     /** The camp's ground, found once. */
     private io.github.jayessdeesea.minecraft.bot.nav.BlockPos campGround;
     /** Farm cells growing wheat for the camp's food to count as met. */

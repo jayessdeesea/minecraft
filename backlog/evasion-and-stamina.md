@@ -17,6 +17,11 @@ doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
   way. What's left:
   - Breaking contact properly, back toward the squad, instead of only backing away. Pinned across
     water in the open, with no cover to take, a stone-sworded soldier still dies 40 times in 40.
+    In `CombatScenarioTest`'s moat the water rings the soldier, so there is nowhere to run - a
+    sprint away was measured and changed nothing. What would help there is digging in: a hole two
+    deep under it, a hasty fighting position (ATP 3-21.8) the archer can't see into. The combat
+    simulator doesn't model digging yet; that comes first. A soldier with a bow shoots back
+    instead (docs/military-doctrine.md § 8).
 - **What doesn't help:** zigzagging in toward an archer, measured. It loses all 100 too: it slows
   the approach while the arrows that kill land in melee. Dodging is worth another look only for a
   soldier with a ranged weapon of its own, holding at range (backlog/ranged-combat.md).
