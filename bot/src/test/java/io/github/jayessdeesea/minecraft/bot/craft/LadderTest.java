@@ -81,6 +81,17 @@ class LadderTest {
     }
 
     @Test
+    void diamondComesOnlyAfterIronAndOnlyWithTheDiamondsCarried() {
+        carrying("iron_sword", 1).carrying("bow", 1).carrying("iron_pickaxe", 1).carrying("iron_axe", 1).carrying("shield", 1)
+                .carrying("oak_log", 4);
+        wearing("iron_helmet", 5).wearing("iron_chestplate", 6).wearing("iron_leggings", 7).wearing("iron_boots", 8);
+
+        assertEquals(Optional.empty(), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY), "no diamonds, nothing more");
+        carrying("diamond", 2);
+        assertEquals(Optional.of(Recipe.DIAMOND_SWORD), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY));
+    }
+
+    @Test
     void aBowWaitsOnStringCarried() {
         carrying("stone_sword", 1).carrying("oak_log", 2).carrying("string", 3);
 

@@ -59,7 +59,15 @@ public final class Ladder {
             new Rung("an iron helmet", i -> armour(i, Recipe.IRON_HELMET), List.of(Recipe.IRON_HELMET)),
             new Rung("an iron sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("iron_sword"), List.of(Recipe.IRON_SWORD)),
             new Rung("an iron pickaxe", i -> bestPickaxe(i) >= 2, List.of(Recipe.IRON_PICKAXE)),
-            new Rung("an iron axe", i -> bestAxeSpeed(i) >= 6, List.of(Recipe.IRON_AXE)));
+            new Rung("an iron axe", i -> bestAxeSpeed(i) >= 6, List.of(Recipe.IRON_AXE)),
+            // Diamond only after the iron armour, and only with the diamonds carried: they're ore
+            // the miner takes beside its stairs, not something a soldier goes and fetches.
+            new Rung("a diamond sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("diamond_sword"), List.of(Recipe.DIAMOND_SWORD)),
+            new Rung("a diamond chestplate", i -> armour(i, Recipe.DIAMOND_CHESTPLATE), List.of(Recipe.DIAMOND_CHESTPLATE)),
+            new Rung("diamond leggings", i -> armour(i, Recipe.DIAMOND_LEGGINGS), List.of(Recipe.DIAMOND_LEGGINGS)),
+            new Rung("diamond boots", i -> armour(i, Recipe.DIAMOND_BOOTS), List.of(Recipe.DIAMOND_BOOTS)),
+            new Rung("a diamond helmet", i -> armour(i, Recipe.DIAMOND_HELMET), List.of(Recipe.DIAMOND_HELMET)),
+            new Rung("a diamond pickaxe", i -> bestPickaxe(i) >= 3, List.of(Recipe.DIAMOND_PICKAXE)));
 
     private Ladder() {
     }
@@ -146,8 +154,10 @@ public final class Ladder {
 
     /** Whether the armour slot {@code piece} goes in holds - or a carried piece would fill it with - iron or better. */
     private static boolean armour(Inventory inventory, Recipe piece) {
-        int iron = ItemClassRegistry.armourGrade("iron");
-        String suffix = piece.item().orElseThrow().substring("iron".length());
+        String made = piece.item().orElseThrow();
+        String material = made.substring(0, made.indexOf('_'));
+        int iron = ItemClassRegistry.armourGrade(material);
+        String suffix = made.substring(material.length());
         for (int slot = Inventory.ARMOUR_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
             int item = inventory.itemAt(slot);
             if (ItemClassRegistry.nameOf(item).filter(n -> n.endsWith(suffix)).isPresent()

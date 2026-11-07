@@ -285,6 +285,8 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 7. An iron sword.
 8. An iron pickaxe.
 9. An iron axe, which chops a log in a sixth of the bare-handed time.
+10. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
+    the miner takes beside its stairs (§16) with an iron pickaxe, not something a soldier fetches.
 
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
 Against a skeleton, a stone sword over a wooden one saves 0.3 health a fight. A shield saves
