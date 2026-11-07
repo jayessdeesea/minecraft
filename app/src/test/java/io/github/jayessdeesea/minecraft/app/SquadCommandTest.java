@@ -18,7 +18,7 @@ class SquadCommandTest {
 
     private final SquadCommand squad = new SquadCommand("Alpha", (SquadLeader) Proxy.newProxyInstance(SquadLeader.class.getClassLoader(),
             new Class<?>[]{SquadLeader.class}, (proxy, method, args) -> method.getName().equals("report") ? new Report.Idle() : null),
-            line -> { });
+            line -> { }, new ModelCalls());
 
     private static List<SoldierStatus> soldiers(Report alice) {
         return List.of(new SoldierStatus("Alice", new Position(0, 64, 0), new Order.Idle(), alice, Optional.empty()),

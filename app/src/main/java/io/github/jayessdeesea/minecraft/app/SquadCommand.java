@@ -73,7 +73,10 @@ final class SquadCommand {
         squadLeader.receiveTime(time);
     }
 
-    SquadCommand(String name, SquadLeader squadLeader, Consumer<String> radio) {
+    private final ModelCalls modelCalls;
+
+    SquadCommand(String name, SquadLeader squadLeader, Consumer<String> radio, ModelCalls modelCalls) {
+        this.modelCalls = modelCalls;
         this.name = name;
         this.squadLeader = squadLeader;
         this.radio = radio;
@@ -206,6 +209,11 @@ final class SquadCommand {
             if (newSoldierContact && !newObjective) {
                 LOG.info("[{}] contact report: {} in contact - the squad leader decides now", name, contacts);
             }
+            // A routine look, with nothing new to answer, waits while the models are backed up.
+            boolean routine = !newObjective && !newSoldierCantco && !newSoldierContact;
+            if (routine && modelCalls.shed(name + "'s squad leader")) {
+                return;
+            }
             cantcosAnswered = cantcos;
             contactsAnswered = contacts;
             decide(squad, terrain, now);
@@ -255,7 +263,9 @@ final class SquadCommand {
         }
         lastDecisionMillis = now;
         newObjective = false;
+        ModelCalls.Ticket ticket = modelCalls.queued(name + "'s squad leader");
         thread.execute(() -> {
+            ticket.started();
             try {
                 long started = System.currentTimeMillis();
                 TerrainSurvey survey = terrain.get();
@@ -276,6 +286,7 @@ final class SquadCommand {
             } catch (RuntimeException e) {
                 LOG.error("[{}] no decision - squad keeps its last order: {}", name, e.getMessage(), e);
             } finally {
+                ticket.finished();
                 busy.set(false);
             }
         });

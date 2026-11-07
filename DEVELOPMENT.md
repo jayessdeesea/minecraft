@@ -145,6 +145,12 @@ LLM squad leader, both under one LLM general (`ChainOfCommand`). The log reads a
 Orders and CANTCOs also appear in game chat (section 4), spoken by Alice as the radio operator. Soldiers reconnect on their own if a connection dies. The general's mission
 starts as `minecraft.general.mission` in `application.yml`.
 
+**The models' queue.** Every decision sent to a model is timed (`app.ModelCalls`): `[Model]
+General: waited 0 ms, ran 5600 ms, 1 ahead of it when queued`. One that waited 5 seconds to start,
+took 20 seconds all told, or was queued behind three others logs as `[Model] ALARM`. With three
+or more in flight, a squad leader's routine look - nothing new to answer - is skipped that cycle
+(`routine decision shed`), so a contact or a CANTCO isn't queued behind it.
+
 **Giving orders from game chat.** A player named in `minecraft.operators` (comma-separated, empty
 by default) can replace the mission by typing `!mission <text>` in plain chat. The general answers
 WILCO on the net and re-plans at once. Anything else an operator says - "it's night", "skeletons on

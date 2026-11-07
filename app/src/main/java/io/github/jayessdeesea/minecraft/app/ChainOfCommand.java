@@ -95,6 +95,8 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      * mission says so - a garrison - and leave it off where a scenario may need a squad out at night.
      */
     private final boolean shelterAtNight;
+    /** Every echelon's model decisions, timed and alarmed on. */
+    private final ModelCalls modelCalls = new ModelCalls();
     /**
      * How long before dark the rule starts: a hut takes a few minutes, more with dirt to dig first,
      * so a squad set to it only once it's dark is building in the dark.
@@ -106,7 +108,8 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         this.general = general;
         this.shelterAtNight = shelterAtNight;
         for (Roster.Squad squad : roster.squads()) {
-            squads.put(squad.name(), new SquadCommand(squad.name(), new SpringAiSquadLeader(squad.name(), squadLeaderClient), this::transmit));
+            squads.put(squad.name(), new SquadCommand(squad.name(), new SpringAiSquadLeader(squad.name(), squadLeaderClient), this::transmit,
+                    modelCalls));
         }
     }
 
@@ -357,7 +360,9 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         }
         lastGeneralMillis = now;
         int missionAsked = missionVersion.get();
+        ModelCalls.Ticket ticket = modelCalls.queued("General");
         generalThread.execute(() -> {
+            ticket.started();
             try {
                 long started = System.currentTimeMillis();
                 List<SquadStatus> statuses = sitreps.stream().map(s -> new SquadStatus(s.squad(),
@@ -385,6 +390,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             } catch (RuntimeException e) {
                 LOG.error("[General] no decision - keeping the current objectives: {}", e.getMessage(), e);
             } finally {
+                ticket.finished();
                 generalBusy.set(false);
             }
         });
