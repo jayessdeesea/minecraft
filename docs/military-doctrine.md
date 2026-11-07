@@ -417,7 +417,8 @@ An objective's task can be `PATROL_BASE`. `command.PatrolBase` lays out a hasty 
 squad: a 2x2 floor for up to four soldiers (3x3 for up to nine), walls two high, and a roof over
 walls and floor, so each roof block has a neighbour to go against. That's 40 blocks for a squad of
 four. The site is the nearest level footing within 8 blocks of the general's point: every floor
-cell standable at one height, never rubble or a slope, since the model's point is a guess - and a
+cell standable at one height and walkable to from where the squad is - not an old hut's roof two
+blocks up - never rubble or a slope, since the model's point is a guess - and a
 block clear of any other squad's hut, since the general may send two squads to one point. A
 re-issued objective within 8 blocks keeps the site already laid out, so the outline doesn't move
 under the soldiers.

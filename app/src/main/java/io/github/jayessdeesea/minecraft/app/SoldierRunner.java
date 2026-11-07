@@ -519,7 +519,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // nearest level footing for the whole floor - never on rubble or a slope, where
             // soldiers can't all stand in their places.
             Position asked = site;
-            site = levelSite(site, statuses.size(), squadName).orElse(null);
+            Position middle = statuses.stream().map(SoldierStatus::position).sorted(java.util.Comparator.comparingDouble(Position::y))
+                    .toList().get(statuses.size() / 2);
+            site = levelSite(site, statuses.size(), squadName, middle).orElse(null);
             if (site == null) {
                 if (!asked.equals(state.unbuildable)) {
                     LOG.warn("[{}] no level ground for a patrol base within {} blocks of {} - not building", squadName,
@@ -1047,7 +1049,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      * standable at one height: solid below, room for a body above - and the hut's walls stand at
      * least a block clear of every other squad's, so each keeps a side to cut a doorway through.
      */
-    private Optional<Position> levelSite(Position asked, int soldiers, String squadName) {
+    private Optional<Position> levelSite(Position asked, int soldiers, String squadName, Position from) {
+        // Only footing the squad can walk to: a level roof of an old hut two blocks up is no site.
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> reachable = io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.reachable(
+                world, io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
+                        io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(from.x(), from.y(), from.z())),
+                (int) Math.ceil(Math.hypot(asked.x() - from.x(), asked.z() - from.z())) + SITE_SEARCH + 2, SITE_REACH_BUDGET);
+        // Shut in a hut, the squad reaches next to nothing: it'll cut its way out, so any site will do.
+        boolean shutIn = reachable.size() < SHUT_IN_CELLS;
         java.util.Set<Long> taken = new java.util.HashSet<>();
         baseFootprints.forEach((other, columns) -> {
             if (!other.equals(squadName)) {
@@ -1071,7 +1080,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             return taken.contains(c) || taken.contains(column(cx + 1, cz)) || taken.contains(column(cx - 1, cz))
                                     || taken.contains(column(cx, cz + 1)) || taken.contains(column(cx, cz - 1));
                         });
-                        boolean level = clear && hut.floor().stream().allMatch(cell -> {
+                        boolean level = clear && (shutIn || hut.floor().stream().allMatch(cell -> reachable.contains(
+                                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) cell.x(), (int) cell.y(), (int) cell.z())))) && hut.floor().stream().allMatch(cell -> {
                             int cx = (int) cell.x();
                             int cy = (int) cell.y();
                             int cz = (int) cell.z();
@@ -1091,6 +1101,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         return Optional.ofNullable(best);
     }
+    /** Cells a patrol base's reachability flood may visit: plenty for a site within a few dozen blocks. */
+    private static final int SITE_REACH_BUDGET = 20_000;
+    /** Fewer cells than this to walk to, and a squad is shut in, not choosing ground. */
+    private static final int SHUT_IN_CELLS = 30;
     /** {@code minecraft:cobblestone}'s block state in protocol 777 - a placed pillar block, until the server's update. */
     private static final int COBBLESTONE_STATE = 14;
 
