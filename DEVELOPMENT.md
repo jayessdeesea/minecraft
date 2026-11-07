@@ -40,7 +40,9 @@ docker compose down                                     # stop; volumes (world, 
 ```
 
 `console` writes to a FIFO that the server reads as its stdin, so commands work
-non-interactively. Forcing night or summoning a mob makes a combat check immediate instead of
+non-interactively. It returns nothing and exits 0 whatever the server makes of the command: the
+reply is only in the server's log (`docker compose logs minecraft`, or `logs/latest.log` in the
+container). `ChainScenarioLiveIT` reads it there and fails on a command the server rejects. Forcing night or summoning a mob makes a combat check immediate instead of
 waiting for night. In Git Bash, prefix any command that passes container paths with
 `MSYS_NO_PATHCONV=1`, or the paths get rewritten to Windows ones.
 

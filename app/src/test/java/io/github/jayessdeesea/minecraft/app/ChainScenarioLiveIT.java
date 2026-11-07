@@ -141,7 +141,7 @@ class ChainScenarioLiveIT {
             // shows in the log ("raises its shield").
             new Scenario("shield-against-skeletons", List.of("clear %s", "give %s stone_sword", "item replace entity %s weapon.offhand with shield",
                     "give %s bread 4"),
-                    // No quoted item id: the console drops quotes. A helmet keeps daylight off a skeleton.
+                    // A helmet keeps daylight off a skeleton.
                     List.of("summon skeleton %d %d %d".formatted(ARENA_X + 12, FLOOR_Y + 1, ARENA_Z + 12),
                             "summon skeleton %d %d %d".formatted(ARENA_X - 12, FLOOR_Y + 1, ARENA_Z + 12),
                             "item replace entity @e[type=skeleton,x=%d,y=%d,z=%d,distance=..30] armor.head with leather_helmet"
@@ -259,14 +259,50 @@ class ChainScenarioLiveIT {
         }
     }
 
-    /** One server console command (DEVELOPMENT.md § 1). */
-    static void console(String command) throws IOException, InterruptedException {
-        Process process = new ProcessBuilder("docker", "compose", "exec", "-T", "minecraft", "console", command)
+    /**
+     * In the server container: note where the log ends, send the command line read from stdin to the
+     * console, and print the server's reply - its "System chat" lines after that point - once one
+     * has come, or nothing after five seconds. No double quotes: Windows' process launcher mangles
+     * them in an argument, which is also why the command itself goes on stdin.
+     */
+    private static final String SEND_AND_READ_REPLY = String.join("; ",
+            "n=$(wc -l < logs/latest.log)",
+            "head -n 1 > /tmp/console",
+            "i=0",
+            "while [ $i -lt 50 ] && ! tail -n +$((n + 1)) logs/latest.log | grep -q 'System chat:'; do sleep 0.1; i=$((i + 1)); done",
+            "sleep 0.3",
+            "tail -n +$((n + 1)) logs/latest.log | grep 'System chat:' || true");
+
+    /**
+     * What in a reply means the command didn't do its job: a line the server couldn't parse (it
+     * marks where with {@code <--[HERE]}, an unknown command included), a selector or name that
+     * matched nobody, a registry entry that isn't there. Other failures - "No blocks were filled"
+     * for air that was already air, "No items were found" clearing an empty inventory - leave the
+     * world as the setup wants it, and pass.
+     */
+    private static final List<String> FAILED = List.of("<--[HERE]", "No entity was found", "No player was found", "Can't find element");
+
+    /**
+     * One server console command (DEVELOPMENT.md § 1), and the server's reply - failing loudly if
+     * the server says it failed, or doesn't answer at all.
+     */
+    static String console(String command) throws IOException, InterruptedException {
+        Process process = new ProcessBuilder("docker", "compose", "exec", "-T", "minecraft", "sh", "-c", SEND_AND_READ_REPLY)
                 .directory(new File("..")).redirectErrorStream(true).start();
-        String output = new String(process.getInputStream().readAllBytes());
-        if (!process.waitFor(30, TimeUnit.SECONDS) || process.exitValue() != 0) {
-            throw new IllegalStateException("console '" + command + "' failed: " + output);
+        try (var stdin = process.getOutputStream()) {
+            stdin.write((command + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
+        String reply = new String(process.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).strip();
+        if (!process.waitFor(30, TimeUnit.SECONDS) || process.exitValue() != 0) {
+            throw new IllegalStateException("console '" + command + "' couldn't be sent: " + reply);
+        }
+        if (reply.isEmpty()) {
+            throw new IllegalStateException("console '" + command + "': no reply from the server");
+        }
+        if (FAILED.stream().anyMatch(reply::contains)) {
+            throw new IllegalStateException("console '" + command + "' failed: " + reply);
+        }
+        return reply;
     }
 
     private static void awaitUntil(Duration limit, String what, java.util.function.BooleanSupplier met) throws InterruptedException {
