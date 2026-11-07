@@ -43,6 +43,8 @@ public final class SpringAiGeneral implements General {
     private volatile TimeOfDay time; // a connection's thread writes, the general's reads
     /** The operator's last few remarks, oldest first - a connection's thread writes, the general's reads. */
     private final java.util.Deque<String> remarks = new java.util.concurrent.ConcurrentLinkedDeque<>();
+    /** The camp's progress through the lodgment's phases - a soldier's thread writes, the general's reads. */
+    private volatile io.github.jayessdeesea.minecraft.command.Foothold foothold;
     /** How many of the operator's remarks the general keeps in view. */
     static final int REMARKS_KEPT = 3;
 
@@ -57,6 +59,11 @@ public final class SpringAiGeneral implements General {
     @Override
     public void receiveStockpile(io.github.jayessdeesea.minecraft.command.Stockpile stockpile) {
         this.stockpile = stockpile;
+    }
+
+    @Override
+    public void receiveFoothold(io.github.jayessdeesea.minecraft.command.Foothold foothold) {
+        this.foothold = foothold;
     }
 
     @Override
@@ -95,9 +102,36 @@ public final class SpringAiGeneral implements General {
     }
 
     private PromptContext context(List<SquadStatus> squadStatuses) {
-        return buildContext(mission, Optional.ofNullable(time), supplyPoint, Optional.ofNullable(stockpile), List.copyOf(remarks), squadStatuses);
+        PromptContext context = buildContext(mission, Optional.ofNullable(time), supplyPoint, Optional.ofNullable(stockpile), List.copyOf(remarks),
+                squadStatuses);
+        io.github.jayessdeesea.minecraft.command.Foothold now = foothold;
+        if (now == null) {
+            return context;
+        }
+        // Before the squads: the campaign first, then each squad's part in it.
+        String prompt = context.prompt();
+        int squads = prompt.indexOf("<squad ");
+        String section = describe(now);
+        return new PromptContext(squads < 0 ? section + prompt : prompt.substring(0, squads) + section + prompt.substring(squads));
     }
 
+    /** The foothold's phases and standards, the earliest unmet phase named: the lookup done for the model. */
+    static String describe(io.github.jayessdeesea.minecraft.command.Foothold foothold) {
+        String[] phases = {"", "shelter", "airhead", "buildup", "equipment"};
+        StringBuilder out = new StringBuilder("<foothold>\nThe camp at ").append(SpringAiSquadLeader.describe(foothold.camp()))
+                .append(", built up phase by phase:\n");
+        for (io.github.jayessdeesea.minecraft.command.Foothold.Standard s : foothold.standards()) {
+            out.append(String.format(Locale.ROOT, "- Phase %d, %s: %s - %s: %s%s%n", s.phase(), phases[s.phase()], s.name(),
+                    s.met() ? "met" : "NOT MET", s.status(), s.met() ? "" : " (task " + s.task() + ")"));
+        }
+        foothold.nextPhase().ifPresentOrElse(p -> {
+            List<String> open = foothold.standards().stream().filter(s -> s.phase() == p && !s.met())
+                    .map(s -> s.name() + " (" + s.task() + ")").distinct().toList();
+            out.append("Next, by day - phase ").append(p).append(", ").append(phases[p]).append(": ").append(String.join(" and ", open))
+                    .append(open.size() > 1 ? ", one squad on each.\n" : ".\n");
+        }, () -> out.append("Every phase is met.\n"));
+        return out.append("</foothold>\n\n").toString();
+    }
     /** The time of day in minutes, the unit a commander plans in: a Minecraft day is 20 of them. */
     static String describe(TimeOfDay time) {
         String clock = time.running() ? "" : " The clock is stopped: it stays this way.";

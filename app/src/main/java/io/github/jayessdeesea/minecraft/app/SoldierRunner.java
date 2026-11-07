@@ -291,6 +291,82 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wallClaims = ConcurrentHashMap.newKeySet();
     /** Each wall's layout, by its centre's x and z - shared by every squad building it. */
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> walls = new ConcurrentHashMap<>();
+    /** The camp the squads build up, x and z - null for none. */
+    private final int[] camp;
+    /** Squad-loop cycles between measures of the foothold: about ten seconds. */
+    private static final int FOOTHOLD_EVERY = 10;
+    private int footholdTicks;
+    /** Steps cut down the deepest staircase so far, and whether one reached its bottom - tick threads write. */
+    private final java.util.concurrent.atomic.AtomicInteger stairsCut = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicBoolean stairsDone = new java.util.concurrent.atomic.AtomicBoolean();
+
+    /**
+     * The camp measured against the lodgment's phases (docs/military-doctrine.md §17): what's lit,
+     * walled, growing, dug and carried - empty until the camp's ground has loaded.
+     */
+    private Optional<io.github.jayessdeesea.minecraft.command.Foothold> measureFoothold() {
+        List<SoldierStatus> everyone = activeSoldiers.values().stream().map(DeterministicSoldier::status).toList();
+        if (everyone.isEmpty()) {
+            return Optional.empty();
+        }
+        double[] heights = everyone.stream().mapToDouble(s -> s.position().y()).sorted().toArray();
+        Optional<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> ground = io.github.jayessdeesea.minecraft.bot.supply.Staircase.headAt(
+                world, camp[0], camp[1], (int) Math.floor(heights[heights.length / 2]));
+        if (ground.isEmpty()) {
+            return Optional.empty();
+        }
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = ground.get();
+        List<io.github.jayessdeesea.minecraft.command.Foothold.Standard> standards = new java.util.ArrayList<>();
+        int dark = io.github.jayessdeesea.minecraft.bot.supply.Lighting.dark(world, at, SECURE_RADIUS);
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", dark == 0,
+                dark + " walkable cells within " + SECURE_RADIUS + " blocks still dark", "SECURE"));
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walls.entrySet().stream()
+                .filter(e -> Math.hypot(Integer.parseInt(e.getKey().split(",")[0]) - camp[0], Integer.parseInt(e.getKey().split(",")[1]) - camp[1])
+                        <= WALL_RADIUS).map(Map.Entry::getValue).findFirst().orElse(null);
+        int wallLeft = wall == null ? -1 : io.github.jayessdeesea.minecraft.bot.supply.Perimeter.open(world, wall).size();
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", wallLeft == 0,
+                wall == null ? "not begun" : wallLeft + " of " + wall.size() + " wall blocks still to place", "FORTIFY"));
+        long hungry = everyone.stream().filter(s -> s.condition().map(c -> c.food() <= HUNT_BELOW_FOOD
+                && c.kit().map(k -> k.rations() == 0).orElse(true)).orElse(false)).count();
+        Optional<io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> farm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at,
+                CAMP_RADIUS, CAMP_RADIUS);
+        long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "food", growing >= FARM_GROWING,
+                (farm.isEmpty() ? "no ground to farm by water near the camp" : growing + " of " + farm.get().plot().size() + " farm cells growing wheat")
+                        + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM"));
+        Optional<io.github.jayessdeesea.minecraft.bot.farm.TreeFarm> grove = io.github.jayessdeesea.minecraft.bot.farm.TreeFarm.site(world, at,
+                CAMP_RADIUS);
+        long trees = grove.map(g -> g.plot().stream().filter(c -> io.github.jayessdeesea.minecraft.bot.farm.TreeFarm.planted(world, c)).count())
+                .orElse(0L);
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "wood that grows back", trees >= TREES_GROWING,
+                trees + " saplings or trees planted by the camp", "TREE_FARM"));
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "stone and iron", stairsDone.get(),
+                stairsCut.get() == 0 ? "no mine yet" : stairsDone.get() ? "a mine cut down to the iron" : "a mine " + stairsCut.get() + " steps down",
+                "MINE"));
+        int stoneSword = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.meleeRank("stone_sword");
+        long armed = everyone.stream().filter(s -> s.condition().flatMap(c -> c.kit()).flatMap(k -> k.weapon())
+                .filter(w -> !w.equals("bow")).map(w -> {
+                    try {
+                        return io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.meleeRank(w) >= stoneSword;
+                    } catch (IllegalArgumentException notMelee) {
+                        return false;
+                    }
+                }).orElse(false)).count();
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(4, "every soldier armed", armed == everyone.size(),
+                armed + " of " + everyone.size() + " carry a stone sword or better", "STONE"));
+        int armour = everyone.stream().mapToInt(s -> s.condition().flatMap(c -> c.kit()).map(k -> k.armour()).orElse(0)).sum();
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(4, "every soldier armoured",
+                armour == everyone.size() * Kit.ARMOUR_SLOTS, armour + " of " + everyone.size() * Kit.ARMOUR_SLOTS + " armour slots filled (iron, from the mine)",
+                "MINE"));
+        return Optional.of(new io.github.jayessdeesea.minecraft.command.Foothold(new Position(at.x(), at.y(), at.z()), List.copyOf(standards)));
+    }
+
+    /** How far round the camp its farm and tree farm are looked for. */
+    private static final int CAMP_RADIUS = 24;
+    /** Farm cells growing wheat for the camp's food to count as met. */
+    private static final int FARM_GROWING = 12;
+    /** Saplings or trees for the camp's wood to count as met. */
+    private static final int TREES_GROWING = 8;
     /** How far out from a FORTIFY objective its wall stands. */
     static final int WALL_RADIUS = 8;
     /** Each connected soldier's hunting, by name. */
@@ -346,8 +422,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
 
     public SoldierRunner(ChainOfCommand chainOfCommand, OperatorOrders operatorOrders,
                          @Value("${minecraft.supply.point}") String supplyPoint, Roster roster,
-                         @Value("${minecraft.yield-to-experiments}") boolean yieldToExperiments) {
+                         @Value("${minecraft.yield-to-experiments}") boolean yieldToExperiments,
+                         @Value("${minecraft.camp}") String camp) {
         this.roster = roster;
+        this.camp = camp.isBlank() ? null : java.util.Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
+        if (this.camp != null && this.camp.length != 2) {
+            throw new IllegalArgumentException("minecraft.camp is x,z - not " + camp);
+        }
         this.yieldToExperiments = yieldToExperiments;
         this.soldierDefinitions = roster.squads().stream()
                 .flatMap(squad -> squad.soldiers().stream().map(name -> new SoldierDefinition(name, squad.name())))
@@ -383,6 +464,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         if (yieldingToAnExperiment()) {
             return;
+        }
+        if (camp != null && footholdTicks++ % FOOTHOLD_EVERY == 0) {
+            measureFoothold().ifPresent(chainOfCommand::onFoothold);
         }
         List<Present> present = new java.util.ArrayList<>();
         for (Roster.Squad squad : roster.squads()) {
@@ -1492,7 +1576,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 if (stairs == null) {
                     miner.stop();
                 } else {
-                    stairsProgress.put(name, miner.tick(status.position(), world, stairs, free && !threatened));
+                    io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress cut = miner.tick(status.position(), world, stairs, free && !threatened);
+                    stairsProgress.put(name, cut);
+                    if (cut instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Working(int step, int steps)) {
+                        stairsCut.accumulateAndGet(step, Math::max);
+                    } else if (cut instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Done) {
+                        stairsDone.set(true);
+                    }
                 }
             }));
             List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walling.getOrDefault(name, List.of());

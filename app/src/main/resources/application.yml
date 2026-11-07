@@ -37,6 +37,9 @@ minecraft:
   # Empty: nobody.
   # Offline mode doesn't authenticate names, so this guards against accidents, not impostors.
   operators: ""
+  # The camp the squads build up as a lodgment (docs/military-doctrine.md §17), as "x,z": its
+  # progress through the phases is measured and shown to the general. Empty: no camp.
+  camp: ""
   supply:
     # The supply point: a chest the operator places and stocks, as "x,y,z" (the chest's block).
     # The general can send a squad there; soldiers short of a weapon or armour draw from it.

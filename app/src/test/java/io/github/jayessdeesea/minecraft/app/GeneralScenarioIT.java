@@ -47,6 +47,16 @@ class GeneralScenarioIT {
     private static final Objective SECURE_CAMP = new Objective("Light the camp's ground with torches", new Position(3000, 151, 3000),
             "No monster spawns inside the camp", new Objective.Task.Secure());
 
+    /** The camp's progress, for the situations that have a camp to build up. */
+    private static final java.util.Map<String, io.github.jayessdeesea.minecraft.command.Foothold> FOOTHOLDS = java.util.Map.of(
+            "foothold-airhead", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
+                            "31 walkable cells within 12 blocks still dark", "SECURE"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "food", false,
+                            "no ground to farm by water near the camp; 0 of 8 soldiers hungry with nothing to eat", "FARM"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))));
+
     private static final Objective GATHER_WOOD = new Objective("Gather logs from the trees below the platform",
             new Position(3007, 130, 2990), "Logs for tools and building", Optional.of(io.github.jayessdeesea.minecraft.command.Resource.WOOD));
 
@@ -93,6 +103,23 @@ class GeneralScenarioIT {
                     (squads, given) -> given.stream().anyMatch(o -> o.treeFarm() && distance(o.location(), new Position(3000, 151, 3000)) <= 24)
                             ? List.of() : List.of("no squad set to plant a tree farm by the camp: " + given.stream()
                                     .map(o -> o.task() + " at " + o.location()).toList())),
+            // The foothold's airhead not yet met: the general splits its two standards between the squads.
+            new Situation("foothold-airhead", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
+                    TimeOfDay.of(2000, true),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
+                    (squads, given) -> {
+                        List<String> failures = new ArrayList<>();
+                        if (given.stream().noneMatch(Objective::secure)) {
+                            failures.add("nobody lighting the camp's ground");
+                        }
+                        if (given.stream().noneMatch(Objective::fortify)) {
+                            failures.add("nobody walling the camp in");
+                        }
+                        if (!failures.isEmpty()) {
+                            failures.add("given " + given.stream().map(o -> o.task().toString()).toList());
+                        }
+                        return failures;
+                    }),
             new Situation("secure-the-camp", "The camp is on the stone platform around x=3000 z=3000. Both squads light "
                     + "its ground with torches today.", TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
@@ -177,6 +204,7 @@ class GeneralScenarioIT {
             for (int run = 1; run <= runs; run++) {
                 SpringAiGeneral general = new SpringAiGeneral(client, situation.mission(), "");
                 general.receiveTime(situation.time());
+                Optional.ofNullable(FOOTHOLDS.get(situation.name())).ifPresent(general::receiveFoothold);
                 long start = System.nanoTime();
                 List<String> failures;
                 try {

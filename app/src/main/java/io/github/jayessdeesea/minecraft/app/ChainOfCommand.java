@@ -213,6 +213,19 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         transmit("[" + escort.name + " -> " + operator + "] WILCO: escorting " + principal);
     }
 
+    /** The camp's progress through the lodgment's phases, measured - the general is told, and the log when it moves. */
+    public void onFoothold(io.github.jayessdeesea.minecraft.command.Foothold foothold) {
+        String standing = foothold.standards().stream().map(s -> s.name() + (s.met() ? " met" : ": " + s.status()))
+                .collect(java.util.stream.Collectors.joining("; "));
+        if (!standing.equals(lastFoothold)) {
+            LOG.info("[Foothold] phase {}: {}", foothold.nextPhase().isPresent() ? foothold.nextPhase().getAsInt() : "all met", standing);
+            lastFoothold = standing;
+        }
+        general.receiveFoothold(foothold);
+    }
+
+    private volatile String lastFoothold = "";
+
     /** A soldier saw what the stockpile holds - the general is told, for its next decision. */
     public void onStockpile(io.github.jayessdeesea.minecraft.command.Stockpile stockpile) {
         general.receiveStockpile(stockpile);

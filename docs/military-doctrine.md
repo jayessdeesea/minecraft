@@ -566,8 +566,33 @@ nothing liquid lies behind it; one the server won't break in 30 seconds is left.
 `Mining` with its step. It stops with CANTCO where going on
 would let in water or lava, or would leave a step with no floor over an open cave.
 
+## 17. The lodgment
+
+| Practice | Content | Source |
+|---|---|---|
+| **Airhead** | After the drop, the assault force seizes objectives and consolidates an initial airhead, develops it out to an airhead line it can hold, then builds up combat power within it. | FM 90-26 (superseded by FM 3-99) |
+| **Lodgment** | An area in hostile territory that, seized and held, makes the continuous landing of troops and materiel possible and gives maneuver space for subsequent operations. | JP 3-18 |
+
+*How we use it:* a garrison's camp (`minecraft.camp`, as `x,z`) is built up the way an airborne
+force builds a lodgment after the drop. Its phases:
+1. Shelter: a patrol base each night (§14).
+2. The airhead: the camp's ground lit (§15, SECURE) and walled (§15, FORTIFY).
+3. The buildup of sustainment: food that grows (§12, FARM), wood that grows back (§12, TREE_FARM),
+   and stone and iron from a mine (§16, MINE).
+4. Equipment: every soldier armed with a stone sword or better and armoured (§11).
+
+Every ten seconds the runner measures each phase's standards at the camp, from the world rather
+than from reports: dark cells left, wall blocks left, farm cells growing wheat and soldiers hungry
+with nothing to eat, saplings and trees planted, steps cut down the mine, swords and armour
+carried (`command.Foothold`). The general reads them in `<foothold>`, which ends by naming the
+earliest phase not met and its open standards, one squad on each, by day. The log says each time a
+standard moves (`[Foothold]`). Like the squad leader's terrain lookup, this is the arithmetic done for the
+model, so its judgement goes into who does what, not into working out where the camp stands.
+
 ## Sources
 
+- FM 90-26, *Airborne Operations* (superseded by FM 3-99) - [airhead development, GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/90-26/Ch8.htm)
+- JP 3-18, *Joint Forcible Entry Operations* - [lodgment, FAS](https://irp.fas.org/doddir/dod/jp3_18.pdf)
 - ATP 3-21.8 (2024), Ch. 3 §2 - [fire team formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/fire-team-movement-formations/), [squad formations](https://infantrydrills.com/manuals/fm-atp-3-21-8-infantry-rifle-platoon-squad-2024/movement-and-maneuver/tactical-movement-approach-march/movement-formations/squad-movement-formations/)
 - FM 3-21.9 Ch. 3 (formation intervals reduced to keep visual contact) - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/3-21-9/chap3.htm)
 - ADP 6-0 (2012, archived) - [UNT web archive](https://webarchive.library.unt.edu/web/20130213211329/http:/armypubs.army.mil/doctrine/DR_pubs/dr_a/pdf/adp6_0_new.pdf)

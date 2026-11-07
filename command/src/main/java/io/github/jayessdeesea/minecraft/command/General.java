@@ -23,6 +23,9 @@ public interface General {
      */
     void receiveRemark(String remark);
 
+    /** Where the camp stands in building a lodgment, measured (docs/military-doctrine.md §17). */
+    void receiveFoothold(Foothold foothold);
+
     /** The overworld's time of day, as the server last sent it. */
     void receiveTime(TimeOfDay time);
 
