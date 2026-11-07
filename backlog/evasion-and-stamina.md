@@ -13,9 +13,10 @@ doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
 ## Done when
 - **Cover is live for a bare-handed soldier** (docs/military-doctrine.md § 8). Against a skeleton
   among trees: 36 of 100 die taking cover, against 75 of 100 charging in. On flat ground there's
-  rarely cover: 79 against 94. What's left:
-  - Cover for an armed soldier pinned at range, where it can't close.
-  - Breaking contact properly, back toward the squad, instead of only backing away.
+  rarely cover: 79 against 94. An armed soldier with no route to the archer takes cover the same
+  way. What's left:
+  - Breaking contact properly, back toward the squad, instead of only backing away. Pinned across
+    water in the open, with no cover to take, a stone-sworded soldier still dies 40 times in 40.
 - **What doesn't help:** zigzagging in toward an archer, measured. It loses all 100 too: it slows
   the approach while the arrows that kill land in melee. Dodging is worth another look only for a
   soldier with a ranged weapon of its own, holding at range (backlog/ranged-combat.md).

@@ -223,12 +223,49 @@ class CombatScenarioTest {
     }
 
     static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain, Armour armour, boolean shield) {
+        return fight(archetype, seed, weapon, terrain, armour, shield, false);
+    }
+
+    /** Water this far round the soldier's start, {@link #MOAT_WIDTH} wide: a hostile beyond it can't be closed on. */
+    static final int MOAT_RADIUS = 6;
+    static final int MOAT_WIDTH = 4;
+
+    /** An armed soldier against a skeleton it can't reach - across water - among trees and in the open. */
+    @Test
+    void anArmedSoldierPinnedByAnArcherItCantReach() {
+        int seeds = Integer.getInteger("combat.seeds", DEFAULT_SEEDS);
+        StringBuilder table = new StringBuilder("\nA stone sword against a skeleton across water, " + seeds + " seeds each:\n");
+        for (Terrain terrain : List.of(Terrain.FLAT, Terrain.FOREST)) {
+            Map<Ending, Integer> endings = new EnumMap<>(Ending.class);
+            double health = 0;
+            for (long seed = 1; seed <= seeds; seed++) {
+                Fight fight = fight(Battle.Archetype.SKELETON, seed, Optional.of("stone_sword"), terrain, Armour.NONE, false, true);
+                endings.merge(fight.ending(), 1, Integer::sum);
+                health += fight.healthLeft();
+            }
+            table.append(String.format(Locale.ROOT, "  %-7s %s, %.1f health left on average%n", terrain, endings, health / seeds));
+        }
+        System.out.println(table);
+    }
+
+    static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain, Armour armour, boolean shield,
+                       boolean moat) {
         Scenario scenario = Scenario.generate(terrain, seed);
         Battle battle = new Battle(scenario.world(), seed);
         // Start mid-map: the synthetic world is a closed box, and a retreat that backs into its
         // edge is cornered in a way the open live world wouldn't corner it.
         BlockPos start = new BlockPos(0, scenario.world().ground(0, 0) + 1, 0);
         scenario.world().clearAbove(0, 0);
+        if (moat) {
+            for (int x = -MOAT_RADIUS - MOAT_WIDTH; x <= MOAT_RADIUS + MOAT_WIDTH; x++) {
+                for (int z = -MOAT_RADIUS - MOAT_WIDTH; z <= MOAT_RADIUS + MOAT_WIDTH; z++) {
+                    double r = Math.hypot(x, z);
+                    if (r >= MOAT_RADIUS - 0.5 && r < MOAT_RADIUS + MOAT_WIDTH) {
+                        scenario.world().hazard(x, scenario.world().ground(x, z) + 1, z);
+                    }
+                }
+            }
+        }
         Random random = new Random(seed);
         double angle = random.nextDouble() * Math.PI * 2;
         double range = 10 + random.nextDouble() * 4;

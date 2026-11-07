@@ -181,7 +181,10 @@ the squad to falls.
   the monsters outside. A soldier with no melee weapon doesn't close on an archer (a skeleton or a
   pillager), which out-fights a bare hand from any range: it moves to the nearest spot within 6
   blocks the archer can't see, or backs off if there's none, and holds there while it's under
-  fire. It swings each weapon at its full recharge, since a hit's damage scales with the charge
+  fire. An armed soldier does the same when no route reaches the archer - water, a drop or a wall
+  between them - checked once a second while in contact. Across water among trees, that cuts
+  deaths from 36 in 40 to 12. A fighting soldier never jumps over water or lava: a jump is only
+  ever up a block, since nothing says where one over a gap comes down. It swings each weapon at its full recharge, since a hit's damage scales with the charge
   (`bot.world.WeaponStats`, measured on the live server).
 - **The shield.** A soldier with a shield in its off hand raises it while an arrow is in flight
   within 16 blocks, facing it, and lowers it as soon as the arrow is past. An arrow seen counts

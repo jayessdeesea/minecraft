@@ -293,6 +293,10 @@ public final class DeterministicSoldier implements Soldier {
             underFireTicks--;
         }
         cutting = List.of(); // set again below only while navigating onto a step being cut
+        if (threats.isEmpty() || !threats.get(0).shoots()) {
+            pinned = false; // a fresh contact gets a fresh look for a way to close
+            pinnedCheckIn = 0;
+        }
         if (!threats.isEmpty()) {
             TrackedEntity nearest = threats.get(0);
             Position threat = nearest.position();
@@ -300,8 +304,9 @@ public final class DeterministicSoldier implements Soldier {
             if (nearest.explodes()) {
                 // A creeper is never fought at arm's length: get clear of the blast.
                 stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
-            } else if (nearest.shoots() && !armedForMelee()) {
-                // An archer out-fights a bare hand from any range: get out of its sight, and stay out.
+            } else if (nearest.shoots() && (!armedForMelee() || pinned(world, threat))) {
+                // An archer out-fights a bare hand from any range, and a sword it can't be closed on:
+                // get out of its sight, and stay out.
                 Optional<Position> cover = coverFrom(world, threat);
                 if (cover.isPresent()) {
                     stepToward(world, cover.get().x(), cover.get().z());
@@ -345,6 +350,28 @@ public final class DeterministicSoldier implements Soldier {
 
         applyVerticalMovement(world);
         return attack;
+    }
+
+    /** How often, in contact with an archer, it checks there's still a way to close on it. */
+    static final int PINNED_CHECK_TICKS = 20;
+    /** Whether the last check found no way to the archer, and ticks until the next. */
+    private boolean pinned;
+    private int pinnedCheckIn;
+
+    /**
+     * Whether no route reaches within striking distance of the archer at {@code threat} - water, a
+     * drop or a wall between them: an armed soldier that can't close is as outranged as a bare hand.
+     * Planned once a {@link #PINNED_CHECK_TICKS}; an archer backing off as it comes on isn't pinning
+     * it, so progress isn't the test - a route is.
+     */
+    private boolean pinned(WorldView world, Position threat) {
+        if (pinnedCheckIn-- <= 0 && onGround) {
+            pinnedCheckIn = PINNED_CHECK_TICKS;
+            Goal reach = new Goal(threat.x(), threat.y(), threat.z(), ATTACK_REACH, Pathfinder.MAX_DROP);
+            pinned = !Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), reach, PLAN_BUDGET,
+                    FallAllowance.NONE, pillarBlocks(), carriesPickaxe()).reachesGoal();
+        }
+        return pinned;
     }
 
     /** Ticks left holding cover from an archer, once out of its sight. */
@@ -857,9 +884,11 @@ public final class DeterministicSoldier implements Soldier {
         double y = position.y();
         if (bodyFits(world, nextX, y, nextZ)) {
             position = new Position(nextX, y, nextZ);
-        } else if (onGround && bodyFits(world, nextX, Math.floor(y) + 1, nextZ)
+        } else if (onGround && !anyHazard(world, nextX, nextZ, (int) Math.floor(y), (int) Math.floor(y))
+                && bodyFits(world, nextX, Math.floor(y) + 1, nextZ)
                 && bodyFits(world, position.x(), Math.floor(y) + 1, position.z())) {
             // A one-block rise with headroom here and there: jump; the step happens once airborne.
+            // Never over water or lava: nothing says where the jump comes down.
             verticalVelocity = JUMP_VELOCITY;
             onGround = false;
         } else if (Math.abs(stepX) > 1e-9 && bodyFits(world, nextX, y, position.z())) {
