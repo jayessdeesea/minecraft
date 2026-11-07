@@ -273,6 +273,15 @@ state, swappable delegates over pipeline surgery, unrecognized-packet handling, 
 guards. Keep that doc in sync whenever a stage's responsibility changes — this section states the
 rule, that doc is where the detail and the "why" for each stage lives.
 
+## Standard formats go through standard libraries
+
+XML, JSON, CSV and other standard formats are written and read with a library, never marshalled
+by hand with a `StringBuilder` or string concatenation: hand-built output escapes nothing, so the
+first `<` or `"` in a value breaks it silently. Prefer the JDK's own (`javax.xml.stream` for XML);
+use a third-party library where the JDK has none (Jackson for JSON). This covers the XML-tagged
+sections of the models' prompts too. Our own line-oriented resource files
+(`block-classes-777.txt`) aren't a standard format and stay as they are.
+
 ## No fallbacks — fail loud, not gracefully-wrong
 
 Tenet, not a suggestion: when something is ambiguous, missing, or violates an invariant, the
