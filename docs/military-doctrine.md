@@ -129,7 +129,8 @@ is logged (`[General -> Bravo] changing the objective: ...`). A change with no r
 and the squads keep their orders. A kept order isn't re-sent: the log says `holds`.
 
 The general's heights are guesses, so an objective is put on the ground at its x and z: the
-highest standing cell within 24 blocks of the squad's point man's height
+highest standing cell within 24 blocks of the squad's middle height - not one soldier's, which
+might be stranded up a tower
 (`ChainOfCommand.grounded`; the log says `put on the ground`). A MINE objective keeps its own, since
 its y is a depth.
 
@@ -340,7 +341,7 @@ faster. Stone needs a pickaxe, or it drops nothing: a soldier without one makes 
 first, the way it makes a sword (§11), from logs it carries or chops. Break times are the
 server's - hardness over tool speed - with a margin, since the server times each dig. A soldier at it reports `Gathering`; one that finds nothing left in reach reports CANTCO,
 which the squad leader passes up so the general can choose another place. To choose, the general
-reads what each squad can see within 64 blocks of its point man: for trees and for stone open to
+reads what each squad can see within 64 blocks of the soldier at its middle height: for trees and for stone open to
 the sky, the nearest site and the two biggest (not cave walls, which no gatherer can
 reach), each with its count, distance and direction (`bot.supply.ResourceSurveyor`,
 `command.SquadStatus.resources`). A soldier that can't make the pickaxe it needs - no trees in reach

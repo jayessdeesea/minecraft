@@ -407,7 +407,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             present.add(new Present(squad.name(), soldiers, statuses, principalAt));
         }
         chainOfCommand.onSitreps(present.stream().map(p -> {
-            Position pointMan = p.statuses().get(0).position();
+            // Surveyed from where the squad is: the soldier at its middle height, so one stranded up a
+            // tower - respawned on a block over spawn - doesn't show the squad no ground at all.
+            Position pointMan = p.statuses().stream().map(SoldierStatus::position).sorted(java.util.Comparator.comparingDouble(Position::y))
+                    .toList().get(p.statuses().size() / 2);
             // Climbing counts when the point man carries cobblestone to pillar with.
             int climbBlocks = p.statuses().get(0).condition().flatMap(c -> c.kit()).map(k -> k.stone()).orElse(0);
             boolean stoneSteps = p.statuses().get(0).condition().flatMap(c -> c.kit()).map(k -> k.pickaxe()).orElse(false);

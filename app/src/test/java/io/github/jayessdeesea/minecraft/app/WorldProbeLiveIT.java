@@ -92,6 +92,15 @@ class WorldProbeLiveIT {
             System.out.println(plan.map(p -> "Best farm: water at " + p.water() + ", " + p.plot().size() + " cells to plant, "
                     + Math.round(Math.hypot(p.water().x() - x, p.water().z() - z)) + " blocks from the point.")
                     .orElse("No water within reach of ground to till: a dry farm, or none."));
+            String column = System.getProperty("column");
+            if (column != null) {
+                int[] c = java.util.Arrays.stream(column.split(",")).mapToInt(Integer::parseInt).toArray();
+                StringBuilder line = new StringBuilder("Column " + c[0] + "," + c[1] + " from y=" + c[2] + " up: ");
+                for (int y = c[2]; y <= c[3]; y++) {
+                    line.append(world.isWater(c[0], y, c[1]) ? '~' : world.isSolid(c[0], y, c[1]) ? '#' : '.');
+                }
+                System.out.println(line);
+            }
             String resourcesAt = System.getProperty("resources.at");
             if (resourcesAt != null) {
                 double[] p = java.util.Arrays.stream(resourcesAt.split(",")).mapToDouble(Double::parseDouble).toArray();

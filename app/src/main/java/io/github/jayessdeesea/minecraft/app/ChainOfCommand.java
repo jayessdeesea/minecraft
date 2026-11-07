@@ -143,7 +143,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
 
     /**
      * {@code objective} with its height the ground's at its x and z, looked for near the squad's
-     * point man: the general guesses heights, and a guess copied from elsewhere in its prompt
+     * middle height: the general guesses heights, and a guess copied from elsewhere in its prompt
      * lands an objective in the sky or underground. MINE keeps its own: that y is a depth.
      */
     Objective grounded(Objective objective, List<io.github.jayessdeesea.minecraft.command.SoldierStatus> soldiers) {
@@ -151,8 +151,11 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             return objective;
         }
         Position at = objective.location();
+        // Near the squad's middle height, not its first soldier's: one stranded up a tower or down a
+        // hole would take every objective there with it.
+        double[] heights = soldiers.stream().mapToDouble(s -> s.position().y()).sorted().toArray();
         java.util.OptionalInt height = ground.heightAt((int) Math.floor(at.x()), (int) Math.floor(at.z()),
-                (int) Math.floor(soldiers.getFirst().position().y()));
+                (int) Math.floor(heights[heights.length / 2]));
         if (height.isEmpty() || height.getAsInt() == (int) Math.floor(at.y())) {
             return objective;
         }
