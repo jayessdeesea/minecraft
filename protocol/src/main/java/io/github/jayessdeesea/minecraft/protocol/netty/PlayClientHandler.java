@@ -40,6 +40,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.BlockUpdatePackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
+import io.github.jayessdeesea.minecraft.protocol.packet.DisguisedChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetTimePacket;
@@ -236,6 +237,11 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             listeners.onContainer().accept(new ContainerUpdate.Closed(closed.containerId()));
         } else if (packet instanceof PlayerChatPacket chat) {
             listeners.onChat().accept(new ChatMessage(chat.sender(), chat.message()));
+        } else if (packet instanceof DisguisedChatPacket chat) {
+            // Named, not identified: in offline mode the server derives a player's UUID from its name.
+            listeners.onChat().accept(new ChatMessage(
+                    java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + chat.senderName()).getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                    chat.message()));
         }
         // Everything else recognized-but-unhandled or unrecognized is already logged/cataloged by
         // PacketLoggingHandler/SessionStateManager earlier in the pipeline - nothing further to do

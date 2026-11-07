@@ -313,9 +313,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             Position pointMan = p.statuses().get(0).position();
             // Climbing counts when the point man carries cobblestone to pillar with.
             int climbBlocks = p.statuses().get(0).condition().flatMap(c -> c.kit()).map(k -> k.stone()).orElse(0);
+            boolean stoneSteps = p.statuses().get(0).condition().flatMap(c -> c.kit()).map(k -> k.pickaxe()).orElse(false);
             SquadState state = squadStates.get(p.squad());
             boolean holdingBase = state.allInside && state.breaches != null && state.breaches.isEmpty();
-            return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan, climbBlocks), p.principalAt(),
+            return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan, climbBlocks, stoneSteps), p.principalAt(),
                     () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, pointMan), holdingBase,
                     holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft);
         }).toList());
@@ -824,10 +825,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                         soldier.reportKit(kit);
                     }
                 },
-                // Every connection hears every chat line; only the radio operator's passes it on.
+                // Every soldier passes on what it hears: a line said aloud reaches every connection and
+                // is passed on once; one whispered to a soldier (/msg) reaches only that one, which
+                // relays it up the chain.
                 chat -> {
-                    if (definition == SOLDIERS.getFirst()) {
+                    if (firstHearing(chat)) {
                         operatorOrders.orderFrom(chat).ifPresent(order -> {
+                            LOG.info("{} relays an order from the operator: {}", definition.name(), chat.message());
                             switch (order) {
                                 case OperatorOrders.Order.Mission(String operator, String mission) ->
                                         chainOfCommand.onOperatorMission(operator, mission);
@@ -1156,6 +1160,26 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
 
     /** The rung of the ladder each soldier is working toward, by name, while it is - tick loops write and read. */
     private final Map<String, Integer> rungsWanted = new ConcurrentHashMap<>();
+
+    /**
+     * How long the same line from the same sender counts as one hearing: every connection gets a
+     * line said aloud within a tick or two of the others.
+     */
+    private static final long SAME_LINE_NANOS = 2_000_000_000L;
+    /** When each line was last heard, by sender and text - every connection's event loop. */
+    private final Map<String, Long> lastHeard = new ConcurrentHashMap<>();
+
+    /** Whether no connection has heard {@code chat} in the last {@link #SAME_LINE_NANOS}. */
+    private boolean firstHearing(io.github.jayessdeesea.minecraft.protocol.ChatMessage chat) {
+        long now = System.nanoTime();
+        boolean[] first = {false};
+        lastHeard.compute(chat.sender() + "\0" + chat.message(), (key, heard) -> {
+            first[0] = heard == null || now - heard > SAME_LINE_NANOS;
+            return now;
+        });
+        lastHeard.values().removeIf(heard -> now - heard > SAME_LINE_NANOS);
+        return first[0];
+    }
 
     /** One routine's turn at the soldier's hands. */
     private static Hands.Turn turn(java.util.function.BooleanSupplier active, java.util.function.Consumer<Boolean> tick) {

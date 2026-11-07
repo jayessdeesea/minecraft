@@ -35,8 +35,16 @@ public final class TerrainSurveyor {
      * with: ground up a wall or cliff counts as reachable too, priced in the blocks it takes.
      */
     public static TerrainSurvey survey(WorldView world, Position pointMan, int blocks) {
+        return survey(world, pointMan, blocks, false);
+    }
+
+    /**
+     * As {@link #survey(WorldView, Position, int)}, for a point man that cuts steps into stone with a
+     * {@code pickaxe}: the steps it cuts stand for the squad following it.
+     */
+    public static TerrainSurvey survey(WorldView world, Position pointMan, int blocks, boolean pickaxe) {
         BlockPos start = groundUnder(world, BlockPos.containing(pointMan.x(), pointMan.y(), pointMan.z()));
-        Map<BlockPos, Integer> reachable = Pathfinder.climbs(world, start, RADIUS + 2, FLOOD_BUDGET, blocks);
+        Map<BlockPos, Integer> reachable = Pathfinder.climbs(world, start, RADIUS + 2, FLOOD_BUDGET, blocks, pickaxe);
 
         List<TerrainSurvey.Sample> samples = new ArrayList<>();
         for (int dz = -RADIUS; dz <= RADIUS; dz += SPACING) {

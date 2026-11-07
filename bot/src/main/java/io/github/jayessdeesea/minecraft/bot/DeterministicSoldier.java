@@ -528,7 +528,7 @@ public final class DeterministicSoldier implements Soldier {
         if (replan && onGround) {
             boolean stuck = stuckTicks >= STUCK_TICKS;
             Pathfinder.Result plan = Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), goal,
-                    PLAN_BUDGET, fallAllowance(current), pillarBlocks());
+                    PLAN_BUDGET, fallAllowance(current), pillarBlocks(), carriesPickaxe());
             route = plan.path();
             pillarFrom = null;
             assessPlan(world, plan, stuck);
@@ -544,7 +544,7 @@ public final class DeterministicSoldier implements Soldier {
 
         BlockPos waypoint = route.get(routeIndex);
         BlockPos here = BlockPos.containing(position.x(), position.y() + EPSILON, position.z());
-        List<BlockPos> cut = onGround ? toCut(world, here, waypoint) : List.of();
+        List<BlockPos> cut = onGround ? toCut(world, here, waypoint, carriesPickaxe()) : List.of();
         if (!cut.isEmpty()) {
             cutting = cut;
             cuttingTicks++;
@@ -578,16 +578,23 @@ public final class DeterministicSoldier implements Soldier {
         stepToward(world, centreX, centreZ, sprinting ? SPRINT_STEP : STEP);
     }
 
+    /** Whether it carries a pickaxe, to cut steps into stone with - unknown kit carries none. */
+    private boolean carriesPickaxe() {
+        Kit carried = kit;
+        return carried != null && carried.pickaxe();
+    }
+
     /** What's still in the way of a step up from {@code here} onto {@code next}: the cells {@link Pathfinder#stepCut} plans to dig. */
-    private static List<BlockPos> toCut(WorldView world, BlockPos here, BlockPos next) {
+    private static List<BlockPos> toCut(WorldView world, BlockPos here, BlockPos next, boolean pickaxe) {
         if (next.y() != here.y() + 1 || Math.abs(next.x() - here.x()) + Math.abs(next.z() - here.z()) != 1) {
             return List.of();
         }
         List<BlockPos> solid = java.util.stream.Stream.of(next, next.offset(0, 1, 0), here.offset(0, 2, 0))
                 .filter(c -> world.isSolid(c.x(), c.y(), c.z())).toList();
-        // Only soil is ever dug: anything else put there since the plan - a wall, say - is left be,
-        // and the soldier re-plans round it once it's stuck.
-        return solid.stream().allMatch(c -> world.isSoil(c.x(), c.y(), c.z())) ? solid : List.of();
+        // Only soil, and stone with a pickaxe, is ever dug: anything else put there since the plan - a
+        // wall, say - is left be, and the soldier re-plans round it once it's stuck.
+        return solid.stream().allMatch(c -> world.isSoil(c.x(), c.y(), c.z()) || pickaxe && world.isStone(c.x(), c.y(), c.z()))
+                ? solid : List.of();
     }
 
     /** The cell a pillar step rises from, while one is under way. */

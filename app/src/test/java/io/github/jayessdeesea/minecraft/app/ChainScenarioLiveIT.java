@@ -136,6 +136,10 @@ class ChainScenarioLiveIT {
                             .allMatch(name -> harness.runner.kit(name).filter(k -> k.shield() && k.armour() > 0).isPresent())
                             ? Verdict.PASS : Verdict.PENDING,
                     Duration.ofMinutes(9)),
+            // Mobility (backlog/mobility.md): a 3-high terrace east of the squads, too high to jump and
+            // with no blocks to pillar with. Soil is cut into by hand; stone only with a pickaxe.
+            terrace("climb-soil-terrace", "dirt", List.of("clear %s", "give %s bread 4")),
+            terrace("climb-stone-terrace", "stone", List.of("clear %s", "give %s wooden_pickaxe", "give %s bread 4")),
             // The shield (docs/military-doctrine.md § 8): armed and shielded, against skeletons that
             // daylight doesn't burn. Met when every skeleton is dead; how often the shields went up
             // shows in the log ("raises its shield").
@@ -158,6 +162,27 @@ class ChainScenarioLiveIT {
                     },
                     Duration.ofMinutes(4)))
             .collect(java.util.stream.Collectors.toMap(Scenario::name, scenario -> scenario));
+
+    /** The terrace's west face, and its top: three blocks over the floor. */
+    static final int TERRACE_X = ARENA_X + 10;
+    static final int TERRACE_TOP = FLOOR_Y + 4;
+
+    /** A scenario of climbing onto a terrace of {@code block}, three high, with {@code kit}. */
+    private static Scenario terrace(String name, String block, List<String> kit) {
+        return new Scenario(name, kit,
+                List.of("fill %d %d %d %d %d %d %s".formatted(TERRACE_X, FLOOR_Y + 1, ARENA_Z - ARENA_HALF, ARENA_X + ARENA_HALF,
+                        TERRACE_TOP - 1, ARENA_Z + ARENA_HALF, block)),
+                1000,
+                "Both squads climb onto the top of the terrace east of them, at x=" + (TERRACE_X + 3) + " y=" + TERRACE_TOP + " z="
+                        + ARENA_Z + ", and hold there. Stay on the platform.",
+                // On the terrace, or in a step cut into its face: the squad's own slots allow a block of
+                // height either way, and a soldier there has made the climb.
+                () -> harness -> Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
+                        .allMatch(soldier -> harness.runner.position(soldier)
+                                .filter(p -> p.x() >= TERRACE_X && p.y() >= TERRACE_TOP - 1.5).isPresent())
+                        ? Verdict.PASS : Verdict.PENDING,
+                Duration.ofMinutes(5));
+    }
 
     /** The running app, as a judge sees it. */
     record Harness(SoldierRunner runner, ChainOfCommand chain) {
@@ -191,6 +216,11 @@ class ChainScenarioLiveIT {
             Harness harness = new Harness(app.getBean(SoldierRunner.class), app.getBean(ChainOfCommand.class));
             List<String> soldiers = Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream()).toList();
             awaitUntil(Duration.ofMinutes(2), "every soldier connected", () -> harness.runner.connected().containsAll(soldiers));
+            // The arena furnished before anyone is moved onto it: a soldier walking about while a
+            // terrace is filled in round it suffocates.
+            for (String command : scenario.arena()) {
+                console(command);
+            }
             // Each squad on its own half of the platform, a few blocks apart.
             for (int i = 0; i < soldiers.size(); i++) {
                 String name = soldiers.get(i);
@@ -203,9 +233,6 @@ class ChainScenarioLiveIT {
             console("time set " + scenario.time());
             awaitUntil(Duration.ofSeconds(30), "the new time of day", () -> harness.chain.time()
                     .filter(t -> Math.abs(t.ticks() - scenario.time()) < 400).isPresent());
-            for (String command : scenario.arena()) {
-                console(command);
-            }
             // The kit goes out just before the mission: early enough that the general's first look
             // at the mission sees it, late enough that orders under the harness's holding mission
             // don't spend it.

@@ -23,7 +23,8 @@ import java.util.PriorityQueue;
  * pillar: jump and place a block under itself, rising one block straight up - the way up a wall
  * or cliff, repeated, then a step off onto the top. Pillar steps are offered only beside a wall,
  * where they get somewhere a walk can't; anywhere else they'd spend the search on open air. And any
- * soldier can dig a step into a slope too steep to jump: {@link #stepCut} cells of soil, by hand.
+ * soldier can dig a step into a slope too steep to jump: {@link #stepCut} cells of soil by hand, or
+ * of stone too with a pickaxe.
  * Hazards (water, lava, fire) are never entered - no swimming, no ladders.
  *
  * <p>A goal outside the budget isn't a failure: the result is a path to the explored cell that
@@ -43,6 +44,8 @@ public final class Pathfinder {
     static final double PILLAR_COST = 4.0;
     /** Each block of soil dug for a step: about a second by hand, five blocks' walk. */
     static final double DIG_COST = 5.0;
+    /** Each block of stone dug for a step: about two seconds with a wooden pickaxe, eight blocks' walk. */
+    static final double STONE_DIG_COST = 8.0;
     private static final int[][] ORTHOGONAL = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
     private static final int[][] DIAGONALS = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 
@@ -79,6 +82,15 @@ public final class Pathfinder {
      * more blocks than that: one that needs more goes round, or gets as close as it can.
      */
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks) {
+        return find(world, start, goal, maxExpanded, falls, blocks, false);
+    }
+
+    /**
+     * As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance, int)}, for a soldier that may
+     * also cut steps into plain stone, carrying a {@code pickaxe}.
+     */
+    public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
+                              boolean pickaxe) {
         if (goal.contains(start)) {
             return new Result(List.of(), true);
         }
@@ -111,7 +123,7 @@ public final class Pathfinder {
             double base = costSoFar.get(current);
             int used = spent.get(current);
             // Pillar steps only beside a wall: anywhere else they spend the search budget on open air.
-            for (Move move : moves(world, current, falls, used < blocks && besideWall(world, current))) {
+            for (Move move : moves(world, current, falls, used < blocks && besideWall(world, current), pickaxe)) {
                 double cost = base + move.cost();
                 Double known = costSoFar.get(move.to());
                 if (known == null || cost < known) {
@@ -144,6 +156,12 @@ public final class Pathfinder {
      */
     public static Map<BlockPos, Integer> climbs(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded,
                                                 int blocks) {
+        return climbs(world, start, maxHorizontalDistance, maxExpanded, blocks, false);
+    }
+
+    /** As {@link #climbs(WorldView, BlockPos, int, int, int)}, for a point man that cuts steps into stone with a {@code pickaxe}. */
+    public static Map<BlockPos, Integer> climbs(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded,
+                                                int blocks, boolean pickaxe) {
         Map<BlockPos, Integer> fewest = new HashMap<>();
         if (!standable(world, start)) {
             return fewest;
@@ -160,7 +178,7 @@ public final class Pathfinder {
                 continue;
             }
             int used = fewest.get(current);
-            for (Move move : moves(world, current, FallAllowance.NONE, used < blocks && besideWall(world, current))) {
+            for (Move move : moves(world, current, FallAllowance.NONE, used < blocks && besideWall(world, current), pickaxe)) {
                 BlockPos next = move.to();
                 int cost = used + (move.pillar() ? 1 : 0);
                 if (Math.abs(next.x() - start.x()) <= maxHorizontalDistance
@@ -178,7 +196,7 @@ public final class Pathfinder {
         return fewest;
     }
 
-    private static List<Move> moves(WorldView world, BlockPos from, FallAllowance falls, boolean canPillar) {
+    private static List<Move> moves(WorldView world, BlockPos from, FallAllowance falls, boolean canPillar, boolean pickaxe) {
         List<Move> moves = new ArrayList<>(9);
         if (canPillar && open(world, from.x(), from.y() + 2, from.z())) {
             moves.add(new Move(from.offset(0, 1, 0), PILLAR_COST, true)); // a block placed where it stood
@@ -196,9 +214,10 @@ public final class Pathfinder {
             }
             if (world.isSolid(level.x(), level.y(), level.z())) {
                 // A step too high to jump: cut it lower.
-                List<BlockPos> cut = stepCut(world, from, up);
+                List<BlockPos> cut = stepCut(world, from, up, pickaxe);
                 if (!cut.isEmpty()) {
-                    moves.add(new Move(up, JUMP_COST + DIG_COST * cut.size()));
+                    double digging = cut.stream().mapToDouble(c -> world.isSoil(c.x(), c.y(), c.z()) ? DIG_COST : STONE_DIG_COST).sum();
+                    moves.add(new Move(up, JUMP_COST + digging));
                 }
                 continue;
             }
@@ -235,10 +254,15 @@ public final class Pathfinder {
      *
      * <p>A step is cut only into the face of a slope - the cell over the soldier's head at {@code up}
      * must already be open - so the cut is at most three blocks and the planner never tunnels. Only
-     * soil (not stone, not sand or gravel that would fall into the gap), with no liquid beside a cell
-     * to flow in, and nothing that falls resting on one.
+     * soil by hand, or plain stone too with a {@code pickaxe} - not sand or gravel, which would fall
+     * into the gap - with no liquid beside a cell to flow in, and nothing that falls resting on one.
      */
     public static List<BlockPos> stepCut(WorldView world, BlockPos from, BlockPos up) {
+        return stepCut(world, from, up, false);
+    }
+
+    /** {@link #stepCut(WorldView, BlockPos, BlockPos)}, into stone as well when the soldier carries a {@code pickaxe}. */
+    public static List<BlockPos> stepCut(WorldView world, BlockPos from, BlockPos up, boolean pickaxe) {
         if (up.y() != from.y() + 1 || Math.abs(up.x() - from.x()) + Math.abs(up.z() - from.z()) != 1
                 || !world.isSolid(up.x(), up.y() - 1, up.z()) || !open(world, up.x(), up.y() + 2, up.z())) {
             return List.of();
@@ -250,7 +274,7 @@ public final class Pathfinder {
                 return List.of();
             }
             if (world.isSolid(cell.x(), cell.y(), cell.z())) {
-                if (!world.isSoil(cell.x(), cell.y(), cell.z())) {
+                if (!world.isSoil(cell.x(), cell.y(), cell.z()) && !(pickaxe && world.isStone(cell.x(), cell.y(), cell.z()))) {
                     return List.of();
                 }
                 cut.add(cell);

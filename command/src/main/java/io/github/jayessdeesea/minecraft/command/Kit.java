@@ -16,9 +16,10 @@ import java.util.Optional;
  * @param stone  cobblestone carried
  * @param rations  food items carried that a soldier eats - the <b>L</b>iquids line's supply
  * @param shield  whether a shield is in the off hand, to raise against arrows
+ * @param pickaxe  whether a pickaxe is carried - to cut steps into stone with
  */
 public record Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations,
-                  boolean shield) {
+                  boolean shield, boolean pickaxe) {
 
     public static final int ARMOUR_SLOTS = 4;
     /** Vanilla caps enchantment protection at 20 points, each taking 4% off the damage. */
@@ -30,9 +31,14 @@ public record Kit(Optional<String> weapon, int arrows, int armour, int fallProte
         }
     }
 
-    /** Kit with no shield. */
+    /** Kit with no pickaxe. */
+    public Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations, boolean shield) {
+        this(weapon, arrows, armour, fallProtection, logs, stone, rations, shield, false);
+    }
+
+    /** Kit with no shield or pickaxe. */
     public Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations) {
-        this(weapon, arrows, armour, fallProtection, logs, stone, rations, false);
+        this(weapon, arrows, armour, fallProtection, logs, stone, rations, false, false);
     }
 
     /** Kit with no protective enchantments, materials or rations. */

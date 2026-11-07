@@ -3,12 +3,11 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Skip-only NBT reader (binary format per the Minecraft Wiki's NBT page, confirmed against the
- * real server jar's {@code NbtIo.writeAnyTag}/{@code readAnyTag} - see {@link RegistryDataPacket},
- * this package's first user) - enough to advance past an NBT value without misaligning the packet,
- * without decoding what it actually says. A full tree-materializing parser would be scope beyond
- * what's needed today - this grows into one if/when something needs actual values out of an NBT
- * payload.
+ * NBT reader (binary format per the Minecraft Wiki's NBT page, confirmed against the real server
+ * jar's {@code NbtIo.writeAnyTag}/{@code readAnyTag} - see {@link RegistryDataPacket}, this
+ * package's first user): mostly skip-only, enough to advance past an NBT value without misaligning
+ * the packet, and the plain text of a text component ({@link #readText}). A full tree-materializing
+ * parser would be scope beyond what's needed today.
  *
  * <p>Numeric fields and string-length prefixes are big-endian, unlike the VarInt/VarLong used
  * everywhere else in this protocol - NBT predates Minecraft's network protocol and keeps its own,
@@ -50,6 +49,58 @@ final class Nbt {
         int typeId = in.readUnsignedByte();
         if (typeId != END) {
             skipPayload(in, typeId, 0);
+        }
+    }
+
+    /**
+     * The plain text of a text component sent as an unnamed root tag
+     * ({@code ComponentSerialization.TRUSTED_STREAM_CODEC}): a string tag is the text itself; a
+     * compound's {@code text}, then each of its {@code extra} components in turn; a list, each
+     * element in turn. Styling, click and hover events, and any other content are skipped - so a
+     * translated component contributes nothing but its literal parts.
+     */
+    static String readText(ByteBuf in) {
+        StringBuilder text = new StringBuilder();
+        readText(in, in.readUnsignedByte(), text, 0);
+        return text.toString();
+    }
+
+    private static void readText(ByteBuf in, int typeId, StringBuilder text, int depth) {
+        if (depth > MAX_DEPTH) {
+            throw new IllegalStateException("NBT nested deeper than " + MAX_DEPTH);
+        }
+        switch (typeId) {
+            case END -> {
+            }
+            case STRING -> text.append(readString(in));
+            case LIST -> {
+                int elementType = in.readUnsignedByte();
+                int count = in.readInt();
+                for (int i = 0; i < count; i++) {
+                    readText(in, elementType, text, depth + 1);
+                }
+            }
+            case COMPOUND -> {
+                int childType;
+                while ((childType = in.readUnsignedByte()) != END) {
+                    String name = readString(in);
+                    if (name.equals("text") && childType == STRING || name.equals("extra") && childType == LIST) {
+                        readText(in, childType, text, depth + 1);
+                    } else {
+                        skipPayload(in, childType, depth + 1);
+                    }
+                }
+            }
+            default -> skipPayload(in, typeId, depth);
+        }
+    }
+
+    /** A string payload: an unsigned short length, then that many bytes of modified UTF-8. */
+    private static String readString(ByteBuf in) {
+        try {
+            return new java.io.DataInputStream(new io.netty.buffer.ByteBufInputStream(in)).readUTF();
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("malformed NBT string", e);
         }
     }
 

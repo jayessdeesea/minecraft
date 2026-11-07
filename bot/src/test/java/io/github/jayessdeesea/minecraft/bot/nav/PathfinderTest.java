@@ -96,6 +96,44 @@ class PathfinderTest {
                 "stone isn't dug");
     }
 
+    /** Flat ground, a bank of plain stone {@code height} high for x of 2 and beyond. */
+    private static WorldView stoneBank(int height) {
+        return new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND || x >= 2 && y < GROUND + height;
+            }
+
+            @Override
+            public boolean isStone(int x, int y, int z) {
+                return x >= 2 && y >= GROUND && y < GROUND + height;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    @Test
+    void withAPickaxeAStepIsCutIntoStoneToo() {
+        BlockPos foot = new BlockPos(1, GROUND, 0);
+        BlockPos step = new BlockPos(2, GROUND + 1, 0);
+
+        assertEquals(List.of(), Pathfinder.stepCut(stoneBank(2), foot, step), "not by hand");
+        assertEquals(List.of(step), Pathfinder.stepCut(stoneBank(2), foot, step, true));
+        assertFalse(Pathfinder.find(stoneBank(3), START, exactly(5, GROUND + 3, 0), 5000).reachesGoal());
+        assertTrue(Pathfinder.find(stoneBank(3), START, exactly(5, GROUND + 3, 0), 5000, FallAllowance.NONE, 0, true).reachesGoal());
+        assertFalse(Pathfinder.find(stoneBank(4), START, exactly(5, GROUND + 4, 0), 5000, FallAllowance.NONE, 0, true).reachesGoal(),
+                "still no tunnelling");
+    }
+
     private static Goal exactly(int x, int y, int z) {
         return new Goal(x + 0.5, y, z + 0.5, 0.1, 0);
     }

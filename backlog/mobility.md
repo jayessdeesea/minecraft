@@ -22,17 +22,15 @@ Live:
   per step. Routes are never planned on more blocks than it carries, and the squad leader's survey
   marks ground reached only by climbing, with what the climb costs (`Pathfinder`,
   `DeterministicSoldier`, `bot.supply.Footing`, `TerrainSurveyor`).
-- **Cutting steps into soil.** Any soldier, facing a soil bank too high to jump, digs a step into
-  its face by hand and jumps onto it (`Pathfinder.stepCut`, `bot.supply.Breacher`). Measured by
-  `SoldierScenarioTest`'s digging runs.
+- **Cutting steps.** Any soldier, facing a soil bank too high to jump, digs a step into its face
+  by hand and jumps onto it; one carrying a pickaxe does the same into plain stone
+  (`Pathfinder.stepCut`, `bot.supply.Breacher`). Measured by `SoldierScenarioTest`'s digging runs,
+  and seen live climbing a 3-high terrace of each (`climb-soil-terrace`, `climb-stone-terrace`).
 
 What's left:
-- **Steps into stone,** with a pickaxe. `Kit` doesn't say whether a soldier carries one, so the
-  planner can't price it.
 - **A staircase into a face taller than three blocks.** A step is cut only where it comes out
   under open air, so the planner never tunnels and the survey's flood fill stays bounded. A sheer
   face of four or more needs either a staircase cut back into it, or blocks to pillar with.
-- **Not yet seen live:** no live run has had a squad cut its way up a slope.
 
 ## Notes
 - Blocks come from what the soldier carries (`Builder`'s cobblestone, planks, logs), or from what

@@ -194,4 +194,27 @@ class PersistentJoinLiveIT {
         LOG.info("Heard: {}", heard);
         assertTrue(heard.contains(new ChatMessage(speakerUuid, "!mission hold the ridge")), "heard: " + heard);
     }
+
+    /** A line whispered with an unsigned /msg reaches its target as Disguised Chat, the sender named. */
+    @Test
+    void deliversAWhisper() throws Exception {
+        List<ChatMessage> heard = new CopyOnWriteArrayList<>();
+        PlaySession listener = MinecraftClient.join("localhost", 25565, "ChatListenerBot",
+                        new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { },
+                                health -> { }, inventory -> { }, heard::add, container -> { }, (registry, entries) -> { }, blocks -> { }, time -> { }, cause -> { }))
+                .get(15, TimeUnit.SECONDS);
+        PlaySession speaker = MinecraftClient.join("localhost", 25565, "ChatSpeakerBot").get(15, TimeUnit.SECONDS);
+        Thread.sleep(1_000);
+
+        speaker.sendChatCommand("msg ChatListenerBot !escort");
+        java.util.UUID speakerUuid = java.util.UUID.nameUUIDFromBytes("OfflinePlayer:ChatSpeakerBot".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        for (int i = 0; i < 50 && heard.stream().noneMatch(m -> m.sender().equals(speakerUuid)); i++) {
+            Thread.sleep(100);
+        }
+        speaker.close();
+        listener.close();
+
+        LOG.info("Heard: {}", heard);
+        assertTrue(heard.contains(new ChatMessage(speakerUuid, "!escort")), "heard: " + heard);
+    }
 }

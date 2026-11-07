@@ -169,6 +169,7 @@ public final class Inventory {
             }
         }
         boolean shield = ItemClassRegistry.classOf(itemIds[OFF_HAND]).equals(Optional.of(ItemClassRegistry.ItemClass.SHIELD));
-        return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs, stone, rations, shield);
+        return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs, stone, rations, shield,
+                slotOf(ItemClassRegistry.ItemClass.PICKAXE) >= 0);
     }
 }

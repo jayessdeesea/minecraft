@@ -81,6 +81,35 @@ class TerrainSurveyorTest {
     }
 
     @Test
+    void aSoilTerraceTooHighToJumpIsReachedByCuttingSteps() {
+        WorldView terrace = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND || x >= 10 && y < GROUND + 3;
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return x >= 10 && y >= GROUND && y < GROUND + 3;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public java.util.List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return java.util.List.of();
+            }
+        };
+        TerrainSurvey survey = TerrainSurveyor.survey(terrace, new Position(0.5, GROUND, 0.5));
+
+        assertEquals(GROUND + 3, at(survey, 16, 0).height());
+        assertTrue(at(survey, 16, 0).reachable(), "a step cut into the face, then onto the top");
+    }
+
+    @Test
     void aPointManInMidJumpStillSeesWhatsReachable() {
         TerrainSurvey survey = TerrainSurveyor.survey(WORLD, new Position(0.5, GROUND + 1.2, 0.5));
 

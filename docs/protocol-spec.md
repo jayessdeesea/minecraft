@@ -259,6 +259,7 @@ server's own `GameProtocols` registration lists (read with `javap` - see DEVELOP
 | ← | `0x36` | Move Entity Pos | `MoveEntityPacket` | live (resolved positions continuous) |
 | ← | `0x37` | Move Entity Pos Rot | `MoveEntityPacket` | live |
 | ← | `0x3C` | Open Screen | `ContainerPackets.OpenScreen` | live (a chest: menu type 2, `generic_9x3`) |
+| ← | `0x21` | Disguised Chat | `DisguisedChatPacket` | live (an unsigned `/msg` from another client) |
 | ← | `0x42` | Player Chat | `PlayerChatPacket` | live (plain chat from another client) |
 | ← | `0x49` | Player Position | `PlayerPositionPacket` | live spawn coordinates |
 | ← | `0x4E` | Remove Entities | `RemoveEntitiesPacket` | registration order |
@@ -293,8 +294,11 @@ before the NBT text component and the registry-bound chat type; the rest of the 
 unread. In offline mode a player's UUID is `UUID.nameUUIDFromBytes("OfflinePlayer:" + name)`, so
 the sender identifies the player without decoding player info. Plain chat from a player without a
 chat session arrives as Player Chat with no signature. An unsigned chat *command* such as `/me` -
-the squad's own radio lines - arrives instead as Disguised Chat (`0x21`), whose only sender is a
-name inside an NBT component; it isn't decoded.
+the squad's own radio lines, or a player's `/msg` - arrives instead as Disguised Chat (`0x21`): the
+server resolves an unsigned command's message as a system message, which has no sender UUID. Its
+message and the sender's name are NBT text components, read as plain text (a string tag, or a
+compound's `text` and then its `extra` parts; styling and events skipped). The sender's UUID is
+derived from the name, as above.
 
 **Containers.** Using a chest (Use Item On) gets Open Screen and then the chest's Container Set
 Content under the new container ID: the chest's own slots, then the player's 27 main slots and 9

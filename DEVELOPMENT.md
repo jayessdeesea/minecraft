@@ -150,6 +150,9 @@ absolute coordinates ("hold x=-40 z=0"): the general re-reads the mission at eve
 player: the soldiers ring the player and go after hostiles that come near them
 (docs/military-doctrine.md § 10). `!mission <text>` ends it.
 
+Any order can be whispered to a soldier instead (`/msg Bob !escort`): the soldier that hears it
+relays it up the chain, and the log says who did.
+
 ```bash
 java -jar app/target/app.jar --minecraft.operators=YourName
 ```
