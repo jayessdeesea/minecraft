@@ -499,7 +499,9 @@ light data.
 Each soldier takes the nearest planned cell no squadmate has taken, walks onto it and puts a torch
 down where it stands (`bot.supply.Lamplighter`). The server's block update confirms it. A soldier
 out of torches makes eight at a time where it stands (`bot.supply.Torchmaker`, the same run as a
-patrol base's), and reports `Securing` meanwhile. One that can't make any reports CANTCO with why.
+patrol base's), and reports `Securing` meanwhile. One short of the makings gathers them first, near
+the objective: logs, then the cobblestone for a furnace (making itself a pickaxe for it). One that
+still can't make any reports CANTCO with why.
 The log says how many torches are still to put down.
 
 ## 16. Mining down

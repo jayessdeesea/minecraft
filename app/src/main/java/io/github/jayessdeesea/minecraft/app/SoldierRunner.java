@@ -297,6 +297,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     static final int TREE_FARM_RADIUS = 8;
     /** How far round a SECURE objective the ground is lit. */
     static final int SECURE_RADIUS = 12;
+    /** Logs a soldier making torches from scratch uses: planks, sticks, a table, charcoal and its fuel. */
+    private static final int TORCH_LOGS = 4;
+    /** Cobblestone for the furnace that makes the charcoal. */
+    private static final int TORCH_STONE = 8;
     /** Torches a soldier makes at a time for lighting ground: two logs' charcoal. */
     private static final int LIGHTING_TORCHES = 8;
     /** A soldier being handed logs goes for dropped items this close - where a throw lands. */
@@ -731,6 +735,19 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
             if (!torchesLeft.isEmpty() && !squadInContact) {
                 lighting.put(soldierName, torchesLeft);
+                // Out of torches and short of their makings: it gathers them near the objective -
+                // logs, then cobblestone for the furnace - rather than reporting the shortage forever.
+                Kit makings = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
+                if (makings != null && torchesCarried.getOrDefault(soldierName, 0) == 0) {
+                    io.github.jayessdeesea.minecraft.command.Objective secure = chainOfCommand.secureObjective(squadName).orElseThrow();
+                    Optional<io.github.jayessdeesea.minecraft.command.Resource> missing = makings.logs() < TORCH_LOGS
+                            ? Optional.of(io.github.jayessdeesea.minecraft.command.Resource.WOOD)
+                            : makings.stone() < TORCH_STONE && !furnaces.containsValue(soldierName)
+                            ? Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE) : Optional.empty();
+                    missing.ifPresent(r -> gathering.put(soldierName, new io.github.jayessdeesea.minecraft.command.Objective(
+                            "Gather the makings of torches", secure.location(), secure.intent(),
+                            new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(r))));
+                }
             } else {
                 lighting.remove(soldierName);
             }
@@ -1400,7 +1417,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     : !lights.isEmpty() && torchesWanted && torchmaker.failure().isPresent()
                     ? new Report.Cantco("can't make torches to light the ground: " + torchmaker.failure().get())
                     // Nothing to make them from, and nothing said: the crafter doesn't start what it can't finish.
-                    : !lights.isEmpty() && torchesWanted && !torchmaker.active()
+                    : !lights.isEmpty() && torchesWanted && !torchmaker.active() && !gatherer.active() && !armourer.active()
                     ? new Report.Cantco("no torches to light the ground with, and short of "
                             + Torchmaker.shortOf(inventory, LIGHTING_TORCHES) + " to make them")
                     : farmer.active() || armourer.active() && armourer.making().stream()
