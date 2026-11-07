@@ -59,7 +59,7 @@ The hasty hut, the general's PATROL_BASE task and the time of day are live (docs
 § 14). What's left:
 - **Deliberate base, the rest.** The ground round a camp is lit (SECURE) and walled (FORTIFY,
   docs/military-doctrine.md § 15). What's left: a lip on the wall so spiders can't climb it, a gate
-  the squads close behind them, and the wall's own light, so nothing spawns on top of it.
+  in the doorway the squads close behind them, and the wall's own light, so nothing spawns on top of it.
 - **A camp outlives a restart.** A squad's base is known only in memory, so a restarted app sites a
   new hut and spends its blocks again, leaving the old one standing empty: seen live with the
   garrison at spawn. The squad should find the hut it built - a standing shell of the right shape

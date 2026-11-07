@@ -11,8 +11,9 @@ import java.util.List;
 /**
  * The wall round a camp (docs/military-doctrine.md §15): a square ring {@code radius} blocks out
  * from a centre, two blocks high on the ground of each of its columns - a body can't jump it, and
- * nothing walks in from the dark. A column over water, or with no ground near the centre's height,
- * is left out.
+ * nothing walks in from the dark - with one doorway, a column wide, in the middle of its south side:
+ * the squads' way in and out, rather than a step cut through the wall. A column over water, or with
+ * no ground near the centre's height, is left out.
  */
 public final class Perimeter {
 
@@ -31,8 +32,8 @@ public final class Perimeter {
         List<BlockPos> cells = new ArrayList<>();
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) {
-                    continue;
+                if (Math.max(Math.abs(dx), Math.abs(dz)) != radius || dx == 0 && dz == radius) {
+                    continue; // inside or outside the ring - or the doorway, mid-south, the way in and out
                 }
                 ground(world, centre.x() + dx, centre.z() + dz, centre.y()).ifPresent(feet -> {
                     for (int up = 0; up < HEIGHT; up++) {

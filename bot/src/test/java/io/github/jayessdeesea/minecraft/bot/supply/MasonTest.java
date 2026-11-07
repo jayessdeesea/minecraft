@@ -66,9 +66,10 @@ class MasonTest {
     void layoutIsARingTwoHighAndItStaysLaidOutAsItsBuilt() {
         List<BlockPos> layout = Perimeter.layout(flat, CENTRE, 3);
 
-        assertEquals(24 * Perimeter.HEIGHT, layout.size(), "24 columns round a 7x7 square, two high");
-        placed.addAll(layout.subList(0, 24));
-        assertEquals(24, Perimeter.open(flat, layout).size(), "the bottom row built, the top row left - not a third row");
+        assertEquals(23 * Perimeter.HEIGHT, layout.size(), "24 columns round a 7x7 square less the doorway, two high");
+        assertTrue(layout.stream().noneMatch(c -> c.x() == 0 && c.z() == 3), "the doorway, mid-south, stays open");
+        placed.addAll(layout.subList(0, 23));
+        assertEquals(23, Perimeter.open(flat, layout).size(), "the bottom row built, the top row left - not a third row");
     }
 
     @Test

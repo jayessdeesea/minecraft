@@ -284,6 +284,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> walling = new ConcurrentHashMap<>();
     /** The centre of the wall each soldier's squad builds - squad loop writes, tick reads. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wallCentres = new ConcurrentHashMap<>();
+    /**
+     * Wall cells a mason has taken - its own set, apart from the claims every dig skips, which hold
+     * the whole wall so nobody quarries it.
+     */
+    private final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wallClaims = ConcurrentHashMap.newKeySet();
+    /** Each wall's layout, by its centre's x and z - shared by every squad building it. */
+    private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> walls = new ConcurrentHashMap<>();
     /** How far out from a FORTIFY objective its wall stands. */
     static final int WALL_RADIUS = 8;
     /** Each connected soldier's hunting, by name. */
@@ -649,9 +656,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // A base the squad holds isn't a quarry: its walls go in the claims every dig skips, or a
         // soldier short of wood chops the wall it shelters behind. Re-added every cycle, since a
         // dig releasing its own claims can't take a wall's with them for longer than that.
-        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> held = java.util.stream.Stream.of(plan, state.builtBase)
-                .filter(java.util.Objects::nonNull).flatMap(p -> p.cells().stream())
-                .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) c.x(), (int) c.y(), (int) c.z()))
+        // And the camp's wall, once it's laid out: nobody quarries the wall they're inside.
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> held = java.util.stream.Stream.concat(
+                java.util.stream.Stream.of(plan, state.builtBase).filter(java.util.Objects::nonNull).flatMap(p -> p.cells().stream())
+                        .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos((int) c.x(), (int) c.y(), (int) c.z())),
+                state.wall == null ? java.util.stream.Stream.<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>empty() : state.wall.stream())
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
         state.baseCells.stream().filter(c -> !held.contains(c)).forEach(treeClaims::remove);
         treeClaims.addAll(held);
@@ -705,7 +714,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(fortify.get().location().x(), fortify.get().location().y(),
                             fortify.get().location().z()));
             if (state.wallCentre == null || state.wallCentre.x() != at.x() || state.wallCentre.z() != at.z()) {
-                state.wall = io.github.jayessdeesea.minecraft.bot.supply.Perimeter.layout(world, at, WALL_RADIUS);
+                // One layout a wall, whichever squad comes to it first: a squad that lays out a wall
+                // another has half built lays it out on top of what's there.
+                state.wall = walls.computeIfAbsent(at.x() + "," + at.z(),
+                        key -> io.github.jayessdeesea.minecraft.bot.supply.Perimeter.layout(world, at, WALL_RADIUS));
                 state.wallCentre = at;
                 LOG.info("[{}] FORTIFY: a wall laid out round {}, {} blocks", squadName, at, state.wall.size());
             }
@@ -1321,7 +1333,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.supply.Hunter hunter = new io.github.jayessdeesea.minecraft.bot.supply.Hunter(name);
         hunters.put(name, hunter);
         io.github.jayessdeesea.minecraft.bot.supply.Mason mason = new io.github.jayessdeesea.minecraft.bot.supply.Mason(name, inventory, footing,
-                treeClaims);
+                wallClaims);
         masons.put(name, mason);
         io.github.jayessdeesea.minecraft.bot.supply.Scavenger scavenger = new io.github.jayessdeesea.minecraft.bot.supply.Scavenger(name);
         scavengers.put(name, scavenger);

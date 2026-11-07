@@ -521,9 +521,11 @@ The log says how many torches are still to put down.
 
 A lit camp still lets in what walks in from the dark beyond the light. An objective's task can be
 `FORTIFY`, which makes the camp a deliberate base: a wall two blocks high - one more than a
-jump - on a square 8 blocks out from the objective, laid on the ground of each of its columns
-(`bot.supply.Perimeter`). It's laid out once, when the objective is given, since laid out again
-after a row the ground would be the wall's top. Each soldier takes the nearest open cell of the
+jump - on a square 8 blocks out from the objective, laid on the ground of each of its columns, with
+a doorway a column wide in the middle of its south side: the squads' way in and out, rather than a
+step cut through the wall (`bot.supply.Perimeter`). It's laid out once, by whichever squad comes to
+it first, and shared - laid out again after a row, the ground would be the wall's top - and its
+cells join the ones every dig skips, so nobody quarries it. Each soldier takes the nearest open cell of the
 lowest row no squadmate has taken, stands just inside it, and puts a block there, cobblestone
 first, then dirt (`bot.supply.Mason`); one with neither digs dirt outside the wall. The log says
 how many blocks are still to place. Seen live in `wall-the-camp`: two squads close a 128-block wall
