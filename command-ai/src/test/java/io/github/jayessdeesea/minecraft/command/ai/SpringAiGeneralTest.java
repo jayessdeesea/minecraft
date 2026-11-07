@@ -94,7 +94,7 @@ class SpringAiGeneralTest {
                 java.util.Optional.empty(), java.util.Optional.empty(), List.of(ALPHA)).prompt();
 
         assertTrue(prompt.contains("<time>\nDay. Dark - monsters spawn anywhere unlit - in about 10 minutes.\n</time>"), prompt);
-        assertEquals("Night - already dark: monsters spawn anywhere unlit. Light again in about 4 minutes.",
+        assertEquals("Night - already dark: monsters spawn anywhere unlit. Light again in about 5 minutes.",
                 SpringAiGeneral.describe(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(18000, true)));
         assertEquals("Day. The clock is stopped: it stays this way.",
                 SpringAiGeneral.describe(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(6000, false)));

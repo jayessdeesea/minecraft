@@ -392,8 +392,9 @@ asked: pairing is bookkeeping, done deterministically like the other drills.
 | **Survivability** | Positions start hasty and are improved toward deliberate; overhead cover matters most. | ATP 3-37.34 |
 
 *How we use it:* the general knows the time of day: Set Time's overworld clock, advanced with the
-game time between the updates that carry it (`app.OverworldClock`), becomes `command.TimeOfDay`. Dark is when the server's day timeline dims sky light enough for monsters to
-spawn in the open, ticks 13178 to 22822. The general's and squad leaders' prompts say how many
+game time between the updates that carry it (`app.OverworldClock`), becomes `command.TimeOfDay`. Dark runs from when the server's day timeline dims sky light enough for monsters to
+spawn in the open, tick 13178, to sunrise, tick 24000: spawning stops at 22822, but what spawned
+walks until the sun burns it, so a squad stays in until then - the stand-to before first light. The general's and squad leaders' prompts say how many
 minutes until that changes. At night, each squad not sealed in a patrol base is told so on its own
 line of the general's prompt, rather than left to be worked out from the time and its state.
 
