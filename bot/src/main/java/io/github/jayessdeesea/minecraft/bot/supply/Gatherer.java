@@ -30,6 +30,8 @@ public final class Gatherer {
     /** What one soldier carries before it stops: loads it can still fight with. */
     public static final int CARRY_LOGS = 16;
     public static final int CARRY_STONE = 32;
+    /** Dirt dug for a patrol base: a soldier's share of a hut, and a few over for the misses. */
+    public static final int CARRY_SOIL = 16;
     static final int RETRY_TICKS = 600;
 
     private final String name;
@@ -79,8 +81,16 @@ public final class Gatherer {
             exhausted = false;
             return;
         }
-        ItemClass item = resource.get() == Resource.WOOD ? ItemClass.LOG : ItemClass.COBBLESTONE;
-        int load = resource.get() == Resource.WOOD ? CARRY_LOGS : CARRY_STONE;
+        ItemClass item = switch (resource.get()) {
+            case WOOD -> ItemClass.LOG;
+            case SOIL -> ItemClass.DIRT;
+            default -> ItemClass.COBBLESTONE;
+        };
+        int load = switch (resource.get()) {
+            case WOOD -> CARRY_LOGS;
+            case SOIL -> CARRY_SOIL;
+            default -> CARRY_STONE;
+        };
         if (resource.get() == Resource.STONE && inventory.slotOf(ItemClass.PICKAXE) < 0) {
             stop(); // a pickaxe first - Armourer makes one
             return;
@@ -94,7 +104,11 @@ public final class Gatherer {
             return;
         }
         reportedFull = false;
-        Digger.Target target = resource.get() == Resource.WOOD ? Digger.Target.LOG : Digger.Target.STONE;
+        Digger.Target target = switch (resource.get()) {
+            case WOOD -> Digger.Target.LOG;
+            case SOIL -> Digger.Target.SOIL;
+            default -> Digger.Target.STONE;
+        };
         if (digger == null) {
             if (retry == 0) {
                 next(world, around, target);

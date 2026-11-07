@@ -9,6 +9,8 @@ public enum Resource {
     WOOD,
     /** Cobblestone, quarried from exposed stone with a pickaxe. */
     STONE,
+    /** Dirt, dug by hand - building blocks for a patrol base when a squad carries too few. */
+    SOIL,
     /** Ground by water to till for wheat: a farm's site, not something gathered. */
     FARMLAND;
 

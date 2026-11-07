@@ -19,11 +19,17 @@ import java.util.List;
  * Kit counts cover only the {@code kitReported} soldiers whose inventory has been reported.
  */
 public record Logstat(int soldiers, int reporting, int hungry, int wounded, int deaths,
-                      int kitReported, int unarmed, int armourEmpty, int armourSlots, int arrows, int logs, int stone) {
+                      int kitReported, int unarmed, int armourEmpty, int armourSlots, int arrows, int logs, int stone, int dirt) {
+
+    /** A LOGSTAT with no dirt carried. */
+    public Logstat(int soldiers, int reporting, int hungry, int wounded, int deaths,
+                   int kitReported, int unarmed, int armourEmpty, int armourSlots, int arrows, int logs, int stone) {
+        this(soldiers, reporting, hungry, wounded, deaths, kitReported, unarmed, armourEmpty, armourSlots, arrows, logs, stone, 0);
+    }
 
     public static Logstat of(List<SoldierStatus> squad) {
         int reporting = 0, hungry = 0, wounded = 0, deaths = 0;
-        int kitReported = 0, unarmed = 0, armourEmpty = 0, arrows = 0, logs = 0, stone = 0;
+        int kitReported = 0, unarmed = 0, armourEmpty = 0, arrows = 0, logs = 0, stone = 0, dirt = 0;
         for (SoldierStatus soldier : squad) {
             if (soldier.condition().isEmpty()) {
                 continue;
@@ -41,9 +47,10 @@ public record Logstat(int soldiers, int reporting, int hungry, int wounded, int 
                 arrows += kit.arrows();
                 logs += kit.logs();
                 stone += kit.stone();
+                dirt += kit.dirt();
             }
         }
         return new Logstat(squad.size(), reporting, hungry, wounded, deaths,
-                kitReported, unarmed, armourEmpty, kitReported * Kit.ARMOUR_SLOTS, arrows, logs, stone);
+                kitReported, unarmed, armourEmpty, kitReported * Kit.ARMOUR_SLOTS, arrows, logs, stone, dirt);
     }
 }

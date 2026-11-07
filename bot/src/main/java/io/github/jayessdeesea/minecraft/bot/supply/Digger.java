@@ -63,6 +63,8 @@ final class Digger {
         GRASS(3, 1, null, 0, ItemClass.SEEDS, false),
         /** Ripe wheat, by hand at a touch: wheat, and seeds to plant again. */
         WHEAT(3, 1, null, 0, ItemClass.WHEAT),
+        /** Dirt or grass at the feet, by hand in about a second: dirt, for a patrol base's walls. */
+        SOIL(25, 0, null, 0, ItemClass.DIRT),
         /** Spruce leaves - the pine the camp prefers - by hand: a spruce sapling, one time in twenty. */
         SPRUCE_LEAVES(10, 3, null, 0, ItemClass.SAPLING, false),
         /** Any tree's leaves, by hand: its sapling, one time in twenty (oak, one in twenty too, and an apple). */
@@ -99,6 +101,8 @@ final class Digger {
                 case IRON_ORE -> world.isIronOre(block.x(), block.y(), block.z());
                 case GRASS -> world.isGrassPlant(block.x(), block.y(), block.z());
                 case WHEAT -> world.wheatAge(block.x(), block.y(), block.z()).orElse(-1) == RIPE;
+                case SOIL -> world.isSoil(block.x(), block.y(), block.z()) && !world.isFarmland(block.x(), block.y(), block.z())
+                        && !world.isSolid(block.x(), block.y() + 1, block.z());
                 case SPRUCE_LEAVES -> world.leaves(block.x(), block.y(), block.z()).filter("spruce"::equals).isPresent();
                 case LEAVES -> world.leaves(block.x(), block.y(), block.z()).isPresent();
             };

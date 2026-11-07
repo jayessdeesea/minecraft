@@ -151,6 +151,7 @@ public final class Inventory {
         int fallProtection = 0;
         int logs = 0;
         int stone = 0;
+        int dirt = 0;
         int rations = 0;
         for (int slot = 0; slot < SLOTS; slot++) {
             Optional<ItemClassRegistry.ItemClass> itemClass = ItemClassRegistry.classOf(itemIds[slot]);
@@ -160,6 +161,8 @@ public final class Inventory {
                 logs += counts[slot];
             } else if (itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.COBBLESTONE))) {
                 stone += counts[slot];
+            } else if (itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.DIRT))) {
+                dirt += counts[slot];
             } else if (itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.FOOD))) {
                 rations += counts[slot];
             } else if (slot >= ARMOUR_FIRST && slot <= ARMOUR_LAST && itemClass.equals(Optional.of(ItemClassRegistry.ItemClass.ARMOUR))) {
@@ -170,6 +173,6 @@ public final class Inventory {
         }
         boolean shield = ItemClassRegistry.classOf(itemIds[OFF_HAND]).equals(Optional.of(ItemClassRegistry.ItemClass.SHIELD));
         return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs, stone, rations, shield,
-                slotOf(ItemClassRegistry.ItemClass.PICKAXE) >= 0);
+                slotOf(ItemClassRegistry.ItemClass.PICKAXE) >= 0, dirt);
     }
 }

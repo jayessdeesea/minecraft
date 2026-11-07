@@ -322,8 +322,8 @@ faster. Stone needs a pickaxe, or it drops nothing: a soldier without one makes 
 first, the way it makes a sword (§11), from logs it carries or chops. Break times are the
 server's - hardness over tool speed - with a margin, since the server times each dig. A soldier at it reports `Gathering`; one that finds nothing left in reach reports CANTCO,
 which the squad leader passes up so the general can choose another place. To choose, the general
-reads what each squad can see within 64 blocks of its point man: the nearest three stands of trees
-and the nearest three outcrops of stone open to the sky (not cave walls, which no gatherer can
+reads what each squad can see within 64 blocks of its point man: for trees and for stone open to
+the sky, the nearest site and the two biggest (not cave walls, which no gatherer can
 reach), each with its count, distance and direction (`bot.supply.ResourceSurveyor`,
 `command.SquadStatus.resources`). A soldier that can't make the pickaxe it needs - no trees in reach
 - reports CANTCO too.
@@ -403,7 +403,10 @@ re-issued objective within 8 blocks keeps the site already laid out, so the outl
 under the soldiers.
 
 Each soldier goes to its own floor cell. Once all are inside, each builds from where it stands
-(`bot.supply.Builder`): cobblestone first, then planks, then logs. Each block is placed against a
+(`bot.supply.Builder`): cobblestone first, then dirt, then planks, then logs. A soldier carrying
+less than its share of the hut's blocks first digs dirt by hand a few blocks off the site, clear of
+the walls (`Resource.SOIL`), so a squad with nothing to build with still shelters by night; the
+general's LOGSTAT counts dirt, and tells it so. Each block is placed against a
 solid neighbour's face and checked against the server's block updates; a cell that won't take a
 block after three tries is skipped; after the first miss the soldier digs the cell, since a flower
 or sapling there blocks a placement until it is broken. A soldier at it reports `Fortifying`, or CANTCO when it runs

@@ -285,6 +285,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final double REARM_CLEAR_RADIUS = 16;
     /** How far from the general's farm objective the plot's water may be, across and up or down. */
     private static final int FARM_SITE_RADIUS = 8;
+    /** How far from its hut a soldier short of blocks digs dirt: clear of the walls and the ground under them. */
+    private static final int SOIL_OFFSET = 6;
     /** How far round a TREE_FARM objective saplings go. */
     static final int TREE_FARM_RADIUS = 8;
     /** How far round a SECURE objective the ground is lit. */
@@ -745,6 +747,21 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 fortifying.remove(soldierName);
                 Position place = opening.get(soldierName).stand();
                 byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(), HUT_PLACE_TOLERANCE, 0.5, Risk.LOW));
+                continue;
+            }
+            // Short of its share of the hut's blocks: dirt, dug beside the site, makes up the rest -
+            // a squad with nothing to build with still shelters by night.
+            Kit carried = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
+            if (building != null && !allInside && carried != null && !squadInContact
+                    && carried.stone() + carried.dirt() + carried.logs() < stoneShare) {
+                Position hutPlace = building.stands().get(i);
+                Position dirtPlace = new Position(hutPlace.x() + SOIL_OFFSET, hutPlace.y(), hutPlace.z());
+                gathering.put(soldierName, new io.github.jayessdeesea.minecraft.command.Objective("Dig dirt for the patrol base",
+                        dirtPlace, "Blocks enough to wall the squad in",
+                        new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.SOIL)));
+                fortifying.remove(soldierName);
+                Position dig = gatherers.get(soldierName).standAt().orElse(dirtPlace);
+                byName.get(soldierName).receiveOrder(new Order.MoveTo(dig.x(), dig.y(), dig.z(), 0.3, 2, Risk.LOW));
                 continue;
             }
             if (building != null) {

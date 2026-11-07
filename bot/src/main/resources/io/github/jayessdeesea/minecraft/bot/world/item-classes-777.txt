@@ -3,8 +3,9 @@
 # W weapon, A armour, R arrows; and what a wooden sword is made from: L logs, P planks,
 # S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;
 # U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;
-# E wheat seeds, Y wheat, Z hoes, B saplings.
+# E wheat seeds, Y wheat, Z hoes, B saplings, D dirt.
 # Everything NOT listed is just carried.
+55 D dirt
 62 K cobblestone
 63 P oak_planks
 64 P spruce_planks

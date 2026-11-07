@@ -11,8 +11,8 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * What a squad can see to gather: the nearest stands of trees and outcrops of exposed stone around a
- * point, from the blocks its soldiers have loaded. A site is the blocks of one material within
+ * What a squad can see to gather: for trees and for exposed stone, the nearest site and the two
+ * biggest around a point, from the blocks its soldiers have loaded. A site is the blocks of one material within
  * {@link #STAND_RADIUS} of one another, reported at their middle with their count, nearest first.
  * Stone counts only where it's exposed to the open sky - beside or under an open cell with nothing
  * solid over it for {@link #SKY_CLEARANCE} blocks - since buried stone, or a cave wall, takes a mine
@@ -89,7 +89,7 @@ public final class ResourceSurveyor {
         logs.sort(Comparator.comparingDouble(log -> horizontal(log, centre)));
         List<ResourceSite> stands = new ArrayList<>();
         boolean[] taken = new boolean[logs.size()];
-        for (int i = 0; i < logs.size() && stands.size() < MAX_STANDS; i++) {
+        for (int i = 0; i < logs.size(); i++) {
             if (taken[i]) {
                 continue;
             }
@@ -110,7 +110,14 @@ public final class ResourceSurveyor {
                         Math.round(sz / count)), count));
             }
         }
-        return List.copyOf(stands);
+        // The nearest, and the biggest: a lone tree by the camp is all a nearest-three list shows
+        // once the camp has cut what grew round it, with a forest just past it.
+        List<ResourceSite> shown = new ArrayList<>();
+        stands.stream().findFirst().ifPresent(shown::add);
+        stands.stream().sorted(Comparator.comparingInt(ResourceSite::amount).reversed())
+                .filter(stand -> !shown.contains(stand)).limit(MAX_STANDS - shown.size()).forEach(shown::add);
+        shown.sort(Comparator.comparingDouble(stand -> Math.hypot(stand.location().x() - centre.x(), stand.location().z() - centre.z())));
+        return List.copyOf(shown);
     }
 
     private static double horizontal(BlockPos a, BlockPos b) {

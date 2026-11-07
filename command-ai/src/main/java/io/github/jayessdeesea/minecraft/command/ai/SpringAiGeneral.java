@@ -151,7 +151,7 @@ public final class SpringAiGeneral implements General {
                         .append(": ").append(SpringAiSquadLeader.describe(soldier.report())).append('\n');
             }
             prompt.append(describe(Logstat.of(squad.soldiers()), squad.baseBlocksLeft())).append('\n');
-            prompt.append(describeResources(squad)).append('\n');
+            prompt.append(describeResources(squad, time.filter(TimeOfDay::dark).isEmpty())).append('\n');
             prompt.append("</squad>\n\n");
         }
         prompt.append("Give each squad its objective now.");
@@ -189,8 +189,14 @@ public final class SpringAiGeneral implements General {
 
     /** What the squad can see to gather, with distance and direction from its point man. */
     static String describeResources(SquadStatus squad) {
+        return describeResources(squad, true);
+    }
+
+    /** As {@link #describeResources(SquadStatus)}, with the word on growing wood only by {@code day}: at night a squad shelters. */
+    static String describeResources(SquadStatus squad, boolean day) {
+        String noTrees = day ? NO_TREES : "";
         if (squad.resources().isEmpty()) {
-            return "Resources seen: no trees, exposed stone or ground to farm within 64 blocks." + NO_TREES;
+            return "Resources seen: no trees, exposed stone or ground to farm within 64 blocks." + noTrees;
         }
         Position from = squad.soldiers().isEmpty() ? null : squad.soldiers().getFirst().position();
         StringBuilder line = new StringBuilder("Resources seen:");
@@ -198,6 +204,7 @@ public final class SpringAiGeneral implements General {
             line.append(' ').append(site.amount()).append(' ').append(switch (site.resource()) {
                         case WOOD -> "logs";
                         case STONE -> "exposed stone";
+                        case SOIL -> "dirt";
                         case FARMLAND -> "cells of ground to farm by the water";
                     })
                     .append(" around ").append(from == null ? SpringAiSquadLeader.describe(site.location()) : relative(site.location(), from));
@@ -210,7 +217,7 @@ public final class SpringAiGeneral implements General {
         }
         line.setCharAt(line.length() - 1, '.');
         if (squad.resources().stream().noneMatch(site -> site.resource() == io.github.jayessdeesea.minecraft.command.Resource.WOOD)) {
-            line.append(" No trees in sight.").append(NO_TREES);
+            line.append(" No trees in sight.").append(noTrees);
         }
         return line.toString();
     }
@@ -258,13 +265,13 @@ public final class SpringAiGeneral implements General {
             line.append(String.format(Locale.ROOT, "weapons - %d of %d bare-handed, %d arrows; armour - %d of %d slots empty; ",
                     l.unarmed(), l.kitReported(), l.arrows(), l.armourEmpty(), l.armourSlots()));
         }
-        line.append(String.format(Locale.ROOT, "casualties - %d below half health, %d deaths so far; materials - %d logs, %d cobblestone",
-                l.wounded(), l.deaths(), l.logs(), l.stone()));
+        line.append(String.format(Locale.ROOT, "casualties - %d below half health, %d deaths so far; materials - %d logs, %d cobblestone%s",
+                l.wounded(), l.deaths(), l.logs(), l.stone(), l.dirt() > 0 ? ", " + l.dirt() + " dirt" : ""));
         if (baseBlocksLeft.isPresent() && baseBlocksLeft.getAsInt() == 0) {
             return line.append(" - their patrol base is already built.").toString();
         }
         // Worked out here, not left to the model: whether what they carry builds their shelter.
-        int blocks = l.logs() + l.stone();
+        int blocks = l.logs() + l.stone() + l.dirt();
         if (baseBlocksLeft.isPresent()) {
             int left = baseBlocksLeft.getAsInt();
             return line.append(blocks >= left
@@ -275,7 +282,8 @@ public final class SpringAiGeneral implements General {
         int needed = PatrolBase.hasty(new Position(0, 0, 0), Math.max(1, Math.min(l.soldiers(), 9))).cells().size();
         line.append(blocks >= needed
                 ? String.format(Locale.ROOT, " - enough to build a patrol base (%d blocks).", needed)
-                : String.format(Locale.ROOT, " - %d short of the %d blocks a patrol base takes.", needed - blocks, needed));
+                : String.format(Locale.ROOT, " - %d short of the %d blocks a patrol base takes; set PATROL_BASE anyway when it needs"
+                        + " shelter: its soldiers dig the rest as dirt beside the site.", needed - blocks, needed));
         return line.toString();
     }
 

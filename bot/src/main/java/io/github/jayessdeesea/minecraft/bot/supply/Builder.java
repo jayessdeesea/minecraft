@@ -40,7 +40,7 @@ public final class Builder {
     private static final Logger LOG = LogManager.getLogger(Builder.class);
 
     /** Building material, in the order it's spent. */
-    static final List<ItemClass> MATERIALS = List.of(ItemClass.COBBLESTONE, ItemClass.PLANKS, ItemClass.LOG);
+    static final List<ItemClass> MATERIALS = List.of(ItemClass.COBBLESTONE, ItemClass.DIRT, ItemClass.PLANKS, ItemClass.LOG);
     /** Eyes to the centre of the cell: inside the server's 4.5-block interaction range. */
     static final double REACH = 4.0;
     static final double EYE_HEIGHT = 1.62;

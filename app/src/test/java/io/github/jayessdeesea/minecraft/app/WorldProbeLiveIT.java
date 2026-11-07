@@ -92,6 +92,27 @@ class WorldProbeLiveIT {
             System.out.println(plan.map(p -> "Best farm: water at " + p.water() + ", " + p.plot().size() + " cells to plant, "
                     + Math.round(Math.hypot(p.water().x() - x, p.water().z() - z)) + " blocks from the point.")
                     .orElse("No water within reach of ground to till: a dry farm, or none."));
+            String resourcesAt = System.getProperty("resources.at");
+            if (resourcesAt != null) {
+                double[] p = java.util.Arrays.stream(resourcesAt.split(",")).mapToDouble(Double::parseDouble).toArray();
+                Position from = new Position(p[0], p[1], p[2]);
+                System.out.println("Resources seen from " + from + ": "
+                        + io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, from));
+                int logs = 0, below = 0, above = 0;
+                for (int dx = -64; dx <= 64; dx++) {
+                    for (int dz = -64; dz <= 64; dz++) {
+                        for (int y = -64; y < 320; y++) {
+                            if (world.isLog((int) p[0] + dx, y, (int) p[2] + dz)) {
+                                logs++;
+                                below += y < p[1] - 24 ? 1 : 0;
+                                above += y > p[1] + 24 ? 1 : 0;
+                            }
+                        }
+                    }
+                }
+                System.out.printf("Logs within 64 across: %d, of them %d more than 24 below, %d more than 24 above; %d chunks loaded%n",
+                        logs, below, above, chunks.loadedChunkCount());
+            }
             String route = System.getProperty("route");
             if (route != null) {
                 int[] r = java.util.Arrays.stream(route.split(",")).mapToInt(Integer::parseInt).toArray();
