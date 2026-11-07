@@ -23,6 +23,12 @@ minecraft:
   squad-leader:
     # The model every squad leader thinks with: "ollama" or "anthropic", as for the general.
     chat-model: ollama
+  # The order of battle: "Squad:Soldier,Soldier,...;Squad:...", formation order, the first soldier
+  # of the first squad carrying the radio. Soldiers' names are their usernames on the server.
+  roster: "Alpha:Alice,Bob,Carol,Gus;Bravo:Dana,Eli,Fran,Hal"
+  # Stand the squads still, asking no model anything, while a live experiment runs on this machine
+  # (the scenario harness holds a lock file for each run) - for a garrison sharing the GPU.
+  yield-to-experiments: false
   # Players who may replace the mission from game chat with "!mission <text>", comma-separated.
   # Empty: nobody.
   # Offline mode doesn't authenticate names, so this guards against accidents, not impostors.

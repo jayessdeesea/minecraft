@@ -111,9 +111,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     }
 
     /** Every soldier of every squad, squad by squad in formation order; the first carries the radio. */
-    private static final List<SoldierDefinition> SOLDIERS = Roster.SQUADS.stream()
-            .flatMap(squad -> squad.soldiers().stream().map(name -> new SoldierDefinition(name, squad.name())))
-            .toList();
+    private final List<SoldierDefinition> soldierDefinitions;
+    private final Roster roster;
+    /** Whether to stand still while a live experiment runs on this machine ({@link ExperimentLock}). */
+    private final boolean yieldToExperiments;
+    /** What the experiment lock said at the last squad cycle - squad loop only. */
+    private ExperimentLock.State lastLock = ExperimentLock.State.FREE;
 
     /** A squad's deterministic state across cycles - squad thread only. */
     private static final class SquadState {
@@ -262,7 +265,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final java.util.Optional<Position> supplyPoint;
 
     public SoldierRunner(ChainOfCommand chainOfCommand, OperatorOrders operatorOrders,
-                         @Value("${minecraft.supply.point}") String supplyPoint) {
+                         @Value("${minecraft.supply.point}") String supplyPoint, Roster roster,
+                         @Value("${minecraft.yield-to-experiments}") boolean yieldToExperiments) {
+        this.roster = roster;
+        this.yieldToExperiments = yieldToExperiments;
+        this.soldierDefinitions = roster.squads().stream()
+                .flatMap(squad -> squad.soldiers().stream().map(name -> new SoldierDefinition(name, squad.name())))
+                .toList();
         this.chainOfCommand = chainOfCommand;
         this.operatorOrders = operatorOrders;
         this.supplyPoint = Resupply.supplyPoint(supplyPoint);
@@ -274,7 +283,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
 
     @Override
     public void run(String... args) {
-        for (SoldierDefinition definition : SOLDIERS) {
+        for (SoldierDefinition definition : soldierDefinitions) {
             connect(definition);
         }
         ScheduledExecutorService squad = Executors.newSingleThreadScheduledExecutor(runnable -> new Thread(runnable, "squad"));
@@ -292,8 +301,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         record Present(String squad, List<DeterministicSoldier> soldiers, List<SoldierStatus> statuses,
                        Optional<Position> principalAt) {
         }
+        if (yieldingToAnExperiment()) {
+            return;
+        }
         List<Present> present = new java.util.ArrayList<>();
-        for (Roster.Squad squad : Roster.SQUADS) {
+        for (Roster.Squad squad : roster.squads()) {
             List<DeterministicSoldier> soldiers = presentSoldiers(squad.name());
             if (soldiers.isEmpty()) {
                 continue;
@@ -330,6 +342,31 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
                     orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt()));
         }
+    }
+
+    /**
+     * Whether to sit this cycle out because a live experiment holds the machine's models: every
+     * soldier told to stand still, and no SITREP sent - so neither the general nor a squad leader is
+     * asked anything. A lock left by a run that died is said loudly and not obeyed.
+     */
+    private boolean yieldingToAnExperiment() {
+        if (!yieldToExperiments) {
+            return false;
+        }
+        ExperimentLock.State lock = ExperimentLock.state();
+        if (lock != lastLock) {
+            switch (lock) {
+                case HELD -> LOG.info("An experiment is running - standing the squads still until it's done");
+                case FREE -> LOG.info("The experiment is done - carrying on");
+                case STALE -> LOG.error("The experiment lock at {} is held by a process that's gone - carrying on; delete it", ExperimentLock.PATH);
+            }
+            lastLock = lock;
+        }
+        if (lock != ExperimentLock.State.HELD) {
+            return false;
+        }
+        activeSoldiers.values().forEach(soldier -> soldier.receiveOrder(new Order.Idle()));
+        return true;
     }
 
     private void orderSquad(String squadName, SquadState state, List<DeterministicSoldier> squad, List<SoldierStatus> statuses,
@@ -618,7 +655,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     }
 
     private void logSquadSitrep() {
-        for (Roster.Squad squadDefinition : Roster.SQUADS) {
+        for (Roster.Squad squadDefinition : roster.squads()) {
             List<DeterministicSoldier> squad = presentSoldiers(squadDefinition.name());
             if (squad.isEmpty()) {
                 continue;
@@ -755,7 +792,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
 
     /** A squad's connected soldiers in formation order (the first present one is the point man). */
     private List<DeterministicSoldier> presentSoldiers(String squad) {
-        return SOLDIERS.stream().filter(d -> d.squad().equals(squad))
+        return soldierDefinitions.stream().filter(d -> d.squad().equals(squad))
                 .map(d -> activeSoldiers.get(d.name())).filter(java.util.Objects::nonNull).toList();
     }
 
@@ -877,7 +914,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 blocks -> blocks.forEach(b -> chunkCache.setBlock(b.x(), b.y(), b.z(), b.stateId())),
                 // Every connection hears the same clock; the radio operator's passes it up.
                 time -> {
-                    if (definition == SOLDIERS.getFirst()) {
+                    if (definition == soldierDefinitions.getFirst()) {
                         overworldClock.update(time, clockNames.get()).ifPresent(chainOfCommand::onTime);
                     }
                 },
@@ -924,7 +961,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             soldier.reportKit(kit);
         }
         activeSoldier.set(soldier);
-        if (definition == SOLDIERS.getFirst()) {
+        if (definition == soldierDefinitions.getFirst()) {
             // The point man carries the squad's radio: the squad leader and general aren't in the
             // world, so their traffic is keyed out over his connection (rebound on reconnect).
             chainOfCommand.setRadio(session::sendChatCommand);
@@ -1150,8 +1187,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         // The squad climbs together: nobody works above the lowest rung a squadmate is working toward,
         // so the first up the ladder doesn't dig out the ore the rest need for theirs.
-        String squad = SOLDIERS.stream().filter(d -> d.name().equals(name)).findFirst().orElseThrow().squad();
-        int highest = SOLDIERS.stream().filter(d -> d.squad().equals(squad) && !d.name().equals(name))
+        String squad = soldierDefinitions.stream().filter(d -> d.name().equals(name)).findFirst().orElseThrow().squad();
+        int highest = soldierDefinitions.stream().filter(d -> d.squad().equals(squad) && !d.name().equals(name))
                 .map(d -> rungsWanted.get(d.name())).filter(java.util.Objects::nonNull)
                 .mapToInt(Integer::intValue).min().orElse(Ladder.RUNGS - 1);
         Map<ItemClass, Integer> setAside = Map.of(ItemClass.COBBLESTONE, stoneSetAside.getOrDefault(name, 0));

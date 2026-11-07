@@ -100,13 +100,17 @@ mvn -pl app test -Dtest=GeneralScenarioIT -Dsurefire.failIfNoSpecifiedTests=fals
 **Whole-chain scenarios.** `app`'s `ChainScenarioLiveIT` runs the real general, squad leaders and
 soldiers against the dev server on a named scenario, and prints a pass rate. Each run makes these
 changes to the dev world:
-- builds a stone arena at x=3000 z=3000;
+- builds a stone arena in open air at x=500 z=500, far enough from spawn that nothing there is
+  bulldozed and that its soldiers don't see or meet anyone else;
+- connects its own squads, Charlie (`Ike`, `Jo`, `Kit`, `Lou`) and Delta (`Max`, `Ned`, `Ola`, `Pip`),
+  so a garrison (section 3) can stay connected as Alpha and Bravo meanwhile;
 - teleports the soldiers onto it;
 - heals and feeds them, and replaces their inventories;
 - sets the time of day.
 
-It needs the server and model up and nothing else connected as the soldiers. The scenarios and
-their judges are in the class.
+It needs the server and model up and nothing else connected as Charlie's or Delta's soldiers.
+For each run it holds a lock file (`app.ExperimentLock`, in the temp directory) that a garrison
+yields to. The scenarios and their judges are in the class.
 
 ```bash
 mvn -q install -DskipTests
@@ -134,9 +138,9 @@ mvn package -DskipTests
 java -jar app/target/app.jar
 ```
 
-This connects two squads (`app.Roster`): Alpha (`Alice`, `Bob`, `Carol`, `Gus`) and Bravo
-(`Dana`, `Eli`, `Fran`, `Hal`), the first of each its point man, each under its own LLM squad leader, both under one LLM
-general (`ChainOfCommand`). The log reads as a radio net: `[General -> Alpha] OPORD`,
+This connects two squads (`app.Roster`, from `minecraft.roster`): Alpha (`Alice`, `Bob`, `Carol`,
+`Gus`) and Bravo (`Dana`, `Eli`, `Fran`, `Hal`), the first of each its point man, each under its own
+LLM squad leader, both under one LLM general (`ChainOfCommand`). The log reads as a radio net: `[General -> Alpha] OPORD`,
 `[Bravo -> squad] FRAGO`, `[Alpha -> General] CANTCO`, and each squad's SITREP every 5 seconds.
 Orders and CANTCOs also appear in game chat (section 4), spoken by Alice as the radio operator. Soldiers reconnect on their own if a connection dies. The general's mission
 starts as `minecraft.general.mission` in `application.yml`.
@@ -158,6 +162,21 @@ relays it up the chain, and the log says who did.
 ```bash
 java -jar app/target/app.jar --minecraft.operators=YourName
 ```
+
+**A garrison.** Alpha and Bravo can live near where you play, making camp, while scenario runs
+use the arena. Start them there and give them a mission about it:
+
+```bash
+docker compose exec minecraft console "spreadplayers 0 0 2 8 false @a[name=!YourName]"   # once they've joined
+java -jar app/target/app.jar --minecraft.operators=YourName --minecraft.yield-to-experiments=true \
+  "--minecraft.general.mission=Make camp around x=0 z=0 and stay within 48 blocks of it. Each squad builds a patrol base near there and is sealed inside it before dark, and stays inside until dawn. By day, gather the wood and stone the camp needs from nearby."
+```
+
+A soldier rejoins where it last logged out, so a squad that last ran a scenario starts on the
+arena; `spreadplayers` puts them back on the ground. `minecraft.yield-to-experiments` stands the
+squads still, asking no model anything, while a scenario run holds the experiment lock: both apps
+share one GPU, and a run's pass rates and decision times assume the model to itself. A lock left
+by a run that died is logged as an error and not obeyed.
 
 **Setting up a supply point.** Place a chest, stock it with weapons and armour, and start the app
 with `--minecraft.supply.point=x,y,z` (the chest's block). Soldiers draw from it when the general

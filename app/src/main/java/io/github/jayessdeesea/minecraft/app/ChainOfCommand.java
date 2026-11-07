@@ -82,9 +82,9 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     private volatile Consumer<String> radio;
     private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time;
 
-    public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient) {
+    public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient, Roster roster) {
         this.general = general;
-        for (Roster.Squad squad : Roster.SQUADS) {
+        for (Roster.Squad squad : roster.squads()) {
             squads.put(squad.name(), new SquadCommand(squad.name(), new SpringAiSquadLeader(squad.name(), squadLeaderClient), this::transmit));
         }
     }

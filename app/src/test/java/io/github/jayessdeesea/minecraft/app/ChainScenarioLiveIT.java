@@ -39,8 +39,13 @@ import java.util.function.Supplier;
 class ChainScenarioLiveIT {
 
     /** The arena: a stone floor in open air, far from anything built near spawn. */
-    static final int ARENA_X = 3000;
-    static final int ARENA_Z = 3000;
+    static final int ARENA_X = 500;
+    static final int ARENA_Z = 500;
+    /**
+     * The harness's own squads, not the default roster's: a garrison may be living near spawn as
+     * Alpha and Bravo while a run goes on, and two connections can't share a name.
+     */
+    static final String ROSTER = "Charlie:Ike,Jo,Kit,Lou;Delta:Max,Ned,Ola,Pip";
     static final int FLOOR_Y = 150;
     static final int ARENA_HALF = 16;
 
@@ -68,7 +73,7 @@ class ChainScenarioLiveIT {
     static final Duration NIGHT_GRACE = Duration.ofSeconds(30);
 
     private static boolean everySquadSealedIn(Harness harness) {
-        return Roster.SQUADS.stream().allMatch(squad -> harness.runner.base(squad.name())
+        return harness.roster().squads().stream().allMatch(squad -> harness.runner.base(squad.name())
                 .filter(b -> b.allInside() && b.sealed()).isPresent());
     }
 
@@ -119,7 +124,7 @@ class ChainScenarioLiveIT {
                     0,
                     "No fight is expected today. Both squads stay on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z
                             + " and use the time to rearm: improve weapons and armour from what they carry and the iron ore there.",
-                    () -> harness -> Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
+                    () -> harness -> harness.roster().squads().stream().flatMap(squad -> squad.soldiers().stream())
                             .allMatch(name -> harness.runner.kit(name).filter(k -> k.shield() && k.weapon().filter(w -> w.startsWith("stone_")
                                     || w.startsWith("iron_") || w.startsWith("diamond_")).isPresent()).isPresent())
                             ? Verdict.PASS : Verdict.PENDING,
@@ -132,7 +137,7 @@ class ChainScenarioLiveIT {
                     0,
                     "No fight is expected today. Both squads stay on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z
                             + " and use the time to rearm: improve weapons and armour from what they carry and the iron ore there.",
-                    () -> harness -> Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
+                    () -> harness -> harness.roster().squads().stream().flatMap(squad -> squad.soldiers().stream())
                             .allMatch(name -> harness.runner.kit(name).filter(k -> k.shield() && k.armour() > 0).isPresent())
                             ? Verdict.PASS : Verdict.PENDING,
                     Duration.ofMinutes(9)),
@@ -177,16 +182,16 @@ class ChainScenarioLiveIT {
                         + ARENA_Z + ", and hold there. Stay on the platform.",
                 // Each squad's point man on the terrace, or in a step cut into its face, and every
                 // soldier in its slot: a wedge on a terrace this narrow leaves its rear slots on the floor.
-                () -> harness -> Roster.SQUADS.stream().allMatch(squad -> harness.runner.position(squad.soldiers().getFirst())
+                () -> harness -> harness.roster().squads().stream().allMatch(squad -> harness.runner.position(squad.soldiers().getFirst())
                         .filter(p -> p.x() >= TERRACE_X && p.y() >= TERRACE_TOP - 1.5).isPresent())
-                        && Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
+                        && harness.roster().squads().stream().flatMap(squad -> squad.soldiers().stream())
                         .allMatch(soldier -> harness.runner.report(soldier).filter(r -> r instanceof io.github.jayessdeesea.minecraft.command.Report.InPosition).isPresent())
                         ? Verdict.PASS : Verdict.PENDING,
                 Duration.ofMinutes(5));
     }
 
     /** The running app, as a judge sees it. */
-    record Harness(SoldierRunner runner, ChainOfCommand chain) {
+    record Harness(SoldierRunner runner, ChainOfCommand chain, Roster roster) {
     }
 
     @Test
@@ -212,10 +217,12 @@ class ChainScenarioLiveIT {
 
     private static String runOnce(Scenario scenario) throws Exception {
         buildArena();
-        try (ConfigurableApplicationContext app = SpringApplication.run(Application.class,
+        // Held for the run: an app yielding to experiments - a garrison - stands still meanwhile.
+        try (ExperimentLock lock = ExperimentLock.hold();
+             ConfigurableApplicationContext app = SpringApplication.run(Application.class, "--minecraft.roster=" + ROSTER,
                 "--minecraft.general.mission=Hold your positions and wait for orders. Build nothing and gather nothing until then.")) {
-            Harness harness = new Harness(app.getBean(SoldierRunner.class), app.getBean(ChainOfCommand.class));
-            List<String> soldiers = Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream()).toList();
+            Harness harness = new Harness(app.getBean(SoldierRunner.class), app.getBean(ChainOfCommand.class), app.getBean(Roster.class));
+            List<String> soldiers = harness.roster().squads().stream().flatMap(squad -> squad.soldiers().stream()).toList();
             awaitUntil(Duration.ofMinutes(2), "every soldier connected", () -> harness.runner.connected().containsAll(soldiers));
             // Everyone to its start first, clear of anything the scenario builds - a soldier still
             // standing where the last run left it, or walking there, is filled in and suffocates -
@@ -262,7 +269,7 @@ class ChainScenarioLiveIT {
     }
 
     private static String bases(Harness harness) {
-        return Roster.SQUADS.stream().map(squad -> squad.name() + " " + harness.runner.base(squad.name())
+        return harness.roster().squads().stream().map(squad -> squad.name() + " " + harness.runner.base(squad.name())
                 .map(Object::toString).orElse("no base")).toList().toString();
     }
 
@@ -273,7 +280,7 @@ class ChainScenarioLiveIT {
     }
 
     private static String kits(Harness harness) {
-        return Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
+        return harness.roster().squads().stream().flatMap(squad -> squad.soldiers().stream())
                 .map(name -> name + " " + harness.runner.kit(name).map(k -> k.weapon().orElse("bare") + (k.shield() ? "+shield" : "")
                         + (k.armour() > 0 ? "+" + k.armour() + " armour" : ""))
                         .orElse("?")).toList().toString();
