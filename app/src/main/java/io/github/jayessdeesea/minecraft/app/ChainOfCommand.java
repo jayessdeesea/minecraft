@@ -95,6 +95,11 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      * mission says so - a garrison - and leave it off where a scenario may need a squad out at night.
      */
     private final boolean shelterAtNight;
+    /**
+     * How long before dark the rule starts: a hut takes a few minutes, more with dirt to dig first,
+     * so a squad set to it only once it's dark is building in the dark.
+     */
+    static final long SHELTER_LEAD_TICKS = 1800;
 
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient, Roster roster,
                           @org.springframework.beans.factory.annotation.Value("${minecraft.general.shelter-at-night}") boolean shelterAtNight) {
@@ -121,14 +126,15 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      */
     Objective sheltered(Objective objective, io.github.jayessdeesea.minecraft.command.SquadStatus squad) {
         io.github.jayessdeesea.minecraft.command.TimeOfDay now = time;
-        if (!shelterAtNight || now == null || !now.dark() || squad.holdingBase() || objective.patrolBase() || squad.soldiers().isEmpty()) {
+        if (!shelterAtNight || now == null || !(now.dark() || now.ticksUntilDark() <= SHELTER_LEAD_TICKS)
+                || squad.holdingBase() || objective.patrolBase() || squad.soldiers().isEmpty()) {
             return objective;
         }
         // A base already ordered is the one to finish: sited again wherever the point man stands at
         // each decision, a squad starts hut after hut and finishes none before dawn.
         Optional<Objective> standing = squads.get(squad.squadName()).objective().filter(Objective::patrolBase);
         if (standing.isPresent()) {
-            LOG.warn("[General -> {}] at night, out of a patrol base, ordered '{}' ({}) - the operator's rule keeps it on the patrol base it has",
+            LOG.warn("[General -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule keeps it on the patrol base it has",
                     squad.squadName(), objective.mission(), objective.task());
             return standing.get();
         }
@@ -136,7 +142,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         Objective shelter = grounded(new Objective("Build a patrol base where you stand and spend the night in it",
                 new Position(Math.floor(at.x()), at.y(), Math.floor(at.z())), "Squad safe from monsters until dawn",
                 new Objective.Task.PatrolBase()), squad.soldiers());
-        LOG.warn("[General -> {}] at night, out of a patrol base, ordered '{}' ({}) - the operator's rule shelters it instead, at {}",
+        LOG.warn("[General -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule shelters it instead, at {}",
                 squad.squadName(), objective.mission(), objective.task(), at(shelter.location()));
         return shelter;
     }
@@ -218,6 +224,12 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         this.time = time;
         if (last == null || last.dark() != time.dark()) {
             LOG.info("[Clock] {} - tick {} of the day, the chain of command told", time.dark() ? "NIGHT" : "DAY", time.ticks());
+            lastGeneralMillis = Long.MIN_VALUE / 2; // dusk and dawn change what every squad should be doing
+        }
+        boolean nearDark = !time.dark() && time.ticksUntilDark() <= SHELTER_LEAD_TICKS;
+        if (last != null && nearDark && !(!last.dark() && last.ticksUntilDark() <= SHELTER_LEAD_TICKS)) {
+            LOG.info("[Clock] DUSK NEAR - dark in {} ticks, the general decides now", time.ticksUntilDark());
+            lastGeneralMillis = Long.MIN_VALUE / 2;
         }
         general.receiveTime(time);
         squads.values().forEach(squad -> squad.receiveTime(time));
