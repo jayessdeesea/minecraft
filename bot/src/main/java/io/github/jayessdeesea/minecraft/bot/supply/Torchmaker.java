@@ -50,6 +50,15 @@ public final class Torchmaker {
         return plan.feasible() && !plan.nothingToDo();
     }
 
+    /**
+     * What {@code inventory} is short of to make {@code torches}, with no table or furnace to hand -
+     * empty when it has the makings. A table or furnace in reach may make up some of it.
+     */
+    public static Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, Integer> shortOf(Inventory inventory, int torches) {
+        CraftPlan plan = CraftPlan.of(Map.of(Recipe.TORCHES, torches), Stock.of(inventory), Set.of());
+        return plan.feasible() ? Map.of() : plan.short_();
+    }
+
     /** Each tick: makes torches while {@code wanted}; a hostile near ({@code threatened}) interrupts it. */
     public void tick(Position soldier, WorldView world, boolean wanted, boolean threatened) {
         tick(soldier, world, wanted ? TORCHES : 0, threatened);

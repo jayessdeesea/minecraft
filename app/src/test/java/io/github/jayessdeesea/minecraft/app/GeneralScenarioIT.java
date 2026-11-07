@@ -44,6 +44,9 @@ class GeneralScenarioIT {
     private static final Objective BRAVO_BASE = new Objective("Build a patrol base on the platform and stay inside it",
             new Position(3008, 151, 3000), "Squad safe from monsters until dawn", Optional.empty(), true);
 
+    private static final Objective SECURE_CAMP = new Objective("Light the camp's ground with torches", new Position(3000, 151, 3000),
+            "No monster spawns inside the camp", new Objective.Task.Secure());
+
     private static final Objective GATHER_WOOD = new Objective("Gather logs from the trees below the platform",
             new Position(3007, 130, 2990), "Logs for tools and building", Optional.of(io.github.jayessdeesea.minecraft.command.Resource.WOOD));
 
@@ -75,6 +78,13 @@ class GeneralScenarioIT {
             // The live failure: night already fallen on squads out gathering, ordered to gather on.
             new Situation("gathering-at-night", BASE_MISSION, TimeOfDay.of(18000, true),
                     List.of(fresh("Alpha", 2996, Optional.of(GATHER_WOOD)), fresh("Bravo", 3004, Optional.of(GATHER_WOOD))),
+                    GeneralScenarioIT::buildsOnThePlatform),
+            // The live failure: the garrison's mission names SECURE among the day's work, and at night
+            // the general kept a squad in the open lighting the camp until it died.
+            new Situation("securing-at-night", "Make camp on the stone platform around x=3000 z=3000 and stay within 16 blocks "
+                    + "of it. Each squad spends the night sealed inside a patrol base there, until dawn. By day, secure the camp's "
+                    + "ground with torches and gather the wood and stone the camp needs.", TimeOfDay.of(18000, true),
+                    List.of(fresh("Alpha", 2996, Optional.of(SECURE_CAMP)), fresh("Bravo", 3004, Optional.of(GATHER_WOOD))),
                     GeneralScenarioIT::buildsOnThePlatform),
             new Situation("secure-the-camp", "The camp is on the stone platform around x=3000 z=3000. Both squads light "
                     + "its ground with torches today.", TimeOfDay.of(2000, true),

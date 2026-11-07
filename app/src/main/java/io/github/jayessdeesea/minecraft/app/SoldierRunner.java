@@ -1108,6 +1108,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // The point man carries the squad's radio: the squad leader and general aren't in the
             // world, so their traffic is keyed out over his connection (rebound on reconnect).
             chainOfCommand.setRadio(session::sendChatCommand);
+            chainOfCommand.setGround((x, z, nearY) -> io.github.jayessdeesea.minecraft.bot.supply.Staircase.headAt(world, x, z, nearY)
+                    .map(cell -> java.util.OptionalInt.of(cell.y())).orElse(java.util.OptionalInt.empty()));
         }
         activeSoldiers.put(name, soldier);
         SupplyRun run = new SupplyRun(name, session, inventory, () -> {
@@ -1305,6 +1307,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     : lamplighter.active() || torchmaker.active() && torchesWanted ? new Report.Securing()
                     : !lights.isEmpty() && torchesWanted && torchmaker.failure().isPresent()
                     ? new Report.Cantco("can't make torches to light the ground: " + torchmaker.failure().get())
+                    // Nothing to make them from, and nothing said: the crafter doesn't start what it can't finish.
+                    : !lights.isEmpty() && torchesWanted && !torchmaker.active()
+                    ? new Report.Cantco("no torches to light the ground with, and short of "
+                            + Torchmaker.shortOf(inventory, LIGHTING_TORCHES) + " to make them")
                     : farmer.active() || armourer.active() && armourer.making().stream()
                             .allMatch(r -> r == Recipe.WOODEN_HOE || r == Recipe.BREAD) ? new Report.Farming()
                     : armourer.active()

@@ -80,6 +80,14 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
 
     private volatile long lastGeneralMillis = Long.MIN_VALUE / 2;
     private volatile Consumer<String> radio;
+    /** The ground's height at an x and z, looked for near a height - the world's, as the soldiers see it. */
+    private volatile Ground ground = (x, z, nearY) -> java.util.OptionalInt.empty();
+
+    /** Where a body stands at ({@code x}, {@code z}): the highest standing cell within reach of {@code nearY}, if the world shows one. */
+    @FunctionalInterface
+    public interface Ground {
+        java.util.OptionalInt heightAt(int x, int z, int nearY);
+    }
     private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time;
 
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient, Roster roster) {
@@ -93,6 +101,31 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      * Where radio traffic is keyed out - the radio operator's connection. Until one is set (no
      * soldier connected yet), traffic is only logged.
      */
+    /** How the general's objectives find the ground: their heights are its guesses, the world's are known. */
+    public void setGround(Ground ground) {
+        this.ground = ground;
+    }
+
+    /**
+     * {@code objective} with its height the ground's at its x and z, looked for near the squad's
+     * point man: the general guesses heights, and a guess copied from elsewhere in its prompt
+     * lands an objective in the sky or underground. MINE keeps its own: that y is a depth.
+     */
+    Objective grounded(Objective objective, List<io.github.jayessdeesea.minecraft.command.SoldierStatus> soldiers) {
+        if (objective.mine() || soldiers.isEmpty()) {
+            return objective;
+        }
+        Position at = objective.location();
+        java.util.OptionalInt height = ground.heightAt((int) Math.floor(at.x()), (int) Math.floor(at.z()),
+                (int) Math.floor(soldiers.getFirst().position().y()));
+        if (height.isEmpty() || height.getAsInt() == (int) Math.floor(at.y())) {
+            return objective;
+        }
+        LOG.info("[General] objective at x={} z={} put on the ground at y={}, not the y={} given", (int) Math.floor(at.x()),
+                (int) Math.floor(at.z()), height.getAsInt(), (int) Math.floor(at.y()));
+        return new Objective(objective.mission(), new Position(at.x(), height.getAsInt(), at.z()), objective.intent(), objective.task());
+    }
+
     public void setRadio(Consumer<String> radio) {
         this.radio = radio;
     }
@@ -250,7 +283,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                 long millis = System.currentTimeMillis() - started;
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
-                    Objective given = objectives.get(i);
+                    Objective given = grounded(objectives.get(i), statuses.get(i).soldiers());
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
                         LOG.info("[General -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
                         continue;

@@ -108,6 +108,9 @@ public final class SpringAiGeneral implements General {
         for (SquadStatus squad : squadStatuses) {
             prompt.append("<squad name=\"").append(squad.squadName()).append("\">\n")
                     .append(describeStanding(squad)).append('\n')
+                    // Said where the squad is listed, not left to be put together from <time> and its state.
+                    .append(time.filter(TimeOfDay::dark).isPresent() && !squad.holdingBase()
+                            ? "It is night and this squad is not sealed in a patrol base: monsters are spawning round it.\n" : "")
                     .append("Squad leader reports: ").append(SpringAiSquadLeader.describe(squad.report())).append('\n');
             for (SoldierStatus soldier : squad.soldiers()) {
                 prompt.append("- ").append(soldier.name()).append(" at ").append(SpringAiSquadLeader.describe(soldier.position()))
