@@ -124,6 +124,11 @@ each squad either keeps it, exactly as given, or gives a new objective with the 
 is logged (`[General -> Bravo] changing the objective: ...`). A change with no reason is rejected
 and the squads keep their orders. A kept order isn't re-sent: the log says `holds`.
 
+The general's heights are guesses, so an objective is put on the ground at its x and z: the
+highest standing cell within 24 blocks of the squad's point man's height
+(`ChainOfCommand.grounded`; the log says `put on the ground`). A MINE objective keeps its own, since
+its y is a depth.
+
 ## 6. Replacements: rally point and link-up
 
 | Practice | Content | Source |
@@ -376,7 +381,8 @@ asked: pairing is bookkeeping, done deterministically like the other drills.
 *How we use it:* the general knows the time of day: Set Time's overworld clock, advanced with the
 game time between the updates that carry it (`app.OverworldClock`), becomes `command.TimeOfDay`. Dark is when the server's day timeline dims sky light enough for monsters to
 spawn in the open, ticks 13178 to 22822. The general's and squad leaders' prompts say how many
-minutes until that changes.
+minutes until that changes. At night, each squad not sealed in a patrol base is told so on its own
+line of the general's prompt, rather than left to be worked out from the time and its state.
 
 An objective's task can be `PATROL_BASE`. `command.PatrolBase` lays out a hasty hut around the
 squad: a 2x2 floor for up to four soldiers (3x3 for up to nine), walls two high, and a roof over
