@@ -366,7 +366,8 @@ requirements of its day, and both drift. Re-read it against the current code and
 
 Before writing code, update or delete the item, or raise the mismatch with the user.
 
-- [backlog/](backlog/README.md) — planned and open work, one file per item.
+- [backlog/](backlog/README.md) — planned and open work, one file per item. "Work on the backlog"
+  is the `work-on-backlog` skill (`.claude/skills/`): the loop over it, item by item.
 - [DEVELOPMENT.md](DEVELOPMENT.md) — getting started: run the dev server and model, build, run
   the squad, live protocol checks, confirming wire formats. Root-level (not under `docs/`) on
   purpose: it's the first-run entry point, not reference material. Not a changelog - `git log` is.
