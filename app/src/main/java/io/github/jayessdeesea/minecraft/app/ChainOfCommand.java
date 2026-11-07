@@ -116,13 +116,21 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
 
     /**
      * {@code objective}, or - at night, under {@link #shelterAtNight}, for a squad not sealed in a
-     * patrol base when the general's order leaves it in the open - a patrol base where the squad's
-     * point man stands. A guardrail, and a loud one: the general's own order is logged beside it.
+     * patrol base when the general's order leaves it in the open - the patrol base it was already
+     * ordered to build, or else one where the squad's point man stands. A guardrail, and a loud one: the general's own order is logged beside it.
      */
     Objective sheltered(Objective objective, io.github.jayessdeesea.minecraft.command.SquadStatus squad) {
         io.github.jayessdeesea.minecraft.command.TimeOfDay now = time;
         if (!shelterAtNight || now == null || !now.dark() || squad.holdingBase() || objective.patrolBase() || squad.soldiers().isEmpty()) {
             return objective;
+        }
+        // A base already ordered is the one to finish: sited again wherever the point man stands at
+        // each decision, a squad starts hut after hut and finishes none before dawn.
+        Optional<Objective> standing = squads.get(squad.squadName()).objective().filter(Objective::patrolBase);
+        if (standing.isPresent()) {
+            LOG.warn("[General -> {}] at night, out of a patrol base, ordered '{}' ({}) - the operator's rule keeps it on the patrol base it has",
+                    squad.squadName(), objective.mission(), objective.task());
+            return standing.get();
         }
         Position at = squad.soldiers().getFirst().position();
         Objective shelter = grounded(new Objective("Build a patrol base where you stand and spend the night in it",

@@ -431,8 +431,8 @@ CANTCO.
 
 Where the operator's standing rule is set (`minecraft.general.shelter-at-night`, for a garrison),
 no squad spends the night in the open: at night, an order that leaves a squad outside a sealed
-patrol base is replaced by a patrol base where its point man stands, and the log says what the
-general had ordered (`ChainOfCommand.sheltered`).
+patrol base is replaced by the patrol base it was already ordered to build, or, with none, by one
+where its point man stands; the log says what the general had ordered (`ChainOfCommand.sheltered`).
 
 The base is lit as well as sealed. Light is checked alongside breaches (`PatrolBase.Plan.unlit`):
 a torch gives its cell block light 14, which falls by one a block through open cells. A floor cell
