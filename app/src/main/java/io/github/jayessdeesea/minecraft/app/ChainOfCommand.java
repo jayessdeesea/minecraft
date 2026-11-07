@@ -308,8 +308,14 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             askGeneral(underGeneral, now);
         }
         for (Sitrep sitrep : sitreps) {
-            squads.get(sitrep.squad()).onSitrep(sitrep.soldiers(), sitrep.terrain(), sitrep.principalAt(), sitrep.holdingBase(),
-                    now, MIN_GAP_MILLIS);
+            SquadCommand squad = squads.get(sitrep.squad());
+            squad.onSitrep(sitrep.soldiers(), sitrep.terrain(), sitrep.principalAt(), sitrep.holdingBase(), now, MIN_GAP_MILLIS);
+            squad.takeEscortEnded().ifPresent(principal -> {
+                // Back under the general, who decides for it now rather than at its routine interval.
+                missionVersion.incrementAndGet();
+                lastGeneralMillis = Long.MIN_VALUE / 2;
+                transmit("[" + squad.name + " -> General] escort of " + principal + " ended: out of sight");
+            });
         }
     }
 

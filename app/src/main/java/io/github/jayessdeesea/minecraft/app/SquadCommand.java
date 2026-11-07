@@ -34,6 +34,11 @@ final class SquadCommand {
     private static final long SQUAD_PERIOD_MILLIS = 20_000;
     /** How far the principal moves before the squad leader is given its new position. */
     static final double ESCORT_RETASK_DISTANCE = 8;
+    /**
+     * How long a principal can be out of every soldier's sight before the escort ends: a player who
+     * leaves the game is gone from the world, and a squad shouldn't guard an empty spot all night.
+     */
+    static final long ESCORT_LOST_MILLIS = 30_000;
 
     final String name;
     private final SquadLeader squadLeader;
@@ -57,6 +62,10 @@ final class SquadCommand {
     /** The player this squad is escorting, or null - set by the operator's thread. */
     private volatile String escort;
     private volatile boolean principalOutOfSight;
+    /** When the principal was last seen - the squad loop's thread writes and reads. */
+    private long principalSeenMillis;
+    /** The principal the escort just ended for, until the chain of command hears of it. */
+    private volatile String escortEnded;
 
     /** The server sent the time of day - the squad leader plans around nightfall too. */
     void receiveTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
@@ -127,6 +136,13 @@ final class SquadCommand {
         return objective != null;
     }
 
+    /** The principal whose escort ended since last asked - out of sight too long - once. */
+    Optional<String> takeEscortEnded() {
+        String ended = escortEnded;
+        escortEnded = null;
+        return Optional.ofNullable(ended);
+    }
+
     Optional<String> escort() {
         return Optional.ofNullable(escort);
     }
@@ -170,7 +186,7 @@ final class SquadCommand {
         }
         String principal = escort;
         if (principal != null) {
-            followPrincipal(principal, principalAt);
+            followPrincipal(principal, principalAt, now);
         }
         Set<String> cantcos = squad.stream().filter(s -> s.report() instanceof Report.Cantco)
                 .map(SoldierStatus::name).collect(Collectors.toUnmodifiableSet());
@@ -197,9 +213,16 @@ final class SquadCommand {
      * keeps up without a decision every second (the escort drill follows the live position in
      * between). A principal nobody in the squad can see keeps the last objective.
      */
-    private void followPrincipal(String principal, Optional<Position> principalAt) {
+    private void followPrincipal(String principal, Optional<Position> principalAt, long now) {
         if (principalAt.isEmpty()) {
+            if (principalOutOfSight && now - principalSeenMillis >= ESCORT_LOST_MILLIS) {
+                LOG.warn("[{}] {} out of sight for {} s - the escort ends", name, principal, ESCORT_LOST_MILLIS / 1000);
+                escort = null;
+                escortEnded = principal;
+                return;
+            }
             if (!principalOutOfSight) {
+                principalSeenMillis = now;
                 LOG.warn("[{}] can't see {} - holding the last known position", name, principal);
                 principalOutOfSight = true;
             }

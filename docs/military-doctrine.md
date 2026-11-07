@@ -252,7 +252,9 @@ whatever it carries: the ring's moves, an intercept, a teammate going to support
 (§8), closing on a hostile it fights, and any move while under fire. Nobody sprints at food 6 or
 below, where vanilla won't let a player, or with a shield raised. The squad leader still chooses the interval and the risk. The soldiers find the principal by its
 offline-mode UUID among the entities they see; if none of them can see it, the squad holds the last
-known position. `!mission` ends the escort and hands the squad back to the general.
+known position. Out of sight for 30 seconds - a principal who has left the game is gone from the
+world - the escort ends, said on the net, and the general decides for the squad at once. `!mission`
+ends the escort too and hands the squad back to the general.
 
 ## 11. Pre-combat checks
 
