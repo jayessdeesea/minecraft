@@ -309,13 +309,18 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         if (everyone.isEmpty()) {
             return Optional.empty();
         }
-        double[] heights = everyone.stream().mapToDouble(s -> s.position().y()).sorted().toArray();
-        Optional<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> ground = io.github.jayessdeesea.minecraft.bot.supply.Staircase.headAt(
-                world, camp[0], camp[1], (int) Math.floor(heights[heights.length / 2]));
-        if (ground.isEmpty()) {
-            return Optional.empty();
+        // The camp's ground found once and kept: found again from where the squads are, it moves
+        // onto a hut roof one time and back the next, and every measure moves with it.
+        if (campGround == null) {
+            double[] heights = everyone.stream().mapToDouble(s -> s.position().y()).sorted().toArray();
+            campGround = io.github.jayessdeesea.minecraft.bot.supply.Staircase.headAt(world, camp[0], camp[1],
+                    (int) Math.floor(heights[heights.length / 2])).orElse(null);
+            if (campGround == null) {
+                return Optional.empty();
+            }
+            LOG.info("[Foothold] the camp's ground is {}", campGround);
         }
-        io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = ground.get();
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = campGround;
         List<io.github.jayessdeesea.minecraft.command.Foothold.Standard> standards = new java.util.ArrayList<>();
         int dark = io.github.jayessdeesea.minecraft.bot.supply.Lighting.dark(world, at, SECURE_RADIUS);
         standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", dark == 0,
@@ -329,7 +334,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         long hungry = everyone.stream().filter(s -> s.condition().map(c -> c.food() <= HUNT_BELOW_FOOD
                 && c.kit().map(k -> k.rations() == 0).orElse(true)).orElse(false)).count();
         Optional<io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> farm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at,
-                CAMP_RADIUS, CAMP_RADIUS);
+                CAMP_FARM_RADIUS, CAMP_FARM_RADIUS / 2);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
         standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "food", growing >= FARM_GROWING,
                 (farm.isEmpty() ? "no ground to farm by water near the camp" : growing + " of " + farm.get().plot().size() + " farm cells growing wheat")
@@ -361,8 +366,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         return Optional.of(new io.github.jayessdeesea.minecraft.command.Foothold(new Position(at.x(), at.y(), at.z()), List.copyOf(standards)));
     }
 
-    /** How far round the camp its farm and tree farm are looked for. */
+    /** How far round the camp its tree farm is looked for. */
     private static final int CAMP_RADIUS = 24;
+    /** How far round the camp its farm is looked for: the water it needs can be a way off. */
+    private static final int CAMP_FARM_RADIUS = 48;
+    /** The camp's ground, found once. */
+    private io.github.jayessdeesea.minecraft.bot.nav.BlockPos campGround;
     /** Farm cells growing wheat for the camp's food to count as met. */
     private static final int FARM_GROWING = 12;
     /** Saplings or trees for the camp's wood to count as met. */
