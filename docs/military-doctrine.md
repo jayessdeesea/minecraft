@@ -90,7 +90,11 @@ in hand and arrows, equipment is armour worn (`command.Kit`). A soldier below fo
 health regenerates at, eats from its rations when it's out of contact and nothing else has its
 hands (`bot.supply.Rations`): the food goes into a hotbar slot without a weapon or tool, the server
 times the meal, and the weapon comes back to hand. Rations are the food items it carries, less
-those that poison or are too precious to eat (`tools/item-class-generator`). Squad leaders aggregate their
+those that poison or are too precious to eat (`tools/item-class-generator`). A soldier at food 14
+or below with no rations left hunts: by day, out of contact and not walling in a patrol base, it
+chases the nearest cow, pig, sheep, chicken or rabbit within 24 blocks, strikes it each time its
+weapon is charged, and stands where it fell for the meat (`bot.supply.Hunter`). Raw meat is a ration
+like any other. It reports `Hunting`. Squad leaders aggregate their
 soldiers' SITREPs into one for the general, with a LOGSTAT summed from the soldiers' LACE
 (`command.Logstat`): hungry soldiers (Class I), empty armour slots (Class II), bare-handed
 soldiers and arrows (Class V), and casualties. These are the structured inputs the LLM-backed
@@ -423,6 +427,11 @@ centre leans into the wall cell beside it and the server won't place a block the
 squad holds its sealed base, its squad leader isn't asked to decide anything and the squad reports
 InPosition. From inside a sealed hut no ground is reachable, which would otherwise read upward as
 CANTCO.
+
+Where the operator's standing rule is set (`minecraft.general.shelter-at-night`, for a garrison),
+no squad spends the night in the open: at night, an order that leaves a squad outside a sealed
+patrol base is replaced by a patrol base where its point man stands, and the log says what the
+general had ordered (`ChainOfCommand.sheltered`).
 
 The base is lit as well as sealed. Light is checked alongside breaches (`PatrolBase.Plan.unlit`):
 a torch gives its cell block light 14, which falls by one a block through open cells. A floor cell
