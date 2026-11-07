@@ -131,6 +131,11 @@ public final class ChunkCache {
         return BlockClassRegistry.sapling(rawStateIdAt(x, y, z));
     }
 
+    /** What ore the block is - unknown blocks are none. */
+    public java.util.Optional<String> oreOf(int x, int y, int z) {
+        return BlockClassRegistry.oreOf(rawStateIdAt(x, y, z));
+    }
+
     /** Whether the block is ore of any kind - unknown blocks aren't. */
     public boolean isOre(int x, int y, int z) {
         return BlockClassRegistry.isOre(rawStateIdAt(x, y, z));

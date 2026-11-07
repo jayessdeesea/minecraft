@@ -73,6 +73,11 @@ public interface WorldView {
         return java.util.Optional.empty();
     }
 
+    /** What ore the block is - "copper", "iron", "diamond" - if it's ore. */
+    default java.util.Optional<String> oreOf(int x, int y, int z) {
+        return java.util.Optional.empty();
+    }
+
     /** Whether the block is ore of any kind: coal, iron, copper, gold, redstone, lapis, emerald, diamond. */
     default boolean isOre(int x, int y, int z) {
         return false;

@@ -59,6 +59,8 @@ final class Digger {
         STONE(35, 1, ItemClass.PICKAXE, 0, ItemClass.COBBLESTONE),
         /** Iron ore, with a stone pickaxe or better - a wooden one breaks it for nothing. At feet or head height. */
         IRON_ORE(45, 1, ItemClass.PICKAXE, 1, ItemClass.RAW_IRON),
+        /** Copper ore, with a stone pickaxe or better: raw copper - armour where there's no iron. At feet or head height. */
+        COPPER_ORE(45, 1, ItemClass.PICKAXE, 1, ItemClass.RAW_COPPER),
         /** Short or tall grass, by hand at a touch: wheat seeds, one time in eight. */
         GRASS(3, 1, null, 0, ItemClass.SEEDS, false),
         /** Ripe wheat, by hand at a touch: wheat, and seeds to plant again. */
@@ -99,6 +101,7 @@ final class Digger {
                 case LOG -> world.isLog(block.x(), block.y(), block.z());
                 case STONE -> world.isStone(block.x(), block.y(), block.z());
                 case IRON_ORE -> world.isIronOre(block.x(), block.y(), block.z());
+                case COPPER_ORE -> world.oreOf(block.x(), block.y(), block.z()).filter("copper"::equals).isPresent();
                 case GRASS -> world.isGrassPlant(block.x(), block.y(), block.z());
                 case WHEAT -> world.wheatAge(block.x(), block.y(), block.z()).orElse(-1) == RIPE;
                 case SOIL -> world.isSoil(block.x(), block.y(), block.z()) && !world.isFarmland(block.x(), block.y(), block.z())

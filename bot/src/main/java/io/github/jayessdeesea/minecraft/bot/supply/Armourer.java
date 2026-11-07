@@ -47,7 +47,8 @@ public final class Armourer {
 
     /** What it digs for each material it can fetch itself, in the order it fetches them (the classes' order). */
     private static final Map<ItemClass, Digger.Target> DUG = new EnumMap<>(Map.of(
-            ItemClass.LOG, Digger.Target.LOG, ItemClass.COBBLESTONE, Digger.Target.STONE, ItemClass.RAW_IRON, Digger.Target.IRON_ORE));
+            ItemClass.LOG, Digger.Target.LOG, ItemClass.COBBLESTONE, Digger.Target.STONE, ItemClass.RAW_IRON, Digger.Target.IRON_ORE,
+            ItemClass.RAW_COPPER, Digger.Target.COPPER_ORE));
 
     private final String name;
     private final PlaySession session;

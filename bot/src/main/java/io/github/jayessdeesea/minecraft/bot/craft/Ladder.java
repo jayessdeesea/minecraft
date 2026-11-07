@@ -53,6 +53,12 @@ public final class Ladder {
             new Rung("a bow", i -> i.slotOfNamed("bow") >= 0, List.of(Recipe.BOW)),
             new Rung("a stone pickaxe", i -> bestPickaxe(i) >= 1, List.of(Recipe.STONE_PICKAXE)),
             new Rung("a shield", i -> Stock.of(i).classes().getOrDefault(ItemClass.SHIELD, 0) > 0, List.of(Recipe.SHIELD)),
+            // Copper first, where there is copper: it's on the surface far more often than iron, and
+            // a soldier in copper is better off than one in nothing while the iron is found.
+            new Rung("a copper chestplate", i -> armour(i, Recipe.COPPER_CHESTPLATE), List.of(Recipe.COPPER_CHESTPLATE)),
+            new Rung("copper leggings", i -> armour(i, Recipe.COPPER_LEGGINGS), List.of(Recipe.COPPER_LEGGINGS)),
+            new Rung("copper boots", i -> armour(i, Recipe.COPPER_BOOTS), List.of(Recipe.COPPER_BOOTS)),
+            new Rung("a copper helmet", i -> armour(i, Recipe.COPPER_HELMET), List.of(Recipe.COPPER_HELMET)),
             new Rung("an iron chestplate", i -> armour(i, Recipe.IRON_CHESTPLATE), List.of(Recipe.IRON_CHESTPLATE)),
             new Rung("iron leggings", i -> armour(i, Recipe.IRON_LEGGINGS), List.of(Recipe.IRON_LEGGINGS)),
             new Rung("iron boots", i -> armour(i, Recipe.IRON_BOOTS), List.of(Recipe.IRON_BOOTS)),

@@ -360,7 +360,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 armed + " of " + everyone.size() + " carry a stone sword or better", "STONE"));
         int armour = everyone.stream().mapToInt(s -> s.condition().flatMap(c -> c.kit()).map(k -> k.armour()).orElse(0)).sum();
         standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(4, "every soldier armoured",
-                armour == everyone.size() * Kit.ARMOUR_SLOTS, armour + " of " + everyone.size() * Kit.ARMOUR_SLOTS + " armour slots filled (iron, from the mine)",
+                armour == everyone.size() * Kit.ARMOUR_SLOTS, armour + " of " + everyone.size() * Kit.ARMOUR_SLOTS + " armour slots filled (copper or iron, from ore)",
                 "MINE"));
         return Optional.of(new io.github.jayessdeesea.minecraft.command.Foothold(new Position(at.x(), at.y(), at.z()), List.copyOf(standards)));
     }

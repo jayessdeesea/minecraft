@@ -282,11 +282,13 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
    feather, four at a time - while it carries flint and feathers, up to 32.
 4. A stone pickaxe, which mines iron ore.
 5. A shield, worn in the off hand and raised against arrows (§8).
-6. Iron armour: chestplate, leggings, boots, helmet.
-7. An iron sword.
-8. An iron pickaxe.
-9. An iron axe, which chops a log in a sixth of the bare-handed time.
-10. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
+6. Copper armour - chestplate, leggings, boots, helmet - from copper ore mined with the stone
+   pickaxe and smelted: copper lies near the surface far more often than iron.
+7. Iron armour: chestplate, leggings, boots, helmet.
+8. An iron sword.
+9. An iron pickaxe.
+10. An iron axe, which chops a log in a sixth of the bare-handed time.
+11. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
     the miner takes beside its stairs (§16) with an iron pickaxe, not something a soldier fetches.
 
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.

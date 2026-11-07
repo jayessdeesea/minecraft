@@ -92,6 +92,14 @@ class LadderTest {
     }
 
     @Test
+    void withNoIronToBeHadButCopperInReachItArmoursInCopper() {
+        carrying("stone_sword", 1).carrying("stone_pickaxe", 1).carrying("oak_log", 4).carrying("cobblestone", 16);
+
+        assertEquals(Optional.of(Recipe.COPPER_CHESTPLATE), Ladder.next(inventory, Map.of(), NONE,
+                c -> c == ItemClass.LOG || c == ItemClass.RAW_COPPER));
+    }
+
+    @Test
     void aBowWaitsOnStringCarried() {
         carrying("stone_sword", 1).carrying("oak_log", 2).carrying("string", 3);
 

@@ -61,6 +61,8 @@ final class BlockClassRegistry {
     private static final java.util.BitSet WATER = new java.util.BitSet();
     /** Ore of any kind: coal, iron, copper, gold, redstone, lapis, emerald, diamond, either stone. Filled while loading. */
     private static final java.util.BitSet ORES = new java.util.BitSet();
+    /** Each ore state's metal or mineral - "copper", "iron", "diamond". Filled while loading. */
+    private static final java.util.Map<Integer, String> ORE_KINDS = new java.util.HashMap<>();
     /** Each leaves or sapling state's tree - "spruce", "oak". Filled while loading. */
     private static final java.util.Map<Integer, String> TREES = new java.util.HashMap<>();
     /** Sapling states. Filled while loading. */
@@ -106,6 +108,11 @@ final class BlockClassRegistry {
     /** The tree {@code stateId}'s sapling grows into - empty if it isn't a sapling. */
     static java.util.Optional<String> sapling(int stateId) {
         return stateId >= 0 && SAPLINGS.get(stateId) ? java.util.Optional.ofNullable(TREES.get(stateId)) : java.util.Optional.empty();
+    }
+
+    /** What ore {@code stateId} is - "copper", "iron" - or empty if it isn't ore. */
+    static java.util.Optional<String> oreOf(int stateId) {
+        return java.util.Optional.ofNullable(ORE_KINDS.get(stateId));
     }
 
     static boolean isOre(int stateId) {
@@ -176,6 +183,8 @@ final class BlockClassRegistry {
                     }
                     if (fields.length > 2 && fields[2].endsWith("_ore")) {
                         ORES.set(stateId);
+                        String kind = fields[2].substring(0, fields[2].length() - "_ore".length()).replace("deepslate_", "");
+                        ORE_KINDS.put(stateId, kind);
                     }
                     if (fields.length > 2 && SWUM.contains(fields[2])) {
                         WATER.set(stateId);
