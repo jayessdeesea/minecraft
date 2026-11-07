@@ -196,6 +196,35 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void anArrowAimedFlatAtANearMarkAndHigherForAFarOne() {
+        double near = DeterministicSoldier.aimPitch(8, 0).orElseThrow();
+        double far = DeterministicSoldier.aimPitch(30, 0).orElseThrow();
+        assertTrue(near < 0 && near > -3, "a little up, a short shot: " + near);
+        assertTrue(far < near, "higher for a longer one: " + far);
+        assertTrue(DeterministicSoldier.aimPitch(8, -6).orElseThrow() > 0, "down, at a mark below");
+    }
+
+    @Test
+    void aSoldierWithABowStandsAndShootsAtAHostileOutOfReachLoosingAtFullDraw() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.of("stone_sword"), 16, 0, 0, 0, 0, 0,
+                false, false, 0, true));
+        WorldView zombie = withHostileAt(new Position(7.5, GROUND, 0.5), false);
+
+        int loosed = 0;
+        for (int tick = 0; tick < DeterministicSoldier.FULL_DRAW_TICKS; tick++) {
+            alice.tick(zombie);
+            assertTrue(alice.drawing(), "the bow is drawn while it shoots");
+            loosed += alice.takeLoose() ? 1 : 0;
+        }
+
+        assertEquals(1, loosed, "one arrow, at full draw");
+        assertEquals(0.5, alice.status().position().x(), 1e-9, "it stands to shoot, not closes");
+        alice.tick(terrain(false));
+        assertTrue(!alice.drawing(), "no hostile, the bow comes down");
+    }
+
+    @Test
     void closesOnAHostileOutsideReachEvenAgainstItsOrder() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
         alice.receiveOrder(new Order.MoveTo(-10, GROUND, 0, 1, 256, Risk.LOW));

@@ -195,6 +195,13 @@ the squad to falls.
   deaths from 36 in 40 to 12. A fighting soldier never jumps over water or lava: a jump is only
   ever up a block, since nothing says where one over a gap comes down. It swings each weapon at its full recharge, since a hit's damage scales with the charge
   (`bot.world.WeaponStats`, measured on the live server).
+- **The bow.** A soldier carrying a bow and arrows returns fire: what it can see within 16
+  blocks is contact, and one beyond 5 blocks - or one it can't close on, or any at all with no
+  sword - it stands and shoots at rather than closes. It aims along the arrow's own arc, flying
+  it as the server does (3 blocks a tick at full draw, drag, gravity), draws 20 ticks for full
+  power, looses, and draws again; the bow goes in hand for it and the sword comes back after
+  (`bot.supply.Quiver`). Seen live in `bow-against-skeletons`: skeletons on pillars no sword
+  reaches, 17 arrows from five soldiers, both down.
 - **The shield.** A soldier with a shield in its off hand raises it while an arrow is in flight
   within 16 blocks, facing it, and lowers it as soon as the arrow is past. An arrow seen counts
   as being shot at, as a hit does, so it goes for the archer. A raised shield stops a blow from

@@ -78,7 +78,100 @@ public final class DeterministicSoldier implements Soldier {
      * arrow seen counts as being shot at, as a hit does: the soldier goes for the archer.
      */
     public boolean shieldRaised() {
-        return shieldTicks > 0;
+        return shieldTicks > 0 && !drawing;
+    }
+
+    /**
+     * Beyond this range a soldier with a bow and arrows shoots rather than closing: a sword's reach
+     * is three blocks, and every block closed under an archer's fire is a block it shoots back.
+     */
+    static final double SHOOT_BEYOND = 5;
+    /** How far a soldier with a bow engages what it sees: far enough to answer a skeleton's 15 blocks. */
+    static final double BOW_RANGE = 16;
+    /** Ticks a bow takes to draw to full power, which the arrow needs to fly true at range. */
+    static final int FULL_DRAW_TICKS = 20;
+    /** An arrow loosed at full draw: blocks a tick, then 1% drag and 0.05 gravity each tick (vanilla's). */
+    static final double ARROW_SPEED = 3.0;
+    private static final double ARROW_DRAG = 0.99;
+    private static final double ARROW_GRAVITY = 0.05;
+
+    /** Whether the soldier has a bow drawn - to be told to the server (use it, then release it). */
+    public boolean drawing() {
+        return drawing;
+    }
+
+    /** Whether the bow is drawn full and the arrow should go this tick - taken, so it's loosed once. */
+    public boolean takeLoose() {
+        boolean now = loose;
+        loose = false;
+        return now;
+    }
+
+    /** Drawing a bow - tick loop writes, its caller reads. */
+    private volatile boolean drawing;
+    /** The draw is full: release this tick. Tick loop sets, its caller takes. */
+    private volatile boolean loose;
+    /** Ticks the bow has been drawn. Tick loop only. */
+    private int drawTicks;
+
+    /**
+     * The pitch, in degrees as the game counts them (up is negative), that sends an arrow loosed at
+     * full draw from the eyes to a point {@code across} blocks away horizontally and {@code up}
+     * blocks higher - the flatter of the two arcs, found by flying the arrow as the server does.
+     * Empty when no arc reaches that far.
+     */
+    static java.util.OptionalDouble aimPitch(double across, double up) {
+        java.util.OptionalDouble best = java.util.OptionalDouble.empty();
+        double bestMiss = 0.5; // hit within half a block, or not at all
+        for (double elevation = -60; elevation <= 45; elevation += 0.25) {
+            double theta = Math.toRadians(elevation);
+            double x = 0, y = 0, vx = ARROW_SPEED * Math.cos(theta), vy = ARROW_SPEED * Math.sin(theta);
+            for (int tick = 0; tick < 100 && x < across; tick++) {
+                double nx = x + vx, ny = y + vy;
+                if (nx >= across) {
+                    y += vy * (across - x) / vx;
+                    x = across;
+                    break;
+                }
+                x = nx;
+                y = ny;
+                vx *= ARROW_DRAG;
+                vy = vy * ARROW_DRAG - ARROW_GRAVITY;
+            }
+            if (x >= across && Math.abs(y - up) < bestMiss) {
+                bestMiss = Math.abs(y - up);
+                best = java.util.OptionalDouble.of(-elevation);
+                if (bestMiss < 0.05) {
+                    break; // the flat arc, close enough: a steeper one only flies longer
+                }
+            }
+        }
+        return best;
+    }
+
+    /** Whether it carries what shooting takes: a bow, and arrows for it. */
+    private boolean canShoot() {
+        Kit carried = kit;
+        return carried != null && carried.bow() && carried.arrows() > 0;
+    }
+
+    /** Aims at {@code target} along the arrow's arc and draws; loosed once the draw is full. False if no arc reaches. */
+    private boolean shoot(Position target) {
+        double dx = target.x() - position.x();
+        double dz = target.z() - position.z();
+        double up = target.y() + TARGET_HEIGHT - (position.y() + EYE_HEIGHT);
+        java.util.OptionalDouble aim = aimPitch(Math.hypot(dx, dz), up);
+        if (aim.isEmpty()) {
+            return false;
+        }
+        yaw = yawToward(dx, dz);
+        pitch = (float) aim.getAsDouble();
+        drawing = true;
+        if (++drawTicks >= FULL_DRAW_TICKS) {
+            loose = true;
+            drawTicks = 0;
+        }
+        return true;
     }
 
     /** Ticks left with the shield up; 0 when it's down. */
@@ -294,7 +387,8 @@ public final class DeterministicSoldier implements Soldier {
         if (hurt.getAndSet(false) || !arrows.isEmpty()) {
             underFireTicks = UNDER_FIRE_TICKS;
         }
-        List<TrackedEntity> threats = visible(world, world.nearbyHostiles(position, CONTACT_RADIUS));
+        // A soldier with a bow reaches further than a sword: what it can see within bow range is contact.
+        List<TrackedEntity> threats = visible(world, world.nearbyHostiles(position, canShoot() ? BOW_RANGE : CONTACT_RADIUS));
         if (threats.isEmpty() && underFireTicks > 0) {
             // Hit with nothing in reach: someone is shooting - find the shooter.
             threats = visible(world, world.nearbyHostiles(position, UNDER_FIRE_RADIUS));
@@ -311,7 +405,17 @@ public final class DeterministicSoldier implements Soldier {
             TrackedEntity nearest = threats.get(0);
             Position threat = nearest.position();
             double range = distance(position, threat);
-            if (nearest.explodes()) {
+            boolean shot = false;
+            if (!nearest.explodes() && canShoot() && (range > SHOOT_BEYOND || !armedForMelee()
+                    || nearest.shoots() && pinned(world, threat))) {
+                // Out of a sword's reach, or with no sword, or pinned under an archer it can't close
+                // on: stand and shoot back, the bow's arc aimed at it.
+                shieldTicks = 0;
+                shot = shoot(threat);
+            }
+            if (shot) {
+                holdCoverTicks = 0;
+            } else if (nearest.explodes()) {
                 // A creeper is never fought at arm's length: get clear of the blast.
                 stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
             } else if (nearest.shoots() && (!armedForMelee() || pinned(world, threat))) {
@@ -341,7 +445,12 @@ public final class DeterministicSoldier implements Soldier {
             }
             route = null; // wherever the fight ends up, the old route no longer starts here
             report = new Report.InContact(threats.size());
-            look(threat);
+            if (!shot) {
+                stopDrawing();
+                look(threat);
+            }
+        } else if (drawing && stopDrawing()) {
+            // The fight is over: the bow comes down this tick.
         } else if (shieldRaised() && !arrows.isEmpty()) {
             // Shot at from out of sight: face where the arrow came from, and hold.
             look(arrows.getFirst());
@@ -390,6 +499,13 @@ public final class DeterministicSoldier implements Soldier {
     static final int COVER_RADIUS = 6;
 
     /** Whether the soldier holds a melee weapon - with only its hands (or a bow), an archer out-fights it. */
+    /** Lowers the bow, if it's drawn. Always true, to chain in a condition. */
+    private boolean stopDrawing() {
+        drawing = false;
+        drawTicks = 0;
+        return true;
+    }
+
     private boolean armedForMelee() {
         Kit carried = kit;
         return carried == null || WeaponStats.melee(carried.weapon()) != WeaponStats.HAND;

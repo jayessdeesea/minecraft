@@ -135,6 +135,16 @@ public final class Inventory {
         enchantments[slot] = java.util.Map.of();
     }
 
+    /** The first slot holding the item named {@code name} ("bow"), or -1. */
+    public synchronized int slotOfNamed(String name) {
+        for (int slot = 0; slot < SLOTS; slot++) {
+            if (ItemClassRegistry.nameOf(itemIds[slot]).filter(name::equals).isPresent()) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
     public synchronized Kit kit() {
         // Armed means a weapon at hand: the one held, or else one on the hotbar - a soldier that put
         // its sword away to chop wood draws it in a moment. One in the main inventory doesn't count.
@@ -173,6 +183,6 @@ public final class Inventory {
         }
         boolean shield = ItemClassRegistry.classOf(itemIds[OFF_HAND]).equals(Optional.of(ItemClassRegistry.ItemClass.SHIELD));
         return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs, stone, rations, shield,
-                slotOf(ItemClassRegistry.ItemClass.PICKAXE) >= 0, dirt);
+                slotOf(ItemClassRegistry.ItemClass.PICKAXE) >= 0, dirt, slotOfNamed("bow") >= 0);
     }
 }

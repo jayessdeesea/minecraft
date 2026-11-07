@@ -1235,6 +1235,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         java.util.concurrent.atomic.AtomicBoolean sprintingSent = new java.util.concurrent.atomic.AtomicBoolean();
         // Likewise its shield: a new connection starts with it lowered.
         java.util.concurrent.atomic.AtomicBoolean shieldSent = new java.util.concurrent.atomic.AtomicBoolean();
+        java.util.concurrent.atomic.AtomicBoolean drawingSent = new java.util.concurrent.atomic.AtomicBoolean();
+        io.github.jayessdeesea.minecraft.bot.supply.Quiver quiver = new io.github.jayessdeesea.minecraft.bot.supply.Quiver(session, inventory);
         armourerRef.set(armourer);
         Torchmaker torchmaker = new Torchmaker(name, session, inventory, furnaces, treeClaims);
         java.util.concurrent.atomic.AtomicInteger ladderTicks = new java.util.concurrent.atomic.AtomicInteger();
@@ -1450,6 +1452,24 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 }
             }
             session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
+            // The bow: drawn with Use Item once it's in hand, loosed with its release - after the
+            // position, so the server has the aim the arrow flies on.
+            if (soldier.takeLoose()) {
+                session.releaseUseItem();
+                LOG.info("{} looses an arrow", name);
+                drawingSent.set(false);
+            }
+            if (soldier.drawing() != drawingSent.get()) {
+                drawingSent.set(soldier.drawing());
+                if (soldier.drawing()) {
+                    if (quiver.ready()) {
+                        session.useItem(soldier.yaw(), soldier.pitch());
+                    }
+                } else {
+                    session.releaseUseItem();
+                    quiver.stow();
+                }
+            }
             // A pillar step's block goes in after the server has the soldier's new height - it won't
             // place a block where a body is - and into the world model at once, so the soldier lands
             // on it before the server's block update arrives.

@@ -165,6 +165,29 @@ class ChainScenarioLiveIT {
                             return seen[0] && left == 0 ? Verdict.PASS : Verdict.PENDING;
                         };
                     },
+                    Duration.ofMinutes(4)),
+            // Skeletons on stone pillars six high, out of any sword's reach: only arrows bring them
+            // down. Met when every skeleton is dead; the log says who loosed how often.
+            new Scenario("bow-against-skeletons", List.of("clear %s", "give %s stone_sword", "give %s bow", "give %s arrow 64",
+                    "give %s bread 4"),
+                    // 1x1 stone pillars six high, a skeleton held still on each (NoAI: it neither
+                    // wanders off nor shoots back) - a target only an arrow reaches.
+                    List.of("fill %d %d %d %d %d %d stone".formatted(ARENA_X + 10, FLOOR_Y + 1, ARENA_Z + 10, ARENA_X + 10, FLOOR_Y + 6, ARENA_Z + 10),
+                            "fill %d %d %d %d %d %d stone".formatted(ARENA_X - 10, FLOOR_Y + 1, ARENA_Z + 10, ARENA_X - 10, FLOOR_Y + 6, ARENA_Z + 10),
+                            "summon skeleton %d.5 %d %d.5 {NoAI:1b}".formatted(ARENA_X + 10, FLOOR_Y + 7, ARENA_Z + 10),
+                            "summon skeleton %d.5 %d %d.5 {NoAI:1b}".formatted(ARENA_X - 10, FLOOR_Y + 7, ARENA_Z + 10),
+                            "item replace entity @e[type=skeleton,x=%d,y=%d,z=%d,distance=..30] armor.head with leather_helmet"
+                                    .formatted(ARENA_X, FLOOR_Y + 1, ARENA_Z)),
+                    1000,
+                    "Both squads hold the stone platform around x=" + ARENA_X + " z=" + ARENA_Z + " and clear it of hostiles.",
+                    () -> {
+                        boolean[] seen = {false};
+                        return harness -> {
+                            int left = harness.runner.hostilesNear(new Position(ARENA_X, FLOOR_Y + 1, ARENA_Z), ARENA_HALF + 8);
+                            seen[0] |= left > 0;
+                            return seen[0] && left == 0 ? Verdict.PASS : Verdict.PENDING;
+                        };
+                    },
                     Duration.ofMinutes(4)))
             .collect(java.util.stream.Collectors.toMap(Scenario::name, scenario -> scenario));
 

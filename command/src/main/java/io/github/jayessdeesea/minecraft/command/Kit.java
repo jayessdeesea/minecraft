@@ -19,7 +19,7 @@ import java.util.Optional;
  * @param pickaxe  whether a pickaxe is carried - to cut steps into stone with
  */
 public record Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations,
-                  boolean shield, boolean pickaxe, int dirt) {
+                  boolean shield, boolean pickaxe, int dirt, boolean bow) {
 
     public static final int ARMOUR_SLOTS = 4;
     /** Vanilla caps enchantment protection at 20 points, each taking 4% off the damage. */
@@ -29,6 +29,12 @@ public record Kit(Optional<String> weapon, int arrows, int armour, int fallProte
         if (fallProtection < 0 || fallProtection > MAX_PROTECTION) {
             throw new IllegalArgumentException("fall protection out of range: " + fallProtection);
         }
+    }
+
+    /** Kit with no bow. */
+    public Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations,
+               boolean shield, boolean pickaxe, int dirt) {
+        this(weapon, arrows, armour, fallProtection, logs, stone, rations, shield, pickaxe, dirt, false);
     }
 
     /** Kit with no dirt. */

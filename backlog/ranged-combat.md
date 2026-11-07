@@ -12,15 +12,16 @@ only a bow fights bare-handed. Every fight is decided at arm's length, including
 skeleton on a ledge or across water, where closing is slow or impossible.
 
 ## Done when
-- **Choosing a weapon:** each tick the reflex picks one for the nearest visible hostile.
+Built: shooting a bow, with the reflex choosing it beyond sword range or where it can't close
+(docs/military-doctrine.md § 8). What's left:
+- **Choosing a weapon, the rest:** each tick the reflex picks one for the nearest visible hostile.
   - Melee (sword, else axe, else fists) when it's within a few blocks and reachable.
   - Bow or crossbow, with arrows, when it's farther away, or when it's visible but the pathfinder
     can't reach it: a ledge, across water, behind a drop.
   - Accessibility, not just distance, decides it, since the reachability and line-of-sight checks
     already exist.
-- **Shooting:** the soldier draws, aims and releases. For a bow that's Use Item, hold, then Player
-  Action RELEASE_USE_ITEM, with the draw time chosen for the range and aim leading the target's
-  motion. A crossbow is load, then fire.
+- **Shooting, the rest:** aim leading a moving target, a shorter draw for a close one, and the
+  crossbow: load, then fire.
 - **Making them:**
   - A bow is 3 sticks and 3 string. String comes from spiders, or from cobwebs broken with a
     sword.
