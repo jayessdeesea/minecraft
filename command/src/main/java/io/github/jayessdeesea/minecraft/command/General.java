@@ -17,6 +17,12 @@ public interface General {
     /** What the stockpile held when a soldier last opened it (docs/military-doctrine.md §12). */
     void receiveStockpile(Stockpile stockpile);
 
+    /**
+     * Something the operator said that isn't an order - what they see from where they stand. Weighed
+     * in the next decision; the mission stays the mission.
+     */
+    void receiveRemark(String remark);
+
     /** The overworld's time of day, as the server last sent it. */
     void receiveTime(TimeOfDay time);
 

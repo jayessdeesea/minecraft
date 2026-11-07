@@ -59,6 +59,16 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public java.util.Optional<String> leaves(int x, int y, int z) {
+        return chunks.leaves(x, y, z);
+    }
+
+    @Override
+    public java.util.Optional<String> sapling(int x, int y, int z) {
+        return chunks.sapling(x, y, z);
+    }
+
+    @Override
     public boolean isOre(int x, int y, int z) {
         return chunks.isOre(x, y, z);
     }

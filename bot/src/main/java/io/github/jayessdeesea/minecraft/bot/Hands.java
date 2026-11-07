@@ -41,6 +41,8 @@ public final class Hands {
         LAMPLIGHTER,
         /** Keeping the squad's farm. */
         FARMER,
+        /** Planting the squad's tree farm. */
+        FORESTER,
         /** Chopping or quarrying for the squad. */
         GATHERER
     }

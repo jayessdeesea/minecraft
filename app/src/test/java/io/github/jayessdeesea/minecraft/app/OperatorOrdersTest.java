@@ -32,9 +32,17 @@ class OperatorOrdersTest {
     }
 
     @Test
+    void anOperatorTalkingIsARemarkAndAnyoneElseTalkingIsJustChat() {
+        OperatorOrders orders = new OperatorOrders("Jake");
+        UUID jake = OperatorOrders.offlineUuid("Jake");
+        assertEquals(Optional.of(new OperatorOrders.Order.Remark("Jake", "it's night, get inside")),
+                orders.orderFrom(new ChatMessage(jake, " it's night, get inside ")));
+        assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(OperatorOrders.offlineUuid("Alice"), "it's night")));
+    }
+
+    @Test
     void everythingElseIsIgnored() {
         UUID jake = OperatorOrders.offlineUuid("Jake");
-        assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(jake, "nice work, squad")));
         assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(jake, "!mission ")));
         assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(jake, "!missionary work")));
         assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(OperatorOrders.offlineUuid("Alice"), "!mission go home")));

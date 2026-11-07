@@ -46,6 +46,10 @@ public class OperatorOrders {
 
         record Escort(String operator, String principal) implements Order {
         }
+
+        /** Anything else an operator says: not an order, but worth the general's hearing. */
+        record Remark(String operator, String remark) implements Order {
+        }
     }
 
     private final Map<UUID, String> operators;
@@ -63,10 +67,12 @@ public class OperatorOrders {
         String[] words = chat.message().strip().split("\\s+", 2);
         String command = words[0];
         String argument = words.length > 1 ? words[1].strip() : "";
-        if (!command.equals(MISSION) && !command.equals(ESCORT)) {
-            return Optional.empty();
-        }
         String operator = operators.get(chat.sender());
+        if (!command.equals(MISSION) && !command.equals(ESCORT)) {
+            // An operator talking, not ordering - passed up; anyone else's chat is just chat.
+            return operator == null || command.startsWith("!") || chat.message().isBlank() ? Optional.empty()
+                    : Optional.of(new Order.Remark(operator, chat.message().strip()));
+        }
         if (operator == null) {
             LOG.warn("Ignoring {} from {}, who isn't in minecraft.operators: {}", command, chat.sender(), argument);
             return Optional.empty();

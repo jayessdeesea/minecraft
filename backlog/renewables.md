@@ -31,9 +31,12 @@ builds it beside the patrol base (backlog/patrol-base.md), and the base's light 
 light requirement.
 
 ## Done when
-- A squad ordered to plant a tree farm replants the saplings it collects while gathering. A later
-  run harvests regrown logs there.
-- A squad near water tills, plants and harvests wheat, and crafts bread (3 wheat).
+Built: wheat (docs/military-doctrine.md § 12, FARM) and a tree farm planted from saplings it breaks
+leaves for (§ 12, TREE_FARM). What's left:
+- **Trees regrown and cut.** A live run that sees saplings in a squad's tree farm grow and a WOOD
+  squad chop them, and soldiers picking up the saplings that fall while they chop, rather than
+  breaking leaves for them.
+- Nether wart and animal pens.
 - The general's choice follows the terrain. A scenario test with no water nearby never yields a
   wheat order.
 

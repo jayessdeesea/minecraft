@@ -121,6 +121,16 @@ public final class ChunkCache {
         return stateId == UNKNOWN ? java.util.Optional.empty() : BlockClassRegistry.hardness(stateId);
     }
 
+    /** The tree whose leaves the block is - unknown blocks aren't any. */
+    public java.util.Optional<String> leaves(int x, int y, int z) {
+        return BlockClassRegistry.leaves(rawStateIdAt(x, y, z));
+    }
+
+    /** The tree the block's sapling grows into - unknown blocks aren't any. */
+    public java.util.Optional<String> sapling(int x, int y, int z) {
+        return BlockClassRegistry.sapling(rawStateIdAt(x, y, z));
+    }
+
     /** Whether the block is ore of any kind - unknown blocks aren't. */
     public boolean isOre(int x, int y, int z) {
         return BlockClassRegistry.isOre(rawStateIdAt(x, y, z));

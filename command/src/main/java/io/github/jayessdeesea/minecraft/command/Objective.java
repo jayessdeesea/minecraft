@@ -32,6 +32,10 @@ public record Objective(String mission, Position location, String intent, Task t
         record Farm() implements Task {
         }
 
+        /** Plant saplings round the location, spruce first, so the camp has trees to cut (§12). */
+        record TreeFarm() implements Task {
+        }
+
         /** Light the ground round the location so no monster spawns on it (§15). */
         record Secure() implements Task {
         }
@@ -84,6 +88,10 @@ public record Objective(String mission, Position location, String intent, Task t
 
     public boolean farm() {
         return task instanceof Task.Farm;
+    }
+
+    public boolean treeFarm() {
+        return task instanceof Task.TreeFarm;
     }
 
     public boolean secure() {

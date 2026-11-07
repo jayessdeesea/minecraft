@@ -41,6 +41,10 @@ public final class SpringAiGeneral implements General {
     private final Optional<Position> supplyPoint;
     private volatile io.github.jayessdeesea.minecraft.command.Stockpile stockpile; // a soldier's thread writes, the general's reads
     private volatile TimeOfDay time; // a connection's thread writes, the general's reads
+    /** The operator's last few remarks, oldest first - a connection's thread writes, the general's reads. */
+    private final java.util.Deque<String> remarks = new java.util.concurrent.ConcurrentLinkedDeque<>();
+    /** How many of the operator's remarks the general keeps in view. */
+    static final int REMARKS_KEPT = 3;
 
     public SpringAiGeneral(@Qualifier("generalChatClient") ChatClient chatClient,
                            @Value("${minecraft.general.mission}") String mission,
@@ -53,6 +57,14 @@ public final class SpringAiGeneral implements General {
     @Override
     public void receiveStockpile(io.github.jayessdeesea.minecraft.command.Stockpile stockpile) {
         this.stockpile = stockpile;
+    }
+
+    @Override
+    public void receiveRemark(String remark) {
+        remarks.addLast(remark);
+        while (remarks.size() > REMARKS_KEPT) {
+            remarks.pollFirst();
+        }
     }
 
     @Override
@@ -74,7 +86,16 @@ public final class SpringAiGeneral implements General {
         if (squadStatuses.isEmpty()) {
             return List.of();
         }
-        return toObjectives(callModel(buildContext(mission, Optional.ofNullable(time), supplyPoint, Optional.ofNullable(stockpile), squadStatuses)), squadStatuses);
+        return toObjectives(callModel(context(squadStatuses)), squadStatuses);
+    }
+
+    /** The situation the next decision would be asked about: the user prompt, as the model sees it - for reading. */
+    public String prompt(List<SquadStatus> squadStatuses) {
+        return context(squadStatuses).prompt();
+    }
+
+    private PromptContext context(List<SquadStatus> squadStatuses) {
+        return buildContext(mission, Optional.ofNullable(time), supplyPoint, Optional.ofNullable(stockpile), List.copyOf(remarks), squadStatuses);
     }
 
     /** The time of day in minutes, the unit a commander plans in: a Minecraft day is 20 of them. */
@@ -95,8 +116,21 @@ public final class SpringAiGeneral implements General {
 
     static PromptContext buildContext(String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
                                       Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile, List<SquadStatus> squadStatuses) {
+        return buildContext(mission, time, supplyPoint, stockpile, List.of(), squadStatuses);
+    }
+
+    /** As the five-argument form, with what the operator has said lately ({@link #receiveRemark}). */
+    static PromptContext buildContext(String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
+                                      Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile, List<String> remarks,
+                                      List<SquadStatus> squadStatuses) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("<mission>\n").append(mission).append("\n</mission>\n\n");
+        if (!remarks.isEmpty()) {
+            // What the operator sees from where they stand: worth weighing, not an order.
+            prompt.append("<operator_said>\n");
+            remarks.forEach(r -> prompt.append("- ").append(r).append('\n'));
+            prompt.append("</operator_said>\n\n");
+        }
         time.ifPresent(t -> prompt.append("<time>\n").append(describe(t)).append("\n</time>\n\n"));
         supplyPoint.ifPresent(point -> prompt.append("<supply_point>\nA chest stocked with weapons and armour at ")
                 .append(SpringAiSquadLeader.describe(point))
@@ -135,6 +169,7 @@ public final class SpringAiGeneral implements General {
             case Objective.Task.Gather(var resource) -> resource.name();
             case Objective.Task.PatrolBase() -> "PATROL_BASE";
             case Objective.Task.Farm() -> "FARM";
+            case Objective.Task.TreeFarm() -> "TREE_FARM";
             case Objective.Task.Secure() -> "SECURE";
             case Objective.Task.Mine() -> "MINE";
         };
@@ -155,7 +190,7 @@ public final class SpringAiGeneral implements General {
     /** What the squad can see to gather, with distance and direction from its point man. */
     static String describeResources(SquadStatus squad) {
         if (squad.resources().isEmpty()) {
-            return "Resources seen: no trees, exposed stone or ground to farm within 64 blocks.";
+            return "Resources seen: no trees, exposed stone or ground to farm within 64 blocks." + NO_TREES;
         }
         Position from = squad.soldiers().isEmpty() ? null : squad.soldiers().getFirst().position();
         StringBuilder line = new StringBuilder("Resources seen:");
@@ -174,8 +209,14 @@ public final class SpringAiGeneral implements General {
             line.append(';');
         }
         line.setCharAt(line.length() - 1, '.');
+        if (squad.resources().stream().noneMatch(site -> site.resource() == io.github.jayessdeesea.minecraft.command.Resource.WOOD)) {
+            line.append(" No trees in sight.").append(NO_TREES);
+        }
         return line.toString();
     }
+
+    /** Said wherever a squad sees no trees: the lookup done for the model, not left to it. */
+    static final String NO_TREES = " Wood here has to be grown: TREE_FARM on open ground near the camp.";
 
     /**
      * Where {@code point} is, its height given against the squad at {@code squad} rather than as a
@@ -294,6 +335,7 @@ public final class SpringAiGeneral implements General {
                         case STONE -> new Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.STONE);
                         case PATROL_BASE -> new Objective.Task.PatrolBase();
                         case FARM -> new Objective.Task.Farm();
+                        case TREE_FARM -> new Objective.Task.TreeFarm();
                         case SECURE -> new Objective.Task.Secure();
                         case MINE -> new Objective.Task.Mine();
                     }));

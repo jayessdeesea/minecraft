@@ -139,6 +139,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs;
         /** Torches left to put down round a SECURE objective, at the last check: -1 before the first. */
         int torchesLeft = -1;
+        /** The squad's tree farm, while it has one. */
+        io.github.jayessdeesea.minecraft.bot.farm.TreeFarm trees;
         /** The squad's farm, while it has one. */
         io.github.jayessdeesea.minecraft.bot.farm.FarmPlan farm;
         /** Blocks of the laid-out base still to place, at the last check - empty with none laid out. */
@@ -259,6 +261,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, Gatherer> gatherers = new ConcurrentHashMap<>();
     /** Each connected soldier's farm work, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Farmer> farmers = new ConcurrentHashMap<>();
+    /** Each connected soldier's tree planting, by name. */
+    private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Forester> foresters = new ConcurrentHashMap<>();
+    /** The tree farm each soldier plants, while its squad's objective is one - squad loop writes, tick reads. */
+    private final Map<String, io.github.jayessdeesea.minecraft.bot.farm.TreeFarm> planting = new ConcurrentHashMap<>();
     /** Each connected soldier's staircase cutting, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Miner> miners = new ConcurrentHashMap<>();
     /** The staircase a soldier cuts, for the one soldier of a MINE squad cutting it - squad loop writes, tick reads. */
@@ -279,6 +285,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final double REARM_CLEAR_RADIUS = 16;
     /** How far from the general's farm objective the plot's water may be, across and up or down. */
     private static final int FARM_SITE_RADIUS = 8;
+    /** How far round a TREE_FARM objective saplings go. */
+    static final int TREE_FARM_RADIUS = 8;
     /** How far round a SECURE objective the ground is lit. */
     static final int SECURE_RADIUS = 12;
     /** Torches a soldier makes at a time for lighting ground: two logs' charcoal. */
@@ -630,6 +638,24 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             return sited;
         }).orElse(null);
         state.farm = farm;
+        // The tree farm: laid out round the objective's ground once, and kept while the objective
+        // stays put - what grows in it is the farm working, not a reason to lay it out again.
+        io.github.jayessdeesea.minecraft.bot.farm.TreeFarm trees = chainOfCommand.treeFarmObjective(squadName).map(o -> {
+            io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
+                    io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(o.location().x(), o.location().y(), o.location().z()));
+            if (state.trees != null && state.trees.centre().x() == at.x() && state.trees.centre().z() == at.z()) {
+                return state.trees;
+            }
+            io.github.jayessdeesea.minecraft.bot.farm.TreeFarm sited = io.github.jayessdeesea.minecraft.bot.farm.TreeFarm.site(world, at,
+                    TREE_FARM_RADIUS).orElse(null);
+            if (sited == null) {
+                LOG.warn("[{}] TREE_FARM: no open dirt or grass to plant round {}", squadName, o.location());
+            } else {
+                LOG.info("[{}] TREE_FARM round {}: {} cells to plant", squadName, at, sited.plot().size());
+            }
+            return sited;
+        }).orElse(null);
+        state.trees = trees;
         // Mining: the staircase at the objective's x and z, down to its y - kept while the objective
         // stays put, its head where the ground is when first sited.
         io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs = chainOfCommand.mineObjective(squadName).map(o -> {
@@ -683,6 +709,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 farming.put(soldierName, farm);
             } else {
                 farming.remove(soldierName);
+            }
+            if (trees != null && !squadInContact) {
+                planting.put(soldierName, trees);
+            } else {
+                planting.remove(soldierName);
             }
             if (!torchesLeft.isEmpty() && !squadInContact) {
                 lighting.put(soldierName, torchesLeft);
@@ -759,6 +790,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
             if (stand.isEmpty() && lamplighters.containsKey(soldierName)) {
                 stand = lamplighters.get(soldierName).standAt();
+            }
+            if (stand.isEmpty() && foresters.containsKey(soldierName)) {
+                stand = foresters.get(soldierName).standAt();
             }
             if (stand.isEmpty() && farmers.containsKey(soldierName)) {
                 stand = farmers.get(soldierName).standAt();
@@ -1017,12 +1051,15 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 chat -> {
                     if (firstHearing(chat)) {
                         operatorOrders.orderFrom(chat).ifPresent(order -> {
-                            LOG.info("{} relays an order from the operator: {}", definition.name(), chat.message());
+                            LOG.info("{} relays {} from the operator: {}", definition.name(),
+                                    order instanceof OperatorOrders.Order.Remark ? "what it heard" : "an order", chat.message());
                             switch (order) {
                                 case OperatorOrders.Order.Mission(String operator, String mission) ->
                                         chainOfCommand.onOperatorMission(operator, mission);
                                 case OperatorOrders.Order.Escort(String operator, String principal) ->
                                         chainOfCommand.onOperatorEscort(operator, principal);
+                                case OperatorOrders.Order.Remark(String operator, String remark) ->
+                                        chainOfCommand.onOperatorRemark(operator, remark);
                             }
                         });
                     }
@@ -1129,6 +1166,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.supply.Farmer farmer = new io.github.jayessdeesea.minecraft.bot.supply.Farmer(name, session,
                 inventory, treeClaims);
         farmers.put(name, farmer);
+        io.github.jayessdeesea.minecraft.bot.supply.Forester forester = new io.github.jayessdeesea.minecraft.bot.supply.Forester(name, session,
+                inventory, treeClaims);
+        foresters.put(name, forester);
         Depositor depositor = new Depositor(name, session, inventory, chainOfCommand::onStockpile);
         depositors.put(name, depositor);
         depositorRef.set(depositor);
@@ -1283,6 +1323,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }));
             turns.put(Hands.Routine.LAMPLIGHTER, turn(lamplighter::active,
                     free -> lamplighter.tick(status.position(), world, lights, free && !threatened)));
+            io.github.jayessdeesea.minecraft.bot.farm.TreeFarm grove = planting.get(name);
+            turns.put(Hands.Routine.FORESTER, turn(forester::active,
+                    free -> forester.tick(status.position(), world, Optional.ofNullable(grove), free && !threatened)));
             turns.put(Hands.Routine.FARMER, turn(farmer::active,
                     free -> farmer.tick(status.position(), world, Optional.ofNullable(field), free && !threatened)));
             turns.put(Hands.Routine.GATHERER, turn(gatherer::active,
@@ -1304,6 +1347,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     ? new Report.Mining(step + 1, steps)
                     : stairs != null && stairsProgress.get(name) instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Stopped(String why)
                     ? new Report.Cantco("can't cut the staircase further: " + why)
+                    : forester.active() ? new Report.Planting()
+                    : grove != null && forester.failure().isPresent() && !io.github.jayessdeesea.minecraft.bot.supply.Forester.planted(world, grove)
+                    ? new Report.Cantco("can't plant the tree farm: " + forester.failure().get())
                     : lamplighter.active() || torchmaker.active() && torchesWanted ? new Report.Securing()
                     : !lights.isEmpty() && torchesWanted && torchmaker.failure().isPresent()
                     ? new Report.Cantco("can't make torches to light the ground: " + torchmaker.failure().get())

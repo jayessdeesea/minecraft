@@ -22,7 +22,9 @@ class BlockClassRegistryTest {
         assertEquals(BlockClass.HAZARD, BlockClassRegistry.classOf(8635));   // oak_fence, waterlogged
         assertEquals(BlockClass.TALL, BlockClassRegistry.classOf(10382));     // oak_fence_gate, closed
         assertEquals(BlockClass.PASSABLE, BlockClassRegistry.classOf(10380)); // oak_fence_gate, open
-        assertEquals(BlockClass.SOLID, BlockClassRegistry.classOf(268));      // oak_leaves, dry - really solid
+        assertEquals(BlockClass.LEAVES, BlockClassRegistry.classOf(268));     // oak_leaves, dry - solid, broken for saplings
+        assertEquals(java.util.Optional.of("oak"), BlockClassRegistry.leaves(268));
+        assertEquals(java.util.Optional.of("spruce"), BlockClassRegistry.sapling(32)); // spruce_sapling
         assertEquals(BlockClass.LOG, BlockClassRegistry.classOf(140));        // oak_log, upright
     }
 

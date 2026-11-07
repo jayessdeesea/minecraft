@@ -73,6 +73,7 @@ public class GenerateItemClasses {
                     : name.equals("wheat_seeds") ? 'E'
                     : name.equals("wheat") ? 'Y'
                     : name.endsWith("_hoe") ? 'Z'
+                    : name.endsWith("_sapling") ? 'B'
                     : '-';
             if (kind != '-') {
                 classes.put(entry.getValue().get("protocol_id").asInt(), kind + " " + name);
@@ -90,7 +91,7 @@ public class GenerateItemClasses {
             out.println("# W weapon, A armour, R arrows; and what a wooden sword is made from: L logs, P planks,");
             out.println("# S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;");
             out.println("# U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;");
-            out.println("# E wheat seeds, Y wheat, Z hoes.");
+            out.println("# E wheat seeds, Y wheat, Z hoes, B saplings.");
             out.println("# Everything NOT listed is just carried.");
             classes.forEach((id, line) -> out.println(id + " " + line));
         }

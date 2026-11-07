@@ -302,6 +302,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             case Report.Gathering(var resource) -> "Gathering " + resource;
             case Report.Fortifying() -> "Fortifying (building the patrol base)";
             case Report.Farming() -> "Farming (tilling, planting, harvesting, baking bread)";
+            case Report.Planting() -> "Planting (saplings in the tree farm, leaves broken for more)";
             case Report.Securing() -> "Securing (making torches, lighting the ground round the objective)";
             case Report.Mining(int step, int steps) -> "Mining (cutting the staircase down, step " + step + " of " + steps + ")";
             case Report.CrossLeveling(String to, int logs) -> "CrossLeveling (handing " + logs + " logs to " + to + ")";

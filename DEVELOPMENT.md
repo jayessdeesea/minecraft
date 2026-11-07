@@ -147,7 +147,10 @@ starts as `minecraft.general.mission` in `application.yml`.
 
 **Giving orders from game chat.** A player named in `minecraft.operators` (comma-separated, empty
 by default) can replace the mission by typing `!mission <text>` in plain chat. The general answers
-WILCO on the net and re-plans at once. Lines from anyone else are logged and ignored. Offline mode
+WILCO on the net and re-plans at once. Anything else an operator says - "it's night", "skeletons on
+the ridge" - is a remark: the general answers ROGER, hears it at a decision brought forward, and
+keeps the last three in view; the mission stays the mission. Commands from anyone else are logged
+and ignored, and their chat is just chat. Offline mode
 doesn't authenticate names, so the list guards against accidents, not impostors. Give missions in
 absolute coordinates ("hold x=-40 z=0"): the general re-reads the mission at every re-plan, so
 "40 blocks west of here" moves the objective another 40 blocks each time.

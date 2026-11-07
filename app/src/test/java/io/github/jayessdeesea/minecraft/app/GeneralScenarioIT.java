@@ -32,7 +32,7 @@ import java.util.function.BiFunction;
  * one, so it's an {@code *IT}, run on demand. Needs Ollama (DEVELOPMENT.md § 1), not the server.
  *
  * <pre>mvn -pl app -am test -Dtest=GeneralScenarioIT -Dsurefire.failIfNoSpecifiedTests=false
- *     [-Deval.runs=5] [-Deval.model=qwen3:14b]</pre>
+ *     [-Deval.runs=5] [-Deval.model=qwen3:14b] [-Deval.situation=name [-Deval.prompt=true]]</pre>
  */
 class GeneralScenarioIT {
 
@@ -86,6 +86,13 @@ class GeneralScenarioIT {
                     + "ground with torches and gather the wood and stone the camp needs.", TimeOfDay.of(18000, true),
                     List.of(fresh("Alpha", 2996, Optional.of(SECURE_CAMP)), fresh("Bravo", 3004, Optional.of(GATHER_WOOD))),
                     GeneralScenarioIT::buildsOnThePlatform),
+            // The live gap: the trees round the camp all cut, and every squad sent for wood finding none.
+            new Situation("no-trees-left", "The camp is on the stone platform around x=3000 z=3000. Gather the wood the camp "
+                    + "needs; where there is none left near the camp, plant a tree farm by it.", TimeOfDay.of(2000, true),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
+                    (squads, given) -> given.stream().anyMatch(o -> o.treeFarm() && distance(o.location(), new Position(3000, 151, 3000)) <= 24)
+                            ? List.of() : List.of("no squad set to plant a tree farm by the camp: " + given.stream()
+                                    .map(o -> o.task() + " at " + o.location()).toList())),
             new Situation("secure-the-camp", "The camp is on the stone platform around x=3000 z=3000. Both squads light "
                     + "its ground with torches today.", TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
@@ -151,7 +158,16 @@ class GeneralScenarioIT {
 
         int passed = 0;
         List<String> summary = new ArrayList<>();
+        String only = System.getProperty("eval.situation");
         for (Situation situation : SITUATIONS) {
+            if (only != null && !only.equals(situation.name())) {
+                continue;
+            }
+            if (Boolean.getBoolean("eval.prompt")) {
+                SpringAiGeneral shown = new SpringAiGeneral(client, situation.mission(), "");
+                shown.receiveTime(situation.time());
+                System.out.println(shown.prompt(situation.squads()));
+            }
             int situationPassed = 0;
             for (int run = 1; run <= runs; run++) {
                 SpringAiGeneral general = new SpringAiGeneral(client, situation.mission(), "");

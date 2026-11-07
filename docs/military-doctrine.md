@@ -350,6 +350,15 @@ the server's block update shows farmland or a sprout. A soldier without a hoe ma
 and one carrying three wheat bakes it into bread, the ration every soldier eats (§11). It reports
 `Farming`.
 
+Wood is grown when it runs out. An objective's task can be `TREE_FARM`: the squad plants saplings
+round the objective, on every third block both ways of open dirt or grass within 8 blocks, with
+seven blocks of air above each for the trunk (`bot.farm.TreeFarm`). Spruce is the camp's tree. A
+soldier plants a spruce sapling if it carries one, any other if not, and with none breaks leaves
+for one, spruce leaves first; one leaf block in twenty drops a sapling (`bot.supply.Forester`).
+Planting is an expect script like the farm's. The trees that grow are logs like any others, for a
+squad sent for WOOD there. A squad that sees no trees is told, on its resources line, that its
+wood has to be grown. The soldier at it reports `Planting`.
+
 ## 13. Cross-leveling
 
 | Practice | Content | Source |

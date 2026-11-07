@@ -63,6 +63,16 @@ public interface WorldView {
         return java.util.Optional.empty();
     }
 
+    /** The tree whose leaves the block is ("spruce", "oak"), if it's leaves (it's also {@link #isSolid}). */
+    default java.util.Optional<String> leaves(int x, int y, int z) {
+        return java.util.Optional.empty();
+    }
+
+    /** The tree the block's sapling grows into, if it's a sapling. */
+    default java.util.Optional<String> sapling(int x, int y, int z) {
+        return java.util.Optional.empty();
+    }
+
     /** Whether the block is ore of any kind: coal, iron, copper, gold, redstone, lapis, emerald, diamond. */
     default boolean isOre(int x, int y, int z) {
         return false;

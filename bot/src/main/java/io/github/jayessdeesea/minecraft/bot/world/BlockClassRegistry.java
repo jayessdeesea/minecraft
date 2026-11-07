@@ -38,6 +38,8 @@ final class BlockClassRegistry {
         WORKSTATION,
         /** Collision 1.5 blocks high (fences, walls, closed gates): blocks the cell above too. */
         TALL,
+        /** Leaves, solid like {@link #SOLID}, broken by hand at a touch - sometimes for the tree's sapling. */
+        LEAVES,
         /** Mined with a pickaxe, solid like {@link #SOLID}: deepslate, andesite, tuff, the ores - its {@link Hardness} rides along. */
         ROCK,
         /** Dug by hand, solid like {@link #SOLID}, and falls into what's dug under it: sand, gravel. */
@@ -59,6 +61,10 @@ final class BlockClassRegistry {
     private static final java.util.BitSet WATER = new java.util.BitSet();
     /** Ore of any kind: coal, iron, copper, gold, redstone, lapis, emerald, diamond, either stone. Filled while loading. */
     private static final java.util.BitSet ORES = new java.util.BitSet();
+    /** Each leaves or sapling state's tree - "spruce", "oak". Filled while loading. */
+    private static final java.util.Map<Integer, String> TREES = new java.util.HashMap<>();
+    /** Sapling states. Filled while loading. */
+    private static final java.util.BitSet SAPLINGS = new java.util.BitSet();
     private static final java.util.Set<String> SWUM = java.util.Set.of("water", "seagrass", "tall_seagrass", "kelp", "kelp_plant");
     /** What a hoe tills into farmland: dirt, grass and dirt paths (coarse and rooted dirt till to dirt first). */
     private static final java.util.BitSet TILLABLE = new java.util.BitSet();
@@ -90,6 +96,16 @@ final class BlockClassRegistry {
 
     static boolean isWater(int stateId) {
         return stateId >= 0 && WATER.get(stateId);
+    }
+
+    /** The tree {@code stateId}'s leaves belong to - empty if it isn't leaves. */
+    static java.util.Optional<String> leaves(int stateId) {
+        return classOf(stateId) == BlockClass.LEAVES ? java.util.Optional.ofNullable(TREES.get(stateId)) : java.util.Optional.empty();
+    }
+
+    /** The tree {@code stateId}'s sapling grows into - empty if it isn't a sapling. */
+    static java.util.Optional<String> sapling(int stateId) {
+        return stateId >= 0 && SAPLINGS.get(stateId) ? java.util.Optional.ofNullable(TREES.get(stateId)) : java.util.Optional.empty();
     }
 
     static boolean isOre(int stateId) {
@@ -151,6 +167,13 @@ final class BlockClassRegistry {
                     if (fields.length > 2 && (fields[2].equals("torch") || fields[2].equals("wall_torch"))) {
                         TORCHES.set(stateId);
                     }
+                    if (fields.length > 2 && fields[2].endsWith("_sapling")) {
+                        SAPLINGS.set(stateId);
+                        TREES.put(stateId, fields[2].substring(0, fields[2].length() - "_sapling".length()));
+                    }
+                    if (fields.length > 2 && fields[2].endsWith("_leaves")) {
+                        TREES.put(stateId, fields[2].substring(0, fields[2].length() - "_leaves".length()));
+                    }
                     if (fields.length > 2 && fields[2].endsWith("_ore")) {
                         ORES.set(stateId);
                     }
@@ -182,6 +205,7 @@ final class BlockClassRegistry {
                             HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Integer.parseInt(fields[4])));
                             yield BlockClass.ROCK;
                         }
+                        case "V" -> BlockClass.LEAVES;
                         case "G" -> {
                             HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Hardness.HAND));
                             yield BlockClass.GRIT;

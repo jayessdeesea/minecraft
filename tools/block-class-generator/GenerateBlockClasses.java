@@ -43,6 +43,8 @@ import java.util.zip.ZipFile;
  *       {@code mineable/pickaxe} tag names directly - deepslate, andesite, tuff, the ores. Its hardness
  *       and the least pickaxe that gets its drop ride along: 0 any, 1 stone, 2 iron, 3 diamond, from
  *       the {@code needs_*_tool} tags.
+ *   <li>{@code V} leaves - solid, broken by hand at a touch: every {@code *_leaves} block. Broken,
+ *       one sometimes drops its tree's sapling; the name says which tree.
  *   <li>{@code G} grit - solid, dug by hand (a shovel's work): what the {@code mineable/shovel} tag
  *       names that isn't soil - gravel, sand. Falls into what's dug under it. Hardness rides along.
  * </ul>
@@ -142,7 +144,9 @@ public class GenerateBlockClasses {
                         : SOIL_BLOCKS.contains(blockName) && !"true".equals(state.path("properties").path("waterlogged").asText()) ? 'D'
                         : classify(type, state.path("properties"));
                 String id = "minecraft:" + blockName;
-                if (cls == 'S' && pickaxe.contains(id)) {
+                if (cls == 'S' && blockName.endsWith("_leaves")) {
+                    cls = 'V';
+                } else if (cls == 'S' && pickaxe.contains(id)) {
                     cls = 'R';
                 } else if (cls == 'S' && shovel.contains(id)) {
                     cls = 'G';
@@ -163,7 +167,7 @@ public class GenerateBlockClasses {
             out.println("# Generated from the pinned server jar's `--reports` blocks.json by");
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
             out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore, F = farmland (all solid);");
-            out.println("# R = rock (mined with a pickaxe), G = grit (dug by hand, falls);");
+            out.println("# R = rock (mined with a pickaxe), G = grit (dug by hand, falls), V = leaves;");
             out.println("# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, <hardness> on grit.");
             out.println("# Every state NOT listed is solid (the safe default).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));

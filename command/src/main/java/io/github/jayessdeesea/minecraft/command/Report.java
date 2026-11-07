@@ -59,6 +59,10 @@ public sealed interface Report {
     record Farming() implements Report {
     }
 
+    /** Planting the squad's tree farm: saplings in, and leaves broken for more. */
+    record Planting() implements Report {
+    }
+
     /** Lighting the ground round the objective so no monster spawns on it - making torches, putting them down. */
     record Securing() implements Report {
     }

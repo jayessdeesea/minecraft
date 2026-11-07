@@ -145,6 +145,17 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     }
 
     /**
+     * Something the operator said that isn't an order: the general hears it at its next decision,
+     * brought forward - an operator who speaks up has usually seen something. Acknowledged on the radio.
+     */
+    public void onOperatorRemark(String operator, String remark) {
+        general.receiveRemark(remark);
+        lastGeneralMillis = Long.MIN_VALUE / 2;
+        LOG.info("[{} -> General] REMARK: {}", operator, remark);
+        transmit("[General -> " + operator + "] ROGER: " + remark);
+    }
+
+    /**
      * The operator attaches the first squad in the {@link Roster} to {@code principal} as its
      * escort (docs/military-doctrine.md §10): until the next {@code !mission}, the general leaves
      * it out and its squad leader's objective follows the principal. Acknowledged on the radio.
@@ -213,6 +224,10 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     }
 
     /** {@code squad}'s objective, when it has the squad gather a material (docs/military-doctrine.md §12). */
+    public Optional<Objective> treeFarmObjective(String squad) {
+        return squads.get(squad).treeFarmObjective();
+    }
+
     public Optional<Objective> mineObjective(String squad) {
         return squads.get(squad).mineObjective();
     }
