@@ -213,9 +213,11 @@ public final class SpringAiSquadLeader implements SquadLeader {
      * keeps only the judgement of which candidate serves the intent.
      */
     static String describeObjectiveGround(TerrainSurvey terrain, Position objective) {
-        List<TerrainSurvey.Sample> reachable = terrain.samples().stream()
+        // The objective's own column, when it was sampled, before any grid sample near it.
+        List<TerrainSurvey.Sample> all = java.util.stream.Stream.concat(terrain.atObjective().stream(), terrain.samples().stream()).toList();
+        List<TerrainSurvey.Sample> reachable = all.stream()
                 .filter(s -> s.ground() == TerrainSurvey.Ground.LAND && s.reachable()).toList();
-        TerrainSurvey.Sample nearest = terrain.samples().stream()
+        TerrainSurvey.Sample nearest = all.stream()
                 .min(Comparator.comparingDouble(s -> distance(s, objective))).orElseThrow();
         boolean inside = Math.abs(objective.x() - terrain.originX()) <= terrain.radius()
                 && Math.abs(objective.z() - terrain.originZ()) <= terrain.radius();

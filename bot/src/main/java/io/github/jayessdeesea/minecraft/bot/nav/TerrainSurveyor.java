@@ -43,6 +43,12 @@ public final class TerrainSurveyor {
      * {@code pickaxe}: the steps it cuts stand for the squad following it.
      */
     public static TerrainSurvey survey(WorldView world, Position pointMan, int blocks, boolean pickaxe) {
+        return survey(world, pointMan, blocks, pickaxe, java.util.Optional.empty());
+    }
+
+    /** As {@link #survey(WorldView, Position, int, boolean)}, sampling the {@code objective}'s own column too. */
+    public static TerrainSurvey survey(WorldView world, Position pointMan, int blocks, boolean pickaxe,
+                                       java.util.Optional<Position> objective) {
         BlockPos start = groundUnder(world, BlockPos.containing(pointMan.x(), pointMan.y(), pointMan.z()));
         Map<BlockPos, Integer> reachable = Pathfinder.climbs(world, start, RADIUS + 2, FLOOD_BUDGET, blocks, pickaxe);
 
@@ -52,7 +58,10 @@ public final class TerrainSurveyor {
                 samples.add(sample(world, start.x() + dx, start.z() + dz, start.y(), reachable));
             }
         }
-        return new TerrainSurvey(start.x(), start.z(), SPACING, RADIUS, List.copyOf(samples));
+        java.util.Optional<TerrainSurvey.Sample> atObjective = objective
+                .filter(o -> Math.abs(o.x() - start.x()) <= RADIUS && Math.abs(o.z() - start.z()) <= RADIUS)
+                .map(o -> sample(world, (int) Math.floor(o.x()), (int) Math.floor(o.z()), start.y(), reachable));
+        return new TerrainSurvey(start.x(), start.z(), SPACING, RADIUS, List.copyOf(samples), atObjective);
     }
 
     /**

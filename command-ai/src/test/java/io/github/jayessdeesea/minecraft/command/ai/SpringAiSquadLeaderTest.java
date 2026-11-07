@@ -135,6 +135,19 @@ class SpringAiSquadLeaderTest {
     }
 
     @Test
+    void groundBetweenTheGridsSamplesIsReadAtTheObjectiveItself() {
+        // A terrace narrower than the spacing: the grid sees only the floor either side of it.
+        TerrainSurvey survey = new TerrainSurvey(0, 0, 8, 8, List.of(
+                new TerrainSurvey.Sample(0, 0, TerrainSurvey.Ground.LAND, 151, true),
+                new TerrainSurvey.Sample(8, 0, TerrainSurvey.Ground.LAND, 151, true)),
+                java.util.Optional.of(new TerrainSurvey.Sample(4, 0, TerrainSurvey.Ground.LAND, 154, true)));
+
+        String ground = SpringAiSquadLeader.describeObjectiveGround(survey, new Position(4, 154, 0));
+        assertTrue(ground.contains("The objective is on reachable land at height 154."), ground);
+        assertTrue(ground.contains("- x=4 y=154 z=0: 0 blocks from the objective"), ground);
+    }
+
+    @Test
     void objectiveGroundSaysWhenTheObjectiveIsBeyondTheSurvey() {
         assertTrue(SpringAiSquadLeader.describeObjectiveGround(TERRAIN, new Position(0, 64, -40))
                 .contains("outside the surveyed area, 32 blocks beyond its edge"));

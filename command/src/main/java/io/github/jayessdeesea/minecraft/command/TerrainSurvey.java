@@ -9,8 +9,18 @@ import java.util.List;
  * each with the ground height there, whether it's land or water, and whether the point man can
  * actually get there - walking, or climbing when he carries blocks to climb with. Choosing among reachable spots up front beats choosing blind and collecting
  * CANTCOs (docs/military-doctrine.md §3).
+ *
+ * <p>{@code atObjective} is the same sample taken at the objective's own column, when there is one
+ * and it lies within the survey: ground narrower than the grid's spacing - a terrace, a ledge -
+ * falls between the grid's samples, and the nearest of them isn't what's at the objective.
  */
-public record TerrainSurvey(int originX, int originZ, int spacing, int radius, List<Sample> samples) {
+public record TerrainSurvey(int originX, int originZ, int spacing, int radius, List<Sample> samples,
+                            java.util.Optional<Sample> atObjective) {
+
+    /** A survey with no objective to sample. */
+    public TerrainSurvey(int originX, int originZ, int spacing, int radius, List<Sample> samples) {
+        this(originX, originZ, spacing, radius, samples, java.util.Optional.empty());
+    }
 
     public enum Ground {
         LAND,

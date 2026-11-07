@@ -34,7 +34,7 @@ import java.util.function.Supplier;
  * </pre>
  *
  * <p>The setup changes the dev world: it builds an arena far from spawn, moves the soldiers onto it,
- * replaces their inventories and sets the time of day.
+ * heals and feeds them, replaces their inventories and sets the time of day.
  */
 class ChainScenarioLiveIT {
 
@@ -175,11 +175,12 @@ class ChainScenarioLiveIT {
                 1000,
                 "Both squads climb onto the top of the terrace east of them, at x=" + (TERRACE_X + 3) + " y=" + TERRACE_TOP + " z="
                         + ARENA_Z + ", and hold there. Stay on the platform.",
-                // On the terrace, or in a step cut into its face: the squad's own slots allow a block of
-                // height either way, and a soldier there has made the climb.
-                () -> harness -> Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
-                        .allMatch(soldier -> harness.runner.position(soldier)
-                                .filter(p -> p.x() >= TERRACE_X && p.y() >= TERRACE_TOP - 1.5).isPresent())
+                // Each squad's point man on the terrace, or in a step cut into its face, and every
+                // soldier in its slot: a wedge on a terrace this narrow leaves its rear slots on the floor.
+                () -> harness -> Roster.SQUADS.stream().allMatch(squad -> harness.runner.position(squad.soldiers().getFirst())
+                        .filter(p -> p.x() >= TERRACE_X && p.y() >= TERRACE_TOP - 1.5).isPresent())
+                        && Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream())
+                        .allMatch(soldier -> harness.runner.report(soldier).filter(r -> r instanceof io.github.jayessdeesea.minecraft.command.Report.InPosition).isPresent())
                         ? Verdict.PASS : Verdict.PENDING,
                 Duration.ofMinutes(5));
     }
@@ -216,17 +217,22 @@ class ChainScenarioLiveIT {
             Harness harness = new Harness(app.getBean(SoldierRunner.class), app.getBean(ChainOfCommand.class));
             List<String> soldiers = Roster.SQUADS.stream().flatMap(squad -> squad.soldiers().stream()).toList();
             awaitUntil(Duration.ofMinutes(2), "every soldier connected", () -> harness.runner.connected().containsAll(soldiers));
-            // The arena furnished before anyone is moved onto it: a soldier walking about while a
-            // terrace is filled in round it suffocates.
-            for (String command : scenario.arena()) {
-                console(command);
-            }
-            // Each squad on its own half of the platform, a few blocks apart.
+            // Everyone to its start first, clear of anything the scenario builds - a soldier still
+            // standing where the last run left it, or walking there, is filled in and suffocates -
+            // then the arena furnished, then everyone put back on its start in case one moved.
             for (int i = 0; i < soldiers.size(); i++) {
                 String name = soldiers.get(i);
                 console("clear " + name);
-                int squad = i / 4;
-                console("tp %s %d %d %d".formatted(name, ARENA_X - 6 + squad * 12 + i % 2 * 2, FLOOR_Y + 1, ARENA_Z - 2 + i % 4 / 2 * 2));
+                // Whole and fed: health and hunger carry over from one run to the next.
+                console("effect give " + name + " minecraft:instant_health 1 10");
+                console("effect give " + name + " minecraft:saturation 1 20");
+                console(start(name, i));
+            }
+            for (String command : scenario.arena()) {
+                console(command);
+            }
+            for (int i = 0; i < soldiers.size(); i++) {
+                console(start(soldiers.get(i), i));
             }
             awaitUntil(Duration.ofSeconds(30), "every soldier on the platform", () -> soldiers.stream()
                     .allMatch(name -> harness.runner.position(name).filter(ChainScenarioLiveIT::onPlatform).isPresent()));
@@ -258,6 +264,12 @@ class ChainScenarioLiveIT {
     private static String bases(Harness harness) {
         return Roster.SQUADS.stream().map(squad -> squad.name() + " " + harness.runner.base(squad.name())
                 .map(Object::toString).orElse("no base")).toList().toString();
+    }
+
+    /** Each squad on its own half of the platform, a few blocks apart: the teleport to {@code i}'s start. */
+    private static String start(String name, int i) {
+        int squad = i / 4;
+        return "tp %s %d %d %d".formatted(name, ARENA_X - 6 + squad * 12 + i % 2 * 2, FLOOR_Y + 1, ARENA_Z - 2 + i % 4 / 2 * 2);
     }
 
     private static String kits(Harness harness) {

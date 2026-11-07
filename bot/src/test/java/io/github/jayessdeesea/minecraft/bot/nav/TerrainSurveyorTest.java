@@ -107,6 +107,11 @@ class TerrainSurveyorTest {
 
         assertEquals(GROUND + 3, at(survey, 16, 0).height());
         assertTrue(at(survey, 16, 0).reachable(), "a step cut into the face, then onto the top");
+
+        TerrainSurvey.Sample objective = TerrainSurveyor.survey(terrace, new Position(0.5, GROUND, 0.5), 0, false,
+                java.util.Optional.of(new Position(12.5, GROUND + 3, 3.5))).atObjective().orElseThrow();
+        assertEquals(new TerrainSurvey.Sample(12, 3, TerrainSurvey.Ground.LAND, GROUND + 3, true), objective,
+                "the objective's own column, off the grid");
     }
 
     @Test

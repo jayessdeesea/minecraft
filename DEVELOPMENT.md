@@ -102,7 +102,7 @@ soldiers against the dev server on a named scenario, and prints a pass rate. Eac
 changes to the dev world:
 - builds a stone arena at x=3000 z=3000;
 - teleports the soldiers onto it;
-- replaces their inventories;
+- heals and feeds them, and replaces their inventories;
 - sets the time of day.
 
 It needs the server and model up and nothing else connected as the soldiers. The scenarios and
@@ -117,7 +117,9 @@ mvn -pl app test -Dtest=ChainScenarioLiveIT -Dsurefire.failIfNoSpecifiedTests=fa
 `-Dscenario=rearm-to-iron` gives the squads a quiet morning, cobblestone, logs and a row of iron ore
 to climb the equipment ladder to a shield (up to 9 minutes a run). `-Dscenario=shield-against-skeletons`
 sets armed, shielded squads against two skeletons in daylight (a few minutes), and
-`-Dscenario=rearm-to-chestplate` gives them ore enough to climb to iron chestplates. Add
+`-Dscenario=rearm-to-chestplate` gives them ore enough to climb to iron chestplates.
+`-Dscenario=climb-soil-terrace` and `climb-stone-terrace` set a 3-high terrace in their way, with no
+blocks to pillar with: they cut steps into it, by hand or with wooden pickaxes. Add
 `-Dlogging.level.io.github.jayessdeesea.minecraft.command.ai.SpringAiGeneral=DEBUG` to log every
 prompt the general sees and its reply.
 

@@ -192,6 +192,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         return world.nearbyHostiles(center, radius).size();
     }
 
+    /** What a connected soldier last reported doing - for a live scenario's judge. */
+    public Optional<io.github.jayessdeesea.minecraft.command.Report> report(String soldier) {
+        return Optional.ofNullable(activeSoldiers.get(soldier)).map(s -> s.status().report());
+    }
+
     /** What a connected soldier last reported carrying, if it has - for a live scenario's judge. */
     public Optional<Kit> kit(String soldier) {
         return Optional.ofNullable(activeSoldiers.get(soldier)).flatMap(s -> s.status().condition()).flatMap(c -> c.kit());
@@ -316,7 +321,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             boolean stoneSteps = p.statuses().get(0).condition().flatMap(c -> c.kit()).map(k -> k.pickaxe()).orElse(false);
             SquadState state = squadStates.get(p.squad());
             boolean holdingBase = state.allInside && state.breaches != null && state.breaches.isEmpty();
-            return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan, climbBlocks, stoneSteps), p.principalAt(),
+            return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan, climbBlocks, stoneSteps,
+                    chainOfCommand.objective(p.squad()).map(io.github.jayessdeesea.minecraft.command.Objective::location)), p.principalAt(),
                     () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, pointMan), holdingBase,
                     holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft);
         }).toList());
