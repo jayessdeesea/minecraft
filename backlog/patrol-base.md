@@ -59,6 +59,10 @@ The hasty hut, the general's PATROL_BASE task and the time of day are live (docs
 § 14). What's left:
 - **Deliberate base on a later night.** The squad improves the base with a wider perimeter and more
   light. The improvement is measured by a test that counts lit, walled floor blocks.
+- **A camp outlives a restart.** A squad's base is known only in memory, so a restarted app sites a
+  new hut and spends its blocks again, leaving the old one standing empty: seen live with the
+  garrison at spawn. The squad should find the hut it built - a standing shell of the right shape
+  near its objective - and take it back, building only what's missing.
 
 ## Notes
 - **The order needs a standard.** A patrol base order carries its standard as data (radius, light,
