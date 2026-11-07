@@ -1,6 +1,7 @@
 # Generated from the pinned server jar's `--reports` blocks.json by
 # tools/block-class-generator. One block state per line: <id> <class> <blockName>,
-# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore (all solid).
+# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore, F = farmland (all solid);
+# then level=N on water (0 a source) and age=N on wheat.
 # Every state NOT listed is solid (the safe default).
 0 P air
 1 Q stone
@@ -48,22 +49,22 @@
 84 H mangrove_propagule
 86 P poplar_sapling
 87 P poplar_sapling
-89 H water
-90 H water
-91 H water
-92 H water
-93 H water
-94 H water
-95 H water
-96 H water
-97 H water
-98 H water
-99 H water
-100 H water
-101 H water
-102 H water
-103 H water
-104 H water
+89 H water level=0
+90 H water level=1
+91 H water level=2
+92 H water level=3
+93 H water level=4
+94 H water level=5
+95 H water level=6
+96 H water level=7
+97 H water level=8
+98 H water level=9
+99 H water level=10
+100 H water level=11
+101 H water level=12
+102 H water level=13
+103 H water level=14
+104 H water level=15
 105 H lava
 106 H lava
 107 H lava
@@ -3384,22 +3385,22 @@
 6861 P redstone_wire
 6862 P redstone_wire
 6866 W crafting_table
-6867 P wheat
-6868 P wheat
-6869 P wheat
-6870 P wheat
-6871 P wheat
-6872 P wheat
-6873 P wheat
-6874 P wheat
-6875 D farmland
-6876 D farmland
-6877 D farmland
-6878 D farmland
-6879 D farmland
-6880 D farmland
-6881 D farmland
-6882 D farmland
+6867 P wheat age=0
+6868 P wheat age=1
+6869 P wheat age=2
+6870 P wheat age=3
+6871 P wheat age=4
+6872 P wheat age=5
+6873 P wheat age=6
+6874 P wheat age=7
+6875 F farmland
+6876 F farmland
+6877 F farmland
+6878 F farmland
+6879 F farmland
+6880 F farmland
+6881 F farmland
+6882 F farmland
 6883 W furnace
 6884 W furnace
 6885 W furnace

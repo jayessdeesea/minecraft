@@ -32,6 +32,8 @@ final class BlockClassRegistry {
         SOIL,
         /** Iron ore: solid like {@link #SOLID}, and mined with a stone pickaxe or better for raw iron. */
         IRON_ORE,
+        /** Tilled for crops: solid like {@link #SOLID}, and never dug for a step - a farm isn't a slope. */
+        FARMLAND,
         /** A crafting table or furnace: solid like {@link #SOLID}, and opened to craft or smelt. */
         WORKSTATION,
         /** Collision 1.5 blocks high (fences, walls, closed gates): blocks the cell above too. */
@@ -44,6 +46,16 @@ final class BlockClassRegistry {
 
     /** Block states that are torches - the light a patrol base is lit by. Filled while loading. */
     private static final java.util.BitSet TORCHES = new java.util.BitSet();
+    /** Water source blocks (level 0): what a farm is tilled beside. Filled while loading. */
+    private static final java.util.BitSet WATER_SOURCES = new java.util.BitSet();
+    /** What a hoe tills into farmland: dirt, grass and dirt paths (coarse and rooted dirt till to dirt first). */
+    private static final java.util.BitSet TILLABLE = new java.util.BitSet();
+    /** Short and tall grass: broken for wheat seeds. Filled while loading. */
+    private static final java.util.BitSet GRASS_PLANTS = new java.util.BitSet();
+    /** Each wheat state's growth stage, 0 to {@link #RIPE}. Filled while loading. */
+    private static final java.util.Map<Integer, Integer> WHEAT_AGES = new java.util.HashMap<>();
+    /** Wheat's last growth stage: ripe, and broken for wheat and seeds. */
+    static final int RIPE = 7;
     /** Which workstation each {@link BlockClass#WORKSTATION} state is. Filled while loading. */
     private static final java.util.Map<Integer, Workstation> WORKSTATIONS = new java.util.HashMap<>();
     private static final BlockClass[] CLASSES = load();
@@ -56,6 +68,24 @@ final class BlockClassRegistry {
     /** Whether {@code stateId} is a torch, standing or on a wall. */
     static boolean isTorch(int stateId) {
         return stateId >= 0 && TORCHES.get(stateId);
+    }
+
+    static boolean isWaterSource(int stateId) {
+        return stateId >= 0 && WATER_SOURCES.get(stateId);
+    }
+
+    static boolean isTillable(int stateId) {
+        return stateId >= 0 && TILLABLE.get(stateId);
+    }
+
+    static boolean isGrassPlant(int stateId) {
+        return stateId >= 0 && GRASS_PLANTS.get(stateId);
+    }
+
+    /** {@code stateId}'s growth stage if it's wheat. */
+    static java.util.OptionalInt wheatAge(int stateId) {
+        Integer age = WHEAT_AGES.get(stateId);
+        return age == null ? java.util.OptionalInt.empty() : java.util.OptionalInt.of(age);
     }
 
     private BlockClassRegistry() {
@@ -85,6 +115,18 @@ final class BlockClassRegistry {
                     if (fields.length > 2 && (fields[2].equals("torch") || fields[2].equals("wall_torch"))) {
                         TORCHES.set(stateId);
                     }
+                    if (fields.length > 3 && fields[2].equals("water") && fields[3].equals("level=0")) {
+                        WATER_SOURCES.set(stateId);
+                    }
+                    if (fields.length > 2 && java.util.Set.of("dirt", "grass_block", "dirt_path").contains(fields[2])) {
+                        TILLABLE.set(stateId);
+                    }
+                    if (fields.length > 2 && (fields[2].equals("short_grass") || fields[2].equals("tall_grass"))) {
+                        GRASS_PLANTS.set(stateId);
+                    }
+                    if (fields.length > 3 && fields[2].equals("wheat")) {
+                        WHEAT_AGES.put(stateId, Integer.parseInt(fields[3].substring("age=".length())));
+                    }
                     classes[stateId] = switch (fields[1]) {
                         case "P" -> BlockClass.PASSABLE;
                         case "T" -> BlockClass.TALL;
@@ -93,6 +135,7 @@ final class BlockClassRegistry {
                         case "Q" -> BlockClass.STONE;
                         case "D" -> BlockClass.SOIL;
                         case "O" -> BlockClass.IRON_ORE;
+                        case "F" -> BlockClass.FARMLAND;
                         case "W" -> {
                             WORKSTATIONS.put(stateId, Workstation.valueOf(fields[2].toUpperCase(java.util.Locale.ROOT)));
                             yield BlockClass.WORKSTATION;

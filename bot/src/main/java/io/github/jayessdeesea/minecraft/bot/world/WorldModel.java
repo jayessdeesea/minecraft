@@ -49,6 +49,31 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public boolean isWaterSource(int x, int y, int z) {
+        return chunks.isWaterSource(x, y, z);
+    }
+
+    @Override
+    public boolean isTillable(int x, int y, int z) {
+        return chunks.isTillable(x, y, z);
+    }
+
+    @Override
+    public boolean isGrassPlant(int x, int y, int z) {
+        return chunks.isGrassPlant(x, y, z);
+    }
+
+    @Override
+    public boolean isFarmland(int x, int y, int z) {
+        return chunks.isFarmland(x, y, z);
+    }
+
+    @Override
+    public java.util.OptionalInt wheatAge(int x, int y, int z) {
+        return chunks.wheatAge(x, y, z);
+    }
+
+    @Override
     public boolean isSoil(int x, int y, int z) {
         return chunks.isSoil(x, y, z);
     }

@@ -25,7 +25,7 @@ public final class ItemClassRegistry {
 
     /** What an item counts as. */
     public enum ItemClass { WEAPON, ARMOUR, ARROWS, LOG, PLANKS, STICK, CRAFTING_TABLE, COBBLESTONE, PICKAXE, FOOD, FURNACE, COAL, TORCH, RAW_IRON, IRON_INGOT,
-        SHIELD }
+        SHIELD, SEEDS, WHEAT, HOE }
 
     private static final String RESOURCE_NAME = "item-classes-777.txt";
 
@@ -191,6 +191,9 @@ public final class ItemClassRegistry {
                         case "M" -> ItemClass.RAW_IRON;
                         case "N" -> ItemClass.IRON_INGOT;
                         case "H" -> ItemClass.SHIELD;
+                        case "E" -> ItemClass.SEEDS;
+                        case "Y" -> ItemClass.WHEAT;
+                        case "Z" -> ItemClass.HOE;
                         default -> throw new IllegalStateException("Unknown item class in " + RESOURCE_NAME + ": " + line);
                     };
                     items.put(Integer.parseInt(parts[0]), new Entry(itemClass, parts[2]));

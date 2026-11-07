@@ -333,6 +333,18 @@ class ChainScenarioLiveIT {
      * the server says it failed, or doesn't answer at all.
      */
     static String console(String command) throws IOException, InterruptedException {
+        return console(command, false);
+    }
+
+    /**
+     * {@link #console(String)} for a command the server may answer with nothing - a {@code gamemode}
+     * that changes nothing says so with silence - which then passes.
+     */
+    static String consoleAllowingSilence(String command) throws IOException, InterruptedException {
+        return console(command, true);
+    }
+
+    private static String console(String command, boolean silenceOk) throws IOException, InterruptedException {
         Process process = new ProcessBuilder("docker", "compose", "exec", "-T", "minecraft", "sh", "-c", SEND_AND_READ_REPLY)
                 .directory(new File("..")).redirectErrorStream(true).start();
         try (var stdin = process.getOutputStream()) {
@@ -342,7 +354,7 @@ class ChainScenarioLiveIT {
         if (!process.waitFor(30, TimeUnit.SECONDS) || process.exitValue() != 0) {
             throw new IllegalStateException("console '" + command + "' couldn't be sent: " + reply);
         }
-        if (reply.isEmpty()) {
+        if (reply.isEmpty() && !silenceOk) {
             throw new IllegalStateException("console '" + command + "': no reply from the server");
         }
         if (FAILED.stream().anyMatch(reply::contains)) {

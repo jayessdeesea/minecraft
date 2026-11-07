@@ -53,6 +53,31 @@ public interface WorldView {
         return false;
     }
 
+    /** Whether the block is a water source - what a farm is tilled beside (it's also {@link #isHazard}). */
+    default boolean isWaterSource(int x, int y, int z) {
+        return false;
+    }
+
+    /** Whether a hoe tills the block into farmland: dirt, grass, a dirt path. */
+    default boolean isTillable(int x, int y, int z) {
+        return false;
+    }
+
+    /** Whether the block is short or tall grass, broken for wheat seeds. */
+    default boolean isGrassPlant(int x, int y, int z) {
+        return false;
+    }
+
+    /** Whether the block is farmland (it's also {@link #isSolid}). */
+    default boolean isFarmland(int x, int y, int z) {
+        return false;
+    }
+
+    /** The wheat's growth stage, 0 to 7 (ripe), if the block is wheat. */
+    default java.util.OptionalInt wheatAge(int x, int y, int z) {
+        return java.util.OptionalInt.empty();
+    }
+
     /** Whether the block is soil - dirt, grass, clay - that a soldier digs by hand (it's also {@link #isSolid}). */
     default boolean isSoil(int x, int y, int z) {
         return false;

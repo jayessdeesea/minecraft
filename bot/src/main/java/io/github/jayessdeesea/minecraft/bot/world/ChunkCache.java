@@ -110,6 +110,32 @@ public final class ChunkCache {
         return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.IRON_ORE;
     }
 
+    /** Whether the block is a water source - unknown blocks aren't. */
+    public boolean isWaterSource(int x, int y, int z) {
+        return BlockClassRegistry.isWaterSource(rawStateIdAt(x, y, z));
+    }
+
+    /** Whether a hoe tills the block into farmland - unknown blocks aren't. */
+    public boolean isTillable(int x, int y, int z) {
+        return BlockClassRegistry.isTillable(rawStateIdAt(x, y, z));
+    }
+
+    /** Whether the block is short or tall grass - unknown blocks aren't. */
+    public boolean isGrassPlant(int x, int y, int z) {
+        return BlockClassRegistry.isGrassPlant(rawStateIdAt(x, y, z));
+    }
+
+    /** Whether the block is farmland - unknown blocks aren't. */
+    public boolean isFarmland(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.FARMLAND;
+    }
+
+    /** The wheat's growth stage, if the block is wheat. */
+    public java.util.OptionalInt wheatAge(int x, int y, int z) {
+        return BlockClassRegistry.wheatAge(rawStateIdAt(x, y, z));
+    }
+
     /** Whether the block is soil, dug by hand - unknown blocks aren't. */
     public boolean isSoil(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);

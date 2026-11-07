@@ -37,7 +37,11 @@ import java.util.TreeMap;
  *       snow blocks, hardness 0.65 or less. Not sand or gravel: they fall into what's dug under them.
  *   <li>{@code O} iron ore - solid, and mined with a stone pickaxe or better for raw iron:
  *       {@code iron_ore}, {@code deepslate_iron_ore}.
+ *   <li>{@code F} farmland - solid, tilled for crops: never dug for a step, or a farm is trampled.
  * </ul>
+ * What a farm needs to know rides along as a fourth field: {@code level=N} on water (0 is a
+ * source), {@code age=N} on wheat. Grass plants keep their names - {@code short_grass} and
+ * {@code tall_grass} drop wheat seeds when broken.
  * The type lists are from well-established vanilla mechanics, not guessed. Deliberately not
  * exhaustive - an unlisted type stays SOLID, the same "unknown = blocked" policy as unloaded chunks.
  */
@@ -62,7 +66,7 @@ public class GenerateBlockClasses {
 
     /** Hardness at most 0.65 (a dirt path), none of them falling blocks. */
     private static final Set<String> SOIL_BLOCKS = Set.of(
-            "dirt", "grass_block", "coarse_dirt", "podzol", "rooted_dirt", "mycelium", "farmland", "dirt_path",
+            "dirt", "grass_block", "coarse_dirt", "podzol", "rooted_dirt", "mycelium", "dirt_path",
             "clay", "moss_block", "snow_block"
     );
 
@@ -110,10 +114,13 @@ public class GenerateBlockClasses {
                         ? 'L' : blockName.equals("stone") ? 'Q'
                         : blockName.equals("crafting_table") || blockName.equals("furnace") ? 'W'
                         : blockName.equals("iron_ore") || blockName.equals("deepslate_iron_ore") ? 'O'
+                        : blockName.equals("farmland") ? 'F'
                         : SOIL_BLOCKS.contains(blockName) && !"true".equals(state.path("properties").path("waterlogged").asText()) ? 'D'
                         : classify(type, state.path("properties"));
                 if (cls != 'S') {
-                    classes.put(state.get("id").asInt(), cls + " " + blockName);
+                    String detail = blockName.equals("water") ? " level=" + state.path("properties").path("level").asText()
+                            : blockName.equals("wheat") ? " age=" + state.path("properties").path("age").asText() : "";
+                    classes.put(state.get("id").asInt(), cls + " " + blockName + detail);
                     counts.merge(cls, 1, Integer::sum);
                 }
             }
@@ -122,7 +129,8 @@ public class GenerateBlockClasses {
         try (PrintWriter out = new PrintWriter(args[2])) {
             out.println("# Generated from the pinned server jar's `--reports` blocks.json by");
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
-            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore (all solid).");
+            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore, F = farmland (all solid);");
+            out.println("# then level=N on water (0 a source) and age=N on wheat.");
             out.println("# Every state NOT listed is solid (the safe default).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));
         }
