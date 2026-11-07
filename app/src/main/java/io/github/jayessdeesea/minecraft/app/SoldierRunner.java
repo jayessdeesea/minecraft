@@ -313,8 +313,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // onto a hut roof one time and back the next, and every measure moves with it.
         if (campGround == null) {
             double[] heights = everyone.stream().mapToDouble(s -> s.position().y()).sorted().toArray();
-            campGround = io.github.jayessdeesea.minecraft.bot.supply.Staircase.headAt(world, camp[0], camp[1],
-                    (int) Math.floor(heights[heights.length / 2])).orElse(null);
+            campGround = typicalGround(camp[0], camp[1], (int) Math.floor(heights[heights.length / 2])).orElse(null);
             if (campGround == null) {
                 return Optional.empty();
             }
@@ -364,6 +363,28 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 armour == everyone.size() * Kit.ARMOUR_SLOTS, armour + " of " + everyone.size() * Kit.ARMOUR_SLOTS + " armour slots filled (iron, from the mine)",
                 "MINE"));
         return Optional.of(new io.github.jayessdeesea.minecraft.command.Foothold(new Position(at.x(), at.y(), at.z()), List.copyOf(standards)));
+    }
+
+    /**
+     * The ground round ({@code cx}, {@code cz}): the ground most of it stands on, not whatever's tallest at its centre -
+     * where the squads have built hut on hut, a roof would be its ground, the wall laid round a roof
+     * and the light measured on one. The typical height of the ground across the camp, then the
+     * standing cell nearest the centre at about that height.
+     */
+    private Optional<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> typicalGround(int cx, int cz, int nearY) {
+        int[] camp = {cx, cz};
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> columns = new java.util.ArrayList<>();
+        for (int dx = -WALL_RADIUS; dx <= WALL_RADIUS; dx++) {
+            for (int dz = -WALL_RADIUS; dz <= WALL_RADIUS; dz++) {
+                io.github.jayessdeesea.minecraft.bot.supply.Staircase.headAt(world, camp[0] + dx, camp[1] + dz, nearY).ifPresent(columns::add);
+            }
+        }
+        if (columns.isEmpty()) {
+            return Optional.empty();
+        }
+        int typical = columns.stream().mapToInt(io.github.jayessdeesea.minecraft.bot.nav.BlockPos::y).sorted().toArray()[columns.size() / 2];
+        return columns.stream().filter(c -> Math.abs(c.y() - typical) <= 1)
+                .min(java.util.Comparator.comparingInt(c -> Math.abs(c.x() - camp[0]) + Math.abs(c.z() - camp[1])));
     }
 
     /** How far round the camp its tree farm is looked for. */
@@ -808,9 +829,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             state.wallCentre = null;
             state.wallLeft = -1;
         } else {
-            io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
-                    io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(fortify.get().location().x(), fortify.get().location().y(),
-                            fortify.get().location().z()));
+            // Round the ground most of the camp stands on, not a hut roof at its centre.
+            Position asked = fortify.get().location();
+            io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = typicalGround((int) Math.floor(asked.x()), (int) Math.floor(asked.z()),
+                    (int) Math.floor(asked.y())).orElse(io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
+                            io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(asked.x(), asked.y(), asked.z())));
             if (state.wallCentre == null || state.wallCentre.x() != at.x() || state.wallCentre.z() != at.z()) {
                 // One layout a wall, whichever squad comes to it first: a squad that lays out a wall
                 // another has half built lays it out on top of what's there.
@@ -1388,7 +1411,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // The point man carries the squad's radio: the squad leader and general aren't in the
             // world, so their traffic is keyed out over his connection (rebound on reconnect).
             chainOfCommand.setRadio(session::sendChatCommand);
-            chainOfCommand.setGround((x, z, nearY) -> io.github.jayessdeesea.minecraft.bot.supply.Staircase.headAt(world, x, z, nearY)
+            // The ground round the point, not the top of whatever stands on it: a heap of old huts
+            // at the camp's centre isn't where an objective there is.
+            chainOfCommand.setGround((x, z, nearY) -> typicalGround(x, z, nearY)
                     .map(cell -> java.util.OptionalInt.of(cell.y())).orElse(java.util.OptionalInt.empty()));
         }
         activeSoldiers.put(name, soldier);

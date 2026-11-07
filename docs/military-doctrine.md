@@ -129,7 +129,8 @@ is logged (`[General -> Bravo] changing the objective: ...`). A change with no r
 and the squads keep their orders. A kept order isn't re-sent: the log says `holds`.
 
 The general's heights are guesses, so an objective is put on the ground at its x and z: the
-highest standing cell within 24 blocks of the squad's middle height - not one soldier's, which
+typical height of the ground round it - not the top of a heap of old huts at a camp's centre -
+looked for within 24 blocks of the squad's middle height - not one soldier's, which
 might be stranded up a tower
 (`ChainOfCommand.grounded`; the log says `put on the ground`). A MINE objective keeps its own, since
 its y is a depth.
@@ -581,7 +582,9 @@ force builds a lodgment after the drop. Its phases:
    and stone and iron from a mine (§16, MINE).
 4. Equipment: every soldier armed with a stone sword or better and armoured (§11).
 
-Every ten seconds the runner measures each phase's standards at the camp, from the world rather
+Every ten seconds the runner measures each phase's standards at the camp - from its ground, the
+typical height of the ground round it found once, so a heap of old huts at its centre is neither
+where the wall is laid nor where the light is measured - from the world rather
 than from reports: dark cells left, wall blocks left, farm cells growing wheat and soldiers hungry
 with nothing to eat, saplings and trees planted, steps cut down the mine, swords and armour
 carried (`command.Foothold`). The general reads them in `<foothold>`, which ends by naming the
