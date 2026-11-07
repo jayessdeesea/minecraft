@@ -43,7 +43,7 @@ public final class Escort {
             double angle = 2 * Math.PI * i / squad.size();
             orders.add(new Order.MoveTo(principal.x() + radius * Math.sin(angle), principal.y(),
                     principal.z() - radius * Math.cos(angle), SLOT_TOLERANCE, order.verticalTolerance(),
-                    order.riskFor(squad.get(i).name())));
+                    order.riskFor(squad.get(i).name()), true)); // a ring left behind is no protection
         }
         return List.copyOf(orders);
     }
@@ -81,7 +81,7 @@ public final class Escort {
             assigned[nearest] = true;
             Risk risk = orders.get(nearest) instanceof Order.MoveTo move ? move.risk() : Risk.LOW;
             result.set(nearest, new Order.MoveTo(threat.x(), threat.y(), threat.z(), INTERCEPT_TOLERANCE,
-                    ReactToContact.VERTICAL_TOLERANCE, risk));
+                    ReactToContact.VERTICAL_TOLERANCE, risk, true));
         }
         return List.copyOf(result);
     }

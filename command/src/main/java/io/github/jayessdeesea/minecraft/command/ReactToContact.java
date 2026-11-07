@@ -48,7 +48,7 @@ public final class ReactToContact {
             if (nearest.isPresent()) {
                 Position at = nearest.get().position();
                 Risk risk = orders.get(i) instanceof Order.MoveTo move ? move.risk() : Risk.LOW;
-                result.set(i, new Order.MoveTo(at.x(), at.y(), at.z(), SUPPORT_TOLERANCE, VERTICAL_TOLERANCE, risk));
+                result.set(i, new Order.MoveTo(at.x(), at.y(), at.z(), SUPPORT_TOLERANCE, VERTICAL_TOLERANCE, risk, true));
             }
         }
         return List.copyOf(result);

@@ -30,8 +30,8 @@ class ReactToContactTest {
         List<Order> orders = ReactToContact.orders(squad, List.of(SLOT, SLOT, SLOT));
 
         assertEquals(SLOT, orders.get(0), "the soldier in contact fights on its reflex");
-        assertEquals(new Order.MoveTo(0, 64, 0, 3, 3, Risk.MEDIUM), orders.get(1));
-        assertEquals(new Order.MoveTo(0, 64, 0, 3, 3, Risk.MEDIUM), orders.get(2));
+        assertEquals(new Order.MoveTo(0, 64, 0, 3, 3, Risk.MEDIUM, true), orders.get(1));
+        assertEquals(new Order.MoveTo(0, 64, 0, 3, 3, Risk.MEDIUM, true), orders.get(2));
     }
 
     @Test

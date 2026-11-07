@@ -38,7 +38,11 @@ public final class DeterministicSoldier implements Soldier {
     /** Blocks per tick - 4 blocks/s at 20Hz, just under vanilla walk speed (~4.3), not tuned.
      * Revisit if the server starts correcting reported positions (it would send Player Position). */
     private static final double STEP = 0.2;
-    /** Sprinting, vanilla's 5.6 blocks/s: used when the goal is more than {@link #SPRINT_DISTANCE} away, by a soldier carrying rations. */
+    /**
+     * Sprinting, vanilla's 5.6 blocks/s: on a move to a goal more than {@link #SPRINT_DISTANCE} away by
+     * a soldier carrying rations, or whatever it carries when the time is worth the food - an urgent
+     * order, closing on a hostile it fights, moving under fire.
+     */
     static final double SPRINT_STEP = 0.28;
     /** Far enough from its goal that a soldier sprints to catch up - a moving principal, a distant slot. */
     static final double SPRINT_DISTANCE = 8;
@@ -315,7 +319,9 @@ public final class DeterministicSoldier implements Soldier {
                 if (range < KEEP_AWAY) {
                     stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
                 } else if (range > ATTACK_REACH) {
-                    stepToward(world, threat.x(), threat.z());
+                    // Closing on what it fights: every tick in the open is a tick under its fire.
+                    sprinting = canSprint();
+                    stepToward(world, threat.x(), threat.z(), sprinting ? SPRINT_STEP : STEP);
                 }
             }
             route = null; // wherever the fight ends up, the old route no longer starts here
@@ -570,12 +576,21 @@ public final class DeterministicSoldier implements Soldier {
             centreZ = waypoint.z() + 0.5;
         }
         boolean far = Math.hypot(goal.x() - position.x(), goal.z() - position.z()) > SPRINT_DISTANCE;
-        // Vanilla won't let a player sprint at food 6 or below; the server charges for every metre.
-        // The time saved is worth that food only while there's food to make it up: rations carried.
-        Condition known = condition;
+        // The server charges for every metre. An ordinary move is worth that food only while there's
+        // food to make it up - rations carried; an urgent one, or one under fire, whatever it carries.
         Kit carried = kit;
-        sprinting = far && (known == null || known.food() > SPRINT_FOOD_FLOOR) && carried != null && carried.rations() > 0;
+        boolean urgent = order instanceof Order.MoveTo move && move.urgent() || underFireTicks > 0;
+        sprinting = far && canSprint() && (urgent || carried != null && carried.rations() > 0);
         stepToward(world, centreX, centreZ, sprinting ? SPRINT_STEP : STEP);
+    }
+
+    /**
+     * Whether the game lets it sprint: not at food {@link #SPRINT_FOOD_FLOOR} or below, and not with
+     * its shield up - an item in use slows a player and stops a sprint.
+     */
+    private boolean canSprint() {
+        Condition known = condition;
+        return (known == null || known.food() > SPRINT_FOOD_FLOOR) && !shieldRaised();
     }
 
     /** Whether it carries a pickaxe, to cut steps into stone with - unknown kit carries none. */

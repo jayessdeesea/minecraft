@@ -18,9 +18,16 @@ public sealed interface Order {
      * {@code verticalTolerance} blocks (feet height) of (x, y, z). The tolerances are the soldier's
      * own freedom: it picks the route, around trees and up steps, and where inside the zone to
      * stop. A small vertical tolerance keeps it on one floor of a building. {@code risk} is how
-     * much health the soldier may spend on the way ({@link Risk}).
+     * much health the soldier may spend on the way ({@link Risk}). {@code urgent} says the time
+     * saved is worth food: catching a principal, going to a squadmate's aid - the soldier sprints
+     * whether or not it carries rations to make the food up.
      */
-    record MoveTo(double x, double y, double z, double horizontalTolerance, double verticalTolerance, Risk risk)
+    record MoveTo(double x, double y, double z, double horizontalTolerance, double verticalTolerance, Risk risk, boolean urgent)
             implements Order {
+
+        /** A move that isn't urgent. */
+        public MoveTo(double x, double y, double z, double horizontalTolerance, double verticalTolerance, Risk risk) {
+            this(x, y, z, horizontalTolerance, verticalTolerance, risk, false);
+        }
     }
 }

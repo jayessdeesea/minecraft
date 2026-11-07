@@ -4,20 +4,13 @@ priority: P1
 doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
 ---
 
-# Dodging, cover, and when sprinting is worth the food
+# Dodging, cover and breaking contact
 
 ## Why
 - **Nobody dodges.** A skeleton's arrows land on soldiers that stand still or walk straight at it,
   unless they carry a shield to raise (docs/military-doctrine.md § 8).
-- **Sprinting is weighed only crudely.** The server is told, so it charges the food; a soldier
-  sprints to a goal more than 8 blocks away only while it carries rations, and never at food 6 or
-  below (docs/military-doctrine.md § 10). Nothing marks a move as urgent, so a soldier without
-  rations walks even to catch a principal or close on a threat.
 
 ## Done when
-- **Urgent moves sprint.** Closing on a threat, catching a principal, crossing open ground under
-  fire: these sprint whatever the rations, since the time saved is worth the food. Ordinary moves
-  already sprint only with rations to make the food up.
 - **Cover is live for a bare-handed soldier** (docs/military-doctrine.md § 8). Against a skeleton
   among trees: 36 of 100 die taking cover, against 75 of 100 charging in. On flat ground there's
   rarely cover: 79 against 94. What's left:

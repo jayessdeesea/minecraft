@@ -172,7 +172,7 @@ the squad to falls.
 
 *How we use it:*
 - **The soldier's reflex.** A soldier in contact fights the nearest hostile at arm's length
-  (`DeterministicSoldier.tick`): it closes to its 3-block reach, strikes when its attack has
+  (`DeterministicSoldier.tick`): it closes to its 3-block reach at a sprint, strikes when its attack has
   recharged, backs off inside 2.5 blocks, which is outside a zombie's reach, and holds in
   between. It gets away from creepers instead. Losing health with no hostile within 8 blocks
   means being shot at, so for 5 seconds it looks out to 16 blocks, beyond a skeleton's 15-block
@@ -230,9 +230,11 @@ recomputed each squad cycle from where the principal is now:
 A soldier who respawns goes straight to its slot in the ring rather than linking up with the point
 man first (§6), and any soldier more than 8 blocks from its goal sprints, so the ring keeps up with
 a principal on the move. Sprinting is the game's, at the game's price: the soldier tells the
-server it's sprinting (Player Command), so the server charges the food it costs. It sprints only
-while it carries rations to make that food up, and never at food 6 or below, where vanilla won't
-let a player. The squad leader still chooses the interval and the risk. The soldiers find the principal by its
+server it's sprinting (Player Command), so the server charges the food it costs. An ordinary move
+sprints only while the soldier carries rations to make that food up. An urgent one sprints
+whatever it carries: the ring's moves, an intercept, a teammate going to support one in contact
+(§8), closing on a hostile it fights, and any move while under fire. Nobody sprints at food 6 or
+below, where vanilla won't let a player, or with a shield raised. The squad leader still chooses the interval and the risk. The soldiers find the principal by its
 offline-mode UUID among the entities they see; if none of them can see it, the squad holds the last
 known position. `!mission` ends the escort and hands the squad back to the general.
 

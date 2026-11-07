@@ -49,7 +49,7 @@ class EscortTest {
 
         List<Order> orders = Escort.intercept(squad, ring, PRINCIPAL, List.of(farAway, zombie));
 
-        assertEquals(new Order.MoveTo(110, 64, 100, 2, 3, Risk.LOW), orders.get(0), "Alice is nearer than Carol");
+        assertEquals(new Order.MoveTo(110, 64, 100, 2, 3, Risk.LOW, true), orders.get(0), "Alice is nearer than Carol, and goes at a sprint");
         assertEquals(ring.get(1), orders.get(1));
         assertEquals(ring.get(2), orders.get(2), "Carol holds the ring");
     }
