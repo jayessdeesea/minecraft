@@ -199,6 +199,9 @@ With the garrison stopped, `-Dprobe.name=Alice` joins as that soldier, where it 
 ground heights between, and ticks a soldier along it, printing where it gets to. A `SITREP` line
 marked `[NO BLOCK DATA HERE]` is a soldier standing where the world model has nothing: it reads
 as solid. `ClockLiveIT` prints the time of day as the app works it out, beside the server's own.
+To choose where a garrison's camp goes (`minecraft.camp`), `-Dcamp.survey=true` scores centres
+within 48 blocks of `site.x`/`site.z` by how much of the 17x17 round each is level ground, the
+flattest first, up to `-Dcamp.maxY` (72 by default), with the water each takes in.
 
 ```bash
 mvn -pl app test -Dtest=WorldProbeLiveIT -Dsurefire.failIfNoSpecifiedTests=false -Dprobe.name=Alice -Droute=-71,62,-47,-40,69,-17
