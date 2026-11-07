@@ -92,6 +92,45 @@ class WorldProbeLiveIT {
             System.out.println(plan.map(p -> "Best farm: water at " + p.water() + ", " + p.plot().size() + " cells to plant, "
                     + Math.round(Math.hypot(p.water().x() - x, p.water().z() - z)) + " blocks from the point.")
                     .orElse("No water within reach of ground to till: a dry farm, or none."));
+            // Camp sites: centres every 4 blocks within 48 of the site, each scored by how many of its
+            // 17x17 columns stand within a block of its typical ground - the flattest, lowest first.
+            if (Boolean.getBoolean("camp.survey")) {
+                record Site(int x, int z, int height, int level, int water) {
+                }
+                java.util.List<Site> sites = new java.util.ArrayList<>();
+                for (int cx = x - 48; cx <= x + 48; cx += 4) {
+                    for (int cz = z - 48; cz <= z + 48; cz += 4) {
+                        java.util.List<Integer> heights = new java.util.ArrayList<>();
+                        int water = 0;
+                        for (int dx = -8; dx <= 8; dx++) {
+                            for (int dz = -8; dz <= 8; dz++) {
+                                for (int y = 120; y > 40; y--) {
+                                    if (world.isWater(cx + dx, y, cz + dz)) {
+                                        water++;
+                                        break;
+                                    }
+                                    if (world.isSolid(cx + dx, y - 1, cz + dz) && !world.isSolid(cx + dx, y, cz + dz)
+                                            && !world.isSolid(cx + dx, y + 1, cz + dz)) {
+                                        heights.add(y);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (heights.size() < 200) {
+                            continue;
+                        }
+                        java.util.Collections.sort(heights);
+                        int typical = heights.get(heights.size() / 2);
+                        int level = (int) heights.stream().filter(h -> Math.abs(h - typical) <= 1).count();
+                        sites.add(new Site(cx, cz, typical, level, water));
+                    }
+                }
+                sites.stream().filter(site -> site.height() <= Integer.getInteger("camp.maxY", 72))
+                        .sorted(java.util.Comparator.comparingInt(Site::level).reversed()).limit(8)
+                        .forEach(site -> System.out.printf("Camp site x=%d z=%d: ground y=%d, %d of 289 columns level, %d water, %.0f from x=%d z=%d%n",
+                                site.x(), site.z(), site.height(), site.level(), site.water(), Math.hypot(site.x() - x, site.z() - z), x, z));
+            }
             String column = System.getProperty("column");
             if (column != null) {
                 int[] c = java.util.Arrays.stream(column.split(",")).mapToInt(Integer::parseInt).toArray();
