@@ -30,6 +30,7 @@ class MinerTest {
 
     private final Set<BlockPos> dug = new HashSet<>();
     private final Set<BlockPos> water = new HashSet<>();
+    private final Set<BlockPos> ore = new HashSet<>();
     private final List<Runnable> answers = new ArrayList<>();
 
     private final WorldView world = new WorldView() {
@@ -46,7 +47,14 @@ class MinerTest {
 
         @Override
         public Optional<Hardness> hardness(int x, int y, int z) {
-            return isSolid(x, y, z) ? Optional.of(new Hardness(0.5, Hardness.HAND)) : Optional.empty();
+            return !isSolid(x, y, z) ? Optional.empty()
+                    : isOre(x, y, z) ? Optional.of(new Hardness(3.0, 1)) : Optional.of(new Hardness(0.5, Hardness.HAND));
+        }
+
+        @Override
+        public boolean isOre(int x, int y, int z) {
+            BlockPos cell = new BlockPos(x, y, z);
+            return ore.contains(cell) && !dug.contains(cell);
         }
 
         @Override
@@ -70,7 +78,11 @@ class MinerTest {
             });
 
     private Miner.Progress dig(Staircase stairs, int ticks) {
-        Miner miner = new Miner("Alice", session, new Inventory());
+        return dig(stairs, ticks, new Inventory());
+    }
+
+    private Miner.Progress dig(Staircase stairs, int ticks, Inventory inventory) {
+        Miner miner = new Miner("Alice", session, inventory);
         Position soldier = new Position(0.5, GROUND, 0.5);
         Miner.Progress progress = null;
         for (int tick = 0; tick < ticks; tick++) {
@@ -111,5 +123,30 @@ class MinerTest {
         assertInstanceOf(Miner.Progress.Stopped.class, progress);
         assertTrue(((Miner.Progress.Stopped) progress).why().contains("water or lava"), progress.toString());
         assertTrue(!dug.containsAll(stairs.cells(4)), "the step by the water stays uncut");
+    }
+
+    @Test
+    void minesOreBesideTheStairsWithAPickaxeGoodEnoughButLeavesWhatItCantHarvest() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        BlockPos vein = stairs.step(2).offset(0, 0, 0);
+        // Outside the 3x3: two blocks out from the pillar, beside step 2's feet.
+        BlockPos beside = new BlockPos(stairs.step(2).x() + Integer.signum(stairs.step(2).x() - HEAD.x()) * 1,
+                stairs.step(2).y(), stairs.step(2).z() + (stairs.step(2).x() == HEAD.x() ? Integer.signum(stairs.step(2).z() - HEAD.z()) : 0));
+        ore.add(beside);
+        Inventory stonePickaxe = new Inventory();
+        stonePickaxe.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(1), 1});
+
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 3000, stonePickaxe));
+        assertTrue(dug.contains(beside), "the ore at " + beside + " beside " + vein + " is mined");
+
+        dug.clear();
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 3000));
+        assertTrue(!dug.contains(beside), "bare-handed, ore that drops nothing is left");
+    }
+
+    private static int pickaxe(int tier) {
+        return java.util.stream.IntStream.range(0, 4096)
+                .filter(id -> io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.miningTier(id).equals(java.util.OptionalInt.of(tier)))
+                .findFirst().orElseThrow();
     }
 }

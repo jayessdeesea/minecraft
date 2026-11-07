@@ -57,6 +57,8 @@ final class BlockClassRegistry {
      * in water a swimmer passes through: swum through at the surface. Filled while loading.
      */
     private static final java.util.BitSet WATER = new java.util.BitSet();
+    /** Ore of any kind: coal, iron, copper, gold, redstone, lapis, emerald, diamond, either stone. Filled while loading. */
+    private static final java.util.BitSet ORES = new java.util.BitSet();
     private static final java.util.Set<String> SWUM = java.util.Set.of("water", "seagrass", "tall_seagrass", "kelp", "kelp_plant");
     /** What a hoe tills into farmland: dirt, grass and dirt paths (coarse and rooted dirt till to dirt first). */
     private static final java.util.BitSet TILLABLE = new java.util.BitSet();
@@ -88,6 +90,10 @@ final class BlockClassRegistry {
 
     static boolean isWater(int stateId) {
         return stateId >= 0 && WATER.get(stateId);
+    }
+
+    static boolean isOre(int stateId) {
+        return stateId >= 0 && ORES.get(stateId);
     }
 
     static boolean isTillable(int stateId) {
@@ -144,6 +150,9 @@ final class BlockClassRegistry {
                     }
                     if (fields.length > 2 && (fields[2].equals("torch") || fields[2].equals("wall_torch"))) {
                         TORCHES.set(stateId);
+                    }
+                    if (fields.length > 2 && fields[2].endsWith("_ore")) {
+                        ORES.set(stateId);
                     }
                     if (fields.length > 2 && SWUM.contains(fields[2])) {
                         WATER.set(stateId);

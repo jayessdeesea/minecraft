@@ -63,6 +63,11 @@ public interface WorldView {
         return java.util.Optional.empty();
     }
 
+    /** Whether the block is ore of any kind: coal, iron, copper, gold, redstone, lapis, emerald, diamond. */
+    default boolean isOre(int x, int y, int z) {
+        return false;
+    }
+
     /** Whether the block is water, source or flowing - what a soldier swims in (it's also {@link #isHazard}). */
     default boolean isWater(int x, int y, int z) {
         return false;

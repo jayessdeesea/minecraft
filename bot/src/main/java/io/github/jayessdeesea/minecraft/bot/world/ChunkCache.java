@@ -121,6 +121,11 @@ public final class ChunkCache {
         return stateId == UNKNOWN ? java.util.Optional.empty() : BlockClassRegistry.hardness(stateId);
     }
 
+    /** Whether the block is ore of any kind - unknown blocks aren't. */
+    public boolean isOre(int x, int y, int z) {
+        return BlockClassRegistry.isOre(rawStateIdAt(x, y, z));
+    }
+
     /** Whether the block is water, source or flowing - unknown blocks aren't. */
     public boolean isWater(int x, int y, int z) {
         return BlockClassRegistry.isWater(rawStateIdAt(x, y, z));

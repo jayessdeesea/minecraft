@@ -504,7 +504,10 @@ the next. The rest hold the top, clear of the shaft. Until one of them has a pic
 makes one. The stairs' state is the world's, so a run stopped by a fight or a restart picks up
 where they end. A dig waits out the block's own break time: its hardness, and the pickaxe in hand
 against the least tier that gets its drop. Both come from the server jar (`bot.world.Hardness`;
-DEVELOPMENT.md § 7). The cutter reports `Mining` with its step. It stops with CANTCO where going on
+DEVELOPMENT.md § 7). Ore it can see on the way - beside its body or the step it cuts, outside the
+shaft's 3x3 so no step or pillar is holed - it mines first, when its pickaxe gets the drop and
+nothing liquid lies behind it; one the server won't break in 30 seconds is left. The cutter reports
+`Mining` with its step. It stops with CANTCO where going on
 would let in water or lava, or would leave a step with no floor over an open cave.
 
 ## Sources

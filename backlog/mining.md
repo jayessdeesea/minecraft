@@ -8,15 +8,12 @@ doctrine: ATP 3-34.81 (engineer reconnaissance); FM 4-0 (Class IV)
 # Mining: ore at depth, and bases on the way down
 
 ## Why
-A MINE squad cuts a staircase down (docs/military-doctrine.md § 16), but the stairs alone open
-only the ore that happens to lie in their 3x3. Iron is commonest around y=16 and diamonds near
+A MINE squad cuts a staircase down (docs/military-doctrine.md § 16) and mines the ore beside it,
+but that's only the ore that happens to lie against the shaft. Iron is commonest around y=16 and diamonds near
 y=-55, in veins a few blocks off any one shaft. A player at a camp near spawn digs down, sets up a
 working base at each mining level - y=32 and y=0, say - and runs tunnels out from it.
 
 ## Done when
-- **Ore in the walls.** A soldier cutting stairs, or walking them, mines ore it can see from the
-  stairs: coal, iron, copper, gold, redstone, lapis, diamond, with the pickaxe each needs.
-  Measured by a test whose stairs pass a vein.
 - **Branch tunnels.** At the bottom of the stairs, the squad runs straight 2-high tunnels out
   from the shaft, three blocks apart, lit with torches, and mines the ore they open. The LOGSTAT
   counts raw iron and diamonds.
