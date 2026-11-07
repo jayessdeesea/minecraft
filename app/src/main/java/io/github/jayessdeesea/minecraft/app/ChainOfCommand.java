@@ -191,14 +191,16 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         long now = System.currentTimeMillis();
         List<Sitrep> underGeneral = sitreps.stream().filter(s -> squads.get(s.squad()).escort().isEmpty()).toList();
         boolean newCantco = false;
+        boolean newContact = false;
         boolean unordered = false;
         for (Sitrep sitrep : underGeneral) {
             SquadCommand squad = squads.get(sitrep.squad());
             newCantco |= squad.newCantco();
+            newContact |= squad.newContact(sitrep.soldiers());
             unordered |= !squad.hasObjective();
         }
         if (!underGeneral.isEmpty() && (unordered || now - lastGeneralMillis >= GENERAL_PERIOD_MILLIS
-                || (newCantco && now - lastGeneralMillis >= MIN_GAP_MILLIS))) {
+                || ((newCantco || newContact) && now - lastGeneralMillis >= MIN_GAP_MILLIS))) {
             askGeneral(underGeneral, now);
         }
         for (Sitrep sitrep : sitreps) {

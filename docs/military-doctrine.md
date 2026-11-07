@@ -194,7 +194,11 @@ the squad to falls.
   can't close on keeps shooting.
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
-- **The squad leader** sees the contact in its next SITREP and can order something else.
+- **The squad leader and the general** hear of it at once: a soldier newly in contact is a contact
+  report, and the squad leader decides then, not at its next scheduled look, whether to fight on,
+  bypass or break contact. A squad newly in contact triggers the general the same way. Both keep
+  the same minimum gap between decisions as a CANTCO does, so a running fight doesn't flood the
+  models.
 
 In the combat simulation, three zombies on one soldier's flank kill a lone soldier 64 times in
 100. A squad spread 10 blocks apart without the drill still wins, but loses its flank soldier 66

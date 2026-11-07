@@ -48,6 +48,10 @@ final class SquadCommand {
     // The reports last answered - a decision is triggered early only when these change.
     private volatile Report reportAnswered = new Report.Idle();
     private volatile Set<String> cantcosAnswered = Set.of();
+    /** The soldiers in contact when the squad leader last decided - a new one is a contact report. */
+    private volatile Set<String> contactsAnswered = Set.of();
+    /** Whether any soldier was in contact at the last SITREP the general's trigger looked at. */
+    private volatile boolean contactReported;
     /** The player this squad is escorting, or null - set by the operator's thread. */
     private volatile String escort;
     private volatile boolean principalOutOfSight;
@@ -117,6 +121,17 @@ final class SquadCommand {
         return fresh;
     }
 
+    /**
+     * True the first time a SITREP shows the squad in contact after one that didn't - the general's
+     * early trigger, as a contact report goes up the chain (docs/military-doctrine.md § 8).
+     */
+    boolean newContact(List<SoldierStatus> squad) {
+        boolean inContact = squad.stream().anyMatch(s -> s.report() instanceof Report.InContact);
+        boolean fresh = inContact && !contactReported;
+        contactReported = inContact;
+        return fresh;
+    }
+
     void receiveObjective(Objective given) {
         squadLeader.receiveObjective(given);
         objective = given;
@@ -137,9 +152,18 @@ final class SquadCommand {
         Set<String> cantcos = squad.stream().filter(s -> s.report() instanceof Report.Cantco)
                 .map(SoldierStatus::name).collect(Collectors.toUnmodifiableSet());
         boolean newSoldierCantco = !cantcosAnswered.containsAll(cantcos);
+        // A soldier newly in contact is a contact report: the squad leader decides now whether to
+        // fight, bypass or break contact, not at its next scheduled look.
+        Set<String> contacts = squad.stream().filter(s -> s.report() instanceof Report.InContact)
+                .map(SoldierStatus::name).collect(Collectors.toUnmodifiableSet());
+        boolean newSoldierContact = !contactsAnswered.containsAll(contacts);
         if (objective != null && (newObjective || now - lastDecisionMillis >= SQUAD_PERIOD_MILLIS
-                || (newSoldierCantco && now - lastDecisionMillis >= minGapMillis))) {
+                || ((newSoldierCantco || newSoldierContact) && now - lastDecisionMillis >= minGapMillis))) {
+            if (newSoldierContact && !newObjective) {
+                LOG.info("[{}] contact report: {} in contact - the squad leader decides now", name, contacts);
+            }
             cantcosAnswered = cantcos;
+            contactsAnswered = contacts;
             decide(squad, terrain, now);
         }
     }
