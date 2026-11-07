@@ -98,6 +98,23 @@ public final class EntityTracker {
                 .toList();
     }
 
+    /**
+     * Animals killed for meat, in protocol 777's registry: cow 30, pig 101, sheep 114, chicken 26,
+     * rabbit 111, mooshroom 87. Each drops raw meat a soldier eats as a ration.
+     */
+    static final Set<Integer> GAME_TYPE_IDS = Set.of(30, 101, 114, 26, 111, 87);
+
+    /** Game - animals killed for meat - within {@code radius} of {@code center}, nearest first. */
+    public List<TrackedEntity> nearbyGame(Position center, double radius) {
+        double radiusSquared = radius * radius;
+        return entities.entrySet().stream()
+                .filter(e -> GAME_TYPE_IDS.contains(e.getValue().typeId))
+                .map(e -> new TrackedEntity(e.getKey(), e.getValue().typeId, e.getValue().position))
+                .filter(entity -> distanceSquared(center, entity.position()) <= radiusSquared)
+                .sorted(Comparator.comparingDouble(entity -> distanceSquared(center, entity.position())))
+                .toList();
+    }
+
     /** The entity type of a dropped item stack, {@code minecraft:item}, in protocol 777's registry. */
     static final int ITEM_TYPE_ID = 72;
     /** {@code minecraft:arrow} and {@code minecraft:spectral_arrow}, in protocol 777's registry: what skeletons and strays loose. */

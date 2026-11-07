@@ -90,8 +90,16 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     }
     private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time;
 
-    public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient, Roster roster) {
+    /**
+     * The operator's standing rule, when set: no squad spends the night in the open. Set it where a
+     * mission says so - a garrison - and leave it off where a scenario may need a squad out at night.
+     */
+    private final boolean shelterAtNight;
+
+    public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient, Roster roster,
+                          @org.springframework.beans.factory.annotation.Value("${minecraft.general.shelter-at-night}") boolean shelterAtNight) {
         this.general = general;
+        this.shelterAtNight = shelterAtNight;
         for (Roster.Squad squad : roster.squads()) {
             squads.put(squad.name(), new SquadCommand(squad.name(), new SpringAiSquadLeader(squad.name(), squadLeaderClient), this::transmit));
         }
@@ -104,6 +112,25 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     /** How the general's objectives find the ground: their heights are its guesses, the world's are known. */
     public void setGround(Ground ground) {
         this.ground = ground;
+    }
+
+    /**
+     * {@code objective}, or - at night, under {@link #shelterAtNight}, for a squad not sealed in a
+     * patrol base when the general's order leaves it in the open - a patrol base where the squad's
+     * point man stands. A guardrail, and a loud one: the general's own order is logged beside it.
+     */
+    Objective sheltered(Objective objective, io.github.jayessdeesea.minecraft.command.SquadStatus squad) {
+        io.github.jayessdeesea.minecraft.command.TimeOfDay now = time;
+        if (!shelterAtNight || now == null || !now.dark() || squad.holdingBase() || objective.patrolBase() || squad.soldiers().isEmpty()) {
+            return objective;
+        }
+        Position at = squad.soldiers().getFirst().position();
+        Objective shelter = grounded(new Objective("Build a patrol base where you stand and spend the night in it",
+                new Position(Math.floor(at.x()), at.y(), Math.floor(at.z())), "Squad safe from monsters until dawn",
+                new Objective.Task.PatrolBase()), squad.soldiers());
+        LOG.warn("[General -> {}] at night, out of a patrol base, ordered '{}' ({}) - the operator's rule shelters it instead, at {}",
+                squad.squadName(), objective.mission(), objective.task(), at(shelter.location()));
+        return shelter;
     }
 
     /**
@@ -298,7 +325,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                 long millis = System.currentTimeMillis() - started;
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
-                    Objective given = grounded(objectives.get(i), statuses.get(i).soldiers());
+                    Objective given = sheltered(grounded(objectives.get(i), statuses.get(i).soldiers()), statuses.get(i));
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
                         LOG.info("[General -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
                         continue;

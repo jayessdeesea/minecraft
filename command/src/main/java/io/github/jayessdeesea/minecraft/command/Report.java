@@ -59,6 +59,10 @@ public sealed interface Report {
     record Farming() implements Report {
     }
 
+    /** Hungry with nothing to eat: killing an animal for meat. */
+    record Hunting() implements Report {
+    }
+
     /** Planting the squad's tree farm: saplings in, and leaves broken for more. */
     record Planting() implements Report {
     }

@@ -16,6 +16,10 @@ minecraft:
     # The model the general thinks with: "anthropic" (a frontier model; needs ANTHROPIC_API_KEY)
     # or "ollama" (the local open-weight model, see compose.yaml).
     chat-model: ollama
+    # The operator's standing rule that no squad spends the night outside a patrol base: an order
+    # that leaves one in the open after dark is replaced by a patrol base where it stands. A garrison
+    # wants it; a scenario that sends squads out at night doesn't.
+    shelter-at-night: false
     # The operator's intent - the one order that comes from outside the chain of command.
     mission: >-
       Reconnoitre the terrain around the squad's start point and establish an observation post

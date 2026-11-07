@@ -261,6 +261,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, Gatherer> gatherers = new ConcurrentHashMap<>();
     /** Each connected soldier's farm work, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Farmer> farmers = new ConcurrentHashMap<>();
+    /** Each connected soldier's hunting, by name. */
+    private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Hunter> hunters = new ConcurrentHashMap<>();
+    /** Soldiers free to hunt when hungry: by day, out of contact, not walling in a base - squad loop writes, tick reads. */
+    private final java.util.Set<String> huntAllowed = ConcurrentHashMap.newKeySet();
+    /** At this food level or below, with no rations, a soldier free to hunts for meat: it has missed a meal or two. */
+    static final int HUNT_BELOW_FOOD = 14;
     /** Each connected soldier's tree planting, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Forester> foresters = new ConcurrentHashMap<>();
     /** The tree farm each soldier plants, while its squad's objective is one - squad loop writes, tick reads. */
@@ -712,6 +718,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             } else {
                 farming.remove(soldierName);
             }
+            boolean night = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
+            if (!night && !squadInContact && building == null) {
+                huntAllowed.add(soldierName);
+            } else {
+                huntAllowed.remove(soldierName);
+            }
             if (trees != null && !squadInContact) {
                 planting.put(soldierName, trees);
             } else {
@@ -794,7 +806,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             opening.remove(soldierName);
             Armourer armourer = armourers.get(soldierName);
             Gatherer gatherer = gatherers.get(soldierName);
-            Optional<Position> stand = armourer == null ? Optional.empty() : armourer.standAt();
+            // Food first: a hungry soldier chasing an animal is wherever the animal is.
+            Optional<Position> stand = Optional.ofNullable(hunters.get(soldierName)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Hunter::standAt);
+            if (stand.isEmpty() && armourer != null) {
+                stand = armourer.standAt();
+            }
             if (stand.isEmpty() && depositors.containsKey(soldierName)) {
                 stand = depositors.get(soldierName).standAt();
             }
@@ -1212,6 +1228,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.supply.Lamplighter lamplighter = new io.github.jayessdeesea.minecraft.bot.supply.Lamplighter(
                 name, inventory, footing, treeClaims);
         lamplighters.put(name, lamplighter);
+        io.github.jayessdeesea.minecraft.bot.supply.Hunter hunter = new io.github.jayessdeesea.minecraft.bot.supply.Hunter(name);
+        hunters.put(name, hunter);
         io.github.jayessdeesea.minecraft.bot.supply.Miner miner = new io.github.jayessdeesea.minecraft.bot.supply.Miner(name, session, inventory);
         miners.put(name, miner);
 
@@ -1306,6 +1324,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             turns.put(Hands.Routine.RATIONS, turn(rations::active,
                     free -> rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD), free && !threatened,
                             soldier.yaw(), soldier.pitch())));
+            Kit eating = status.condition().flatMap(c -> c.kit()).orElse(null);
+            boolean hungry = status.condition().map(c -> c.food() <= HUNT_BELOW_FOOD).orElse(false)
+                    && eating != null && eating.rations() == 0;
+            turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), world,
+                    free && hungry && huntAllowed.contains(name) && !inContact,
+                    io.github.jayessdeesea.minecraft.bot.world.WeaponStats.melee(eating == null ? Optional.empty() : eating.weapon()).ticksToCharge())
+                    .ifPresent(target -> {
+                        LOG.info("{} strikes the animal it hunts, entity {}", name, target);
+                        session.attack(target);
+                    })));
             turns.put(Hands.Routine.ARMOURER, turn(armourer::active,
                     free -> armourer.tick(status.position(), world, free ? craftable : java.util.Set.of(), threatened)));
             turns.put(Hands.Routine.BUILDER, turn(() -> fort != null && fort.allInside() && !builder.done(), free -> {
@@ -1364,6 +1392,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     ? new Report.Mining(step + 1, steps)
                     : stairs != null && stairsProgress.get(name) instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Stopped(String why)
                     ? new Report.Cantco("can't cut the staircase further: " + why)
+                    : hunter.active() ? new Report.Hunting()
                     : forester.active() ? new Report.Planting()
                     : grove != null && forester.failure().isPresent() && !io.github.jayessdeesea.minecraft.bot.supply.Forester.planted(world, grove)
                     ? new Report.Cantco("can't plant the tree farm: " + forester.failure().get())

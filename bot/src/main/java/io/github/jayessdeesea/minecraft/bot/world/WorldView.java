@@ -117,6 +117,10 @@ public interface WorldView {
     }
 
     /** Where the dropped items within {@code radius} of {@code center} are, nearest first. A view that tracks no entities sees none. */
+    default List<TrackedEntity> gameNear(Position center, double radius) {
+        return List.of();
+    }
+
     default List<Position> itemsNear(Position center, double radius) {
         return List.of();
     }

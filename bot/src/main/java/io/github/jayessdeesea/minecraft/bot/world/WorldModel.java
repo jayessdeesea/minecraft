@@ -114,6 +114,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public List<TrackedEntity> gameNear(Position center, double radius) {
+        return entities.nearbyGame(center, radius);
+    }
+
+    @Override
     public List<Position> itemsNear(Position center, double radius) {
         return entities.nearbyItems(center, radius);
     }

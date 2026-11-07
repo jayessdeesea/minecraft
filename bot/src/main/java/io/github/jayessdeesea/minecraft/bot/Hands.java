@@ -27,6 +27,8 @@ public final class Hands {
         TORCHMAKER,
         /** Eating. */
         RATIONS,
+        /** Killing an animal for food, with nothing left to eat. */
+        HUNTER,
         /** Making its own kit: a weapon, tools, armour. */
         ARMOURER,
         /** Walling in a patrol base. */
