@@ -35,6 +35,12 @@ public final class Hands {
         DEPOSITOR,
         /** Handing logs to a squadmate. */
         HANDOVER,
+        /** Cutting the squad's staircase down. */
+        MINER,
+        /** Putting torches down on the ground the squad secures. */
+        LAMPLIGHTER,
+        /** Keeping the squad's farm. */
+        FARMER,
         /** Chopping or quarrying for the squad. */
         GATHERER
     }

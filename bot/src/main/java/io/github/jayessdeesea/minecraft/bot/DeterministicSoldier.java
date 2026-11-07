@@ -92,6 +92,12 @@ public final class DeterministicSoldier implements Soldier {
     private static final double BODY_HEIGHT = 1.8;
     private static final double HALF_WIDTH = 0.3; // a player's box is 0.6 x 1.8 x 0.6
     private static final double EPSILON = 1e-9;
+    /** Swimming at the surface, blocks per tick: about vanilla's 2 blocks/s, half a walk. */
+    static final double SWIM_STEP = 0.1;
+    /** Afloat, the feet this far into the top block of water: the head stays out, so no drowning. */
+    static final double SWIM_FLOAT = 0.2;
+    /** Blocks per tick rising or settling in water, and climbing out onto a bank. */
+    static final double SWIM_RISE = 0.2;
 
     private final String name;
     private volatile Position position;
@@ -100,6 +106,10 @@ public final class DeterministicSoldier implements Soldier {
     // Tick-loop-only, like position's writes - no other thread reads it.
     private double verticalVelocity = 0;
     private volatile boolean onGround = true;
+    /** Whether it's swimming: its feet in water. Tick loop writes. */
+    private volatile boolean afloat;
+    /** Rising out of the water onto a bank this tick: the water doesn't settle it back. Tick loop only. */
+    private boolean climbingOut;
     private volatile Report task;
     // Look direction, written by the tick loop, read by the caller reporting it.
     private volatile float yaw;
@@ -537,7 +547,7 @@ public final class DeterministicSoldier implements Soldier {
             report = new Report.Idle();
             return;
         }
-        if (onGround && goal.contains(BlockPos.containing(position.x(), position.y(), position.z()))) {
+        if ((onGround || afloat) && goal.contains(BlockPos.containing(position.x(), position.y(), position.z()))) {
             route = null;
             failedPlans = 0;
             // A goal finer than half a block wants a spot, not just a cell - inside a hut a body off
@@ -558,7 +568,7 @@ public final class DeterministicSoldier implements Soldier {
         }
         boolean replan = route == null || routeIndex >= route.size()
                 || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS;
-        if (replan && onGround) {
+        if (replan && (onGround || afloat)) {
             boolean stuck = stuckTicks >= STUCK_TICKS;
             Pathfinder.Result plan = Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), goal,
                     PLAN_BUDGET, fallAllowance(current), pillarBlocks(), carriesPickaxe());
@@ -617,7 +627,7 @@ public final class DeterministicSoldier implements Soldier {
      */
     private boolean canSprint() {
         Condition known = condition;
-        return (known == null || known.food() > SPRINT_FOOD_FLOOR) && !shieldRaised();
+        return (known == null || known.food() > SPRINT_FOOD_FLOOR) && !shieldRaised() && !afloat;
     }
 
     /** Whether it carries a pickaxe, to cut steps into stone with - unknown kit carries none. */
@@ -798,6 +808,28 @@ public final class DeterministicSoldier implements Soldier {
         double x = position.x();
         double z = position.z();
         double y = position.y();
+        int fx = (int) Math.floor(x);
+        int fz = (int) Math.floor(z);
+        int feet = (int) Math.floor(y + EPSILON);
+        if (world.isWater(fx, feet, fz)) {
+            // Afloat: no gravity, no fall - the body settles to the surface, head out.
+            afloat = true;
+            onGround = false;
+            verticalVelocity = 0;
+            if (climbingOut) {
+                climbingOut = false;
+                return;
+            }
+            int top = feet;
+            while (world.isWater(fx, top + 1, fz)) {
+                top++;
+            }
+            double rise = Math.max(-SWIM_RISE, Math.min(SWIM_RISE, top + SWIM_FLOAT - y));
+            position = new Position(x, y + rise, z);
+            return;
+        }
+        afloat = false;
+        climbingOut = false;
         double velocity = onGround ? -GRAVITY * DRAG : verticalVelocity;
         double nextY = y + velocity;
 
@@ -821,14 +853,19 @@ public final class DeterministicSoldier implements Soldier {
         onGround = false;
     }
 
-    /** Room for the whole body, and no hazard (water, fire) to step into - including when retreating. */
+    /** Room for the whole body, and no hazard but water (lava, fire) to step into - including when retreating. */
     private static boolean bodyFits(WorldView world, double x, double y, double z) {
         int minY = (int) Math.floor(y);
         int maxY = (int) Math.floor(y + BODY_HEIGHT - EPSILON);
-        return !anySolid(world, x, z, minY, maxY) && !anyHazard(world, x, z, minY, maxY);
+        return !anySolid(world, x, z, minY, maxY) && !anyHazard(world, x, z, minY, maxY, false);
     }
 
     private static boolean anyHazard(WorldView world, double x, double z, int minY, int maxY) {
+        return anyHazard(world, x, z, minY, maxY, true);
+    }
+
+    /** Whether any block in rows {@code minY..maxY} under the body's footprint is a hazard - water only if {@code water}. */
+    private static boolean anyHazard(WorldView world, double x, double z, int minY, int maxY, boolean water) {
         int minX = (int) Math.floor(x - HALF_WIDTH);
         int maxX = (int) Math.floor(x + HALF_WIDTH - EPSILON);
         int minZ = (int) Math.floor(z - HALF_WIDTH);
@@ -836,7 +873,7 @@ public final class DeterministicSoldier implements Soldier {
         for (int bx = minX; bx <= maxX; bx++) {
             for (int bz = minZ; bz <= maxZ; bz++) {
                 for (int by = minY; by <= maxY; by++) {
-                    if (world.isHazard(bx, by, bz)) {
+                    if (world.isHazard(bx, by, bz) && (water || !world.isWater(bx, by, bz))) {
                         return true;
                     }
                 }
@@ -868,7 +905,7 @@ public final class DeterministicSoldier implements Soldier {
     }
 
     private void stepToward(WorldView world, double targetX, double targetZ, double pace) {
-        double step = shieldRaised() ? pace * SHIELD_SLOWDOWN : pace;
+        double step = (shieldRaised() ? pace * SHIELD_SLOWDOWN : pace) * (afloat ? SWIM_STEP / STEP : 1);
         double dx = targetX - position.x();
         double dz = targetZ - position.z();
         double distance = Math.hypot(dx, dz);
@@ -884,6 +921,11 @@ public final class DeterministicSoldier implements Soldier {
         double y = position.y();
         if (bodyFits(world, nextX, y, nextZ)) {
             position = new Position(nextX, y, nextZ);
+        } else if (afloat && bodyFits(world, nextX, Math.floor(y) + 1, nextZ)
+                && bodyFits(world, position.x(), Math.floor(y) + 1, position.z())) {
+            // A bank one block above the water: rise out of it, then step on once clear of the edge.
+            position = new Position(position.x(), Math.min(y + SWIM_RISE, Math.floor(y) + 1), position.z());
+            climbingOut = true;
         } else if (onGround && !anyHazard(world, nextX, nextZ, (int) Math.floor(y), (int) Math.floor(y))
                 && bodyFits(world, nextX, Math.floor(y) + 1, nextZ)
                 && bodyFits(world, position.x(), Math.floor(y) + 1, position.z())) {

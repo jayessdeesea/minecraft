@@ -25,7 +25,9 @@ import java.util.PriorityQueue;
  * where they get somewhere a walk can't; anywhere else they'd spend the search on open air. And any
  * soldier can dig a step into a slope too steep to jump: {@link #stepCut} cells of soil by hand, or
  * of stone too with a pickaxe.
- * Hazards (water, lava, fire) are never entered - no swimming, no ladders.
+ * Water is swum at the surface - in from the bank, level or a drop down, across, and out onto
+ * ground level with the water or one block up - at {@link #SWIM_COST} a block: a soldier is never
+ * stopped by a pond or a river. Other hazards (lava, fire) are never entered; no ladders.
  *
  * <p>A goal outside the budget isn't a failure: the result is a path to the explored cell that
  * got closest, flagged {@code reachesGoal = false}, and the caller re-plans from there. That's how
@@ -46,6 +48,8 @@ public final class Pathfinder {
     static final double DIG_COST = 5.0;
     /** Each block of stone dug for a step: about two seconds with a wooden pickaxe, eight blocks' walk. */
     static final double STONE_DIG_COST = 8.0;
+    /** A block swum: about half walking pace. */
+    static final double SWIM_COST = 2.5;
     private static final int[][] ORTHOGONAL = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
     private static final int[][] DIAGONALS = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 
@@ -57,6 +61,16 @@ public final class Pathfinder {
 
     public static boolean standable(WorldView world, BlockPos cell) {
         return clear(world, cell) && world.isSolid(cell.x(), cell.y() - 1, cell.z());
+    }
+
+    /** Afloat: water at the feet and open air at the head - the surface, swum with the head out. */
+    public static boolean swimmable(WorldView world, BlockPos cell) {
+        return world.isWater(cell.x(), cell.y(), cell.z()) && open(world, cell.x(), cell.y() + 1, cell.z());
+    }
+
+    /** Somewhere a soldier can be between moves: on its feet, or afloat. */
+    public static boolean footing(WorldView world, BlockPos cell) {
+        return standable(world, cell) || swimmable(world, cell);
     }
 
     /** Room for the body: this cell and the one above are neither solid nor hazardous (water, fire). */
@@ -163,7 +177,7 @@ public final class Pathfinder {
     public static Map<BlockPos, Integer> climbs(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded,
                                                 int blocks, boolean pickaxe) {
         Map<BlockPos, Integer> fewest = new HashMap<>();
-        if (!standable(world, start)) {
+        if (!footing(world, start)) {
             return fewest;
         }
         // 0-1 breadth-first: a walk costs no blocks and goes to the front, a pillar step one and
@@ -198,19 +212,27 @@ public final class Pathfinder {
 
     private static List<Move> moves(WorldView world, BlockPos from, FallAllowance falls, boolean canPillar, boolean pickaxe) {
         List<Move> moves = new ArrayList<>(9);
-        if (canPillar && open(world, from.x(), from.y() + 2, from.z())) {
+        boolean afloat = swimmable(world, from);
+        if (canPillar && !afloat && open(world, from.x(), from.y() + 2, from.z())) {
             moves.add(new Move(from.offset(0, 1, 0), PILLAR_COST, true)); // a block placed where it stood
         }
         for (int[] d : ORTHOGONAL) {
             BlockPos level = from.offset(d[0], 0, d[1]);
             if (standable(world, level)) {
-                moves.add(new Move(level, 1));
+                moves.add(new Move(level, afloat ? SWIM_COST : 1));
                 continue;
             }
             BlockPos up = from.offset(d[0], 1, d[1]);
             if (standable(world, up) && !world.isSolid(from.x(), from.y() + 2, from.z())) {
                 moves.add(new Move(up, JUMP_COST));
                 continue;
+            }
+            if (swimmable(world, level)) {
+                moves.add(new Move(level, SWIM_COST));
+                continue;
+            }
+            if (afloat) {
+                continue; // no step is cut, nor drop walked off, from the water
             }
             if (world.isSolid(level.x(), level.y(), level.z())) {
                 // A step too high to jump: cut it lower.
@@ -226,7 +248,10 @@ public final class Pathfinder {
                 for (int drop = 1; drop <= deepest; drop++) {
                     BlockPos down = from.offset(d[0], -drop, d[1]);
                     if (!open(world, down.x(), down.y(), down.z())) {
-                        break; // landed on something that isn't standable (a 1-high gap, water)
+                        if (swimmable(world, down)) {
+                            moves.add(new Move(down, SWIM_COST + drop * 0.5)); // water breaks the fall
+                        }
+                        break; // landed on something that isn't standable (a 1-high gap, lava)
                     }
                     if (standable(world, down)) {
                         double damage = Math.max(0, drop - MAX_DROP) * falls.damageFactor();
@@ -238,7 +263,12 @@ public final class Pathfinder {
         }
         for (int[] d : DIAGONALS) {
             BlockPos diagonal = from.offset(d[0], 0, d[1]);
-            if (standable(world, diagonal)
+            if (afloat && swimmable(world, diagonal)
+                    && swimmable(world, from.offset(d[0], 0, 0)) && swimmable(world, from.offset(0, 0, d[1]))) {
+                moves.add(new Move(diagonal, SWIM_COST * DIAGONAL));
+                continue;
+            }
+            if (!afloat && standable(world, diagonal)
                     && clear(world, from.offset(d[0], 0, 0))
                     && clear(world, from.offset(0, 0, d[1]))) {
                 moves.add(new Move(diagonal, DIAGONAL));

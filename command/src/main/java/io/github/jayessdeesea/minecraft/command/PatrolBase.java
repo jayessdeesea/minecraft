@@ -147,29 +147,40 @@ public final class PatrolBase {
     private PatrolBase() {
     }
 
-    /** The most open cells a room can hold and still be one a soldier is shut in: a 3x3 hut is 18. */
-    static final int MAX_ROOM_CELLS = 32;
+    /** The most floor a room can have and still be one a soldier is shut in: a 3x3 hut is 9. */
+    static final int MAX_ROOM_CELLS = 16;
 
     /**
-     * The room {@code soldier} is shut in, if it is: the open cells a flood fill from where it stands,
-     * through anything not {@code solid}, reaches - when that runs out within {@value #MAX_ROOM_CELLS}
-     * cells. Its floor is those open cells at the soldier's feet. Read from the world, not
-     * remembered, so a squad that wakes up sealed in - after a restart, say - knows it; the room
+     * The room {@code soldier} is shut in, if it is: the cells at its feet a flood fill from where it
+     * stands reaches through gaps a body fits through - open at the feet and at the head - when that
+     * runs out within {@value #MAX_ROOM_CELLS} cells, with no block one high to step up onto and out
+     * and no hole in the floor to drop through.
+     * A gap one block high is wall: a soldier walled in by a half-built hut is as shut in as one in a
+     * sealed one. Read from the world, not
+     * remembered, so a squad that wakes up shut in - after a restart, say - knows it; the room
      * needn't be one the squad built. Nothing to build: {@code cells} is empty. A cell nobody knows
      * reads as open to {@code solid}, so ground not loaded yet never shuts anyone in.
      */
     public static java.util.Optional<Plan> enclosing(Position soldier, Predicate<Position> solid) {
         Position feet = new Position(Math.floor(soldier.x()), Math.floor(soldier.y()), Math.floor(soldier.z()));
-        if (solid.test(feet)) {
+        Predicate<Position> fits = cell -> !solid.test(cell) && !solid.test(new Position(cell.x(), cell.y() + 1, cell.z()));
+        if (!fits.test(feet)) {
             return java.util.Optional.empty();
         }
         java.util.Set<Position> room = new java.util.LinkedHashSet<>(List.of(feet));
         java.util.ArrayDeque<Position> frontier = new java.util.ArrayDeque<>(room);
         while (!frontier.isEmpty()) {
             Position cell = frontier.poll();
-            for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
-                Position next = new Position(cell.x() + d[0], cell.y() + d[1], cell.z() + d[2]);
-                if (!solid.test(next) && room.add(next)) {
+            if (!solid.test(new Position(cell.x(), cell.y() - 1, cell.z()))) {
+                return java.util.Optional.empty(); // a way down and out
+            }
+            for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                Position next = new Position(cell.x() + d[0], cell.y(), cell.z() + d[1]);
+                if (!fits.test(next) && fits.test(new Position(next.x(), next.y() + 1, next.z()))
+                        && !solid.test(new Position(cell.x(), cell.y() + 2, cell.z()))) {
+                    return java.util.Optional.empty(); // a step up and out
+                }
+                if (fits.test(next) && room.add(next)) {
                     if (room.size() > MAX_ROOM_CELLS) {
                         return java.util.Optional.empty();
                     }
@@ -177,7 +188,7 @@ public final class PatrolBase {
                 }
             }
         }
-        List<Position> floor = room.stream().filter(cell -> cell.y() == feet.y())
+        List<Position> floor = room.stream()
                 .sorted(java.util.Comparator.comparingDouble(Position::z).thenComparingDouble(Position::x)).toList();
         List<Position> stands = floor.stream().map(cell -> new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5)).toList();
         return java.util.Optional.of(new Plan(stands, floor, List.of()));

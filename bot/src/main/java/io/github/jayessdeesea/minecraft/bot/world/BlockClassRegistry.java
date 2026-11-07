@@ -38,6 +38,10 @@ final class BlockClassRegistry {
         WORKSTATION,
         /** Collision 1.5 blocks high (fences, walls, closed gates): blocks the cell above too. */
         TALL,
+        /** Mined with a pickaxe, solid like {@link #SOLID}: deepslate, andesite, tuff, the ores - its {@link Hardness} rides along. */
+        ROCK,
+        /** Dug by hand, solid like {@link #SOLID}, and falls into what's dug under it: sand, gravel. */
+        GRIT,
         /** Never stand in or walk through: liquids, waterlogged or underwater blocks, fire, powder snow. */
         HAZARD
     }
@@ -48,6 +52,12 @@ final class BlockClassRegistry {
     private static final java.util.BitSet TORCHES = new java.util.BitSet();
     /** Water source blocks (level 0): what a farm is tilled beside. Filled while loading. */
     private static final java.util.BitSet WATER_SOURCES = new java.util.BitSet();
+    /**
+     * Water, source or flowing, and the plants that grow only in it - seagrass and kelp, which stand
+     * in water a swimmer passes through: swum through at the surface. Filled while loading.
+     */
+    private static final java.util.BitSet WATER = new java.util.BitSet();
+    private static final java.util.Set<String> SWUM = java.util.Set.of("water", "seagrass", "tall_seagrass", "kelp", "kelp_plant");
     /** What a hoe tills into farmland: dirt, grass and dirt paths (coarse and rooted dirt till to dirt first). */
     private static final java.util.BitSet TILLABLE = new java.util.BitSet();
     /** Short and tall grass: broken for wheat seeds. Filled while loading. */
@@ -56,6 +66,8 @@ final class BlockClassRegistry {
     private static final java.util.Map<Integer, Integer> WHEAT_AGES = new java.util.HashMap<>();
     /** Wheat's last growth stage: ripe, and broken for wheat and seeds. */
     static final int RIPE = 7;
+    /** What digging each {@link BlockClass#ROCK} or {@link BlockClass#GRIT} state takes. Filled while loading. */
+    private static final java.util.Map<Integer, Hardness> HARDNESS = new java.util.HashMap<>();
     /** Which workstation each {@link BlockClass#WORKSTATION} state is. Filled while loading. */
     private static final java.util.Map<Integer, Workstation> WORKSTATIONS = new java.util.HashMap<>();
     private static final BlockClass[] CLASSES = load();
@@ -74,12 +86,30 @@ final class BlockClassRegistry {
         return stateId >= 0 && WATER_SOURCES.get(stateId);
     }
 
+    static boolean isWater(int stateId) {
+        return stateId >= 0 && WATER.get(stateId);
+    }
+
     static boolean isTillable(int stateId) {
         return stateId >= 0 && TILLABLE.get(stateId);
     }
 
     static boolean isGrassPlant(int stateId) {
         return stateId >= 0 && GRASS_PLANTS.get(stateId);
+    }
+
+    /**
+     * What digging {@code stateId} takes, for the blocks a soldier digs: rock and grit as generated,
+     * plain stone, iron ore and soil as vanilla has them. Empty for anything else.
+     */
+    static java.util.Optional<Hardness> hardness(int stateId) {
+        return switch (classOf(stateId)) {
+            case STONE -> java.util.Optional.of(new Hardness(1.5, 0));
+            case IRON_ORE -> java.util.Optional.of(new Hardness(3.0, 1));
+            case SOIL -> java.util.Optional.of(new Hardness(0.65, Hardness.HAND));
+            case ROCK, GRIT -> java.util.Optional.of(HARDNESS.get(stateId));
+            default -> java.util.Optional.empty();
+        };
     }
 
     /** {@code stateId}'s growth stage if it's wheat. */
@@ -115,6 +145,9 @@ final class BlockClassRegistry {
                     if (fields.length > 2 && (fields[2].equals("torch") || fields[2].equals("wall_torch"))) {
                         TORCHES.set(stateId);
                     }
+                    if (fields.length > 2 && SWUM.contains(fields[2])) {
+                        WATER.set(stateId);
+                    }
                     if (fields.length > 3 && fields[2].equals("water") && fields[3].equals("level=0")) {
                         WATER_SOURCES.set(stateId);
                     }
@@ -136,6 +169,14 @@ final class BlockClassRegistry {
                         case "D" -> BlockClass.SOIL;
                         case "O" -> BlockClass.IRON_ORE;
                         case "F" -> BlockClass.FARMLAND;
+                        case "R" -> {
+                            HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Integer.parseInt(fields[4])));
+                            yield BlockClass.ROCK;
+                        }
+                        case "G" -> {
+                            HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Hardness.HAND));
+                            yield BlockClass.GRIT;
+                        }
                         case "W" -> {
                             WORKSTATIONS.put(stateId, Workstation.valueOf(fields[2].toUpperCase(java.util.Locale.ROOT)));
                             yield BlockClass.WORKSTATION;

@@ -71,8 +71,8 @@ height (y) there:
 - a number like 72: land your point man can walk to, at height 72;
 - a number with a ^, like 72^: land he can reach only by climbing - pillaring up on cobblestone
   the squad carries, which it then no longer has for building. A walk is better when there is one;
-- a number with an x, like 72x: land he cannot reach from where he is (cliff, wall, water between);
-- ~~ : water or lava - soldiers don't swim;
+- a number with an x, like 72x: land he cannot reach from where he is (cliff, wall, lava between);
+- ~~ : water or lava - soldiers swim across water to the land beyond, but don't stop in it;
 - ?? : unknown (not loaded yet).
 Higher numbers are higher ground. Prefer objectives on reachable cells (no x). Use the cell's
 height as the objective's y.

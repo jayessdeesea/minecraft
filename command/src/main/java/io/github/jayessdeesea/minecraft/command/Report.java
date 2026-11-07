@@ -55,6 +55,18 @@ public sealed interface Report {
     record Fortifying() implements Report {
     }
 
+    /** Working the squad's farm: tilling, planting, harvesting, baking bread. */
+    record Farming() implements Report {
+    }
+
+    /** Lighting the ground round the objective so no monster spawns on it - making torches, putting them down. */
+    record Securing() implements Report {
+    }
+
+    /** Cutting the squad's staircase down: on step {@code step} of {@code steps}. */
+    record Mining(int step, int steps) implements Report {
+    }
+
     /** Handing logs to a squadmate who needs them for a tool (cross-leveling, docs/military-doctrine.md §13). */
     record CrossLeveling(String to, int logs) implements Report {
     }

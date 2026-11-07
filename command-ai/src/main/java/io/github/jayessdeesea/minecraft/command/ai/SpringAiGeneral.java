@@ -81,7 +81,7 @@ public final class SpringAiGeneral implements General {
     static String describe(TimeOfDay time) {
         String clock = time.running() ? "" : " The clock is stopped: it stays this way.";
         if (time.dark()) {
-            return "Night: monsters spawn anywhere dark." + (time.running()
+            return "Night - already dark: monsters spawn anywhere unlit." + (time.running()
                     ? String.format(Locale.ROOT, " Light again in %s.", minutes(time.ticksUntilLight())) : clock);
         }
         return "Day." + (time.running()
@@ -127,7 +127,14 @@ public final class SpringAiGeneral implements General {
             return "Standing order: none yet - there is nothing to keep: give it an objective, with \"keep\": false.";
         }
         Objective standing = squad.standing().get();
-        String task = standing.patrolBase() ? "PATROL_BASE" : standing.gather().map(Enum::name).orElse("NONE");
+        String task = switch (standing.task()) {
+            case Objective.Task.None() -> "NONE";
+            case Objective.Task.Gather(var resource) -> resource.name();
+            case Objective.Task.PatrolBase() -> "PATROL_BASE";
+            case Objective.Task.Farm() -> "FARM";
+            case Objective.Task.Secure() -> "SECURE";
+            case Objective.Task.Mine() -> "MINE";
+        };
         StringBuilder line = new StringBuilder("Standing order: ").append(task).append(" - ").append(standing.mission())
                 .append(" at ").append(squad.soldiers().isEmpty() ? SpringAiSquadLeader.describe(standing.location())
                         : relative(standing.location(), squad.soldiers().getFirst().position()))
@@ -145,12 +152,16 @@ public final class SpringAiGeneral implements General {
     /** What the squad can see to gather, with distance and direction from its point man. */
     static String describeResources(SquadStatus squad) {
         if (squad.resources().isEmpty()) {
-            return "Resources seen: no trees or exposed stone within 64 blocks.";
+            return "Resources seen: no trees, exposed stone or ground to farm within 64 blocks.";
         }
         Position from = squad.soldiers().isEmpty() ? null : squad.soldiers().getFirst().position();
         StringBuilder line = new StringBuilder("Resources seen:");
         for (io.github.jayessdeesea.minecraft.command.ResourceSite site : squad.resources()) {
-            line.append(' ').append(site.amount()).append(' ').append(site.resource() == io.github.jayessdeesea.minecraft.command.Resource.WOOD ? "logs" : "exposed stone")
+            line.append(' ').append(site.amount()).append(' ').append(switch (site.resource()) {
+                        case WOOD -> "logs";
+                        case STONE -> "exposed stone";
+                        case FARMLAND -> "cells of ground to farm by the water";
+                    })
                     .append(" around ").append(from == null ? SpringAiSquadLeader.describe(site.location()) : relative(site.location(), from));
             if (from != null) {
                 double dx = site.location().x() - from.x();
@@ -275,10 +286,14 @@ public final class SpringAiGeneral implements General {
             }
             objectives.add(new Objective(objective.mission(), new Position(objective.x(), objective.y(), objective.z()),
                     objective.intent(), switch (objective.task()) {
-                        case NONE, PATROL_BASE -> java.util.Optional.empty();
-                        case WOOD -> java.util.Optional.of(io.github.jayessdeesea.minecraft.command.Resource.WOOD);
-                        case STONE -> java.util.Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE);
-                    }, objective.task() == GeneralReply.Task.PATROL_BASE));
+                        case NONE -> new Objective.Task.None();
+                        case WOOD -> new Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.WOOD);
+                        case STONE -> new Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.STONE);
+                        case PATROL_BASE -> new Objective.Task.PatrolBase();
+                        case FARM -> new Objective.Task.Farm();
+                        case SECURE -> new Objective.Task.Secure();
+                        case MINE -> new Objective.Task.Mine();
+                    }));
         }
         if (bySquad.size() != squadStatuses.size()) {
             throw new IllegalStateException("objectives for squads that weren't listed: " + reply);

@@ -89,7 +89,7 @@ public final class Breacher {
             }
             case Script.Status.Done _ -> stop(); // a block put back meanwhile gets a fresh run
             case Script.Status.Failed failed -> {
-                LOG.warn("{} couldn't open the doorway: {}: {}", name, failed.step(), failed.reason());
+                LOG.warn("{} couldn't break through: {}: {}", name, failed.step(), failed.reason());
                 stop();
                 cooldown = COOLDOWN_TICKS;
             }
@@ -110,16 +110,31 @@ public final class Breacher {
             inventory.selectHotbar(hotbar);
         }, new Expect("the pickaxe in hand", this::pickaxeInHand), ANSWER_TICKS));
         for (BlockPos cell : cells) {
-            // The server times the dig itself: finishing early is refused, so wait out its break time.
+            // The server times the dig itself: finishing early is refused, so wait out its break time -
+            // the block's own, from its hardness, where the world knows it. The deadline allows for a
+            // dig by hand, whatever ends up in it.
+            Optional<io.github.jayessdeesea.minecraft.bot.world.Hardness> hardness = world.hardness(cell.x(), cell.y(), cell.z());
+            int deadline = hardness.map(h -> h.ticks(io.github.jayessdeesea.minecraft.bot.world.Hardness.HAND) + MARGIN_TICKS)
+                    .orElse(HAND_TICKS);
             steps.add(new Step("dig " + cell, () -> !solid(cell), () -> {
-                digTicks = world.isSoil(cell.x(), cell.y(), cell.z()) ? SOIL_TICKS : pickaxeInHand() ? PICKAXE_TICKS : HAND_TICKS;
+                int held = pickaxeInHand() ? heldPickaxe() : io.github.jayessdeesea.minecraft.bot.world.Hardness.HAND;
+                digTicks = hardness.map(h -> h.ticks(held) + MARGIN_TICKS)
+                        .orElse(world.isSoil(cell.x(), cell.y(), cell.z()) ? SOIL_TICKS : pickaxeInHand() ? PICKAXE_TICKS : HAND_TICKS);
                 digStarted = ticks;
                 session.startDigging(cell.x(), cell.y(), cell.z());
-            }, new Expect("the break time to pass", () -> ticks - digStarted >= digTicks), HAND_TICKS + 1));
+            }, new Expect("the break time to pass", () -> ticks - digStarted >= digTicks), Math.max(deadline, HAND_TICKS) + 1));
             steps.add(new Step("break " + cell, () -> !solid(cell), () -> session.finishDigging(cell.x(), cell.y(), cell.z()),
                     new Expect(cell + " broken", () -> !solid(cell)), ANSWER_TICKS));
         }
         return new Script(name, steps);
+    }
+
+    /** Ticks past a block's break time before the dig is ended: the server's clock and ours drift. */
+    static final int MARGIN_TICKS = 5;
+
+    private int heldPickaxe() {
+        return ItemClassRegistry.miningTier(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot()))
+                .orElse(io.github.jayessdeesea.minecraft.bot.world.Hardness.HAND);
     }
 
     private boolean solid(BlockPos cell) {

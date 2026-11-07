@@ -4,6 +4,8 @@ import io.github.jayessdeesea.minecraft.bot.world.BlockClassRegistry.BlockClass;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Real protocol-777 state IDs from the server's own blocks.json report, not made-up numbers. */
 class BlockClassRegistryTest {
@@ -28,5 +30,18 @@ class BlockClassRegistryTest {
     void unknownAndNegativeIdsAreSolid() {
         assertEquals(BlockClass.SOLID, BlockClassRegistry.classOf(-1));
         assertEquals(BlockClass.SOLID, BlockClassRegistry.classOf(10_000_000));
+    }
+
+    @Test
+    void waterAndWhatGrowsOnlyInItAreSwumButLavaIsNot() {
+        assertTrue(BlockClassRegistry.isWater(89));     // water, a source
+        assertTrue(BlockClassRegistry.isWater(2370));   // seagrass: stands in water
+        assertTrue(BlockClassRegistry.isWater(18419));  // kelp
+        assertFalse(BlockClassRegistry.isWater(105));   // lava
+    }
+
+    @Test
+    void rockCarriesItsHardnessAndThePickaxeItNeeds() {
+        assertEquals(new Hardness(1.5, 0), BlockClassRegistry.hardness(1).orElseThrow()); // stone
     }
 }

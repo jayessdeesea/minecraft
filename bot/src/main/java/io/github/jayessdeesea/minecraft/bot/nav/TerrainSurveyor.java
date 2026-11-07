@@ -66,17 +66,37 @@ public final class TerrainSurveyor {
 
     /**
      * The standing cell at or just below {@code cell} - the point man may be mid-jump or mid-fall
-     * when surveyed, and a flood fill from a cell he isn't standing in finds nothing reachable.
+     * when surveyed, and a flood fill from a cell he isn't standing in finds nothing reachable. Under
+     * water, the nearest cell beside him he could stand or swim in.
      */
-    private static BlockPos groundUnder(WorldView world, BlockPos cell) {
-        for (int drop = 0; drop <= Pathfinder.MAX_DROP + 1; drop++) {
-            BlockPos below = new BlockPos(cell.x(), cell.y() - drop, cell.z());
-            if (Pathfinder.standable(world, below)) {
-                return below;
+    /** Where a body at {@code cell} would be standing or swimming: at it, just under it, or beside it. */
+    public static BlockPos groundAt(WorldView world, BlockPos cell) {
+        return groundUnder(world, cell);
+    }
+
+    static BlockPos groundUnder(WorldView world, BlockPos cell) {
+        for (int ring = 0; ring <= WADE_RADIUS; ring++) {
+            for (int dz = -ring; dz <= ring; dz++) {
+                for (int dx = -ring; dx <= ring; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) {
+                        continue;
+                    }
+                    for (int dy = ring == 0 ? 0 : -1; dy <= (ring == 0 ? 0 : 1); dy++) {
+                        for (int drop = 0; drop <= Pathfinder.MAX_DROP + 1; drop++) {
+                            BlockPos below = new BlockPos(cell.x() + dx, cell.y() + dy - drop, cell.z() + dz);
+                            if (Pathfinder.footing(world, below)) {
+                                return below;
+                            }
+                        }
+                    }
+                }
             }
         }
         return cell;
     }
+
+    /** How far from a point man with nowhere to stand or swim to look for somewhere to survey from. */
+    private static final int WADE_RADIUS = 2;
 
     private static TerrainSurvey.Sample sample(WorldView world, int x, int z, int aroundY, Map<BlockPos, Integer> reachable) {
         for (int y = aroundY + VERTICAL_SCAN; y >= aroundY - VERTICAL_SCAN; y--) {

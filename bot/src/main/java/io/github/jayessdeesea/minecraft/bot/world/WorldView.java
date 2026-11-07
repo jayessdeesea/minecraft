@@ -58,6 +58,16 @@ public interface WorldView {
         return false;
     }
 
+    /** What digging the block takes, if it's one a soldier digs: rock, grit, soil, stone, ore. */
+    default java.util.Optional<Hardness> hardness(int x, int y, int z) {
+        return java.util.Optional.empty();
+    }
+
+    /** Whether the block is water, source or flowing - what a soldier swims in (it's also {@link #isHazard}). */
+    default boolean isWater(int x, int y, int z) {
+        return false;
+    }
+
     /** Whether a hoe tills the block into farmland: dirt, grass, a dirt path. */
     default boolean isTillable(int x, int y, int z) {
         return false;

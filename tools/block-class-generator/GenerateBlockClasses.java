@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.zip.ZipFile;
 
 /**
  * One-off, dev-time generator - NOT part of the Maven build (it depends on Jackson, which nothing at
@@ -38,6 +39,12 @@ import java.util.TreeMap;
  *   <li>{@code O} iron ore - solid, and mined with a stone pickaxe or better for raw iron:
  *       {@code iron_ore}, {@code deepslate_iron_ore}.
  *   <li>{@code F} farmland - solid, tilled for crops: never dug for a step, or a farm is trampled.
+ *   <li>{@code R} rock - solid, and mined with a pickaxe: every other block the server's
+ *       {@code mineable/pickaxe} tag names directly - deepslate, andesite, tuff, the ores. Its hardness
+ *       and the least pickaxe that gets its drop ride along: 0 any, 1 stone, 2 iron, 3 diamond, from
+ *       the {@code needs_*_tool} tags.
+ *   <li>{@code G} grit - solid, dug by hand (a shovel's work): what the {@code mineable/shovel} tag
+ *       names that isn't soil - gravel, sand. Falls into what's dug under it. Hardness rides along.
  * </ul>
  * What a farm needs to know rides along as a fourth field: {@code level=N} on water (0 is a
  * source), {@code age=N} on wheat. Grass plants keep their names - {@code short_grass} and
@@ -81,10 +88,23 @@ public class GenerateBlockClasses {
     );
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 3) {
-            System.err.println("Usage: GenerateBlockClasses <blocks.json> <block-types.txt> <output.txt>");
+        if (args.length != 4) {
+            System.err.println("Usage: GenerateBlockClasses <blocks.json> <block-types.txt> <output.txt> <server.jar>");
             System.exit(1);
         }
+        Set<String> pickaxe;
+        Set<String> shovel;
+        Set<String> needsStone;
+        Set<String> needsIron;
+        Set<String> needsDiamond;
+        try (ZipFile jar = new ZipFile(args[3])) {
+            pickaxe = tag(jar, "mineable/pickaxe");
+            shovel = tag(jar, "mineable/shovel");
+            needsStone = tag(jar, "needs_stone_tool");
+            needsIron = tag(jar, "needs_iron_tool");
+            needsDiamond = tag(jar, "needs_diamond_tool");
+        }
+        Map<String, String> hardness = new HashMap<>();
 
         JsonNode root = new ObjectMapper().readTree(new File(args[0]));
         Map<String, String> types = new HashMap<>();
@@ -94,6 +114,10 @@ public class GenerateBlockClasses {
             if (entry.startsWith("minecraft:")) {
                 String[] parts = entry.split(" ");
                 types.put(parts[0], parts[1]);
+                if (parts.length < 3) {
+                    throw new IllegalStateException("no hardness for " + parts[0] + " - block types from an older dumper?");
+                }
+                hardness.put(parts[0], parts[2]);
             }
         }
         Map<Integer, String> classes = new TreeMap<>(); // stateId -> "<class> <blockName>"
@@ -117,9 +141,18 @@ public class GenerateBlockClasses {
                         : blockName.equals("farmland") ? 'F'
                         : SOIL_BLOCKS.contains(blockName) && !"true".equals(state.path("properties").path("waterlogged").asText()) ? 'D'
                         : classify(type, state.path("properties"));
+                String id = "minecraft:" + blockName;
+                if (cls == 'S' && pickaxe.contains(id)) {
+                    cls = 'R';
+                } else if (cls == 'S' && shovel.contains(id)) {
+                    cls = 'G';
+                }
                 if (cls != 'S') {
                     String detail = blockName.equals("water") ? " level=" + state.path("properties").path("level").asText()
-                            : blockName.equals("wheat") ? " age=" + state.path("properties").path("age").asText() : "";
+                            : blockName.equals("wheat") ? " age=" + state.path("properties").path("age").asText()
+                            : cls == 'R' ? " " + hardness.get(id) + " " + (needsDiamond.contains(id) ? 3 : needsIron.contains(id) ? 2
+                                    : needsStone.contains(id) ? 1 : 0)
+                            : cls == 'G' ? " " + hardness.get(id) : "";
                     classes.put(state.get("id").asInt(), cls + " " + blockName + detail);
                     counts.merge(cls, 1, Integer::sum);
                 }
@@ -130,11 +163,29 @@ public class GenerateBlockClasses {
             out.println("# Generated from the pinned server jar's `--reports` blocks.json by");
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
             out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore, F = farmland (all solid);");
-            out.println("# then level=N on water (0 a source) and age=N on wheat.");
+            out.println("# R = rock (mined with a pickaxe), G = grit (dug by hand, falls);");
+            out.println("# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, <hardness> on grit.");
             out.println("# Every state NOT listed is solid (the safe default).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));
         }
         System.out.println("States: " + totalStates + ", non-solid by class: " + counts);
+    }
+
+    /** The blocks a tag in the jar's data names directly - nested tags are other shapes (walls, buttons), not ground. */
+    static Set<String> tag(ZipFile jar, String name) throws Exception {
+        var entry = jar.getEntry("data/minecraft/tags/block/" + name + ".json");
+        if (entry == null) {
+            throw new IllegalStateException("no block tag " + name + " in the jar");
+        }
+        Set<String> blocks = new java.util.HashSet<>();
+        try (var in = jar.getInputStream(entry)) {
+            for (JsonNode value : new ObjectMapper().readTree(in).get("values")) {
+                if (!value.asText().startsWith("#")) {
+                    blocks.add(value.asText());
+                }
+            }
+        }
+        return blocks;
     }
 
     static char classify(String type, JsonNode properties) {

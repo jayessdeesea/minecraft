@@ -329,6 +329,22 @@ keeps the logs for its next pickaxe, which wears out in 59 blocks. What the ches
 opened goes to the general (`General.receiveStockpile`), shown with the supply point. Logs carried show in each
 soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
 
+Food is grown as well as gathered. The survey also reports ground to farm: the largest plot of
+tillable ground, dirt or grass, open above, at one height within 4 blocks of a water source, as a
+"ground to farm" site with its cell count, at a plot cell beside the water (`bot.farm.FarmPlan`).
+An objective's task can be `FARM`. The squad keeps the plot round the water nearest the objective,
+the same plot while the objective stays put. Each soldier does the most pressing job left on it,
+one cell at a time (`bot.supply.Farmer`), in this order:
+1. Harvests ripe wheat, for wheat and seeds to plant again.
+2. Plants seeds on bare farmland.
+3. Tills the plot with a hoe.
+4. With no seeds, breaks grass for them, since one in eight drops some.
+
+Each job is an expect script: stand on the cell, item in hand, use it on the cell, and done when
+the server's block update shows farmland or a sprout. A soldier without a hoe makes a wooden one,
+and one carrying three wheat bakes it into bread, the ration every soldier eats (§11). It reports
+`Farming`.
+
 ## 13. Cross-leveling
 
 | Practice | Content | Source |
@@ -426,8 +442,64 @@ a side whose outside cell has room to stand and ground under it (`PatrolBase.Pla
 uses a pickaxe if it has one (1.5 seconds a block), bare hands if not (10). A fight only pauses the
 base, so the squad doesn't cut its way out mid-contact. A squad needn't remember its base to leave
 it: a soldier the world shows shut in a small room (`PatrolBase.enclosing`: a flood fill from where
-it stands runs out within 32 open cells) cuts its way out the same way, so a squad that wakes up
-sealed in after a restart, or in a room it never built, walks out.
+it stands, through gaps a body fits through, runs out within 16 cells with no step up and out) cuts
+its way out the same way, so a squad that wakes up sealed in after a restart, or walled in by a hut
+it never finished, walks out.
+
+## 15. Securing the camp
+
+| Practice | Content | Source |
+|---|---|---|
+| **Secure** | A tactical mission task: prevent a unit, facility or location from being damaged or destroyed by enemy action. | ADP 3-90 |
+| **Base camp** | An evolving area that supports operations over time, as against a patrol base held for a night. Security is continuous and improved. | ATP 3-37.10 |
+| **Priorities of work** | Security first, then everything else, each with a measurable standard. | ATP 3-21.8 ch. 7 |
+
+*How we use it:* a place the squads come back to - the camp, its patrol bases, its farm - is
+secured with light, the Minecraft form of local security. An overworld monster spawns only where
+block light is 0. A torch gives 14, falling by one a block, so ground lit everywhere grows nothing,
+and the monsters that come are the ones that walk in from the dark beyond.
+
+An objective's task can be `SECURE`. Each squad-leader cycle, `bot.supply.Lighting` plans the
+torches the ground within 12 blocks of the objective still needs: every cell the squad can walk to
+that isn't within 7 blocks (taxicab) of a torch. That's half a torch's reach, so a wall or a step
+between them still leaves the cell lit. Torches go first on the lattice where taxicab circles of
+that radius tile the ground exactly, then on any cell the lattice left dark. Torches already
+standing count, so the plan shrinks as torches go down and a secured place needs nothing more.
+Farmland is left bare. Light is worked out from where torches stand, not read from the server's
+light data.
+
+Each soldier takes the nearest planned cell no squadmate has taken, walks onto it and puts a torch
+down where it stands (`bot.supply.Lamplighter`). The server's block update confirms it. A soldier
+out of torches makes eight at a time where it stands (`bot.supply.Torchmaker`, the same run as a
+patrol base's), and reports `Securing` meanwhile. One that can't make any reports CANTCO with why.
+The log says how many torches are still to put down.
+
+## 16. Mining down
+
+| Practice | Content | Source |
+|---|---|---|
+| **Engineer reconnaissance** | Engineers check a route for obstacles and hazards before a unit uses it, and report what stops them rather than guessing past it. | ATP 3-34.81 |
+| **Class IV and the supply chain** | Construction materials come from where they are, and the supply chain carries them to where they're needed. | FM 4-0 |
+
+*How we use it:* stone near the surface runs out round a camp, and iron and diamonds lie deep.
+An objective's task can be `MINE`: the squad cuts a staircase down at the objective's x and z to
+its y, the only task whose y is a depth rather than the ground's height.
+
+The staircase (`bot.supply.Staircase`) is a spiral round a central pillar: one block down a
+step, round the eight cells about the pillar, so the shaft stays inside 3x3 and passes under its
+own top every eight steps with five blocks of rock between turns. Each step clears three cells:
+the feet, the head, and the head room a body needs to step down onto it. Its floor is left
+standing. A soldier walks down it and jumps back up it, with no ladder, and a slip is a fall of
+one block. It's cut no deeper than y=-58, clear of bedrock.
+
+One soldier, the first in squad order carrying a pickaxe, cuts it (`bot.supply.Miner`). It stands
+on the step above the first not yet cut, breaks that step's cells, walks down onto it, and cuts
+the next. The rest hold the top, clear of the shaft. Until one of them has a pickaxe, every one
+makes one. The stairs' state is the world's, so a run stopped by a fight or a restart picks up
+where they end. A dig waits out the block's own break time: its hardness, and the pickaxe in hand
+against the least tier that gets its drop. Both come from the server jar (`bot.world.Hardness`;
+DEVELOPMENT.md § 7). The cutter reports `Mining` with its step. It stops with CANTCO where going on
+would let in water or lava, or would leave a step with no floor over an open cave.
 
 ## Sources
 

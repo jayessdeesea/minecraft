@@ -72,6 +72,30 @@ class GeneralScenarioIT {
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
                     (squads, given) -> given.stream().filter(o -> distance(o.location(), new Position(3000, 151, 3000)) > 16)
                             .map(o -> "sent off the platform: " + o.mission() + " at " + o.location()).toList()),
+            // The live failure: night already fallen on squads out gathering, ordered to gather on.
+            new Situation("gathering-at-night", BASE_MISSION, TimeOfDay.of(18000, true),
+                    List.of(fresh("Alpha", 2996, Optional.of(GATHER_WOOD)), fresh("Bravo", 3004, Optional.of(GATHER_WOOD))),
+                    GeneralScenarioIT::buildsOnThePlatform),
+            new Situation("secure-the-camp", "The camp is on the stone platform around x=3000 z=3000. Both squads light "
+                    + "its ground with torches today.", TimeOfDay.of(2000, true),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
+                    (squads, given) -> given.stream().filter(o -> !o.secure() || distance(o.location(), new Position(3000, 151, 3000)) > 16)
+                            .map(o -> "not set to secure the camp: " + o.task() + " " + o.mission() + " at " + o.location()).toList()),
+            new Situation("mine-for-iron", "The camp is on the stone platform around x=3000 z=3000. Alpha cuts a mine down "
+                    + "at the camp to where the iron is. Bravo holds the camp.", TimeOfDay.of(2000, true),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
+                    (squads, given) -> {
+                        List<String> failures = new ArrayList<>();
+                        Objective alpha = given.get(0);
+                        if (!alpha.mine() || Math.hypot(alpha.location().x() - 3000, alpha.location().z() - 3000) > 16
+                                || alpha.location().y() < -10 || alpha.location().y() > 40) {
+                            failures.add("Alpha wasn't set to mine down to the iron at the camp: " + alpha.task() + " at " + alpha.location());
+                        }
+                        if (given.get(1).mine() || distance(given.get(1).location(), new Position(3000, 151, 3000)) > 16) {
+                            failures.add("Bravo didn't hold the camp: " + given.get(1).task() + " at " + given.get(1).location());
+                        }
+                        return failures;
+                    }),
             new Situation("walking-to-site", BASE_MISSION, TimeOfDay.of(7000, true),
                     List.of(fresh("Alpha", 2996, Optional.of(ALPHA_BASE)), fresh("Bravo", 3004, Optional.of(BRAVO_BASE))),
                     GeneralScenarioIT::buildsOnThePlatform),

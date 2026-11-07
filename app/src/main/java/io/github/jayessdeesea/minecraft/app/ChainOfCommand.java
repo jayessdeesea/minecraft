@@ -130,9 +130,13 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         general.receiveStockpile(stockpile);
     }
 
-    /** The server sent the time of day - the general plans around nightfall. */
+    /** The server sent the time of day - the general plans around nightfall. Dusk and dawn are logged. */
     public void onTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
+        io.github.jayessdeesea.minecraft.command.TimeOfDay last = this.time;
         this.time = time;
+        if (last == null || last.dark() != time.dark()) {
+            LOG.info("[Clock] {} - tick {} of the day, the chain of command told", time.dark() ? "NIGHT" : "DAY", time.ticks());
+        }
         general.receiveTime(time);
         squads.values().forEach(squad -> squad.receiveTime(time));
     }
@@ -142,6 +146,11 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     public void destroy() {
         generalThread.shutdownNow();
         squads.values().forEach(SquadCommand::stop);
+    }
+
+    /** Day or night as a decision was told it, for the log line that records the decision. */
+    static String phase(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
+        return time == null ? "time unknown" : time.dark() ? "night" : "day";
     }
 
     /** The time of day the server last sent, if it has. */
@@ -171,6 +180,18 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     }
 
     /** {@code squad}'s objective, when it has the squad gather a material (docs/military-doctrine.md §12). */
+    public Optional<Objective> mineObjective(String squad) {
+        return squads.get(squad).mineObjective();
+    }
+
+    public Optional<Objective> secureObjective(String squad) {
+        return squads.get(squad).secureObjective();
+    }
+
+    public Optional<Objective> farmObjective(String squad) {
+        return squads.get(squad).farmObjective();
+    }
+
     public Optional<Objective> gatherObjective(String squad) {
         return squads.get(squad).gatherObjective();
     }
@@ -231,10 +252,10 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                     String name = statuses.get(i).squadName();
                     Objective given = objectives.get(i);
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
-                        LOG.info("[General -> {}] ({} ms) holds: {}", name, millis, given.mission());
+                        LOG.info("[General -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
                         continue;
                     }
-                    LOG.info("[General -> {}] ({} ms) OPORD: {} at {}{}. Intent: {}", name, millis, given.mission(),
+                    LOG.info("[General -> {}] ({} ms, {}) OPORD: {} at {}{}. Intent: {}", name, millis, phase(time), given.mission(),
                             at(given.location()), task(given), given.intent());
                     transmit("[General -> " + name + "] OPORD: " + given.mission() + " at " + at(given.location())
                             + task(given) + ". Intent: " + given.intent());

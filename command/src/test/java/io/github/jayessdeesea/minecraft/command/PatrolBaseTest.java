@@ -133,14 +133,30 @@ class PatrolBaseTest {
     }
 
     @Test
-    void aSoldierInTheOpenOrInAHoledHutIsntShutIn() {
+    void aSoldierInTheOpenOrInAHutWithAWayOutIsntShutIn() {
         PatrolBase.Plan hut = PatrolBase.hasty(new Position(0, 64, 0), 4);
         Set<Position> built = new HashSet<>(hut.cells());
         java.util.function.Predicate<Position> solid = cell -> cell.y() < 64 || built.contains(cell);
 
         assertTrue(PatrolBase.enclosing(new Position(10.5, 64, 10.5), solid).isEmpty(), "open ground");
         built.remove(new Position(2, 65, 1));
-        assertTrue(PatrolBase.enclosing(new Position(0.5, 64, 0.5), solid).isEmpty(), "a hole in the wall");
+        assertTrue(PatrolBase.enclosing(new Position(0.5, 64, 0.5), solid).isPresent(), "a hole one high lets nobody out");
+        built.remove(new Position(2, 64, 1));
+        assertTrue(PatrolBase.enclosing(new Position(0.5, 64, 0.5), solid).isEmpty(), "a doorway does");
+    }
+
+    @Test
+    void aHalfBuiltHutWithNoRoofStillShutsItsSoldiersInUnlessTheyCanStepOut() {
+        PatrolBase.Plan hut = PatrolBase.hasty(new Position(0, 64, 0), 4);
+        Set<Position> built = new HashSet<>(hut.cells().stream().filter(c -> c.y() < 66).toList());
+        built.remove(new Position(-1, 64, 0));
+        built.remove(new Position(0, 64, 2));
+        java.util.function.Predicate<Position> solid = cell -> cell.y() < 64 || built.contains(cell);
+
+        assertEquals(hut.floor(), PatrolBase.enclosing(new Position(0.5, 64, 0.5), solid).orElseThrow().floor(),
+                "gaps one high under the wall top");
+        built.remove(new Position(1, 65, -1));
+        assertTrue(PatrolBase.enclosing(new Position(0.5, 64, 0.5), solid).isEmpty(), "a wall one high is a step out");
     }
 
     @Test

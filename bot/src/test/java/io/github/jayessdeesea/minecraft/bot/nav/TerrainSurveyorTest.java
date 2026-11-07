@@ -120,4 +120,12 @@ class TerrainSurveyorTest {
 
         assertTrue(at(survey, 8, 0).reachable());
     }
+
+    @Test
+    void aPointManWadingSurveysFromTheBankBesideHim() {
+        TerrainSurvey survey = TerrainSurveyor.survey(WORLD, new Position(-20.5, GROUND - 1, 0.5));
+
+        assertTrue(survey.samples().stream().filter(TerrainSurvey.Sample::reachable).count() > 1,
+                "the land behind him is reachable, though he stands in the water");
+    }
 }

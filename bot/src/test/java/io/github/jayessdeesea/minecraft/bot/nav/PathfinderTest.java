@@ -316,7 +316,53 @@ class PathfinderTest {
         assertFalse(result.reachesGoal());
     }
 
-    /** Ground with a 3-wide water channel at x=2..4, z=-2..2 - the surface of the water is at y=GROUND-1. */
+    /**
+     * A river 3 wide at x=2..4 across all z, 2 deep, its surface at y=GROUND-1: no way round. The
+     * banks stand a block above the water.
+     */
+    static WorldView river() {
+        return new WorldView() {
+            private boolean water(int x, int y, int z) {
+                return x >= 2 && x <= 4 && y >= GROUND - 2 && y <= GROUND - 1;
+            }
+
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND && !water(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return water(x, y, z);
+            }
+
+            @Override
+            public boolean isWater(int x, int y, int z) {
+                return water(x, y, z);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    @Test
+    void swimsARiverThereIsNoWayRound() {
+        Pathfinder.Result result = Pathfinder.find(river(), START, exactly(6, GROUND, 0), 2000);
+
+        assertTrue(result.reachesGoal());
+        assertTrue(result.path().stream().anyMatch(c -> c.y() == GROUND - 1), "across at the surface: " + result.path());
+        assertTrue(result.path().stream().allMatch(c -> c.y() >= GROUND - 1), "never under it: " + result.path());
+    }
+
+    @Test
+    void theFarBankOfARiverIsReachable() {
+        assertTrue(Pathfinder.reachable(river(), START, 8, 2000).contains(new BlockPos(6, GROUND, 0)));
+    }
+
+    /** Ground with a 3-wide channel of a hazard that isn't water (lava, say) at x=2..4, z=-2..2, its top at y=GROUND-1. */
     private static WorldView pond() {
         return new WorldView() {
             private boolean water(int x, int y, int z) {
@@ -341,7 +387,7 @@ class PathfinderTest {
     }
 
     @Test
-    void routesAroundWaterRatherThanThroughIt() {
+    void routesAroundLavaRatherThanThroughIt() {
         WorldView pond = pond();
 
         Pathfinder.Result result = Pathfinder.find(pond, START, exactly(6, GROUND, 0), 2000);

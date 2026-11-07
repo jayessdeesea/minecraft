@@ -54,6 +54,16 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public java.util.Optional<Hardness> hardness(int x, int y, int z) {
+        return chunks.hardness(x, y, z);
+    }
+
+    @Override
+    public boolean isWater(int x, int y, int z) {
+        return chunks.isWater(x, y, z);
+    }
+
+    @Override
     public boolean isTillable(int x, int y, int z) {
         return chunks.isTillable(x, y, z);
     }

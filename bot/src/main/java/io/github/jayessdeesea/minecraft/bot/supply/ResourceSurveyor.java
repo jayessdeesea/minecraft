@@ -23,6 +23,8 @@ public final class ResourceSurveyor {
 
     /** How far around the squad to look. */
     static final int SURVEY_RADIUS = 64;
+    /** How far out a farm site is looked for: a farm is tended for days, so near is worth more than big. */
+    static final int FARM_RADIUS = 48;
     /** Vertically, around the squad's height. */
     static final int SURVEY_HEIGHT = 24;
     /** Logs this close belong to the same stand. */
@@ -57,6 +59,14 @@ public final class ResourceSurveyor {
         }
         List<ResourceSite> sites = new ArrayList<>(cluster(logs, centre, Resource.WOOD, MIN_STAND));
         sites.addAll(cluster(stone, centre, Resource.STONE, MIN_OUTCROP));
+        // Ground to farm: the best plot by water in sight, as many cells as it has to plant - placed
+        // where a soldier stands on the plot by the water, not in the water, which no survey starts from.
+        io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, centre, FARM_RADIUS, SURVEY_HEIGHT).ifPresent(farm -> {
+            BlockPos water = farm.water();
+            BlockPos land = farm.plot().stream()
+                    .min(java.util.Comparator.comparingInt(c -> Math.abs(c.x() - water.x()) + Math.abs(c.z() - water.z()))).orElseThrow();
+            sites.add(new ResourceSite(Resource.FARMLAND, new Position(land.x(), land.y() + 1, land.z()), farm.plot().size()));
+        });
         return List.copyOf(sites);
     }
 

@@ -115,6 +115,17 @@ public final class ChunkCache {
         return BlockClassRegistry.isWaterSource(rawStateIdAt(x, y, z));
     }
 
+    /** What digging the block takes, if it's one a soldier digs - unknown blocks aren't. */
+    public java.util.Optional<Hardness> hardness(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId == UNKNOWN ? java.util.Optional.empty() : BlockClassRegistry.hardness(stateId);
+    }
+
+    /** Whether the block is water, source or flowing - unknown blocks aren't. */
+    public boolean isWater(int x, int y, int z) {
+        return BlockClassRegistry.isWater(rawStateIdAt(x, y, z));
+    }
+
     /** Whether a hoe tills the block into farmland - unknown blocks aren't. */
     public boolean isTillable(int x, int y, int z) {
         return BlockClassRegistry.isTillable(rawStateIdAt(x, y, z));

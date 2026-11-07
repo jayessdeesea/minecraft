@@ -215,7 +215,33 @@ class ChainScenarioLiveIT {
         }
     }
 
+    /**
+     * One run, the world's clock put back afterwards to where it would have been without the run:
+     * the run sets the time of day it needs, and a garrison sharing the world shouldn't wake from
+     * its yield to a night or a day nobody gave it.
+     */
     private static String runOnce(Scenario scenario) throws Exception {
+        long before = daytime();
+        long started = System.nanoTime();
+        try {
+            return runOnceOnTheClock(scenario);
+        } finally {
+            long elapsed = (System.nanoTime() - started) / 50_000_000L; // ticks, at 20 a second
+            console("time set " + Math.floorMod(before + elapsed, TimeOfDay.DAY_TICKS));
+        }
+    }
+
+    /** The overworld's time of day now, from the console: "Timeline minecraft:day is at 1234 tick(s)". */
+    private static long daytime() throws IOException, InterruptedException {
+        String reply = console("time query minecraft:day");
+        java.util.regex.Matcher time = java.util.regex.Pattern.compile("is at (\\d+) tick").matcher(reply);
+        if (!time.find()) {
+            throw new IllegalStateException("no time of day in the reply to 'time query minecraft:day': " + reply);
+        }
+        return Long.parseLong(time.group(1));
+    }
+
+    private static String runOnceOnTheClock(Scenario scenario) throws Exception {
         buildArena();
         // Held for the run: an app yielding to experiments - a garrison - stands still meanwhile.
         try (ExperimentLock lock = ExperimentLock.hold();

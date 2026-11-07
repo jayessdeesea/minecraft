@@ -52,7 +52,12 @@ public final class Torchmaker {
 
     /** Each tick: makes torches while {@code wanted}; a hostile near ({@code threatened}) interrupts it. */
     public void tick(Position soldier, WorldView world, boolean wanted, boolean threatened) {
-        crafter.tick(soldier, world, wanted ? WANTED : Map.of(), threatened);
+        tick(soldier, world, wanted ? TORCHES : 0, threatened);
+    }
+
+    /** As {@link #tick(Position, WorldView, boolean, boolean)}, making {@code torches} - in fours, one charcoal each. */
+    public void tick(Position soldier, WorldView world, int torches, boolean threatened) {
+        crafter.tick(soldier, world, torches > 0 ? Map.of(Recipe.TORCHES, torches) : Map.of(), threatened);
     }
 
     public void onContainer(ContainerUpdate update) {

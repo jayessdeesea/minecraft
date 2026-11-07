@@ -37,6 +37,8 @@ final class SquadCommand {
 
     final String name;
     private final SquadLeader squadLeader;
+    /** The time of day last sent - a connection's thread writes, for the log of each decision. */
+    private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time;
     private final Consumer<String> radio;
     private final ExecutorService thread;
     private final AtomicBoolean busy = new AtomicBoolean();
@@ -58,6 +60,7 @@ final class SquadCommand {
 
     /** The server sent the time of day - the squad leader plans around nightfall too. */
     void receiveTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
+        this.time = time;
         squadLeader.receiveTime(time);
     }
 
@@ -93,6 +96,21 @@ final class SquadCommand {
     Optional<Objective> gatherObjective() {
         Objective current = objective;
         return current != null && current.gather().isPresent() ? Optional.of(current) : Optional.empty();
+    }
+
+    Optional<Objective> mineObjective() {
+        Objective current = objective;
+        return current != null && current.mine() ? Optional.of(current) : Optional.empty();
+    }
+
+    Optional<Objective> secureObjective() {
+        Objective current = objective;
+        return current != null && current.secure() ? Optional.of(current) : Optional.empty();
+    }
+
+    Optional<Objective> farmObjective() {
+        Objective current = objective;
+        return current != null && current.farm() ? Optional.of(current) : Optional.empty();
     }
 
     Optional<Objective> patrolBaseObjective() {
@@ -210,8 +228,8 @@ final class SquadCommand {
                 TerrainSurvey survey = terrain.get();
                 long reachable = survey.samples().stream().filter(TerrainSurvey.Sample::reachable).count();
                 squadLeader.decide(squad, survey).ifPresent(decided -> {
-                    LOG.info("[{} -> squad] ({} ms, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval, {} risk{}. Intent: {}",
-                            name, System.currentTimeMillis() - started, reachable, survey.samples().size(),
+                    LOG.info("[{} -> squad] ({} ms, {}, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval, {} risk{}. Intent: {}",
+                            name, System.currentTimeMillis() - started, ChainOfCommand.phase(time), reachable, survey.samples().size(),
                             Math.round(decided.objective().x()), Math.round(decided.objective().y()), Math.round(decided.objective().z()),
                             decided.formation(), decided.interval(), decided.risk(), soldierRisk(decided), decided.intent());
                     radio.accept("[" + name + " -> squad] FRAGO: " + decided.formation() + " to " + ChainOfCommand.at(decided.objective())

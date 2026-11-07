@@ -58,7 +58,11 @@ final class Digger {
         /** Plain stone, with a pickaxe - by hand it drops nothing. At feet or head height. */
         STONE(35, 1, ItemClass.PICKAXE, 0, ItemClass.COBBLESTONE),
         /** Iron ore, with a stone pickaxe or better - a wooden one breaks it for nothing. At feet or head height. */
-        IRON_ORE(45, 1, ItemClass.PICKAXE, 1, ItemClass.RAW_IRON);
+        IRON_ORE(45, 1, ItemClass.PICKAXE, 1, ItemClass.RAW_IRON),
+        /** Short or tall grass, by hand at a touch: wheat seeds, one time in eight. */
+        GRASS(3, 1, null, 0, ItemClass.SEEDS, false),
+        /** Ripe wheat, by hand at a touch: wheat, and seeds to plant again. */
+        WHEAT(3, 1, null, 0, ItemClass.WHEAT);
 
         final int digTicks;
         final int reachUp;
@@ -68,13 +72,20 @@ final class Digger {
         final int tier;
         /** What it drops. */
         final ItemClass drop;
+        /** Whether it always drops something - grass mostly drops nothing, and that's a dig done, not a fault. */
+        final boolean dropsAlways;
 
         Target(int digTicks, int reachUp, ItemClass tool, int tier, ItemClass drop) {
+            this(digTicks, reachUp, tool, tier, drop, true);
+        }
+
+        Target(int digTicks, int reachUp, ItemClass tool, int tier, ItemClass drop, boolean dropsAlways) {
             this.digTicks = digTicks;
             this.reachUp = reachUp;
             this.tool = tool;
             this.tier = tier;
             this.drop = drop;
+            this.dropsAlways = dropsAlways;
         }
 
         boolean at(WorldView world, BlockPos block) {
@@ -82,6 +93,8 @@ final class Digger {
                 case LOG -> world.isLog(block.x(), block.y(), block.z());
                 case STONE -> world.isStone(block.x(), block.y(), block.z());
                 case IRON_ORE -> world.isIronOre(block.x(), block.y(), block.z());
+                case GRASS -> world.isGrassPlant(block.x(), block.y(), block.z());
+                case WHEAT -> world.wheatAge(block.x(), block.y(), block.z()).orElse(-1) == RIPE;
             };
         }
 
@@ -132,6 +145,11 @@ final class Digger {
         }
     }
 
+    /** Wheat's last growth stage. */
+    static final int RIPE = 7;
+    /** For a drop that may not come: a broken block's drop shows within a few ticks if there is one. */
+    static final int MAYBE_DROP_TICKS = 15;
+
     /** Where to stand, and the block to dig from there. */
     record Spot(Target target, BlockPos stand, BlockPos block) {
     }
@@ -161,6 +179,7 @@ final class Digger {
     private int digTicks;
     private int dropsBefore;
     private boolean pickingUp;
+    private int pickupStarted;
     /** Whether the drop has been seen on the ground since the block broke. */
     private boolean dropSeen;
 
@@ -195,13 +214,16 @@ final class Digger {
                         new Expect("the " + target + " at " + block + " broken", () -> !target.at(world, block)), ANSWER_TICKS),
                 // Done once the drop is off the ground: in the pack, or in a squadmate's, which
                 // working the same trees often gets there first. Never seen at all is the fault.
-                new Step("pick up the " + target.drop, () -> pickingUp = true, new Expect("the " + target.drop + " picked up", () -> {
+                new Step("pick up the " + target.drop, () -> {
+                    pickingUp = true;
+                    pickupStarted = ticks;
+                }, new Expect("the " + target.drop + " picked up", () -> {
                     if (inventory.count(target.drop) > dropsBefore) {
                         return true;
                     }
                     boolean onGround = !dropsNear().isEmpty();
                     dropSeen |= onGround;
-                    return dropSeen && !onGround;
+                    return dropSeen && !onGround || !target.dropsAlways && !dropSeen && ticks - pickupStarted > MAYBE_DROP_TICKS;
                 }), PICKUP_TICKS)));
     }
 

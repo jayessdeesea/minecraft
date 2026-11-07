@@ -120,6 +120,9 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   those fixed it passed every `GeneralScenarioIT` situation. Turn each live miss into a
   situation there first. A coordinate written out is a coordinate the model copies: give
   positions it shouldn't reuse (an old order's, a resource's) relative to the squad, not as a y.
+  Worked examples are copied the same way - their coordinates and their choices: one example of a
+  sealed squad sent to SECURE pulled every sealed squad out. Put a rule in the paragraph of the
+  task it sets, not in a general section after it.
 - **A routine is an expect script: act, then wait for the confirming event - never for time.**
   Anything that acts and then needs the server's answer (crafting, placing, opening a window,
   smelting) is a `bot.script.Script` of steps. Each step names the event that confirms it, read
@@ -339,6 +342,12 @@ or move the working copy outside the synced folder.
 - Supporting more than one protocol version at a time
 - Real Microsoft account authentication / online-mode servers
 - Any third-party Minecraft protocol, NBT, or world-format library
+
+## Working without guidance
+
+When a set of independent tasks all needs doing and nothing says which comes first, pick one and
+keep going until all are done - don't stop to ask about the order. Stop for a question only when
+the answer changes what gets built, not when it.
 
 ## Docs
 

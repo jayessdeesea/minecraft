@@ -94,7 +94,7 @@ class SpringAiGeneralTest {
                 java.util.Optional.empty(), java.util.Optional.empty(), List.of(ALPHA)).prompt();
 
         assertTrue(prompt.contains("<time>\nDay. Dark - monsters spawn anywhere unlit - in about 10 minutes.\n</time>"), prompt);
-        assertEquals("Night: monsters spawn anywhere dark. Light again in about 4 minutes.",
+        assertEquals("Night - already dark: monsters spawn anywhere unlit. Light again in about 4 minutes.",
                 SpringAiGeneral.describe(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(18000, true)));
         assertEquals("Day. The clock is stopped: it stays this way.",
                 SpringAiGeneral.describe(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(6000, false)));
@@ -124,7 +124,7 @@ class SpringAiGeneralTest {
                 squad.resources());
         assertTrue(SpringAiGeneral.describeResources(onAPlatform).contains("around x=30 z=-40, 85 below the squad (50 blocks NE)"));
         assertTrue(SpringAiGeneral.describeResources(new SquadStatus("Alpha", new Report.Idle(), List.of()))
-                .contains("no trees or exposed stone"));
+                .contains("no trees, exposed stone or ground to farm"));
     }
 
     @Test

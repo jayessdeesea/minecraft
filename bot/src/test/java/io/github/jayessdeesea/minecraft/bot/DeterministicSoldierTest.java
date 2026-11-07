@@ -588,6 +588,48 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void swimsARiverHeadAboveWaterAndClimbsOutOnTheFarBank() {
+        // A river 3 wide at x=2..4, 2 deep, its surface at GROUND-1; banks a block above it.
+        WorldView river = new WorldView() {
+            private boolean water(int x, int y) {
+                return x >= 2 && x <= 4 && y >= GROUND - 2 && y <= GROUND - 1;
+            }
+
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND && !water(x, y);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return water(x, y);
+            }
+
+            @Override
+            public boolean isWater(int x, int y, int z) {
+                return water(x, y);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.receiveOrder(new Order.MoveTo(7.5, GROUND, 0.5, 0.5, 1, Risk.LOW));
+
+        double lowest = GROUND;
+        for (int i = 0; i < 300 && !(alice.status().report() instanceof Report.InPosition); i++) {
+            alice.tick(river);
+            lowest = Math.min(lowest, alice.status().position().y());
+        }
+
+        assertInstanceOf(Report.InPosition.class, alice.status().report(), "across: " + alice.status().position());
+        assertEquals(GROUND, alice.status().position().y(), 1e-9, "on the far bank");
+        assertTrue(lowest >= GROUND - 1, "the head stays out: the feet never sink below the top block of water, lowest " + lowest);
+    }
+
+    @Test
     void stopsAtATwoBlockWall() {
         WorldView wall = blocks((x, y, z) -> y < GROUND || (x >= 2 && y < GROUND + 2));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));

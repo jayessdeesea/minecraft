@@ -169,14 +169,27 @@ use the arena. Start them there and give them a mission about it:
 ```bash
 docker compose exec minecraft console "spreadplayers 0 0 2 8 false @a[name=!YourName]"   # once they've joined
 java -jar app/target/app.jar --minecraft.operators=YourName --minecraft.yield-to-experiments=true \
-  "--minecraft.general.mission=Make camp around x=0 z=0 and stay within 48 blocks of it. Each squad builds a patrol base near there and is sealed inside it before dark, and stays inside until dawn. By day, gather the wood and stone the camp needs from nearby."
+  "--minecraft.general.mission=Make camp around x=0 z=0 and stay within 48 blocks of it. Each squad spends the night sealed inside a patrol base near there, until dawn. By day, secure the camp's ground with torches, gather the wood and stone the camp needs from nearby, keep a wheat farm by the water for bread, and cut a mine down at the camp for stone and iron."
 ```
 
 A soldier rejoins where it last logged out, so a squad that last ran a scenario starts on the
 arena; `spreadplayers` puts them back on the ground. `minecraft.yield-to-experiments` stands the
 squads still, asking no model anything, while a scenario run holds the experiment lock: both apps
 share one GPU, and a run's pass rates and decision times assume the model to itself. A lock left
-by a run that died is logged as an error and not obeyed.
+by a run that died is logged as an error and not obeyed. A scenario run sets the time of day it
+needs, then puts the world's clock back to where it would have been, so the garrison doesn't
+wake to a night nobody gave it.
+
+**When a soldier is stuck.** `app`'s `WorldProbeLiveIT` reads the world as one connection sees it.
+With the garrison stopped, `-Dprobe.name=Alice` joins as that soldier, where it last stood; with
+`-Droute=fx,fy,fz,tx,ty,tz` it plans the route both ways, prints the blocks round the start and the
+ground heights between, and ticks a soldier along it, printing where it gets to. A `SITREP` line
+marked `[NO BLOCK DATA HERE]` is a soldier standing where the world model has nothing: it reads
+as solid. `ClockLiveIT` prints the time of day as the app works it out, beside the server's own.
+
+```bash
+mvn -pl app test -Dtest=WorldProbeLiveIT -Dsurefire.failIfNoSpecifiedTests=false -Dprobe.name=Alice -Droute=-71,62,-47,-40,69,-17
+```
 
 **Setting up a supply point.** Place a chest, stock it with weapons and armour, and start the app
 with `--minecraft.supply.point=x,y,z` (the chest's block). Soldiers draw from it when the general
@@ -243,8 +256,9 @@ exceed `MAX_PATH`, and `unzip` silently skips them.
 ## 7. Regenerating the generated registries
 
 `bot`'s block classes, hostile-mob list and item classes are generated from the server itself:
-its data reports, and, for block types, its own registry (the reports dropped block types in
-26.3). Regenerate all three after every pin bump. Run the server's data generator in the version's
+its data reports; for block types and hardness, its own registry (the reports dropped block types in
+26.3); and for which blocks a pickaxe digs and how good a pickaxe each needs, the block tags in its
+jar. Regenerate all three after every pin bump. Run the server's data generator in the version's
 reference folder, with the bundler jar from the version manifest: it writes the reports and
 unpacks the server and its libraries there.
 
@@ -259,7 +273,7 @@ java -cp "$SCP" tools/item-food-dumper/DumpFoodItems.java > $M/generated/food-it
 
 R=bot/src/main/resources/io/github/jayessdeesea/minecraft/bot/world
 CP="<jackson-databind>;<jackson-core>;<jackson-annotations>"   # jars from ~/.m2
-java -cp "$CP" tools/block-class-generator/GenerateBlockClasses.java $M/generated/reports/blocks.json $M/generated/block-types.txt $R/block-classes-$P.txt
+java -cp "$CP" tools/block-class-generator/GenerateBlockClasses.java $M/generated/reports/blocks.json $M/generated/block-types.txt $R/block-classes-$P.txt $M/versions/$V/server-$V.jar
 java -cp "$CP" tools/entity-hostility-generator/GenerateEntityHostility.java $M/generated/reports/registries.json $R/hostile-entity-types-$P.txt
 java -cp "$CP" tools/item-class-generator/GenerateItemClasses.java $M/generated/reports/registries.json $M/generated/food-items.txt $R/item-classes-$P.txt
 ```

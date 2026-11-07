@@ -35,11 +35,16 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot) {
      * {@link #MIN_CELLS}.
      */
     public static Optional<FarmPlan> site(WorldView world, BlockPos around, int radius) {
+        return site(world, around, radius, VERTICAL);
+    }
+
+    /** {@link #site(WorldView, BlockPos, int)}, looking {@code vertical} blocks below and above {@code around} for water. */
+    public static Optional<FarmPlan> site(WorldView world, BlockPos around, int radius, int vertical) {
         FarmPlan best = null;
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                for (int dy = -VERTICAL; dy <= VERTICAL; dy++) {
+                for (int dy = -vertical; dy <= vertical; dy++) {
                     BlockPos water = around.offset(dx, dy, dz);
                     if (!world.isWaterSource(water.x(), water.y(), water.z())) {
                         continue;

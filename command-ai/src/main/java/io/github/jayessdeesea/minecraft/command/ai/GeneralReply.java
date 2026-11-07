@@ -18,7 +18,9 @@ record GeneralReply(@JsonPropertyDescription("Exactly one objective per squad") 
                     + "empty when keeping it") String reason,
             @JsonPropertyDescription("The squad's task at the objective - this field, not the mission's wording, sets it: "
                     + "NONE; WOOD to chop logs around the objective; STONE to quarry it; PATROL_BASE to build a small "
-                    + "roofed shelter at the objective and spend the night in it")
+                    + "roofed shelter at the objective and spend the night in it; FARM to till, plant and keep a wheat farm "
+                    + "by the water at the objective; SECURE to light the ground round the objective with torches so no "
+                    + "monster spawns on it; MINE to cut a staircase down at the objective's x and z to its y")
             Task task,
             @JsonPropertyDescription("What the squad must do, in plain words for the squad leader") String mission,
             @JsonPropertyDescription("Objective x coordinate (east is positive)") double x,
@@ -32,5 +34,5 @@ record GeneralReply(@JsonPropertyDescription("Exactly one objective per squad") 
      * One field rather than a gather and a separate patrol-base flag: a model sets one choice reliably
      * and can't ask for both.
      */
-    enum Task { NONE, WOOD, STONE, PATROL_BASE }
+    enum Task { NONE, WOOD, STONE, PATROL_BASE, FARM, SECURE, MINE }
 }
