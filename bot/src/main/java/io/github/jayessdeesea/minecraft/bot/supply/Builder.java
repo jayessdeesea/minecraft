@@ -23,7 +23,8 @@ import java.util.Set;
  * One soldier building: filling a plan of cells with blocks it carries - cobblestone first, then
  * planks, then logs, which it would rather keep for tools. Each cell is placed against a solid
  * neighbour, from within reach and clear of the soldier's own body; a cell that won't take a block
- * after a few tries is skipped. What to build is decided elsewhere; this only lays it. Driven by the
+ * after a few tries is skipped. A cell someone stands in - a squadmate, a mob, a player watching -
+ * is waited on, not tried: the server won't place a block into a body, and the body moves on. What to build is decided elsewhere; this only lays it. Driven by the
  * soldier's tick, like {@link Handover}.
  *
  * <p>A loop of short expect scripts, one per cell (AGENTS.md § Behavior modeling): the material is
@@ -173,9 +174,29 @@ public final class Builder {
             return new Progress.Working();
         }
         standAt = null;
+        if (occupied(world, soldier, target)) {
+            if (!waitingOn) {
+                LOG.info("{} waits for whoever is standing at {} to move", name, target);
+                waitingOn = true;
+            }
+            return new Progress.Working();
+        }
+        waitingOn = false;
         script = place(target);
         script.tick();
         return new Progress.Working();
+    }
+
+    /** Whether it's waiting on a body in the cell it's building. */
+    private boolean waitingOn;
+
+    /** Whether a body other than the builder's own overlaps {@code cell}. */
+    private static boolean occupied(WorldView world, Position soldier, BlockPos cell) {
+        return world.bodiesNear(new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5), 2).stream()
+                .filter(b -> Math.abs(b.x() - soldier.x()) > 1e-6 || Math.abs(b.y() - soldier.y()) > 1e-6 || Math.abs(b.z() - soldier.z()) > 1e-6)
+                .anyMatch(b -> b.x() + HALF_WIDTH > cell.x() && b.x() - HALF_WIDTH < cell.x() + 1
+                        && b.z() + HALF_WIDTH > cell.z() && b.z() - HALF_WIDTH < cell.z() + 1
+                        && b.y() < cell.y() + 1 && b.y() + 1.8 > cell.y());
     }
 
     private static final String MATERIAL_IN_HAND = "a block in hand";

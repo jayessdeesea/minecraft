@@ -42,7 +42,14 @@ class BuilderTest {
         public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
             return List.of();
         }
+
+        @Override
+        public List<Position> bodiesNear(Position center, double radius) {
+            return bodies;
+        }
     };
+    /** Who else is standing about: the server won't place a block into one. */
+    private final List<Position> bodies = new ArrayList<>();
     private final List<String> calls = new ArrayList<>();
     /** What the server sends next tick: it answers a placement or a swap a tick after it's asked. */
     private final List<Runnable> answers = new ArrayList<>();
@@ -126,6 +133,20 @@ class BuilderTest {
                 "place BlockPos[x=2, y=64, z=0]", "place BlockPos[x=2, y=65, z=0]", "place BlockPos[x=2, y=64, z=1]",
                 "select 0"), calls);
         assertEquals(0, inventory.heldHotbarSlot());
+    }
+
+    @Test
+    void aCellSomeoneStandsInIsWaitedOnNotGivenUp() {
+        Builder builder = new Builder("Alice", session, inventory);
+        BlockPos cell = new BlockPos(2, 64, 0);
+        bodies.add(new Position(2.5, 64, 0.5)); // a player watching, in the wall's footprint
+
+        Builder.Progress waiting = run(builder, new Position(0.5, 64, 0.5), List.of(cell), 100);
+        assertInstanceOf(Builder.Progress.Working.class, waiting, "still waiting, not failed");
+        assertEquals(0, calls.stream().filter(c -> c.startsWith("place")).count(), "no try spent on a body");
+
+        bodies.clear();
+        assertInstanceOf(Builder.Progress.Done.class, run(builder, new Position(0.5, 64, 0.5), List.of(cell), 100));
     }
 
     @Test
