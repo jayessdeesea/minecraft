@@ -330,8 +330,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int wallLeft = wall == null ? -1 : io.github.jayessdeesea.minecraft.bot.supply.Perimeter.open(world, wall).size();
         standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", wallLeft == 0,
                 wall == null ? "not begun" : wallLeft + " of " + wall.size() + " wall blocks still to place", "FORTIFY"));
-        long hungry = everyone.stream().filter(s -> s.condition().map(c -> c.food() <= HUNT_BELOW_FOOD
-                && c.kit().map(k -> k.rations() == 0).orElse(true)).orElse(false)).count();
+        long hungry = everyone.stream().filter(s -> s.condition().map(SoldierRunner::wantsFood).orElse(false)).count();
         Optional<io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> farm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at,
                 CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
@@ -407,6 +406,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final java.util.Set<String> huntAllowed = ConcurrentHashMap.newKeySet();
     /** At this food level or below, with no rations, a soldier free to hunts for meat: it has missed a meal or two. */
     static final int HUNT_BELOW_FOOD = 14;
+
+    /**
+     * Whether a soldier with no rations needs food: at {@link #HUNT_BELOW_FOOD} or below, or
+     * wounded and short of the food it heals at - otherwise a wound taken at food 15 never heals.
+     */
+    static boolean wantsFood(io.github.jayessdeesea.minecraft.command.Condition condition) {
+        return condition.kit().map(k -> k.rations() == 0).orElse(true)
+                && (condition.food() <= HUNT_BELOW_FOOD || condition.health() < io.github.jayessdeesea.minecraft.command.Condition.MAX_HEALTH
+                && condition.food() < io.github.jayessdeesea.minecraft.command.Condition.REGENERATION_FOOD);
+    }
     /** Each connected soldier's tree planting, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Forester> foresters = new ConcurrentHashMap<>();
     /** The tree farm each soldier plants, while its squad's objective is one - squad loop writes, tick reads. */
@@ -1584,8 +1593,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     free -> rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD), free && !threatened,
                             soldier.yaw(), soldier.pitch())));
             Kit eating = status.condition().flatMap(c -> c.kit()).orElse(null);
-            boolean hungry = status.condition().map(c -> c.food() <= HUNT_BELOW_FOOD).orElse(false)
-                    && eating != null && eating.rations() == 0;
+            boolean hungry = status.condition().filter(c -> c.kit().isPresent()).map(SoldierRunner::wantsFood).orElse(false);
             turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), world,
                     free && hungry && huntAllowed.contains(name) && !inContact,
                     io.github.jayessdeesea.minecraft.bot.world.WeaponStats.melee(eating == null ? Optional.empty() : eating.weapon()).ticksToCharge())

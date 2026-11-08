@@ -90,8 +90,8 @@ in hand and arrows, equipment is armour worn (`command.Kit`). A soldier below fo
 health regenerates at, eats from its rations when it's out of contact and nothing else has its
 hands (`bot.supply.Rations`): the food goes into a hotbar slot without a weapon or tool, the server
 times the meal, and the weapon comes back to hand. Rations are the food items it carries, less
-those that poison or are too precious to eat (`tools/item-class-generator`). A soldier at food 14
-or below with no rations left hunts: by day, out of contact and not walling in a patrol base, it
+those that poison or are too precious to eat (`tools/item-class-generator`). A soldier with no rations
+left hunts at food 14 or below, or wounded and below food 18, where it would heal: by day, out of contact and not walling in a patrol base, it
 chases the nearest cow, pig, sheep, chicken or rabbit within 24 blocks, strikes it each time its
 weapon is charged, and stands where it fell for the meat (`bot.supply.Hunter`). Raw meat is a ration
 like any other. It reports `Hunting`. Squad leaders aggregate their
