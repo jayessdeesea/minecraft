@@ -43,7 +43,7 @@ Each points to its home, which has the reasons.
 |---|---|
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Running the server, the models and the squad; building; live checks. |
 | [docs/conventions.md](docs/conventions.md) | Before changing structure or docs: the legibility tenets, failing loud, docs and backlog rules, working without guidance. |
-| [docs/architecture.md](docs/architecture.md) | Before changing how an echelon decides or acts, or where code lives: timescales, behaviour modelling, modules, the pipeline's rule. |
+| [docs/architecture.md](docs/architecture.md) | Before changing how an echelon decides or acts, or where code lives: timescales, behaviour modelling, modules, the pipeline's rule, and the squad simulation that tests a change with no server. |
 | [docs/stack.md](docs/stack.md) | Before touching dependencies, the protocol pin or the model providers. |
 | [docs/personas/](docs/personas/README.md) | What the general, squad leader and soldier can each do, are told and report. |
 | [docs/prompting.md](docs/prompting.md) | Before changing a prompt or what goes into one. |
