@@ -401,7 +401,11 @@ one cell at a time (`bot.supply.Farmer`), in this order:
 2. Plants seeds on bare farmland.
 3. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills
    only under open air.
-4. With no seeds, breaks grass for them, since one in eight drops some.
+4. With no seeds, breaks grass for them, since one in eight drops some - out to 32 blocks, as a
+   squad soon clears what grows near.
+
+A plot cell whose job fails - its place not walked to, the server not answering - is passed over
+for two minutes, and the rest of the plot is worked first.
 
 Each job is an expect script: stand on the cell, item in hand, use it on the cell, and done when
 the server's block update shows farmland or a sprout. A soldier without a hoe makes a wooden one,

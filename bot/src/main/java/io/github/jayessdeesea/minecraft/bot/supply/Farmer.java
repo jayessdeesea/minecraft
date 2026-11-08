@@ -81,8 +81,16 @@ public final class Farmer {
     }
 
     /** Each tick: works {@code farm} while {@code free}; anything else stops the job under way. */
+    /** How far a farmer looks for grass to break for seeds. */
+    static final int SEEDS_RADIUS = 32;
+    /** How long a plot cell whose job failed - not walked to, not answered - is passed over. */
+    static final int PASS_OVER_TICKS = 2400;
+    private long ticks;
+    private final java.util.Map<BlockPos, Long> passedOver = new java.util.HashMap<>();
+
     public synchronized void tick(Position soldier, WorldView world, Optional<FarmPlan> farm, boolean free) {
         this.soldier = soldier;
+        ticks++;
         if (cooldown > 0) {
             cooldown--;
         }
@@ -117,7 +125,8 @@ public final class Farmer {
 
     /** The most pressing job left on {@code farm}, started. */
     private void next(WorldView world, FarmPlan farm) {
-        List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c))
+        passedOver.values().removeIf(until -> until <= ticks);
+        List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !passedOver.containsKey(c))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()))).toList();
         Optional<BlockPos> ripe = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).findFirst();
         if (ripe.isPresent()) {
@@ -140,10 +149,11 @@ public final class Farmer {
             return;
         }
         if (inventory.count(ItemClass.SEEDS) == 0 && (bare.isPresent() || untilled.isPresent())) {
+            // Farther than a gatherer looks: a squad breaking grass for seeds soon clears what's near.
             Optional<Digger.Spot> grass = Digger.findSpot(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), claims,
-                    Digger.Target.GRASS);
+                    Digger.Target.GRASS, SEEDS_RADIUS);
             if (grass.isEmpty()) {
-                fail("no seeds, and no grass within " + Digger.SEARCH_RADIUS + " blocks to find them in");
+                fail("no seeds, and no grass within " + SEEDS_RADIUS + " blocks to find them in");
                 return;
             }
             digger = new Digger(name, session, inventory, claims, grass.get());
@@ -205,6 +215,10 @@ public final class Farmer {
     }
 
     private void fail(String why) {
+        if (claimed != null) {
+            // Its cell out of reach - across water, behind a wall - or its job refused: the rest first.
+            passedOver.put(claimed, ticks + PASS_OVER_TICKS);
+        }
         LOG.warn("{} stops farming for a while - {}", name, why);
         failure = why;
         cooldown = COOLDOWN_TICKS;

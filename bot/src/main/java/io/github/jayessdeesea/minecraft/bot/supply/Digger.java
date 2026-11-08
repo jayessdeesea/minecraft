@@ -348,11 +348,16 @@ final class Digger {
      * cell's distance from {@code around}.
      */
     static Optional<Spot> findSpot(WorldView world, BlockPos around, Set<BlockPos> claimed, Target target) {
+        return findSpot(world, around, claimed, target, SEARCH_RADIUS);
+    }
+
+    /** As {@link #findSpot(WorldView, BlockPos, Set, Target)}, out to {@code radius} blocks across. */
+    static Optional<Spot> findSpot(WorldView world, BlockPos around, Set<BlockPos> claimed, Target target, int radius) {
         Spot best = null;
         double bestDistance = Double.MAX_VALUE;
         int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-        for (int dx = -SEARCH_RADIUS; dx <= SEARCH_RADIUS; dx++) {
-            for (int dz = -SEARCH_RADIUS; dz <= SEARCH_RADIUS; dz++) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
                 for (int dy = -4; dy <= 4; dy++) {
                     BlockPos stand = around.offset(dx, dy, dz);
                     if (claimed.contains(stand) || !standable(world, stand)) {
