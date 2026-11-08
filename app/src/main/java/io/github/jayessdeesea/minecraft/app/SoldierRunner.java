@@ -616,7 +616,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         Map<String, DeterministicSoldier> byName = new HashMap<>();
         squad.forEach(soldier -> byName.put(soldier.status().name(), soldier));
         // Cross-leveling (docs/military-doctrine.md §13): logs from a squadmate with some to spare
-        // to one that needs them for a tool and can't chop any.
+        // to one that needs them for a tool and can't chop any, and food to one that wants it and
+        // has none.
         Map<String, Integer> wanted = new HashMap<>();
         statuses.forEach(s -> {
             Integer logs = logsWanted.get(s.name());
@@ -624,10 +625,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 wanted.put(s.name(), logs);
             }
         });
-        List<CrossLevel.Transfer> transfers = CrossLevel.pair(statuses, wanted);
+        Map<String, Integer> fed = new HashMap<>();
+        statuses.forEach(s -> s.condition().filter(c -> c.kit().isPresent() && wantsFood(c))
+                .ifPresent(c -> fed.put(s.name(), CrossLevel.RATIONS_GIVEN)));
+        List<CrossLevel.Transfer> transfers = CrossLevel.pair(statuses, wanted, fed);
         java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.copyOf(transfers);
         crossLeveling.stream().filter(t -> !state.crossLeveling.contains(t))
-                .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL: {} logs to {}", t.giver(), squadName, t.logs(), t.receiver()));
+                .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL: {} {} to {}", t.giver(), squadName, t.count(),
+                        t.item().name().toLowerCase(java.util.Locale.ROOT), t.receiver()));
         state.crossLeveling = crossLeveling;
         java.util.Set<String> receiving = transfers.stream().map(CrossLevel.Transfer::receiver)
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
@@ -1647,7 +1652,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 Optional<Handover.Delivery> delivery = !free || giving == null || threatened || fort != null
                         ? Optional.empty()
                         : Optional.ofNullable(activeSoldiers.get(giving.receiver()))
-                                .map(receiver -> new Handover.Delivery(giving.receiver(), receiver.status().position(), giving.logs()));
+                                .map(receiver -> new Handover.Delivery(giving.receiver(), receiver.status().position(), giving.item(), giving.count()));
                 handover.tick(status.position(), delivery).ifPresent(soldier::lookAt);
             }));
             turns.put(Hands.Routine.MINER, turn(() -> stairs != null, free -> {

@@ -298,7 +298,8 @@ public final class SpringAiGeneral implements General {
             return "LOGSTAT: no soldier has reported his condition yet.";
         }
         StringBuilder line = new StringBuilder("LOGSTAT: ");
-        line.append(String.format(Locale.ROOT, "food - %d of %d hungry (not regenerating health); ", l.hungry(), l.reporting()));
+        line.append(String.format(Locale.ROOT, "food - %d of %d hungry (not regenerating health)", l.hungry(), l.reporting()));
+        line.append(l.kitReported() == 0 ? "; " : String.format(Locale.ROOT, ", %d rations carried; ", l.rations()));
         if (l.kitReported() == 0) {
             line.append("weapons and armour not reported yet; ");
         } else {

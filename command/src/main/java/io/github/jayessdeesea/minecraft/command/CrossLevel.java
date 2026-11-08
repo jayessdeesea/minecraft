@@ -9,8 +9,9 @@ import java.util.Set;
 
 /**
  * Cross-leveling within the squad (docs/military-doctrine.md §13): a soldier that needs logs for a
- * tool and can't chop them gets them from the nearest squadmate with logs to spare. This drill only
- * pairs them; walking over and handing the logs across is the soldiers' ({@code bot.supply}).
+ * tool and can't chop them, or food and has none, gets them from the nearest squadmate with some to
+ * spare. This drill only pairs them; walking over and handing them across is the soldiers'
+ * ({@code bot.supply}).
  *
  * <p>Pure and stateless like {@link Resupply}. A squad in contact doesn't cross-level - the fight
  * comes first, as it does for rearming.
@@ -19,9 +20,27 @@ public final class CrossLevel {
 
     /** Logs a giver keeps for itself: enough for its own next pickaxe. */
     public static final int KEEP_LOGS = 3;
+    /** Rations a giver keeps for itself: its own next two meals. */
+    public static final int KEEP_RATIONS = 2;
+    /** Rations handed to a soldier with none: two meals, a hungry soldier's way back to full. */
+    public static final int RATIONS_GIVEN = 2;
 
-    /** {@code giver} hands {@code logs} logs to {@code receiver}. */
-    public record Transfer(String giver, String receiver, int logs) {
+    /** What's handed across. */
+    public enum Item {
+        LOGS, RATIONS;
+
+        /** How many of it {@code soldier} carries. */
+        int carried(SoldierStatus soldier) {
+            return soldier.condition().flatMap(Condition::kit).map(k -> this == LOGS ? k.logs() : k.rations()).orElse(0);
+        }
+
+        int kept() {
+            return this == LOGS ? KEEP_LOGS : KEEP_RATIONS;
+        }
+    }
+
+    /** {@code giver} hands {@code count} of {@code item} to {@code receiver}. */
+    public record Transfer(String giver, String receiver, Item item, int count) {
     }
 
     private CrossLevel() {
@@ -33,30 +52,41 @@ public final class CrossLevel {
      * gives to one soldier at a time; a soldier no one can cover is left out.
      */
     public static List<Transfer> pair(List<SoldierStatus> squad, Map<String, Integer> logsWanted) {
+        return pair(squad, logsWanted, Map.of());
+    }
+
+    /**
+     * As {@link #pair(List, Map)}, logs first, then {@link #RATIONS_GIVEN} rations to each soldier in
+     * {@code rationsWanted} (by name) from the nearest squadmate with that many beyond
+     * {@link #KEEP_RATIONS}. A soldier is in one transfer at a time, giving or receiving.
+     */
+    public static List<Transfer> pair(List<SoldierStatus> squad, Map<String, Integer> logsWanted, Map<String, Integer> rationsWanted) {
         if (squad.stream().anyMatch(s -> s.report() instanceof Report.InContact)) {
             return List.of();
         }
         List<Transfer> transfers = new ArrayList<>();
-        Set<String> giving = new HashSet<>();
-        for (SoldierStatus receiver : squad) {
-            Integer wanted = logsWanted.get(receiver.name());
-            if (wanted == null || wanted <= 0) {
-                continue;
-            }
-            squad.stream()
-                    .filter(giver -> !giver.name().equals(receiver.name()) && !giving.contains(giver.name())
-                            && !logsWanted.containsKey(giver.name()) && !(giver.report() instanceof Report.LinkingUp))
-                    .filter(giver -> logs(giver) - KEEP_LOGS >= wanted)
-                    .min(Comparator.comparingDouble(giver -> Cohesion.distance(giver.position(), receiver.position())))
-                    .ifPresent(giver -> {
-                        giving.add(giver.name());
-                        transfers.add(new Transfer(giver.name(), receiver.name(), wanted));
-                    });
-        }
+        Set<String> busy = new HashSet<>();
+        pair(squad, Item.LOGS, logsWanted, busy, transfers);
+        pair(squad, Item.RATIONS, rationsWanted, busy, transfers);
         return List.copyOf(transfers);
     }
 
-    private static int logs(SoldierStatus soldier) {
-        return soldier.condition().flatMap(Condition::kit).map(Kit::logs).orElse(0);
+    private static void pair(List<SoldierStatus> squad, Item item, Map<String, Integer> wantedBy, Set<String> busy, List<Transfer> transfers) {
+        for (SoldierStatus receiver : squad) {
+            Integer wanted = wantedBy.get(receiver.name());
+            if (wanted == null || wanted <= 0 || busy.contains(receiver.name())) {
+                continue;
+            }
+            squad.stream()
+                    .filter(giver -> !giver.name().equals(receiver.name()) && !busy.contains(giver.name())
+                            && !wantedBy.containsKey(giver.name()) && !(giver.report() instanceof Report.LinkingUp))
+                    .filter(giver -> item.carried(giver) - item.kept() >= wanted)
+                    .min(Comparator.comparingDouble(giver -> Cohesion.distance(giver.position(), receiver.position())))
+                    .ifPresent(giver -> {
+                        busy.add(giver.name());
+                        busy.add(receiver.name());
+                        transfers.add(new Transfer(giver.name(), receiver.name(), item, wanted));
+                    });
+        }
     }
 }

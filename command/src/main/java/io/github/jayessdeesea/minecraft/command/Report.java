@@ -76,6 +76,6 @@ public sealed interface Report {
     }
 
     /** Handing logs to a squadmate who needs them for a tool (cross-leveling, docs/military-doctrine.md §13). */
-    record CrossLeveling(String to, int logs) implements Report {
+    record CrossLeveling(String to, CrossLevel.Item item, int count) implements Report {
     }
 }

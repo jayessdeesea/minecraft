@@ -99,7 +99,7 @@ with game in sight, a soldier that wants food puts down its day's work - gatheri
 walling, farming, planting - at its next step, and the hunter takes its hands. Raw meat is a ration
 like any other. It reports `Hunting`. Squad leaders aggregate their
 soldiers' SITREPs into one for the general, with a LOGSTAT summed from the soldiers' LACE
-(`command.Logstat`): hungry soldiers (Class I), empty armour slots (Class II), bare-handed
+(`command.Logstat`): hungry soldiers and the rations they carry (Class I), empty armour slots (Class II), bare-handed
 soldiers and arrows (Class V), and casualties. These are the structured inputs the LLM-backed
 echelons read - the same economy of attention doctrine optimizes for.
 
@@ -394,9 +394,11 @@ wood has to be grown. The soldier at it reports `Planting`.
 | **Cross-leveling** | Supplies move laterally, between units at the same echelon, rather than waiting on resupply from above. Doctrine describes it at company level and up; here it's the same idea within a squad. | FM 4-0; FM 4-93.51 ch. 9 |
 
 *How we use it:* a soldier that needs logs for a tool (§11, §12), has tried to chop them and found
-no tree in reach, is short. `command.CrossLevel` pairs it with the nearest squadmate carrying more
-than it needs: a giver keeps 3 logs, enough for its own next pickaxe, and serves one soldier at a
-time. Nobody cross-levels while the squad is in contact, or from a soldier linking up.
+no tree in reach, is short; so is one that wants food (§4) and carries none. `command.CrossLevel`
+pairs each with the nearest squadmate carrying more than it needs: a giver keeps 3 logs, enough for
+its own next pickaxe, or 2 rations, and hands over the logs short or 2 rations. Logs are paired
+first, and a soldier is in one hand-over at a time, giving or receiving. Nobody cross-levels while
+the squad is in contact, or from a soldier linking up.
 
 The giver (`bot.supply.Handover`) walks to 2 blocks short of the receiver, faces it, and throws the
 logs across one at a time (a THROW click on its inventory). It then backs off, because the server

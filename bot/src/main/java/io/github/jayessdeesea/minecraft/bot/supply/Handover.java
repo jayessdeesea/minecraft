@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.bot.script.Script.Guard;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
@@ -48,8 +49,13 @@ public final class Handover {
      */
     static final int COOLDOWN_TICKS = 200;
 
-    /** Hand {@code logs} logs to {@code receiver}, now standing at {@code at}. */
-    public record Delivery(String receiver, Position at, int logs) {
+    /** Hand {@code count} of {@code item} to {@code receiver}, now standing at {@code at}. */
+    public record Delivery(String receiver, Position at, CrossLevel.Item item, int count) {
+
+        /** As before cross-leveling took food: logs. */
+        public Delivery(String receiver, Position at, int logs) {
+            this(receiver, at, CrossLevel.Item.LOGS, logs);
+        }
     }
 
     private enum Phase { WALKING, THROWING, BACKING_OFF }
@@ -66,6 +72,8 @@ public final class Handover {
     private Position soldierAt;
     private Optional<Delivery> offered = Optional.empty();
     private int logs;
+    private CrossLevel.Item item = CrossLevel.Item.LOGS;
+    private ItemClass thrown = ItemClass.LOG;
     private int remaining;
     private Position backTo;
     private int sinceThrow;
@@ -84,7 +92,7 @@ public final class Handover {
 
     /** What the soldier is doing, for its SITREP, while {@link #active}. */
     public synchronized Optional<Report> report() {
-        return receiver == null ? Optional.empty() : Optional.of(new Report.CrossLeveling(receiver, logs));
+        return receiver == null ? Optional.empty() : Optional.of(new Report.CrossLeveling(receiver, item, logs));
     }
 
     /**
@@ -139,12 +147,12 @@ public final class Handover {
             case Script.Status.Running _ -> {
             }
             case Script.Status.Done _ -> {
-                LOG.info("{} handed {} logs to {}", name, logs, receiver);
+                LOG.info("{} handed {} {} to {}", name, logs, what(), receiver);
                 finish();
             }
             case Script.Status.Interrupted _ -> finish();
             case Script.Status.Failed failed -> {
-                LOG.warn("{} couldn't hand logs to {}: {}: {}", name, receiver, failed.step(), failed.reason());
+                LOG.warn("{} couldn't hand {} to {}: {}: {}", name, what(), receiver, failed.step(), failed.reason());
                 finish();
             }
         }
@@ -154,10 +162,12 @@ public final class Handover {
     private void start(Delivery delivery) {
         receiver = delivery.receiver();
         receiverAt = delivery.at();
-        logs = delivery.logs();
+        logs = delivery.count();
+        item = delivery.item();
+        thrown = item == CrossLevel.Item.LOGS ? ItemClass.LOG : ItemClass.FOOD;
         remaining = logs;
         phase = Phase.WALKING;
-        LOG.info("{} takes {} logs over to {}", name, remaining, receiver);
+        LOG.info("{} takes {} {} over to {}", name, remaining, what(), receiver);
         script = new Script(name, List.of(
                 new Step("walk up to " + receiver, () -> phase = Phase.WALKING,
                         new Expect("within a throw of " + receiver, () -> horizontalDistance(soldierAt, receiverAt) <= THROW_DISTANCE),
@@ -165,13 +175,13 @@ public final class Handover {
                 // Facing goes out with this tick's position report, ahead of the first throw: a
                 // throw goes the way the server thinks the soldier faces.
                 new Step("face " + receiver, () -> phase = Phase.THROWING, new Expect("facing " + receiver, () -> true), 1),
-                Step.untilEach("throw the logs", () -> remaining == 0, this::throwSlot, ANSWER_TICKS),
+                Step.untilEach("throw the " + what(), () -> remaining == 0, this::throwSlot, ANSWER_TICKS),
                 // Done when the receiver stops asking - it has them - not when the giver gets clear:
                 // inside a hut there may be nowhere clear to go.
                 new Step("back off", this::backOff,
-                        new Expect(receiver + " to pick the logs up", () -> {
-                            if (inventory.count(ItemClass.LOG) > kept) {
-                                throw new IllegalStateException("picked its own logs back up");
+                        new Expect(receiver + " to pick the " + what() + " up", () -> {
+                            if (inventory.count(thrown) > kept) {
+                                throw new IllegalStateException("picked its own " + what() + " back up");
                             }
                             return sinceThrow >= PICKUP_DELAY_TICKS && offered.filter(d -> d.receiver().equals(receiver)).isEmpty();
                         }), PICKUP_DELAY_TICKS + WALK_TIMEOUT_TICKS)),
@@ -179,25 +189,29 @@ public final class Handover {
                         || offered.filter(d -> d.receiver().equals(receiver)).isPresent())));
     }
 
-    /** Throws the first slot of logs, as many as are still to give; confirmed by the server's count. */
+    private String what() {
+        return item.name().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** Throws the first slot of what's handed, as many as are still to give; confirmed by the server's count. */
     private Expect throwSlot() {
-        int slot = inventory.slotOf(ItemClass.LOG);
+        int slot = inventory.slotOf(thrown);
         if (slot < 0) {
-            throw new IllegalStateException("out of logs with " + remaining + " still to give");
+            throw new IllegalStateException("out of " + what() + " with " + remaining + " still to give");
         }
-        int before = inventory.count(ItemClass.LOG);
+        int before = inventory.count(thrown);
         int throwing = Math.min(remaining, inventory.countAt(slot));
         for (int i = 0; i < throwing; i++) {
             session.throwOne(0, 0, slot); // stale state: the server resends the inventory
         }
         remaining -= throwing;
         sinceThrow = 0;
-        return new Expect(throwing + " logs gone from slot " + slot, () -> inventory.count(ItemClass.LOG) <= before - throwing);
+        return new Expect(throwing + " " + what() + " gone from slot " + slot, () -> inventory.count(thrown) <= before - throwing);
     }
 
     private void backOff() {
         phase = Phase.BACKING_OFF;
-        kept = inventory.count(ItemClass.LOG);
+        kept = inventory.count(thrown);
         backTo = awayFromReceiver(BACK_OFF + horizontalDistance(soldierAt, receiverAt));
     }
 

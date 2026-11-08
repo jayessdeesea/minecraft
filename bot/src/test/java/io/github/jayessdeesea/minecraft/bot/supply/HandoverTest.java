@@ -75,7 +75,7 @@ class HandoverTest {
 
         tick(handover, far, toAlice(3));
         assertTrue(handover.active());
-        assertEquals(Optional.of(new Report.CrossLeveling("Alice", 3)), handover.report());
+        assertEquals(Optional.of(new Report.CrossLeveling("Alice", io.github.jayessdeesea.minecraft.command.CrossLevel.Item.LOGS, 3)), handover.report());
         assertEquals(Optional.of(new Position(Handover.STAND_OFF, 64, 0)), handover.standAt());
 
         tick(handover, CLOSE, toAlice(3)); // within a throw
