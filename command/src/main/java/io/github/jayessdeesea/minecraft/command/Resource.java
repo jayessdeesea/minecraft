@@ -11,6 +11,8 @@ public enum Resource {
     STONE,
     /** Dirt, dug by hand - building blocks for a patrol base when a squad carries too few. */
     SOIL,
+    /** Flint, one gravel block in ten dug by hand: a soldier's own errand for arrows, never surveyed. */
+    FLINT,
     /** Ground by water to till for wheat: a farm's site, not something gathered. */
     FARMLAND;
 

@@ -245,6 +245,7 @@ public final class SpringAiGeneral implements General {
                         case WOOD -> "logs";
                         case STONE -> "exposed stone";
                         case SOIL -> "dirt";
+                        case FLINT -> "gravel";
                         case FARMLAND -> "cells of ground to farm by the water";
                     })
                     .append(" around ").append(from == null ? SpringAiSquadLeader.describe(site.location()) : relative(site.location(), from));

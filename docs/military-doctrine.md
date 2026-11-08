@@ -283,7 +283,10 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 2. A stone sword.
 3. A bow, from three sticks and three string, once it carries the string: string is a spider's
    drop, not something it goes and fetches. A soldier with a bow makes arrows - flint, a stick, a
-   feather, four at a time - while it carries flint and feathers, up to 32.
+   feather, four at a time - while it carries flint and feathers, up to 32. Short of arrows, it
+   fetches the makings by day, round its squad's objective: with no feather, it hunts a chicken
+   (§4's hunting, chickens only); with no flint and nothing else to gather, it digs gravel by hand,
+   one block in ten giving flint, until it carries two.
 4. A stone pickaxe, which mines iron ore.
 5. A shield, worn in the off hand and raised against arrows (§8).
 6. Copper armour - chestplate, leggings, boots, helmet - from copper ore mined with the stone

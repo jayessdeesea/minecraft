@@ -136,6 +136,11 @@ public final class ChunkCache {
         return BlockClassRegistry.oreOf(rawStateIdAt(x, y, z));
     }
 
+    /** Whether the block is gravel - unknown blocks aren't. */
+    public boolean isGravel(int x, int y, int z) {
+        return BlockClassRegistry.isGravel(rawStateIdAt(x, y, z));
+    }
+
     /** Whether the block is ore of any kind - unknown blocks aren't. */
     public boolean isOre(int x, int y, int z) {
         return BlockClassRegistry.isOre(rawStateIdAt(x, y, z));

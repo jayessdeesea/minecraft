@@ -53,9 +53,9 @@ public final class Hunter {
         this.name = name;
     }
 
-    /** Whether there's game within {@link #radius} of {@code ground} to hunt. */
-    public static boolean gameInSight(WorldView world, Position ground, int food) {
-        return !world.gameNear(ground, radius(food)).isEmpty();
+    /** Whether there's game of the {@code kinds} wanted within {@link #radius} of {@code ground} to hunt. */
+    public static boolean gameInSight(WorldView world, Position ground, int food, java.util.function.IntPredicate kinds) {
+        return world.gameNear(ground, radius(food)).stream().anyMatch(e -> kinds.test(e.typeId()));
     }
 
     /** How far from its hunting ground a soldier at {@code food} looks for game. */
@@ -78,14 +78,15 @@ public final class Hunter {
      * takes to charge.
      */
     public synchronized OptionalInt tick(Position soldier, WorldView world, boolean wanted, int charge) {
-        return tick(soldier, soldier, SEARCH_RADIUS, world, wanted, charge);
+        return tick(soldier, soldier, SEARCH_RADIUS, kind -> true, world, wanted, charge);
     }
 
     /**
-     * As {@link #tick(Position, WorldView, boolean, int)}, game looked for within {@code radius} of
-     * {@code ground}, not round the soldier.
+     * As {@link #tick(Position, WorldView, boolean, int)}, game of the {@code kinds} wanted (by
+     * entity type) looked for within {@code radius} of {@code ground}, not round the soldier.
      */
-    public synchronized OptionalInt tick(Position soldier, Position ground, double radius, WorldView world, boolean wanted, int charge) {
+    public synchronized OptionalInt tick(Position soldier, Position ground, double radius, java.util.function.IntPredicate kinds,
+                                         WorldView world, boolean wanted, int charge) {
         if (chargeTicks > 0) {
             chargeTicks--;
         }
@@ -98,7 +99,7 @@ public final class Hunter {
             return OptionalInt.empty();
         }
         if (quarry == null) {
-            Optional<TrackedEntity> nearest = world.gameNear(ground, radius).stream()
+            Optional<TrackedEntity> nearest = world.gameNear(ground, radius).stream().filter(e -> kinds.test(e.typeId()))
                     .min(java.util.Comparator.comparingDouble(e -> distance(soldier, e.position())));
             if (nearest.isEmpty()) {
                 return OptionalInt.empty();
@@ -107,7 +108,7 @@ public final class Hunter {
             lastSeen = nearest.get().position();
             unseenTicks = 0;
             huntTicks = 0;
-            LOG.info("{} hunts the animal at {} for food", name, lastSeen);
+            LOG.info("{} hunts the animal at {}", name, lastSeen);
         }
         Optional<TrackedEntity> seen = world.gameNear(soldier, radius * 2).stream()
                 .filter(e -> e.entityId() == quarry).findFirst();

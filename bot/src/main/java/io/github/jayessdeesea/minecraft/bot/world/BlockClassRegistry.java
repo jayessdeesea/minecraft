@@ -61,6 +61,8 @@ final class BlockClassRegistry {
     private static final java.util.BitSet WATER = new java.util.BitSet();
     /** Ore of any kind: coal, iron, copper, gold, redstone, lapis, emerald, diamond, either stone. Filled while loading. */
     private static final java.util.BitSet ORES = new java.util.BitSet();
+    /** Gravel, which drops flint one time in ten. Filled while loading. */
+    private static final java.util.BitSet GRAVEL = new java.util.BitSet();
     /** Each ore state's metal or mineral - "copper", "iron", "diamond". Filled while loading. */
     private static final java.util.Map<Integer, String> ORE_KINDS = new java.util.HashMap<>();
     /** Each leaves or sapling state's tree - "spruce", "oak". Filled while loading. */
@@ -113,6 +115,10 @@ final class BlockClassRegistry {
     /** What ore {@code stateId} is - "copper", "iron" - or empty if it isn't ore. */
     static java.util.Optional<String> oreOf(int stateId) {
         return java.util.Optional.ofNullable(ORE_KINDS.get(stateId));
+    }
+
+    static boolean isGravel(int stateId) {
+        return stateId >= 0 && GRAVEL.get(stateId);
     }
 
     static boolean isOre(int stateId) {
@@ -180,6 +186,9 @@ final class BlockClassRegistry {
                     }
                     if (fields.length > 2 && fields[2].endsWith("_leaves")) {
                         TREES.put(stateId, fields[2].substring(0, fields[2].length() - "_leaves".length()));
+                    }
+                    if (fields.length > 2 && fields[2].equals("gravel")) {
+                        GRAVEL.set(stateId);
                     }
                     if (fields.length > 2 && fields[2].endsWith("_ore")) {
                         ORES.set(stateId);

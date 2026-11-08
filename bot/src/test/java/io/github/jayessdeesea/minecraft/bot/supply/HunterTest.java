@@ -47,8 +47,9 @@ class HunterTest {
         game.add(new TrackedEntity(7, COW, new Position(70.5, 64, 0.5)));
         Position camp = new Position(0.5, 64, 0.5);
 
-        assertFalse(Hunter.gameInSight(field, camp, 10), "hungry: the camp's ground is hunted out");
-        assertTrue(Hunter.gameInSight(field, camp, Hunter.STARVING_FOOD), "starving: further out");
+        assertFalse(Hunter.gameInSight(field, camp, 10, kind -> true), "hungry: the camp's ground is hunted out");
+        assertTrue(Hunter.gameInSight(field, camp, Hunter.STARVING_FOOD, kind -> true), "starving: further out");
+        assertFalse(Hunter.gameInSight(field, camp, Hunter.STARVING_FOOD, kind -> kind != COW), "only the kinds wanted");
     }
 
     @Test

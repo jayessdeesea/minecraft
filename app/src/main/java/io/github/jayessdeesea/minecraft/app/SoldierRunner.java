@@ -1535,7 +1535,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             boolean inContact = status.report() instanceof Report.InContact;
             // Under threat, routines pause - they pick up where they left off once it's gone.
             boolean threatened = inContact || !world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).isEmpty();
-            io.github.jayessdeesea.minecraft.command.Objective gather = gathering.get(name);
+            // Flint for arrows, for a soldier with a bow and few arrows, when nothing else is to be gathered.
+            io.github.jayessdeesea.minecraft.command.Objective gather = gathering.get(name) != null || !huntAllowed.contains(name)
+                    || inventory.slotOfNamed("bow") < 0 || inventory.count(ItemClass.ARROWS) >= ARROWS_WANTED
+                    || inventory.count(ItemClass.FLINT) > 0 ? gathering.get(name)
+                    : new io.github.jayessdeesea.minecraft.command.Objective("Dig gravel for flint", huntGrounds.getOrDefault(name,
+                    status.position()), "Arrows for the bow", new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(
+                    io.github.jayessdeesea.minecraft.command.Resource.FLINT));
             boolean needsPickaxe = (gather != null && gather.gather().equals(Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE))
                     || mining.contains(name))
                     && inventory.slotOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.PICKAXE) < 0;
@@ -1618,15 +1624,20 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             soldier.yaw(), soldier.pitch())));
             Kit eating = status.condition().flatMap(c -> c.kit()).orElse(null);
             boolean hungry = status.condition().filter(c -> c.kit().isPresent()).map(SoldierRunner::wantsFood).orElse(false);
-            boolean huntWanted = hungry && huntAllowed.contains(name) && !inContact;
+            // Feathers for arrows, for a soldier with a bow and few arrows: a chicken, hunted like any game.
+            boolean wantsFeathers = inventory.slotOfNamed("bow") >= 0 && inventory.count(ItemClass.ARROWS) < ARROWS_WANTED
+                    && inventory.count(ItemClass.FEATHER) == 0;
+            java.util.function.IntPredicate quarry = hungry ? kind -> true
+                    : kind -> kind == io.github.jayessdeesea.minecraft.bot.world.EntityTracker.CHICKEN_TYPE_ID;
+            boolean huntWanted = (hungry || wantsFeathers) && huntAllowed.contains(name) && !inContact;
             // Food first: the day's work - gathering, lighting, walling, planting - gives the hands
             // up when there's game in sight to eat, and the hunter takes them next tick.
             Position huntGround = huntGrounds.getOrDefault(name, status.position());
             int food = status.condition().map(Condition::food).orElse(Condition.MAX_FOOD);
             boolean huntCalls = huntWanted && !hunter.active()
-                    && io.github.jayessdeesea.minecraft.bot.supply.Hunter.gameInSight(world, huntGround, food);
+                    && io.github.jayessdeesea.minecraft.bot.supply.Hunter.gameInSight(world, huntGround, food, quarry);
             turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), huntGround,
-                    io.github.jayessdeesea.minecraft.bot.supply.Hunter.radius(food), world,
+                    io.github.jayessdeesea.minecraft.bot.supply.Hunter.radius(food), quarry, world,
                     free && huntWanted,
                     io.github.jayessdeesea.minecraft.bot.world.WeaponStats.melee(eating == null ? Optional.empty() : eating.weapon()).ticksToCharge())
                     .ifPresent(target -> {

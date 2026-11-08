@@ -32,6 +32,8 @@ public final class Gatherer {
     public static final int CARRY_STONE = 32;
     /** Dirt dug for a patrol base: a soldier's share of a hut, and a few over for the misses. */
     public static final int CARRY_SOIL = 16;
+    /** Flint enough for eight arrows: some twenty gravel blocks dug. */
+    public static final int CARRY_FLINT = 2;
     static final int RETRY_TICKS = 600;
 
     private final String name;
@@ -84,11 +86,13 @@ public final class Gatherer {
         ItemClass item = switch (resource.get()) {
             case WOOD -> ItemClass.LOG;
             case SOIL -> ItemClass.DIRT;
+            case FLINT -> ItemClass.FLINT;
             default -> ItemClass.COBBLESTONE;
         };
         int load = switch (resource.get()) {
             case WOOD -> CARRY_LOGS;
             case SOIL -> CARRY_SOIL;
+            case FLINT -> CARRY_FLINT;
             default -> CARRY_STONE;
         };
         if (resource.get() == Resource.STONE && inventory.slotOf(ItemClass.PICKAXE) < 0) {
@@ -107,6 +111,7 @@ public final class Gatherer {
         Digger.Target target = switch (resource.get()) {
             case WOOD -> Digger.Target.LOG;
             case SOIL -> Digger.Target.SOIL;
+            case FLINT -> Digger.Target.GRAVEL;
             default -> Digger.Target.STONE;
         };
         if (digger == null) {

@@ -103,6 +103,8 @@ public final class EntityTracker {
      * rabbit 111, mooshroom 87. Each drops raw meat a soldier eats as a ration.
      */
     static final Set<Integer> GAME_TYPE_IDS = Set.of(30, 101, 114, 26, 111, 87);
+    /** The chicken, in protocol 777's registry: game that also drops feathers, for arrows. */
+    public static final int CHICKEN_TYPE_ID = 26;
 
     /** Game - animals killed for meat - within {@code radius} of {@code center}, nearest first. */
     public List<TrackedEntity> nearbyGame(Position center, double radius) {

@@ -78,6 +78,11 @@ public interface WorldView {
         return java.util.Optional.empty();
     }
 
+    /** Whether the block is gravel, which drops flint one time in ten. */
+    default boolean isGravel(int x, int y, int z) {
+        return false;
+    }
+
     /** Whether the block is ore of any kind: coal, iron, copper, gold, redstone, lapis, emerald, diamond. */
     default boolean isOre(int x, int y, int z) {
         return false;
