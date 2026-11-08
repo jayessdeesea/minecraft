@@ -594,7 +594,9 @@ A lit camp still lets in what walks in from the dark beyond the light. An object
 jump - on a square 8 blocks out from the objective, laid on the ground of each of its columns, with
 a doorway a column wide in the middle of its south side: the squads' way in and out, rather than a
 step cut through the wall (`bot.supply.Perimeter`). It's laid out once, by whichever squad comes to
-it first, and shared - laid out again after a row, the ground would be the wall's top. So the
+it first, and shared, and it's kept by the objective's x and z, not by the ground it was laid on:
+that ground moves as the pits are dug and the wall goes up, and laid out again it would lose what's
+built. So the
 layout is kept on disk too (`app.WallStore`, under `minecraft.state-dir`), and a restarted garrison
 builds the wall it laid out before rather than a second one on top of it. Its
 cells join the ones every dig skips, so nobody quarries it. Each soldier takes the nearest open cell no
@@ -603,7 +605,8 @@ and on a slope the rows stand at many heights - stands just inside it, within 0.
 centre as a hut builder does, and puts a block there,
 cobblestone first, then dirt, breaking first whatever stands in the cell that a block can't
 replace - a torch, a flower (`bot.supply.Mason`); one down to fewer than 4 digs dirt outside the
-wall, each mason on its own side of the camp so no one pit is dug out under all of them. A cell that fails - its place not walked to, inside an old hut or across water, or its block
+wall, each mason on its own side of the camp so no one pit is dug out under all of them, and once
+digging it digs a load of 32 before it builds again, rather than walking back with every fourth. A cell that fails - its place not walked to, inside an old hut or across water, or its block
 refused - it passes over for two minutes and builds the rest. On top goes a lip, a
 ring of blocks one out from the wall's top row, against its outer face: an overhang a spider
 climbing the wall can't get round. None outside the doorway, where it would stand at head height

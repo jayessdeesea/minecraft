@@ -181,4 +181,36 @@ class SquadSimulationTest {
         assertTrue(atTheTop.isEmpty(), "Bravo at the top at midnight: " + atTheTop + " - "
                 + List.of("Carol", "Dana").stream().map(n -> n + " at " + server.position(n)).toList());
     }
+
+    /** Ground rising a block every 3 east of x=-6: the camp's wall stands on many heights. */
+    private static int slope(int x, int y, int z) {
+        int top = GROUND + Math.max(0, Math.floorDiv(x + 6, 3));
+        return y <= -64 ? SimServer.BEDROCK : y < 55 ? SimServer.STONE : y < top ? SimServer.DIRT
+                : y == top ? SimServer.GRASS : SimServer.AIR;
+    }
+
+    /** FORTIFY on a slope: in a day the squad digs its own dirt and closes the wall round the camp. */
+    @Test
+    void aSquadWallsInTheCampOnASlope() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::slope, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
+        Position camp = new Position(0, GROUND + 3, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Wall the camp in", camp, "Nothing walks in",
+                new Objective.Task.Fortify())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 3, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(20 * 60_000); // a day
+
+        Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
+                .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
+        assertTrue(walled.met(), "after a day: " + walled.status());
+    }
 }

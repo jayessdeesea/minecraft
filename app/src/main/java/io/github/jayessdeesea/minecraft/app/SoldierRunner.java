@@ -137,6 +137,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         String torchbearer;
         /** The squad's staircase, while its objective is MINE. */
         io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs;
+        /** The objective's x and z the wall was laid out for: its key in {@code walls}. */
+        String wallKey;
         /** The objective's x and z the stairs were sited for. */
         int[] stairsFor;
         /** Torches left to put down round a SECURE objective, at the last check: -1 before the first. */
@@ -424,6 +426,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     static final int WALL_RADIUS = 8;
     /** Fewer blocks than this carried, and a mason goes and digs dirt for the wall. */
     static final int WALL_BLOCKS_LOW = 4;
+    /** A mason digging for the wall digs this many before it goes back to building. */
+    static final int WALL_BLOCKS_LOAD = 32;
+    /** Masons digging a load of dirt for the wall - squad loop only. */
+    private final java.util.Set<String> diggingForWall = new java.util.HashSet<>();
     /** How close behind the cutter, across and up the stairs, the rest of a squad mining at night keeps. */
     static final double MINE_FOLLOW = 3;
     /** How often, hands free, a soldier checks it's wearing its best and holding its weapon: the server's answer has time to come back. */
@@ -919,23 +925,29 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         if (fortify.isEmpty()) {
             state.wall = null;
             state.wallCentre = null;
+            state.wallKey = null;
             state.wallLeft = -1;
         } else {
-            // Round the ground most of the camp stands on, not a hut roof at its centre.
+            // Kept by the place asked, not by the ground found there: the ground moves as the pits
+            // are dug and the wall goes up, and a wall laid out again round it lost its progress -
+            // in the squad simulation, and live, a wall that never closed.
             Position asked = fortify.get().location();
-            io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = typicalGround((int) Math.floor(asked.x()), (int) Math.floor(asked.z()),
-                    (int) Math.floor(asked.y())).orElse(io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
-                            io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(asked.x(), asked.y(), asked.z())));
-            if (state.wallCentre == null || state.wallCentre.x() != at.x() || state.wallCentre.z() != at.z()) {
+            String wallKey = (int) Math.floor(asked.x()) + "," + (int) Math.floor(asked.z());
+            if (!wallKey.equals(state.wallKey)) {
+                // Round the ground most of the camp stands on, not a hut roof at its centre.
+                io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = typicalGround((int) Math.floor(asked.x()), (int) Math.floor(asked.z()),
+                        (int) Math.floor(asked.y())).orElse(io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
+                                io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(asked.x(), asked.y(), asked.z())));
                 // One layout a wall, whichever squad comes to it first: a squad that lays out a wall
                 // another has half built lays it out on top of what's there.
-                state.wall = walls.computeIfAbsent(at.x() + "," + at.z(), key -> wallStore.load(key).orElseGet(() -> {
+                state.wall = walls.computeIfAbsent(wallKey, key -> wallStore.load(key).orElseGet(() -> {
                     List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> layout = io.github.jayessdeesea.minecraft.bot.supply.Perimeter
                             .layout(world, at, WALL_RADIUS);
                     wallStore.save(key, layout);
                     return layout;
                 }));
                 state.wallCentre = at;
+                state.wallKey = wallKey;
                 LOG.info("[{}] FORTIFY: a wall laid out round {}, {} blocks", squadName, at, state.wall.size());
             }
         }
@@ -1042,7 +1054,15 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 Kit bricks = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
                 // Nearly out counts as out: a soldier down to its last block or two otherwise neither
                 // digs more nor has enough to work with - live, one with a single dirt stood about.
-                if (bricks != null && bricks.stone() + bricks.dirt() < WALL_BLOCKS_LOW) {
+                // Once it's digging, it digs a load: a mason that turned back at its fourth block
+                // spent the day walking between the pit and the wall, in the squad simulation.
+                int carriedBlocks = bricks == null ? 0 : bricks.stone() + bricks.dirt();
+                if (carriedBlocks < WALL_BLOCKS_LOW) {
+                    diggingForWall.add(soldierName);
+                } else if (carriedBlocks >= WALL_BLOCKS_LOAD) {
+                    diggingForWall.remove(soldierName);
+                }
+                if (bricks != null && diggingForWall.contains(soldierName)) {
                     // Nothing to build with: dirt, dug outside the wall so the ground inside stays whole -
                     // each mason on its own side, so one pit isn't dug out under all of them.
                     int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
