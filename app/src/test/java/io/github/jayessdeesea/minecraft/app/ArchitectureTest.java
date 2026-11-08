@@ -1,11 +1,19 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Enforces, at build time, the module tenets documented in docs/architecture.md:
@@ -46,6 +54,21 @@ class ArchitectureTest {
                 .that().resideInAPackage(ROOT + ".bot..")
                 .should().dependOnClassesThat().resideInAPackage(ROOT + ".command.ai..");
         rule.check(classes);
+    }
+
+    /**
+     * A component with a second constructor - a test seam - names the one Spring uses: otherwise
+     * Spring looks for a default constructor and the app fails at startup, past every unit test.
+     */
+    @Test
+    void aComponentWithSeveralConstructorsNamesTheOneSpringUses() {
+        List<String> ambiguous = classes.stream()
+                .filter(c -> c.isAnnotatedWith(Component.class) || c.isMetaAnnotatedWith(Component.class))
+                .filter(c -> c.getConstructors().size() > 1)
+                .filter(c -> c.getConstructors().stream().filter(k -> k.isAnnotatedWith(Autowired.class)).count() != 1)
+                .map(JavaClass::getName)
+                .toList();
+        assertEquals(List.of(), ambiguous);
     }
 
     @Test

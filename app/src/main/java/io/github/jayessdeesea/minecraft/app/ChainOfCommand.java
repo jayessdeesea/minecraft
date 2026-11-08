@@ -11,6 +11,7 @@ import io.github.jayessdeesea.minecraft.command.ai.SpringAiSquadLeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
@@ -108,6 +109,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      */
     static final long SHELTER_LEAD_TICKS = 1800;
 
+    @Autowired
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient,
                           io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts squadLeaderPrompts, Roster roster,
                           @org.springframework.beans.factory.annotation.Value("${minecraft.general.shelter-at-night}") boolean shelterAtNight) {
