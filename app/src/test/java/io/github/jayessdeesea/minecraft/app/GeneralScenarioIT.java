@@ -65,6 +65,12 @@ class GeneralScenarioIT {
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
                             "288 walkable cells within 12 blocks still dark", "SECURE"),
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
+            "morning-wall-open", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false,
+                            "57 of 170 wall blocks still to place", "FORTIFY"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "food", true, "", "FARM"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))),
             "starving-airhead", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false,
@@ -144,6 +150,20 @@ class GeneralScenarioIT {
                         }
                         return failures;
                     }),
+            // The live miss: "gather wood and stone" ordered with task NONE - the squad stood at the camp.
+            new Situation("wood-and-stone-wanted", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment. "
+                    + "Alpha walls the camp in. Bravo gathers the wood and stone the camp's walls and tools need.",
+                    TimeOfDay.of(3000, true),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
+                    (squads, given) -> !(given.get(1).task() instanceof Objective.Task.None) ? List.of()
+                            : List.of("Bravo given work with no task: " + given.get(1).mission())),
+            // The live miss: just after dawn, a squad sent into a patrol base "before dark" - a day's work lost.
+            new Situation("morning-wall-open", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment. "
+                    + "Each squad spends the night sealed inside a patrol base near there, until dawn.",
+                    TimeOfDay.of(1200, true),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
+                    (squads, given) -> given.stream().filter(Objective::patrolBase)
+                            .map(o -> "sent to shelter in the morning: " + o.mission()).toList()),
             // The live miss: the wall open and every soldier hungry - both squads were sent to the wall.
             new Situation("starving-airhead", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
                     TimeOfDay.of(2000, true),
