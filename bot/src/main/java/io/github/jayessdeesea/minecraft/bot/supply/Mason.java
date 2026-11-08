@@ -141,8 +141,11 @@ public final class Mason {
                 }, new Expect("a block at " + cell, () -> world.isSolid(cell.x(), cell.y(), cell.z())), ANSWER_TICKS)));
     }
 
+    /** Within this of its place's centre: a 0.6-wide body clear of the wall cell beside it. */
+    static final double ON_PLACE = 0.2;
+
     private boolean on(BlockPos cell) {
-        return Math.hypot(soldier.x() - (cell.x() + 0.5), soldier.z() - (cell.z() + 0.5)) < 0.6 && Math.abs(soldier.y() - cell.y()) < 0.6;
+        return Math.hypot(soldier.x() - (cell.x() + 0.5), soldier.z() - (cell.z() + 0.5)) < ON_PLACE && Math.abs(soldier.y() - cell.y()) < 0.6;
     }
 
     private void fail(String why) {

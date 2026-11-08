@@ -588,7 +588,8 @@ layout is kept on disk too (`app.WallStore`, under `minecraft.state-dir`), and a
 builds the wall it laid out before rather than a second one on top of it. Its
 cells join the ones every dig skips, so nobody quarries it. Each soldier takes the nearest open cell no
 squadmate has taken that has a block to go against - so each column rises from its own ground,
-and on a slope the rows stand at many heights - stands just inside it, and puts a block there,
+and on a slope the rows stand at many heights - stands just inside it, within 0.15 of the place's
+centre as a hut builder does, and puts a block there,
 cobblestone first, then dirt, breaking first whatever stands in the cell that a block can't
 replace - a torch, a flower (`bot.supply.Mason`); one down to fewer than 4 digs dirt outside the
 wall. A cell that fails - its place not walked to, inside an old hut or across water, or its block

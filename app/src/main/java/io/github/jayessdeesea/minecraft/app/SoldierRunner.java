@@ -1110,8 +1110,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 // Walk onto what's been thrown: the server hands a dropped stack to whoever touches it.
                 stand = entityTracker.nearbyItems(statuses.get(i).position(), PICKUP_RADIUS).stream().findFirst();
             }
+            // A mason stands as close to its place's centre as a hut builder: a body off centre leans
+            // into the wall cell beside it, and the server won't place a block where a body is.
+            double tolerance = 0.3;
             if (stand.isEmpty() && masons.containsKey(soldierName)) {
                 stand = masons.get(soldierName).standAt();
+                tolerance = stand.isPresent() ? HUT_PLACE_TOLERANCE : tolerance;
             }
             if (stand.isEmpty() && lamplighters.containsKey(soldierName)) {
                 stand = lamplighters.get(soldierName).standAt();
@@ -1126,7 +1130,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 stand = gatherer.standAt();
             }
             if (stand.isPresent()) {
-                given = new Order.MoveTo(stand.get().x(), stand.get().y(), stand.get().z(), 0.3, 0.5, Risk.LOW);
+                given = new Order.MoveTo(stand.get().x(), stand.get().y(), stand.get().z(), tolerance, 0.5, Risk.LOW);
             }
             byName.get(soldierName).receiveOrder(given);
         }
