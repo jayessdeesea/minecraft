@@ -636,7 +636,9 @@ force builds a lodgment after the drop. Its phases:
    carried to make torches from and no tree in sight, the lit standard's task is TREE_FARM: the
    wood is grown first.
 3. The buildup of sustainment: food that grows (§12, FARM), wood that grows back (§12, TREE_FARM),
-   and stone and iron from a mine (§16, MINE).
+   and stone and iron from a mine (§16, MINE). While more than half the soldiers are hungry with
+   nothing to eat, food is an airhead standard instead: a unit eats before it improves its
+   position (GeneralScenarioIT's `starving-airhead`, 4 of 5).
 4. Equipment: every soldier armed with a stone sword or better and armoured (§11).
 
 Every ten seconds the runner measures each phase's standards at the camp - from its ground, the

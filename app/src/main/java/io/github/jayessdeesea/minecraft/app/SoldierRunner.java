@@ -342,7 +342,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         Optional<io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> farm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at,
                 CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
-        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "food", growing >= FARM_GROWING,
+        // Food is buildup - unless the force is starving now: then it comes before the wall, as a
+        // unit eats before it improves its position. Live, both squads walled the camp while all
+        // eight soldiers went hungry, health falling to 1.
+        int foodPhase = hungry * 2 > everyone.size() ? 2 : 3;
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(foodPhase, "food", growing >= FARM_GROWING,
                 (farm.isEmpty() ? "no ground to farm by water near the camp" : growing + " of " + farm.get().plot().size() + " farm cells growing wheat")
                         + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM"));
         Optional<io.github.jayessdeesea.minecraft.bot.farm.TreeFarm> grove = io.github.jayessdeesea.minecraft.bot.farm.TreeFarm.site(world, at,
