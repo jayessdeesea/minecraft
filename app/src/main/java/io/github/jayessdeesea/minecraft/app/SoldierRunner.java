@@ -349,7 +349,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // eight soldiers went hungry, health falling to 1.
         int foodPhase = hungry * 2 > everyone.size() ? 2 : 3;
         standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(foodPhase, "food", growing >= FARM_GROWING,
-                (farm.isEmpty() ? "no ground to farm by water near the camp" : growing + " of " + farm.get().plot().size() + " farm cells growing wheat")
+                // Where: a coordinate written out is one the model copies, and here it should - live,
+                // told only a count, it sent a squad to farm 50 blocks off, where the count never sees it.
+                (farm.isEmpty() ? "no ground to farm by water near the camp" : growing + " of " + farm.get().plot().size()
+                        + " cells of the camp's farm ground, by the water at x=" + farm.get().water().x() + " z=" + farm.get().water().z()
+                        + ", growing wheat")
                         + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM"));
         Optional<io.github.jayessdeesea.minecraft.bot.farm.TreeFarm> grove = io.github.jayessdeesea.minecraft.bot.farm.TreeFarm.site(world, at,
                 CAMP_RADIUS);

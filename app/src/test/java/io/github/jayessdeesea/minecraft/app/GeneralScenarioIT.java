@@ -70,7 +70,8 @@ class GeneralScenarioIT {
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false,
                             "161 of 170 wall blocks still to place", "FORTIFY"),
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "food", false,
-                            "0 of 55 farm cells growing wheat; 8 of 8 soldiers hungry with nothing to eat", "FARM"),
+                            "0 of 55 cells of the camp's farm ground, by the water at x=3010 z=2990, growing wheat; "
+                                    + "8 of 8 soldiers hungry with nothing to eat", "FARM"),
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))),
             "foothold-airhead", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
@@ -147,8 +148,9 @@ class GeneralScenarioIT {
             new Situation("starving-airhead", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
                     TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
-                    (squads, given) -> given.stream().anyMatch(Objective::farm) ? List.of()
-                            : List.of("nobody set to farm with every soldier hungry: " + given.stream().map(o -> o.task().toString()).toList())),
+                    (squads, given) -> given.stream().anyMatch(o -> o.farm() && Math.hypot(o.location().x() - 3010, o.location().z() - 2990) <= 12)
+                            ? List.of() : List.of("nobody set to farm the camp's farm ground with every soldier hungry: "
+                                    + given.stream().map(o -> o.task() + " at " + o.location()).toList())),
             new Situation("secure-the-camp", "The camp is on the stone platform around x=3000 z=3000. Both squads light "
                     + "its ground with torches today.", TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
