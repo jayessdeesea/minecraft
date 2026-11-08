@@ -74,9 +74,10 @@ alive at the time.
 
 ## What's in the way
 In the order the timetable meets them:
-- **Falls** (day 1). The casualty reports (§ 6) will say which routine walks soldiers off edges.
-  The server also logs "standing on air" for every soldier, in bursts. Our model's ground and the
-  server's may disagree, or our client may report being on the ground when it isn't.
+- **Falls** (day 1). One cause is found and fixed: blocks with no collision that our model read
+  as solid, sugar cane among them (docs/world-data-spec.md § 2). Whether falls stop is for the
+  casualty reports (docs/military-doctrine.md § 6) to show. The server's "standing on air" log
+  line, a client claiming the ground under it with none there, is the symptom to watch.
 - **Kit lost at death** (every day). Until deaths are rare, kit is rebuilt after every one. See
   Notes for the gamerule.
 - **Health below full** (day 2). Food at 18 or more is the standard, not just "not hungry". Hunting
