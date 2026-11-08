@@ -92,7 +92,7 @@ hands (`bot.supply.Rations`): the food goes into a hotbar slot without a weapon 
 times the meal, and the weapon comes back to hand. Rations are the food items it carries, less
 those that poison or are too precious to eat (`tools/item-class-generator`). A soldier with no rations
 left hunts at food 14 or below, or wounded and below food 18, where it would heal: by day, out of contact and not walling in a patrol base, it
-chases the nearest cow, pig, sheep, chicken or rabbit within 24 blocks, strikes it each time its
+chases the nearest cow, pig, sheep, chicken or rabbit within 48 blocks, strikes it each time its
 weapon is charged, and stands where it fell for the meat (`bot.supply.Hunter`). Raw meat is a ration
 like any other. It reports `Hunting`. Squad leaders aggregate their
 soldiers' SITREPs into one for the general, with a LOGSTAT summed from the soldiers' LACE

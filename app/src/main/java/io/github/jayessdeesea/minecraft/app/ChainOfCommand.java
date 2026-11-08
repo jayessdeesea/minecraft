@@ -127,14 +127,15 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     }
 
     /**
-     * {@code objective}, or - at night, under {@link #shelterAtNight}, for a squad not sealed in a
-     * patrol base when the general's order leaves it in the open - the patrol base it was already
+     * {@code objective}, or - at night, under {@link #shelterAtNight}, when the general's order
+     * would leave a squad in the open or take it out of the base it is sealed in - the patrol base it was already
      * ordered to build, or else one where the squad's point man stands. A guardrail, and a loud one: the general's own order is logged beside it.
      */
     Objective sheltered(Objective objective, io.github.jayessdeesea.minecraft.command.SquadStatus squad) {
         io.github.jayessdeesea.minecraft.command.TimeOfDay now = time;
+        // A squad already sealed in is the one most to keep there: an order out of it is no exception.
         if (!shelterAtNight || now == null || !(now.dark() || now.ticksUntilDark() <= SHELTER_LEAD_TICKS)
-                || squad.holdingBase() || objective.patrolBase() || squad.soldiers().isEmpty()) {
+                || objective.patrolBase() || squad.soldiers().isEmpty()) {
             return objective;
         }
         // A base already ordered is the one to finish: sited again wherever the point man stands at

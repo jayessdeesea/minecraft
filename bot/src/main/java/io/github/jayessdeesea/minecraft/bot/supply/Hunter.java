@@ -24,8 +24,8 @@ public final class Hunter {
 
     private static final Logger LOG = LogManager.getLogger(Hunter.class);
 
-    /** How far a soldier looks for game. */
-    public static final double SEARCH_RADIUS = 24;
+    /** How far a soldier looks for game: the ground round a camp is soon hunted out close in. */
+    public static final double SEARCH_RADIUS = 48;
     /** Ticks without sight of the quarry before it's given up. */
     static final int LOST_TICKS = 100;
     /** Ticks spent standing where the quarry fell, for its drops to be picked up. */
