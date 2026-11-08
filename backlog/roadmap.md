@@ -76,8 +76,10 @@ alive at the time.
 In the order the timetable meets them:
 - **Falls** (day 1). One cause is found and fixed: blocks with no collision that our model read
   as solid, sugar cane among them (docs/world-data-spec.md § 2). Whether falls stop is for the
-  casualty reports (docs/military-doctrine.md § 6) to show. The server's "standing on air" log
-  line, a client claiming the ground under it with none there, is the symptom to watch.
+  casualty reports (docs/military-doctrine.md § 6) to show. The server's "standing on air" log line
+  isn't evidence either way: it's drawn when a client claims ground and its last move hit nothing
+  below, and its rate (15 to 19 a minute for 8 soldiers) didn't change with the fix. A position report
+  with no movement, which a vanilla client sends as a status-only packet, may draw it on its own.
 - **Kit lost at death** (every day). Until deaths are rare, kit is rebuilt after every one. See
   Notes for the gamerule.
 - **Health below full** (day 2). Food at 18 or more is the standard, not just "not hungry". Hunting
