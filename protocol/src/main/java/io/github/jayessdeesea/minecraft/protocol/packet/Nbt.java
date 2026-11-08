@@ -83,28 +83,44 @@ final class Nbt {
                 }
             }
             case COMPOUND -> {
+                // A compound's fields come in any order - the server writes a translation's
+                // arguments before its key - so its parts are gathered, then put together.
+                StringBuilder own = new StringBuilder();
+                StringBuilder extra = new StringBuilder();
+                String translate = null;
+                StringBuilder with = null;
                 int childType;
                 while ((childType = in.readUnsignedByte()) != END) {
                     String name = readString(in);
-                    if (name.equals("text") && childType == STRING || name.equals("extra") && childType == LIST) {
-                        readText(in, childType, text, depth + 1);
+                    if (name.equals("text") && childType == STRING) {
+                        own.append(readString(in));
+                    } else if (name.equals("extra") && childType == LIST) {
+                        readText(in, childType, extra, depth + 1);
                     } else if (name.equals("translate") && childType == STRING) {
-                        text.append(readString(in));
+                        translate = readString(in);
                     } else if (name.equals("with") && childType == LIST) {
                         int elementType = in.readUnsignedByte();
                         int count = in.readInt();
-                        text.append('[');
+                        with = new StringBuilder("[");
                         for (int i = 0; i < count; i++) {
                             if (i > 0) {
-                                text.append(", ");
+                                with.append(", ");
                             }
-                            readText(in, elementType, text, depth + 1);
+                            readText(in, elementType, with, depth + 1);
                         }
-                        text.append(']');
+                        with.append(']');
                     } else {
                         skipPayload(in, childType, depth + 1);
                     }
                 }
+                text.append(own);
+                if (translate != null) {
+                    text.append(translate);
+                    if (with != null) {
+                        text.append(with);
+                    }
+                }
+                text.append(extra);
             }
             default -> skipPayload(in, typeId, depth);
         }

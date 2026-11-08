@@ -310,6 +310,64 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void withAWallAtItsBackItSidestepsACreeper() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, 64, 0.5));
+        // A wall two high just west of her, the creeper coming from the east.
+        WorldView walled = withHostileAt(new Position(3.5, 64, 0.5), (x, y, z) -> y < GROUND || x < 0 && y <= GROUND + 1);
+        WorldView creeper = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return walled.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, HostileMobRegistry.typeIdOf("creeper"), new Position(3.5, 64, 0.5)));
+            }
+        };
+
+        for (int tick = 0; tick < 10; tick++) {
+            alice.tick(creeper);
+        }
+
+        assertTrue(Math.abs(alice.status().position().z() - 0.5) > 0.5, "moves along the wall, out of the creeper's line: " + alice.status().position());
+    }
+
+    @Test
+    void boxedInItStrikesTheCreeper() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, 64, 0.5));
+        // Walls on three sides, the creeper on the fourth.
+        WorldView boxed = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND || y <= GROUND + 2 && (x < 0 || z < 0 || z > 0);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, HostileMobRegistry.typeIdOf("creeper"), new Position(2.5, 64, 0.5)));
+            }
+        };
+
+        // The last fraction of a block to the wall at her back first, then nowhere left: she strikes.
+        boolean struck = false;
+        for (int tick = 0; tick < 5 && !struck; tick++) {
+            struck = alice.tick(boxed).isPresent();
+        }
+        assertTrue(struck);
+    }
+
+    @Test
     void getsAwayFromACreeperInsteadOfFightingIt() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
         WorldView creeper = new WorldView() {

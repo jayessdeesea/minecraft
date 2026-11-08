@@ -208,7 +208,9 @@ the squad to falls.
 - **The soldier's reflex.** A soldier in contact fights the nearest hostile at arm's length
   (`DeterministicSoldier.tick`): it closes to its 3-block reach at a sprint, strikes when its attack has
   recharged, backs off inside 2.5 blocks, which is outside a zombie's reach, and holds in
-  between. It gets away from creepers instead. Losing health with no hostile within 8 blocks
+  between. It gets away from creepers instead: of the headings round straight away, the one that
+  gains it the most distance, so a wall at its back turns it sideways, and when no heading gains
+  any it strikes the creeper, knocking it back out of its blast's reach. Losing health with no hostile within 8 blocks
   means being shot at, so for 5 seconds it looks out to 16 blocks, beyond a skeleton's 15-block
   bow range, and goes for the shooter. Only a hostile it can see counts - nothing solid between
   its eyes and the hostile - so a squad walled into its patrol base (§14) isn't in contact with

@@ -66,6 +66,22 @@ class NbtTest {
         assertEquals(0, buf.readableBytes());
     }
 
+    /** As the server sends it: the arguments first, then the key. */
+    @Test
+    void aTranslationsArgumentsBeforeItsKeyStillReadKeyFirst() {
+        ByteBuf buf = Unpooled.buffer();
+        buf.writeByte(10);
+        name(buf, 9, "with");
+        buf.writeByte(8);
+        buf.writeInt(1);
+        string(buf, "Carol");
+        name(buf, 8, "translate");
+        string(buf, "death.attack.explosion.player");
+        buf.writeByte(0);
+
+        assertEquals("death.attack.explosion.player[Carol]", Nbt.readText(buf));
+    }
+
     @Test
     void refusesNestingBeyondVanillasLimit() {
         assertThrows(IllegalStateException.class, () -> Nbt.skipUnnamedRoot(nestedLists(Nbt.MAX_DEPTH + 1)));

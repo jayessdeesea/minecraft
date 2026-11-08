@@ -442,8 +442,15 @@ public final class DeterministicSoldier implements Soldier {
             if (shot) {
                 holdCoverTicks = 0;
             } else if (nearest.explodes()) {
-                // A creeper is never fought at arm's length: get clear of the blast.
-                stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
+                // A creeper is never fought at arm's length: get clear of the blast - straight away,
+                // else the heading nearest that the ground allows. Boxed in, strike it: a hit knocks
+                // it back out of its blast's reach. Live, a soldier with a wall at her back stood still
+                // while one closed from six blocks to three and blew.
+                if (!evade(world, threat) && ticksUntilAttack == 0 && range <= ATTACK_REACH && !shieldRaised()) {
+                    attack = OptionalInt.of(nearest.entityId());
+                    Kit carried = kit;
+                    ticksUntilAttack = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon()).ticksToCharge();
+                }
             } else if (nearest.shoots() && (!armedForMelee() || pinned(world, threat))) {
                 // An archer out-fights a bare hand from any range, and a sword it can't be closed on:
                 // get out of its sight, and stay out.
@@ -1044,6 +1051,46 @@ public final class DeterministicSoldier implements Soldier {
 
     private void stepToward(WorldView world, double targetX, double targetZ) {
         stepToward(world, targetX, targetZ, STEP);
+    }
+
+    /** Headings tried to get away from a threat, in degrees off straight away from it: nearest first. */
+    private static final int[] EVASION_HEADINGS = {0, 45, -45, 90, -90, 135, -135};
+
+    /**
+     * A step away from {@code threat}: of the headings round straight away, the one that gains the
+     * most distance from it - a wall at the back turns it sideways - and never one that loses any.
+     * Whether the soldier moved, or started a jump to.
+     */
+    private boolean evade(WorldView world, Position threat) {
+        double away = Math.atan2(position.z() - threat.z(), position.x() - threat.x());
+        Position start = position;
+        boolean startGround = onGround;
+        double startVelocity = verticalVelocity;
+        boolean startClimbing = climbingOut;
+        double from = Math.hypot(start.x() - threat.x(), start.z() - threat.z());
+        double bestGain = 1e-6;
+        int best = Integer.MIN_VALUE;
+        for (int heading : EVASION_HEADINGS) {
+            double angle = away + Math.toRadians(heading);
+            stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2);
+            // A jump started counts as a little ground gained: it lands farther on next tick.
+            double gain = Math.hypot(position.x() - threat.x(), position.z() - threat.z()) - from
+                    + (onGround != startGround && heading == 0 ? 0.05 : 0);
+            if (gain > bestGain) {
+                bestGain = gain;
+                best = heading;
+            }
+            position = start;
+            onGround = startGround;
+            verticalVelocity = startVelocity;
+            climbingOut = startClimbing;
+        }
+        if (best == Integer.MIN_VALUE) {
+            return false;
+        }
+        double angle = away + Math.toRadians(best);
+        stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2);
+        return true;
     }
 
     private void stepToward(WorldView world, double targetX, double targetZ, double pace) {
