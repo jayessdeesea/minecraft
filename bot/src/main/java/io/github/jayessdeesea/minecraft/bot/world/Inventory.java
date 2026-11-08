@@ -88,6 +88,43 @@ public final class Inventory {
         return -1;
     }
 
+    /** How many melee weapons - swords, axes, spears - the main inventory and hotbar hold. */
+    public synchronized int meleeWeapons() {
+        int total = 0;
+        for (int slot = MAIN_FIRST; slot <= HOTBAR_LAST; slot++) {
+            if (ItemClassRegistry.meleeRank(itemIds[slot]).isPresent()) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    /**
+     * The slot of a melee weapon beyond the best one carried - the worst of the rest, the one to give
+     * away - or -1 with one or none.
+     */
+    public synchronized int spareWeaponSlot() {
+        int best = -1;
+        int worst = -1;
+        for (int slot = MAIN_FIRST; slot <= HOTBAR_LAST; slot++) {
+            java.util.OptionalInt rank = ItemClassRegistry.meleeRank(itemIds[slot]);
+            if (rank.isEmpty()) {
+                continue;
+            }
+            if (best < 0 || rank.getAsInt() > ItemClassRegistry.meleeRank(itemIds[best]).getAsInt()) {
+                best = slot;
+            }
+        }
+        for (int slot = MAIN_FIRST; slot <= HOTBAR_LAST; slot++) {
+            java.util.OptionalInt rank = ItemClassRegistry.meleeRank(itemIds[slot]);
+            if (rank.isPresent() && slot != best
+                    && (worst < 0 || rank.getAsInt() < ItemClassRegistry.meleeRank(itemIds[worst]).getAsInt())) {
+                worst = slot;
+            }
+        }
+        return worst;
+    }
+
     /** How many items of {@code itemClass} the main inventory and hotbar hold. */
     public synchronized int count(ItemClassRegistry.ItemClass itemClass) {
         int total = 0;
@@ -183,6 +220,6 @@ public final class Inventory {
         }
         boolean shield = ItemClassRegistry.classOf(itemIds[OFF_HAND]).equals(Optional.of(ItemClassRegistry.ItemClass.SHIELD));
         return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs, stone, rations, shield,
-                slotOf(ItemClassRegistry.ItemClass.PICKAXE) >= 0, dirt, slotOfNamed("bow") >= 0);
+                slotOf(ItemClassRegistry.ItemClass.PICKAXE) >= 0, dirt, slotOfNamed("bow") >= 0, Math.max(0, meleeWeapons() - 1));
     }
 }

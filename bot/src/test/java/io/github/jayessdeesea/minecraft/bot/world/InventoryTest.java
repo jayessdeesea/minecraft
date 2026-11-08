@@ -36,9 +36,23 @@ class InventoryTest {
         slots.set(36, new int[]{ROTTEN_FLESH, 3}); // hotbar slot 0
         slots.set(15, new int[]{IRON_SWORD, 1});   // main inventory: not at hand
 
-        assertEquals(new Kit(Optional.of("iron_sword"), 21, 1), inventory.replaceAll(slots), "holding rotten flesh, sword on the hotbar");
-        assertEquals(new Kit(Optional.of("iron_sword"), 21, 1), inventory.selectHotbar(1));
+        Kit twoSwords = new Kit(Optional.of("iron_sword"), 21, 1, 0, 0, 0, 0, false, false, 0, false, 1);
+        assertEquals(twoSwords, inventory.replaceAll(slots), "holding rotten flesh, sword on the hotbar, and a spare");
+        assertEquals(twoSwords, inventory.selectHotbar(1));
         assertEquals(new Kit(Optional.empty(), 21, 1), inventory.setSlot(37, null), "the one at hand dropped");
+    }
+
+    @Test
+    void theSpareGivenAwayIsTheWorstWeaponNotTheBest() {
+        Inventory inventory = new Inventory();
+        int woodenSword = java.util.stream.IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of("wooden_sword")))
+                .findFirst().orElseThrow();
+        inventory.setSlot(36, new int[]{IRON_SWORD, 1});
+        assertEquals(-1, inventory.spareWeaponSlot(), "one weapon is none to spare");
+        inventory.setSlot(20, new int[]{woodenSword, 1});
+
+        assertEquals(20, inventory.spareWeaponSlot());
+        assertEquals(1, inventory.kit().spareWeapons());
     }
 
     @Test

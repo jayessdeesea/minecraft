@@ -658,7 +658,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         Map<String, Integer> fed = new HashMap<>();
         statuses.forEach(s -> s.condition().filter(c -> c.kit().isPresent() && wantsFood(c))
                 .ifPresent(c -> fed.put(s.name(), CrossLevel.RATIONS_GIVEN)));
-        List<CrossLevel.Transfer> transfers = CrossLevel.pair(statuses, wanted, fed);
+        // And a spare weapon to one bare-handed: a replacement respawns with nothing.
+        Map<String, Integer> disarmed = new HashMap<>();
+        statuses.forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> k.weapon().isEmpty())
+                .ifPresent(k -> disarmed.put(s.name(), 1)));
+        List<CrossLevel.Transfer> transfers = CrossLevel.pair(statuses, wanted, fed, disarmed);
         java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.copyOf(transfers);
         crossLeveling.stream().filter(t -> !state.crossLeveling.contains(t))
                 .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL: {} {} to {}", t.giver(), squadName, t.count(),

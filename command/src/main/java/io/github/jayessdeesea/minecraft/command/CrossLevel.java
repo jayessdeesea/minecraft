@@ -9,8 +9,8 @@ import java.util.Set;
 
 /**
  * Cross-leveling within the squad (docs/military-doctrine.md §13): a soldier that needs logs for a
- * tool and can't chop them, or food and has none, gets them from the nearest squadmate with some to
- * spare. This drill only pairs them; walking over and handing them across is the soldiers'
+ * tool and can't chop them, food and has none, or a weapon and is bare-handed, gets them from the
+ * nearest squadmate with some to spare. This drill only pairs them; walking over and handing them across is the soldiers'
  * ({@code bot.supply}).
  *
  * <p>Pure and stateless like {@link Resupply}. A squad in contact doesn't cross-level - the fight
@@ -27,15 +27,23 @@ public final class CrossLevel {
 
     /** What's handed across. */
     public enum Item {
-        LOGS, RATIONS;
+        LOGS, RATIONS, WEAPON;
 
-        /** How many of it {@code soldier} carries. */
+        /** How many of it {@code soldier} has to give and keep - for a weapon, only its spares. */
         int carried(SoldierStatus soldier) {
-            return soldier.condition().flatMap(Condition::kit).map(k -> this == LOGS ? k.logs() : k.rations()).orElse(0);
+            return soldier.condition().flatMap(Condition::kit).map(k -> switch (this) {
+                case LOGS -> k.logs();
+                case RATIONS -> k.rations();
+                case WEAPON -> k.spareWeapons();
+            }).orElse(0);
         }
 
         int kept() {
-            return this == LOGS ? KEEP_LOGS : KEEP_RATIONS;
+            return switch (this) {
+                case LOGS -> KEEP_LOGS;
+                case RATIONS -> KEEP_RATIONS;
+                case WEAPON -> 0; // a spare is spare: the giver keeps its best
+            };
         }
     }
 
@@ -61,11 +69,21 @@ public final class CrossLevel {
      * {@link #KEEP_RATIONS}. A soldier is in one transfer at a time, giving or receiving.
      */
     public static List<Transfer> pair(List<SoldierStatus> squad, Map<String, Integer> logsWanted, Map<String, Integer> rationsWanted) {
+        return pair(squad, logsWanted, rationsWanted, Map.of());
+    }
+
+    /**
+     * As {@link #pair(List, Map, Map)}, a spare weapon first to each soldier in {@code weaponsWanted}
+     * - bare-handed - from the nearest squadmate carrying one beyond its best.
+     */
+    public static List<Transfer> pair(List<SoldierStatus> squad, Map<String, Integer> logsWanted, Map<String, Integer> rationsWanted,
+                                      Map<String, Integer> weaponsWanted) {
         if (squad.stream().anyMatch(s -> s.report() instanceof Report.InContact)) {
             return List.of();
         }
         List<Transfer> transfers = new ArrayList<>();
         Set<String> busy = new HashSet<>();
+        pair(squad, Item.WEAPON, weaponsWanted, busy, transfers);
         pair(squad, Item.LOGS, logsWanted, busy, transfers);
         pair(squad, Item.RATIONS, rationsWanted, busy, transfers);
         return List.copyOf(transfers);

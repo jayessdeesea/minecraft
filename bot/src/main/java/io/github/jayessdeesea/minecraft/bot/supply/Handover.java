@@ -164,7 +164,11 @@ public final class Handover {
         receiverAt = delivery.at();
         logs = delivery.count();
         item = delivery.item();
-        thrown = item == CrossLevel.Item.LOGS ? ItemClass.LOG : ItemClass.FOOD;
+        thrown = switch (item) {
+            case LOGS -> ItemClass.LOG;
+            case RATIONS -> ItemClass.FOOD;
+            case WEAPON -> ItemClass.WEAPON;
+        };
         remaining = logs;
         phase = Phase.WALKING;
         LOG.info("{} takes {} {} over to {}", name, remaining, what(), receiver);
@@ -180,7 +184,7 @@ public final class Handover {
                 // inside a hut there may be nowhere clear to go.
                 new Step("back off", this::backOff,
                         new Expect(receiver + " to pick the " + what() + " up", () -> {
-                            if (inventory.count(thrown) > kept) {
+                            if (carried() > kept) {
                                 throw new IllegalStateException("picked its own " + what() + " back up");
                             }
                             return sinceThrow >= PICKUP_DELAY_TICKS && offered.filter(d -> d.receiver().equals(receiver)).isEmpty();
@@ -195,23 +199,29 @@ public final class Handover {
 
     /** Throws the first slot of what's handed, as many as are still to give; confirmed by the server's count. */
     private Expect throwSlot() {
-        int slot = inventory.slotOf(thrown);
+        // A weapon given is a spare - the worst beyond the best - never the one in hand.
+        int slot = item == CrossLevel.Item.WEAPON ? inventory.spareWeaponSlot() : inventory.slotOf(thrown);
         if (slot < 0) {
             throw new IllegalStateException("out of " + what() + " with " + remaining + " still to give");
         }
-        int before = inventory.count(thrown);
+        int before = carried();
         int throwing = Math.min(remaining, inventory.countAt(slot));
         for (int i = 0; i < throwing; i++) {
             session.throwOne(0, 0, slot); // stale state: the server resends the inventory
         }
         remaining -= throwing;
         sinceThrow = 0;
-        return new Expect(throwing + " " + what() + " gone from slot " + slot, () -> inventory.count(thrown) <= before - throwing);
+        return new Expect(throwing + " " + what() + " gone from slot " + slot, () -> carried() <= before - throwing);
+    }
+
+    /** How many of what's handed the giver still has: for a weapon, every melee weapon, best included. */
+    private int carried() {
+        return item == CrossLevel.Item.WEAPON ? inventory.meleeWeapons() : inventory.count(thrown);
     }
 
     private void backOff() {
         phase = Phase.BACKING_OFF;
-        kept = inventory.count(thrown);
+        kept = carried();
         backTo = awayFromReceiver(BACK_OFF + horizontalDistance(soldierAt, receiverAt));
     }
 

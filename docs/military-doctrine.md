@@ -424,8 +424,11 @@ wood has to be grown. The soldier at it reports `Planting`.
 *How we use it:* a soldier that needs logs for a tool (§11, §12), has tried to chop them and found
 no tree in reach, is short; so is one that wants food (§4) and carries none. `command.CrossLevel`
 pairs each with the nearest squadmate carrying more than it needs: a giver keeps 3 logs, enough for
-its own next pickaxe, or 2 rations, and hands over the logs short or 2 rations. Logs are paired
-first, and a soldier is in one hand-over at a time, giving or receiving. Nobody cross-levels while
+its own next pickaxe, or 2 rations, and hands over the logs short or 2 rations. A bare-handed
+soldier - a replacement respawns with nothing - gets a squadmate's spare melee weapon: the worst
+of those it carries beyond its best (`Inventory.spareWeaponSlot`), never the one in hand. Weapons
+are paired first, then logs, then rations, and a soldier is in one hand-over at a time, giving or
+receiving. Nobody cross-levels while
 the squad is in contact, or from a soldier linking up.
 
 The giver (`bot.supply.Handover`) walks to 2 blocks short of the receiver, faces it, and throws the
