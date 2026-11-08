@@ -17,7 +17,7 @@ its own backlog item when it's picked up.
 - **Security halts.** After a long move, the squad stops in a perimeter with sectors of fire rather
   than in a line. The overnight version is backlog/patrol-base.md.
 - **Rules of engagement.** When soldiers may attack: hostiles only, never players, and passive
-  mobs only when ordered to hunt (backlog/subsistence.md). This is an explicit, testable policy
+  mobs only when hunting for food (docs/military-doctrine.md § 4). This is an explicit, testable policy
   rather than whatever `HostileMobRegistry` happens to contain.
 - **Squad column and movement techniques** (ATP 3-21.8 ¶3-53; traveling, traveling overwatch,
   bounding overwatch). Bounding means one element moves while another watches, so it needs more

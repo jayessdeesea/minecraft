@@ -33,5 +33,5 @@ doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
 ## Notes
 - Exhaustion from damage taken (0.1 per hit) and from jumping (0.05) is charged by the server
   whatever the client does.
-- With subsistence (backlog/subsistence.md), sprinting becomes a real trade-off: speed now for food
+- With soldiers eating and hunting (docs/military-doctrine.md § 4), sprinting becomes a real trade-off: speed now for food
   later.
