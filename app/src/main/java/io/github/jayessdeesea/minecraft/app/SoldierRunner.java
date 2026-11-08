@@ -1622,8 +1622,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // Food first: the day's work - gathering, lighting, walling, planting - gives the hands
             // up when there's game in sight to eat, and the hunter takes them next tick.
             Position huntGround = huntGrounds.getOrDefault(name, status.position());
-            boolean huntCalls = huntWanted && !hunter.active() && io.github.jayessdeesea.minecraft.bot.supply.Hunter.gameInSight(world, huntGround);
-            turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), huntGround, world,
+            int food = status.condition().map(Condition::food).orElse(Condition.MAX_FOOD);
+            boolean huntCalls = huntWanted && !hunter.active()
+                    && io.github.jayessdeesea.minecraft.bot.supply.Hunter.gameInSight(world, huntGround, food);
+            turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), huntGround,
+                    io.github.jayessdeesea.minecraft.bot.supply.Hunter.radius(food), world,
                     free && huntWanted,
                     io.github.jayessdeesea.minecraft.bot.world.WeaponStats.melee(eating == null ? Optional.empty() : eating.weapon()).ticksToCharge())
                     .ifPresent(target -> {

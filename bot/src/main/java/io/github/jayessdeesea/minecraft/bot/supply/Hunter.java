@@ -27,6 +27,13 @@ public final class Hunter {
 
     /** How far a soldier looks for game: the ground round a camp is soon hunted out close in. */
     public static final double SEARCH_RADIUS = 48;
+    /**
+     * How far a starving soldier - at the food it can no longer sprint at - looks: feeding comes
+     * before staying close, and the ground round a camp is hunted out first.
+     */
+    public static final double STARVING_RADIUS = 96;
+    /** At or below this food a soldier is starving: the server stops it sprinting. */
+    public static final int STARVING_FOOD = 6;
     /** Ticks without sight of the quarry before it's given up. */
     static final int LOST_TICKS = 100;
     /** Ticks spent standing where the quarry fell, for its drops to be picked up. */
@@ -46,9 +53,14 @@ public final class Hunter {
         this.name = name;
     }
 
-    /** Whether there's game within {@link #SEARCH_RADIUS} of {@code ground} to hunt. */
-    public static boolean gameInSight(WorldView world, Position ground) {
-        return !world.gameNear(ground, SEARCH_RADIUS).isEmpty();
+    /** Whether there's game within {@link #radius} of {@code ground} to hunt. */
+    public static boolean gameInSight(WorldView world, Position ground, int food) {
+        return !world.gameNear(ground, radius(food)).isEmpty();
+    }
+
+    /** How far from its hunting ground a soldier at {@code food} looks for game. */
+    public static double radius(int food) {
+        return food <= STARVING_FOOD ? STARVING_RADIUS : SEARCH_RADIUS;
     }
 
     public synchronized boolean active() {
@@ -66,11 +78,14 @@ public final class Hunter {
      * takes to charge.
      */
     public synchronized OptionalInt tick(Position soldier, WorldView world, boolean wanted, int charge) {
-        return tick(soldier, soldier, world, wanted, charge);
+        return tick(soldier, soldier, SEARCH_RADIUS, world, wanted, charge);
     }
 
-    /** As {@link #tick(Position, WorldView, boolean, int)}, game looked for round {@code ground}, not round the soldier. */
-    public synchronized OptionalInt tick(Position soldier, Position ground, WorldView world, boolean wanted, int charge) {
+    /**
+     * As {@link #tick(Position, WorldView, boolean, int)}, game looked for within {@code radius} of
+     * {@code ground}, not round the soldier.
+     */
+    public synchronized OptionalInt tick(Position soldier, Position ground, double radius, WorldView world, boolean wanted, int charge) {
         if (chargeTicks > 0) {
             chargeTicks--;
         }
@@ -83,7 +98,7 @@ public final class Hunter {
             return OptionalInt.empty();
         }
         if (quarry == null) {
-            Optional<TrackedEntity> nearest = world.gameNear(ground, SEARCH_RADIUS).stream()
+            Optional<TrackedEntity> nearest = world.gameNear(ground, radius).stream()
                     .min(java.util.Comparator.comparingDouble(e -> distance(soldier, e.position())));
             if (nearest.isEmpty()) {
                 return OptionalInt.empty();
@@ -94,7 +109,7 @@ public final class Hunter {
             huntTicks = 0;
             LOG.info("{} hunts the animal at {} for food", name, lastSeen);
         }
-        Optional<TrackedEntity> seen = world.gameNear(soldier, SEARCH_RADIUS * 2).stream()
+        Optional<TrackedEntity> seen = world.gameNear(soldier, radius * 2).stream()
                 .filter(e -> e.entityId() == quarry).findFirst();
         if (seen.isEmpty()) {
             // Gone from the tracker: killed, most likely, if it was within reach last we saw it.

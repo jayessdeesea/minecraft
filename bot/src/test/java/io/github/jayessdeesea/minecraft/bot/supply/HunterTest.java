@@ -33,7 +33,7 @@ class HunterTest {
 
         @Override
         public List<TrackedEntity> gameNear(Position center, double radius) {
-            return List.copyOf(game);
+            return game.stream().filter(e -> Math.hypot(e.position().x() - center.x(), e.position().z() - center.z()) <= radius).toList();
         }
 
         @Override
@@ -41,6 +41,15 @@ class HunterTest {
             return List.of();
         }
     };
+
+    @Test
+    void aStarvingSoldierLooksTwiceAsFarFromItsHuntingGround() {
+        game.add(new TrackedEntity(7, COW, new Position(70.5, 64, 0.5)));
+        Position camp = new Position(0.5, 64, 0.5);
+
+        assertFalse(Hunter.gameInSight(field, camp, 10), "hungry: the camp's ground is hunted out");
+        assertTrue(Hunter.gameInSight(field, camp, Hunter.STARVING_FOOD), "starving: further out");
+    }
 
     @Test
     void chasesStrikesWhenChargedAndStandsWhereItFell() {

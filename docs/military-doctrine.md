@@ -93,7 +93,8 @@ times the meal, and the weapon comes back to hand. Rations are the food items it
 those that poison or are too precious to eat (`tools/item-class-generator`). A soldier with no rations
 left hunts at food 14 or below, or wounded and below food 18, where it would heal: by day, out of contact and not walling in a patrol base, it
 chases the nearest cow, pig, sheep, chicken or rabbit within 48 blocks of its squad's objective -
-not of itself, or one hunt after another carries it off - strikes it each time its
+not of itself, or one hunt after another carries it off; 96 once it's starving, at the food 6 it
+can no longer sprint at, since the ground round a camp is hunted out first - strikes it each time its
 weapon is charged, and stands where it fell for the meat (`bot.supply.Hunter`). Food comes first:
 with game in sight, a soldier that wants food puts down its day's work - gathering, lighting,
 walling, farming, planting - at its next step, and the hunter takes its hands. Raw meat is a ration
