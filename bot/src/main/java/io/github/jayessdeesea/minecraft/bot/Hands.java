@@ -33,6 +33,8 @@ public final class Hands {
         ARMOURER,
         /** Walling in a patrol base. */
         BUILDER,
+        /** Building a structure laid out for it: {@code Order.Place}. */
+        PLACING,
         /** Taking a full load to the stockpile. */
         DEPOSITOR,
         /** Handing logs to a squadmate. */

@@ -30,4 +30,16 @@ public sealed interface Order {
             this(x, y, z, horizontalTolerance, verticalTolerance, risk, false);
         }
     }
+
+    /**
+     * Put a block in each of {@code cells}, in order, from the blocks the soldier carries: a
+     * structure the engineer laid out, cell by cell, so the soldier needn't know what it's building.
+     * The soldier chooses where to stand for each; a cell it can't reach or that won't take a block
+     * is skipped and reported.
+     */
+    record Place(java.util.List<Cell> cells) implements Order {
+        public Place {
+            cells = java.util.List.copyOf(cells);
+        }
+    }
 }

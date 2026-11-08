@@ -18,15 +18,16 @@ squad's state, recomputed every squad cycle.
 | 5 | `HUNTER` (`Hunter`) | Kills an animal for meat. | Hungry by day with nothing to eat ([§ 4](../../military-doctrine.md#4-reports-upward)). |
 | 6 | `ARMOURER` (`Armourer`, `Crafter`) | Makes the next rung of the equipment ladder. | The squad leader's `rearm`, out of contact ([§ 11](../../military-doctrine.md#11-pre-combat-checks)). |
 | 7 | `BUILDER` (`Builder`) | Walls and roofs a patrol base round the squad. | `PATROL_BASE`, all the squad inside the outline ([§ 14](../../military-doctrine.md#14-patrol-base)). |
-| 8 | `DEPOSITOR` (`Depositor`) | Takes a full load to the stockpile chest. | A full load of logs or cobblestone. |
-| 9 | `HANDOVER` (`Handover`) | Throws logs, food or a spare weapon to a squadmate. | Cross-levelling ([§ 13](../../military-doctrine.md#13-cross-leveling)). |
-| 10 | `MINER` (`Miner`) | Cuts the spiral staircase a step at a time, mining ore beside it. | `MINE`: the squad's first soldier with a pickaxe ([§ 16](../../military-doctrine.md#16-mining-down)). |
-| 11 | `MASON` (`Mason`) | Builds the wall round a camp. | `FORTIFY` ([§ 15](../../military-doctrine.md#15-securing-the-camp)). Out of blocks, it digs dirt first (`GATHERER`). |
-| 12 | `LAMPLIGHTER` (`Lamplighter`) | Puts torches on the dark ground. | `SECURE`. |
-| 13 | `FARMER` (`Farmer`) | Tills, plants and harvests the farm. | `FARM`. |
-| 14 | `FORESTER` (`Forester`) | Plants saplings. | `TREE_FARM`. |
-| 15 | `GATHERER` (`Gatherer`, `Digger`) | Chops logs, quarries stone, digs dirt. | `WOOD`/`STONE` (Gather), or a routine short of material ([§ 12](../../military-doctrine.md#12-gathering-materials)). |
-| 16 | `SCAVENGER` (`Scavenger`) | Picks up dropped items nearby. | Nothing threatening. |
+| 8 | `PLACING` (`Builder`) | Fills a structure the engineer laid out, cell by cell, standing where each needs. | `Order.Place` ([orders](orders.md)). |
+| 9 | `DEPOSITOR` (`Depositor`) | Takes a full load to the stockpile chest. | A full load of logs or cobblestone. |
+| 10 | `HANDOVER` (`Handover`) | Throws logs, food or a spare weapon to a squadmate. | Cross-levelling ([§ 13](../../military-doctrine.md#13-cross-leveling)). |
+| 11 | `MINER` (`Miner`) | Cuts the spiral staircase a step at a time, mining ore beside it. | `MINE`: the squad's first soldier with a pickaxe ([§ 16](../../military-doctrine.md#16-mining-down)). |
+| 12 | `MASON` (`Mason`) | Builds the wall round a camp. | `FORTIFY` ([§ 15](../../military-doctrine.md#15-securing-the-camp)). Out of blocks, it digs dirt first (`GATHERER`). |
+| 13 | `LAMPLIGHTER` (`Lamplighter`) | Puts torches on the dark ground. | `SECURE`. |
+| 14 | `FARMER` (`Farmer`) | Tills, plants and harvests the farm. | `FARM`. |
+| 15 | `FORESTER` (`Forester`) | Plants saplings. | `TREE_FARM`. |
+| 16 | `GATHERER` (`Gatherer`, `Digger`) | Chops logs, quarries stone, digs dirt. | `WOOD`/`STONE` (Gather), or a routine short of material ([§ 12](../../military-doctrine.md#12-gathering-materials)). |
+| 17 | `SCAVENGER` (`Scavenger`) | Picks up dropped items nearby. | Nothing threatening. |
 
 Each routine has unit tests against a fake server that answers as the real one does
 (`FakeCraftingServer`, `FakeChestServer`, and the per-routine tests in `bot.supply`).

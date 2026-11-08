@@ -71,6 +71,10 @@ public sealed interface Report {
     record Securing() implements Report {
     }
 
+    /** Building a structure laid out for it ({@link Order.Place}): {@code placed} of its {@code cells} in. */
+    record Building(int placed, int cells) implements Report {
+    }
+
     /** Cutting the squad's staircase down: on step {@code step} of {@code steps}. */
     record Mining(int step, int steps) implements Report {
     }

@@ -196,8 +196,16 @@ risk and its own condition into a fall allowance:
 
 So a safe route always wins when one exists, and a fall is planned only when there's none, on
 foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier with no such
-route and nothing to build with is stranded, and the squad's recovery drill sends the nearest
-squadmate carrying 24 or more blocks to it (`command.Recovery`): one at a time, never in contact. A soldier that reports CANTCO prices the riskier
+route and nothing to build with is stranded. The squad's recovery drill (`command.Recovery`) picks
+the nearest squadmate carrying 24 or more blocks - one at a time, never in contact - and sets it
+to build the engineer's stair down from where the stranded one stands (`bot.engineer.Stairway`,
+an `Order.Place`). The stair runs one block down and one along from the ledge's edge to the
+ground, the shortest of the four headings with clear air over it and no water under it. Each step
+stands on a block of its own, so it's two blocks a step, built from the ground up. Where no stair
+can be laid, the squadmate is sent to the stranded one instead. A recovery lasts until the
+stranded soldier has moved two blocks off where it was stuck. Its own report flickers as it
+retries its route, and a recovery that ended with each flicker would pass the stair from one
+squadmate to another. A soldier that reports CANTCO prices the riskier
 order that would free it, for example "a route with falls costing 8 of my 20 health exists (MEDIUM
 risk)". The squad leader then decides whether the mission is worth that. It can set risk for one
 soldier (`SquadOrder.soldierRisk`), so freeing a stuck soldier at MEDIUM doesn't expose the rest of
@@ -643,11 +651,17 @@ the next. By day the rest hold the top, clear of the shaft. By night they follow
 blocks: the top is open ground in the dark, and on the stairs no monster spawns within 24 blocks
 of a player. Until one of them has a pickaxe, every one makes one.
 
-At the bottom of the stairs, beside the main tunnel's first cell, the cutter cuts a **landing**:
-a recess each side, off the walkway (`Staircase.landing`). On the stairs there's no floor for a
-table, so a cutter wanting a tool - the ladder's next rung, or a stone pickaxe once it carries the
-cobblestone, since iron ore drops nothing to a wooden one - goes to the landing once it's cut, and
-the stairs wait while it makes it there. The stairs and tunnels are claimed (`Staircase.walkway`):
+On the stairs there's no floor for a table. So once a turn, on the step east of the pillar, the
+cutter cuts an **alcove**: one cell out of the shaft's side (`Staircase.alcoves`). At the bottom,
+beside the main tunnel's first cell, it cuts a **landing**: a recess each side
+(`Staircase.landing`). A cutter wanting a tool goes to its workshop (`Staircase.workshop`), the
+landing once it's cut and until then the deepest alcove, and the stairs wait while it makes the
+tool there. The tool is the ladder's next rung, or a stone pickaxe once it carries the cobblestone,
+since iron ore drops nothing to a wooden one. It goes only for the pickaxe the stairs need, and
+not while making it is failing: a weapon it can't make would hold the stairs for good. A soldier
+whose pickaxe wears out is no longer the cutter, and the next with a pickaxe takes over; the worn-out
+one makes a stone pickaxe from the cobblestone it carries, or a wooden one from logs if it has
+fewer than three. The stairs and tunnels are claimed (`Staircase.walkway`):
 no table or furnace is put down in them, and no other soldier digs them. The cutter's hands are
 free between blocks, so a routine ranked above mining - making its kit - gets its turn.
 

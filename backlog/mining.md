@@ -16,9 +16,9 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
 ## Done when
 - **Branch tunnels, the rest.** The tunnels are cut (docs/military-doctrine.md § 16). What's left:
   lighting them with torches, and the LOGSTAT counting raw iron and diamonds.
-- **Levels.** The landing at the bottom of the stairs is cut, and the cutter makes its tools
-  there (docs/military-doctrine.md § 16). What's left: landings at set depths on the way down, a
-  furnace standing at each, torches, and the night shift sheltering there.
+- **Levels.** An alcove a turn and the landing at the bottom are cut, and the cutter makes its
+  tools at the deepest (docs/military-doctrine.md § 16). What's left: a furnace standing at the
+  landing, torches, and the night shift sheltering there.
 
 - **The general never orders a mine by day.** 0 of 256 orders in a night's run, 244 of them
   patrol bases: its picture asks for one only through the AAR's "no mine yet". The night shift

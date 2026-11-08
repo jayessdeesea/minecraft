@@ -212,6 +212,21 @@ final class SimServer {
         return total;
     }
 
+    /** Uses a pickaxe has in it, as vanilla's: wooden 59, stone 131. */
+    private static int uses(int item) {
+        return item == ITEM_WOODEN_PICKAXE ? 59 : item == ITEM_STONE_PICKAXE ? 131 : Integer.MAX_VALUE;
+    }
+
+    /** Wears the pickaxes {@code name} carries down to {@code left} uses each. */
+    void wear(String name, int left) {
+        Player p = players.get(name);
+        for (int[] s : p.slots) {
+            if (s != null && uses(s[0]) != Integer.MAX_VALUE) {
+                p.worn.put(s, uses(s[0]) - left);
+            }
+        }
+    }
+
     /** What a block drops broken with what's in hand: stone and ore only to a pickaxe. */
     private static Optional<Integer> drop(int state, Optional<Integer> held) {
         boolean pickaxe = held.filter(i -> i == ITEM_WOODEN_PICKAXE || i == ITEM_STONE_PICKAXE).isPresent();
@@ -310,6 +325,8 @@ final class SimServer {
         final PlaySessionListeners listeners;
         PlayerPosition position;
         final PlayerPosition spawn;
+        /** Uses each pickaxe carried has had, by its stack: a swap moves the stack, and its wear with it. */
+        final Map<int[], Integer> worn = new java.util.IdentityHashMap<>();
         float health = 20;
         final int[][] slots = new int[46][];
         int held;
@@ -747,6 +764,13 @@ final class SimServer {
             drop(state, heldItem()).ifPresent(this::give);
             set(x, y, z, AIR);
             log.add(name + " dug " + state + " at " + x + "," + y + "," + z);
+            int[] tool = slots[36 + held];
+            if (tool != null && uses(tool[0]) != Integer.MAX_VALUE && worn.merge(tool, 1, Integer::sum) >= uses(tool[0])) {
+                worn.remove(tool);
+                slots[36 + held] = null;
+                sendSlot(36 + held);
+                log.add(name + "'s pickaxe broke");
+            }
         }
 
         @Override

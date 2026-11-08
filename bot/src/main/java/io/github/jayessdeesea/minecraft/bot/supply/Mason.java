@@ -49,6 +49,8 @@ public final class Mason {
     /** How long a cell that failed - its place not walked to, or its block not taken - is passed over. */
     static final int PASS_OVER_TICKS = 2400;
     private String failure;
+    /** Why the last look found no cell to build, while there were cells open - said once each time it changes. */
+    private String stalled;
 
     public Mason(String name, Inventory inventory, Footing footing, Set<BlockPos> claims) {
         this.name = name;
@@ -101,10 +103,32 @@ public final class Mason {
         // so each column rises from its own ground: on a slope the wall's rows are at many heights.
         // The nearest with somewhere inside to stand: one without it waits, rather than holding up the rest.
         passedOver.values().removeIf(until -> until <= ticks);
-        open.stream().filter(c -> !claims.contains(c) && !passedOver.containsKey(c) && Builder.support(world, c).isPresent())
+        Optional<java.util.Map.Entry<BlockPos, BlockPos>> next = open.stream()
+                .filter(c -> !claims.contains(c) && !passedOver.containsKey(c) && Builder.support(world, c).isPresent())
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
                 .flatMap(cell -> inside(world, cell, centre, radius).map(stand -> java.util.Map.entry(cell, stand)).stream())
-                .findFirst().ifPresent(job -> start(world, job.getKey(), job.getValue()));
+                .findFirst();
+        if (next.isPresent()) {
+            stalled = null;
+            start(world, next.get().getKey(), next.get().getValue());
+            return;
+        }
+        // Blocks carried and cells open, and none to build: say which way each is stuck, once.
+        long claimed = open.stream().filter(claims::contains).count();
+        long passed = open.stream().filter(c -> !claims.contains(c) && passedOver.containsKey(c)).count();
+        List<BlockPos> unsupported = open.stream().filter(c -> !claims.contains(c) && !passedOver.containsKey(c)
+                && Builder.support(world, c).isEmpty()).toList();
+        List<BlockPos> noStand = open.stream().filter(c -> !claims.contains(c) && !passedOver.containsKey(c)
+                && Builder.support(world, c).isPresent() && inside(world, c, centre, radius).isEmpty()).toList();
+        String why = open.size() + " wall cells open and none to build: " + claimed + " taken by squadmates, " + passed
+                + " passed over after a failure, " + unsupported.size() + " with nothing to go against"
+                + unsupported.stream().limit(3).map(BlockPos::toString).collect(java.util.stream.Collectors.joining(", ", " (", ")"))
+                + ", " + noStand.size() + " with nowhere inside to stand"
+                + noStand.stream().limit(3).map(BlockPos::toString).collect(java.util.stream.Collectors.joining(", ", " (", ")"));
+        if (!why.equals(stalled)) {
+            LOG.warn("{} {}", name, why);
+            stalled = why;
+        }
     }
 
     /**

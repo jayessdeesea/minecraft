@@ -13,7 +13,9 @@ import java.util.Optional;
  * steps it passes under its own top, five blocks of rock between turns. Each step is three cells
  * cleared - feet, head, and the head room a body needs to step down onto it - and its floor is left
  * standing. Steps go one block down and sideways, so a soldier walks down and jumps back up them:
- * no ladder, and a slip is a fall of one block.
+ * no ladder, and a slip is a fall of one block. Once a turn, on the step east of the pillar, an
+ * alcove is cut out of the shaft's side: one cell off the walkway, where a cutter puts a table down
+ * to make the tool it wants, there being no room for one on the stairs.
  *
  * <p>At the bottom, the tunnels the ore is mined from: a main tunnel {@value #MAIN_TUNNEL} long
  * straight out from the last step, away from the shaft, then branches off it both ways every
@@ -35,6 +37,8 @@ public record Staircase(BlockPos head, int bottom) {
     public static final int BRANCH_EVERY = 3;
     /** Each branch's length. */
     public static final int BRANCH = 8;
+    /** The ring cell an alcove is cut beside: east of the pillar, so it's out of the shaft's side. */
+    private static final int ALCOVE_RING = 2;
 
     /**
      * One cut of the mine: stand in {@code stand} and clear {@code cells}, top first; their floor is
@@ -65,6 +69,33 @@ public record Staircase(BlockPos head, int bottom) {
         return d[0] != 0 ? last.offset(d[0], 0, 0) : last.offset(0, 0, d[1]);
     }
 
+    /** The alcoves cut on the way down, top first: one a turn, off the step east of the pillar. */
+    public List<BlockPos> alcoves() {
+        List<BlockPos> alcoves = new java.util.ArrayList<>();
+        for (int k = ALCOVE_RING; k < steps(); k += RING.length) {
+            alcoves.add(step(k).offset(1, 0, 0));
+        }
+        return List.copyOf(alcoves);
+    }
+
+    /**
+     * Where a cutter stands to make a tool: the landing once it's cut, else the step beside the
+     * deepest alcove cut - open, or holding the table put down there before. Empty above the first.
+     */
+    public Optional<BlockPos> workshop(WorldView world) {
+        if (landingCut(world)) {
+            return Optional.of(landingStand());
+        }
+        List<BlockPos> alcoves = alcoves();
+        for (int i = alcoves.size() - 1; i >= 0; i--) {
+            BlockPos a = alcoves.get(i);
+            if (!world.isSolid(a.x(), a.y(), a.z()) || world.workstation(a.x(), a.y(), a.z()).isPresent()) {
+                return Optional.of(step(ALCOVE_RING + i * RING.length));
+            }
+        }
+        return Optional.empty();
+    }
+
     /** Whether the landing is cut: both recesses open, room for a table and a furnace. */
     public boolean landingCut(WorldView world) {
         return landing().stream().allMatch(r -> !world.isSolid(r.x(), r.y(), r.z()) && !world.isSolid(r.x(), r.y() + 1, r.z()));
@@ -75,7 +106,7 @@ public record Staircase(BlockPos head, int bottom) {
      * clear of tables, furnaces and other diggers.
      */
     public java.util.Set<BlockPos> walkway() {
-        java.util.Set<BlockPos> recesses = new java.util.HashSet<>();
+        java.util.Set<BlockPos> recesses = new java.util.HashSet<>(alcoves());
         landing().forEach(r -> {
             recesses.add(r);
             recesses.add(r.offset(0, 1, 0));
@@ -147,10 +178,15 @@ public record Staircase(BlockPos head, int bottom) {
         return k == 0 ? head : step(k - 1);
     }
 
-    /** The cells step {@code k} clears: its feet, its head, and the head room over them to step down into it. */
+    /**
+     * The cells step {@code k} clears: its feet, its head, and the head room over them to step down
+     * into it - and, once a turn, the alcove beside it. The feet last.
+     */
     public List<BlockPos> cells(int k) {
         BlockPos feet = step(k);
-        return List.of(feet.offset(0, 2, 0), feet.offset(0, 1, 0), feet);
+        return Math.floorMod(k, RING.length) == ALCOVE_RING
+                ? List.of(feet.offset(0, 2, 0), feet.offset(0, 1, 0), feet.offset(1, 0, 0), feet)
+                : List.of(feet.offset(0, 2, 0), feet.offset(0, 1, 0), feet);
     }
 
     /** The staircase's head at the ground at ({@code x}, {@code z}): the highest standing cell within 24 blocks of {@code nearY}. */

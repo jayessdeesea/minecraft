@@ -100,6 +100,11 @@ class SquadSimulationTest {
 
     /** As {@link #mine(SimServer.Terrain)}, each soldier carrying {@code kit}: [slot, item, count] each. */
     private SimServer mine(SimServer.Terrain ground, List<int[]> kit) {
+        return mine(ground, kit, Integer.MAX_VALUE);
+    }
+
+    /** As {@link #mine(SimServer.Terrain, List)}, each pickaxe carried worn down to {@code usesLeft}. */
+    private SimServer mine(SimServer.Terrain ground, List<int[]> kit, int usesLeft) {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, ground, 1000); // morning
         Position head = new Position(4, 16, 4);
@@ -111,6 +116,10 @@ class SquadSimulationTest {
         SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit));
         runner.run();
+        if (usesLeft != Integer.MAX_VALUE) {
+            clock.advance(1_000); // joined
+            ALPHA.forEach(n -> server.wear(n, usesLeft));
+        }
         clock.advance(15 * 60_000);
         return server;
     }
@@ -147,6 +156,25 @@ class SquadSimulationTest {
                 new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                 new int[]{37, SimServer.ITEM_BREAD, 16},
                 new int[]{9, SimServer.ITEM_OAK_LOG, 8})));
+    }
+
+    /**
+     * As live: the cutter's pickaxe wore out halfway down, and with no room on the stairs for a
+     * table, a soldier with cobblestone, sticks and a table couldn't make another. Every pickaxe
+     * here is a stone one with a few blocks left in it, and nobody carries logs: the squad goes
+     * through all four before the bottom, and makes the next from the stairs' own cobblestone.
+     */
+    @Test
+    void pickaxesWornOutOnTheWayDownAreMadeAgainFromTheStairsOwnStone() {
+        SimServer server = mine(SquadSimulationTest::flat, List.of(
+                new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                new int[]{37, SimServer.ITEM_BREAD, 16},
+                new int[]{38, SimServer.ITEM_WOODEN_SWORD, 1},
+                new int[]{9, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.CRAFTING_TABLE), 1},
+                new int[]{10, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.STICK), 8}), 12);
+        assertTrue(server.log.stream().filter(l -> l.endsWith("'s pickaxe broke")).count() >= 4,
+                "every pickaxe wore out: " + server.log.stream().filter(l -> l.endsWith("'s pickaxe broke")).toList());
+        assertMinedToTheIron(server);
     }
 
     /**
@@ -252,8 +280,6 @@ class SquadSimulationTest {
      * builds steps up to her, and she walks down them.
      */
     @Test
-    @org.junit.jupiter.api.Disabled("backlog/mobility.md, the respawn platform: the recovery drill sends a squadmate, "
-            + "but no route search builds a 17-step stair within its budget - the stair wants laying out as a structure")
     void aSoldierStrandedOnAPlatformIsFetchedDownByASquadmateWithBlocks() {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, (x, y, z) -> y == GROUND + 17 && x >= 6 && x <= 8 && z >= -1 && z <= 1

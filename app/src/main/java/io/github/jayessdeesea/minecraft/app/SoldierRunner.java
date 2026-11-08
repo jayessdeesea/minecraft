@@ -143,6 +143,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         String wallKey;
         /** The objective's x and z the stairs were sited for. */
         int[] stairsFor;
+        /** The recovery drill: who's stranded, the stair laid out for each, and who's fetching. */
+        final io.github.jayessdeesea.minecraft.command.Recovery recovery = new io.github.jayessdeesea.minecraft.command.Recovery();
         /** Torches left to put down round a SECURE objective, at the last check: -1 before the first. */
         int torchesLeft = -1;
         /** The squad's wall, laid out once round its FORTIFY objective's ground. */
@@ -264,6 +266,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, Handover> handovers = new ConcurrentHashMap<>();
     /** Each connected soldier's building, by name. */
     private final Map<String, Builder> builders = new ConcurrentHashMap<>();
+    /** Each soldier's builder for an {@code Order.Place}, apart from its patrol base's. */
+    private final Map<String, Builder> placers = new ConcurrentHashMap<>();
+    /** The cells of the {@code Order.Place} a soldier has - squad loop writes, its tick reads. */
+    private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> placing = new ConcurrentHashMap<>();
+    /** How the soldier's {@code Order.Place} went at its last tick - absent before the first. */
+    private final Map<String, Builder.Progress> placeProgress = new ConcurrentHashMap<>();
     /** A soldier's part in building its squad's patrol base. */
     private record Fortify(Position stand, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells, boolean allInside,
                            boolean makeTorches, boolean placeTorch) {
@@ -654,6 +662,23 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         return true;
     }
 
+    /** The engineer's stair down for a stranded soldier, from where it stands. */
+    private java.util.function.Function<SoldierStatus, Optional<List<io.github.jayessdeesea.minecraft.command.Cell>>> stairDown(String squadName) {
+        return stuck -> {
+            String n = stuck.name();
+            Position at = stuck.position();
+            Optional<List<io.github.jayessdeesea.minecraft.command.Cell>> stair = io.github.jayessdeesea.minecraft.bot.engineer.Stairway.down(world,
+                            io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(at.x(), at.y(), at.z()))
+                    .map(cells -> cells.stream().map(c -> new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())).toList());
+            if (stair.isPresent()) {
+                LOG.info("[{}] RECOVERY: {} is stranded at {} - a stair down laid out, {} blocks", squadName, n, at, stair.get().size());
+            } else {
+                LOG.warn("[{}] RECOVERY: {} is stranded at {} and no stair down can be laid from there", squadName, n, at);
+            }
+            return stair;
+        };
+    }
+
     private void orderSquad(String squadName, SquadState state, List<DeterministicSoldier> squad, List<SoldierStatus> statuses,
                             SquadOrder order, Optional<Position> principalAt) {
         // Formation slots, then replacements' link-up, then pace control (the point man halts for
@@ -671,9 +696,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             principal, supplyPoint),
                     principal, threats));
         } else {
-            orders = ReactToContact.orders(statuses, io.github.jayessdeesea.minecraft.command.Recovery.orders(state.reported,
+            orders = ReactToContact.orders(statuses, state.recovery.orders(state.reported,
                     Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, Formations.assign(order, statuses))),
-                            order.objective(), supplyPoint)));
+                            order.objective(), supplyPoint), stairDown(squadName)));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
         if (!java.util.Objects.equals(straggler, state.haltedFor)) {
@@ -1135,7 +1160,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 // nothing spawns within 24 blocks of them.
                 boolean dark = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
                 Position cutterAt = cutter == null ? centre(stairs.head())
-                        : atLanding.contains(cutter) ? centre(stairs.landingStand())
+                        : atLanding.contains(cutter) ? centre(stairs.workshop(world).orElse(stairs.landingStand()))
                         : miners.get(cutter).standAt().orElse(centre(stairs.head()));
                 boolean isCutter = soldierName.equals(cutter);
                 Position place = isCutter ? cutterAt
@@ -1146,6 +1171,21 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 continue;
             }
             Order given = orders.get(i);
+            if (given instanceof Order.Place place) {
+                // Concrete work: the soldier builds the cells, standing where the building says.
+                List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = place.cells().stream()
+                        .map(c -> new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(c.x(), c.y(), c.z())).toList();
+                if (!cells.equals(placing.get(soldierName))) {
+                    placeProgress.remove(soldierName);
+                    placing.put(soldierName, cells);
+                }
+                Position at = placers.get(soldierName).standAt().orElse(null);
+                byName.get(soldierName).receiveOrder(at == null ? new Order.Idle()
+                        : new Order.MoveTo(at.x(), at.y(), at.z(), 0.3, 0.5, Risk.LOW));
+                continue;
+            }
+            placing.remove(soldierName);
+            placeProgress.remove(soldierName);
             if (building != null && soldierName.equals(torchCutter)) {
                 fortifying.remove(soldierName);
                 Position place = opening.get(soldierName).stand();
@@ -1667,6 +1707,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         handovers.put(name, handover);
         Builder builder = new Builder(name, session, inventory);
         builders.put(name, builder);
+        Builder placer = new Builder(name, session, inventory);
+        placers.put(name, placer);
         Rations rations = new Rations(name, session, inventory);
         Breacher doorway = new Breacher(name, session, inventory);
         // Cutting steps is part of moving, like a pillar step's block: no routine has the hands for it.
@@ -1735,16 +1777,21 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             Optional<Recipe> rung = ladderStep.get();
             rung.ifPresent(tools::add);
             if (needsPickaxe) {
-                tools.add(ORDER_PICKAXE);
+                // A stone one from cobblestone carried: live, a cutter whose pickaxe wore out halfway
+                // down asked for a wooden one, with no logs near and 21 cobblestone in its pack.
+                tools.add(inventory.count(ItemClass.COBBLESTONE) >= 3 ? Recipe.STONE_PICKAXE : ORDER_PICKAXE);
             }
             // The cutter's next tool before the ladder's next weapon: iron ore drops nothing to a
             // wooden pickaxe, and the stairs give the cobblestone for a stone one.
             if (stairs != null && Ladder.bestPickaxe(inventory) < 1 && inventory.count(ItemClass.COBBLESTONE) >= 3) {
                 tools.add(Recipe.STONE_PICKAXE);
             }
-            // On the stairs there's no room for a table: the cutter makes what it wants at the landing,
-            // once it's cut - the squad loop sends it there, and the stairs wait meanwhile.
-            if (stairs != null && !tools.isEmpty() && stairs.landingCut(world)) {
+            // On the stairs there's no room for a table: the cutter makes its pickaxe at the landing,
+            // or above it at the deepest alcove cut - the squad loop sends it there, and the stairs
+            // wait meanwhile. Only for the pickaxe, and not while making it fails: in the squad
+            // simulation a stone sword wanted, with no logs for its stick, held the stairs for good.
+            boolean pickaxeWanted = tools.contains(Recipe.STONE_PICKAXE) || tools.contains(ORDER_PICKAXE);
+            if (stairs != null && pickaxeWanted && armourer.failure().isEmpty() && stairs.workshop(world).isPresent()) {
                 atLanding.add(name);
             } else {
                 atLanding.remove(name);
@@ -1852,6 +1899,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     builder.stop();
                 }
             }));
+            turns.put(Hands.Routine.PLACING, turn(() -> placing.containsKey(name)
+                    && (placeProgress.get(name) == null || placeProgress.get(name) instanceof Builder.Progress.Working), free -> {
+                List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = placing.get(name);
+                if (free && cells != null && !threatened) {
+                    placeProgress.put(name, placer.tick(status.position(), world, cells));
+                    placer.lookAt().ifPresent(soldier::lookAt);
+                } else {
+                    placer.stop();
+                }
+            }));
             turns.put(Hands.Routine.DEPOSITOR, turn(depositor::active,
                     free -> depositor.tick(status.position(), supplyPoint, free && fullLoad && !threatened && fort == null)));
             turns.put(Hands.Routine.HANDOVER, turn(handover::active, free -> {
@@ -1941,6 +1998,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     ? new Report.Mining(step + 1, steps)
                     : stairs != null && stairsProgress.get(name) instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Stopped(String why)
                     ? new Report.Cantco("can't cut the staircase further: " + why)
+                    : placing.containsKey(name) && placeProgress.get(name) instanceof Builder.Progress.Failed(String why)
+                    ? new Report.Cantco("can't build what was laid out: " + why)
+                    : placing.containsKey(name) && !(placeProgress.get(name) instanceof Builder.Progress.Done)
+                    ? new Report.Building((int) placing.get(name).stream().filter(c -> world.isSolid(c.x(), c.y(), c.z())).count(),
+                            placing.get(name).size())
                     : hunter.active() ? new Report.Hunting()
                     : mason.active() ? new Report.Fortifying()
                     : forester.active() ? new Report.Planting()

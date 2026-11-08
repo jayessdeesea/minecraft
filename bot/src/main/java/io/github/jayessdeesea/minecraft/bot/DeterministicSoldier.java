@@ -997,7 +997,8 @@ public final class DeterministicSoldier implements Soldier {
 
     private Goal goalFor(Order order) {
         return switch (order) {
-            case Order.Idle() -> null;
+            // Where to stand for the next cell is the building's to say, given as a move.
+            case Order.Idle(), Order.Place _ -> null;
             case Order.MoveTo move -> new Goal(move.x(), move.y(), move.z(), move.horizontalTolerance(), move.verticalTolerance());
         };
     }

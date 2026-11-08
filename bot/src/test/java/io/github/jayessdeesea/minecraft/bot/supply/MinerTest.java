@@ -113,6 +113,24 @@ class MinerTest {
     }
 
     @Test
+    void onceATurnAnAlcoveIsCutOffTheWalkwayWhereACutterMakesItsTools() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 14);
+        assertEquals(java.util.Optional.empty(), stairs.workshop(world), "nothing cut yet");
+
+        dig(stairs, 30000);
+
+        assertEquals(2, stairs.alcoves().size());
+        for (BlockPos alcove : stairs.alcoves()) {
+            assertTrue(!world.isSolid(alcove.x(), alcove.y(), alcove.z()) && world.isSolid(alcove.x(), alcove.y() - 1, alcove.z()),
+                    alcove + " cut, with a floor for a table");
+            assertTrue(!stairs.walkway().contains(alcove), alcove + " off the walkway");
+            assertTrue(Math.abs(alcove.x() - HEAD.x()) == 2, alcove + " out of the shaft's side");
+        }
+        // The landing's cut now, so it's the workshop: before it, the deepest alcove's step.
+        assertEquals(java.util.Optional.of(stairs.landingStand()), stairs.workshop(world));
+    }
+
+    @Test
     void stopsShortOfWaterBesideAStep() {
         Staircase stairs = new Staircase(HEAD, GROUND - 12);
         BlockPos beside = stairs.step(4).offset(0, 0, -1);
@@ -128,10 +146,10 @@ class MinerTest {
     @Test
     void minesOreBesideTheStairsWithAPickaxeGoodEnoughButLeavesWhatItCantHarvest() {
         Staircase stairs = new Staircase(HEAD, GROUND - 6);
-        BlockPos vein = stairs.step(2).offset(0, 0, 0);
-        // Outside the 3x3: two blocks out from the pillar, beside step 2's feet.
-        BlockPos beside = new BlockPos(stairs.step(2).x() + Integer.signum(stairs.step(2).x() - HEAD.x()) * 1,
-                stairs.step(2).y(), stairs.step(2).z() + (stairs.step(2).x() == HEAD.x() ? Integer.signum(stairs.step(2).z() - HEAD.z()) : 0));
+        BlockPos vein = stairs.step(4).offset(0, 0, 0);
+        // Outside the 3x3: two blocks out from the pillar, beside step 4's feet (step 2's side is its alcove).
+        BlockPos beside = new BlockPos(stairs.step(4).x() + Integer.signum(stairs.step(4).x() - HEAD.x()) * 1,
+                stairs.step(4).y(), stairs.step(4).z() + (stairs.step(4).x() == HEAD.x() ? Integer.signum(stairs.step(4).z() - HEAD.z()) : 0));
         ore.add(beside);
         Inventory stonePickaxe = new Inventory();
         stonePickaxe.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(1), 1});

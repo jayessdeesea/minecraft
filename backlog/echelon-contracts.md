@@ -49,12 +49,16 @@ Four layers, each knowing only what it needs:
   assignment - is a pure function in `command`/`bot`, run by the squad simulation
   (docs/architecture.md, squad simulation) as it is by the app.
 
+## Built so far
+- **The first concrete command and the first blueprint.** `Order.Place(cells)`, reported as
+  `Building(placed, cells)`, and the engineer's stair down from a ledge (`bot.engineer.Stairway`),
+  which the recovery drill hands to a squadmate (docs/echelons/soldier/orders.md).
+
 ## Scenarios that must pass first
 Each runs in the squad simulation (`SquadSimulationTest`), against the code as it is, before
-anything is restructured. Passing: the mine shaft (open ground, beside a pond, with no pickaxe in
-the squad), the night shift, the wall on a slope, and a fight while the hut goes up. Written and
-disabled: a replacement stranded on a platform 17 blocks up - the recovery drill sends a squadmate,
-and the stair it needs is the engineer's first structure (backlog/mobility.md).
+anything is restructured. All pass: the mine shaft (open ground, beside a pond, with no pickaxe in
+the squad), the night shift, the wall on a slope, a fight while the hut goes up, and a replacement
+stranded on a platform 17 blocks up.
 
 ## Done when
 - The scenarios pass on the new layers, and the echelon docs describe the commands, the engineer
