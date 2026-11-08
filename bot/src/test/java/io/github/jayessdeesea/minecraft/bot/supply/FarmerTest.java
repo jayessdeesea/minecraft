@@ -34,6 +34,8 @@ class FarmerTest {
 
     private final Set<BlockPos> farmland = new HashSet<>();
     private final Map<BlockPos, Integer> wheat = new HashMap<>();
+    /** Short grass standing on a cell's top: the server won't till under it. */
+    private final Set<BlockPos> grass = new HashSet<>();
     private final List<Runnable> answers = new ArrayList<>();
     private final Inventory inventory = new Inventory();
 
@@ -77,7 +79,7 @@ class FarmerTest {
                         BlockPos cell = new BlockPos((int) args[0], (int) args[1], (int) args[2]);
                         ItemClass held = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot()))
                                 .orElse(null);
-                        if (held == ItemClass.HOE && world.isTillable(cell.x(), cell.y(), cell.z())) {
+                        if (held == ItemClass.HOE && world.isTillable(cell.x(), cell.y(), cell.z()) && !grass.contains(cell.offset(0, 1, 0))) {
                             answers.add(() -> farmland.add(cell));
                         } else if (held == ItemClass.SEEDS && farmland.contains(cell)) {
                             answers.add(() -> wheat.put(cell.offset(0, 1, 0), 0));
@@ -93,8 +95,10 @@ class FarmerTest {
                             inventory.setSlot(hotbar, moving);
                         });
                     }
-                    case "selectHotbarSlot" -> {
+                    case "selectHotbarSlot", "startDigging" -> {
                     }
+                    // Grass breaks at a touch, and the server takes it before the hoe sent after it.
+                    case "finishDigging" -> grass.remove(new BlockPos((int) args[0], (int) args[1], (int) args[2]));
                     default -> throw new AssertionError("unexpected " + method.getName());
                 }
                 return null;
@@ -102,6 +106,12 @@ class FarmerTest {
 
     private static int item(ItemClass itemClass) {
         return IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(itemClass))).findFirst().orElseThrow();
+    }
+
+    @Test
+    void grassStandingOnTheGroundIsBrokenSoTheHoeTillsIt() {
+        grass.add(PLOT.get(0).offset(0, 1, 0));
+        tillsThePlotThenPlantsIt();
     }
 
     @Test

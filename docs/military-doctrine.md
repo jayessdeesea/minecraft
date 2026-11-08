@@ -390,14 +390,15 @@ opened goes to the general (`General.receiveStockpile`), shown with the supply p
 soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
 
 Food is grown as well as gathered. The survey also reports ground to farm: the largest plot of
-tillable ground, dirt or grass, open above, at one height within 4 blocks of a water source, as a
+tillable ground, dirt or grass, with nothing solid above, at one height within 4 blocks of a water source, as a
 "ground to farm" site with its cell count, at a plot cell beside the water (`bot.farm.FarmPlan`).
 An objective's task can be `FARM`. The squad keeps the plot round the water nearest the objective,
 the same plot while the objective stays put. Each soldier does the most pressing job left on it,
 one cell at a time (`bot.supply.Farmer`), in this order:
 1. Harvests ripe wheat, for wheat and seeds to plant again.
 2. Plants seeds on bare farmland.
-3. Tills the plot with a hoe.
+3. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills
+   only under open air.
 4. With no seeds, breaks grass for them, since one in eight drops some.
 
 Each job is an expect script: stand on the cell, item in hand, use it on the cell, and done when

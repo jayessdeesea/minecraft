@@ -160,8 +160,16 @@ public final class Farmer {
                 }, new Expect("standing on " + cell, () -> on(cell)), WALK_TICKS),
                 new Step(item + " in hand", () -> inHand(item), () -> takeInHand(item),
                         new Expect(item + " in hand", () -> inHand(item)), ANSWER_TICKS),
-                new Step(job, done, () -> session.useBlockFace(cell.x(), cell.y(), cell.z(), BlockFace.UP),
-                        new Expect(job + " done", done), ANSWER_TICKS)));
+                new Step(job, done, () -> {
+                    if (item == ItemClass.HOE) {
+                        // A hoe tills only under open air: grass or a flower on the cell is broken
+                        // first - a touch breaks it, an empty cell ignores the dig, and the server
+                        // takes both in the order sent. Live, every till was refused for it.
+                        session.startDigging(cell.x(), cell.y() + 1, cell.z());
+                        session.finishDigging(cell.x(), cell.y() + 1, cell.z());
+                    }
+                    session.useBlockFace(cell.x(), cell.y(), cell.z(), BlockFace.UP);
+                }, new Expect(job + " done", done), ANSWER_TICKS)));
     }
 
     private boolean on(BlockPos cell) {
