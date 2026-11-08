@@ -701,7 +701,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 LOG.info("[{}] patrol base moved to {}", squadName, site);
             }
         }
-        state.baseSite = site;
+        // Contact pauses the base; it doesn't give it up. Re-sited after every skirmish, a squad at
+        // night left its half-built hut each time and laid out another, out in the open.
+        if (!squadInContact) {
+            state.baseSite = site;
+        }
         PatrolBase.Plan plan = site == null ? null : PatrolBase.hasty(site, statuses.size());
         if (plan == null) {
             baseFootprints.remove(squadName);
@@ -715,6 +719,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         if ((plan != null) != state.fortifying) {
             if (plan != null) {
                 LOG.info("[{}] PATROL BASE at {}: {} blocks to build", squadName, site, plan.cells().size());
+            } else if (squadInContact && state.baseSite != null) {
+                LOG.info("[{}] patrol base paused for contact - kept at {}", squadName, state.baseSite);
             } else {
                 LOG.info("[{}] patrol base stood down", squadName);
             }

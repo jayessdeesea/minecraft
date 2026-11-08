@@ -547,7 +547,8 @@ When the general moves the squad on, the soldier inside nearest the doorway brea
 (`bot.supply.Breacher`): two wall blocks, on the side facing the general's new objective, preferring
 a side whose outside cell has room to stand and ground under it (`PatrolBase.Plan.doorway`). It
 uses a pickaxe if it has one (1.5 seconds a block), bare hands if not (10). A fight only pauses the
-base, so the squad doesn't cut its way out mid-contact. A squad needn't remember its base to leave
+base: the squad doesn't cut its way out mid-contact, and it keeps the site, so when the fight is
+over it goes back to the hut it was building rather than laying out another in the open. A squad needn't remember its base to leave
 it: a soldier the world shows shut in a small room (`PatrolBase.enclosing`: a flood fill from where
 it stands, through gaps a body fits through, runs out within 16 cells with no step up and out) cuts
 its way out the same way, so a squad that wakes up sealed in after a restart, or walled in by a hut
