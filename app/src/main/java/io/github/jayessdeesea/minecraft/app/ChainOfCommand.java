@@ -76,7 +76,9 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     /** What each squad last saw round it - the survey the general was last shown. */
     private final Map<String, List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resourcesSeen =
             new java.util.concurrent.ConcurrentHashMap<>();
-    private final ExecutorService generalThread = Executors.newSingleThreadExecutor(r -> new Thread(r, "general"));
+    private final ExecutorService generalThread;
+    /** The clock and threads everything here runs on: the real ones, or a simulation's. */
+    private final Clockwork clockwork;
     private final AtomicBoolean generalBusy = new AtomicBoolean();
     /** Bumped on each operator order, so a general's decision already in flight is known to be stale. */
     private final AtomicInteger missionVersion = new AtomicInteger();
@@ -109,12 +111,26 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient,
                           io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts squadLeaderPrompts, Roster roster,
                           @org.springframework.beans.factory.annotation.Value("${minecraft.general.shelter-at-night}") boolean shelterAtNight) {
+        this(general, squadLeaderClient, squadLeaderPrompts, roster, shelterAtNight, Clockwork.REAL);
+    }
+
+    /** As the app's, on {@code clockwork}'s time and threads. */
+    ChainOfCommand(General general, ChatClient squadLeaderClient,
+                   io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts squadLeaderPrompts, Roster roster,
+                   boolean shelterAtNight, Clockwork clockwork) {
         this.general = general;
         this.shelterAtNight = shelterAtNight;
+        this.clockwork = clockwork;
+        this.generalThread = clockwork.thread("general");
         for (Roster.Squad squad : roster.squads()) {
             squads.put(squad.name(), new SquadCommand(squad.name(), new SpringAiSquadLeader(squad.name(), squadLeaderClient, squadLeaderPrompts), this::transmit,
-                    modelCalls));
+                    modelCalls, clockwork));
         }
+    }
+
+    /** The time, in milliseconds, on the clock everything here runs on. */
+    long millis() {
+        return clockwork.millis();
     }
 
     /**
@@ -248,7 +264,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     private OrderTrace trace(String operator, String order, int version) {
         traces.forEach(t -> t.supersede().ifPresent(line -> traced(operator, line)));
         traces.removeIf(OrderTrace::closed);
-        OrderTrace trace = new OrderTrace("OP-" + traceIds.incrementAndGet(), operator, order, System.currentTimeMillis(), version);
+        OrderTrace trace = new OrderTrace("OP-" + traceIds.incrementAndGet(), operator, order, clockwork.millis(), version);
         traces.add(trace);
         return trace;
     }
@@ -287,7 +303,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         OrderTrace trace = trace(operator, "!escort " + principal, version);
         LOG.info("[{} -> {}] ESCORT ({}): {}", operator, escort.name, trace.id, principal);
         transmit("[" + escort.name + " -> " + operator + "] WILCO (" + trace.id + "): escorting " + principal);
-        trace.direct(escort.name, Optional.of(new Objective.Task.None()), System.currentTimeMillis())
+        trace.direct(escort.name, Optional.of(new Objective.Task.None()), clockwork.millis())
                 .forEach(line -> traced(operator, line));
     }
 
@@ -452,7 +468,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             return;
         }
         logReadiness(sitreps);
-        long traceNow = System.currentTimeMillis();
+        long traceNow = clockwork.millis();
         for (OrderTrace trace : traces) {
             for (Sitrep sitrep : sitreps) {
                 trace.sitrep(sitrep.squad(), squads.get(sitrep.squad()).lastFrago(), sitrep.soldiers(), traceNow)
@@ -460,7 +476,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             }
         }
         traces.removeIf(OrderTrace::closed);
-        long now = System.currentTimeMillis();
+        long now = clockwork.millis();
         List<Sitrep> underGeneral = sitreps.stream().filter(s -> squads.get(s.squad()).escort().isEmpty()).toList();
         boolean newCantco = false;
         boolean newContact = false;
@@ -497,7 +513,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         generalThread.execute(() -> {
             ticket.started();
             try {
-                long started = System.currentTimeMillis();
+                long started = clockwork.millis();
                 List<SquadStatus> statuses = sitreps.stream().map(s -> new SquadStatus(s.squad(),
                         squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
                         s.holdingBase(), s.baseBlocksLeft())).toList();
@@ -507,7 +523,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                     LOG.info("[General] discarding a decision made under superseded orders");
                     return; // lastGeneralMillis was reset: the next SITREP asks again
                 }
-                long millis = System.currentTimeMillis() - started;
+                long millis = clockwork.millis() - started;
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
@@ -524,7 +540,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                             + task(given) + ". Intent: " + given.intent());
                     squads.get(name).receiveObjective(given);
                 }
-                long decidedAt = System.currentTimeMillis();
+                long decidedAt = clockwork.millis();
                 traces.stream().filter(t -> t.version == missionAsked)
                         .forEach(t -> t.decided(decided, decidedAt).forEach(line -> traced(t.operator, line)));
             } catch (RuntimeException e) {

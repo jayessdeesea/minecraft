@@ -515,6 +515,24 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         this.chainOfCommand = chainOfCommand;
         this.operatorOrders = operatorOrders;
         this.supplyPoint = Resupply.supplyPoint(supplyPoint);
+        this.clockwork = Clockwork.REAL;
+        this.connector = (name, listeners) -> MinecraftClient.join(HOST, PORT, name, listeners);
+    }
+
+    /** Where a soldier's connection comes from: the server, or a simulation's fake one. */
+    interface Connector {
+        CompletableFuture<PlaySession> join(String name, PlaySessionListeners listeners);
+    }
+
+    /** The clock and threads the soldiers run on. */
+    private Clockwork clockwork;
+    private Connector connector;
+
+    /** Runs on {@code clockwork}'s time and threads, connecting through {@code connector}: a simulation's. */
+    SoldierRunner simulated(Clockwork clockwork, Connector connector) {
+        this.clockwork = clockwork;
+        this.connector = connector;
+        return this;
     }
 
     private final ChunkCache chunkCache = new ChunkCache();
@@ -526,7 +544,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         for (SoldierDefinition definition : soldierDefinitions) {
             connect(definition);
         }
-        ScheduledExecutorService squad = Executors.newSingleThreadScheduledExecutor(runnable -> new Thread(runnable, "squad"));
+        ScheduledExecutorService squad = clockwork.scheduler("squad");
         schedulers.add(squad);
         squad.scheduleAtFixedRate(loudly("the squad loop", this::leadSquad), SQUAD_PERIOD_MILLIS, SQUAD_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
         squad.scheduleAtFixedRate(this::logSquadSitrep, STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
@@ -1419,7 +1437,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         AtomicReference<Depositor> depositorRef = new AtomicReference<>();
         CompletableFuture<PlaySession> sessionReady = new CompletableFuture<>();
 
-        CompletableFuture<PlaySession> joined = MinecraftClient.join(HOST, PORT, name, new PlaySessionListeners(
+        CompletableFuture<PlaySession> joined = connector.join(name, new PlaySessionListeners(
                 update -> chunkCache.load(update.chunkX(), update.chunkZ(), update.sectionBlockStates(), name),
                 unload -> chunkCache.unload(unload.chunkX(), unload.chunkZ(), name),
                 position -> {
@@ -1637,8 +1655,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.supply.Miner miner = new io.github.jayessdeesea.minecraft.bot.supply.Miner(name, session, inventory);
         miners.put(name, miner);
 
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
-                runnable -> new Thread(runnable, name + "-tick"));
+        ScheduledExecutorService scheduler = clockwork.scheduler(name + "-tick");
         activeScheduler.set(scheduler);
         schedulers.add(scheduler);
         sessions.add(session);
@@ -1834,7 +1851,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             FlightRecorder recorder = recorders.computeIfAbsent(name, n -> new FlightRecorder());
             if (recorder.due()) {
                 boolean day = chainOfCommand.time().map(t -> !t.dark()).orElse(false);
-                idleWatch.update(name, status.position(), System.currentTimeMillis(), day, () -> "report " + status.report()
+                idleWatch.update(name, status.position(), clockwork.millis(), day, () -> "report " + status.report()
                         + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free")
                         + ", squad's task " + chainOfCommand.objective(definition.squad())
                         .map(o -> OrderTrace.taskName(o.task()) + " at " + o.location()).orElse("none"))
@@ -1848,7 +1865,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                         .min(java.util.Comparator.comparingDouble(h -> distance(h.position(), status.position())))
                         .map(h -> String.format(java.util.Locale.ROOT, "%s %.1f away",
                                 io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry.nameOf(h.typeId()), distance(h.position(), status.position())));
-                recorder.record(new FlightRecorder.Sample(System.currentTimeMillis(), status.position(), status.report().toString(),
+                recorder.record(new FlightRecorder.Sample(clockwork.millis(), status.position(), status.report().toString(),
                         (float) (double) status.condition().map(io.github.jayessdeesea.minecraft.command.Condition::health).orElse(-1.0),
                         status.condition().map(io.github.jayessdeesea.minecraft.command.Condition::food).orElse(-1),
                         hands.map(Enum::name), nearest));

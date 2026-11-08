@@ -76,12 +76,19 @@ final class SquadCommand {
     private final ModelCalls modelCalls;
 
     SquadCommand(String name, SquadLeader squadLeader, Consumer<String> radio, ModelCalls modelCalls) {
+        this(name, squadLeader, radio, modelCalls, Clockwork.REAL);
+    }
+
+    SquadCommand(String name, SquadLeader squadLeader, Consumer<String> radio, ModelCalls modelCalls, Clockwork clockwork) {
         this.modelCalls = modelCalls;
         this.name = name;
         this.squadLeader = squadLeader;
         this.radio = radio;
-        this.thread = Executors.newSingleThreadExecutor(r -> new Thread(r, "squad-leader-" + name));
+        this.clockwork = clockwork;
+        this.thread = clockwork.thread("squad-leader-" + name);
     }
+
+    private final Clockwork clockwork;
 
     /**
      * The squad's report upward. Holding its sealed patrol base, the squad is doing what it was
@@ -274,12 +281,12 @@ final class SquadCommand {
         thread.execute(() -> {
             ticket.started();
             try {
-                long started = System.currentTimeMillis();
+                long started = clockwork.millis();
                 TerrainSurvey survey = terrain.get();
                 long reachable = survey.samples().stream().filter(TerrainSurvey.Sample::reachable).count();
                 squadLeader.decide(squad, survey).ifPresent(decided -> {
                     LOG.info("[{} -> squad] ({} ms, {}, terrain {}/{} reachable) FRAGO: move to ({}, {}, {}) in {} at {} interval, {} risk{}. Intent: {}",
-                            name, System.currentTimeMillis() - started, ChainOfCommand.phase(time), reachable, survey.samples().size(),
+                            name, clockwork.millis() - started, ChainOfCommand.phase(time), reachable, survey.samples().size(),
                             Math.round(decided.objective().x()), Math.round(decided.objective().y()), Math.round(decided.objective().z()),
                             decided.formation(), decided.interval(), decided.risk(), soldierRisk(decided), decided.intent());
                     radio.accept("[" + name + " -> squad] FRAGO: " + decided.formation() + " to " + ChainOfCommand.at(decided.objective())
@@ -289,7 +296,7 @@ final class SquadCommand {
                         radio.accept("[" + name + " -> General] CANTCO: " + cantco.reason());
                     }
                     order = decided;
-                    lastFragoMillis = System.currentTimeMillis();
+                    lastFragoMillis = clockwork.millis();
                 });
             } catch (RuntimeException e) {
                 LOG.error("[{}] no decision - squad keeps its last order: {}", name, e.getMessage(), e);
