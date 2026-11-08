@@ -155,6 +155,13 @@ final class SquadCommand {
         return Optional.ofNullable(escort);
     }
 
+    /** When the squad leader last gave the squad an order (a FRAGO), in epoch millis: -1 before its first. */
+    long lastFrago() {
+        return lastFragoMillis;
+    }
+
+    private volatile long lastFragoMillis = -1;
+
     void escort(String principal) {
         escort = principal;
         principalOutOfSight = false;
@@ -282,6 +289,7 @@ final class SquadCommand {
                         radio.accept("[" + name + " -> General] CANTCO: " + cantco.reason());
                     }
                     order = decided;
+                    lastFragoMillis = System.currentTimeMillis();
                 });
             } catch (RuntimeException e) {
                 LOG.error("[{}] no decision - squad keeps its last order: {}", name, e.getMessage(), e);

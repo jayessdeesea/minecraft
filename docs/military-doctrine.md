@@ -66,13 +66,19 @@ garbled channel can't create ambiguity:
 | **ROGER** | "I have received your last transmission satisfactorily." *Not* agreement, *not* compliance. |
 | **WILCO** | "I have received your message, understand it, and will comply." Includes ROGER; never sent together. |
 | **CANTCO** | "Unable to comply" (multi-service brevity, ATP 1-02.1). Aviation's equivalent is **UNABLE**, "normally followed by a reason." |
+| **SAY AGAIN** | "Repeat all of your last transmission" - it wasn't understood. |
 
 *How we use it:* a subordinate answers an order with **WILCO** or **CANTCO + reason**. CANTCO is
 the push-back channel: the squad leader orders a spot that can't be reached and the squad *says
 so*, rather than silently stalling. A soldier that can't reach its slot (fell into a pit, cut off
 by water) reports CANTCO with the reason; the squad leader decides what to do about it - the same
 loop a human squad runs. At the top of the chain, the general answers a new mission from the human
-operator with WILCO on the radio net.
+operator with WILCO on the radio net, and an order it doesn't recognise with SAY AGAIN.
+
+An order is acknowledged at every echelon it passes, and the last acknowledgement is the soldiers
+doing it: each operator order is traced (`app.OrderTrace`) from the general's decision through
+each squad leader's FRAGO to a SITREP showing the squad's soldiers at the task - Fortifying for
+FORTIFY, Securing for SECURE, and so on - each hop timed, and each one late raising an alarm.
 
 ## 4. Reports upward
 

@@ -190,10 +190,41 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     public void onOperatorMission(String operator, String mission) {
         general.receiveMission(mission);
         squads.values().forEach(squad -> squad.escort(null));
-        missionVersion.incrementAndGet();
+        int version = missionVersion.incrementAndGet();
         lastGeneralMillis = Long.MIN_VALUE / 2;
-        LOG.info("[{} -> General] MISSION: {}", operator, mission);
-        transmit("[General -> " + operator + "] WILCO: " + mission);
+        OrderTrace trace = trace(operator, "!mission " + mission, version);
+        LOG.info("[{} -> General] MISSION ({}): {}", operator, trace.id, mission);
+        transmit("[General -> " + operator + "] WILCO (" + trace.id + "): " + mission);
+    }
+
+    /** An order from the operator that isn't one: answered on the radio, with what the orders are. */
+    public void onOperatorUnknown(String operator, String command) {
+        LOG.warn("[{} -> General] {} - not an order", operator, command);
+        transmit("[General -> " + operator + "] SAY AGAIN: " + command + " is not an order. Orders: " + OperatorOrders.MISSION
+                + " <what to do>, " + OperatorOrders.ESCORT + " [player]; anything else is passed to the general as a remark");
+    }
+
+    /** Operator orders being followed down the chain - each is dropped once carried out or superseded. */
+    private final List<OrderTrace> traces = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final AtomicInteger traceIds = new AtomicInteger();
+
+    /** A trace for the operator's new order: the ones before it, not yet carried out, are superseded. */
+    private OrderTrace trace(String operator, String order, int version) {
+        traces.forEach(t -> t.supersede().ifPresent(line -> traced(operator, line)));
+        traces.removeIf(OrderTrace::closed);
+        OrderTrace trace = new OrderTrace("OP-" + traceIds.incrementAndGet(), operator, order, System.currentTimeMillis(), version);
+        traces.add(trace);
+        return trace;
+    }
+
+    /** A hop of an order's trace: in the log, and on the radio to the operator who gave it. */
+    private void traced(String operator, String line) {
+        if (line.startsWith("ALARM")) {
+            LOG.warn("[Trace] {}", line);
+        } else {
+            LOG.info("[Trace] {}", line);
+        }
+        transmit("[General -> " + operator + "] " + line);
     }
 
     /**
@@ -215,10 +246,13 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     public void onOperatorEscort(String operator, String principal) {
         SquadCommand escort = squads.values().iterator().next();
         escort.escort(principal);
-        missionVersion.incrementAndGet(); // a general's decision in flight may have included this squad
+        int version = missionVersion.incrementAndGet(); // a general's decision in flight may have included this squad
         lastGeneralMillis = Long.MIN_VALUE / 2; // the others are re-planned without it
-        LOG.info("[{} -> {}] ESCORT: {}", operator, escort.name, principal);
-        transmit("[" + escort.name + " -> " + operator + "] WILCO: escorting " + principal);
+        OrderTrace trace = trace(operator, "!escort " + principal, version);
+        LOG.info("[{} -> {}] ESCORT ({}): {}", operator, escort.name, trace.id, principal);
+        transmit("[" + escort.name + " -> " + operator + "] WILCO (" + trace.id + "): escorting " + principal);
+        trace.direct(escort.name, Optional.of(new Objective.Task.None()), System.currentTimeMillis())
+                .forEach(line -> traced(operator, line));
     }
 
     /** The camp's progress through the lodgment's phases, measured - the general is told, and the log when it moves. */
@@ -377,6 +411,14 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             return;
         }
         logReadiness(sitreps);
+        long traceNow = System.currentTimeMillis();
+        for (OrderTrace trace : traces) {
+            for (Sitrep sitrep : sitreps) {
+                trace.sitrep(sitrep.squad(), squads.get(sitrep.squad()).lastFrago(), sitrep.soldiers(), traceNow)
+                        .forEach(line -> traced(trace.operator, line));
+            }
+        }
+        traces.removeIf(OrderTrace::closed);
         long now = System.currentTimeMillis();
         List<Sitrep> underGeneral = sitreps.stream().filter(s -> squads.get(s.squad()).escort().isEmpty()).toList();
         boolean newCantco = false;
@@ -425,19 +467,25 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                     return; // lastGeneralMillis was reset: the next SITREP asks again
                 }
                 long millis = System.currentTimeMillis() - started;
+                Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
                     Objective given = sheltered(grounded(objectives.get(i), statuses.get(i).soldiers()), statuses.get(i));
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
                         LOG.info("[General -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
+                        decided.put(name, Optional.empty());
                         continue;
                     }
+                    decided.put(name, Optional.of(given));
                     LOG.info("[General -> {}] ({} ms, {}) OPORD: {} at {}{}. Intent: {}", name, millis, phase(time), given.mission(),
                             at(given.location()), task(given), given.intent());
                     transmit("[General -> " + name + "] OPORD: " + given.mission() + " at " + at(given.location())
                             + task(given) + ". Intent: " + given.intent());
                     squads.get(name).receiveObjective(given);
                 }
+                long decidedAt = System.currentTimeMillis();
+                traces.stream().filter(t -> t.version == missionAsked)
+                        .forEach(t -> t.decided(decided, decidedAt).forEach(line -> traced(t.operator, line)));
             } catch (RuntimeException e) {
                 LOG.error("[General] no decision - keeping the current objectives: {}", e.getMessage(), e);
             } finally {

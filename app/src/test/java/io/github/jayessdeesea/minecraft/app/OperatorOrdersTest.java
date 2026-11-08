@@ -44,7 +44,9 @@ class OperatorOrdersTest {
     void everythingElseIsIgnored() {
         UUID jake = OperatorOrders.offlineUuid("Jake");
         assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(jake, "!mission ")));
-        assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(jake, "!missionary work")));
+        assertEquals(Optional.of(new OperatorOrders.Order.Unknown("Jake", "!missionary")), orders.orderFrom(new ChatMessage(jake, "!missionary work")),
+                "an order not understood is answered, not dropped");
+        assertEquals(Optional.of(new OperatorOrders.Order.Unknown("Jake", "!fortify")), orders.orderFrom(new ChatMessage(jake, "!fortify the base")));
         assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(OperatorOrders.offlineUuid("Alice"), "!mission go home")));
         assertEquals(Optional.empty(), orders.orderFrom(new ChatMessage(OperatorOrders.offlineUuid("Alice"), "!escort")));
         assertEquals(Optional.empty(), new OperatorOrders("").orderFrom(new ChatMessage(jake, "!mission go home")));

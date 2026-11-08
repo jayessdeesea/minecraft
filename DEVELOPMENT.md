@@ -166,7 +166,16 @@ player: the soldiers ring the player and go after hostiles that come near them
 (docs/military-doctrine.md § 10). `!mission <text>` ends it.
 
 Any order can be whispered to a soldier instead (`/msg Bob !escort`): the soldier that hears it
-relays it up the chain, and the log says who did.
+relays it up the chain, and the log says who did. A word starting with `!` that isn't one of the two
+orders (`!fortify the base`) is answered SAY AGAIN, with the orders there are - say
+`!mission fortify the base` instead.
+
+Each order is followed down the chain and reported back on the net as it goes, under an id from
+its WILCO (`OP-3`): the general's decision and what each squad was given, each squad leader's
+FRAGO, and each squad's soldiers seen at the task - a squad's WILCO is them doing it, not just
+being told. A hop that takes too long - the general past 30 s, a squad leader past 45 s, the
+soldiers past 3 minutes - is an `ALARM` naming what they're doing instead. The log has the same
+lines under `[Trace]`.
 
 ```bash
 java -jar app/target/app.jar --minecraft.operators=YourName

@@ -1386,6 +1386,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                                         chainOfCommand.onOperatorEscort(operator, principal);
                                 case OperatorOrders.Order.Remark(String operator, String remark) ->
                                         chainOfCommand.onOperatorRemark(operator, remark);
+                                case OperatorOrders.Order.Unknown(String operator, String command) ->
+                                        chainOfCommand.onOperatorUnknown(operator, command);
                             }
                         });
                     }

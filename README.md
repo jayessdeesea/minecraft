@@ -42,7 +42,7 @@ of their decisions, and whole-chain scenarios run the full hierarchy against the
 **Military command structure and communication:**
 - **Mission command:** orders carry intent, and subordinates use their own initiative within it.
 - **Order formats:** OPORDs and FRAGOs.
-- **Acknowledgements:** WILCO and CANTCO.
+- **Acknowledgements:** WILCO, CANTCO and SAY AGAIN, each operator order traced down to the soldiers at it.
 - **Reports:** SITREPs and SALUTE reports.
 - **Movement:** formations and intervals.
 

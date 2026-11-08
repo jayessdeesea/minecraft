@@ -21,8 +21,10 @@ import java.util.stream.Collectors;
  *   <li>{@code !mission <text>} - a new mission for the general (and the end of any escort);</li>
  *   <li>{@code !escort} - the squad escorts the operator; {@code !escort <player>} - that player.</li>
  * </ul>
- * Everything else in chat - the squad's own radio net, other players talking - is ignored; an
- * order from anyone not on the list is logged and ignored.
+ * Anything else an operator says is a remark for the general, but a word starting with {@code !}
+ * that isn't one of these is an order not understood - answered SAY AGAIN on the radio, never
+ * dropped. Everything else in chat - the squad's own radio net, other players talking - is
+ * ignored; an order from anyone not on the list is logged and ignored.
  *
  * <p>The sender is matched by UUID: in offline mode the server derives each player's UUID from
  * its name ({@code "OfflinePlayer:" + name}, a version-3 UUID), so the list of names is the list
@@ -50,6 +52,10 @@ public class OperatorOrders {
         /** Anything else an operator says: not an order, but worth the general's hearing. */
         record Remark(String operator, String remark) implements Order {
         }
+
+        /** A {@code !} order that isn't one: {@code command} as the operator sent it. */
+        record Unknown(String operator, String command) implements Order {
+        }
     }
 
     private final Map<UUID, String> operators;
@@ -70,8 +76,11 @@ public class OperatorOrders {
         String operator = operators.get(chat.sender());
         if (!command.equals(MISSION) && !command.equals(ESCORT)) {
             // An operator talking, not ordering - passed up; anyone else's chat is just chat.
-            return operator == null || command.startsWith("!") || chat.message().isBlank() ? Optional.empty()
-                    : Optional.of(new Order.Remark(operator, chat.message().strip()));
+            if (operator == null || chat.message().isBlank()) {
+                return Optional.empty();
+            }
+            return Optional.of(command.startsWith("!") ? new Order.Unknown(operator, command)
+                    : new Order.Remark(operator, chat.message().strip()));
         }
         if (operator == null) {
             LOG.warn("Ignoring {} from {}, who isn't in minecraft.operators: {}", command, chat.sender(), argument);
