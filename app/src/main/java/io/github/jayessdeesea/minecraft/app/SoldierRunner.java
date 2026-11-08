@@ -432,6 +432,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, io.github.jayessdeesea.minecraft.bot.farm.TreeFarm> planting = new ConcurrentHashMap<>();
     /** Each connected soldier's staircase cutting, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Miner> miners = new ConcurrentHashMap<>();
+    /** Each soldier's last seconds, read out when it dies. */
+    private final Map<String, FlightRecorder> recorders = new ConcurrentHashMap<>();
+    /** Deaths since the app started, by the server's death message key: what kills soldiers most. */
+    private final Map<String, Integer> casualties = new java.util.concurrent.ConcurrentSkipListMap<>();
     /** The staircase a soldier cuts, for the one soldier of a MINE squad cutting it - squad loop writes, tick reads. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Staircase> cutting = new ConcurrentHashMap<>();
     /** Each soldier of a MINE squad, which wants a pickaxe for it - squad loop writes, tick reads. */
@@ -1429,6 +1433,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                         overworldClock.update(time, clockNames.get()).ifPresent(chainOfCommand::onTime);
                     }
                 },
+                death -> {
+                    LOG.warn("[Casualty] {}", recorders.computeIfAbsent(name, n -> new FlightRecorder()).casualty(name, death));
+                    casualties.merge(death.contains("[") ? death.substring(0, death.indexOf('[')) : death, 1, Integer::sum);
+                    LOG.warn("[Casualty] since the app started: {}", casualties);
+                },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
         joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, armourerRef, depositorRef, torchmakerRef))
@@ -1721,7 +1730,18 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             gather == null ? status.position() : gather.location(), free && !inContact && !foodCalls)));
             turns.put(Hands.Routine.SCAVENGER, turn(scavenger::active,
                     free -> scavenger.tick(status.position(), world, free && !threatened && fort == null && !foodCalls)));
-            Hands.tick(turns);
+            Optional<Hands.Routine> hands = Hands.tick(turns);
+            FlightRecorder recorder = recorders.computeIfAbsent(name, n -> new FlightRecorder());
+            if (recorder.due()) {
+                Optional<String> nearest = world.nearbyHostiles(status.position(), RECORDED_HOSTILE_RADIUS).stream()
+                        .min(java.util.Comparator.comparingDouble(h -> distance(h.position(), status.position())))
+                        .map(h -> String.format(java.util.Locale.ROOT, "%s %.1f away",
+                                io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry.nameOf(h.typeId()), distance(h.position(), status.position())));
+                recorder.record(new FlightRecorder.Sample(System.currentTimeMillis(), status.position(), status.report().toString(),
+                        (float) (double) status.condition().map(io.github.jayessdeesea.minecraft.command.Condition::health).orElse(-1.0),
+                        status.condition().map(io.github.jayessdeesea.minecraft.command.Condition::food).orElse(-1),
+                        hands.map(Enum::name), nearest));
+            }
             // Short of logs for tools it tried and failed to chop wood for: a squadmate may have
             // some to spare (§13).
             int logsShort = tools.isEmpty() ? 0 : Armourer.logsShort(inventory, tools);
@@ -1872,6 +1892,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         });
         lastHeard.values().removeIf(heard -> now - heard > SAME_LINE_NANOS);
         return first[0];
+    }
+
+    /** How far out a flight recorder notes the nearest hostile. */
+    private static final double RECORDED_HOSTILE_RADIUS = 24;
+
+    private static double distance(Position a, Position b) {
+        return Math.sqrt((a.x() - b.x()) * (a.x() - b.x()) + (a.y() - b.y()) * (a.y() - b.y()) + (a.z() - b.z()) * (a.z() - b.z()));
     }
 
     /** One routine's turn at the soldier's hands. */

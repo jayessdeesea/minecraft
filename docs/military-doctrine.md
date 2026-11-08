@@ -158,7 +158,13 @@ its y is a depth.
 takes point. While anyone in the squad is in contact the replacement holds at the rally point,
 which is where the point man last stood with nobody in contact. Otherwise it closes on the nearest
 squad member, and within 6 blocks it has linked up and gets a formation slot again. Recognition is
-just knowing where the squad is - our soldiers can't mistake each other for the enemy.
+just knowing where the squad is.
+
+Each death is logged as a casualty report (`[Casualty]`, `app.FlightRecorder`): the server's death
+message, where the soldier died and which routine had its hands, how far it fell if it stood 3 or
+more blocks higher in the 15 seconds before, and its last 5 seconds four times a second - position,
+report, health, food, routine and the nearest hostile within 24 blocks. A tally of deaths by cause
+since the app started follows each one.
 
 ## 7. Risk acceptance
 

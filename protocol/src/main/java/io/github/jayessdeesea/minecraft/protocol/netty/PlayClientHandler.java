@@ -217,6 +217,8 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
         } else if (packet instanceof SetHealthPacket health) {
             LOG.debug("Set Health received: health={} food={}", health.health(), health.food());
             listeners.onHealth().accept(new HealthUpdate(health.health(), health.food()));
+        } else if (packet instanceof io.github.jayessdeesea.minecraft.protocol.packet.PlayerCombatKillPacket death) {
+            listeners.onDeath().accept(death.message());
         } else if (packet instanceof SetTimePacket time) {
             listeners.onTime().accept(new TimeUpdate(time.gameTime(), time.clocks()));
         } else if (packet instanceof InventoryPackets inventory && inventory.containerId() == 0) {

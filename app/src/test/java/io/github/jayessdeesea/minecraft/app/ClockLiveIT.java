@@ -30,7 +30,7 @@ class ClockLiveIT {
                     if (registry.equals("minecraft:world_clock")) {
                         clockNames.set(List.copyOf(entries));
                     }
-                }, blocks -> { }, time -> clock.update(time, clockNames.get()).ifPresent(seen::set), cause -> { }))
+                }, blocks -> { }, time -> clock.update(time, clockNames.get()).ifPresent(seen::set), death -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
         try {
             for (int i = 0; i < 40 && seen.get() == null; i++) {

@@ -16,6 +16,9 @@ import java.util.function.Consumer;
  * {@code ConnectionWatchdogHandler}), a decode/protocol exception, or the server closing the socket
  * on its own. It never fires for a deliberate {@code close()}.
  *
+ * <p>{@code onDeath} carries the server's death message for this player, as it dies (Player Combat
+ * Kill): a translation key and its arguments, {@code death.attack.arrow[Hal, entity.minecraft.skeleton]}.
+ *
  * <p>This is the signal a caller needs in order to reconnect - {@code protocol} deliberately does
  * not attempt reconnection itself. A fresh connection needs a fresh join sequence and, for a
  * Soldier, re-seeding its position and order from the new session's own spawn - both are
@@ -34,9 +37,10 @@ public record PlaySessionListeners(Consumer<ChunkUpdate> onChunkUpdate,
                                     BiConsumer<String, List<String>> onRegistry,
                                     Consumer<List<BlockChange>> onBlockChanges,
                                     Consumer<TimeUpdate> onTime,
+                                    Consumer<String> onDeath,
                                     Consumer<Throwable> onDisconnect) {
 
     public static PlaySessionListeners none() {
-        return new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, blocks -> { }, time -> { }, cause -> { });
+        return new PlaySessionListeners(update -> { }, unload -> { }, position -> { }, entity -> { }, move -> { }, ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { }, blocks -> { }, time -> { }, death -> { }, cause -> { });
     }
 }

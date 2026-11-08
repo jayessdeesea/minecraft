@@ -43,6 +43,8 @@ public final class PlayMarshaller implements PacketMarshaller {
             case SetTimePacket.PACKET_ID -> SetTimePacket.decode(data);
             case PlayerChatPacket.PACKET_ID -> PlayerChatPacket.decode(data);
             case DisguisedChatPacket.PACKET_ID -> DisguisedChatPacket.decode(data);
+            case io.github.jayessdeesea.minecraft.protocol.packet.PlayerCombatKillPacket.PACKET_ID ->
+                    io.github.jayessdeesea.minecraft.protocol.packet.PlayerCombatKillPacket.decode(data);
             case ChunkBatchFinishedPacket.PACKET_ID -> ChunkBatchFinishedPacket.decode(data);
             case ForgetLevelChunkPacket.PACKET_ID -> ForgetLevelChunkPacket.decode(data);
             case MoveEntityPacket.POS_PACKET_ID -> MoveEntityPacket.decodePos(data);

@@ -40,7 +40,7 @@ class WorldProbeLiveIT {
                 unload -> chunks.unload(unload.chunkX(), unload.chunkZ(), name),
                 position -> joinedAt.compareAndSet(null, new Position(position.x(), position.y(), position.z())), entity -> { }, move -> { },
                 ids -> { }, health -> { }, inventory -> { }, chat -> { }, container -> { }, (registry, entries) -> { },
-                blocks -> blocks.forEach(b -> chunks.setBlock(b.x(), b.y(), b.z(), b.stateId())), time -> { }, cause -> { }))
+                blocks -> blocks.forEach(b -> chunks.setBlock(b.x(), b.y(), b.z(), b.stateId())), time -> { }, death -> { }, cause -> { }))
                 .get(15, TimeUnit.SECONDS);
         try {
             boolean asSoldier = !name.equals("Surveyor");

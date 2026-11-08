@@ -261,6 +261,7 @@ server's own `GameProtocols` registration lists (read with `javap` - see DEVELOP
 | ← | `0x3C` | Open Screen | `ContainerPackets.OpenScreen` | live (a chest: menu type 2, `generic_9x3`) |
 | ← | `0x21` | Disguised Chat | `DisguisedChatPacket` | live (an unsigned `/msg` from another client) |
 | ← | `0x42` | Player Chat | `PlayerChatPacket` | live (plain chat from another client) |
+| ← | `0x45` | Player Combat Kill | `PlayerCombatKillPacket` | registration order; the jar's codec (VarInt player id, then the death message as a text component) |
 | ← | `0x49` | Player Position | `PlayerPositionPacket` | live spawn coordinates |
 | ← | `0x4E` | Remove Entities | `RemoveEntitiesPacket` | registration order |
 | ← | `0x6A` | Set Health | `SetHealthPacket` | live (`0.0` for a dead player) |
@@ -297,7 +298,9 @@ chat session arrives as Player Chat with no signature. An unsigned chat *command
 the squad's own radio lines, or a player's `/msg` - arrives instead as Disguised Chat (`0x21`): the
 server resolves an unsigned command's message as a system message, which has no sender UUID. Its
 message and the sender's name are NBT text components, read as plain text (a string tag, or a
-compound's `text` and then its `extra` parts; styling and events skipped). The sender's UUID is
+compound's `text` and then its `extra` parts; styling and events skipped). A translated component
+reads as its key and its `with` arguments in brackets, since the client has no language file:
+a death message is `death.attack.arrow[Hal, entity.minecraft.skeleton]`. The sender's UUID is
 derived from the name, as above.
 
 **Containers.** Using a chest (Use Item On) gets Open Screen and then the chest's Container Set

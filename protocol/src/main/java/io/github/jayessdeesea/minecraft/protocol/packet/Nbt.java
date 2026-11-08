@@ -56,8 +56,10 @@ final class Nbt {
      * The plain text of a text component sent as an unnamed root tag
      * ({@code ComponentSerialization.TRUSTED_STREAM_CODEC}): a string tag is the text itself; a
      * compound's {@code text}, then each of its {@code extra} components in turn; a list, each
-     * element in turn. Styling, click and hover events, and any other content are skipped - so a
-     * translated component contributes nothing but its literal parts.
+     * element in turn. A translated component is its key, then its {@code with} arguments in
+     * brackets - {@code death.attack.arrow[Hal, entity.minecraft.skeleton]}: the client has no
+     * language file to fill it in from, and the key says more than a guess at the English would.
+     * Styling, click and hover events, and any other content are skipped.
      */
     static String readText(ByteBuf in) {
         StringBuilder text = new StringBuilder();
@@ -86,6 +88,19 @@ final class Nbt {
                     String name = readString(in);
                     if (name.equals("text") && childType == STRING || name.equals("extra") && childType == LIST) {
                         readText(in, childType, text, depth + 1);
+                    } else if (name.equals("translate") && childType == STRING) {
+                        text.append(readString(in));
+                    } else if (name.equals("with") && childType == LIST) {
+                        int elementType = in.readUnsignedByte();
+                        int count = in.readInt();
+                        text.append('[');
+                        for (int i = 0; i < count; i++) {
+                            if (i > 0) {
+                                text.append(", ");
+                            }
+                            readText(in, elementType, text, depth + 1);
+                        }
+                        text.append(']');
                     } else {
                         skipPayload(in, childType, depth + 1);
                     }

@@ -42,6 +42,12 @@ public final class HostileMobRegistry {
         return id;
     }
 
+    /** A hostile's registry name (without "minecraft:") by its protocol entity-type ID. */
+    public static String nameOf(int typeId) {
+        return TYPE_IDS.entrySet().stream().filter(e -> e.getValue() == typeId).map(java.util.Map.Entry::getKey).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("not a listed hostile: type " + typeId));
+    }
+
     static boolean explodes(int typeId) {
         return typeId == CREEPER;
     }
