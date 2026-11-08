@@ -133,14 +133,21 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      */
     Objective sheltered(Objective objective, io.github.jayessdeesea.minecraft.command.SquadStatus squad) {
         io.github.jayessdeesea.minecraft.command.TimeOfDay now = time;
-        // A squad already sealed in is the one most to keep there: an order out of it is no exception.
-        // Nor is a squad down a mine: underground, nothing spawns within 24 blocks of the soldiers.
         if (!shelterAtNight || now == null || !(now.dark() || now.ticksUntilDark() <= SHELTER_LEAD_TICKS)
-                || objective.patrolBase() || objective.mine() || squad.soldiers().isEmpty()) {
+                || squad.soldiers().isEmpty()) {
             return objective;
         }
-        // The night isn't wasted: one squad holds the camp, and the rest go down the camp's mine.
+        // The night isn't wasted: one squad holds the camp, and the rest go down the camp's mine -
+        // whatever the general orders, a patrol base included: seeing the squad out of one, it
+        // ordered one two minutes into the shift.
         Optional<Objective> nightShift = nightShift(squad.squadName());
+        if (nightShift.isPresent() && objective.equals(nightShift.get())) {
+            return objective;
+        }
+        // A squad already sealed in is the one most to keep there: an order out of it is no exception.
+        if (nightShift.isEmpty() && objective.patrolBase()) {
+            return objective;
+        }
         if (nightShift.isPresent()) {
             LOG.warn("[General -> {}] at or near night, ordered '{}' ({}) - the operator's rule sends it down the camp's mine instead, at {}",
                     squad.squadName(), objective.mission(), objective.task(), at(nightShift.get().location()));

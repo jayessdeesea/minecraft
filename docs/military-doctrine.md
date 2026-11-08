@@ -348,7 +348,9 @@ It digs what it's short of and can dig itself: logs from the nearest tree within
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
 It crafts planks, sticks and a crafting table in its 2x2 inventory grid, places the table (or walks
 to one standing within 16 blocks), smelts ore in a furnace it makes or walks to, and crafts the rest at the
-table. What's made is put on: armour worn, the best weapon in hand. A first wooden sword takes
+table. What's made is put on: armour worn, the best weapon in hand. And whenever its hands are
+free, a soldier stands to: every two seconds it puts on any better armour it carries and takes its
+best weapon back in hand, rather than the seeds or dirt its last job left there. A first wooden sword takes
 about a minute. While crafting or smelting, the soldier stays where it began, since a window closes
 on a player who walks away from it.
 

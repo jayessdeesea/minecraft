@@ -64,6 +64,8 @@ class ChainOfCommandTest {
         assertTrue(bravo.mine(), bravo.toString());
         assertEquals(new Position(-44, ChainOfCommand.MINE_DEPTH, 40), bravo.location());
         assertEquals(bravo, two.sheltered(bravo, squad("Bravo", "Bob")), "a squad down the mine stays there");
+        Objective hut = new Objective("Build a patrol base", new Position(0, 64, 0), "Safe", new Objective.Task.PatrolBase());
+        assertEquals(bravo, two.sheltered(hut, squad("Bravo", "Bob")), "the general's patrol base doesn't take it off the night shift");
     }
 
     private static SquadStatus squad(String name, String soldier) {
