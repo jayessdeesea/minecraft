@@ -192,7 +192,13 @@ java -jar app/target/app.jar --minecraft.operators=YourName --minecraft.yield-to
 ```
 
 `minecraft.camp` has the general build the camp up phase by phase, each phase measured
-(docs/military-doctrine.md § 17), so the mission needn't list the work.
+(docs/military-doctrine.md § 17), so the mission needn't list the work. What the garrison must
+remember across a restart - each camp wall's layout - is kept under `minecraft.state-dir`
+(`garrison-state/`, git-ignored).
+
+The log lines to read first: `[Casualty]`, each death with the soldier's last seconds (§ 6);
+`[Idle]`, a soldier stood still for two minutes by day (§ 3); and `[AAR]`, each dawn's review of the
+day before (§ 17).
 
 A soldier rejoins where it last logged out, so a squad that last ran a scenario starts on the
 arena; `spreadplayers` puts them back on the ground. `minecraft.yield-to-experiments` stands the
