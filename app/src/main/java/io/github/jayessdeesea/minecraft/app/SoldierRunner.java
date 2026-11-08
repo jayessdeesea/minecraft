@@ -480,8 +480,6 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final int LIGHTING_TORCHES = 8;
     /** A soldier being handed logs goes for dropped items this close - where a throw lands. */
     private static final double PICKUP_RADIUS = 4;
-    /** A patrol base objective re-issued this close to the base already laid out keeps that one. */
-    private static final double BASE_SITE_RADIUS = 8;
 
     private final OperatorOrders operatorOrders;
     /** The chest soldiers draw kit from, if the operator set one up (docs/military-doctrine.md §4). */
@@ -671,8 +669,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // A squad that has laid out its base stays on it: the general re-plans every few seconds and
         // nudges the objective a block or two, and an outline that moves keeps the soldiers walking.
         Position site = base.map(o -> o.location()).orElse(null);
-        if (site != null && state.baseSite != null && Math.hypot(site.x() - state.baseSite.x(), site.z() - state.baseSite.z()) <= BASE_SITE_RADIUS
-                && Math.abs(site.y() - state.baseSite.y()) <= 2) {
+        // Within the square the site was searched in: an old hut taken back can stand at its corner.
+        if (site != null && state.baseSite != null && Math.max(Math.abs(site.x() - state.baseSite.x()), Math.abs(site.z() - state.baseSite.z())) <= SITE_SEARCH
+                && Math.abs(site.y() - state.baseSite.y()) <= GROUND_SEARCH) {
             site = state.baseSite;
         } else if (site != null) {
             // The model's point is a guess at ground it can't see closely: the base goes on the
@@ -688,7 +687,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             SITE_SEARCH, asked);
                 }
                 state.unbuildable = asked;
-            } else if (state.baseSite != null) {
+            } else if (state.baseSite != null && !site.equals(state.baseSite)) {
                 LOG.info("[{}] patrol base moved to {}", squadName, site);
             }
         }

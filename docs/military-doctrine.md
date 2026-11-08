@@ -462,8 +462,8 @@ blocks up - never rubble or a slope, since the model's point is a guess - and a
 block clear of any other squad's hut, since the general may send two squads to one point. Each
 block of the hut already standing counts as a block nearer (`PatrolBase.Plan.standing`), so a hut
 built before a restart, its doorway cut on the way out, is taken back and only the doorway rebuilt.
-A re-issued objective within 8 blocks keeps the site already laid out, so the outline doesn't move
-under the soldiers.
+A re-issued objective whose search square holds the site already laid out keeps it, so the
+outline doesn't move under the soldiers.
 
 Each soldier goes to its own floor cell. Once all are inside, each builds from where it stands
 (`bot.supply.Builder`): cobblestone first, then dirt, then planks, then logs. A soldier carrying
