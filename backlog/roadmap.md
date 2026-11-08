@@ -82,11 +82,10 @@ In the order the timetable meets them:
   phantoms at dawn: the ground round the camp is hunted out, wheat takes days, and soldiers who
   never sleep draw phantoms (backlog/rest-plan.md). Food that comes sooner than wheat - fishing,
   or a pen of animals to breed (backlog/renewables.md) - and beds are what's left.
-- **Respawning on the mountain.** A dead soldier respawns at world spawn, on a peak whose only way
-  down costs 14 of its 20 health, and stands there reporting CANTCO. Beds in the camp would move
-  its respawn there (backlog/rest-plan.md); see Notes for the quicker fix.
-- **Kit lost at death** (every day). Until deaths are rare, kit is rebuilt after every one. See
-  Notes for the gamerule.
+- **Respawning up high.** A dead soldier respawns near world spawn, sometimes on a patch of glass
+  whose only way down is a fall costing 14 of its 20 health, and stands there reporting CANTCO. Beds in the camp would move
+  its respawn there (backlog/rest-plan.md); until then they build their way down (see Notes).
+- **Kit lost at death** (every day). Until deaths are rare, kit is rebuilt after every one.
 - **Health below full** (day 2). Food at 18 or more is the standard, not just "not hungry". Hunting
   and farming have to keep the squads above it, and rations have to be carried and eaten by day.
 - **Stone runs out near the camp** (day 2). The mine (§ 16) is the camp's quarry. Cut it on day 2,
@@ -97,15 +96,10 @@ In the order the timetable meets them:
   8+, backlog/readiness.md).
 
 ## Notes
-- **Needs a decision (operator).** Each soldier's respawn point could be set to the camp from the
-  console (`spawnpoint <soldier> -48 67 44`), ending the stranding on the mountain until beds do it
-  in game. It changes the operator's server, so it's the operator's call.
-- **Needs a decision (operator).** Two server gamerules would change the timetable:
-  - `keepInventory` would end gear loss at death. It makes the experiment easier, but less honest
-    about what the chain of command achieves.
-  - `pvp false` would end fratricide outright. A sword already holds its swing while a squadmate
-    stands in its sweep (docs/military-doctrine.md § 8), which keeps friendly fire as a real
-    constraint on the soldiers' drill.
-  Both are the operator's world, so the operator's call.
+- **Decided (operator):** no `spawnpoint`. Soldiers get down from where they respawn by building
+  their way, not by falling: a fall and a meal to heal is the exception, not the drill
+  (backlog/mobility.md, the respawn platform).
+- **Decided (operator):** friendly fire stays on, and kit is dropped at death (`pvp` and
+  `keepInventory` at their defaults). Both are part of what the chain of command has to manage.
 - The days are a target to measure against, not a script. The general still decides what each
   squad does. The timetable only says where the camp should be by now.

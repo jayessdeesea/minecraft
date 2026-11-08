@@ -284,6 +284,62 @@ class PathfinderTest {
         assertTrue(maxDrop(hasty) > Pathfinder.MAX_DROP, "jumps: " + hasty);
     }
 
+    @Test
+    void withBlocksItBuildsAStairDownACliffRatherThanFall() {
+        // A sheer 10-block face east of x=0.
+        WorldView sheer = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return x <= 0 ? y < GROUND : y < GROUND - 10;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Goal bottom = new Goal(8.5, GROUND - 10, 0.5, 2, 0.5);
+
+        Pathfinder.Result stair = Pathfinder.find(sheer, START, bottom, 20000, FallAllowance.NONE, 30, false, true);
+
+        assertTrue(stair.reachesGoal(), "" + stair.path());
+        assertEquals(0, Pathfinder.fallDamage(START, stair.path()), "every drop on it walked unhurt: " + stair.path());
+        assertFalse(Pathfinder.find(sheer, START, bottom, 20000, FallAllowance.NONE, 0, false, true).reachesGoal(), "no blocks, no stair");
+    }
+
+    @Test
+    void aBuiltStepDownGoesAgainstTheFaceOrOnABlockUnderItsOwnGround() {
+        WorldView face = world((x, y, z) -> x <= 0 && y < GROUND + 10); // standing on a tower's top, x <= 0
+        BlockPos top = new BlockPos(0, GROUND + 10, 0);
+
+        // Out over the edge, the tower's side beside the step holds it: one block.
+        assertEquals(List.of(new BlockPos(1, GROUND + 8, 0)), Pathfinder.stepBuild(face, top, new BlockPos(1, GROUND + 9, 0)));
+
+        WorldView slab = world((x, y, z) -> x == 0 && z == 0 && y == GROUND + 9); // one block in mid-air
+        // Nothing beside the step: a block under its own ground first.
+        assertEquals(List.of(new BlockPos(0, GROUND + 8, 0), new BlockPos(1, GROUND + 8, 0)),
+                Pathfinder.stepBuild(slab, top, new BlockPos(1, GROUND + 9, 0)));
+        assertEquals(List.of(), Pathfinder.stepBuild(world((x, y, z) -> false), START, new BlockPos(1, GROUND - 1, 0)),
+                "level ground: nothing to build");
+    }
+
+    @Test
+    void withBlocksItBuildsAStairUpToAPlatformInOpenAir() {
+        // A 3x3 platform 8 blocks up, nothing under it.
+        WorldView platform = world((x, y, z) -> y == GROUND + 7 && x >= 6 && x <= 8 && z >= -1 && z <= 1);
+        Goal onIt = new Goal(7.5, GROUND + 8, 0.5, 0.5, 0.5);
+
+        Pathfinder.Result stair = Pathfinder.find(platform, START, onIt, 20000, FallAllowance.NONE, 20, false, true);
+
+        assertTrue(stair.reachesGoal(), "" + stair.path());
+        assertFalse(Pathfinder.find(platform, START, onIt, 20000, FallAllowance.NONE, 0, false, true).reachesGoal());
+    }
+
     private static int maxDrop(List<BlockPos> path) {
         int max = 0;
         BlockPos previous = START;

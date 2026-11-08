@@ -36,7 +36,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  *
  * <p>Every case runs three ways ({@link Means}): on foot; climbing - carrying cobblestone, so it can
  * pillar up a wall (the oracle plans pillar steps too, and each block the soldier places goes into
- * the world); and digging - the ground is soil, so it can cut steps into a slope (each block it asks
+ * the world) - or, within one search of the objective, build steps, which the oracle doesn't plan:
+ * a climbing soldier that arrives where the oracle says it can't has built its way there; and digging - the ground is soil, so it can cut steps into a slope (each block it asks
  * dug is taken out after soil's break time).
  *
  * <p>Each case is named {@code <family> seed=<n>} and is fully reproducible from that. Run more
@@ -145,7 +146,7 @@ class SoldierScenarioTest {
             }
             Report report = soldier.status().report();
             if (report instanceof Report.InPosition) {
-                if (!reachable) {
+                if (!reachable && !climbing) {
                     fail(describe(scenario, soldier, trail, "arrived at an objective the oracle says is unreachable"));
                 }
                 return;

@@ -24,7 +24,10 @@ import java.util.PriorityQueue;
  * or cliff, repeated, then a step off onto the top. Pillar steps are offered only beside a wall,
  * where they get somewhere a walk can't; anywhere else they'd spend the search on open air. And any
  * soldier can dig a step into a slope too steep to jump: {@link #stepCut} cells of soil by hand, or
- * of stone too with a pickaxe.
+ * of stone too with a pickaxe. And one carrying blocks builds steps where there are none
+ * ({@link #stepBuild}): down off a drop it would otherwise fall, or up toward a goal above it with
+ * no wall to pillar beside - one block a step against ground beside it, two in open air. Built
+ * steps are offered only toward the goal's height, so the search never builds into the sky.
  * Water is swum at the surface - in from the bank, level or a drop down, across, and out onto
  * ground level with the water or one block up - at {@link #SWIM_COST} a block: a soldier is never
  * stopped by a pond or a river. Other hazards (lava, fire) are never entered; no ladders.
@@ -44,6 +47,8 @@ public final class Pathfinder {
     private static final double JUMP_COST = 2.0;
     /** A pillar step costs a block and a jump's worth of time: dearer than walking round, cheaper than no way at all. */
     static final double PILLAR_COST = 4.0;
+    /** Each block placed for a built step: a pillar step's price, the block being the dear part. */
+    static final double BUILD_COST = PILLAR_COST;
     /** Each block of soil dug for a step: about a second by hand, five blocks' walk. */
     static final double DIG_COST = 5.0;
     /** Each block of stone dug for a step: about two seconds with a wooden pickaxe, eight blocks' walk. */
@@ -105,6 +110,17 @@ public final class Pathfinder {
      */
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
                               boolean pickaxe) {
+        return find(world, start, goal, maxExpanded, falls, blocks, pickaxe, false);
+    }
+
+    /**
+     * As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance, int, boolean)}, and with
+     * {@code build}, built steps ({@link #stepBuild}) too. They're for when nothing else gets there:
+     * offered everywhere toward the goal's height, they spend a search's budget on open air that
+     * a route round would have used.
+     */
+    public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
+                              boolean pickaxe, boolean build) {
         if (goal.contains(start)) {
             return new Result(List.of(), true);
         }
@@ -137,12 +153,14 @@ public final class Pathfinder {
             double base = costSoFar.get(current);
             int used = spent.get(current);
             // Pillar steps only beside a wall: anywhere else they spend the search budget on open air.
-            for (Move move : moves(world, current, falls, used < blocks && besideWall(world, current), pickaxe)) {
+            // Built steps only toward the goal's height, for the same reason.
+            int heading = !build ? 0 : goal.y() < current.y() - goal.verticalTolerance() ? -1 : goal.y() > current.y() + goal.verticalTolerance() ? 1 : 0;
+            for (Move move : moves(world, current, falls, used < blocks && besideWall(world, current), pickaxe, blocks - used, heading)) {
                 double cost = base + move.cost();
                 Double known = costSoFar.get(move.to());
                 if (known == null || cost < known) {
                     costSoFar.put(move.to(), cost);
-                    spent.put(move.to(), used + (move.pillar() ? 1 : 0));
+                    spent.put(move.to(), used + move.blocks());
                     cameFrom.put(move.to(), current);
                     open.add(new Node(move.to(), cost + goal.estimate(move.to())));
                 }
@@ -192,14 +210,14 @@ public final class Pathfinder {
                 continue;
             }
             int used = fewest.get(current);
-            for (Move move : moves(world, current, FallAllowance.NONE, used < blocks && besideWall(world, current), pickaxe)) {
+            for (Move move : moves(world, current, FallAllowance.NONE, used < blocks && besideWall(world, current), pickaxe, 0, 0)) {
                 BlockPos next = move.to();
-                int cost = used + (move.pillar() ? 1 : 0);
+                int cost = used + move.blocks();
                 if (Math.abs(next.x() - start.x()) <= maxHorizontalDistance
                         && Math.abs(next.z() - start.z()) <= maxHorizontalDistance
                         && cost < fewest.getOrDefault(next, Integer.MAX_VALUE)) {
                     fewest.put(next, cost);
-                    if (move.pillar()) {
+                    if (move.blocks() > 0) {
                         frontier.addLast(next);
                     } else {
                         frontier.addFirst(next);
@@ -210,11 +228,25 @@ public final class Pathfinder {
         return fewest;
     }
 
-    private static List<Move> moves(WorldView world, BlockPos from, FallAllowance falls, boolean canPillar, boolean pickaxe) {
+    /**
+     * @param blocksLeft how many blocks it carries for built steps
+     * @param heading    which way built steps go: -1 down, 1 up, 0 none
+     */
+    private static List<Move> moves(WorldView world, BlockPos from, FallAllowance falls, boolean canPillar, boolean pickaxe,
+                                    int blocksLeft, int heading) {
         List<Move> moves = new ArrayList<>(9);
         boolean afloat = swimmable(world, from);
         if (canPillar && !afloat && open(world, from.x(), from.y() + 2, from.z())) {
-            moves.add(new Move(from.offset(0, 1, 0), PILLAR_COST, true)); // a block placed where it stood
+            moves.add(new Move(from.offset(0, 1, 0), PILLAR_COST, 1)); // a block placed where it stood
+        }
+        if (heading != 0 && !afloat && blocksLeft > 0) {
+            for (int[] d : ORTHOGONAL) {
+                BlockPos to = from.offset(d[0], heading, d[1]);
+                List<BlockPos> build = stepBuild(world, from, to);
+                if (!build.isEmpty() && build.size() <= blocksLeft) {
+                    moves.add(new Move(to, (heading > 0 ? JUMP_COST : 1.5) + build.size() * BUILD_COST, build.size()));
+                }
+            }
         }
         for (int[] d : ORTHOGONAL) {
             BlockPos level = from.offset(d[0], 0, d[1]);
@@ -324,6 +356,77 @@ public final class Pathfinder {
         return List.copyOf(cut);
     }
 
+    /**
+     * The blocks to place, in order, so a soldier standing at {@code from} can step onto {@code to} -
+     * one block up or down, orthogonally - where there's no ground to step onto: the block under
+     * {@code to}, and first a block under that when nothing beside it holds it up. Empty when
+     * {@code to} already has ground, or a step can't be built there.
+     *
+     * <p>Down, the first block goes under the soldier's own ground and holds the step off its side:
+     * a stair built down a sheer face or out of open air, two blocks a step. Up, it goes beside the
+     * soldier's ground, under the step. A drop it could walk down unhurt - {@link #MAX_DROP} or less
+     * onto ground - is walked, not built.
+     */
+    public static List<BlockPos> stepBuild(WorldView world, BlockPos from, BlockPos to) {
+        int dy = to.y() - from.y();
+        // The ground under {@code from} may be a step built earlier on the same route, not yet in the world.
+        if (Math.abs(dy) != 1 || Math.abs(to.x() - from.x()) + Math.abs(to.z() - from.z()) != 1) {
+            return List.of();
+        }
+        BlockPos step = to.offset(0, -1, 0);
+        // Nothing is built in water: a swimmer near the bed isn't on a stair.
+        if (!clear(world, to) || !open(world, step.x(), step.y(), step.z()) || swimmable(world, from)
+                || world.isWater(to.x(), to.y(), to.z()) || world.isWater(step.x(), step.y(), step.z())) {
+            return List.of();
+        }
+        if (dy > 0) {
+            // The jump needs headroom over where it stands.
+            if (!open(world, from.x(), from.y() + 2, from.z())) {
+                return List.of();
+            }
+        } else {
+            // Walked off the edge, the body passes through the cell beside it at its own height.
+            BlockPos edge = from.offset(to.x() - from.x(), 0, to.z() - from.z());
+            if (!clear(world, edge) || walkableDrop(world, edge)) {
+                return List.of();
+            }
+        }
+        if (heldUp(world, step, to)) {
+            return List.of(step);
+        }
+        // Nothing beside the step: first a block it can go against.
+        BlockPos under = dy < 0 ? from.offset(0, -2, 0) : step.offset(0, -1, 0);
+        if (!open(world, under.x(), under.y(), under.z())) {
+            return List.of();
+        }
+        return List.of(under, step);
+    }
+
+    /** Whether walking off into {@code edge} lands unhurt on ground within {@link #MAX_DROP}, or in water. */
+    private static boolean walkableDrop(WorldView world, BlockPos edge) {
+        for (int drop = 1; drop <= MAX_DROP; drop++) {
+            BlockPos down = edge.offset(0, -drop, 0);
+            if (!open(world, down.x(), down.y(), down.z())) {
+                return swimmable(world, down);
+            }
+            if (world.isSolid(down.x(), down.y() - 1, down.z())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Whether a block placed at {@code cell} has a solid block on some side to go against - any side but {@code above}. */
+    private static boolean heldUp(WorldView world, BlockPos cell, BlockPos above) {
+        for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+            BlockPos side = cell.offset(d[0], d[1], d[2]);
+            if (!side.equals(above) && world.isSolid(side.x(), side.y(), side.z())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Whether a block stays put with the one under it dug out: soil, stone and logs do; sand and gravel - or anything unknown - might not. */
     private static boolean holdsUp(WorldView world, BlockPos cell) {
         return world.isSoil(cell.x(), cell.y(), cell.z()) || world.isStone(cell.x(), cell.y(), cell.z())
@@ -363,9 +466,10 @@ public final class Pathfinder {
     private record Node(BlockPos cell, double priority) {
     }
 
-    private record Move(BlockPos to, double cost, boolean pillar) {
+    /** @param blocks how many blocks the move places - a pillar step one, a built step one or two */
+    private record Move(BlockPos to, double cost, int blocks) {
         Move(BlockPos to, double cost) {
-            this(to, cost, false);
+            this(to, cost, 0);
         }
     }
 }

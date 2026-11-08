@@ -719,8 +719,25 @@ public final class DeterministicSoldier implements Soldier {
                 || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS;
         if (replan && (onGround || afloat)) {
             boolean stuck = stuckTicks >= STUCK_TICKS;
-            Pathfinder.Result plan = Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), goal,
-                    PLAN_BUDGET, fallAllowance(current), pillarBlocks(), carriesPickaxe());
+            // A fall is the exception, never the plan: first a route with none - walked, then with
+            // steps built from what it carries - and only with no such route one the order's risk allows.
+            BlockPos start = BlockPos.containing(position.x(), position.y(), position.z());
+            Pathfinder.Result plan = Pathfinder.find(world, start, goal, PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(), carriesPickaxe());
+            if (!plan.reachesGoal() && pillarBlocks() > 0) {
+                Pathfinder.Result built = Pathfinder.find(world, start, goal, PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(),
+                        carriesPickaxe(), true);
+                // Only one that gets there: a partial one, toward a goal beyond one search, leads it astray.
+                if (built.reachesGoal()) {
+                    plan = built;
+                }
+            }
+            FallAllowance allowance = fallAllowance(current);
+            if (!plan.reachesGoal() && !allowance.equals(FallAllowance.NONE)) {
+                Pathfinder.Result risky = Pathfinder.find(world, start, goal, PLAN_BUDGET, allowance, pillarBlocks(), carriesPickaxe());
+                if (risky.reachesGoal()) {
+                    plan = risky;
+                }
+            }
             route = plan.path();
             pillarFrom = null;
             assessPlan(world, plan, stuck);
@@ -744,6 +761,10 @@ public final class DeterministicSoldier implements Soldier {
             return;
         }
         cuttingTicks = 0;
+        if (onGround && buildStep(world, here, waypoint)) {
+            report = new Report.Moving();
+            return;
+        }
         if (waypoint.x() == here.x() && waypoint.z() == here.z() && waypoint.y() == here.y() + 1
                 || pillarFrom != null && waypoint.equals(pillarFrom.offset(0, 1, 0))) {
             pillar(world, waypoint);
@@ -833,19 +854,51 @@ public final class DeterministicSoldier implements Soldier {
         }
     }
 
+    /** Ticks between asking for the same built step's block again, while the server hasn't shown it. */
+    static final int BUILD_RETRY_TICKS = 10;
+    private int buildWait;
+
     /**
-     * How many pillar steps a route can be planned on: one per cobblestone carried. Logs are kept
-     * for tools.
+     * Whether the step onto {@code next} still needs blocks placed ({@link Pathfinder#stepBuild}) -
+     * if so, asks for the first one, standing in the middle of its own cell, so its body is clear of
+     * a block going in beside its feet. The world model takes a placed block at once; the server's
+     * answer corrects it.
+     */
+    private boolean buildStep(WorldView world, BlockPos here, BlockPos next) {
+        List<BlockPos> build = Pathfinder.stepBuild(world, here, next);
+        if (build.isEmpty()) {
+            buildWait = 0;
+            return false;
+        }
+        double cx = here.x() + 0.5;
+        double cz = here.z() + 0.5;
+        if (Math.hypot(cx - position.x(), cz - position.z()) > BUILD_CENTRED) {
+            stepToward(world, cx, cz);
+            return true;
+        }
+        if (buildWait-- <= 0) {
+            placement = build.getFirst();
+            buildWait = BUILD_RETRY_TICKS;
+        }
+        return true;
+    }
+
+    /** How near its cell's middle a soldier stands to build a step - a 0.6-wide body then clears the cells beside. */
+    static final double BUILD_CENTRED = 0.15;
+
+    /**
+     * How many blocks a route can be planned on - pillar and built steps: one per cobblestone or
+     * dirt carried. Logs are kept for tools.
      */
     private int pillarBlocks() {
         Kit carried = kit;
-        return carried == null ? 0 : carried.stone();
+        return carried == null ? 0 : carried.stone() + carried.dirt();
     }
 
     /**
-     * The block to place this tick, if a pillar step wants one - taken, so it's asked for once. The
-     * caller places it after reporting the soldier's new height, and adds it to the world model so
-     * the soldier can land on it before the server confirms.
+     * The block to place this tick, if a pillar or built step wants one - taken, so it's asked for
+     * once. The caller places it, against any solid side, after reporting the soldier's new height,
+     * and adds it to the world model so the soldier can land on it before the server confirms.
      */
     public Optional<BlockPos> takePlacement() {
         BlockPos taken = placement;

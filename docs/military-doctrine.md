@@ -193,7 +193,12 @@ risk and its own condition into a fall allowance:
 - **The price:** each point of damage costs extra route length, halved for a well-fed soldier
   because it regenerates.
 
-So a safe route always wins when one exists. A soldier that reports CANTCO prices the riskier
+So a safe route always wins when one exists, and a fall is planned only when there's none: the
+soldier plans first on foot, then with steps built from the cobblestone and dirt it carries
+(`Pathfinder.stepBuild`: down off a sheer drop, or up to ground above with no wall to pillar
+beside - one block a step against the ground beside it, two in open air), and only then with the
+allowance. Built steps are planned only when they reach the objective: offered on every far-off
+route, they spend the search on open air. A soldier that reports CANTCO prices the riskier
 order that would free it, for example "a route with falls costing 8 of my 20 health exists (MEDIUM
 risk)". The squad leader then decides whether the mission is worth that. It can set risk for one
 soldier (`SquadOrder.soldierRisk`), so freeing a stuck soldier at MEDIUM doesn't expose the rest of

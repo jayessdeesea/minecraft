@@ -835,6 +835,33 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void withDirtItBuildsItsWayDownASheerDropRatherThanFall() {
+        // On a tower's top at y=74, ten blocks over flat ground; the order is to the ground below.
+        java.util.Set<BlockPos> placed = new java.util.HashSet<>();
+        WorldView tower = blocks((x, y, z) -> y < GROUND || x <= 0 && y < GROUND + 10 || placed.contains(new BlockPos(x, y, z)));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(-0.5, GROUND + 10, 0.5));
+        alice.reportKit(new Kit(java.util.Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, false, 32, false));
+        alice.reportHealth(20, 20);
+        alice.receiveOrder(new Order.MoveTo(8.5, GROUND, 0.5, 1, 0.5, Risk.HIGH));
+
+        double resting = alice.status().position().y();
+        double previous = resting;
+        for (int tick = 0; tick < 2000; tick++) {
+            alice.tick(tower);
+            alice.takePlacement().ifPresent(placed::add); // the server takes it
+            double y = alice.status().position().y();
+            if (y == previous) {
+                assertTrue(resting - y <= 3 + 1e-9, "fell from " + resting + " to " + y); // three is unhurt
+                resting = y;
+            }
+            previous = y;
+        }
+
+        assertEquals(new Report.InPosition(), alice.status().report(), "at the bottom: " + alice.status().position());
+        assertTrue(!placed.isEmpty());
+    }
+
+    @Test
     void withoutBlocksAWallTooHighToStepUpHasNoRoute() {
         WorldView cliff = blocks((x, y, z) -> y < GROUND || x >= 3 && y < GROUND + 3);
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));

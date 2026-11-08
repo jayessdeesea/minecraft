@@ -44,6 +44,15 @@ public final class Footing {
         return place(cell, item, BlockFace.DOWN);
     }
 
+    /**
+     * A block for a pillar or built step in {@code cell}, against {@code support}: cobblestone, or
+     * dirt once that's gone. False with neither.
+     */
+    public synchronized boolean placeStep(BlockPos cell, BlockFace support) {
+        ItemClass block = inventory.slotOf(ItemClass.COBBLESTONE) >= 0 ? ItemClass.COBBLESTONE : ItemClass.DIRT;
+        return place(cell, block, support);
+    }
+
     /** As {@link #place(BlockPos, ItemClass)}, against the block on {@code support}'s side of {@code cell}. */
     public synchronized boolean place(BlockPos cell, ItemClass item, BlockFace support) {
         idleTicks = 0;

@@ -1916,11 +1916,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             } else {
                 stepCutter.stop();
             }
-            soldier.takePlacement().ifPresent(cell -> {
-                if (footing.place(cell)) {
-                    chunkCache.setBlock(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE);
-                }
-            });
+            // Cobblestone stands in for whatever went in, dirt included, until the server's update says which.
+            soldier.takePlacement().ifPresent(cell -> io.github.jayessdeesea.minecraft.bot.supply.Builder.support(world, cell)
+                    .filter(face -> footing.placeStep(cell, face))
+                    .ifPresent(face -> chunkCache.setBlock(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE)));
             footing.tick();
             session.endTick();
         }), 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
