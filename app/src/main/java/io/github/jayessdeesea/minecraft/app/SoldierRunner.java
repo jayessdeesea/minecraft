@@ -452,6 +452,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Miner> miners = new ConcurrentHashMap<>();
     /** The day's deaths and idlers, reviewed at each dawn. */
     private final AfterActionReview afterActionReview = new AfterActionReview();
+    /** Ticks to each soldier's next stand-to check. */
+    private final Map<String, Integer> standTo = new ConcurrentHashMap<>();
     /** Soldiers stood still by day: an alarm each spell. */
     private final IdleWatch idleWatch = new IdleWatch();
     /** Each soldier's last seconds, read out when it dies. */
@@ -1407,7 +1409,6 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         AtomicReference<HealthUpdate> lastHealth = new AtomicReference<>();
         // Inventory too arrives on join, before the soldier exists - kept the same way.
         Inventory inventory = new Inventory(); // this connection's thread only
-        int[] standTo = {0}; // ticks to the next stand-to check - the tick thread's only
         AtomicReference<Kit> lastKit = new AtomicReference<>();
         AtomicReference<List<String>> enchantmentNames = new AtomicReference<>(List.of());
         AtomicReference<List<String>> clockNames = new AtomicReference<>(List.of());
@@ -1823,8 +1824,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             Optional<Hands.Routine> hands = Hands.tick(turns);
             // Stand-to: hands free, the soldier wears the best armour it carries and holds its best
             // weapon - not the seeds or the dirt its last job left in its hand.
-            if (hands.isEmpty() && standTo[0]-- <= 0) {
-                standTo[0] = STAND_TO_TICKS;
+            if (hands.isEmpty() && standTo.merge(name, -1, Integer::sum) <= 0) {
+                standTo.put(name, STAND_TO_TICKS);
                 synchronized (inventory) {
                     io.github.jayessdeesea.minecraft.bot.supply.Quartermaster.equip(inventory)
                             .forEach(step -> io.github.jayessdeesea.minecraft.bot.supply.Quartermaster.perform(step, session, inventory));
