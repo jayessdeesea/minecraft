@@ -18,7 +18,10 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   lighting them with torches, and the LOGSTAT counting raw iron and diamonds.
 - **Levels.** An alcove a turn and the landing at the bottom are cut, and the cutter makes its
   tools at the deepest (docs/military-doctrine.md § 16). What's left: a furnace standing at the
-  landing, torches, and the night shift sheltering there.
+  landing, and the night shift sheltering there.
+- **Torches down the stairs.** The shaft is dark, so it spawns: live, two zombies stood at its top
+  by day, 8 blocks from the camp's masons. A torch on every alcove, and the landing lit, would
+  keep it empty - the cutter carries them, or the lamplighter's lattice extends down the walkway.
 
 - **The general never orders a mine by day.** 0 of 256 orders in a night's run, 244 of them
   patrol bases: its picture asks for one only through the AAR's "no mine yet". The night shift

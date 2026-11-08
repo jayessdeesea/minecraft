@@ -1774,7 +1774,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             boolean bareHanded = status.condition().flatMap(c -> c.kit()).map(k -> k.weapon().isEmpty()).orElse(false);
             boolean inContact = status.report() instanceof Report.InContact;
             // Under threat, routines pause - they pick up where they left off once it's gone.
-            boolean threatened = inContact || !world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).isEmpty();
+            // A hostile it can see: live, two zombies in the dark of the camp's mine shaft, 8 blocks off
+            // and out of sight below, held every mason's hands a whole day.
+            Position eyes = new Position(status.position().x(), status.position().y() + 1.62, status.position().z());
+            boolean threatened = inContact || world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).stream()
+                    .anyMatch(h -> DeterministicSoldier.lineOfSight(world, eyes,
+                            new Position(h.position().x(), h.position().y() + 1, h.position().z())));
             // Flint for arrows, for a soldier with a bow and few arrows, when nothing else is to be gathered.
             io.github.jayessdeesea.minecraft.command.Objective gather = gathering.get(name) != null || !huntAllowed.contains(name)
                     || inventory.slotOfNamed("bow") < 0 || inventory.count(ItemClass.ARROWS) >= ARROWS_WANTED

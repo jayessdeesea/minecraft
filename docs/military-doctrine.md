@@ -374,7 +374,7 @@ squad's base still needs, so a stone sword never costs a wall. A soldier at it r
 and the squad doesn't halt for it.
 
 Contact outranks this work, as the react-to-contact drill (§8) outranks priorities of work. A
-hostile within 16 blocks, or the squad in contact, pauses the job: windows close, and the soldier
+hostile it can see within 16 blocks, or the squad in contact, pauses the job (one out of sight - in a mine shaft below, behind a hill - doesn't): windows close, and the soldier
 fights with what it has. Once clear, it picks up where it stopped. The exception is a soldier with
 no weapon standing at an open table: the weapon is a click away, so it finishes it first. A fault,
 such as no tree in reach or an answer from the server that never comes, ends the attempt. Any
