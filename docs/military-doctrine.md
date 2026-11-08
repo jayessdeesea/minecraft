@@ -618,6 +618,7 @@ would let in water or lava, or would leave a step with no floor over an open cav
 |---|---|---|
 | **Airhead** | After the drop, the assault force seizes objectives and consolidates an initial airhead, develops it out to an airhead line it can hold, then builds up combat power within it. | FM 90-26 (superseded by FM 3-99) |
 | **Lodgment** | An area in hostile territory that, seized and held, makes the continuous landing of troops and materiel possible and gives maneuver space for subsequent operations. | JP 3-18 |
+| **After-action review** | A review at the end of an action of what was meant to happen, what did, why, and what to do differently. | TC 25-20 |
 | **Unit status** | A unit reports its readiness as a C-rating, C-1 (fully ready) to C-4 (not), from the share of its personnel and equipment on hand and fit: at least 90, 80 and 70 per cent for C-1 to C-3. | AR 220-1 |
 
 *How we use it:* a garrison's camp (`minecraft.camp`, as `x,z`) is built up the way an airborne
@@ -650,6 +651,10 @@ carry, and the log says each time either changes and the change holds three SITR
 (`[Readiness]`) - soldiers ranging in and out of the camp would flip it back and forth. The general isn't shown them:
 with the foothold in view it already keeps an exposed squad near shelter (GeneralScenarioIT's
 `exposed-far-out`).
+
+Each dawn the log carries an after-action review (TC 25-20) of the day and night before (`[AAR]`,
+`app.AfterActionReview`): the camp's standards, met and open, as last measured; the deaths, by the
+server's cause, with who; and who raised an idle alarm by day (§ 3).
 
 ## Sources
 

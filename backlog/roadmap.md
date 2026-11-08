@@ -61,16 +61,14 @@ alive at the time.
 **Daily drills, from day 1:**
 - **Stand-to** at dusk and dawn: every soldier inside the walls or its hut at dusk, and not out
   until dawn's stand-to ends. This is built for huts (§ 14).
-- **The after-action review** at each dawn, in the log as `[AAR]`:
-  - the day's standard, met or not, and which parts;
-  - each death of the day from its casualty report (§ 6), grouped by cause;
-  - the C-rating at dusk.
+- **The after-action review** at each dawn is logged (docs/military-doctrine.md § 17). What it
+  doesn't say yet: the day's own standard from this timetable, and each squad's C-rating at dusk.
 
 ## Done when
 - The timetable is data in `command` (`Foothold` gains a day: each phase's due day and its
   standards), so "behind schedule" is computed, not judged. The general's `<foothold>` names the
   day and what's late.
-- The AAR is logged at each dawn.
+- The AAR names the day's standard from the timetable and each squad's C-rating at dusk.
 - A fresh garrison started at a dawn meets day 1's and day 2's standards in a live run, and holds
   every later standard it reaches on later days.
 

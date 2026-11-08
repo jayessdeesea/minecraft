@@ -432,6 +432,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, io.github.jayessdeesea.minecraft.bot.farm.TreeFarm> planting = new ConcurrentHashMap<>();
     /** Each connected soldier's staircase cutting, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Miner> miners = new ConcurrentHashMap<>();
+    /** The day's deaths and idlers, reviewed at each dawn. */
+    private final AfterActionReview afterActionReview = new AfterActionReview();
     /** Soldiers stood still by day: an alarm each spell. */
     private final IdleWatch idleWatch = new IdleWatch();
     /** Each soldier's last seconds, read out when it dies. */
@@ -525,6 +527,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         if (camp != null && footholdTicks++ % FOOTHOLD_EVERY == 0) {
             measureFoothold().ifPresent(chainOfCommand::onFoothold);
         }
+        chainOfCommand.time().flatMap(t -> afterActionReview.time(t.dark(), chainOfCommand.foothold()))
+                .ifPresent(review -> LOG.info("[AAR] {}", review));
         List<Present> present = new java.util.ArrayList<>();
         for (Roster.Squad squad : roster.squads()) {
             List<DeterministicSoldier> soldiers = presentSoldiers(squad.name());
@@ -1437,7 +1441,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 },
                 death -> {
                     LOG.warn("[Casualty] {}", recorders.computeIfAbsent(name, n -> new FlightRecorder()).casualty(name, death));
-                    casualties.merge(death.contains("[") ? death.substring(0, death.indexOf('[')) : death, 1, Integer::sum);
+                    String cause = death.contains("[") ? death.substring(0, death.indexOf('[')) : death;
+                    casualties.merge(cause, 1, Integer::sum);
+                    afterActionReview.death(name, cause);
                     LOG.warn("[Casualty] since the app started: {}", casualties);
                 },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
@@ -1740,7 +1746,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                         + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free")
                         + ", squad's task " + chainOfCommand.objective(definition.squad())
                         .map(o -> OrderTrace.taskName(o.task()) + " at " + o.location()).orElse("none"))
-                        .ifPresent(line -> LOG.warn("[Idle] {}", line));
+                        .ifPresent(line -> {
+                            LOG.warn("[Idle] {}", line);
+                            if (line.contains("stationary")) {
+                                afterActionReview.idle(name);
+                            }
+                        });
                 Optional<String> nearest = world.nearbyHostiles(status.position(), RECORDED_HOSTILE_RADIUS).stream()
                         .min(java.util.Comparator.comparingDouble(h -> distance(h.position(), status.position())))
                         .map(h -> String.format(java.util.Locale.ROOT, "%s %.1f away",

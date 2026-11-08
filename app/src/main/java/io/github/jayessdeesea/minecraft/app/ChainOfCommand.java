@@ -270,6 +270,11 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     private volatile String lastFoothold = "";
     /** The home base's progress, last measured - a soldier's thread writes, the squads' read. */
     private volatile io.github.jayessdeesea.minecraft.command.Foothold foothold;
+
+    /** The camp as last measured: empty before the first measure, or with no camp. */
+    public Optional<io.github.jayessdeesea.minecraft.command.Foothold> foothold() {
+        return Optional.ofNullable(foothold);
+    }
     /** Each squad's readiness as last logged, so only a change of it is. */
     private final Map<String, io.github.jayessdeesea.minecraft.command.Readiness> readiness = new java.util.concurrent.ConcurrentHashMap<>();
     /** A squad's readiness seen since the last logged, and in how many SITREPs running: a change is logged once it holds. */
