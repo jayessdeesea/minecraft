@@ -13,7 +13,9 @@ import java.util.List;
  * from a centre, two blocks high on the ground of each of its columns - a body can't jump it, and
  * nothing walks in from the dark - with one doorway, a column wide, in the middle of its south side:
  * the squads' way in and out, rather than a step cut through the wall. A column over water, or with
- * no ground near the centre's height, is left out.
+ * no ground near the centre's height, is left out. On top, a lip: a ring of blocks one out from the
+ * wall at its top row, an overhang a spider climbing the wall's face can't get round. None outside
+ * the doorway, where it would be a block at head height in the way out.
  */
 public final class Perimeter {
 
@@ -43,6 +45,27 @@ public final class Perimeter {
             }
         }
         cells.sort(Comparator.comparingInt(BlockPos::y).thenComparingInt(c -> Math.abs(c.x() - centre.x()) + Math.abs(c.z() - centre.z())));
+        // The lip, after the wall it hangs from: sides first, then the corners, which hang from the sides.
+        List<BlockPos> lip = new ArrayList<>();
+        int out = radius + 1;
+        for (int dx = -out; dx <= out; dx++) {
+            for (int dz = -out; dz <= out; dz++) {
+                if (Math.max(Math.abs(dx), Math.abs(dz)) != out) {
+                    continue;
+                }
+                int wx = Math.clamp(dx, -radius, radius);
+                int wz = Math.clamp(dz, -radius, radius);
+                if (wx == 0 && wz == radius) {
+                    continue; // outside the doorway: in the way out, and no wall to hang from
+                }
+                int x = centre.x() + dx;
+                int z = centre.z() + dz;
+                ground(world, centre.x() + wx, centre.z() + wz, centre.y())
+                        .ifPresent(feet -> lip.add(new BlockPos(x, feet.y() + HEIGHT - 1, z)));
+            }
+        }
+        lip.sort(Comparator.comparingInt((BlockPos c) -> Math.abs(c.x() - centre.x()) == out && Math.abs(c.z() - centre.z()) == out ? 1 : 0));
+        cells.addAll(lip);
         return List.copyOf(cells);
     }
 

@@ -1708,7 +1708,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walling.getOrDefault(name, List.of());
             turns.put(Hands.Routine.MASON, turn(mason::active, free -> mason.tick(status.position(), world,
                     wallCentres.getOrDefault(name, io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(status.position().x(),
-                            status.position().y(), status.position().z())), wall, free && !threatened && !foodCalls)));
+                            status.position().y(), status.position().z())), WALL_RADIUS, wall, free && !threatened && !foodCalls)));
             turns.put(Hands.Routine.LAMPLIGHTER, turn(lamplighter::active,
                     free -> lamplighter.tick(status.position(), world, lights, free && !threatened && !foodCalls)));
             io.github.jayessdeesea.minecraft.bot.farm.TreeFarm grove = planting.get(name);

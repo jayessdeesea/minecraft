@@ -41,6 +41,11 @@ public final class Footing {
      * {@code cell}, on top of the block under it. False when there's none to place.
      */
     public synchronized boolean place(BlockPos cell, ItemClass item) {
+        return place(cell, item, BlockFace.DOWN);
+    }
+
+    /** As {@link #place(BlockPos, ItemClass)}, against the block on {@code support}'s side of {@code cell}. */
+    public synchronized boolean place(BlockPos cell, ItemClass item, BlockFace support) {
         idleTicks = 0;
         int held = Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot();
         if (!ItemClassRegistry.classOf(inventory.itemAt(held)).equals(Optional.of(item))) {
@@ -58,7 +63,7 @@ public final class Footing {
             session.selectHotbarSlot(hotbar);
             inventory.selectHotbar(hotbar);
         }
-        session.useBlockFace(cell.x(), cell.y() - 1, cell.z(), BlockFace.UP);
+        session.useBlockFace(cell.x() + support.dx, cell.y() + support.dy, cell.z() + support.dz, support.opposite());
         return true;
     }
 
@@ -67,13 +72,13 @@ public final class Footing {
      * isn't solid and a block can't replace - a torch, a flower, a sapling. They break at a touch,
      * and an empty cell ignores the dig; the server takes both in the order sent.
      */
-    public synchronized boolean placeClearing(BlockPos cell, ItemClass item) {
+    public synchronized boolean placeClearing(BlockPos cell, ItemClass item, BlockFace support) {
         if (inventory.slotOf(item) < 0) {
             return false;
         }
         session.startDigging(cell.x(), cell.y(), cell.z());
         session.finishDigging(cell.x(), cell.y(), cell.z());
-        return place(cell, item);
+        return place(cell, item, support);
     }
 
     /** Each tick: the weapon back in hand once the climbing has stopped. */

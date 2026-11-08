@@ -69,8 +69,8 @@ public final class Mason {
         return MATERIALS.stream().mapToInt(inventory::count).sum();
     }
 
-    /** Each tick: builds the {@code open} cells of the wall round {@code centre} while {@code free}. */
-    public synchronized void tick(Position soldier, WorldView world, BlockPos centre, List<BlockPos> open, boolean free) {
+    /** Each tick: builds the {@code open} cells of the wall {@code radius} out round {@code centre} while {@code free}. */
+    public synchronized void tick(Position soldier, WorldView world, BlockPos centre, int radius, List<BlockPos> open, boolean free) {
         this.soldier = soldier;
         if (cooldown > 0) {
             cooldown--;
@@ -91,23 +91,26 @@ public final class Mason {
         if (cooldown > 0 || blocks(inventory) == 0) {
             return;
         }
-        // The lowest row first: a block goes on the one under it.
+        // The lowest row first: a block goes on the one under it - or, for the lip, beside it.
         int lowest = open.stream().mapToInt(BlockPos::y).min().orElseThrow();
+        // The nearest with somewhere inside to stand: one without it waits, rather than holding up the rest.
         open.stream().filter(c -> !claims.contains(c) && c.y() <= lowest + 1
-                        && world.isSolid(c.x(), c.y() - 1, c.z()))
-                .min(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
-                .ifPresent(cell -> inside(world, cell, centre).ifPresent(stand -> start(world, cell, stand)));
+                        && Builder.support(world, c).isPresent())
+                .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
+                .flatMap(cell -> inside(world, cell, centre, radius).map(stand -> java.util.Map.entry(cell, stand)).stream())
+                .findFirst().ifPresent(job -> start(world, job.getKey(), job.getValue()));
     }
 
-    /** Where to stand to build {@code cell}: the standing cell beside it toward the centre. */
-    static Optional<BlockPos> inside(WorldView world, BlockPos cell, BlockPos centre) {
-        int sx = Integer.signum(centre.x() - cell.x());
-        int sz = Integer.signum(centre.z() - cell.z());
-        // Along the wall's own side: a corner steps in on both.
-        int dx = Math.abs(cell.x() - centre.x()) >= Math.abs(cell.z() - centre.z()) ? sx : 0;
-        int dz = Math.abs(cell.z() - centre.z()) >= Math.abs(cell.x() - centre.x()) ? sz : 0;
+    /**
+     * Where to stand to build {@code cell}: the column nearest it just inside the wall {@code radius}
+     * out - beside a wall cell, two in from the lip, never on the wall's top - at a standing height
+     * near the cell's.
+     */
+    static Optional<BlockPos> inside(WorldView world, BlockPos cell, BlockPos centre, int radius) {
+        int x = centre.x() + Math.clamp(cell.x() - centre.x(), -(radius - 1), radius - 1);
+        int z = centre.z() + Math.clamp(cell.z() - centre.z(), -(radius - 1), radius - 1);
         for (int dy = 1; dy >= -3; dy--) {
-            BlockPos stand = cell.offset(dx, dy, dz);
+            BlockPos stand = new BlockPos(x, cell.y() + dy, z);
             if (Pathfinder.standable(world, stand)) {
                 return Optional.of(stand);
             }
@@ -125,7 +128,8 @@ public final class Mason {
                 }, new Expect("standing in " + stand, () -> on(stand)), WALK_TICKS),
                 new Step("wall at " + cell, () -> world.isSolid(cell.x(), cell.y(), cell.z()), () -> {
                     // A torch put down on the wall's line when the camp was lit holds the cell.
-                    if (!footing.placeClearing(cell, material)) {
+                    if (!footing.placeClearing(cell, material, Builder.support(world, cell).orElseThrow(
+                            () -> new IllegalStateException("nothing beside " + cell + " to put a block against")))) {
                         throw new IllegalStateException("no " + material + " carried - " + inventory.summary());
                     }
                 }, new Expect("a block at " + cell, () -> world.isSolid(cell.x(), cell.y(), cell.z())), ANSWER_TICKS)));

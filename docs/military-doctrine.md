@@ -558,8 +558,11 @@ it first, and shared - laid out again after a row, the ground would be the wall'
 cells join the ones every dig skips, so nobody quarries it. Each soldier takes the nearest open cell of the
 lowest row no squadmate has taken, stands just inside it, and puts a block there, cobblestone
 first, then dirt, breaking first whatever stands in the cell that a block can't replace - a torch,
-a flower (`bot.supply.Mason`); one with neither digs dirt outside the wall. The log says
-how many blocks are still to place. Seen live in `wall-the-camp`: two squads close a 128-block wall
+a flower (`bot.supply.Mason`); one with neither digs dirt outside the wall. On top goes a lip, a
+ring of blocks one out from the wall's top row, against its outer face: an overhang a spider
+climbing the wall can't get round. None outside the doorway, where it would stand at head height
+in the way out. A mason places each lip block from the column nearest it just inside the wall,
+never from the wall's top. The log says how many blocks are still to place. Seen live in `wall-the-camp`: two squads close a 128-block wall
 together.
 
 ## 16. Mining down
