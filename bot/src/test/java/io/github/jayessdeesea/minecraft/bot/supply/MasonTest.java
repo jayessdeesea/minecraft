@@ -154,6 +154,29 @@ class MasonTest {
                 "every wall cell built, high side and low");
     }
 
+    @Test
+    void aCellWhosePlaceCantBeReachedIsPassedOverForTheRest() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.DIRT), 64});
+        List<BlockPos> layout = Perimeter.layout(flat, CENTRE, 3);
+        BlockPos first = layout.getFirst();
+        Mason mason = new Mason("Alice", inventory, new Footing(session, inventory), new HashSet<>());
+        Position stuck = new Position(0.5, GROUND, 0.5);
+
+        // She never gets to the first cell's place: the walk times out.
+        for (int tick = 0; tick <= Mason.WALK_TICKS + 1; tick++) {
+            mason.tick(stuck, flat, CENTRE, 3, List.of(first, layout.get(1)), true);
+        }
+        assertTrue(mason.failure().isPresent());
+        for (int tick = 0; tick <= Mason.COOLDOWN_TICKS; tick++) {
+            mason.tick(stuck, flat, CENTRE, 3, List.of(first, layout.get(1)), true);
+        }
+
+        BlockPos next = layout.get(1);
+        Position nextPlace = new Position(Mason.inside(flat, next, CENTRE, 3).orElseThrow().x() + 0.5, GROUND,
+                Mason.inside(flat, next, CENTRE, 3).orElseThrow().z() + 0.5);
+        assertEquals(Optional.of(nextPlace), mason.standAt(), "the next cell, not the one out of reach again");
+    }
+
     private static int item(ItemClass itemClass) {
         return IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(itemClass))).findFirst().orElseThrow();
     }

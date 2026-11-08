@@ -43,6 +43,11 @@ public final class Mason {
     private Position standAt;
     private Position soldier;
     private int cooldown;
+    /** Ticks this mason has run, and the cells it couldn't walk to the place for, until when. */
+    private long ticks;
+    private final java.util.Map<BlockPos, Long> passedOver = new java.util.HashMap<>();
+    /** How long a cell whose place couldn't be walked to is passed over: the wall's other cells first. */
+    static final int PASS_OVER_TICKS = 2400;
     private String failure;
 
     public Mason(String name, Inventory inventory, Footing footing, Set<BlockPos> claims) {
@@ -72,6 +77,7 @@ public final class Mason {
     /** Each tick: builds the {@code open} cells of the wall {@code radius} out round {@code centre} while {@code free}. */
     public synchronized void tick(Position soldier, WorldView world, BlockPos centre, int radius, List<BlockPos> open, boolean free) {
         this.soldier = soldier;
+        ticks++;
         if (cooldown > 0) {
             cooldown--;
         }
@@ -94,7 +100,8 @@ public final class Mason {
         // Any cell with a block to go against - the one under it, or for the lip the wall beside it -
         // so each column rises from its own ground: on a slope the wall's rows are at many heights.
         // The nearest with somewhere inside to stand: one without it waits, rather than holding up the rest.
-        open.stream().filter(c -> !claims.contains(c) && Builder.support(world, c).isPresent())
+        passedOver.values().removeIf(until -> until <= ticks);
+        open.stream().filter(c -> !claims.contains(c) && !passedOver.containsKey(c) && Builder.support(world, c).isPresent())
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
                 .flatMap(cell -> inside(world, cell, centre, radius).map(stand -> java.util.Map.entry(cell, stand)).stream())
                 .findFirst().ifPresent(job -> start(world, job.getKey(), job.getValue()));
@@ -139,6 +146,10 @@ public final class Mason {
     }
 
     private void fail(String why) {
+        if (claimed != null && why.startsWith("walk to")) {
+            // Its place out of reach - inside an old hut, across water: the rest of the wall first.
+            passedOver.put(claimed, ticks + PASS_OVER_TICKS);
+        }
         LOG.warn("{} stops walling for a while - {}", name, why);
         failure = why;
         cooldown = COOLDOWN_TICKS;
