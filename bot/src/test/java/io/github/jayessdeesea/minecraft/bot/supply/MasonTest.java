@@ -28,6 +28,8 @@ class MasonTest {
     private static final BlockPos CENTRE = new BlockPos(0, GROUND, 0);
 
     private final Set<BlockPos> placed = new HashSet<>();
+    /** Cells holding a torch: not solid, and no block goes in until it's broken. */
+    private final Set<BlockPos> torches = new HashSet<>();
     private final List<Runnable> answers = new ArrayList<>();
     private final Inventory inventory = new Inventory();
 
@@ -53,9 +55,12 @@ class MasonTest {
                 switch (method.getName()) {
                     case "useBlockFace" -> {
                         BlockPos cell = new BlockPos((int) args[0], (int) args[1] + 1, (int) args[2]);
-                        answers.add(() -> placed.add(cell));
+                        if (!torches.contains(cell)) {
+                            answers.add(() -> placed.add(cell));
+                        }
                     }
-                    case "swapWithHotbar", "selectHotbarSlot" -> {
+                    case "finishDigging" -> torches.remove(new BlockPos((int) args[0], (int) args[1], (int) args[2]));
+                    case "swapWithHotbar", "selectHotbarSlot", "startDigging" -> {
                     }
                     default -> throw new AssertionError("unexpected " + method.getName());
                 }
@@ -85,6 +90,25 @@ class MasonTest {
             mason.tick(soldier, flat, CENTRE, Perimeter.open(flat, layout), true);
             soldier = mason.standAt().orElse(soldier); // walks there at once
             assertTrue(Math.max(Math.abs(soldier.x() - 0.5), Math.abs(soldier.z() - 0.5)) < 3, "builds from inside: " + soldier);
+        }
+
+        assertEquals(List.of(), Perimeter.open(flat, layout));
+        assertTrue(mason.failure().isEmpty(), mason.failure().orElse(""));
+    }
+
+    @Test
+    void aTorchOnTheWallsLineIsBrokenAndTheBlockGoesIn() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.DIRT), 64});
+        List<BlockPos> layout = Perimeter.layout(flat, CENTRE, 3);
+        torches.add(layout.getFirst());
+        Mason mason = new Mason("Alice", inventory, new Footing(session, inventory), new HashSet<>());
+        Position soldier = new Position(0.5, GROUND, 0.5);
+
+        for (int tick = 0; tick < 4000 && !Perimeter.open(flat, layout).isEmpty(); tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            mason.tick(soldier, flat, CENTRE, Perimeter.open(flat, layout), true);
+            soldier = mason.standAt().orElse(soldier);
         }
 
         assertEquals(List.of(), Perimeter.open(flat, layout));

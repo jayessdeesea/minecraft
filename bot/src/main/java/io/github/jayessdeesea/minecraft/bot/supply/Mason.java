@@ -124,7 +124,8 @@ public final class Mason {
                 new Step("walk to " + stand, () -> {
                 }, new Expect("standing in " + stand, () -> on(stand)), WALK_TICKS),
                 new Step("wall at " + cell, () -> world.isSolid(cell.x(), cell.y(), cell.z()), () -> {
-                    if (!footing.place(cell, material)) {
+                    // A torch put down on the wall's line when the camp was lit holds the cell.
+                    if (!footing.placeClearing(cell, material)) {
                         throw new IllegalStateException("no " + material + " carried - " + inventory.summary());
                     }
                 }, new Expect("a block at " + cell, () -> world.isSolid(cell.x(), cell.y(), cell.z())), ANSWER_TICKS)));

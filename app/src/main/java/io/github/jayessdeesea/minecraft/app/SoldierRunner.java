@@ -904,7 +904,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> torchesLeft = chainOfCommand.secureObjective(squadName).map(o -> {
             io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
                     io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(o.location().x(), o.location().y(), o.location().z()));
-            return io.github.jayessdeesea.minecraft.bot.supply.Lighting.plan(world, at, SECURE_RADIUS);
+            // Not on a wall's line - one laid out, or the camp's still to be: a torch there holds a
+            // cell the mason needs.
+            java.util.Set<Long> wallColumns = walls.values().stream().flatMap(List::stream).map(c -> column(c.x(), c.z()))
+                    .collect(java.util.stream.Collectors.toSet());
+            return io.github.jayessdeesea.minecraft.bot.supply.Lighting.plan(world, at, SECURE_RADIUS).stream()
+                    .filter(cell -> !wallColumns.contains(column(cell.x(), cell.z())) && (camp == null
+                            || Math.max(Math.abs(cell.x() - camp[0]), Math.abs(cell.z() - camp[1])) != WALL_RADIUS))
+                    .toList();
         }).orElse(List.of());
         if (torchesLeft.size() != state.torchesLeft) {
             if (chainOfCommand.secureObjective(squadName).isPresent()) {

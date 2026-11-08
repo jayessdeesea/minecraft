@@ -532,7 +532,8 @@ Farmland is left bare. Light is worked out from where torches stand, not read fr
 light data.
 
 Each soldier takes the nearest planned cell no squadmate has taken, walks onto it and puts a torch
-down where it stands (`bot.supply.Lamplighter`). The server's block update confirms it. A soldier
+down where it stands (`bot.supply.Lamplighter`) - never on a wall's line, one laid out or the
+camp's still to be, where a torch would hold a cell the mason needs. The server's block update confirms it. A soldier
 out of torches makes eight at a time where it stands (`bot.supply.Torchmaker`, the same run as a
 patrol base's), and reports `Securing` meanwhile. One short of the makings gathers them first, where
 its squad last saw them nearest the objective: logs, then the cobblestone for a furnace (making
@@ -548,7 +549,8 @@ step cut through the wall (`bot.supply.Perimeter`). It's laid out once, by which
 it first, and shared - laid out again after a row, the ground would be the wall's top - and its
 cells join the ones every dig skips, so nobody quarries it. Each soldier takes the nearest open cell of the
 lowest row no squadmate has taken, stands just inside it, and puts a block there, cobblestone
-first, then dirt (`bot.supply.Mason`); one with neither digs dirt outside the wall. The log says
+first, then dirt, breaking first whatever stands in the cell that a block can't replace - a torch,
+a flower (`bot.supply.Mason`); one with neither digs dirt outside the wall. The log says
 how many blocks are still to place. Seen live in `wall-the-camp`: two squads close a 128-block wall
 together.
 

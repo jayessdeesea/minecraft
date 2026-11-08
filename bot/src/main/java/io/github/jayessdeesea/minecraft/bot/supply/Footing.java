@@ -62,6 +62,20 @@ public final class Footing {
         return true;
     }
 
+    /**
+     * As {@link #place(BlockPos, ItemClass)}, first breaking whatever stands in {@code cell} that
+     * isn't solid and a block can't replace - a torch, a flower, a sapling. They break at a touch,
+     * and an empty cell ignores the dig; the server takes both in the order sent.
+     */
+    public synchronized boolean placeClearing(BlockPos cell, ItemClass item) {
+        if (inventory.slotOf(item) < 0) {
+            return false;
+        }
+        session.startDigging(cell.x(), cell.y(), cell.z());
+        session.finishDigging(cell.x(), cell.y(), cell.z());
+        return place(cell, item);
+    }
+
     /** Each tick: the weapon back in hand once the climbing has stopped. */
     public synchronized void tick() {
         if (previousHotbar >= 0 && ++idleTicks >= REARM_TICKS) {
