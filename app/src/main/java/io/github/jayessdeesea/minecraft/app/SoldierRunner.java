@@ -439,6 +439,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final int TREES_GROWING = 8;
     /** How far out from a FORTIFY objective its wall stands. */
     static final int WALL_RADIUS = 8;
+    /** How far above and below the camp's centre its ground is kept from digging. */
+    private static final int CAMP_GROUND_DEPTH = 6;
     /** Fewer blocks than this carried, and a mason goes and digs dirt for the wall. */
     static final int WALL_BLOCKS_LOW = 4;
     /** A mason digging for the wall digs this many before it goes back to building. */
@@ -660,6 +662,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         activeSoldiers.values().forEach(soldier -> soldier.receiveOrder(new Order.Idle()));
         return true;
+    }
+
+    /** The name of the task {@code squad} holds, for the scorecard: "none" with no objective yet. */
+    private String squadTask(String squad) {
+        return chainOfCommand.objective(squad).map(o -> OrderTrace.taskName(o.task())).orElse("none");
     }
 
     /** The engineer's stair down for a stranded soldier, from where it stands. */
@@ -982,6 +989,18 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 }));
                 state.wallCentre = at;
                 state.wallKey = wallKey;
+                // The camp's ground is claimed, as its wall is: no dig takes it. Live, the masons' own
+                // dirt pit, dug nearest first, ate in under the wall's east side and the ground inside it.
+                for (int dx = -WALL_RADIUS; dx <= WALL_RADIUS; dx++) {
+                    for (int dz = -WALL_RADIUS; dz <= WALL_RADIUS; dz++) {
+                        for (int dy = -CAMP_GROUND_DEPTH; dy <= CAMP_GROUND_DEPTH; dy++) {
+                            int x = at.x() + dx, y = at.y() + dy, z = at.z() + dz;
+                            if (world.isSolid(x, y, z)) {
+                                treeClaims.add(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
+                            }
+                        }
+                    }
+                }
                 LOG.info("[{}] FORTIFY: a wall laid out round {}, {} blocks", squadName, at, state.wall.size());
             }
         }
@@ -1625,6 +1644,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     String cause = death.contains("[") ? death.substring(0, death.indexOf('[')) : death;
                     casualties.merge(cause, 1, Integer::sum);
                     afterActionReview.death(name, cause);
+                    afterActionReview.commands.casualty(squadTask(definition.squad()), Optional.ofNullable(activeSoldiers.get(name))
+                            .map(s -> s.status().order().getClass().getSimpleName()).orElse("none"));
                     LOG.warn("[Casualty] since the app started: {}", casualties);
                 },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
@@ -1964,6 +1985,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             FlightRecorder recorder = recorders.computeIfAbsent(name, n -> new FlightRecorder());
             if (recorder.due()) {
                 boolean day = chainOfCommand.time().map(t -> !t.dark()).orElse(false);
+                afterActionReview.commands.sample(squadTask(definition.squad()), status.order().getClass().getSimpleName(), status.report());
                 idleWatch.update(name, status.position(), clockwork.millis(), day, () -> "report " + status.report()
                         + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free")
                         + ", squad's task " + chainOfCommand.objective(definition.squad())

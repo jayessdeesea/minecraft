@@ -609,7 +609,10 @@ that ground moves as the pits are dug and the wall goes up, and laid out again i
 built. So the
 layout is kept on disk too (`app.WallStore`, under `minecraft.state-dir`), and a restarted garrison
 builds the wall it laid out before rather than a second one on top of it. Its
-cells join the ones every dig skips, so nobody quarries it. Each soldier takes the nearest open cell no
+cells join the ones every dig skips, so nobody quarries it, and so does the camp's ground inside
+it, solid when the wall is laid out: a dig takes the nearest dirt first, and a pit outside the wall
+would otherwise eat in under it. Where the ground under a wall cell has gone anyway, the cells
+down to what's left are its footing, built first (`Perimeter.open`). Each soldier takes the nearest open cell no
 squadmate has taken that has a block to go against - so each column rises from its own ground,
 and on a slope the rows stand at many heights - stands just inside it, within 0.15 of the place's
 centre as a hut builder does, and puts a block there,
@@ -621,7 +624,9 @@ refused - it passes over for two minutes and builds the rest. On top goes a lip,
 ring of blocks one out from the wall's top row, against its outer face: an overhang a spider
 climbing the wall can't get round. None outside the doorway, where it would stand at head height
 in the way out. A mason places each lip block from the column nearest it just inside the wall,
-never from the wall's top. The log says how many blocks are still to place. Seen live in `wall-the-camp`: two squads close a 128-block wall
+never from the wall's top; where the ground inside has been dug away, from the column just outside.
+A mason with blocks and cells left that it can't build says why: how many have nothing to go
+against, and how many nowhere to stand. The log says how many blocks are still to place. Seen live in `wall-the-camp`: two squads close a 128-block wall
 together.
 
 ## 16. Mining down
@@ -728,6 +733,14 @@ with the foothold in view it already keeps an exposed squad near shelter (Genera
 Each dawn the log carries an after-action review (TC 25-20) of the day and night before (`[AAR]`,
 `app.AfterActionReview`): the camp's standards, met and open, as last measured; the deaths, by the
 server's cause, with who; and who raised an idle alarm by day (§ 3).
+
+It ends with the commands' scorecard (`app.CommandScorecard`). Each soldier is sampled once a
+second, and each kind of command is scored by how its soldiers spent their time: each task the
+general gave (FORTIFY, MINE ...), and each kind of order a soldier carried (`MoveTo`, `Place`).
+The score is soldier-minutes, the share of them under each report, the most frequent CANTCO
+reasons, and the deaths. Places and numbers are taken out of a reason, so the same failure counts
+as one. A command that doesn't work shows as a large share of CANTCO, or of `InPosition` while
+there's work left.
 
 ## Sources
 

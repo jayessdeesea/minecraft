@@ -100,6 +100,54 @@ class MasonTest {
         assertTrue(mason.failure().isEmpty(), mason.failure().orElse(""));
     }
 
+    /**
+     * As live: the masons' dirt pit dug under the wall's east side and the ground inside it, and 39
+     * cells had nothing to go against or nowhere to stand. The footing goes in from the pit's floor,
+     * built from outside.
+     */
+    @Test
+    void aWallWhoseGroundWasDugAwayIsBuiltBackUpFromTheFootingFromOutside() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.DIRT), 64});
+        List<BlockPos> layout = Perimeter.layout(flat, CENTRE, 3);
+        // Dug out: two blocks deep under the east side and the column inside it.
+        Set<BlockPos> pit = new HashSet<>();
+        for (int x = 2; x <= 3; x++) {
+            for (int z = -2; z <= 2; z++) {
+                pit.add(new BlockPos(x, GROUND - 1, z));
+                pit.add(new BlockPos(x, GROUND - 2, z));
+            }
+        }
+        WorldView dug = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos c = new BlockPos(x, y, z);
+                return placed.contains(c) || y < GROUND && !pit.contains(c);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertTrue(Perimeter.open(dug, layout).contains(new BlockPos(3, GROUND - 2, 0)), "the footing is part of what's left");
+        Mason mason = new Mason("Alice", inventory, new Footing(session, inventory), new HashSet<>());
+        Position soldier = new Position(0.5, GROUND, 0.5);
+
+        for (int tick = 0; tick < 8000 && !Perimeter.open(dug, layout).isEmpty(); tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            mason.tick(soldier, dug, CENTRE, 3, Perimeter.open(dug, layout), true);
+            soldier = mason.standAt().orElse(soldier);
+        }
+
+        assertEquals(List.of(), Perimeter.open(dug, layout));
+    }
+
     @Test
     void aTorchOnTheWallsLineIsBrokenAndTheBlockGoesIn() {
         inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.DIRT), 64});

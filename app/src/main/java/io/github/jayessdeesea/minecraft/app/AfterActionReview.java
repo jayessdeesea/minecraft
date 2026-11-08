@@ -12,9 +12,12 @@ import java.util.TreeMap;
  * The after-action review at each dawn (TC 25-20; docs/military-doctrine.md § 17): what was meant
  * to be done, what was, and what went wrong - the camp's standards met and open, each death of the
  * day by cause, and the soldiers who stood about by day. Pure: events are noted as they happen, and
- * the review comes back as text at the dawn that closes the day.
+ * the review comes back as text at the dawn that closes the day, with the commands' scorecard.
  */
 final class AfterActionReview {
+
+    /** How each kind of command went, sampled by the soldiers' ticks. */
+    final CommandScorecard commands = new CommandScorecard();
 
     private final Map<String, List<String>> deaths = new TreeMap<>();
     private final Map<String, Integer> idle = new TreeMap<>();
@@ -52,6 +55,7 @@ final class AfterActionReview {
         review.append("\n  casualties: ").append(dead == 0 ? "none" : dead);
         deaths.forEach((cause, who) -> review.append("\n    ").append(cause).append(": ").append(String.join(", ", who)));
         review.append("\n  idle by day: ").append(idle.isEmpty() ? "none" : idle.toString());
+        commands.review().forEach(line -> review.append("\n  ").append(line));
         deaths.clear();
         idle.clear();
         return Optional.of(review.toString());

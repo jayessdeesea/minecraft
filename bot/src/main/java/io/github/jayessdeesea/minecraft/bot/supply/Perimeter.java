@@ -69,9 +69,32 @@ public final class Perimeter {
         return List.copyOf(cells);
     }
 
-    /** The cells of {@code layout} still open: what's left to build, in its order. */
+    /**
+     * The cells of {@code layout} still open: what's left to build, in its order - each after the
+     * footing under it, where the ground it was laid out on has been dug away: the cells down to
+     * the ground, lowest first, or nothing would hold the wall up. Not under the lip, which hangs
+     * from the wall's top - alone in its column.
+     */
     public static List<BlockPos> open(WorldView world, List<BlockPos> layout) {
-        return layout.stream().filter(c -> !world.isSolid(c.x(), c.y(), c.z())).toList();
+        java.util.Set<BlockPos> wall = new java.util.HashSet<>(layout);
+        java.util.Map<List<Integer>, Long> perColumn = layout.stream()
+                .collect(java.util.stream.Collectors.groupingBy(c -> List.of(c.x(), c.z()), java.util.stream.Collectors.counting()));
+        java.util.LinkedHashSet<BlockPos> open = new java.util.LinkedHashSet<>();
+        for (BlockPos cell : layout) {
+            if (world.isSolid(cell.x(), cell.y(), cell.z())) {
+                continue;
+            }
+            List<BlockPos> footing = new ArrayList<>();
+            boolean lip = perColumn.get(List.of(cell.x(), cell.z())) == 1;
+            for (BlockPos below = cell.offset(0, -1, 0); !lip && footing.size() < VERTICAL && !wall.contains(below)
+                    && !world.isSolid(below.x(), below.y(), below.z()) && !world.isHazard(below.x(), below.y(), below.z());
+                 below = below.offset(0, -1, 0)) {
+                footing.add(below);
+            }
+            open.addAll(footing.reversed());
+            open.add(cell);
+        }
+        return List.copyOf(open);
     }
 
     /** Where the wall stands in column ({@code x}, {@code z}): the highest standing cell near {@code nearY}, not in water. */

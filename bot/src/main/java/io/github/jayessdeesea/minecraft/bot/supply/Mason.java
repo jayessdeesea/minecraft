@@ -134,15 +134,18 @@ public final class Mason {
     /**
      * Where to stand to build {@code cell}: the column nearest it just inside the wall {@code radius}
      * out - beside a wall cell, two in from the lip, never on the wall's top - at a standing height
-     * near the cell's.
+     * near the cell's. Where the ground inside has been dug away, the column just outside, under the
+     * lip.
      */
     static Optional<BlockPos> inside(WorldView world, BlockPos cell, BlockPos centre, int radius) {
-        int x = centre.x() + Math.clamp(cell.x() - centre.x(), -(radius - 1), radius - 1);
-        int z = centre.z() + Math.clamp(cell.z() - centre.z(), -(radius - 1), radius - 1);
-        for (int dy = 1; dy >= -3; dy--) {
-            BlockPos stand = new BlockPos(x, cell.y() + dy, z);
-            if (Pathfinder.standable(world, stand)) {
-                return Optional.of(stand);
+        for (int ring : new int[]{radius - 1, radius + 1}) {
+            int x = centre.x() + Math.clamp(cell.x() - centre.x(), -ring, ring);
+            int z = centre.z() + Math.clamp(cell.z() - centre.z(), -ring, ring);
+            for (int dy = 1; dy >= -3; dy--) {
+                BlockPos stand = new BlockPos(x, cell.y() + dy, z);
+                if (Pathfinder.standable(world, stand) && !stand.equals(cell) && !stand.equals(cell.offset(0, -1, 0))) {
+                    return Optional.of(stand);
+                }
             }
         }
         return Optional.empty();
