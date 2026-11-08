@@ -50,6 +50,12 @@ class GeneralScenarioIT {
 
     /** The camp's progress, for the situations that have a camp to build up. */
     private static final java.util.Map<String, io.github.jayessdeesea.minecraft.command.Foothold> FOOTHOLDS = java.util.Map.of(
+            "lit-without-wood", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(1, "shelter", true, "both squads have a base", "PATROL_BASE"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
+                            "120 walkable cells within 12 blocks still dark; no logs to make torches from and no trees in sight - grow them first",
+                            "TREE_FARM"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
             "exposed-far-out", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(1, "shelter", true, "both squads have a base", "PATROL_BASE"),
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
@@ -152,6 +158,13 @@ class GeneralScenarioIT {
                     (squads, given) -> given.getFirst().patrolBase()
                             || distance(given.getFirst().location(), new Position(3000, 151, 3000)) <= Readiness.AT_BASE ? List.of()
                             : List.of("Alpha left out east, exposed: " + given.getFirst().task() + " at " + given.getFirst().location())),
+            // The live deadlock: lighting the camp is the open standard, but there's no wood to make
+            // torches from and no tree in sight - the foothold names TREE_FARM for it.
+            new Situation("lit-without-wood", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
+                    TimeOfDay.of(2000, true),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
+                    (squads, given) -> given.stream().anyMatch(Objective::treeFarm) ? List.of()
+                            : List.of("nobody set to grow wood: " + given.stream().map(o -> o.task() + " at " + o.location()).toList())),
             new Situation("wall-the-camp", "The camp is on the stone platform around x=3000 z=3000, its ground already lit. "
                     + "Both squads wall the camp in today.", TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),

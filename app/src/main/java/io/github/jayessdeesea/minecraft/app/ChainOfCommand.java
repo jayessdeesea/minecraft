@@ -340,6 +340,12 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         return squads.get(squad).mineObjective();
     }
 
+    /** Whether any squad last saw trees round it. */
+    public boolean woodSeen() {
+        return resourcesSeen.values().stream().flatMap(List::stream)
+                .anyMatch(site -> site.resource() == io.github.jayessdeesea.minecraft.command.Resource.WOOD);
+    }
+
     /** The trees, exposed stone and farmland {@code squad} last saw round it - none before its first survey. */
     public List<io.github.jayessdeesea.minecraft.command.ResourceSite> resourcesSeen(String squad) {
         return resourcesSeen.getOrDefault(squad, List.of());

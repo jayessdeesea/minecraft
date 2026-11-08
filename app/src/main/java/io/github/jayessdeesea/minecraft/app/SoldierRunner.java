@@ -322,8 +322,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = campGround;
         List<io.github.jayessdeesea.minecraft.command.Foothold.Standard> standards = new java.util.ArrayList<>();
         int dark = io.github.jayessdeesea.minecraft.bot.supply.Lighting.dark(world, at, SECURE_RADIUS);
+        // Torches are made from logs: with none carried and no tree in sight, lighting waits on wood
+        // grown first - the lookup done for the general, which otherwise sends squads to SECURE with
+        // nothing to make torches from.
+        int logs = everyone.stream().mapToInt(s -> s.condition().flatMap(c -> c.kit()).map(Kit::logs).orElse(0)).sum();
+        int torches = torchesCarried.values().stream().mapToInt(Integer::intValue).sum();
+        boolean noWood = dark > 0 && torches == 0 && logs < TORCH_LOGS && !chainOfCommand.woodSeen();
         standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", dark == 0,
-                dark + " walkable cells within " + SECURE_RADIUS + " blocks still dark", "SECURE"));
+                dark + " walkable cells within " + SECURE_RADIUS + " blocks still dark"
+                        + (noWood ? "; no logs to make torches from and no trees in sight - grow them first" : ""),
+                noWood ? "TREE_FARM" : "SECURE"));
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walls.entrySet().stream()
                 .filter(e -> Math.hypot(Integer.parseInt(e.getKey().split(",")[0]) - camp[0], Integer.parseInt(e.getKey().split(",")[1]) - camp[1])
                         <= WALL_RADIUS).map(Map.Entry::getValue).findFirst().orElse(null);
@@ -1634,8 +1642,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // up when there's game in sight to eat, and the hunter takes them next tick.
             Position huntGround = huntGrounds.getOrDefault(name, status.position());
             int food = status.condition().map(Condition::food).orElse(Condition.MAX_FOOD);
-            boolean huntCalls = huntWanted && !hunter.active()
-                    && io.github.jayessdeesea.minecraft.bot.supply.Hunter.gameInSight(world, huntGround, food, quarry);
+            // And a meal carried comes before either: live, a soldier on a stone run back to back sat at
+            // food 0 with two rations in its pack.
+            boolean foodCalls = huntWanted && !hunter.active()
+                    && io.github.jayessdeesea.minecraft.bot.supply.Hunter.gameInSight(world, huntGround, food, quarry)
+                    || !rations.active() && !threatened && food < Condition.REGENERATION_FOOD && inventory.slotOf(ItemClass.FOOD) >= 0;
             turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), huntGround,
                     io.github.jayessdeesea.minecraft.bot.supply.Hunter.radius(food), quarry, world,
                     free && huntWanted,
@@ -1685,19 +1696,19 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walling.getOrDefault(name, List.of());
             turns.put(Hands.Routine.MASON, turn(mason::active, free -> mason.tick(status.position(), world,
                     wallCentres.getOrDefault(name, io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(status.position().x(),
-                            status.position().y(), status.position().z())), wall, free && !threatened && !huntCalls)));
+                            status.position().y(), status.position().z())), wall, free && !threatened && !foodCalls)));
             turns.put(Hands.Routine.LAMPLIGHTER, turn(lamplighter::active,
-                    free -> lamplighter.tick(status.position(), world, lights, free && !threatened && !huntCalls)));
+                    free -> lamplighter.tick(status.position(), world, lights, free && !threatened && !foodCalls)));
             io.github.jayessdeesea.minecraft.bot.farm.TreeFarm grove = planting.get(name);
             turns.put(Hands.Routine.FORESTER, turn(forester::active,
-                    free -> forester.tick(status.position(), world, Optional.ofNullable(grove), free && !threatened && !huntCalls)));
+                    free -> forester.tick(status.position(), world, Optional.ofNullable(grove), free && !threatened && !foodCalls)));
             turns.put(Hands.Routine.FARMER, turn(farmer::active,
-                    free -> farmer.tick(status.position(), world, Optional.ofNullable(field), free && !threatened && !huntCalls)));
+                    free -> farmer.tick(status.position(), world, Optional.ofNullable(field), free && !threatened && !foodCalls)));
             turns.put(Hands.Routine.GATHERER, turn(gatherer::active,
                     free -> gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
-                            gather == null ? status.position() : gather.location(), free && !inContact && !huntCalls)));
+                            gather == null ? status.position() : gather.location(), free && !inContact && !foodCalls)));
             turns.put(Hands.Routine.SCAVENGER, turn(scavenger::active,
-                    free -> scavenger.tick(status.position(), world, free && !threatened && fort == null && !huntCalls)));
+                    free -> scavenger.tick(status.position(), world, free && !threatened && fort == null && !foodCalls)));
             Hands.tick(turns);
             // Short of logs for tools it tried and failed to chop wood for: a squadmate may have
             // some to spare (§13).

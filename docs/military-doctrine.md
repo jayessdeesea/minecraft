@@ -96,8 +96,9 @@ chases the nearest cow, pig, sheep, chicken or rabbit within 48 blocks of its sq
 not of itself, or one hunt after another carries it off; 96 once it's starving, at the food 6 it
 can no longer sprint at, since the ground round a camp is hunted out first - strikes it each time its
 weapon is charged, and stands where it fell for the meat (`bot.supply.Hunter`). Food comes first:
-with game in sight, a soldier that wants food puts down its day's work - gathering, lighting,
-walling, farming, planting - at its next step, and the hunter takes its hands. Raw meat is a ration
+a soldier below food 18 with a ration in its pack, or wanting food with game in sight, puts down
+its day's work - gathering, lighting, walling, farming, planting - at its next step, and eats or
+hunts. Raw meat is a ration
 like any other. It reports `Hunting`. Squad leaders aggregate their
 soldiers' SITREPs into one for the general, with a LOGSTAT summed from the soldiers' LACE
 (`command.Logstat`): hungry soldiers and the rations they carry (Class I), empty armour slots (Class II), bare-handed
@@ -592,7 +593,9 @@ would let in water or lava, or would leave a step with no floor over an open cav
 *How we use it:* a garrison's camp (`minecraft.camp`, as `x,z`) is built up the way an airborne
 force builds a lodgment after the drop. Its phases:
 1. Shelter: a patrol base each night (§14).
-2. The airhead: the camp's ground lit (§15, SECURE) and walled (§15, FORTIFY).
+2. The airhead: the camp's ground lit (§15, SECURE) and walled (§15, FORTIFY). With no logs
+   carried to make torches from and no tree in sight, the lit standard's task is TREE_FARM: the
+   wood is grown first.
 3. The buildup of sustainment: food that grows (§12, FARM), wood that grows back (§12, TREE_FARM),
    and stone and iron from a mine (§16, MINE).
 4. Equipment: every soldier armed with a stone sword or better and armoured (§11).
