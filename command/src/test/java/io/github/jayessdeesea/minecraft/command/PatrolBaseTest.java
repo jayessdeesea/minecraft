@@ -169,6 +169,16 @@ class PatrolBaseTest {
     }
 
     @Test
+    void anOldHutWithItsDoorwayCutCountsAsNearlyAllStanding() {
+        PatrolBase.Plan hut = PatrolBase.hasty(new Position(0, 64, 0), 4);
+        Set<Position> built = new HashSet<>(hut.cells());
+        hut.doorway(new Position(10, 64, 0), cell -> true).forEach(built::remove);
+
+        assertEquals(hut.cells().size() - 2, hut.standing(built::contains));
+        assertEquals(0, PatrolBase.hasty(new Position(0, 67, 0), 4).standing(built::contains), "its roof is no hut");
+    }
+
+    @Test
     void moreThanNineDontFit() {
         assertThrows(IllegalArgumentException.class, () -> PatrolBase.hasty(new Position(0, 64, 0), 10));
     }

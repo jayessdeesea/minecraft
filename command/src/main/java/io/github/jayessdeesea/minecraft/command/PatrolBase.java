@@ -137,6 +137,15 @@ public final class PatrolBase {
             return floor.stream().filter(cell -> light.getOrDefault(cell, 0) == 0).toList();
         }
 
+        /**
+         * How many of the blocks to build already stand: a hut the squad built before a restart,
+         * a doorway cut in it, is nearly all there. Whatever is {@code solid} counts, the ground's
+         * own blocks too - a bank one wall can lean on saves those blocks just the same.
+         */
+        public int standing(Predicate<Position> solid) {
+            return (int) cells.stream().filter(solid).count();
+        }
+
         /** Whether {@code soldier} stands on the floor inside the walls. */
         public boolean inside(Position soldier) {
             return floor.stream().anyMatch(cell -> cell.x() == Math.floor(soldier.x()) && cell.z() == Math.floor(soldier.z())

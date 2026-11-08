@@ -442,8 +442,10 @@ walls and floor, so each roof block has a neighbour to go against. That's 40 blo
 four. The site is the nearest level footing within 8 blocks of the general's point: every floor
 cell standable at one height and walkable to from where the squad is - not an old hut's roof two
 blocks up - never rubble or a slope, since the model's point is a guess - and a
-block clear of any other squad's hut, since the general may send two squads to one point. A
-re-issued objective within 8 blocks keeps the site already laid out, so the outline doesn't move
+block clear of any other squad's hut, since the general may send two squads to one point. Each
+block of the hut already standing counts as a block nearer (`PatrolBase.Plan.standing`), so a hut
+built before a restart, its doorway cut on the way out, is taken back and only the doorway rebuilt.
+A re-issued objective within 8 blocks keeps the site already laid out, so the outline doesn't move
 under the soldiers.
 
 Each soldier goes to its own floor cell. Once all are inside, each builds from where it stands

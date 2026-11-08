@@ -1266,7 +1266,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                         });
                         // Height counts double: a level footing on the roof of an old hut is
                         // nearer across than its own floor, but the floor is the one to reuse.
-                        double distance = Math.hypot(dx, dz) + Math.abs(y - ay) * 2;
+                        // And each block already standing is one not placed: a hut built before a
+                        // restart is taken back rather than a new one built beside it.
+                        double distance = Math.hypot(dx, dz) + Math.abs(y - ay) * 2
+                                - (level ? hut.standing(c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z())) : 0);
                         if (level && distance < bestDistance) {
                             best = candidate;
                             bestDistance = distance;
