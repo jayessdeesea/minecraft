@@ -92,6 +92,14 @@ class SquadSimulationTest {
 
     /** Runs Alpha, four soldiers with stone pickaxes, on MINE at x=4 z=4 for 15 simulated minutes. */
     private SimServer mine(SimServer.Terrain ground) {
+        return mine(ground, List.of(
+                new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                new int[]{38, SimServer.ITEM_BREAD, 16}));
+    }
+
+    /** As {@link #mine(SimServer.Terrain)}, each soldier carrying {@code kit}: [slot, item, count] each. */
+    private SimServer mine(SimServer.Terrain ground, List<int[]> kit) {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, ground, 1000); // morning
         Position head = new Position(4, 16, 4);
@@ -101,10 +109,7 @@ class SquadSimulationTest {
                 SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
-                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
-                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit));
         runner.run();
         clock.advance(15 * 60_000);
         return server;
@@ -133,5 +138,14 @@ class SquadSimulationTest {
     void aMineObjectiveBesideAPondIsCutClearOfTheWater() {
         assertMinedToTheIron(mine((x, y, z) -> x >= 5 && x <= 9 && z >= 0 && z <= 8 && y >= 60 && y <= GROUND
                 ? SimServer.WATER : flat(x, y, z)));
+    }
+
+    /** As live: nobody carries a pickaxe. Each has logs to make one, and the squad has to before it can mine. */
+    @Test
+    void aSquadWithNoPickaxeMakesOneAndCutsTheMine() {
+        assertMinedToTheIron(mine(SquadSimulationTest::flat, List.of(
+                new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                new int[]{37, SimServer.ITEM_BREAD, 16},
+                new int[]{9, SimServer.ITEM_OAK_LOG, 8})));
     }
 }

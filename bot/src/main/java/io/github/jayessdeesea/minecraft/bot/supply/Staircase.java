@@ -49,6 +49,42 @@ public record Staircase(BlockPos head, int bottom) {
         }
     }
 
+    /** The landing's two recesses, either side of the main tunnel's first cell: off the walkway. */
+    public List<BlockPos> landing() {
+        BlockPos first = landingStand();
+        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
+        int dx = d[0] != 0 ? d[0] : 0;
+        int dz = d[0] != 0 ? 0 : d[1];
+        return List.of(first.offset(-dz, 0, dx), first.offset(dz, 0, -dx));
+    }
+
+    /** Where a soldier stands to work at the landing: the main tunnel's first cell, between the recesses. */
+    public BlockPos landingStand() {
+        BlockPos last = step(steps() - 1);
+        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
+        return d[0] != 0 ? last.offset(d[0], 0, 0) : last.offset(0, 0, d[1]);
+    }
+
+    /** Whether the landing is cut: both recesses open, room for a table and a furnace. */
+    public boolean landingCut(WorldView world) {
+        return landing().stream().allMatch(r -> !world.isSolid(r.x(), r.y(), r.z()) && !world.isSolid(r.x(), r.y() + 1, r.z()));
+    }
+
+    /**
+     * Every cell a body walks through on the stairs and tunnels - the landing's recesses aside: kept
+     * clear of tables, furnaces and other diggers.
+     */
+    public java.util.Set<BlockPos> walkway() {
+        java.util.Set<BlockPos> recesses = new java.util.HashSet<>();
+        landing().forEach(r -> {
+            recesses.add(r);
+            recesses.add(r.offset(0, 1, 0));
+        });
+        java.util.Set<BlockPos> cells = new java.util.HashSet<>();
+        cuts().forEach(c -> c.cells().stream().filter(cell -> !recesses.contains(cell)).forEach(cells::add));
+        return cells;
+    }
+
     /** Every cut, in order: the steps down, the main tunnel, then the branches nearest the shaft first. */
     public List<Cut> cuts() {
         List<Cut> cuts = new java.util.ArrayList<>();
@@ -65,6 +101,13 @@ public record Staircase(BlockPos head, int bottom) {
             BlockPos feet = last.offset(dx * i, 0, dz * i);
             cuts.add(new Cut(i == 1 ? last : main.getLast(), List.of(feet.offset(0, 1, 0), feet), 0));
             main.add(feet);
+            if (i == 1) {
+                // The landing: a recess each side of the tunnel's first cell, off the walkway, where
+                // a table and a furnace stand - there's no room for one anywhere on the stairs.
+                for (BlockPos recess : landing()) {
+                    cuts.add(new Cut(feet, List.of(recess.offset(0, 1, 0), recess), 0));
+                }
+            }
         }
         int tunnel = 1;
         for (int i = BRANCH_EVERY; i <= MAIN_TUNNEL; i += BRANCH_EVERY) {

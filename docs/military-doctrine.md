@@ -448,7 +448,8 @@ soldier - a replacement respawns with nothing - gets a squadmate's spare melee w
 of those it carries beyond its best (`Inventory.spareWeaponSlot`), never the one in hand. Weapons
 are paired first, then logs, then rations, and a soldier is in one hand-over at a time, giving or
 receiving. A replacement still linking up gets nothing until it has: the squad reorganises round
-it once it's back. Nobody cross-levels while
+it once it's back. Nor does a soldier making its kit (`Rearming`): mid-craft its weapon can be on
+an open window's cursor, where it isn't counted. Nobody cross-levels while
 the squad is in contact, or from a soldier linking up.
 
 The giver (`bot.supply.Handover`) walks to 2 blocks short of the receiver, faces it, and throws the
@@ -636,6 +637,14 @@ on the step above the first not yet cut, breaks that step's cells, walks down on
 the next. By day the rest hold the top, clear of the shaft. By night they follow it down, within 3
 blocks: the top is open ground in the dark, and on the stairs no monster spawns within 24 blocks
 of a player. Until one of them has a pickaxe, every one makes one.
+
+At the bottom of the stairs, beside the main tunnel's first cell, the cutter cuts a **landing**:
+a recess each side, off the walkway (`Staircase.landing`). On the stairs there's no floor for a
+table, so a cutter wanting a tool - the ladder's next rung, or a stone pickaxe once it carries the
+cobblestone, since iron ore drops nothing to a wooden one - goes to the landing once it's cut, and
+the stairs wait while it makes it there. The stairs and tunnels are claimed (`Staircase.walkway`):
+no table or furnace is put down in them, and no other soldier digs them. The cutter's hands are
+free between blocks, so a routine ranked above mining - making its kit - gets its turn.
 
 The camp's mine is the night shift's work (docs/echelons/general/operator-rules.md). Once the
 stairs reach the iron, their tunnels are the mining. The stairs' state is the world's, so a run stopped by a fight or a restart picks up

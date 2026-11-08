@@ -50,15 +50,15 @@ Four layers, each knowing only what it needs:
   (docs/architecture.md, squad simulation) as it is by the app.
 
 ## Scenarios that must pass first
-Each runs in the squad simulation, against the code as it is, before anything is restructured:
-1. **A mine shaft with no pickaxe in the squad.** (With pickaxes, on open ground and beside a pond,
-   it passes.)
-2. **The night shift:** dusk falls while the squad mines. It follows its cutter down, and nobody
+Each runs in the squad simulation, against the code as it is, before anything is restructured. A
+mine shaft passes - open ground, beside a pond, and with no pickaxe in the squad
+(`SquadSimulationTest`). Still to write:
+1. **The night shift:** dusk falls while the squad mines. It follows its cutter down, and nobody
    stands at the top in the dark.
-3. **A patrol base on a slope, a fight in the middle of building it.** The squad goes back to the
+2. **A patrol base on a slope, a fight in the middle of building it.** The squad goes back to the
    same hut.
-4. **A replacement stranded on a platform 17 blocks up.** A squadmate with blocks builds a stair up.
-5. **The wall on a slope, its dirt pit dug out.**
+3. **A replacement stranded on a platform 17 blocks up.** A squadmate with blocks builds a stair up.
+4. **The wall on a slope, its dirt pit dug out.**
 
 ## Done when
 - The scenarios pass on the new layers, and the echelon docs describe the commands, the engineer

@@ -220,6 +220,15 @@ public final class Miner {
         return Optional.empty();
     }
 
+    /**
+     * Whether a block is being broken now. Between blocks the soldier's hands are free, so a routine
+     * ranked above this one - making a stone pickaxe from the cobblestone the stairs gave - gets its
+     * turn; one ranked below doesn't, since this one starts its next block first.
+     */
+    public synchronized boolean active() {
+        return breacher.active();
+    }
+
     /** Stops the dig under way. */
     public synchronized void stop() {
         breacher.stop();

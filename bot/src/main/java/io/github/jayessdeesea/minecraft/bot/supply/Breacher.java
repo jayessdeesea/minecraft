@@ -64,6 +64,11 @@ public final class Breacher {
     }
 
     /** Each tick, breaking the first of {@code cells} still solid; true once none is. */
+    /** Whether a block is being broken now: between blocks the hands are free. */
+    public synchronized boolean active() {
+        return script != null;
+    }
+
     public synchronized boolean tick(WorldView world, List<BlockPos> cells) {
         this.world = world;
         ticks++;

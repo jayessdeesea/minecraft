@@ -454,6 +454,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Miner> miners = new ConcurrentHashMap<>();
     /** The day's deaths and idlers, reviewed at each dawn. */
     private final AfterActionReview afterActionReview = new AfterActionReview();
+    /** Cutters wanting a tool, sent to their mine's landing to make it - tick writes, squad loop reads. */
+    private final java.util.Set<String> atLanding = ConcurrentHashMap.newKeySet();
     /** Ticks to each soldier's next stand-to check. */
     private final Map<String, Integer> standTo = new ConcurrentHashMap<>();
     /** Soldiers stood still by day: an alarm each spell. */
@@ -686,10 +688,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         Map<String, Integer> fed = new HashMap<>();
         statuses.forEach(s -> s.condition().filter(c -> c.kit().isPresent() && wantsFood(c))
                 .ifPresent(c -> fed.put(s.name(), CrossLevel.RATIONS_GIVEN)));
-        // And a spare weapon to one bare-handed: a replacement respawns with nothing.
+        // And a spare weapon to one bare-handed: a replacement respawns with nothing. Not to one
+        // making its kit: mid-craft its weapon can be on a window's cursor, and it isn't counted -
+        // in the squad simulation a sword went round the squad from hand to hand that way.
         Map<String, Integer> disarmed = new HashMap<>();
-        statuses.forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> k.weapon().isEmpty())
-                .ifPresent(k -> disarmed.put(s.name(), 1)));
+        statuses.stream().filter(s -> !(s.report() instanceof Report.Rearming))
+                .forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> k.weapon().isEmpty())
+                        .ifPresent(k -> disarmed.put(s.name(), 1)));
         List<CrossLevel.Transfer> transfers = CrossLevel.pair(statuses, wanted, fed, disarmed);
         java.util.Set<CrossLevel.Transfer> crossLeveling = java.util.Set.copyOf(transfers);
         crossLeveling.stream().filter(t -> !state.crossLeveling.contains(t))
@@ -960,6 +965,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
             LOG.info("[{}] MINE: a staircase down from {} to y={}", squadName, sited.get().head(), sited.get().bottom());
             state.stairsFor = new int[]{x, z};
+            // Its stairs and tunnels are claimed: no table, furnace or other digger goes in them.
+            treeClaims.addAll(sited.get().walkway());
             return sited.get();
         }).orElse(null);
         state.stairs = stairs;
@@ -1098,7 +1105,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 // by day. By night they go down behind it: the top is the dark, and down the stairs
                 // nothing spawns within 24 blocks of them.
                 boolean dark = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
-                Position cutterAt = cutter == null ? centre(stairs.head()) : miners.get(cutter).standAt().orElse(centre(stairs.head()));
+                Position cutterAt = cutter == null ? centre(stairs.head())
+                        : atLanding.contains(cutter) ? centre(stairs.landingStand())
+                        : miners.get(cutter).standAt().orElse(centre(stairs.head()));
                 boolean isCutter = soldierName.equals(cutter);
                 Position place = isCutter ? cutterAt
                         : dark ? cutterAt
@@ -1699,6 +1708,18 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (needsPickaxe) {
                 tools.add(ORDER_PICKAXE);
             }
+            // The cutter's next tool before the ladder's next weapon: iron ore drops nothing to a
+            // wooden pickaxe, and the stairs give the cobblestone for a stone one.
+            if (stairs != null && Ladder.bestPickaxe(inventory) < 1 && inventory.count(ItemClass.COBBLESTONE) >= 3) {
+                tools.add(Recipe.STONE_PICKAXE);
+            }
+            // On the stairs there's no room for a table: the cutter makes what it wants at the landing,
+            // once it's cut - the squad loop sends it there, and the stairs wait meanwhile.
+            if (stairs != null && !tools.isEmpty() && stairs.landingCut(world)) {
+                atLanding.add(name);
+            } else {
+                atLanding.remove(name);
+            }
             // A farmer's hoe, and its wheat baked into bread three at a time.
             io.github.jayessdeesea.minecraft.bot.farm.FarmPlan field = farming.get(name);
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
@@ -1811,11 +1832,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                                 .map(receiver -> new Handover.Delivery(giving.receiver(), receiver.status().position(), giving.item(), giving.count()));
                 handover.tick(status.position(), delivery).ifPresent(soldier::lookAt);
             }));
-            turns.put(Hands.Routine.MINER, turn(() -> stairs != null, free -> {
+            turns.put(Hands.Routine.MINER, turn(() -> stairs != null && miner.active(), free -> {
                 if (stairs == null) {
                     miner.stop();
                 } else {
-                    io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress cut = miner.tick(status.position(), world, stairs, free && !threatened);
+                    io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress cut = miner.tick(status.position(), world, stairs,
+                            free && !threatened && !atLanding.contains(name));
                     stairsProgress.put(name, cut);
                     if (cut instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Working(int step, int steps)) {
                         stairsCut.accumulateAndGet(Math.min(step, stairs.steps()), Math::max);
