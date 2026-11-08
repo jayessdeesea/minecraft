@@ -15,6 +15,11 @@ import java.util.Optional;
  * standing. Steps go one block down and sideways, so a soldier walks down and jumps back up them:
  * no ladder, and a slip is a fall of one block.
  *
+ * <p>At the bottom, the tunnels the ore is mined from: a main tunnel {@value #MAIN_TUNNEL} long
+ * straight out from the last step, away from the shaft, then branches off it both ways every
+ * {@value #BRANCH_EVERY} blocks, each {@value #BRANCH} long - two blocks of rock between branches,
+ * so every block of it is seen from one tunnel or the next. All two high, floors left standing.
+ *
  * @param head    the cell a soldier stands in at the top, on the pillar
  * @param bottom  the height the feet reach on the last step
  */
@@ -24,6 +29,58 @@ public record Staircase(BlockPos head, int bottom) {
     private static final int[][] RING = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
     /** Deepest a staircase goes: a few blocks clear of bedrock's ragged top. */
     public static final int DEEPEST = -58;
+    /** The main tunnel's length, out from the last step. */
+    public static final int MAIN_TUNNEL = 24;
+    /** Blocks along the main tunnel between branches. */
+    public static final int BRANCH_EVERY = 3;
+    /** Each branch's length. */
+    public static final int BRANCH = 8;
+
+    /**
+     * One cut of the mine: stand in {@code stand} and clear {@code cells}, top first; their floor is
+     * left. {@code tunnel} is -1 for a step of the stairs, else which tunnel it's in: 0 the main
+     * tunnel, then each branch - one blocked is given up, the rest go on.
+     */
+    public record Cut(BlockPos stand, List<BlockPos> cells, int tunnel) {
+
+        /** Where the feet are once it's cut. */
+        public BlockPos feet() {
+            return cells.getLast();
+        }
+    }
+
+    /** Every cut, in order: the steps down, the main tunnel, then the branches nearest the shaft first. */
+    public List<Cut> cuts() {
+        List<Cut> cuts = new java.util.ArrayList<>();
+        for (int k = 0; k < steps(); k++) {
+            cuts.add(new Cut(above(k), cells(k), -1));
+        }
+        BlockPos last = step(steps() - 1);
+        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
+        // Out from the shaft along an axis it's already off centre on: never back through the 3x3.
+        int dx = d[0] != 0 ? d[0] : 0;
+        int dz = d[0] != 0 ? 0 : d[1];
+        List<BlockPos> main = new java.util.ArrayList<>();
+        for (int i = 1; i <= MAIN_TUNNEL; i++) {
+            BlockPos feet = last.offset(dx * i, 0, dz * i);
+            cuts.add(new Cut(i == 1 ? last : main.getLast(), List.of(feet.offset(0, 1, 0), feet), 0));
+            main.add(feet);
+        }
+        int tunnel = 1;
+        for (int i = BRANCH_EVERY; i <= MAIN_TUNNEL; i += BRANCH_EVERY) {
+            BlockPos root = main.get(i - 1);
+            for (int side : new int[]{1, -1}) {
+                BlockPos stand = root;
+                for (int j = 1; j <= BRANCH; j++) {
+                    BlockPos feet = root.offset(-dz * side * j, 0, dx * side * j);
+                    cuts.add(new Cut(stand, List.of(feet.offset(0, 1, 0), feet), tunnel));
+                    stand = feet;
+                }
+                tunnel++;
+            }
+        }
+        return List.copyOf(cuts);
+    }
 
     public Staircase {
         if (bottom >= head.y() || bottom < DEEPEST) {

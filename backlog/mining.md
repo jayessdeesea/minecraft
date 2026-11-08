@@ -14,9 +14,8 @@ y=-55, in veins a few blocks off any one shaft. A player at a camp near spawn di
 working base at each mining level - y=32 and y=0, say - and runs tunnels out from it.
 
 ## Done when
-- **Branch tunnels.** At the bottom of the stairs, the squad runs straight 2-high tunnels out
-  from the shaft, three blocks apart, lit with torches, and mines the ore they open. The LOGSTAT
-  counts raw iron and diamonds.
+- **Branch tunnels, the rest.** The tunnels are cut (docs/military-doctrine.md § 16). What's left:
+  lighting them with torches, and the LOGSTAT counting raw iron and diamonds.
 - **Levels.** A landing at a set depth: a small lit room off the stairs, with a table and a
   furnace, where the squad smelts and shelters at night without climbing out.
 

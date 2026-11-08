@@ -72,39 +72,72 @@ public final class Miner {
 
     /** The first step of {@code stairs} not yet cut, or empty when all are. */
     public static java.util.OptionalInt firstUncut(WorldView world, Staircase stairs) {
-        for (int k = 0; k < stairs.steps(); k++) {
-            if (stairs.cells(k).stream().anyMatch(c -> world.isSolid(c.x(), c.y(), c.z()))) {
-                return java.util.OptionalInt.of(k);
+        return firstUncut(world, stairs.cuts(), java.util.Set.of());
+    }
+
+    /**
+     * The first of {@code cuts} still to cut, skipping any in a {@code blocked} tunnel and any whose
+     * standing cell isn't open yet - a branch off a stretch of main tunnel that was given up.
+     */
+    static java.util.OptionalInt firstUncut(WorldView world, List<Staircase.Cut> cuts, java.util.Set<Integer> blocked) {
+        for (int k = 0; k < cuts.size(); k++) {
+            Staircase.Cut cut = cuts.get(k);
+            if (blocked.contains(cut.tunnel()) || cut.cells().stream().noneMatch(c -> world.isSolid(c.x(), c.y(), c.z()))) {
+                continue;
             }
+            BlockPos stand = cut.stand();
+            if (cut.tunnel() >= 0 && (world.isSolid(stand.x(), stand.y(), stand.z()) || world.isSolid(stand.x(), stand.y() + 1, stand.z()))) {
+                continue;
+            }
+            return java.util.OptionalInt.of(k);
         }
         return java.util.OptionalInt.empty();
     }
 
+    /** Tunnels given up for water, lava or a cave beside them. */
+    private final java.util.Set<Integer> blocked = new java.util.HashSet<>();
+
     /** Each tick: cuts {@code stairs} while {@code free}; anything else stops the dig under way. */
     public synchronized Progress tick(Position soldier, WorldView world, Staircase stairs, boolean free) {
-        java.util.OptionalInt next = firstUncut(world, stairs);
-        if (next.isEmpty()) {
-            stop();
-            return new Progress.Done();
+        List<Staircase.Cut> cuts = stairs.cuts();
+        java.util.OptionalInt next;
+        Staircase.Cut cut;
+        while (true) {
+            next = firstUncut(world, cuts, blocked);
+            if (next.isEmpty()) {
+                stop();
+                return new Progress.Done();
+            }
+            cut = cuts.get(next.getAsInt());
+            Optional<String> hazard = hazard(world, cut, next.getAsInt());
+            if (hazard.isEmpty()) {
+                break;
+            }
+            if (cut.tunnel() < 0) {
+                stop();
+                return new Progress.Stopped(hazard.get());
+            }
+            // A tunnel is one of many: give it up, and go on with the next.
+            LOG.warn("{} gives up tunnel {} of the mine: {}", name, cut.tunnel(), hazard.get());
+            blocked.add(cut.tunnel());
         }
         int k = next.getAsInt();
-        Optional<String> hazard = hazard(world, stairs, k);
-        if (hazard.isPresent()) {
-            stop();
-            return new Progress.Stopped(hazard.get());
-        }
-        BlockPos from = stairs.above(k);
+        BlockPos from = cut.stand();
         standAt = new Position(from.x() + 0.5, from.y(), from.z() + 0.5);
         if (k != lastStep) {
-            LOG.info("{} cuts step {} of {} down at {}", name, k + 1, stairs.steps(), stairs.step(k));
+            if (cut.tunnel() < 0) {
+                LOG.info("{} cuts step {} of {} down at {}", name, k + 1, stairs.steps(), cut.feet());
+            } else if (lastStep < 0 || cuts.get(lastStep).tunnel() != cut.tunnel()) {
+                LOG.info("{} cuts {} of the mine from {}", name, cut.tunnel() == 0 ? "the main tunnel" : "branch " + cut.tunnel(), cut.feet());
+            }
             lastStep = k;
         }
         boolean on = Math.hypot(soldier.x() - standAt.x(), soldier.z() - standAt.z()) < ON_CELL && Math.abs(soldier.y() - from.y()) < ON_CELL;
         if (!free || !on) {
             breacher.stop();
-            return new Progress.Working(k, stairs.steps());
+            return new Progress.Working(k, cuts.size());
         }
-        Optional<BlockPos> seen = oreInSight(world, stairs, from, k);
+        Optional<BlockPos> seen = oreInSight(world, stairs, from, cut);
         if (seen.isPresent()) {
             if (!seen.get().equals(ore)) {
                 ore = seen.get();
@@ -118,25 +151,28 @@ public final class Miner {
             } else {
                 breacher.tick(world, List.of(ore));
             }
-            return new Progress.Working(k, stairs.steps());
+            return new Progress.Working(k, cuts.size());
         }
-        breacher.tick(world, stairs.cells(k));
-        return new Progress.Working(k, stairs.steps());
+        breacher.tick(world, cut.cells());
+        return new Progress.Working(k, cuts.size());
     }
 
     /**
-     * Ore beside the body standing on {@code from}, or beside step {@code k}'s cells: outside the
-     * shaft's 3x3, not left before, its drop got with the pickaxe carried, nothing liquid beside it.
+     * Ore beside the body standing on {@code from}, or beside the cut's cells: outside the shaft's
+     * 3x3, not under a tunnel's floor, not left before, its drop got with the pickaxe carried,
+     * nothing liquid beside it.
      */
-    Optional<BlockPos> oreInSight(WorldView world, Staircase stairs, BlockPos from, int k) {
+    Optional<BlockPos> oreInSight(WorldView world, Staircase stairs, BlockPos from, Staircase.Cut cut) {
         int tier = bestPickaxe();
+        java.util.Set<BlockPos> floors = stairs.cuts().stream().filter(c -> c.tunnel() >= 0)
+                .map(c -> c.feet().offset(0, -1, 0)).collect(java.util.stream.Collectors.toSet());
         List<BlockPos> near = new java.util.ArrayList<>(List.of(from, from.offset(0, 1, 0)));
-        near.addAll(stairs.cells(k));
+        near.addAll(cut.cells());
         for (BlockPos cell : near) {
             for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
                 BlockPos at = cell.offset(d[0], d[1], d[2]);
                 boolean outside = Math.abs(at.x() - stairs.head().x()) > 1 || Math.abs(at.z() - stairs.head().z()) > 1;
-                if (outside && !leftOre.contains(at) && world.isOre(at.x(), at.y(), at.z())
+                if (outside && !floors.contains(at) && !leftOre.contains(at) && world.isOre(at.x(), at.y(), at.z())
                         && world.hardness(at.x(), at.y(), at.z()).map(h -> h.drops(tier)).orElse(false)
                         && !besideLiquid(world, at)) {
                     return Optional.of(at);
@@ -167,19 +203,19 @@ public final class Miner {
         return best;
     }
 
-    /** Why cutting step {@code k} would let in water or lava, or leave a body nothing to stand on. */
-    static Optional<String> hazard(WorldView world, Staircase stairs, int k) {
-        List<BlockPos> cells = stairs.cells(k);
-        for (BlockPos cell : cells) {
+    /** Why making cut {@code k} would let in water or lava, or leave a body nothing to stand on. */
+    static Optional<String> hazard(WorldView world, Staircase.Cut cut, int k) {
+        String what = cut.tunnel() < 0 ? "step " + (k + 1) : cut.tunnel() == 0 ? "the main tunnel" : "branch " + cut.tunnel();
+        for (BlockPos cell : cut.cells()) {
             for (int[] d : new int[][]{{0, 0, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
                 if (world.isHazard(cell.x() + d[0], cell.y() + d[1], cell.z() + d[2])) {
-                    return Optional.of("water or lava beside step " + (k + 1) + " at " + cell.offset(d[0], d[1], d[2]));
+                    return Optional.of("water or lava beside " + what + " at " + cell.offset(d[0], d[1], d[2]));
                 }
             }
         }
-        BlockPos floor = stairs.step(k).offset(0, -1, 0);
+        BlockPos floor = cut.feet().offset(0, -1, 0);
         if (!world.isSolid(floor.x(), floor.y(), floor.z())) {
-            return Optional.of("no floor under step " + (k + 1) + " at " + floor + " - an open cave below");
+            return Optional.of("no floor under " + what + " at " + floor + " - an open cave below");
         }
         return Optional.empty();
     }

@@ -101,7 +101,7 @@ class MinerTest {
     void cutsEveryStepAndTheStairsAreWalkableBothWays() {
         Staircase stairs = new Staircase(HEAD, GROUND - 12);
 
-        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 3000));
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 30000));
 
         BlockPos bottom = stairs.step(stairs.steps() - 1);
         assertEquals(GROUND - 12, bottom.y());
@@ -136,12 +136,31 @@ class MinerTest {
         Inventory stonePickaxe = new Inventory();
         stonePickaxe.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(1), 1});
 
-        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 3000, stonePickaxe));
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 30000, stonePickaxe));
         assertTrue(dug.contains(beside), "the ore at " + beside + " beside " + vein + " is mined");
 
         dug.clear();
-        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 3000));
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 30000));
         assertTrue(!dug.contains(beside), "bare-handed, ore that drops nothing is left");
+    }
+
+    @Test
+    void atTheBottomTheTunnelsAreCutAndOneMeetingWaterIsGivenUpAlone() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        List<Staircase.Cut> cuts = stairs.cuts();
+        BlockPos besideBranch = cuts.stream().filter(c -> c.tunnel() == 1).toList().get(3).feet();
+        water.add(new BlockPos(besideBranch.x(), besideBranch.y() + 2, besideBranch.z())); // above the branch's fourth head cell
+
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000));
+
+        Staircase.Cut lastMain = cuts.stream().filter(c -> c.tunnel() == 0).reduce((a, b) -> b).orElseThrow();
+        assertTrue(dug.containsAll(lastMain.cells()), "the main tunnel is cut to its end");
+        assertTrue(cuts.stream().filter(c -> c.tunnel() == 2).allMatch(c -> dug.containsAll(c.cells())), "the other branch at the same root is cut");
+        assertTrue(!dug.contains(besideBranch), "the branch by the water stops short of it");
+        BlockPos bottom = stairs.step(stairs.steps() - 1);
+        assertTrue(cuts.stream().filter(c -> c.tunnel() >= 0).allMatch(c -> Math.abs(c.feet().x() - HEAD.x()) > 1 || Math.abs(c.feet().z() - HEAD.z()) > 1),
+                "no tunnel back through the shaft");
+        assertEquals(bottom.y(), lastMain.feet().y(), "level with the last step");
     }
 
     private static int pickaxe(int tier) {

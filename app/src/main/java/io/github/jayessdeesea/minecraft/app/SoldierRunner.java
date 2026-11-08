@@ -1716,7 +1716,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress cut = miner.tick(status.position(), world, stairs, free && !threatened);
                     stairsProgress.put(name, cut);
                     if (cut instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Working(int step, int steps)) {
-                        stairsCut.accumulateAndGet(step, Math::max);
+                        stairsCut.accumulateAndGet(Math.min(step, stairs.steps()), Math::max);
+                        if (step >= stairs.steps()) {
+                            stairsDone.set(true); // down to the iron: the tunnels are the mining
+                        }
                     } else if (cut instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Done) {
                         stairsDone.set(true);
                     }

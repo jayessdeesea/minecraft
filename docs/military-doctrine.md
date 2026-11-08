@@ -612,6 +612,14 @@ nothing liquid lies behind it; one the server won't break in 30 seconds is left.
 `Mining` with its step. It stops with CANTCO where going on
 would let in water or lava, or would leave a step with no floor over an open cave.
 
+At the bottom the cutter goes on into the tunnels the ore is mined from: a main tunnel 24 blocks
+straight out from the last step, away from the shaft, then branches off it both ways every 3
+blocks, each 8 long, so every block between two branches is seen from one of them. All are two
+high, at the stairs' depth, with their floors left standing, and ore under a tunnel's floor is
+left so as not to hole it. A tunnel that would let in water or lava, or open onto a cave, is
+given up alone, and the rest are cut; so are branches off a stretch of main tunnel that was given
+up. The camp's mine standard (§ 17) is met once the stairs reach the bottom.
+
 ## 17. The lodgment
 
 | Practice | Content | Source |
