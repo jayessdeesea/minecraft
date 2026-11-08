@@ -15,7 +15,7 @@ import java.util.Map;
  * marks, not StringTemplate's default braces, so the JSON and XML-tagged text in a prompt is
  * never taken for one; a section shown only sometimes is {@code «if(name)»...«endif»}. A
  * parameter the template names and the call doesn't give fails the render
- * ({@link ValidationMode#THROW}): AGENTS.md "No fallbacks".
+ * ({@link ValidationMode#THROW}): docs/conventions.md \"No fallbacks\".
  */
 public final class PromptTemplate {
 

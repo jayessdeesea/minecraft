@@ -28,7 +28,7 @@ import java.util.function.Supplier;
 /**
  * The LLM echelons' imperative shell: decides <em>when</em> the general and each squad leader
  * think, runs their model calls off every soldier-facing thread, and hands each squad's
- * {@link SquadOrder} to {@code SoldierRunner}'s squad loop. Cadence follows AGENTS.md's latency
+ * {@link SquadOrder} to {@code SoldierRunner}'s squad loop. Cadence follows docs/architecture.md's latency
  * architecture - the higher the echelon, the less often - plus events: a new objective, or a
  * <em>new</em> CANTCO from below (docs/military-doctrine.md §3), triggers a decision early, so
  * push-back is answered in seconds rather than at the next routine interval. A CANTCO that's still

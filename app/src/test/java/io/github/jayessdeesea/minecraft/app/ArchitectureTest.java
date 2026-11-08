@@ -8,7 +8,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
- * Enforces, at build time, the module tenets documented in AGENTS.md:
+ * Enforces, at build time, the module tenets documented in docs/architecture.md:
  * Netty stays inside the protocol module, and the command-ai implementation
  * package is never depended on directly by the command interfaces it
  * implements or by the bot module that consumes those interfaces.

@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The terrain half of {@link WorldModel} - a shared, reference-counted chunk cache, per
- * AGENTS.md's "Behavior modeling" section: the block data is one shared ground truth for every
+ * docs/architecture.md's \"Behavior modeling\" section: the block data is one shared ground truth for every
  * soldier, but chunk *visibility* is per-connection, so a chunk is evicted only once every
  * connection that loaded it has also unloaded it, not on the first unload. {@link
  * ConcurrentHashMap#compute} gives atomic, per-chunk-key read-modify-write for that bookkeeping

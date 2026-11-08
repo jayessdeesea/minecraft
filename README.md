@@ -56,7 +56,7 @@ tick is 50 ms:
 - Squad leaders think every few seconds.
 - The general thinks less often than that.
 
-Why: [AGENTS.md § Latency architecture](AGENTS.md#latency-architecture--why-the-hierarchy-is-stratified-by-timescale-not-just-rank).
+Why: [docs/architecture.md § Latency architecture](docs/architecture.md#latency-architecture--why-the-hierarchy-is-stratified-by-timescale-not-just-rank).
 
 **The stack:**
 - Java 25 and Maven.
@@ -65,7 +65,7 @@ Why: [AGENTS.md § Latency architecture](AGENTS.md#latency-architecture--why-the
 - No Minecraft libraries. The wire protocol, compression, chunk decoding and the connection state
   machine are all written here, pinned to one Minecraft version.
 
-Module layout and the rules that keep it legible: [AGENTS.md](AGENTS.md).
+Module layout and the rules that keep it legible: [docs/architecture.md](docs/architecture.md) and [docs/conventions.md](docs/conventions.md).
 
 ## Start here
 
@@ -77,7 +77,7 @@ Module layout and the rules that keep it legible: [AGENTS.md](AGENTS.md).
 
 ## Docs
 
-- [AGENTS.md](AGENTS.md): project conventions, architecture and the reasons for them.
+- [AGENTS.md](AGENTS.md): the rules every change needs, and where each reference lives.
 - [docs/military-doctrine.md](docs/military-doctrine.md): the doctrine the chain of command
   emulates, and its mapping onto code.
 - [docs/protocol-pipeline.md](docs/protocol-pipeline.md): how the `protocol` module's Netty pipeline

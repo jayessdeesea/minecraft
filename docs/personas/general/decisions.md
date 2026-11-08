@@ -9,9 +9,9 @@ In its user prompt (`command-ai/src/main/resources/prompts/general-user-prompt.m
 - **The mission**, and anything the operator said since.
 - **The time of day.**
 - **The supply point and stockpile**, when there is one.
-- **The foothold:** the camp's standards phase by phase - lit, walled, food, wood that grows back,
-  stone and iron, armed, armoured - each met or not and how far along, and the earliest unmet
-  phase named (`command.Foothold`; docs/military-doctrine.md § 17).
+- **The foothold:** the camp's standards phase by phase, each met or not and how far along, and the
+  earliest unmet phase named (`command.Foothold`;
+  [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)).
 - **Each squad's status:** its report, soldiers, resources seen near it, its current objective,
   whether it holds a patrol base and how many blocks that base has left.
 

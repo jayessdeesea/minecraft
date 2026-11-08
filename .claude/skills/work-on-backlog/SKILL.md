@@ -7,12 +7,12 @@ description: Work through backlog/ item by item - drop what's obsolete or done, 
 
 `docs/` describes the code as it is, with links to other references. `backlog/` holds ideas that
 may or may not be built - and that other ideas may make obsolete. The rules for both are in
-AGENTS.md § Docs; this is the loop over them.
+docs/conventions.md § Docs; this is the loop over them.
 
 For each file in `backlog/` (not `README.md`), highest priority first (`priority:` in its front
 matter, P1 before P3; an item whose `depends-on` hasn't landed waits for its dependency):
 
-1. **Is it still relevant?** Re-read it against the current code and `docs/` (AGENTS.md § Docs,
+1. **Is it still relevant?** Re-read it against the current code and `docs/` (docs/conventions.md § Docs,
    "Before starting a backlog item, sanity-check it"):
    - Already built? Check the code, not just the docs.
    - Made unnecessary, or overtaken by another idea?

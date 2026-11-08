@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * {@link SpringAiSquadLeader} per AGENTS.md's "Behavior modeling" section: the pure prompt and
+ * {@link SpringAiSquadLeader} per docs/architecture.md's \"Behavior modeling\" section: the pure prompt and
  * validation steps tested directly, and the whole structured-output round trip exercised against
  * a fake model that answers canned JSON - no live LLM.
  */

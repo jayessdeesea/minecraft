@@ -6,7 +6,7 @@ package io.github.jayessdeesea.minecraft.protocol;
  * (mirrors {@link PlayState}/{@link ChunkUpdate}, not the internal {@code PlayerPositionPacket}).
  *
  * <p>Deliberately its own tiny type here rather than {@code command.Position} - {@code protocol}
- * has no dependency on {@code command} (see AGENTS.md's module layout: it's the other way around),
+ * has no dependency on {@code command} (see docs/architecture.md's module layout: it's the other way around),
  * so it can't reuse that type any more than {@code command.Position}'s own javadoc says it could
  * reuse one from here.
  */

@@ -37,7 +37,7 @@ remembers it; it's written down, and the commander reads it before deciding.
   entries per squad, not all of them.
 - **Kept small:** the prompt shows only the cells near each squad's objective and near the camp,
   and the nearest of each kind of station. A map dumped whole is a grid to decode, and the models
-  don't read grids (AGENTS.md, behaviour modelling).
+  don't read grids (docs/architecture.md, behaviour modelling).
 - **Persisted** under `minecraft.state-dir`, like the wall layout (`WallStore`), so a restart
   doesn't forget it.
 

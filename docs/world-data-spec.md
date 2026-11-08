@@ -7,7 +7,7 @@ what a Minecraft server sends about the world — chunk data, block states, and 
 
 It deliberately does **not** cover world generation, world storage/serialization, redstone or
 game-rule/dimension management, or light *propagation*. Those are server-authoritative concerns:
-we're building a client that connects to a self-hosted vanilla server (see AGENTS.md), not a
+we're building a client that connects to a self-hosted vanilla server (see [stack.md](stack.md#target-environment)), not a
 server. The vanilla server owns the world; our soldiers just need to understand what it tells
 them about it.
 

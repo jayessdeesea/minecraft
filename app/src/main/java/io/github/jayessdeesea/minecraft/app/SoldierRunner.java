@@ -79,7 +79,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>Who connects, and in which squad, is the {@link Roster}. Each squad has its own formation,
  * link-up and pace control; the world model is shared by all of them.
  *
- * <p>All soldiers share one {@link ChunkCache} - AGENTS.md's "Behavior modeling" section built its
+ * <p>All soldiers share one {@link ChunkCache} - docs/architecture.md's \"Behavior modeling\" section built its
  * reference counting specifically for this: the block data is one shared ground truth regardless
  * of which soldier's connection loaded it, and a chunk both soldiers can see stays cached until
  * *both* have unloaded it. Each soldier still gets its own connection, tick-loop thread, and
@@ -2032,7 +2032,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      * from scratch via {@link #connect}, which re-seeds a brand new {@link DeterministicSoldier}
      * from the new session's own spawn position. Deliberately a single immediate attempt, not a
      * retry loop with backoff - if the server is actually down, {@code connect}'s own {@code
-     * exceptionally} already logs that loudly and stops, per AGENTS.md's revisit-on-real-pressure
+     * exceptionally} already logs that loudly and stops, per docs/conventions.md's revisit-on-real-pressure
      * tenet this can grow a backoff/retry-limit policy if a real deployment ever needs one.
      */
     private void onDisconnected(SoldierDefinition definition,

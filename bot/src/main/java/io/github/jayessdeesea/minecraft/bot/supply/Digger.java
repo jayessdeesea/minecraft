@@ -21,7 +21,7 @@ import java.util.Set;
  * repeat; neither owns its timing. Ticked from the owning routine, which is synchronized - this
  * holds no lock of its own.
  *
- * <p>An expect script (AGENTS.md § Behavior modeling), one per block: the tool is in hand when the
+ * <p>An expect script (docs/architecture.md § Behavior modeling), one per block: the tool is in hand when the
  * server's resent inventory says so, the block is broken when the server's block update says so,
  * and the drop is in when the inventory's count of it rises. Soldiers working the same ground share
  * a set of {@code claims} - blocks and stand cells in use - so each picks a different one; a dig

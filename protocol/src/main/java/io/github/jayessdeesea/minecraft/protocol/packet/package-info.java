@@ -3,6 +3,6 @@
  * Status, Login, Configuration, Play). These read/write directly against
  * Netty's {@code ByteBuf} - we deliberately did not add a parallel
  * Netty-free framing abstraction on top of Netty's own pipeline decoupling;
- * see AGENTS.md.
+ * see docs/architecture.md.
  */
 package io.github.jayessdeesea.minecraft.protocol.packet;

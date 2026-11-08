@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The {@code bot} module's implementation of {@link Soldier}: a deterministic, non-LLM per-tick
- * decision core (AGENTS.md's "Behavior modeling" section). {@code app}'s {@code SoldierRunner} is
+ * decision core (docs/architecture.md's \"Behavior modeling\" section). {@code app}'s {@code SoldierRunner} is
  * the imperative shell: it calls {@link #tick} at 20Hz and reports the resulting position to the
  * server; tests call it directly with a fake {@code WorldView}.
  *

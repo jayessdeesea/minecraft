@@ -32,7 +32,7 @@ import java.util.function.BooleanSupplier;
  * </ol>
  * The hoe, and bread from the wheat, are the armourer's to make; this tends the ground.
  *
- * <p>Each job is a short expect script (AGENTS.md § Behavior modeling): the soldier stands on the
+ * <p>Each job is a short expect script (docs/architecture.md § Behavior modeling): the soldier stands on the
  * cell, the item is in hand when the server's resent inventory says so, and the job is done when
  * the server's block update says so - the ground is farmland, the seed has sprouted. Soldiers
  * working one farm share {@code claims}, so each takes a different cell. A job whose answer

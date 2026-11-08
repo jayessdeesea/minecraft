@@ -105,7 +105,7 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
     private final PlaySessionListeners listeners;
 
     // Both written and read only from this channel's own event loop thread (Netty's per-channel
-    // single-threading guarantee - see AGENTS.md's "Behavior modeling" section) - no volatile needed.
+    // single-threading guarantee - see docs/architecture.md's \"Behavior modeling\" section) - no volatile needed.
     private boolean playReached = false;
     private Throwable failureCause = null;
     private boolean loadedSent = false;
@@ -247,14 +247,14 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
         }
         // Everything else recognized-but-unhandled or unrecognized is already logged/cataloged by
         // PacketLoggingHandler/SessionStateManager earlier in the pipeline - nothing further to do
-        // here until a real reason to react to it exists (AGENTS.md's revisit-on-real-pressure tenet).
+        // here until a real reason to react to it exists (docs/conventions.md's revisit-on-real-pressure tenet).
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         // Always logged, not just handed to the future - once result has already completed with a
         // PlaySession, nothing may be listening to a second completion attempt, so the failure
-        // must be visible some other way too (AGENTS.md's no-fallbacks tenet: loud, not silent).
+        // must be visible some other way too (docs/conventions.md's no-fallbacks tenet: loud, not silent).
         // The actual reconnect signal for a caller past that point is channelInactive below, not
         // this method - result.completeExceptionally is a no-op once already completed.
         LOG.error("Connection failed, disconnecting: {}", cause.getMessage(), cause);

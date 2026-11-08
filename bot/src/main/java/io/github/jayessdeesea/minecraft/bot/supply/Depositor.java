@@ -29,7 +29,7 @@ import java.util.function.Consumer;
  * without anyone counting it by hand. Driven like {@link SupplyRun}, by the soldier's tick and its
  * connection's container updates; synchronized for the same reason.
  *
- * <p>An expect script (AGENTS.md § Behavior modeling): the chest is open when its contents arrive,
+ * <p>An expect script (docs/architecture.md § Behavior modeling): the chest is open when its contents arrive,
  * and the load is in when the inventory, as the chest's window shows it, holds none of it. A chest
  * too full to take it all fails the run loudly. A trip that stops being wanted on the way - before
  * the chest is open - is interrupted.

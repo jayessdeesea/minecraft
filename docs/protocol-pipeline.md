@@ -3,7 +3,7 @@
 `protocol` talks to a Minecraft server through a Netty `ChannelPipeline` built from eleven small,
 single-purpose handlers instead of a couple of do-everything ones. This document walks through
 what each stage does and why it's shaped this way. For the terse, authoritative version of these
-decisions, see [AGENTS.md](../AGENTS.md#protocol-pipeline-architecture); this doc is the tour.
+decisions, see [architecture.md](architecture.md#protocol-pipeline-architecture); this doc is the tour.
 
 ## The eleven stages
 
@@ -124,7 +124,7 @@ indefinitely (replying to Keep Alive) instead of closing on a quiet-gap/fixed-wi
   - *Send* (control handler) — `LoginSuccessPacket` needs both a mutation *and* a reply. Only this
     half ever calls `ctx.writeAndFlush`.
 - **The application plane is `bot`, entirely outside this pipeline** - driven by a deterministic
-  per-tick loop with no LLM in it (see AGENTS.md's latency architecture). One acknowledged
+  per-tick loop with no LLM in it (see docs/architecture.md's latency architecture). One acknowledged
   violation to watch: `ClientInformationPacket.defaults()` is hardcoded in the control handler
   today - application content sitting in control-plane code, tolerated only because nothing yet
   needs to vary it.
@@ -232,7 +232,7 @@ of the same guard: `Nbt` stops at vanilla's 512 levels.
 
 An oversized frame, a compression bomb, or NBT nested too deep terminates the connection outright rather than skip-and-continue — see
 [protocol-spec.md § 4.3/§ 8](protocol-spec.md) for the full reasoning, and
-[AGENTS.md's no-fallbacks tenet](../AGENTS.md) for why that's a deliberate, general policy and not
+[conventions.md's no-fallbacks tenet](conventions.md#no-fallbacks--fail-loud-not-gracefully-wrong) for why that's a deliberate, general policy and not
 specific to this pipeline.
 
 **The idle watchdog (`IdleStateHandler` + `ConnectionWatchdogHandler`) is the same guard, keyed on

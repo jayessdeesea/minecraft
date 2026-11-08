@@ -19,7 +19,7 @@ import java.util.Set;
 /**
  * One soldier lighting the ground its squad secures ({@link Lighting}): it walks to the nearest
  * cell of the plan no squadmate has taken, and puts a torch down where it stands. An expect script
- * (AGENTS.md § Behavior modeling): the job is done when the server's block update shows the torch.
+ * (docs/architecture.md § Behavior modeling): the job is done when the server's block update shows the torch.
  * Soldiers lighting one area share {@code claims}, so each takes a different cell. Torches are the
  * torchmaker's to make; with none carried this has nothing to do.
  */

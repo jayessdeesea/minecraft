@@ -21,7 +21,7 @@ import java.util.Optional;
  * the server times the meal - and takes its weapon back. The food goes into a hotbar slot holding
  * no weapon or tool, as {@link Builder}'s blocks do, so the soldier stays armed.
  *
- * <p>An expect script (AGENTS.md § Behavior modeling): the food is in hand when the server's
+ * <p>An expect script (docs/architecture.md § Behavior modeling): the food is in hand when the server's
  * resent inventory says so, and eaten when its food level rises. Driven by the soldier's tick.
  */
 public final class Rations {

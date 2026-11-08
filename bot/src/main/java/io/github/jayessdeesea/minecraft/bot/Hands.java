@@ -12,7 +12,7 @@ import java.util.Optional;
  * start on the same tick the one ranked first does - it's under way by the time the next asks.
  *
  * <p>Nothing here preempts. A routine that should give way mid-run - under threat, say - says so in
- * its own guard (AGENTS.md § Behavior modeling), which knows when stopping is safe: a handover
+ * its own guard (docs/architecture.md § Behavior modeling), which knows when stopping is safe: a handover
  * stops before its first throw, never after.
  */
 public final class Hands {

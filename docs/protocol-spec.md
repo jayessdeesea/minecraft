@@ -4,15 +4,15 @@
 
 The Minecraft Java Edition protocol is TCP-based, uses a binary packet format, and supports
 optional compression and encryption. This document specifies the wire format and connection
-state machine we implement in the `protocol` module — see [AGENTS.md](../AGENTS.md) for why it's
+state machine we implement in the `protocol` module — see [stack.md](stack.md) for why it's
 hand-rolled on Netty rather than using a third-party protocol library.
 
 This is a wire-format and state-machine spec, not a Java design doc: it deliberately does not
 prescribe interface names or class shapes for our implementation. Those are ordinary code design
-decisions to make when writing `protocol`, governed by the module boundaries in AGENTS.md, not
+decisions to make when writing `protocol`, governed by the module boundaries in [architecture.md](architecture.md#maven-module-layout), not
 something to pre-bake into a spec document.
 
-**Version pin:** see [AGENTS.md § Target environment](../AGENTS.md#target-environment) for the
+**Version pin:** see [stack.md § Target environment](stack.md#target-environment) for the
 current protocol version. Not duplicated here to avoid two documents drifting on a number that
 changes over time.
 
@@ -193,7 +193,7 @@ Authenticates the player and (optionally) sets up encryption before moving to Co
 | 6 | C→S | Login Acknowledged | (empty) — switches the connection to Configuration |
 
 Encryption Request/Response happens only in online mode; our dev setup targets an offline-mode
-server (see AGENTS.md), so this exchange is skipped entirely there but must still be implemented
+server (see [stack.md](stack.md#target-environment)), so this exchange is skipped entirely there but must still be implemented
 correctly since it's part of the wire protocol.
 
 ### 3.4 Configuration
@@ -365,7 +365,7 @@ even the ones that end up with `Data Length = 0`.
   unverified, silently-degraded state, which is exactly the kind of thing to avoid; (2) if the cap
   turns out to be wrong (a legitimately large packet, not an attack), the fix is to raise the cap
   deliberately once that's understood, not to add a path that quietly absorbs whatever exceeds it.
-  See AGENTS.md's no-fallbacks tenet.
+  See docs/conventions.md's no-fallbacks tenet.
 - An **oversized raw frame length** (before compression or packet type is even known) has no safe
   skip option at all, not just an undesirable one: our length-prefixed framing has no
   resynchronization mechanism (unlike, say, newline-delimited text, where you can scan forward for
@@ -451,5 +451,5 @@ packet structure — only the bytes after it are.
 ## 9. Version Compatibility
 
 Protocol version is negotiated once, in the Handshake packet, and is not renegotiated mid-connection.
-We target a single pinned version — see AGENTS.md — and do not implement multi-version
+We target a single pinned version — see [stack.md](stack.md#target-environment) — and do not implement multi-version
 compatibility (no per-version packet ID tables, no negotiation fallback).

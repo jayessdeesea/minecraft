@@ -9,7 +9,7 @@ matters more than keeping them complete: everything else has a home of its own a
 |---|---|---|
 | `README.md` | Anyone landing on the repo: a visitor, a new contributor, someone weighing the results | What is this, why does it exist, how is it built? |
 | `DEVELOPMENT.md` | Someone with a fresh clone who wants it running | What do I type, in what order, and how do I know it worked? |
-| `AGENTS.md` | Anyone (human or agent) about to change the code | What are the rules, and why? |
+| `AGENTS.md` | Anyone (human or agent) about to change the code | Which rules always apply, and where's the reference for this change? |
 | `docs/` | Someone who needs the detail of one subsystem | How does this part work, exactly? |
 | `backlog/` | Someone choosing what to work on | What's planned or open? |
 
@@ -34,14 +34,14 @@ Three sections, in this order, each a few short paragraphs at most:
 3. **How it's built.** Military command structure and communication: the chain of command, orders,
    acknowledgements and reports, the timescale split. Then the stack, which is Java 25, Maven, a
    protocol written from scratch, and no Minecraft libraries. Name each idea once and link to its home
-   (`docs/military-doctrine.md`, `AGENTS.md`). Don't re-explain it.
+   (`docs/military-doctrine.md`, `docs/architecture.md`). Don't re-explain it.
 
 Then a short **Start here** pointing to `DEVELOPMENT.md`, a **Docs** index (one line per doc), and
 the one build command.
 
 **Not in the README:**
 - Setup steps (those go in `DEVELOPMENT.md`).
-- Rules and rationale (`AGENTS.md`).
+- Rules and rationale (`docs/conventions.md`, `docs/architecture.md`).
 - Plans or "coming soon" (`backlog/`).
 - A changelog (`git log`).
 - Numbers that drift: test counts, per-call timings, entity counts.
@@ -67,14 +67,14 @@ The usual homes:
 | Fact | Home |
 |---|---|
 | Which models run which echelon by default, and the keys that change it | `application.yml` comments; `DEVELOPMENT.md` § Choosing the model says how |
-| Why the hierarchy is split by timescale | `AGENTS.md` § Latency architecture |
+| Why the hierarchy is split by timescale | `docs/architecture.md` § Latency architecture |
 | Doctrine and how it maps onto code | `docs/military-doctrine.md` |
-| Protocol pin and module layout | `AGENTS.md` |
+| Protocol pin and module layout | `docs/stack.md`, `docs/architecture.md` |
 | Run, build and test commands | `DEVELOPMENT.md` (the README keeps only `mvn verify`) |
 
 ## When to update
 
-Both docs are checked in the pre-check-in doc pass (AGENTS.md § Docs). They need a change when:
+Both docs are checked in the pre-check-in doc pass (docs/conventions.md § Docs). They need a change when:
 
 - an echelon's model, provider or role changes, which touches the README's "What it is";
 - the project's question changes, or a finding lands in `docs/` and the README should link it;

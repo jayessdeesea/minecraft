@@ -1,11 +1,11 @@
 # Development
 
 How to get from a fresh clone to a running squad. What the project is and why it's shaped this
-way: [AGENTS.md](AGENTS.md). What's planned: [backlog/](backlog/README.md). Past changes: `git log`.
+way: [README.md](README.md) and [docs/architecture.md](docs/architecture.md). What's planned: [backlog/](backlog/README.md). Past changes: `git log`.
 
 ## Prerequisites
 
-- Java 25 (Amazon Corretto or another distribution) - matches [AGENTS.md](AGENTS.md#stack)
+- Java 25 (Amazon Corretto or another distribution) - matches [docs/stack.md](docs/stack.md#stack)
 - Maven
 - Docker Desktop (WSL2 backend) - runs the dev server and the local model. For GPU inference, an
   NVIDIA driver recent enough for Docker's GPU passthrough.
@@ -22,8 +22,8 @@ docker compose exec ollama ollama pull qwen3:14b       # once - ~9 GB into the o
 ```
 
 - **`minecraft`** - `docker/minecraft-server/Dockerfile` downloads the pinned version's server jar
-  from Mojang's own manifest URL and verifies its SHA-1. The pin is set in [AGENTS.md § Target
-  environment](AGENTS.md#target-environment); bump the Dockerfile's `ARG`s deliberately along with
+  from Mojang's own manifest URL and verifies its SHA-1. The pin is set in [docs/stack.md § Target
+  environment](docs/stack.md#target-environment); bump the Dockerfile's `ARG`s deliberately along with
   it. The first start accepts the EULA and writes `online-mode=false`. The world lives in the
   `minecraft-data` volume. Listens on `localhost:25565`.
 - **`ollama`** - pinned `ollama/ollama` image, models in the `ollama-models` volume, GPU passed

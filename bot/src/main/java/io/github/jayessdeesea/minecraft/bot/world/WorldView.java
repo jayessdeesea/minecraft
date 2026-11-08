@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * The narrow, read-only slice of world state a {@code DeterministicSoldier}'s tick depends on -
- * not the shared chunk cache or entity tracker themselves. See AGENTS.md's "Behavior modeling"
+ * not the shared chunk cache or entity tracker themselves. See docs/architecture.md's \"Behavior modeling\"
  * section on why: passing this in as an argument, rather than the soldier holding a reference to
  * the shared structures, is what keeps the per-tick decision testable with a small fake.
  *

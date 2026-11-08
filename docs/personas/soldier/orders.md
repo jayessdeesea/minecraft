@@ -7,9 +7,8 @@ A soldier takes exactly one order at a time, and keeps it until the next replace
   standing spot within the tolerances of the point and stay there.
   - `horizontalTolerance` and `verticalTolerance` are its freedom: under half a block means a
     spot, not just a cell, and it steps onto the spot.
-  - `risk` (`LOW`, `MEDIUM`, `HIGH`) is how much health the order may cost in falls: none at LOW;
-    a fall that leaves 10 at MEDIUM, 4 at HIGH. A fall is planned only when no route without one
-    exists (docs/military-doctrine.md § 7).
+  - `risk` (`LOW`, `MEDIUM`, `HIGH`) is how much health the order may cost in falls
+    ([military-doctrine.md § 7](../../military-doctrine.md#7-risk-acceptance)).
   - `urgent` lets it sprint whatever it carries.
 
 Its squad leader sends an order per soldier each squad cycle: the formation slot by default, or

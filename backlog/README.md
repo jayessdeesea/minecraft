@@ -2,7 +2,7 @@
 
 What will or might happen: one Markdown file per item. `docs/` describes only what is built,
 so anything aspirational lives here instead. The rules - including the sanity check before
-starting an item - are in AGENTS.md § Docs.
+starting an item - are in docs/conventions.md § Docs.
 
 ## Item format
 

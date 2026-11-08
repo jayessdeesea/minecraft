@@ -19,7 +19,7 @@ import java.util.Optional;
  * Driven by the soldier's tick ({@link #tick}) and by its connection's container updates
  * ({@link #onContainer}); synchronized because those are two threads.
  *
- * <p>An expect script (AGENTS.md § Behavior modeling): the chest is open when its contents arrive,
+ * <p>An expect script (docs/architecture.md § Behavior modeling): the chest is open when its contents arrive,
  * the kit is drawn when the slots taken show empty, and it's on when the server's resent inventory
  * leaves {@link Quartermaster#equip} nothing to do. The server applies each shift-click itself, so
  * the clicks go out back to back and one answer confirms them all.

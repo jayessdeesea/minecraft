@@ -153,7 +153,7 @@ public final class JoinClientHandler extends SimpleChannelInboundHandler<Packet>
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         // Always logged, not just handed to the future - a persistent connection (unlike this
         // diagnostic tool) may have nothing reading the future's failure directly, and per
-        // AGENTS.md's no-fallbacks tenet, a guard violation disconnecting must be loud, not
+        // docs/conventions.md's no-fallbacks tenet, a guard violation disconnecting must be loud, not
         // a silently-closed connection with the reason visible only to whoever happens to be
         // watching the CompletableFuture.
         LOG.error("Connection failed, disconnecting: {}", cause.getMessage(), cause);

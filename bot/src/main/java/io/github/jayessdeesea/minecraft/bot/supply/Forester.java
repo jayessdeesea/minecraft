@@ -29,7 +29,7 @@ import java.util.Set;
  * </ol>
  * The trees that grow are logs like any others: a squad sent for WOOD there chops them.
  *
- * <p>Planting is an expect script (AGENTS.md § Behavior modeling): stand in the cell, the sapling in
+ * <p>Planting is an expect script (docs/architecture.md § Behavior modeling): stand in the cell, the sapling in
  * hand when the server's resent inventory says so, use it on the ground's top, done when the
  * server's block update shows the sapling. Soldiers planting one farm share {@code claims}.
  */

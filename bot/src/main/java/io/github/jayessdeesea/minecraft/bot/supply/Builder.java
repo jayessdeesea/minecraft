@@ -27,7 +27,7 @@ import java.util.Set;
  * is waited on, not tried: the server won't place a block into a body, and the body moves on. What to build is decided elsewhere; this only lays it. Driven by the
  * soldier's tick, like {@link Handover}.
  *
- * <p>A loop of short expect scripts, one per cell (AGENTS.md § Behavior modeling): the material is
+ * <p>A loop of short expect scripts, one per cell (docs/architecture.md § Behavior modeling): the material is
  * in hand when the server's resent inventory says so, and a block is in when the server's block
  * update says so. A placement with no block update by {@link #PLACE_TICKS} is a try that didn't
  * land; a material swap that's never answered stops the building, loudly.

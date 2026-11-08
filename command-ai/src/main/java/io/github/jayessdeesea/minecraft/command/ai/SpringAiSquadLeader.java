@@ -24,7 +24,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * A {@link SquadLeader} whose decisions come from an LLM, per AGENTS.md's "Behavior modeling"
+ * A {@link SquadLeader} whose decisions come from an LLM, per docs/architecture.md's \"Behavior modeling\"
  * section: {@link #decide} is {@link #buildContext} (pure) -&gt; {@link #callModel} (impure - the
  * one call into Spring AI) -&gt; {@link #toSquadOrder} (pure validation), so only {@code callModel}
  * needs faking in a test.
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  * just the situation, its template filled in with {@link #buildContext}'s parameters. The reply is structured output
  * ({@link SquadOrderReply}): provider-native schema mode where the model supports it, schema
  * validation with retries either way. A reply that still fails {@link #toSquadOrder}'s checks
- * throws - AGENTS.md's no-fallbacks tenet - and the caller keeps the squad on its last order.
+ * throws - docs/conventions.md's no-fallbacks tenet - and the caller keeps the squad on its last order.
  *
  * <p>Not a {@code @Component}: one instance per squad, constructed by the composition root.
  */

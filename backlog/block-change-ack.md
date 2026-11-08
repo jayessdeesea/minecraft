@@ -6,7 +6,7 @@ priority: P3
 # Confirm placements and digs by the server's acknowledgement
 
 ## Why
-Every routine is an expect script (AGENTS.md § Behavior modeling), and each waits on the server's
+Every routine is an expect script (docs/architecture.md § Behavior modeling), and each waits on the server's
 answer. One answer we don't decode yet: the server acknowledges every `useItemOn` and dig with
 Acknowledge Block Change, carrying the action's sequence number. `Builder` counts a placement with no
 block update within `PLACE_TICKS` as a try that didn't land, and `Digger`/`Breacher` count a break the

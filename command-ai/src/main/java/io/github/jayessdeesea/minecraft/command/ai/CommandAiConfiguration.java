@@ -21,7 +21,7 @@ import java.util.TreeSet;
  * {@code <provider>ChatModel} bean; each echelon picks one by name.
  *
  * <p>Two {@code ChatClient} beans of the same type, so every injection point names the one it
- * wants with {@code @Qualifier} - never {@code @Primary} (AGENTS.md "No fallbacks").
+ * wants with {@code @Qualifier} - never {@code @Primary} (docs/conventions.md \"No fallbacks\").
  */
 @Configuration
 public class CommandAiConfiguration {

@@ -24,7 +24,7 @@ import java.util.Optional;
  * takes 1.5 seconds; bare-handed, 10. Soil takes about one second by hand. Each is the server's break
  * time with a margin, since the server times every dig.
  *
- * <p>An expect script (AGENTS.md § Behavior modeling): the pickaxe is in hand when the server's
+ * <p>An expect script (docs/architecture.md § Behavior modeling): the pickaxe is in hand when the server's
  * resent inventory says so, and a block is broken when the server's block update says so. A block
  * the server won't break fails the run loudly; it's tried again after a pause. Driven by the
  * soldier's tick.

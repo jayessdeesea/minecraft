@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
  * it in the pipeline (docs/protocol-pipeline.md): if no inbound frame has arrived within the
  * configured reader-idle window, the connection is presumed dead - a socket that's still
  * technically open but has stopped actually talking to us (server hung, network partition) - and
- * closed outright. This is the same "terminate, don't degrade" policy AGENTS.md's no-fallbacks
+ * closed outright. This is the same "terminate, don't degrade" policy docs/conventions.md's no-fallbacks
  * tenet already applies to the module's size-based resource-exhaustion guards (oversized frame,
  * compression bomb): a silently-stalled connection is a violated invariant (vanilla sends Keep
  * Alive every ~15s - see {@code KeepAliveRequestPacket}), not something safe to keep waiting on

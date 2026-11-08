@@ -13,11 +13,11 @@ then turn the decision into each soldier's order ([drills.md](drills.md)).
 
 ## What it decides: `command.SquadOrder`
 - **Where:** the objective point the squad moves on.
-- **How:** formation (`WEDGE`, `FILE`, `LINE`) and interval (`TIGHT` 3, `NORMAL` 6, `EXTENDED` 10
-  blocks).
+- **How:** formation (`WEDGE`, `FILE`, `LINE`) and interval (`TIGHT`, `NORMAL`, `EXTENDED`;
+  [military-doctrine.md § 2](../../military-doctrine.md#2-formations-and-intervals)).
 - **Vertical tolerance:** how far from the point's height the squad may end up.
-- **Risk:** the squad's, and per soldier (`soldierRisk`), so one stuck soldier is freed at MEDIUM
-  without the rest taking falls.
+- **Risk:** the squad's, and per soldier (`soldierRisk`)
+  ([military-doctrine.md § 7](../../military-doctrine.md#7-risk-acceptance)).
 - **Rearm:** whether soldiers may stop to make their kit.
 - **Intent**, in words, logged with the order.
 

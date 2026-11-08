@@ -17,7 +17,7 @@ import io.netty.buffer.ByteBuf;
  * than acceptance, so it was left unconfirmed pending a real client capture.
  *
  * <p>Cross-checked afterward against minecraft.wiki's Java Edition protocol page for protocol 777
- * (our pinned version, AGENTS.md § Target environment): it lists serverbound Keep Alive at 0x1C -
+ * (our pinned version, docs/stack.md § Target environment): it lists serverbound Keep Alive at 0x1C -
  * the same candidate flagged ambiguous, not one of the two cleanly ruled out. That reframes the
  * earlier result: a wrong packet ID produces a decoder exception (as it did for the other two
  * candidates), so 0x1C never being rejected as unrecognized is consistent with it being correct -

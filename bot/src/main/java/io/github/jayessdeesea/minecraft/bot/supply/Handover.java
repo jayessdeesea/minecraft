@@ -22,7 +22,7 @@ import java.util.Optional;
  * giver, picks them up once the server lets anyone (two seconds after the throw). Who gives what to
  * whom is {@code command.CrossLevel}'s; this only carries it out.
  *
- * <p>An expect script (AGENTS.md § Behavior modeling): a throw is confirmed by the server's resent
+ * <p>An expect script (docs/architecture.md § Behavior modeling): a throw is confirmed by the server's resent
  * inventory showing the logs gone, so the next slot is thrown from counts the server has answered
  * for. A delivery withdrawn before the first throw (the squad in contact, the receiver no longer
  * short) interrupts it; once logs are on the ground the giver finishes stepping back. Driven by the

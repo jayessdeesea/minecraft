@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Exercises {@link DeterministicSoldier} as a black box: construct it, feed it an order and a
  * fake {@code WorldView} ({@code terrain}/{@code withHostileAt} below), tick it, observe {@code
  * status()}. No Netty, no live server, no LLM -
- * see AGENTS.md's "Behavior modeling" section on why this decision core is built to allow exactly
+ * see docs/architecture.md's \"Behavior modeling\" section on why this decision core is built to allow exactly
  * this.
  */
 class DeterministicSoldierTest {

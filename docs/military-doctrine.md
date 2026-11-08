@@ -5,7 +5,8 @@ doctrine for *how* echelons talk to each other, not just what they're called. Th
 where a doctrine refined over a century for humans under stress - limited bandwidth, partial
 information, subordinates who must act without asking - overlaps with what works for LLM agents
 at different timescales. When code implements one of these ideas, it cites the section here, and
-this doc cites the manual.
+this doc cites the manual. What each echelon is told, reports and can do - its contract - is in
+[personas/](personas/README.md); this doc holds the doctrine and how it's carried out.
 
 **Source confidence.** Formation text below is quoted from the 2024 ATP 3-21.8 as reproduced by
 InfantryDrills.com, with paragraph numbers. Proword and report definitions come from secondary
@@ -193,12 +194,8 @@ risk and its own condition into a fall allowance:
 - **The price:** each point of damage costs extra route length, halved for a well-fed soldier
   because it regenerates.
 
-So a safe route always wins when one exists, and a fall is planned only when there's none: the
-soldier plans first on foot, then with steps built from the cobblestone and dirt it carries
-(`Pathfinder.stepBuild`: down off a sheer drop, or up to ground above with no wall to pillar
-beside - one block a step against the ground beside it, two in open air), and only then with the
-allowance. Built steps are planned only when they reach the objective: offered on every far-off
-route, they spend the search on open air. A soldier that reports CANTCO prices the riskier
+So a safe route always wins when one exists, and a fall is planned only when there's none, on
+foot or by the steps it can build (docs/personas/soldier/capabilities.md). A soldier that reports CANTCO prices the riskier
 order that would free it, for example "a route with falls costing 8 of my 20 health exists (MEDIUM
 risk)". The squad leader then decides whether the mission is worth that. It can set risk for one
 soldier (`SquadOrder.soldierRisk`), so freeing a stuck soldier at MEDIUM doesn't expose the rest of
@@ -514,12 +511,9 @@ squad holds its sealed base, its squad leader isn't asked to decide anything and
 InPosition. From inside a sealed hut no ground is reachable, which would otherwise read upward as
 CANTCO.
 
-Where the operator's standing rule is set (`minecraft.general.shelter-at-night`, for a garrison),
-no squad spends the night in the open: from 90 seconds before dark - a hut takes minutes, more
-with dirt to dig - an order that isn't a patrol base or a mine is replaced. The first squad in the
-roster holds the camp: it gets the patrol base it was already ordered to build, or, with none, one
-where its point man stands. Every other squad works the night shift down the camp's mine (§ 16).
-The log says what the general had ordered (`ChainOfCommand.sheltered`).
+Where the operator sets it, no squad spends the night in the open: one holds the camp in its
+patrol base and the rest work the night shift down the camp's mine. The rule and its timing are in
+docs/personas/general/operator-rules.md.
 
 The base is lit as well as sealed. Light is checked alongside breaches (`PatrolBase.Plan.unlit`):
 a torch gives its cell block light 14, which falls by one a block through open cells. A floor cell
@@ -640,8 +634,7 @@ the next. By day the rest hold the top, clear of the shaft. By night they follow
 blocks: the top is open ground in the dark, and on the stairs no monster spawns within 24 blocks
 of a player. Until one of them has a pickaxe, every one makes one.
 
-The camp's mine is the night shift's work (§ 14): its head 4 blocks east and 4 north of the camp's
-centre, inside the wall, cut down to the iron at y=16 (`ChainOfCommand.nightShift`). Once the
+The camp's mine is the night shift's work (docs/personas/general/operator-rules.md). Once the
 stairs reach the iron, their tunnels are the mining. The stairs' state is the world's, so a run stopped by a fight or a restart picks up
 where they end. A dig waits out the block's own break time: its hardness, and the pickaxe in hand
 against the least tier that gets its drop. Both come from the server jar (`bot.world.Hardness`;
