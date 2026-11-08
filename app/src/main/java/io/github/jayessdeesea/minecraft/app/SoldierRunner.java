@@ -432,6 +432,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, io.github.jayessdeesea.minecraft.bot.farm.TreeFarm> planting = new ConcurrentHashMap<>();
     /** Each connected soldier's staircase cutting, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Miner> miners = new ConcurrentHashMap<>();
+    /** Soldiers stood still by day: an alarm each spell. */
+    private final IdleWatch idleWatch = new IdleWatch();
     /** Each soldier's last seconds, read out when it dies. */
     private final Map<String, FlightRecorder> recorders = new ConcurrentHashMap<>();
     /** Deaths since the app started, by the server's death message key: what kills soldiers most. */
@@ -1733,6 +1735,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             Optional<Hands.Routine> hands = Hands.tick(turns);
             FlightRecorder recorder = recorders.computeIfAbsent(name, n -> new FlightRecorder());
             if (recorder.due()) {
+                boolean day = chainOfCommand.time().map(t -> !t.dark()).orElse(false);
+                idleWatch.update(name, status.position(), System.currentTimeMillis(), day, () -> "report " + status.report()
+                        + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free")
+                        + ", squad's task " + chainOfCommand.objective(definition.squad())
+                        .map(o -> OrderTrace.taskName(o.task()) + " at " + o.location()).orElse("none"))
+                        .ifPresent(line -> LOG.warn("[Idle] {}", line));
                 Optional<String> nearest = world.nearbyHostiles(status.position(), RECORDED_HOSTILE_RADIUS).stream()
                         .min(java.util.Comparator.comparingDouble(h -> distance(h.position(), status.position())))
                         .map(h -> String.format(java.util.Locale.ROOT, "%s %.1f away",

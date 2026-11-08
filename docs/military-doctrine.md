@@ -80,6 +80,12 @@ doing it: each operator order is traced (`app.OrderTrace`) from the general's de
 each squad leader's FRAGO to a SITREP showing the squad's soldiers at the task - Fortifying for
 FORTIFY, Securing for SECURE, and so on - each hop timed, and each one late raising an alarm.
 
+By day a soldier is always meant to be at something, so one that hasn't moved 2 blocks in two
+minutes of daylight raises an alarm in the log, once a spell (`[Idle]`, `app.IdleWatch`): its
+report, its order, which routine has its hands, and its squad's task. It's logged again when it
+moves on. A soldier held at a table or furnace shows its routine. One with free hands and a task
+its routines can't start on is the chain of command's gap.
+
 ## 4. Reports upward
 
 | Report | Content | Source |
