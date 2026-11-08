@@ -277,6 +277,19 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void backingOffAHostileItStopsAtTheEdgeOfADrop() {
+        // A ledge ten blocks up, its edge at x=0: west of it, the ground is at GROUND - 10.
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, 64, 0.5));
+        WorldView ledge = withHostileAt(new Position(2.0, 64, 0.5), (x, y, z) -> x >= 0 ? y < GROUND : y < GROUND - 10);
+
+        for (int tick = 0; tick < 20; tick++) {
+            alice.tick(ledge);
+        }
+
+        assertEquals(64, alice.status().position().y(), 1e-9, "still on the ledge: " + alice.status().position());
+    }
+
+    @Test
     void backsOffFromAHostileInsideKeepAway() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
 

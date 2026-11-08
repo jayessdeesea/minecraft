@@ -456,9 +456,9 @@ public final class DeterministicSoldier implements Soldier {
                 // get out of its sight, and stay out.
                 Optional<Position> cover = coverFrom(world, threat);
                 if (cover.isPresent()) {
-                    stepToward(world, cover.get().x(), cover.get().z());
+                    stepGuarded(world, cover.get().x(), cover.get().z());
                 } else {
-                    stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
+                    stepGuarded(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
                 }
                 holdCoverTicks = UNDER_FIRE_TICKS;
             } else {
@@ -469,11 +469,11 @@ public final class DeterministicSoldier implements Soldier {
                     ticksUntilAttack = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon()).ticksToCharge();
                 }
                 if (range < KEEP_AWAY) {
-                    stepToward(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
+                    stepGuarded(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
                 } else if (range > ATTACK_REACH) {
                     // Closing on what it fights: every tick in the open is a tick under its fire.
                     sprinting = canSprint();
-                    stepToward(world, threat.x(), threat.z(), sprinting ? SPRINT_STEP : STEP);
+                    stepGuarded(world, threat.x(), threat.z(), sprinting ? SPRINT_STEP : STEP);
                 }
             }
             route = null; // wherever the fight ends up, the old route no longer starts here
@@ -1053,6 +1053,42 @@ public final class DeterministicSoldier implements Soldier {
         stepToward(world, targetX, targetZ, STEP);
     }
 
+    /**
+     * The deepest drop a step in a fight may leave the soldier over: one the server charges no
+     * health for. Live, a soldier at 1 health fighting a phantom on a hut roof backed off its edge.
+     */
+    static final int FIGHT_DROP = Pathfinder.MAX_DROP;
+
+    /** As {@link #stepToward(WorldView, double, double, double)}, not taken if it would leave the soldier over a deeper drop than {@link #FIGHT_DROP}. */
+    private void stepGuarded(WorldView world, double targetX, double targetZ) {
+        stepGuarded(world, targetX, targetZ, STEP);
+    }
+
+    private void stepGuarded(WorldView world, double targetX, double targetZ, double pace) {
+        Position start = position;
+        boolean startGround = onGround;
+        double startVelocity = verticalVelocity;
+        boolean startClimbing = climbingOut;
+        stepToward(world, targetX, targetZ, pace);
+        if (!position.equals(start) && overDrop(world, position)) {
+            position = start;
+            onGround = startGround;
+            verticalVelocity = startVelocity;
+            climbingOut = startClimbing;
+        }
+    }
+
+    /** Whether nothing - no ground, no water - lies under {@code at} within {@link #FIGHT_DROP} blocks of its feet. */
+    private static boolean overDrop(WorldView world, Position at) {
+        int feet = (int) Math.floor(at.y() + EPSILON);
+        for (int y = feet - 1; y >= feet - 1 - FIGHT_DROP; y--) {
+            if (anySolid(world, at.x(), at.z(), y, y) || world.isWater((int) Math.floor(at.x()), y, (int) Math.floor(at.z()))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** Headings tried to get away from a threat, in degrees off straight away from it: nearest first. */
     private static final int[] EVASION_HEADINGS = {0, 45, -45, 90, -90, 135, -135};
 
@@ -1073,10 +1109,11 @@ public final class DeterministicSoldier implements Soldier {
         for (int heading : EVASION_HEADINGS) {
             double angle = away + Math.toRadians(heading);
             stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2);
+            boolean dropsOff = !position.equals(start) && overDrop(world, position);
             // A jump started counts as a little ground gained: it lands farther on next tick.
             double gain = Math.hypot(position.x() - threat.x(), position.z() - threat.z()) - from
                     + (onGround != startGround && heading == 0 ? 0.05 : 0);
-            if (gain > bestGain) {
+            if (gain > bestGain && !dropsOff) {
                 bestGain = gain;
                 best = heading;
             }
