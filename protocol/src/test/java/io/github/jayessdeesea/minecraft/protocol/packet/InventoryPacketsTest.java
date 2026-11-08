@@ -90,6 +90,33 @@ class InventoryPacketsTest {
         assertEquals(0, in.readableBytes());
     }
 
+    /** Live: a banner a soldier picked up carries its item name, and the rest of its inventory was dropped. */
+    @Test
+    void aNamedItemsTextComponentsAreReadPast() {
+        ByteBuf in = Unpooled.buffer();
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 2);  // two slots: a named banner, then arrows
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 1417); // white_banner
+        ProtocolCodec.writeVarInt(in, 2);  // item name and a line of lore
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 9);  // item_name: a string tag
+        in.writeByte(8);
+        in.writeShort(6);
+        in.writeBytes("Banner".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        ProtocolCodec.writeVarInt(in, 11); // lore: one line, an empty compound
+        ProtocolCodec.writeVarInt(in, 1);
+        in.writeByte(10);
+        in.writeByte(0);
+        stack(in, 16, ARROW);
+
+        InventoryUpdate.Contents contents = (InventoryUpdate.Contents) InventoryPackets.decodeSetContent(in).update();
+
+        assertEquals(true, contents.complete(), contents.toString());
+        assertEquals(Optional.of(new ItemSlot(ARROW, 16, -1, false)), contents.slots().get(1));
+    }
+
     @Test
     void setHeldSlot() {
         ByteBuf in = Unpooled.buffer();

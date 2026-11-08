@@ -36,6 +36,12 @@ final class ItemStacks {
     // (holderRegistry - no inline form) and a VarInt level. Stored enchantments (books) share it.
     private static final int ENCHANTMENTS = 13;
     private static final int STORED_ENCHANTMENTS = 45;
+    // ComponentSerialization.STREAM_CODEC: a text component as an unnamed NBT root tag - a name,
+    // given or the item's own (a banner's) - and ItemLore's list of them, VarInt-counted to 256.
+    private static final int CUSTOM_NAME = 6;
+    private static final int ITEM_NAME = 9;
+    private static final int LORE = 11;
+    private static final int MAX_LORE_LINES = 256;
     /** More than any item carries: there are well under 64 enchantments. */
     private static final int MAX_ENCHANTMENTS = 64;
 
@@ -74,6 +80,13 @@ final class ItemStacks {
                 }
                 case ENCHANTMENTS -> enchantments = readEnchantments(in);
                 case STORED_ENCHANTMENTS -> readEnchantments(in); // a book's: not on the soldier
+                case CUSTOM_NAME, ITEM_NAME -> Nbt.skipUnnamedRoot(in);
+                case LORE -> {
+                    int lines = ProtocolCodec.readVarIntCount(in, MAX_LORE_LINES);
+                    for (int line = 0; line < lines; line++) {
+                        Nbt.skipUnnamedRoot(in);
+                    }
+                }
                 default -> {
                     LOG.warn("Item {} carries data component type {} - not decoded; rest of this packet dropped", itemId, type);
                     throw new Undecodable(new ItemSlot(itemId, count, damage, true), type);

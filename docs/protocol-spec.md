@@ -328,7 +328,9 @@ confirmed field at a time, the same way this table will grow one confirmed packe
 component patch: VarInt added count, VarInt removed count, each added component as VarInt type
 then its value, each removed one as VarInt type. A component's value has its own codec and no
 length prefix, so `ItemStacks` decodes only the ones it knows - `max_damage` (2), `damage` (3),
-`repair_cost` (19) as VarInts and `unbreakable` (4) as empty - and on any other type keeps the
+`repair_cost` (19) as VarInts, `unbreakable` (4) as empty, `custom_name` (6) and `item_name` (9)
+as one NBT text component each (an unnamed root tag, skipped), and `lore` (11) as a VarInt count of
+them, at most 256 - and on any other type keeps the
 item, drops the rest of that packet (the frame is length-isolated, so this is safe), and logs the
 type. Enchantments (13) and stored enchantments (45, on books) are decoded: a VarInt count, then
 per enchantment a VarInt ID in the session's synced `minecraft:enchantment` registry and a VarInt
