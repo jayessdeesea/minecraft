@@ -391,6 +391,8 @@ Before writing code, update or delete the item, or raise the mismatch with the u
   "Protocol pipeline architecture" section: full plane/tier table, a worked walkthrough of an
   actual join, and the reasoning behind each stage. Keep it in sync whenever a stage's
   responsibility changes — this file states the rule, that one carries the detail.
+- [docs/personas/](docs/personas/README.md) — each echelon as a role: what the general, squad
+  leader and soldier can do on their own, what each is told, and what each reports.
 - [docs/military-doctrine.md](docs/military-doctrine.md) — the military doctrine the chain of
   command emulates (mission command, formations, prowords, reports, orders), with manual
   citations and how each maps onto code.
