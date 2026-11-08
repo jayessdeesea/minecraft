@@ -28,11 +28,11 @@ adding cells outward.
 - **Fenced and gated:** fence on each cell's edges, with a fence gate on each side that has a
   neighbouring cell. Spiders still climb fences, so the keep keeps its wall.
 - **A purpose for each cell:** keep, barracks (beds), farm, pumpkins and melons, a pen (sheep for
-  wool and beds, cows for food), tree farm, mine head. The general picks a purpose. Laying it out
-  is deterministic, like `Formations`.
-- **Ownership:** each squad owns cells. The general assigns cells to squads with a purpose, and
-  the squad leader's `Task` is that cell's next unmet standard. Owner, task and standard are data
-  that the soldiers' routines read, never prose.
+  wool and beds, cows for food), tree farm, mine head. The general picks the purpose and the
+  style; the cell is a blueprint the engineer lays out and inspects (backlog/echelon-contracts.md).
+- **Ownership:** each squad owns cells. The general assigns them; the engineer turns each cell's
+  next unmet standard into concrete commands - dig these, place those - for the squad leader to
+  allocate. The soldiers never know there's a cell.
 - **Checked from the world**, like the patrol base, and reported cell by cell in the dawn AAR.
 
 ## What it costs
@@ -52,5 +52,5 @@ adding cells outward.
 - **Decided (operator):** the cells are the main base, at (0, 63, 0) within 100 blocks each way,
   flattened to sea level - built once the foothold at (-48, 44) has the shelter, food and tools
   to move that much ground (backlog/roadmap.md).
-- Depends on wood that grows back (backlog/renewables.md), and on torches made from charcoal or
+- Depends on the engineer and concrete commands (backlog/echelon-contracts.md), wood that grows back (backlog/renewables.md), and on torches made from charcoal or
   mined coal (backlog/mining.md).

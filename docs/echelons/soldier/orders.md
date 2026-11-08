@@ -12,7 +12,7 @@ A soldier takes exactly one order at a time, and keeps it until the next replace
   - `urgent` lets it sprint whatever it carries.
 
 Its squad leader sends an order per soldier each squad cycle: the formation slot by default, or
-what a drill puts in its place (docs/personas/squad-leader/drills.md). The routine that has its
+what a drill puts in its place (docs/echelons/squad-leader/drills.md). The routine that has its
 hands can also send it somewhere - to a tree, a wall cell, a step of the staircase - with an order
 of the same kind ([routines.md](routines.md)).
 

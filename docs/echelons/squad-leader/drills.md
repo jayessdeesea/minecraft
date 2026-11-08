@@ -17,4 +17,4 @@ without being told.
 
 After the drills, the runner sends some soldiers somewhere else, by the squad's task. The hut
 builder goes to its cell inside the outline, the mason to its wall cell, the cutter to its step,
-the gatherer to its tree (docs/personas/soldier/routines.md).
+the gatherer to its tree (docs/echelons/soldier/routines.md).

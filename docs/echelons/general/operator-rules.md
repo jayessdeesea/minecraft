@@ -16,4 +16,4 @@ From 90 seconds before dark until dawn - a hut takes minutes, more with dirt to 
   [military-doctrine.md § 16](../../military-doctrine.md#16-mining-down).
 
 ## The camp (`minecraft.camp`)
-The x,z the foothold's standards are measured round (docs/personas/general/decisions.md).
+The x,z the foothold's standards are measured round (docs/echelons/general/decisions.md).

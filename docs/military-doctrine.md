@@ -6,7 +6,7 @@ where a doctrine refined over a century for humans under stress - limited bandwi
 information, subordinates who must act without asking - overlaps with what works for LLM agents
 at different timescales. When code implements one of these ideas, it cites the section here, and
 this doc cites the manual. What each echelon is told, reports and can do - its contract - is in
-[personas/](personas/README.md); this doc holds the doctrine and how it's carried out.
+[echelons/](echelons/README.md); this doc holds the doctrine and how it's carried out.
 
 **Source confidence.** Formation text below is quoted from the 2024 ATP 3-21.8 as reproduced by
 InfantryDrills.com, with paragraph numbers. Proword and report definitions come from secondary
@@ -195,7 +195,7 @@ risk and its own condition into a fall allowance:
   because it regenerates.
 
 So a safe route always wins when one exists, and a fall is planned only when there's none, on
-foot or by the steps it can build (docs/personas/soldier/capabilities.md). A soldier that reports CANTCO prices the riskier
+foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier that reports CANTCO prices the riskier
 order that would free it, for example "a route with falls costing 8 of my 20 health exists (MEDIUM
 risk)". The squad leader then decides whether the mission is worth that. It can set risk for one
 soldier (`SquadOrder.soldierRisk`), so freeing a stuck soldier at MEDIUM doesn't expose the rest of
@@ -513,7 +513,7 @@ CANTCO.
 
 Where the operator sets it, no squad spends the night in the open: one holds the camp in its
 patrol base and the rest work the night shift down the camp's mine. The rule and its timing are in
-docs/personas/general/operator-rules.md.
+docs/echelons/general/operator-rules.md.
 
 The base is lit as well as sealed. Light is checked alongside breaches (`PatrolBase.Plan.unlit`):
 a torch gives its cell block light 14, which falls by one a block through open cells. A floor cell
@@ -637,7 +637,7 @@ the next. By day the rest hold the top, clear of the shaft. By night they follow
 blocks: the top is open ground in the dark, and on the stairs no monster spawns within 24 blocks
 of a player. Until one of them has a pickaxe, every one makes one.
 
-The camp's mine is the night shift's work (docs/personas/general/operator-rules.md). Once the
+The camp's mine is the night shift's work (docs/echelons/general/operator-rules.md). Once the
 stairs reach the iron, their tunnels are the mining. The stairs' state is the world's, so a run stopped by a fight or a restart picks up
 where they end. A dig waits out the block's own break time: its hardness, and the pickaxe in hand
 against the least tier that gets its drop. Both come from the server jar (`bot.world.Hardness`;

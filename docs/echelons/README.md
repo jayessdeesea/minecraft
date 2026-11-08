@@ -1,4 +1,4 @@
-# Personas: what each echelon can do, and what it's told
+# Echelons: what each can do, and what it's told
 
 Each echelon as a role: what it does on its own, what it's given, what it decides or does, and what
 it reports. These describe the code as it is ([conventions.md](../conventions.md#docs)). Each is the

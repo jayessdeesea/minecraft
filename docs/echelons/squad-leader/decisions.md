@@ -22,7 +22,7 @@ then turn the decision into each soldier's order ([drills.md](drills.md)).
 - **Intent**, in words, logged with the order.
 
 It doesn't decide the work. The task's routines start from the general's `Task`
-(docs/personas/soldier/routines.md), whatever the squad leader orders.
+(docs/echelons/soldier/routines.md), whatever the squad leader orders.
 
 ## When it decides
 Every 20 seconds while the squad has an objective, at once on a new objective, and at once on a

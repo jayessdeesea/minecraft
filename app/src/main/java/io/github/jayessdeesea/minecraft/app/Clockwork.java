@@ -7,7 +7,7 @@ import java.util.concurrent.ScheduledExecutorService;
 /**
  * Where the app's time and threads come from: the wall clock and real threads ({@link #REAL}), or
  * a simulation's, which runs the same code on simulated time with no server and no model
- * (backlog/persona-contracts.md). Every clock read and every thread the chain of command and the
+ * (backlog/echelon-contracts.md). Every clock read and every thread the chain of command and the
  * soldiers run on comes from here.
  */
 public interface Clockwork {

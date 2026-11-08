@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * A squad run through a task with the app's own code - runner, chain of command, drills, routines -
  * on simulated time, against {@link SimServer}, with a scripted general and squad leader: no
- * Docker, no model (backlog/persona-contracts.md). A simulated hour runs in seconds.
+ * Docker, no model (backlog/echelon-contracts.md). A simulated hour runs in seconds.
  */
 class SquadSimulationTest {
 
