@@ -379,8 +379,10 @@ stops at its load (16 logs, 32
 cobblestone) or when anything nears. Logs are chopped bare-handed - a sword wears, and digs no
 faster. Stone needs a pickaxe, or it drops nothing: a soldier without one makes a wooden pickaxe
 first, the way it makes a sword (§11), from logs it carries or chops. Break times are the
-server's - hardness over tool speed - with a margin, since the server times each dig. A soldier at it reports `Gathering`; one that finds nothing left in reach reports CANTCO,
-which the squad leader passes up so the general can choose another place. To choose, the general
+server's - hardness over tool speed - with a margin, since the server times each dig. A soldier at it reports `Gathering`. One that finds nothing left in reach goes, while that order
+stands, to one of the places its squad saw the resource, as for torch-makings (§15); with none seen
+beyond the objective's reach it reports CANTCO, which the squad leader passes up so the general
+can choose another place. To choose, the general
 reads what each squad can see within 64 blocks of the soldier at its middle height: for trees and for stone open to
 the sky, the nearest site and the two biggest (not cave walls, which no gatherer can
 reach), each with its count, distance and direction (`bot.supply.ResourceSurveyor`,

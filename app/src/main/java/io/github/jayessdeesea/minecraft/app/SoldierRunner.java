@@ -961,6 +961,31 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             stoneSetAside.put(soldierName, stoneShare);
             Optional<io.github.jayessdeesea.minecraft.command.Objective> gather = squadInContact
                     ? Optional.empty() : chainOfCommand.gatherObjective(squadName);
+            // Nothing left round the general's point: to where the squad saw some, while that order
+            // stands - live, a squad sent to gather at a camp long since cleared stood reporting CANTCO.
+            int nth = i;
+            gather = gather.map(ordered -> {
+                Map.Entry<io.github.jayessdeesea.minecraft.command.Objective, io.github.jayessdeesea.minecraft.command.Objective> sent =
+                        gatherSent.get(soldierName);
+                if (sent != null && sent.getKey().equals(ordered)) {
+                    return sent.getValue();
+                }
+                gatherSent.remove(soldierName);
+                Gatherer gatherer = gatherers.get(soldierName);
+                if (gatherer == null || !gatherer.exhausted() || ordered.gather().isEmpty()) {
+                    return ordered;
+                }
+                Position elsewhere = seenFor(squadName, nth, ordered.gather().get(), ordered.location());
+                if (Math.hypot(elsewhere.x() - ordered.location().x(), elsewhere.z() - ordered.location().z()) <= GATHER_ELSEWHERE) {
+                    return ordered;
+                }
+                io.github.jayessdeesea.minecraft.command.Objective there = new io.github.jayessdeesea.minecraft.command.Objective(
+                        ordered.mission(), elsewhere, ordered.intent(), ordered.task());
+                LOG.info("[{}] {} finds nothing left to gather at {} - goes where the squad saw some, {}", squadName, soldierName,
+                        ordered.location(), elsewhere);
+                gatherSent.put(soldierName, Map.entry(ordered, there));
+                return there;
+            });
             gather.ifPresentOrElse(o -> gathering.put(soldierName, o), () -> gathering.remove(soldierName));
             if (farm != null && !squadInContact) {
                 farming.put(soldierName, farm);
@@ -1009,7 +1034,6 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             ? Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE) : Optional.empty();
                     // Where the squad last saw some: often not within a gatherer's reach of the camp - stone
                     // on level ground by the water lies under the soil.
-                    int nth = i;
                     missing.ifPresent(r -> gathering.put(soldierName, new io.github.jayessdeesea.minecraft.command.Objective(
                             "Gather the makings of torches", seenFor(squadName, nth, r, secure.location()), secure.intent(),
                             new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(r))));
@@ -1170,6 +1194,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         List<Position> near = seen.stream().filter(at -> away.applyAsDouble(at) <= nearest + SPREAD_BEYOND_NEAREST).toList();
         return near.get(Math.floorMod(soldier + squad.hashCode(), near.size()));
     }
+
+    /** Each soldier sent from a cleared gather objective to where its squad saw more: the order, and where it went instead. */
+    private final Map<String, Map.Entry<io.github.jayessdeesea.minecraft.command.Objective, io.github.jayessdeesea.minecraft.command.Objective>>
+            gatherSent = new ConcurrentHashMap<>();
+    /** Gatherers reach this far round their objective: a site seen within it is no other place. */
+    private static final double GATHER_ELSEWHERE = 16;
 
     /** How much further than the nearest a place a resource was seen may be, and still be shared out to. */
     private static final double SPREAD_BEYOND_NEAREST = 24;
