@@ -88,7 +88,10 @@ Maven build) reads the pinned server jar's own `blocks.json` and classifies ever
 passable, solid, tall (1.5-high collision: fences, walls, closed gates) or hazard (liquids,
 waterlogged and underwater blocks, fire, powder snow), emitting a plain resource file `ChunkCache`
 loads at startup. Deliberately not exhaustive - an unlisted type defaults solid, the same "unknown
-= blocked" policy used for unloaded chunks.
+= blocked" policy used for unloaded chunks. Solid is the safe guess to walk into but not to stand
+on: a type with no collision left solid is ground that isn't there, and a soldier walks out onto it
+and falls (sugar cane by the camp's water did that). So the generator prints every type it left
+solid, and the list is read for anything a body passes through each time it's regenerated.
 
 ## 3. Light Data
 

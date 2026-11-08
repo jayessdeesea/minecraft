@@ -28,6 +28,13 @@ class BlockClassRegistryTest {
         assertEquals(BlockClass.LOG, BlockClassRegistry.classOf(140));        // oak_log, upright
     }
 
+    /** Live: soldiers stood on sugar cane by the camp's water, the server saw them on air, and they fell. */
+    @Test
+    void whatABodyWalksThroughIsPassable() {
+        assertEquals(BlockClass.PASSABLE, BlockClassRegistry.classOf(8617));  // sugar_cane
+        assertEquals(BlockClass.PASSABLE, BlockClassRegistry.classOf(3828));  // brown_mushroom
+    }
+
     @Test
     void unknownAndNegativeIdsAreSolid() {
         assertEquals(BlockClass.SOLID, BlockClassRegistry.classOf(-1));

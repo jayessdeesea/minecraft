@@ -70,7 +70,9 @@ public class GenerateBlockClasses {
             "nether_sprouts", "attached_stem", "stem", "small_dripleaf", "sweet_berry_bush",
             "light", "structure_void", "end_portal", "end_gateway", "nether_portal",
             "leaf_litter", "firefly_bush", "flower_bed", "spore_blossom", "cactus_flower",
-            "wither_rose", "eyeblossom", "trip_wire", "wall_sign", "wall_hanging_sign", "wall_banner"
+            "wither_rose", "eyeblossom", "trip_wire", "wall_sign", "wall_hanging_sign", "wall_banner",
+            "sugar_cane", "mushroom", "button", "lever", "standing_sign", "ceiling_hanging_sign", "banner",
+            "frogspawn", "trip_wire_hook", "multiface", "mangrove_propagule", "big_dripleaf_stem"
     );
 
     /** Hardness at most 0.65 (a dirt path), none of them falling blocks. */
@@ -125,6 +127,7 @@ public class GenerateBlockClasses {
         Map<Integer, String> classes = new TreeMap<>(); // stateId -> "<class> <blockName>"
         Map<Character, Integer> counts = new TreeMap<>();
         int totalStates = 0;
+        java.util.Set<String> leftSolid = new java.util.TreeSet<>();
 
         Iterator<Map.Entry<String, JsonNode>> blocks = root.fields();
         while (blocks.hasNext()) {
@@ -151,6 +154,9 @@ public class GenerateBlockClasses {
                 } else if (cls == 'S' && shovel.contains(id)) {
                     cls = 'G';
                 }
+                if (cls == 'S') {
+                    leftSolid.add(type);
+                }
                 if (cls != 'S') {
                     String detail = blockName.equals("water") ? " level=" + state.path("properties").path("level").asText()
                             : blockName.equals("wheat") ? " age=" + state.path("properties").path("age").asText()
@@ -169,10 +175,14 @@ public class GenerateBlockClasses {
             out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore, F = farmland (all solid);");
             out.println("# R = rock (mined with a pickaxe), G = grit (dug by hand, falls), V = leaves;");
             out.println("# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, <hardness> on grit.");
-            out.println("# Every state NOT listed is solid (the safe default).");
+            out.println("# Every state NOT listed is solid (safe to walk into, not to stand on: the generator prints the types it left solid).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));
         }
         System.out.println("States: " + totalStates + ", non-solid by class: " + counts);
+        // Solid by default is safe to walk into but not to stand on: a type with no collision left
+        // solid is ground that isn't there, and a soldier walks out onto it and falls. Read this
+        // list on every regeneration for any type a body passes through.
+        System.out.println("Types left solid: " + leftSolid);
     }
 
     /** The blocks a tag in the jar's data names directly - nested tags are other shapes (walls, buttons), not ground. */
