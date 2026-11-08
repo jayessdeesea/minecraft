@@ -60,6 +60,9 @@ The hasty hut, the general's PATROL_BASE task and the time of day are live (docs
 - **Deliberate base, the rest.** The ground round a camp is lit (SECURE) and walled (FORTIFY,
   docs/military-doctrine.md § 15), with a lip spiders can't climb round. What's left: a gate in the
   doorway the squads close behind them, and the wall's own light, so nothing spawns on top of it.
+- **The rest of the camp outliving a restart.** The wall's layout is kept on disk
+  (docs/military-doctrine.md § 15) and an old hut is taken back (§ 14); the camp's measured ground
+  (`[Foothold]`) and the soldiers' farm and tree-farm plots are found again from the world.
 - **An old hut sealed shut.** A hut left with a doorway is taken back after a restart
   (docs/military-doctrine.md § 14); one sealed with nobody inside has no floor the squad can walk
   to, so a new one goes up beside it.

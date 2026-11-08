@@ -291,6 +291,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wallClaims = ConcurrentHashMap.newKeySet();
     /** Each wall's layout, by its centre's x and z - shared by every squad building it. */
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> walls = new ConcurrentHashMap<>();
+    /** Each wall's layout on disk: laid out again after a restart, it would go up on top of itself. */
+    private final WallStore wallStore;
     /** The camp the squads build up, x and z - null for none. */
     private final int[] camp;
     /** Squad-loop cycles between measures of the foothold: about ten seconds. */
@@ -486,8 +488,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     public SoldierRunner(ChainOfCommand chainOfCommand, OperatorOrders operatorOrders,
                          @Value("${minecraft.supply.point}") String supplyPoint, Roster roster,
                          @Value("${minecraft.yield-to-experiments}") boolean yieldToExperiments,
-                         @Value("${minecraft.camp}") String camp) {
+                         @Value("${minecraft.camp}") String camp,
+                         @Value("${minecraft.state-dir}") String stateDir) {
         this.roster = roster;
+        this.wallStore = new WallStore(java.nio.file.Path.of(stateDir));
         this.camp = camp.isBlank() ? null : java.util.Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
         if (this.camp != null && this.camp.length != 2) {
             throw new IllegalArgumentException("minecraft.camp is x,z - not " + camp);
@@ -877,8 +881,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (state.wallCentre == null || state.wallCentre.x() != at.x() || state.wallCentre.z() != at.z()) {
                 // One layout a wall, whichever squad comes to it first: a squad that lays out a wall
                 // another has half built lays it out on top of what's there.
-                state.wall = walls.computeIfAbsent(at.x() + "," + at.z(),
-                        key -> io.github.jayessdeesea.minecraft.bot.supply.Perimeter.layout(world, at, WALL_RADIUS));
+                state.wall = walls.computeIfAbsent(at.x() + "," + at.z(), key -> wallStore.load(key).orElseGet(() -> {
+                    List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> layout = io.github.jayessdeesea.minecraft.bot.supply.Perimeter
+                            .layout(world, at, WALL_RADIUS);
+                    wallStore.save(key, layout);
+                    return layout;
+                }));
                 state.wallCentre = at;
                 LOG.info("[{}] FORTIFY: a wall laid out round {}, {} blocks", squadName, at, state.wall.size());
             }

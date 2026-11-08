@@ -571,7 +571,9 @@ A lit camp still lets in what walks in from the dark beyond the light. An object
 jump - on a square 8 blocks out from the objective, laid on the ground of each of its columns, with
 a doorway a column wide in the middle of its south side: the squads' way in and out, rather than a
 step cut through the wall (`bot.supply.Perimeter`). It's laid out once, by whichever squad comes to
-it first, and shared - laid out again after a row, the ground would be the wall's top - and its
+it first, and shared - laid out again after a row, the ground would be the wall's top. So the
+layout is kept on disk too (`app.WallStore`, under `minecraft.state-dir`), and a restarted garrison
+builds the wall it laid out before rather than a second one on top of it. Its
 cells join the ones every dig skips, so nobody quarries it. Each soldier takes the nearest open cell of the
 lowest row no squadmate has taken, stands just inside it, and puts a block there, cobblestone
 first, then dirt, breaking first whatever stands in the cell that a block can't replace - a torch,

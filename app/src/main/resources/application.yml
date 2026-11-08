@@ -48,6 +48,8 @@ minecraft:
   # The camp the squads build up as a lodgment (docs/military-doctrine.md §17), as "x,z": its
   # progress through the phases is measured and shown to the general. Empty: no camp.
   camp: ""
+  # Where what the garrison builds is remembered across restarts - each camp wall's layout.
+  state-dir: "garrison-state"
   supply:
     # The supply point: a chest the operator places and stocks, as "x,y,z" (the chest's block).
     # The general can send a squad there; soldiers short of a weapon or armour draw from it.

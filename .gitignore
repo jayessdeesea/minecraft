@@ -28,6 +28,9 @@ bin/
 *.log
 logs/
 
+# What a running garrison remembers across restarts (minecraft.state-dir)
+garrison-state/
+
 # OS
 .DS_Store
 Thumbs.db
