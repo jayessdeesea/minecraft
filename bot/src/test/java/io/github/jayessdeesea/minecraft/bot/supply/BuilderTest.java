@@ -161,6 +161,39 @@ class BuilderTest {
     }
 
     @Test
+    void aBlockIsPutAgainstTheGroundNotAgainstACraftingTable() {
+        // Over a hole, the table to the south is the first side found - and clicking it opens it.
+        BlockPos cell = new BlockPos(2, 64, 0);
+        BlockPos table = new BlockPos(2, 64, 1);
+        BlockPos ground = new BlockPos(1, 64, 0);
+        WorldView camp = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos at = new BlockPos(x, y, z);
+                return at.equals(table) || at.equals(ground);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+
+            @Override
+            public Optional<io.github.jayessdeesea.minecraft.bot.world.Workstation> workstation(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(table)
+                        ? Optional.of(io.github.jayessdeesea.minecraft.bot.world.Workstation.CRAFTING_TABLE) : Optional.empty();
+            }
+        };
+
+        assertEquals(Optional.of(BlockFace.WEST), Builder.support(camp, cell));
+    }
+
+    @Test
     void aFlowerInTheWayIsBrokenAndTheBlockGoesIn() {
         BlockPos cell = new BlockPos(2, 64, 0);
         flowers.add(cell);
