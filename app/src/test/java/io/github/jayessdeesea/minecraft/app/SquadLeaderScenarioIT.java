@@ -145,10 +145,9 @@ class SquadLeaderScenarioIT {
                 {"x": %d, "y": %d, "z": %d, "formation": "WEDGE", "interval": "NORMAL", "verticalTolerance": 3,
                  "risk": "LOW", "soldierRisks": [], "rearm": false, "intent": "hold the high ground and observe", "cantco": ""}""",
                 start.x(), start.y(), start.z());
-        ChatClient client = ChatClient.builder(variant == Variant.RETASKED ? answeringFirst(standing, model) : model)
-                .defaultSystem(new ClassPathResource("prompts/squad-leader-system.md"))
-                .build();
-        SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha", client);
+        ChatClient client = ChatClient.builder(variant == Variant.RETASKED ? answeringFirst(standing, model) : model).build();
+        SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha", client, io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts.read(
+                new ClassPathResource("prompts/squad-leader-system-prompt.md"), new ClassPathResource("prompts/squad-leader-user-prompt.md")));
         if (variant == Variant.RETASKED) {
             leader.receiveObjective(new Objective("Establish an observation post", pointMan, "watch for hostiles"));
             leader.decide(squad, terrain);

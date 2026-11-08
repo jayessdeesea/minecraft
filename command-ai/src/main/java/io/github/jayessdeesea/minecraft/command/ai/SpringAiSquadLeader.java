@@ -29,9 +29,9 @@ import java.util.stream.Collectors;
  * one call into Spring AI) -&gt; {@link #toSquadOrder} (pure validation), so only {@code callModel}
  * needs faking in a test.
  *
- * <p>The role, doctrine and coordinate conventions are the client's system prompt
- * ({@code prompts/squad-leader-system.md}, wired in {@link CommandAiConfiguration}); each call's
- * user prompt is just the situation, in XML-tagged sections. The reply is structured output
+ * <p>The role, doctrine and coordinate conventions are the system prompt
+ * ({@link SquadLeaderPrompts}, read in {@link CommandAiConfiguration}); each call's user prompt is
+ * just the situation, its template filled in with {@link #buildContext}'s parameters. The reply is structured output
  * ({@link SquadOrderReply}): provider-native schema mode where the model supports it, schema
  * validation with retries either way. A reply that still fails {@link #toSquadOrder}'s checks
  * throws - AGENTS.md's no-fallbacks tenet - and the caller keeps the squad on its last order.
@@ -44,6 +44,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
 
     private final String name;
     private final ChatClient chatClient;
+    private final SquadLeaderPrompts prompts;
 
     // volatile, not locked: receiveObjective comes from the general's thread, decide from this
     // squad's command thread - each field has one writer.
@@ -52,9 +53,10 @@ public final class SpringAiSquadLeader implements SquadLeader {
     private volatile Report report = new Report.Idle();
     private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time; // a connection's thread writes
 
-    public SpringAiSquadLeader(String name, ChatClient chatClient) {
+    public SpringAiSquadLeader(String name, ChatClient chatClient, SquadLeaderPrompts prompts) {
         this.name = name;
         this.chatClient = chatClient;
+        this.prompts = prompts;
     }
 
     @Override
@@ -88,35 +90,22 @@ public final class SpringAiSquadLeader implements SquadLeader {
         if (current == null) {
             return Optional.empty();
         }
-        SquadOrderReply reply = callModel(buildContext(name, current, lastOrder, soldierStatuses, terrain, Optional.ofNullable(time)));
+        SquadOrderReply reply = callModel(buildContext(prompts, name, current, lastOrder, soldierStatuses, terrain, Optional.ofNullable(time)));
         SquadOrder order = toSquadOrder(reply, soldierStatuses.stream().map(SoldierStatus::name).toList());
         lastOrder = order;
         report = reply.cantco() == null || reply.cantco().isBlank() ? new Report.Moving() : new Report.Cantco(reply.cantco());
         return Optional.of(order);
     }
 
-    static PromptContext buildContext(String squadName, Objective objective, SquadOrder lastOrder,
+    static PromptContext buildContext(SquadLeaderPrompts prompts, String squadName, Objective objective, SquadOrder lastOrder,
                                       List<SoldierStatus> soldierStatuses, TerrainSurvey terrain) {
-        return buildContext(squadName, objective, lastOrder, soldierStatuses, terrain, Optional.empty());
+        return buildContext(prompts, squadName, objective, lastOrder, soldierStatuses, terrain, Optional.empty());
     }
 
-    static PromptContext buildContext(String squadName, Objective objective, SquadOrder lastOrder,
+    /** The situation, as {@code prompts}' user template's parameters. */
+    static PromptContext buildContext(SquadLeaderPrompts prompts, String squadName, Objective objective, SquadOrder lastOrder,
                                       List<SoldierStatus> soldierStatuses, TerrainSurvey terrain,
                                       Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time) {
-        StringBuilder prompt = new StringBuilder();
-        time.ifPresent(t -> prompt.append(PromptSection.of("time", SpringAiGeneral.describe(t) + "\n")).append('\n'));
-        prompt.append(PromptSection.of("objective", new StringBuilder()
-                .append("Mission: ").append(objective.mission()).append('\n')
-                .append("Location: ").append(describe(objective.location())).append('\n')
-                .append("Intent: ").append(objective.intent()).append('\n')
-                .append(objective.gather().map(r -> "Gather: " + r + " - your soldiers collect it around the objective on their own\n").orElse(""))
-                .append(objective.patrolBase() ? "Patrol base: your soldiers build a shelter at the objective on their own and wait in it\n" : "")
-                .toString())).append('\n');
-        prompt.append(PromptSection.of("current_order", new StringBuilder()
-                .append(lastOrder == null ? "None yet." : describe(lastOrder) + String.format(Locale.ROOT,
-                        "\nIts spot is %.0f blocks from the objective.", Cohesion.distance(lastOrder.objective(), objective.location())))
-                .append('\n')
-                .toString())).append('\n');
         StringBuilder squad = new StringBuilder();
         for (int i = 0; i < soldierStatuses.size(); i++) {
             SoldierStatus soldier = soldierStatuses.get(i);
@@ -127,17 +116,29 @@ public final class SpringAiSquadLeader implements SquadLeader {
                     .append(": ").append(describe(soldier.report()))
                     .append("; ").append(describe(soldier.condition())).append('\n');
         }
-        prompt.append(PromptSection.of("squad", Map.of("name", squadName), squad.toString())).append('\n');
-        prompt.append(describe(terrain)).append('\n');
-        prompt.append(describeObjectiveGround(terrain, objective.location())).append('\n');
-        prompt.append("Decide the squad's order now.");
-        return new PromptContext(prompt.toString());
+        Map<String, Object> params = new HashMap<>();
+        params.put("time", time.<Object>map(SpringAiGeneral::describe).orElse(false));
+        params.put("mission", objective.mission());
+        params.put("location", describe(objective.location()));
+        params.put("intent", objective.intent());
+        params.put("gather", objective.gather().<Object>map(Object::toString).orElse(false));
+        params.put("patrolBase", objective.patrolBase());
+        params.put("order", lastOrder == null ? false : describe(lastOrder));
+        params.put("orderDistance", lastOrder == null ? false
+                : String.format(Locale.ROOT, "%.0f", Cohesion.distance(lastOrder.objective(), objective.location())));
+        params.put("name", squadName);
+        params.put("soldiers", squad.toString());
+        params.put("terrain", describe(terrain));
+        params.put("objectiveGround", describeObjectiveGround(terrain, objective.location()));
+        return new PromptContext(prompts.user(), params);
     }
 
     SquadOrderReply callModel(PromptContext context) {
         LOG.debug("Squad leader prompt:\n{}", context.prompt());
         return chatClient.prompt()
-                .user(context.prompt())
+                .templateRenderer(PromptTemplate.RENDERER)
+                .system(prompts.system())
+                .user(user -> user.text(context.template()).params(context.params()))
                 .call()
                 .entity(SquadOrderReply.class, spec -> spec.useProviderStructuredOutput().validateSchema());
     }
@@ -203,7 +204,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             }
             table.append('\n');
         }
-        return PromptSection.of("terrain", table.toString());
+        return table.toString();
     }
 
     /**
@@ -235,7 +236,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             }).append(".\n");
         }
         if (reachable.isEmpty()) {
-            return PromptSection.of("objective_ground", out.append("No surveyed spot is reachable.\n").toString());
+            return out.append("No surveyed spot is reachable.\n").toString();
         }
         out.append("Reachable spots nearest the objective:\n");
         reachable.stream().sorted(Comparator.comparingDouble(s -> distance(s, objective))).limit(5).forEach(s ->
@@ -247,7 +248,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
                 .orElseThrow();
         out.append(String.format(Locale.ROOT, "Highest reachable spot: x=%d y=%d z=%d%s.\n", highest.x(), highest.height(), highest.z(),
                 climb(highest)));
-        return PromptSection.of("objective_ground", out.toString());
+        return out.toString();
     }
 
     /** What getting there costs beyond walking: nothing to say for a walk. */

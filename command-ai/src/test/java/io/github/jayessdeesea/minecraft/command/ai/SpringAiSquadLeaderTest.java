@@ -66,23 +66,23 @@ class SpringAiSquadLeaderTest {
 
     @Test
     void decideReturnsNothingAndSkipsTheModelBeforeAnyObjective() {
-        SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha", ChatClient.create(FakeChatModels.THROWING));
+        SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha", ChatClient.create(FakeChatModels.THROWING), Prompts.SQUAD_LEADER);
 
         assertEquals(Optional.empty(), leader.decide(List.of(ALICE, BOB), TERRAIN));
     }
 
     @Test
     void buildContextSaysHowLongUntilDark() {
-        String prompt = SpringAiSquadLeader.buildContext("Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN,
+        String prompt = SpringAiSquadLeader.buildContext(Prompts.SQUAD_LEADER, "Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN,
                 java.util.Optional.of(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(1000, true))).prompt();
 
         assertTrue(prompt.startsWith("<time>\nDay. Dark - monsters spawn anywhere unlit - in about 10 minutes.\n</time>"), prompt);
-        assertTrue(!SpringAiSquadLeader.buildContext("Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN).prompt().contains("<time>"));
+        assertTrue(!SpringAiSquadLeader.buildContext(Prompts.SQUAD_LEADER, "Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN).prompt().contains("<time>"));
     }
 
     @Test
     void buildContextGivesTheSituationInTaggedSectionsWithReports() {
-        String prompt = SpringAiSquadLeader.buildContext("Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN).prompt();
+        String prompt = SpringAiSquadLeader.buildContext(Prompts.SQUAD_LEADER, "Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN).prompt();
 
         assertTrue(prompt.contains("<objective>") && prompt.contains("seize the hill") && prompt.contains("observe the valley"));
         assertTrue(prompt.contains("Alice (point man) at (1, 64, 2): Cantco: no route out of the pit"));
@@ -97,12 +97,10 @@ class SpringAiSquadLeaderTest {
         String table = SpringAiSquadLeader.describe(TERRAIN);
 
         assertEquals("""
-                <terrain>
                         x=-8   x=0   x=8
                 z=-8      64   80x    ~~
                 z=0       64    64    65
                 z=8       ??    63    63
-                </terrain>
                 """, table);
     }
 
@@ -112,7 +110,6 @@ class SpringAiSquadLeaderTest {
         String ground = SpringAiSquadLeader.describeObjectiveGround(TERRAIN, new Position(0, 80, -8));
 
         assertEquals("""
-                <objective_ground>
                 The objective is NOT reachable: land the point man cannot get to.
                 Reachable spots nearest the objective:
                 - x=-8 y=64 z=-8: 8 blocks from the objective
@@ -121,7 +118,6 @@ class SpringAiSquadLeaderTest {
                 - x=8 y=65 z=0: 11 blocks from the objective
                 - x=0 y=63 z=8: 16 blocks from the objective
                 Highest reachable spot: x=8 y=65 z=0.
-                </objective_ground>
                 """, ground);
     }
 
@@ -157,7 +153,7 @@ class SpringAiSquadLeaderTest {
     void decideRoundTripsStructuredOutputIntoASquadOrder() {
         AtomicReference<Prompt> sent = new AtomicReference<>();
         SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha",
-                ChatClient.builder(FakeChatModels.replying(GOOD_REPLY, sent)).defaultSystem("You are a squad leader.").build());
+                ChatClient.builder(FakeChatModels.replying(GOOD_REPLY, sent)).build(), Prompts.SQUAD_LEADER);
         leader.receiveObjective(HILL);
 
         SquadOrder order = leader.decide(List.of(ALICE, BOB), TERRAIN).orElseThrow();
@@ -172,7 +168,7 @@ class SpringAiSquadLeaderTest {
     void aCantcoInTheReplyBecomesTheSquadLeadersReport() {
         String cantco = GOOD_REPLY.replace("\"cantco\": \"\"", "\"cantco\": \"the hill is behind a ravine\"");
         SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha",
-                ChatClient.create(FakeChatModels.replying(cantco, new AtomicReference<>())));
+                ChatClient.create(FakeChatModels.replying(cantco, new AtomicReference<>())), Prompts.SQUAD_LEADER);
         leader.receiveObjective(HILL);
 
         leader.decide(List.of(ALICE, BOB), TERRAIN);

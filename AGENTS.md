@@ -98,15 +98,18 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   `SpringAiGeneral` in `command-ai`), with one real difference from `Soldier`: an LLM call is
   inherently non-deterministic, so that decision core can't be fully pure. Each `decide(...)`
   splits into three pieces so only the middle one is impure: `buildContext(...) -> PromptContext`
-  (pure: the situation as an XML-tagged user prompt) → `callModel(PromptContext)` (impure — the one
+  (pure: the situation, as the user prompt template's parameters) → `callModel(PromptContext)` (impure — the one
   call into Spring AI's `ChatClient`, returning a structured-output reply record) →
   `toSquadOrder`/`toObjectives(reply)` (pure validation into domain types; anything invalid
   throws). Only `callModel` needs faking in a test — with a hand-written `ChatModel` that fails if
   invoked, or one that answers canned JSON to exercise the whole structured-output path. This split
   isn't just for tests — it's the same boundary that keeps provider-specific shapes out of the
   decision logic (see the Stack section below). The role, doctrine and coordinate conventions are
-  each echelon's fixed system prompt (`command-ai/src/main/resources/prompts/`), never rebuilt per
-  call. The squad leader decides *what* (objective, formation, interval, intent - a `SquadOrder`);
+  each echelon's fixed system prompt, never rebuilt per call. Both prompts are files that
+  configuration names (`minecraft.<echelon>.system-prompt`, `.user-prompt`), with no defaults in
+  code or in the `ChatClient`: each call passes its system prompt and fills its user template's
+  `«name»` parameters with `.params(...)` (`PromptTemplate`). A prompt's wording lives in its file;
+  Java works out the facts that go into it. The squad leader decides *what* (objective, formation, interval, intent - a `SquadOrder`);
   turning that into per-soldier slots is geometry, done deterministically by `command.Formations`,
   so the model spends judgement only where judgement is needed. Neither echelon calls the model
   when there's nothing to decide yet (no objective, no squads). `app`'s `ChainOfCommand` decides
@@ -278,8 +281,8 @@ rule, that doc is where the detail and the "why" for each stage lives.
 XML, JSON, CSV and other standard formats are written and read with a library, never marshalled
 by hand with a `StringBuilder` or string concatenation: hand-built output escapes nothing, so the
 first `<` or `"` in a value breaks it silently. Prefer the JDK's own (`javax.xml.stream` for XML);
-use a third-party library where the JDK has none (Jackson for JSON). This covers the XML-tagged
-sections of the models' prompts too. Our own line-oriented resource files
+use a third-party library where the JDK has none (Jackson for JSON). The `<tags>` in the models'
+prompts aren't one: they're labels in a template, not a document anything parses. Our own line-oriented resource files
 (`block-classes-777.txt`) aren't a standard format and stay as they are.
 
 ## No fallbacks — fail loud, not gracefully-wrong

@@ -106,12 +106,13 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      */
     static final long SHELTER_LEAD_TICKS = 1800;
 
-    public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient, Roster roster,
+    public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient,
+                          io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts squadLeaderPrompts, Roster roster,
                           @org.springframework.beans.factory.annotation.Value("${minecraft.general.shelter-at-night}") boolean shelterAtNight) {
         this.general = general;
         this.shelterAtNight = shelterAtNight;
         for (Roster.Squad squad : roster.squads()) {
-            squads.put(squad.name(), new SquadCommand(squad.name(), new SpringAiSquadLeader(squad.name(), squadLeaderClient), this::transmit,
+            squads.put(squad.name(), new SquadCommand(squad.name(), new SpringAiSquadLeader(squad.name(), squadLeaderClient, squadLeaderPrompts), this::transmit,
                     modelCalls));
         }
     }

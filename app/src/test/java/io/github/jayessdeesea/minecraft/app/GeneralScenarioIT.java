@@ -192,7 +192,10 @@ class GeneralScenarioIT {
                 .ollamaApi(OllamaApi.builder().baseUrl("http://localhost:11434").build())
                 .options(OllamaChatOptions.builder().model(model).temperature(0.3).disableThinking().build())
                 .build();
-        ChatClient client = ChatClient.builder(ollama).defaultSystem(new ClassPathResource("prompts/general-system.md")).build();
+        ChatClient client = ChatClient.builder(ollama).build();
+        io.github.jayessdeesea.minecraft.command.ai.GeneralPrompts prompts = io.github.jayessdeesea.minecraft.command.ai.GeneralPrompts.read(
+                new ClassPathResource("prompts/general-system-prompt.md"), new ClassPathResource("prompts/general-user-prompt.md"),
+                new ClassPathResource("prompts/general-squad-prompt.md"));
 
         int passed = 0;
         List<String> summary = new ArrayList<>();
@@ -202,13 +205,13 @@ class GeneralScenarioIT {
                 continue;
             }
             if (Boolean.getBoolean("eval.prompt")) {
-                SpringAiGeneral shown = new SpringAiGeneral(client, situation.mission(), "");
+                SpringAiGeneral shown = new SpringAiGeneral(client, prompts, situation.mission(), "");
                 shown.receiveTime(situation.time());
                 System.out.println(shown.prompt(situation.squads()));
             }
             int situationPassed = 0;
             for (int run = 1; run <= runs; run++) {
-                SpringAiGeneral general = new SpringAiGeneral(client, situation.mission(), "");
+                SpringAiGeneral general = new SpringAiGeneral(client, prompts, situation.mission(), "");
                 general.receiveTime(situation.time());
                 Optional.ofNullable(FOOTHOLDS.get(situation.name())).ifPresent(general::receiveFoothold);
                 long start = System.nanoTime();

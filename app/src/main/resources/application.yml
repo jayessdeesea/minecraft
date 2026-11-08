@@ -16,6 +16,11 @@ minecraft:
     # The model the general thinks with: "anthropic" (a frontier model; needs ANTHROPIC_API_KEY)
     # or "ollama" (the local open-weight model, see compose.yaml).
     chat-model: ollama
+    # Its prompts: the fixed system prompt, the user prompt's template, and the template each
+    # squad's section of it is filled in from (parameters marked «name»).
+    system-prompt: classpath:prompts/general-system-prompt.md
+    user-prompt: classpath:prompts/general-user-prompt.md
+    squad-prompt: classpath:prompts/general-squad-prompt.md
     # The operator's standing rule that no squad spends the night outside a patrol base: an order
     # that leaves one in the open after dark is replaced by a patrol base where it stands. A garrison
     # wants it; a scenario that sends squads out at night doesn't.
@@ -27,6 +32,9 @@ minecraft:
   squad-leader:
     # The model every squad leader thinks with: "ollama" or "anthropic", as for the general.
     chat-model: ollama
+    # Its prompts: the fixed system prompt and the user prompt's template, as for the general.
+    system-prompt: classpath:prompts/squad-leader-system-prompt.md
+    user-prompt: classpath:prompts/squad-leader-user-prompt.md
   # The order of battle: "Squad:Soldier,Soldier,...;Squad:...", formation order, the first soldier
   # of the first squad carrying the radio. Soldiers' names are their usernames on the server.
   roster: "Alpha:Alice,Bob,Carol,Gus;Bravo:Dana,Eli,Fran,Hal"

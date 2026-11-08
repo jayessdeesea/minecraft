@@ -13,11 +13,11 @@ import java.util.Map;
 import java.util.TreeSet;
 
 /**
- * One {@link ChatClient} per echelon, each with its role's system prompt baked in and its own model
- * provider: the general can think on a frontier model while the squad leaders run on a local
- * open-weight one - the tiering this project measures. Which provider each echelon uses is
- * configuration ({@code minecraft.general.chat-model}, {@code minecraft.squad-leader.chat-model}),
- * never code. Every provider whose starter is on the classpath is auto-configured as a
+ * One {@link ChatClient} per echelon, each on its own model provider, and each echelon's prompts: the general can think on a frontier model while the squad leaders run on a local
+ * open-weight one - the tiering this project measures. Which provider each echelon uses, and
+ * which files its prompts are, is configuration ({@code minecraft.general.chat-model},
+ * {@code minecraft.general.system-prompt} and so on), never code, and has no default. A client
+ * carries no default system prompt either: each call names its own. Every provider whose starter is on the classpath is auto-configured as a
  * {@code <provider>ChatModel} bean; each echelon picks one by name.
  *
  * <p>Two {@code ChatClient} beans of the same type, so every injection point names the one it
@@ -30,16 +30,27 @@ public class CommandAiConfiguration {
 
     @Bean
     ChatClient squadLeaderChatClient(Map<String, ChatModel> models,
-                                     @Value("${minecraft.squad-leader.chat-model}") String provider,
-                                     @Value("classpath:prompts/squad-leader-system.md") Resource systemPrompt) {
-        return ChatClient.builder(chatModel("squad leader", provider, models)).defaultSystem(systemPrompt).build();
+                                     @Value("${minecraft.squad-leader.chat-model}") String provider) {
+        return ChatClient.builder(chatModel("squad leader", provider, models)).build();
     }
 
     @Bean
     ChatClient generalChatClient(Map<String, ChatModel> models,
-                                 @Value("${minecraft.general.chat-model}") String provider,
-                                 @Value("classpath:prompts/general-system.md") Resource systemPrompt) {
-        return ChatClient.builder(chatModel("general", provider, models)).defaultSystem(systemPrompt).build();
+                                 @Value("${minecraft.general.chat-model}") String provider) {
+        return ChatClient.builder(chatModel("general", provider, models)).build();
+    }
+
+    @Bean
+    SquadLeaderPrompts squadLeaderPrompts(@Value("${minecraft.squad-leader.system-prompt}") Resource system,
+                                          @Value("${minecraft.squad-leader.user-prompt}") Resource user) {
+        return SquadLeaderPrompts.read(system, user);
+    }
+
+    @Bean
+    GeneralPrompts generalPrompts(@Value("${minecraft.general.system-prompt}") Resource system,
+                                  @Value("${minecraft.general.user-prompt}") Resource user,
+                                  @Value("${minecraft.general.squad-prompt}") Resource squad) {
+        return GeneralPrompts.read(system, user, squad);
     }
 
     /**
