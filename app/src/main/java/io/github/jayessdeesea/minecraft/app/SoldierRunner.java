@@ -347,8 +347,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // Food is buildup - unless the force is starving now: then it comes before the wall, as a
         // unit eats before it improves its position. Live, both squads walled the camp while all
         // eight soldiers went hungry, health falling to 1.
-        int foodPhase = hungry * 2 > everyone.size() ? 2 : 3;
-        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(foodPhase, "food", growing >= FARM_GROWING,
+        boolean starving = hungry * 2 > everyone.size();
+        int foodPhase = starving ? 2 : 3;
+        // Met when the farm grows and the force eats: wheat planted today feeds nobody for days.
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(foodPhase, "food", growing >= FARM_GROWING && !starving,
                 // Where: a coordinate written out is one the model copies, and here it should - live,
                 // told only a count, it sent a squad to farm 50 blocks off, where the count never sees it.
                 (farm.isEmpty() ? "no ground to farm by water near the camp" : growing + " of " + farm.get().plot().size()
