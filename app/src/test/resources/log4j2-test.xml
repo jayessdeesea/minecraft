@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The app's own log, at INFO, to target/test.log: a squad simulation's run reads like a garrison's. -->
+<Configuration status="WARN">
+    <Appenders>
+        <File name="file" fileName="target/test.log" append="false">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level [%t] %c{1} : %msg%n"/>
+        </File>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%-5level %c{1} : %msg%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger name="io.github.jayessdeesea" level="INFO" additivity="false">
+            <AppenderRef ref="file"/>
+        </Logger>
+        <Root level="WARN">
+            <AppenderRef ref="console"/>
+        </Root>
+    </Loggers>
+</Configuration>
