@@ -1,5 +1,5 @@
 ---
-status: needs-decision
+status: ready
 priority: P2
 depends-on: [patrol-base]
 doctrine: ATP 3-21.8 (patrol base priorities of work - rest plan)
@@ -40,6 +40,11 @@ part of the unit sleeps (ATP 3-21.8, ch. 7).
 - A soldier that dies respawns at its bed.
 
 ## Notes
-- **Question for the operator:** should the soldiers' sleep skip the night for the whole server?
-  With `players_sleeping_percentage` at its default of 100, the night skips only when the operator
-  sleeps too. Lowered, the soldiers alone would end every night, the operator's included.
+- **Decided (operator):** the night skips only the way it does for any player - when everyone in
+  the overworld is asleep, the operator included. `players_sleeping_percentage` stays at its
+  default of 100: the soldiers sleeping never ends the operator's night for them.
+- So the night usually isn't skipped, and the rest plan is for phantoms: each soldier lies down in
+  a bed often enough that none goes three nights without. Per the wiki, getting into a bed resets
+  the phantom timer (`time_since_rest`) even when the night doesn't skip - confirm against the
+  server before relying on it; if it only resets on a full night's sleep, the soldiers sleep in
+  turns instead, a different half each night.

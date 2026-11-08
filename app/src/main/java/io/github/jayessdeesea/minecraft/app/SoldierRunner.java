@@ -952,8 +952,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             ? Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE) : Optional.empty();
                     // Where the squad last saw some: often not within a gatherer's reach of the camp - stone
                     // on level ground by the water lies under the soil.
+                    int nth = i;
                     missing.ifPresent(r -> gathering.put(soldierName, new io.github.jayessdeesea.minecraft.command.Objective(
-                            "Gather the makings of torches", nearestSeen(squadName, r, secure.location()), secure.intent(),
+                            "Gather the makings of torches", seenFor(squadName, nth, r, secure.location()), secure.intent(),
                             new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(r))));
                 }
             } else {
@@ -1090,13 +1091,27 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         };
     }
 
-    /** The nearest place to {@code from} the squad last saw {@code resource}, or {@code from} itself if it saw none. */
-    private Position nearestSeen(String squad, io.github.jayessdeesea.minecraft.command.Resource resource, Position from) {
-        return chainOfCommand.resourcesSeen(squad).stream().filter(site -> site.resource() == resource)
+    /**
+     * Where the squad's {@code soldier}th soldier goes for {@code resource}: one of the places the
+     * squad last saw some, not much further from {@code from} than the nearest - each soldier, and
+     * each squad, to a different one where there are several, so nobody works in a crowd - or
+     * {@code from} itself if it saw none.
+     */
+    private Position seenFor(String squad, int soldier, io.github.jayessdeesea.minecraft.command.Resource resource, Position from) {
+        java.util.function.ToDoubleFunction<Position> away = at -> Math.hypot(at.x() - from.x(), at.z() - from.z());
+        List<Position> seen = chainOfCommand.resourcesSeen(squad).stream().filter(site -> site.resource() == resource)
                 .map(io.github.jayessdeesea.minecraft.command.ResourceSite::location)
-                .min(java.util.Comparator.comparingDouble(at -> Math.hypot(at.x() - from.x(), at.z() - from.z())))
-                .orElse(from);
+                .sorted(java.util.Comparator.comparingDouble(away)).toList();
+        if (seen.isEmpty()) {
+            return from;
+        }
+        double nearest = away.applyAsDouble(seen.getFirst());
+        List<Position> near = seen.stream().filter(at -> away.applyAsDouble(at) <= nearest + SPREAD_BEYOND_NEAREST).toList();
+        return near.get(Math.floorMod(soldier + squad.hashCode(), near.size()));
     }
+
+    /** How much further than the nearest a place a resource was seen may be, and still be shared out to. */
+    private static final double SPREAD_BEYOND_NEAREST = 24;
 
     private static Position centre(io.github.jayessdeesea.minecraft.bot.nav.BlockPos cell) {
         return new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
@@ -1594,8 +1609,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             soldier.yaw(), soldier.pitch())));
             Kit eating = status.condition().flatMap(c -> c.kit()).orElse(null);
             boolean hungry = status.condition().filter(c -> c.kit().isPresent()).map(SoldierRunner::wantsFood).orElse(false);
+            boolean huntWanted = hungry && huntAllowed.contains(name) && !inContact;
+            // Food first: the day's work - gathering, lighting, walling, planting - gives the hands
+            // up when there's game in sight to eat, and the hunter takes them next tick.
+            boolean huntCalls = huntWanted && !hunter.active() && io.github.jayessdeesea.minecraft.bot.supply.Hunter.gameInSight(world, status.position());
             turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), world,
-                    free && hungry && huntAllowed.contains(name) && !inContact,
+                    free && huntWanted,
                     io.github.jayessdeesea.minecraft.bot.world.WeaponStats.melee(eating == null ? Optional.empty() : eating.weapon()).ticksToCharge())
                     .ifPresent(target -> {
                         LOG.info("{} strikes the animal it hunts, entity {}", name, target);
@@ -1642,19 +1661,19 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walling.getOrDefault(name, List.of());
             turns.put(Hands.Routine.MASON, turn(mason::active, free -> mason.tick(status.position(), world,
                     wallCentres.getOrDefault(name, io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(status.position().x(),
-                            status.position().y(), status.position().z())), wall, free && !threatened)));
+                            status.position().y(), status.position().z())), wall, free && !threatened && !huntCalls)));
             turns.put(Hands.Routine.LAMPLIGHTER, turn(lamplighter::active,
-                    free -> lamplighter.tick(status.position(), world, lights, free && !threatened)));
+                    free -> lamplighter.tick(status.position(), world, lights, free && !threatened && !huntCalls)));
             io.github.jayessdeesea.minecraft.bot.farm.TreeFarm grove = planting.get(name);
             turns.put(Hands.Routine.FORESTER, turn(forester::active,
-                    free -> forester.tick(status.position(), world, Optional.ofNullable(grove), free && !threatened)));
+                    free -> forester.tick(status.position(), world, Optional.ofNullable(grove), free && !threatened && !huntCalls)));
             turns.put(Hands.Routine.FARMER, turn(farmer::active,
-                    free -> farmer.tick(status.position(), world, Optional.ofNullable(field), free && !threatened)));
+                    free -> farmer.tick(status.position(), world, Optional.ofNullable(field), free && !threatened && !huntCalls)));
             turns.put(Hands.Routine.GATHERER, turn(gatherer::active,
                     free -> gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
-                            gather == null ? status.position() : gather.location(), free && !inContact)));
+                            gather == null ? status.position() : gather.location(), free && !inContact && !huntCalls)));
             turns.put(Hands.Routine.SCAVENGER, turn(scavenger::active,
-                    free -> scavenger.tick(status.position(), world, free && !threatened && fort == null)));
+                    free -> scavenger.tick(status.position(), world, free && !threatened && fort == null && !huntCalls)));
             Hands.tick(turns);
             // Short of logs for tools it tried and failed to chop wood for: a squadmate may have
             // some to spare (§13).
@@ -1679,6 +1698,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     : lamplighter.active() || torchmaker.active() && torchesWanted ? new Report.Securing()
                     : !lights.isEmpty() && torchesWanted && torchmaker.failure().isPresent()
                     ? new Report.Cantco("can't make torches to light the ground: " + torchmaker.failure().get())
+                    // Gone for the makings, between one dig and the next: still at it, not unable.
+                    : !lights.isEmpty() && torchesWanted && gather != null && gather.gather().isPresent() && !gatherer.exhausted()
+                    ? new Report.Gathering(gather.gather().get())
                     // Nothing to make them from, and nothing said: the crafter doesn't start what it can't finish.
                     : !lights.isEmpty() && torchesWanted && !torchmaker.active() && !gatherer.active() && !armourer.active()
                     ? new Report.Cantco("no torches to light the ground with, and short of "

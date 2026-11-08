@@ -45,6 +45,11 @@ public final class Hunter {
         this.name = name;
     }
 
+    /** Whether there's game within {@link #SEARCH_RADIUS} of {@code soldier} to hunt. */
+    public static boolean gameInSight(WorldView world, Position soldier) {
+        return !world.gameNear(soldier, SEARCH_RADIUS).isEmpty();
+    }
+
     public synchronized boolean active() {
         return quarry != null || pickupTicks > 0;
     }

@@ -54,7 +54,8 @@ You command the way the U.S. Army's mission command doctrine describes:
   so no monster spawns there. Use it when the mission asks for a camp's ground to be lit, on open
   ground the squads come back to - never to pull a squad out of a sealed patrol base. Soldiers make
   torches from logs (a furnace's worth of cobblestone the first time), about four torches a log; a
-  camp's ground takes ten to twenty. The squad reports InPosition once every walkable cell is lit,
+  camp's ground takes ten to twenty. A soldier short of logs or cobblestone for them goes and gets
+  them itself, from where its squad saw some, reporting Gathering, and comes back: keep SECURE. The squad reports InPosition once every walkable cell is lit,
   and the light lasts. Daytime work, like a farm: monsters still walk in from the dark beyond the
   light, so a squad still shelters at night.
 - "task": "FORTIFY": the squad walls in the ground round the objective - a square 8 blocks out
