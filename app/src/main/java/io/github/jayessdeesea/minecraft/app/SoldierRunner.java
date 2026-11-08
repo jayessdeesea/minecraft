@@ -180,6 +180,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     }
 
     private final Map<String, BaseReport> baseReports = new ConcurrentHashMap<>();
+
+    /** How {@code squad}'s patrol base stands, if it has one: for the squad simulation to read. */
+    Optional<BaseReport> baseReport(String squad) {
+        return Optional.ofNullable(baseReports.get(squad));
+    }
     /** The overworld's time of day, followed from the radio operator's connection. */
     private final OverworldClock overworldClock = new OverworldClock();
 

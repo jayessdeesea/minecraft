@@ -5,6 +5,8 @@ import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.protocol.BlockChange;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
+import io.github.jayessdeesea.minecraft.protocol.EntityMove;
+import io.github.jayessdeesea.minecraft.protocol.EntityUpdate;
 import io.github.jayessdeesea.minecraft.protocol.BlockFace;
 import io.github.jayessdeesea.minecraft.protocol.ChunkUpdate;
 import io.github.jayessdeesea.minecraft.protocol.HealthUpdate;
@@ -28,7 +30,8 @@ import java.util.concurrent.CompletableFuture;
  * The server's side of a squad simulation: one world, and a {@link PlaySession} per soldier that
  * answers as the vanilla server does, a tick late - blocks broken and placed, items picked up,
  * inventory slots clicked and swapped, crafting in the 2x2 grid and at a table, a furnace that
- * burns a plank for 300 ticks and smelts in 200, the time of day. What it doesn't model throws, naming the action, so a
+ * burns a plank for 300 ticks and smelts in 200, the time of day; zombies that walk at the nearest
+ * soldier, hit it, and die to its blows; and a soldier killed respawning empty-handed at spawn. What it doesn't model throws, naming the action, so a
  * scenario that needs more says so instead of quietly doing nothing.
  *
  * <p>Block-state and item IDs are protocol 777's (the pinned server's reports).
@@ -41,6 +44,10 @@ final class SimServer {
             ITEM_WOODEN_PICKAXE = 1027, ITEM_STONE_PICKAXE = 1037, ITEM_WOODEN_SWORD = 1025, ITEM_BREAD = 1067,
             ITEM_TORCH = 395, ITEM_OAK_LOG = 163;
     private static final int CRAFTING_MENU = 12, FURNACE_MENU = 14;
+    static final int ZOMBIE_TYPE = 154;
+    /** A zombie: 20 health, 3 a hit once a second within reach, a slow walk. */
+    private static final double ZOMBIE_REACH = 1.5, ZOMBIE_STEP = 0.08;
+    private static final int ZOMBIE_HIT = 3, ZOMBIE_COOLDOWN = 20;
     private static final int MIN_Y = -64;
     private static final int SECTIONS = 24;
     /** Chunks sent round a soldier on joining: radius 3, 7x7. */
@@ -60,6 +67,11 @@ final class SimServer {
     /** What happened, in order, for a scenario to read. */
     final List<String> log = new ArrayList<>();
     private long dayTicks;
+    private int nextEntity = 1000;
+    /** Each zombie: [x, y, z, health, cooldown] by entity ID. */
+    private final Map<Integer, double[]> zombies = new LinkedHashMap<>();
+    /** Deaths by soldier, for a scenario to count. */
+    final Map<String, Integer> deaths = new HashMap<>();
 
     /** The world before anyone touches it: the block-state at each cell. */
     interface Terrain {
@@ -91,8 +103,52 @@ final class SimServer {
         return dayTicks;
     }
 
+    /** A zombie at the given cell's feet, seen by every soldier at once. */
+    int spawnZombie(double x, double y, double z) {
+        int id = nextEntity++;
+        zombies.put(id, new double[]{x, y, z, 20, 0});
+        players.values().forEach(p -> p.listeners.onEntitySpawn()
+                .accept(new EntityUpdate(id, java.util.UUID.randomUUID(), ZOMBIE_TYPE, x, y, z)));
+        log.add("a zombie spawned at " + x + "," + y + "," + z);
+        return id;
+    }
+
+    int zombiesLeft() {
+        return zombies.size();
+    }
+
+    private void zombies() {
+        for (Map.Entry<Integer, double[]> e : List.copyOf(zombies.entrySet())) {
+            double[] z = e.getValue();
+            Player target = players.values().stream().filter(p -> p.health > 0)
+                    .min(java.util.Comparator.comparingDouble(p -> Math.hypot(p.position.x() - z[0], p.position.z() - z[2])))
+                    .orElse(null);
+            if (target == null) {
+                continue;
+            }
+            double dx = target.position.x() - z[0], dz = target.position.z() - z[2], d = Math.hypot(dx, dz);
+            if (d > ZOMBIE_REACH * 0.8) {
+                // Walks straight at it, stopped by a wall in the way.
+                double nx = z[0] + dx / d * ZOMBIE_STEP, nz = z[2] + dz / d * ZOMBIE_STEP;
+                int fy = (int) Math.floor(z[1]);
+                if (block((int) Math.floor(nx), fy, (int) Math.floor(nz)) == AIR && block((int) Math.floor(nx), fy + 1, (int) Math.floor(nz)) == AIR) {
+                    z[0] = nx;
+                    z[2] = nz;
+                    players.values().forEach(p -> p.listeners.onEntityMove().accept(new EntityMove(e.getKey(), z[0], z[1], z[2])));
+                }
+            }
+            if (z[4] > 0) {
+                z[4]--;
+            } else if (d <= ZOMBIE_REACH && Math.abs(target.position.y() - z[1]) < 2) {
+                z[4] = ZOMBIE_COOLDOWN;
+                target.hurt(ZOMBIE_HIT, "death.attack.mob[" + target.name + ", entity.minecraft.zombie]");
+            }
+        }
+    }
+
     private void tick() {
         dayTicks++;
+        zombies();
         furnaces.forEach((at, f) -> {
             int[] state = burning.computeIfAbsent(at, a -> new int[2]);
             if (f[0] == null) {
@@ -189,6 +245,11 @@ final class SimServer {
                 .findFirst().orElseThrow();
     }
 
+    private static int itemNamedOrMinus(String name) {
+        return java.util.stream.IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of(name)))
+                .findFirst().orElse(-1);
+    }
+
     private static int itemNamed(String name) {
         return java.util.stream.IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of(name)))
                 .findFirst().orElseThrow();
@@ -238,6 +299,8 @@ final class SimServer {
         final String name;
         final PlaySessionListeners listeners;
         PlayerPosition position;
+        final PlayerPosition spawn;
+        float health = 20;
         final int[][] slots = new int[46][];
         int held;
         boolean connected = true;
@@ -253,6 +316,20 @@ final class SimServer {
             this.name = name;
             this.listeners = listeners;
             this.position = spawn;
+            this.spawn = spawn;
+        }
+
+        void hurt(int damage, String cause) {
+            if (health <= 0) {
+                return;
+            }
+            health = Math.max(0, health - damage);
+            listeners.onHealth().accept(new HealthUpdate(health, 20));
+            if (health == 0) {
+                deaths.merge(name, 1, Integer::sum);
+                log.add(name + " died: " + cause);
+                listeners.onDeath().accept(cause);
+            }
         }
 
         void join() {
@@ -353,12 +430,32 @@ final class SimServer {
 
         @Override
         public void respawn() {
-            throw new UnsupportedOperationException("simulated: respawn");
+            // Kit dropped where it died - not modelled as items on the ground: it's gone.
+            java.util.Arrays.fill(slots, null);
+            health = 20;
+            position = spawn;
+            sendInventory();
+            listeners.onHealth().accept(new HealthUpdate(health, 20));
+            listeners.onPlayerPosition().accept(spawn);
         }
 
         @Override
         public void attack(int entityId) {
-            throw new UnsupportedOperationException("simulated: attack " + entityId);
+            double[] z = zombies.get(entityId);
+            if (z == null) {
+                return;
+            }
+            if (Math.hypot(z[0] - position.x(), z[2] - position.z()) > 3.5) {
+                log.add(name + " REFUSED: attack on " + entityId + " out of reach");
+                return;
+            }
+            int damage = heldItem().map(i -> i == ITEM_WOODEN_SWORD ? 4 : itemNamedOrMinus("stone_sword") == i ? 5 : 1).orElse(1);
+            z[3] -= damage;
+            if (z[3] <= 0) {
+                zombies.remove(entityId);
+                players.values().forEach(p -> p.listeners.onEntitiesRemoved().accept(List.of(entityId)));
+                log.add(name + " killed zombie " + entityId);
+            }
         }
 
         @Override

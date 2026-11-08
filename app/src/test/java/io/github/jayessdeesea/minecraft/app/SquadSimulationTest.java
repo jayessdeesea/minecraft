@@ -213,4 +213,36 @@ class SquadSimulationTest {
                 .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
         assertTrue(walled.met(), "after a day: " + walled.status());
     }
+
+    /**
+     * A patrol base on a slope, two zombies on the squad before the hut is up: the squad fights, then
+     * goes back to the same hut and seals itself in. Live, each fight re-sited the base and the
+     * squad laid out hut after hut in the open.
+     */
+    @Test
+    void aFightWhileTheHutGoesUpDoesntMoveIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::slope, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
+        Position site = new Position(0, GROUND + 3, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build a patrol base here", site,
+                "Squad safe from monsters until dawn", new Objective.Task.PatrolBase())), squadLeader(site),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 3, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.ITEM_BREAD, 16},
+                        new int[]{38, SimServer.ITEM_DIRT, 64})));
+        runner.run();
+
+        clock.advance(3000); // the squad on its way to the site
+        server.spawnZombie(3.5, GROUND + 4, 3.5);
+        server.spawnZombie(-2.5, GROUND + 3, -2.5);
+        clock.advance(5 * 60_000);
+
+        assertTrue(server.zombiesLeft() == 0, server.zombiesLeft() + " zombies still standing");
+        SoldierRunner.BaseReport base = runner.baseReport("Alpha").orElseThrow(() -> new AssertionError("no patrol base"));
+        assertTrue(base.allInside() && base.sealed(), "after the fight: " + base + "; deaths " + server.deaths);
+    }
 }
