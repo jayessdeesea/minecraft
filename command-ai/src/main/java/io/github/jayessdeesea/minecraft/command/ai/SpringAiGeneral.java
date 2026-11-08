@@ -120,7 +120,7 @@ public final class SpringAiGeneral implements General {
     /** The foothold's phases and standards, the earliest unmet phase named: the lookup done for the model. */
     static String describe(io.github.jayessdeesea.minecraft.command.Foothold foothold) {
         String[] phases = {"", "shelter", "airhead", "buildup", "equipment"};
-        StringBuilder out = new StringBuilder("<foothold>\nThe camp at ").append(SpringAiSquadLeader.describe(foothold.camp()))
+        StringBuilder out = new StringBuilder("The camp at ").append(SpringAiSquadLeader.describe(foothold.camp()))
                 .append(", built up phase by phase:\n");
         for (io.github.jayessdeesea.minecraft.command.Foothold.Standard s : foothold.standards()) {
             out.append(String.format(Locale.ROOT, "- Phase %d, %s: %s - %s: %s%s%n", s.phase(), phases[s.phase()], s.name(),
@@ -132,7 +132,7 @@ public final class SpringAiGeneral implements General {
             out.append("Next, by day - phase ").append(p).append(", ").append(phases[p]).append(": ").append(String.join(" and ", open))
                     .append(open.size() > 1 ? ", one squad on each.\n" : ".\n");
         }, () -> out.append("Every phase is met.\n"));
-        return out.append("</foothold>\n\n").toString();
+        return PromptSection.of("foothold", out.toString()) + "\n";
     }
     /** The time of day in minutes, the unit a commander plans in: a Minecraft day is 20 of them. */
     static String describe(TimeOfDay time) {
@@ -160,23 +160,23 @@ public final class SpringAiGeneral implements General {
                                       Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile, List<String> remarks,
                                       List<SquadStatus> squadStatuses) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("<mission>\n").append(mission).append("\n</mission>\n\n");
+        prompt.append(PromptSection.of("mission", mission + "\n")).append('\n');
         if (!remarks.isEmpty()) {
             // What the operator sees from where they stand: worth weighing, not an order.
-            prompt.append("<operator_said>\n");
-            remarks.forEach(r -> prompt.append("- ").append(r).append('\n'));
-            prompt.append("</operator_said>\n\n");
+            StringBuilder said = new StringBuilder();
+            remarks.forEach(r -> said.append("- ").append(r).append('\n'));
+            prompt.append(PromptSection.of("operator_said", said.toString())).append('\n');
         }
-        time.ifPresent(t -> prompt.append("<time>\n").append(describe(t)).append("\n</time>\n\n"));
-        supplyPoint.ifPresent(point -> prompt.append("<supply_point>\nA chest stocked with weapons and armour at ")
-                .append(SpringAiSquadLeader.describe(point))
-                .append(". Give a squad an objective there to resupply it: soldiers short of a weapon or armour draw from it.\n")
-                .append("It is also the stockpile: soldiers carrying a full load of gathered logs or cobblestone put it in. ")
-                .append(stockpile.map(s -> "Last seen holding " + s.logs() + " logs and " + s.stone() + " cobblestone.")
-                        .orElse("Nobody has looked inside yet."))
-                .append("\n</supply_point>\n\n"));
+        time.ifPresent(t -> prompt.append(PromptSection.of("time", describe(t) + "\n")).append('\n'));
+        supplyPoint.ifPresent(point -> prompt.append(PromptSection.of("supply_point", "A chest stocked with weapons and armour at "
+                + SpringAiSquadLeader.describe(point)
+                + ". Give a squad an objective there to resupply it: soldiers short of a weapon or armour draw from it.\n"
+                + "It is also the stockpile: soldiers carrying a full load of gathered logs or cobblestone put it in. "
+                + stockpile.map(s -> "Last seen holding " + s.logs() + " logs and " + s.stone() + " cobblestone.")
+                        .orElse("Nobody has looked inside yet.")
+                + "\n")).append('\n'));
         for (SquadStatus squad : squadStatuses) {
-            prompt.append("<squad name=\"").append(squad.squadName()).append("\">\n")
+            StringBuilder body = new StringBuilder()
                     .append(describeStanding(squad)).append('\n')
                     // Said where the squad is listed, not left to be put together from <time> and its state.
                     .append(time.filter(TimeOfDay::dark).isPresent() && !squad.holdingBase()
@@ -187,12 +187,12 @@ public final class SpringAiGeneral implements General {
                             ? "It is day: the night is over for this squad's patrol base. Give it the day's work.\n" : "")
                     .append("Squad leader reports: ").append(SpringAiSquadLeader.describe(squad.report())).append('\n');
             for (SoldierStatus soldier : squad.soldiers()) {
-                prompt.append("- ").append(soldier.name()).append(" at ").append(SpringAiSquadLeader.describe(soldier.position()))
+                body.append("- ").append(soldier.name()).append(" at ").append(SpringAiSquadLeader.describe(soldier.position()))
                         .append(": ").append(SpringAiSquadLeader.describe(soldier.report())).append('\n');
             }
-            prompt.append(describe(Logstat.of(squad.soldiers()), squad.baseBlocksLeft())).append('\n');
-            prompt.append(describeResources(squad, time.filter(TimeOfDay::dark).isEmpty())).append('\n');
-            prompt.append("</squad>\n\n");
+            body.append(describe(Logstat.of(squad.soldiers()), squad.baseBlocksLeft())).append('\n');
+            body.append(describeResources(squad, time.filter(TimeOfDay::dark).isEmpty())).append('\n');
+            prompt.append(PromptSection.of("squad", Map.of("name", squad.squadName()), body.toString())).append('\n');
         }
         prompt.append("Give each squad its objective now.");
         return new PromptContext(prompt.toString());

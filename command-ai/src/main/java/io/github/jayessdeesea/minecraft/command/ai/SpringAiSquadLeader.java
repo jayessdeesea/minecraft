@@ -104,30 +104,30 @@ public final class SpringAiSquadLeader implements SquadLeader {
                                       List<SoldierStatus> soldierStatuses, TerrainSurvey terrain,
                                       Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time) {
         StringBuilder prompt = new StringBuilder();
-        time.ifPresent(t -> prompt.append("<time>\n").append(SpringAiGeneral.describe(t)).append("\n</time>\n\n"));
-        prompt.append("<objective>\n")
+        time.ifPresent(t -> prompt.append(PromptSection.of("time", SpringAiGeneral.describe(t) + "\n")).append('\n'));
+        prompt.append(PromptSection.of("objective", new StringBuilder()
                 .append("Mission: ").append(objective.mission()).append('\n')
                 .append("Location: ").append(describe(objective.location())).append('\n')
                 .append("Intent: ").append(objective.intent()).append('\n')
                 .append(objective.gather().map(r -> "Gather: " + r + " - your soldiers collect it around the objective on their own\n").orElse(""))
                 .append(objective.patrolBase() ? "Patrol base: your soldiers build a shelter at the objective on their own and wait in it\n" : "")
-                .append("</objective>\n\n");
-        prompt.append("<current_order>\n")
+                .toString())).append('\n');
+        prompt.append(PromptSection.of("current_order", new StringBuilder()
                 .append(lastOrder == null ? "None yet." : describe(lastOrder) + String.format(Locale.ROOT,
                         "\nIts spot is %.0f blocks from the objective.", Cohesion.distance(lastOrder.objective(), objective.location())))
                 .append('\n')
-                .append("</current_order>\n\n");
-        prompt.append("<squad name=\"").append(squadName).append("\">\n");
+                .toString())).append('\n');
+        StringBuilder squad = new StringBuilder();
         for (int i = 0; i < soldierStatuses.size(); i++) {
             SoldierStatus soldier = soldierStatuses.get(i);
-            prompt.append("- ").append(soldier.name()).append(i == 0 ? " (point man)" : "")
+            squad.append("- ").append(soldier.name()).append(i == 0 ? " (point man)" : "")
                     .append(" at ").append(describe(soldier.position()))
                     .append(i == 0 ? "" : String.format(Locale.ROOT, ", %.0f blocks from the point man",
                             Cohesion.distance(soldierStatuses.getFirst().position(), soldier.position())))
                     .append(": ").append(describe(soldier.report()))
                     .append("; ").append(describe(soldier.condition())).append('\n');
         }
-        prompt.append("</squad>\n\n");
+        prompt.append(PromptSection.of("squad", Map.of("name", squadName), squad.toString())).append('\n');
         prompt.append(describe(terrain)).append('\n');
         prompt.append(describeObjectiveGround(terrain, objective.location())).append('\n');
         prompt.append("Decide the squad's order now.");
@@ -184,7 +184,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
      * explains the notation.
      */
     static String describe(TerrainSurvey terrain) {
-        StringBuilder table = new StringBuilder("<terrain>\n      ");
+        StringBuilder table = new StringBuilder("      ");
         int columns = 2 * terrain.radius() / terrain.spacing() + 1;
         for (int c = 0; c < columns; c++) {
             table.append(String.format(Locale.ROOT, "%6s", "x=" + terrain.samples().get(c).x()));
@@ -203,7 +203,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             }
             table.append('\n');
         }
-        return table.append("</terrain>\n").toString();
+        return PromptSection.of("terrain", table.toString());
     }
 
     /**
@@ -221,7 +221,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
                 .min(Comparator.comparingDouble(s -> distance(s, objective))).orElseThrow();
         boolean inside = Math.abs(objective.x() - terrain.originX()) <= terrain.radius()
                 && Math.abs(objective.z() - terrain.originZ()) <= terrain.radius();
-        StringBuilder out = new StringBuilder("<objective_ground>\n");
+        StringBuilder out = new StringBuilder();
         if (!inside) {
             out.append(String.format(Locale.ROOT, "The objective is outside the surveyed area, %.0f blocks beyond its edge.\n",
                     distance(nearest, objective)));
@@ -235,7 +235,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             }).append(".\n");
         }
         if (reachable.isEmpty()) {
-            return out.append("No surveyed spot is reachable.\n</objective_ground>\n").toString();
+            return PromptSection.of("objective_ground", out.append("No surveyed spot is reachable.\n").toString());
         }
         out.append("Reachable spots nearest the objective:\n");
         reachable.stream().sorted(Comparator.comparingDouble(s -> distance(s, objective))).limit(5).forEach(s ->
@@ -247,7 +247,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
                 .orElseThrow();
         out.append(String.format(Locale.ROOT, "Highest reachable spot: x=%d y=%d z=%d%s.\n", highest.x(), highest.height(), highest.z(),
                 climb(highest)));
-        return out.append("</objective_ground>\n").toString();
+        return PromptSection.of("objective_ground", out.toString());
     }
 
     /** What getting there costs beyond walking: nothing to say for a walk. */
