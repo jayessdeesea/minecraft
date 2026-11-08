@@ -941,8 +941,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             ? Optional.of(io.github.jayessdeesea.minecraft.command.Resource.WOOD)
                             : makings.stone() < TORCH_STONE && !furnaces.containsValue(soldierName)
                             ? Optional.of(io.github.jayessdeesea.minecraft.command.Resource.STONE) : Optional.empty();
+                    // Where the squad last saw some: often not within a gatherer's reach of the camp - stone
+                    // on level ground by the water lies under the soil.
                     missing.ifPresent(r -> gathering.put(soldierName, new io.github.jayessdeesea.minecraft.command.Objective(
-                            "Gather the makings of torches", secure.location(), secure.intent(),
+                            "Gather the makings of torches", nearestSeen(squadName, r, secure.location()), secure.intent(),
                             new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(r))));
                 }
             } else {
@@ -1077,6 +1079,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 throw e;
             }
         };
+    }
+
+    /** The nearest place to {@code from} the squad last saw {@code resource}, or {@code from} itself if it saw none. */
+    private Position nearestSeen(String squad, io.github.jayessdeesea.minecraft.command.Resource resource, Position from) {
+        return chainOfCommand.resourcesSeen(squad).stream().filter(site -> site.resource() == resource)
+                .map(io.github.jayessdeesea.minecraft.command.ResourceSite::location)
+                .min(java.util.Comparator.comparingDouble(at -> Math.hypot(at.x() - from.x(), at.z() - from.z())))
+                .orElse(from);
     }
 
     private static Position centre(io.github.jayessdeesea.minecraft.bot.nav.BlockPos cell) {

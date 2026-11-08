@@ -73,6 +73,9 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
 
     private final General general;
     private final Map<String, SquadCommand> squads = new LinkedHashMap<>();
+    /** What each squad last saw round it - the survey the general was last shown. */
+    private final Map<String, List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resourcesSeen =
+            new java.util.concurrent.ConcurrentHashMap<>();
     private final ExecutorService generalThread = Executors.newSingleThreadExecutor(r -> new Thread(r, "general"));
     private final AtomicBoolean generalBusy = new AtomicBoolean();
     /** Bumped on each operator order, so a general's decision already in flight is known to be stale. */
@@ -302,6 +305,11 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         return squads.get(squad).mineObjective();
     }
 
+    /** The trees, exposed stone and farmland {@code squad} last saw round it - none before its first survey. */
+    public List<io.github.jayessdeesea.minecraft.command.ResourceSite> resourcesSeen(String squad) {
+        return resourcesSeen.getOrDefault(squad, List.of());
+    }
+
     public Optional<Objective> secureObjective(String squad) {
         return squads.get(squad).secureObjective();
     }
@@ -368,6 +376,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                 List<SquadStatus> statuses = sitreps.stream().map(s -> new SquadStatus(s.squad(),
                         squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
                         s.holdingBase(), s.baseBlocksLeft())).toList();
+                statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
                 List<Objective> objectives = general.decide(statuses);
                 if (missionVersion.get() != missionAsked) {
                     LOG.info("[General] discarding a decision made under superseded orders");
