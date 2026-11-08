@@ -229,9 +229,29 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             lastFoothold = standing;
         }
         general.receiveFoothold(foothold);
+        this.foothold = foothold;
     }
 
     private volatile String lastFoothold = "";
+    /** The home base's progress, last measured - a soldier's thread writes, the squads' read. */
+    private volatile io.github.jayessdeesea.minecraft.command.Foothold foothold;
+    /** Each squad's readiness as last seen, so only a change of it is logged. */
+    private final Map<String, io.github.jayessdeesea.minecraft.command.Readiness> readiness = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Logs each squad's readiness where it changed: safety where it stands, and its C-rating. */
+    private void logReadiness(List<Sitrep> sitreps) {
+        for (Sitrep sitrep : sitreps) {
+            io.github.jayessdeesea.minecraft.command.Readiness now = io.github.jayessdeesea.minecraft.command.Readiness.of(
+                    new SquadStatus(sitrep.squad(), squads.get(sitrep.squad()).report(), sitrep.soldiers(), List.of(), Optional.empty(),
+                            sitrep.holdingBase()), Optional.ofNullable(foothold));
+            io.github.jayessdeesea.minecraft.command.Readiness was = readiness.put(sitrep.squad(), now);
+            // A change of state, not of the counts behind it: hunger and health move every few seconds.
+            if (was == null || now.safety() != was.safety() || now.rating() != was.rating()) {
+                LOG.info("[Readiness] {}: {}, C-{}{}", sitrep.squad(), now.safety(), now.rating(),
+                        now.shortfall().isEmpty() ? "" : " - " + now.shortfall());
+            }
+        }
+    }
 
     /** A soldier saw what the stockpile holds - the general is told, for its next decision. */
     public void onStockpile(io.github.jayessdeesea.minecraft.command.Stockpile stockpile) {
@@ -336,6 +356,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         if (sitreps.isEmpty()) {
             return;
         }
+        logReadiness(sitreps);
         long now = System.currentTimeMillis();
         List<Sitrep> underGeneral = sitreps.stream().filter(s -> squads.get(s.squad()).escort().isEmpty()).toList();
         boolean newCantco = false;

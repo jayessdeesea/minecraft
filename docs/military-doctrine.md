@@ -578,6 +578,7 @@ would let in water or lava, or would leave a step with no floor over an open cav
 |---|---|---|
 | **Airhead** | After the drop, the assault force seizes objectives and consolidates an initial airhead, develops it out to an airhead line it can hold, then builds up combat power within it. | FM 90-26 (superseded by FM 3-99) |
 | **Lodgment** | An area in hostile territory that, seized and held, makes the continuous landing of troops and materiel possible and gives maneuver space for subsequent operations. | JP 3-18 |
+| **Unit status** | A unit reports its readiness as a C-rating, C-1 (fully ready) to C-4 (not), from the share of its personnel and equipment on hand and fit: at least 90, 80 and 70 per cent for C-1 to C-3. | AR 220-1 |
 
 *How we use it:* a garrison's camp (`minecraft.camp`, as `x,z`) is built up the way an airborne
 force builds a lodgment after the drop. Its phases:
@@ -596,6 +597,16 @@ carried (`command.Foothold`). The general reads them in `<foothold>`, which ends
 earliest phase not met and its open standards, one squad on each, by day. The log says each time a
 standard moves (`[Foothold]`). Like the squad leader's terrain lookup, this is the arithmetic done for the
 model, so its judgement goes into who does what, not into working out where the camp stands.
+
+Safety goes with the ground, not the squad. Each squad's readiness (`command.Readiness`) is the
+lodgment's phase where it stands: at the camp - its middle soldier within 24 blocks - the phases the
+camp has met (SHELTER, AIRHEAD, BUILDUP, ESTABLISHED); away from it, SHELTER if it is sealed in a
+patrol base and otherwise EXPOSED, the first night of an air drop, whatever the camp has. Beside it
+is a C-rating, the worst of the shares of the squad armed, armoured, fed (at food 18, where health
+comes back) and above half health. Both are worked out from where the soldiers stand and what they
+carry, and the log says each time either changes (`[Readiness]`). The general isn't shown them:
+with the foothold in view it already keeps an exposed squad near shelter (GeneralScenarioIT's
+`exposed-far-out`).
 
 ## Sources
 

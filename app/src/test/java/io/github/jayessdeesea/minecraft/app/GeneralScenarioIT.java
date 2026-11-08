@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Readiness;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
@@ -49,6 +50,15 @@ class GeneralScenarioIT {
 
     /** The camp's progress, for the situations that have a camp to build up. */
     private static final java.util.Map<String, io.github.jayessdeesea.minecraft.command.Foothold> FOOTHOLDS = java.util.Map.of(
+            "exposed-far-out", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(1, "shelter", true, "both squads have a base", "PATROL_BASE"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
+                            "120 walkable cells within 12 blocks still dark", "SECURE"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
+            "securing-short-of-makings", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
+                            "288 walkable cells within 12 blocks still dark", "SECURE"),
+                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
             "foothold-airhead", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
                     new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
                             "31 walkable cells within 12 blocks still dark", "SECURE"),
@@ -125,6 +135,23 @@ class GeneralScenarioIT {
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
                     (squads, given) -> given.stream().filter(o -> !o.secure() || distance(o.location(), new Position(3000, 151, 3000)) > 16)
                             .map(o -> "not set to secure the camp: " + o.task() + " " + o.mission() + " at " + o.location()).toList()),
+            // The live flip-flop: soldiers out of torches go for the makings, the general sends the
+            // squad for stone, then the unlit camp sends it back to SECURE, every minute or so.
+            new Situation("securing-short-of-makings", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
+                    TimeOfDay.of(2000, true),
+                    List.of(shortOfMakings("Alpha", 2996), shortOfMakings("Bravo", 3004)),
+                    (squads, given) -> given.stream().filter(o -> !o.secure())
+                            .map(o -> "taken off SECURE: " + o.task() + " " + o.mission() + " at " + o.location()).toList()),
+            // Readiness: a squad far out from the camp, bare-handed and unarmoured, with the evening
+            // coming - its safety went nowhere with it. Back to the camp, or a patrol base where it is.
+            new Situation("exposed-far-out", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment, "
+                    + "and scout the ground east of it as far as x=3150.",
+                    TimeOfDay.of(9000, true),
+                    List.of(fresh("Alpha", 3070, Optional.of(new Objective("Scout east of the camp", new Position(3070, 151, 3000),
+                            "See what lies east", Optional.empty()))), fresh("Bravo", 3004, Optional.of(SECURE_CAMP))),
+                    (squads, given) -> given.getFirst().patrolBase()
+                            || distance(given.getFirst().location(), new Position(3000, 151, 3000)) <= Readiness.AT_BASE ? List.of()
+                            : List.of("Alpha left out east, exposed: " + given.getFirst().task() + " at " + given.getFirst().location())),
             new Situation("wall-the-camp", "The camp is on the stone platform around x=3000 z=3000, its ground already lit. "
                     + "Both squads wall the camp in today.", TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
@@ -280,6 +307,14 @@ class GeneralScenarioIT {
     }
 
     /** A squad of four on the platform, 16 cobblestone each, its base not laid out yet. */
+    /** A squad lighting the camp, its soldiers out of torches and gone for the cobblestone for a furnace, stone seen off the platform. */
+    private static SquadStatus shortOfMakings(String name, int x) {
+        return new SquadStatus(name, new Report.Moving(), soldiers(name, x,
+                new Report.Gathering(io.github.jayessdeesea.minecraft.command.Resource.STONE), 0),
+                List.of(new io.github.jayessdeesea.minecraft.command.ResourceSite(io.github.jayessdeesea.minecraft.command.Resource.STONE,
+                        new Position(3030, 140, 2990), 40)), Optional.of(SECURE_CAMP), false);
+    }
+
     private static SquadStatus fresh(String name, int x, Optional<Objective> standing) {
         return new SquadStatus(name, new Report.Moving(), soldiers(name, x, new Report.Moving(), 16), List.of(), standing, false);
     }
