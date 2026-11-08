@@ -45,6 +45,8 @@ public final class SpringAiGeneral implements General {
     private final java.util.Deque<String> remarks = new java.util.concurrent.ConcurrentLinkedDeque<>();
     /** The camp's progress through the lodgment's phases - a soldier's thread writes, the general's reads. */
     private volatile io.github.jayessdeesea.minecraft.command.Foothold foothold;
+    /** Daylight left, in ticks, above which a squad still in its patrol base is told the night is over: two minutes. */
+    static final long MORNING_AT_LEAST = 2400;
     /** How many of the operator's remarks the general keeps in view. */
     static final int REMARKS_KEPT = 3;
 
@@ -179,6 +181,10 @@ public final class SpringAiGeneral implements General {
                     // Said where the squad is listed, not left to be put together from <time> and its state.
                     .append(time.filter(TimeOfDay::dark).isPresent() && !squad.holdingBase()
                             ? "It is night and this squad is not sealed in a patrol base: monsters are spawning round it.\n" : "")
+                    // And the morning: nothing else says the night is over for a squad still sheltering.
+                    .append(time.filter(t -> !t.dark() && t.ticksUntilDark() > MORNING_AT_LEAST).isPresent() && (squad.holdingBase()
+                            || squad.standing().filter(Objective::patrolBase).isPresent())
+                            ? "It is day: the night is over for this squad's patrol base. Give it the day's work.\n" : "")
                     .append("Squad leader reports: ").append(SpringAiSquadLeader.describe(squad.report())).append('\n');
             for (SoldierStatus soldier : squad.soldiers()) {
                 prompt.append("- ").append(soldier.name()).append(" at ").append(SpringAiSquadLeader.describe(soldier.position()))

@@ -154,6 +154,12 @@ class GeneralScenarioIT {
             new Situation("sealed-unarmed-trees-near", BASE_MISSION, TimeOfDay.of(11800, true),
                     List.of(withTrees(sealed("Alpha", ALPHA_BASE, 3000)), withTrees(sealed("Bravo", BRAVO_BASE, 3008))),
                     GeneralScenarioIT::keepsEvery),
+            // The live failure: the night over, the general kept both squads in their bases.
+            new Situation("sealed-at-dawn", "Make camp on the stone platform around x=3000 z=3000. Each squad spends the night "
+                    + "sealed inside a patrol base there, until dawn. By day, light the camp's ground with torches.", TimeOfDay.of(500, true),
+                    List.of(sealed("Alpha", ALPHA_BASE, 3000), sealed("Bravo", BRAVO_BASE, 3008)),
+                    (squads, given) -> given.stream().filter(Objective::patrolBase)
+                            .map(o -> "kept in its patrol base after dawn: " + o.mission()).toList()),
             new Situation("sealed-at-night", BASE_MISSION, TimeOfDay.of(18000, true),
                     List.of(sealed("Alpha", ALPHA_BASE, 3000), sealed("Bravo", BRAVO_BASE, 3008)), GeneralScenarioIT::keepsEvery),
             new Situation("building-at-dusk", BASE_MISSION, TimeOfDay.of(11800, true),

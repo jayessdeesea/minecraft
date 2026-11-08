@@ -416,7 +416,9 @@ game time between the updates that carry it (`app.OverworldClock`), becomes `com
 spawn in the open, tick 13178, to sunrise, tick 24000: spawning stops at 22822, but what spawned
 walks until the sun burns it, so a squad stays in until then - the stand-to before first light. The general's and squad leaders' prompts say how many
 minutes until that changes. At night, each squad not sealed in a patrol base is told so on its own
-line of the general's prompt, rather than left to be worked out from the time and its state.
+line of the general's prompt, rather than left to be worked out from the time and its state; by
+day, with more than two minutes of light left, each squad still in or ordered to a patrol base is
+told the night is over.
 
 An objective's task can be `PATROL_BASE`. `command.PatrolBase` lays out a hasty hut around the
 squad: a 2x2 floor for up to four soldiers (3x3 for up to nine), walls two high, and a roof over
