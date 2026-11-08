@@ -10,7 +10,8 @@ without being told.
 | 2 | `LinkUp` | A respawned soldier closes on its squad, `LinkingUp` until it's back ([§ 6](../../military-doctrine.md#6-replacements-rally-point-and-link-up)). |
 | 3 | `Cohesion` | Pace control: the point man halts for a straggler that can follow ([§ 9](../../military-doctrine.md#9-pace-control-and-supporting-distance)). |
 | 4 | `Resupply` | A soldier short of a weapon or armour draws from the supply chest ([§ 11](../../military-doctrine.md#11-pre-combat-checks)). |
-| 5 | `ReactToContact` | The soldier in contact fights; the rest move to support it ([§ 8](../../military-doctrine.md#8-actions-on-contact-and-the-react-to-contact-drill)). |
+| 5 | `Recovery` | A stranded soldier - no safe route, nothing to build with - is fetched by the nearest squadmate carrying blocks ([§ 7](../../military-doctrine.md#7-risk-acceptance)). |
+| 6 | `ReactToContact` | The soldier in contact fights; the rest move to support it ([§ 8](../../military-doctrine.md#8-actions-on-contact-and-the-react-to-contact-drill)). |
 | - | `Escort` | Instead of 1 to 3: a ring round a named player ([§ 10](../../military-doctrine.md#10-close-protection)). |
 | - | `CrossLevel` | Kit from a squadmate with some to spare to one that needs it ([§ 13](../../military-doctrine.md#13-cross-leveling)). |
 | - | `PatrolBase` | The hut's outline, one cell per soldier, checked from the world ([§ 14](../../military-doctrine.md#14-patrol-base)). |

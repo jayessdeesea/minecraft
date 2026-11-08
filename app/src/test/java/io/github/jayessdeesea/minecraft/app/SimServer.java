@@ -113,6 +113,10 @@ final class SimServer {
         return id;
     }
 
+    float health(String name) {
+        return players.get(name).health;
+    }
+
     int zombiesLeft() {
         return zombies.size();
     }
@@ -178,10 +182,16 @@ final class SimServer {
 
     /** The joins: each soldier spawns at {@code spawn} carrying {@code kit} ([slot, item, count] each). */
     SoldierRunner.Connector connector(PlayerPosition spawn, List<int[]> kit) {
+        return connector(name -> spawn, name -> kit);
+    }
+
+    /** As {@link #connector(PlayerPosition, List)}, each soldier's spawn and kit its own. */
+    SoldierRunner.Connector connector(java.util.function.Function<String, PlayerPosition> spawns,
+                                      java.util.function.Function<String, List<int[]>> kits) {
         return (name, listeners) -> {
-            Player player = new Player(name, listeners, spawn);
+            Player player = new Player(name, listeners, spawns.apply(name));
             players.put(name, player);
-            kit.forEach(k -> player.slots[k[0]] = new int[]{k[1], k[2]});
+            kits.apply(name).forEach(k -> player.slots[k[0]] = new int[]{k[1], k[2]});
             // As the server sends them: registries, the world, where it stands, its kit, its health.
             clock.scheduler(name + "-join").schedule(player::join, 50, java.util.concurrent.TimeUnit.MILLISECONDS);
             return CompletableFuture.completedFuture(player);

@@ -195,7 +195,9 @@ risk and its own condition into a fall allowance:
   because it regenerates.
 
 So a safe route always wins when one exists, and a fall is planned only when there's none, on
-foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier that reports CANTCO prices the riskier
+foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier with no such
+route and nothing to build with is stranded, and the squad's recovery drill sends the nearest
+squadmate carrying 24 or more blocks to it (`command.Recovery`): one at a time, never in contact. A soldier that reports CANTCO prices the riskier
 order that would free it, for example "a route with falls costing 8 of my 20 health exists (MEDIUM
 risk)". The squad leader then decides whether the mission is worth that. It can set risk for one
 soldier (`SquadOrder.soldierRisk`), so freeing a stuck soldier at MEDIUM doesn't expose the rest of

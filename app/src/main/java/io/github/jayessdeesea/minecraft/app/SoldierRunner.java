@@ -137,6 +137,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         String torchbearer;
         /** The squad's staircase, while its objective is MINE. */
         io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs;
+        /** The soldiers' own reports this cycle, before link-up relabels a replacement. */
+        List<SoldierStatus> reported = List.of();
         /** The objective's x and z the wall was laid out for: its key in {@code walls}. */
         String wallKey;
         /** The objective's x and z the stairs were sited for. */
@@ -591,7 +593,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             SquadState state = squadStates.computeIfAbsent(squad.name(), name -> new SquadState());
             // Replacements (respawned soldiers) go to the rear and rejoin by link-up, so the first
             // formed soldier is the point man.
-            List<SoldierStatus> statuses = state.linkUp.reconstitute(soldiers.stream().map(DeterministicSoldier::status).toList());
+            // The soldiers' own reports: a replacement's CANTCO, before link-up relabels it, says it's stranded.
+            state.reported = soldiers.stream().map(DeterministicSoldier::status).toList();
+            List<SoldierStatus> statuses = state.linkUp.reconstitute(state.reported);
             java.util.Set<String> linking = statuses.stream().filter(s -> s.report() instanceof Report.LinkingUp)
                     .map(SoldierStatus::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
             java.util.Set<String> wasLinking = state.linkingUp;
@@ -667,9 +671,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             principal, supplyPoint),
                     principal, threats));
         } else {
-            orders = ReactToContact.orders(statuses,
+            orders = ReactToContact.orders(statuses, io.github.jayessdeesea.minecraft.command.Recovery.orders(state.reported,
                     Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, Formations.assign(order, statuses))),
-                            order.objective(), supplyPoint));
+                            order.objective(), supplyPoint)));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
         if (!java.util.Objects.equals(straggler, state.haltedFor)) {

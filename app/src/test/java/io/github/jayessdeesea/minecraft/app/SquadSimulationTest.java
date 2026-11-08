@@ -245,4 +245,39 @@ class SquadSimulationTest {
         SoldierRunner.BaseReport base = runner.baseReport("Alpha").orElseThrow(() -> new AssertionError("no patrol base"));
         assertTrue(base.allInside() && base.sealed(), "after the fight: " + base + "; deaths " + server.deaths);
     }
+
+    /**
+     * As at the live respawn point: Dana on a platform 17 blocks over the ground with nothing to
+     * build with, her only way down a fall costing most of her health. A squadmate carrying dirt
+     * builds steps up to her, and she walks down them.
+     */
+    @Test
+    @org.junit.jupiter.api.Disabled("backlog/mobility.md, the respawn platform: the recovery drill sends a squadmate, "
+            + "but no route search builds a 17-step stair within its budget - the stair wants laying out as a structure")
+    void aSoldierStrandedOnAPlatformIsFetchedDownByASquadmateWithBlocks() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> y == GROUND + 17 && x >= 6 && x <= 8 && z >= -1 && z <= 1
+                ? SimServer.STONE : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(
+                        n -> n.equals("Dana") ? new PlayerPosition(7.5, GROUND + 18, 0.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> n.equals("Dana") ? List.of() : List.of(
+                                new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                                new int[]{37, SimServer.ITEM_BREAD, 16},
+                                new int[]{38, SimServer.ITEM_DIRT, 64})));
+        runner.run();
+
+        clock.advance(5 * 60_000);
+
+        PlayerPosition dana = server.position("Dana");
+        assertTrue(dana.y() < GROUND + 4, "Dana still up at " + dana);
+        assertTrue(server.health("Dana") == 20 && server.deaths.isEmpty(), "Dana came down hurt: health "
+                + server.health("Dana") + ", deaths " + server.deaths);
+    }
 }

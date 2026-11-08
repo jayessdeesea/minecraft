@@ -37,9 +37,13 @@ What's left:
   scenario soldier astray (lakes and ravines), so a soldier builds only when the plan reaches.
 - **The respawn platform.** Replacements respawn on a patch of glass at y=102 near (-5, 9), with
   air under it to the ground at y=85. They carry nothing and glass drops nothing, so they can't
-  build down. A squadmate carrying blocks could build a stair up to one, and the stair would stay
-  for every replacement after it. Until then such a replacement either falls (14 of 20 health) at
-  HIGH risk, or reports CANTCO.
+  build down. The recovery drill sends the nearest squadmate carrying blocks to one
+  (`command.Recovery`, docs/military-doctrine.md § 7), but its route search can't find a 17-step
+  stair within budget: weighting the search toward the goal, or widening its budget, finds stairs
+  that walk soldiers into lakes elsewhere. The stair wants laying out as a structure - a fixed
+  flight from the ground to the ledge, built cell by cell like the wall
+  (backlog/echelon-contracts.md, the engineer). `SquadSimulationTest`'s stranded-platform scenario
+  is written and disabled until then.
 
 ## Notes
 - Blocks come from what the soldier carries (`Builder`'s cobblestone, planks, logs), or from what
