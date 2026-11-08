@@ -46,7 +46,7 @@ public final class Mason {
     /** Ticks this mason has run, and the cells it couldn't walk to the place for, until when. */
     private long ticks;
     private final java.util.Map<BlockPos, Long> passedOver = new java.util.HashMap<>();
-    /** How long a cell whose place couldn't be walked to is passed over: the wall's other cells first. */
+    /** How long a cell that failed - its place not walked to, or its block not taken - is passed over. */
     static final int PASS_OVER_TICKS = 2400;
     private String failure;
 
@@ -146,8 +146,9 @@ public final class Mason {
     }
 
     private void fail(String why) {
-        if (claimed != null && why.startsWith("walk to")) {
-            // Its place out of reach - inside an old hut, across water: the rest of the wall first.
+        if (claimed != null) {
+            // Its place out of reach - inside an old hut, across water - or a block the server won't
+            // take there: the rest of the wall first.
             passedOver.put(claimed, ticks + PASS_OVER_TICKS);
         }
         LOG.warn("{} stops walling for a while - {}", name, why);
