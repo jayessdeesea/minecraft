@@ -22,13 +22,24 @@ class CrossLevelTest {
         Condition bare = new Condition(20, 20, 1, Optional.of(new Kit(Optional.empty(), 0, 0)));
         Condition spare = new Condition(20, 20, 0, Optional.of(new Kit(Optional.of("stone_sword"), 0, 0, 0, 8, 0, 0, false, false, 0, false, 1)));
         List<SoldierStatus> squad = List.of(
-                new SoldierStatus("Alice", new Position(0, 64, 0), SLOT, new Report.LinkingUp(), Optional.of(bare)),
+                new SoldierStatus("Alice", new Position(0, 64, 0), SLOT, new Report.Idle(), Optional.of(bare)),
                 soldier("Bob", 2, 8, new Report.Idle()),
                 new SoldierStatus("Carol", new Position(9, 64, 0), SLOT, new Report.Idle(), Optional.of(spare)));
 
         assertEquals(List.of(new CrossLevel.Transfer("Carol", "Alice", CrossLevel.Item.WEAPON, 1)),
                 CrossLevel.pair(squad, Map.of("Alice", 3), Map.of(), Map.of("Alice", 1)),
                 "Bob, nearer, has no spare; the weapon before the logs");
+    }
+
+    @Test
+    void aReplacementStillLinkingUpGetsNothingYet() {
+        Condition bare = new Condition(20, 20, 1, Optional.of(new Kit(Optional.empty(), 0, 0)));
+        Condition spare = new Condition(20, 20, 0, Optional.of(new Kit(Optional.of("stone_sword"), 0, 0, 0, 8, 0, 0, false, false, 0, false, 1)));
+        List<SoldierStatus> squad = List.of(
+                new SoldierStatus("Alice", new Position(60, 100, 0), SLOT, new Report.LinkingUp(), Optional.of(bare)),
+                new SoldierStatus("Carol", new Position(9, 64, 0), SLOT, new Report.Idle(), Optional.of(spare)));
+
+        assertEquals(List.of(), CrossLevel.pair(squad, Map.of(), Map.of(), Map.of("Alice", 1)));
     }
 
     @Test

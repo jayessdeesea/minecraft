@@ -443,7 +443,8 @@ its own next pickaxe, or 2 rations, and hands over the logs short or 2 rations. 
 soldier - a replacement respawns with nothing - gets a squadmate's spare melee weapon: the worst
 of those it carries beyond its best (`Inventory.spareWeaponSlot`), never the one in hand. Weapons
 are paired first, then logs, then rations, and a soldier is in one hand-over at a time, giving or
-receiving. Nobody cross-levels while
+receiving. A replacement still linking up gets nothing until it has: the squad reorganises round
+it once it's back. Nobody cross-levels while
 the squad is in contact, or from a soldier linking up.
 
 The giver (`bot.supply.Handover`) walks to 2 blocks short of the receiver, faces it, and throws the

@@ -92,7 +92,9 @@ public final class CrossLevel {
     private static void pair(List<SoldierStatus> squad, Item item, Map<String, Integer> wantedBy, Set<String> busy, List<Transfer> transfers) {
         for (SoldierStatus receiver : squad) {
             Integer wanted = wantedBy.get(receiver.name());
-            if (wanted == null || wanted <= 0 || busy.contains(receiver.name())) {
+            // A replacement links up first, then the squad reorganises round it: live, a giver was
+            // sent to one still stranded where it respawned, out of reach on a peak.
+            if (wanted == null || wanted <= 0 || busy.contains(receiver.name()) || receiver.report() instanceof Report.LinkingUp) {
                 continue;
             }
             squad.stream()
