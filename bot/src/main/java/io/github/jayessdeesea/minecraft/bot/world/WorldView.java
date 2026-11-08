@@ -126,6 +126,11 @@ public interface WorldView {
         return List.of();
     }
 
+    /** Where the players within {@code radius} of {@code center} are - squadmates, perhaps the asker itself. A view that tracks no entities sees none. */
+    default List<Position> playersNear(Position center, double radius) {
+        return List.of();
+    }
+
     /** Where the dropped items within {@code radius} of {@code center} are, nearest first. A view that tracks no entities sees none. */
     default List<TrackedEntity> gameNear(Position center, double radius) {
         return List.of();

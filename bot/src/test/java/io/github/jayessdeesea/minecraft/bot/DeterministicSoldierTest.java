@@ -245,6 +245,38 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void aSwordWaitsWhileASquadmateStandsInItsSweep() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+        alice.reportKit(new Kit(java.util.Optional.of("stone_sword"), 0, 0));
+        Position zombie = new Position(3, 64, 0);
+        WorldView bobBeside = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, 154, zombie));
+            }
+
+            @Override
+            public List<Position> playersNear(Position center, double radius) {
+                // Alice herself, as her squadmates see her, and Bob a block from the zombie.
+                return List.of(new Position(0, 64, 0), new Position(3, 64, 1));
+            }
+        };
+
+        assertEquals(OptionalInt.empty(), alice.tick(bobBeside), "Bob is in the sweep");
+        assertEquals(OptionalInt.of(1), alice.tick(withHostileAt(zombie, false)), "with nobody beside it, she swings");
+    }
+
+    @Test
     void backsOffFromAHostileInsideKeepAway() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
 

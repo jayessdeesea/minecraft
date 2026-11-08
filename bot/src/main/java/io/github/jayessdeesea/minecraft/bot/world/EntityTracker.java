@@ -117,6 +117,19 @@ public final class EntityTracker {
                 .toList();
     }
 
+    /** {@code minecraft:player}, in protocol 777's registry: squadmates, and any other player. */
+    static final int PLAYER_TYPE_ID = 159;
+
+    /** Where the players within {@code radius} of {@code center} are - each soldier's squadmates, and itself as the others' connections see it. */
+    public List<Position> nearbyPlayers(Position center, double radius) {
+        double radiusSquared = radius * radius;
+        return entities.values().stream()
+                .filter(entry -> entry.typeId == PLAYER_TYPE_ID)
+                .map(entry -> entry.position)
+                .filter(position -> distanceSquared(center, position) <= radiusSquared)
+                .toList();
+    }
+
     /** The entity type of a dropped item stack, {@code minecraft:item}, in protocol 777's registry. */
     static final int ITEM_TYPE_ID = 72;
     /** {@code minecraft:arrow} and {@code minecraft:spectral_arrow}, in protocol 777's registry: what skeletons and strays loose. */

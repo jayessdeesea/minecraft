@@ -359,6 +359,32 @@ public final class DeterministicSoldier implements Soldier {
      * @return the entity to attack this tick, if any - the caller sends it, keeping this decision
      *     free of I/O like the rest of the tick
      */
+    /**
+     * How far round its target a sword's sweep reaches a body: vanilla sweeps every living entity
+     * whose box meets the target's grown by a block across - a block, plus half a player's width
+     * and half a mob's.
+     */
+    static final double SWEEP_REACH = 1.0 + 0.3 + 0.3;
+
+    /**
+     * Whether a swing now would sweep a squadmate: a sword in hand, and another player within
+     * {@link #SWEEP_REACH} of the target across and a block and a half up or down. Three soldiers
+     * died that way, cut down beside the zombie a squadmate swung at. The swing waits; the squadmate
+     * moves on or the target does.
+     */
+    private boolean sweepHitsSquadmate(WorldView world, Position target) {
+        Kit carried = kit;
+        if (carried == null || carried.weapon().filter(w -> w.endsWith("_sword")).isEmpty()) {
+            return false;
+        }
+        return world.playersNear(target, SWEEP_REACH + 1).stream()
+                .filter(p -> Math.hypot(p.x() - position.x(), p.z() - position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - position.y()) > 1)
+                .anyMatch(p -> Math.hypot(p.x() - target.x(), p.z() - target.z()) <= SWEEP_REACH && Math.abs(p.y() - target.y()) <= 1.5);
+    }
+
+    /** The soldier itself, as its squadmates' connections see it, is within this of where it is. */
+    private static final double SELF_SEEN_WITHIN = 0.5;
+
     public OptionalInt tick(WorldView world) {
         if (ticksUntilAttack > 0) {
             ticksUntilAttack--;
@@ -429,7 +455,7 @@ public final class DeterministicSoldier implements Soldier {
                 }
                 holdCoverTicks = UNDER_FIRE_TICKS;
             } else {
-                if (ticksUntilAttack == 0 && range <= ATTACK_REACH && !shieldRaised()) {
+                if (ticksUntilAttack == 0 && range <= ATTACK_REACH && !shieldRaised() && !sweepHitsSquadmate(world, threat)) {
                     attack = OptionalInt.of(nearest.entityId());
                     // A hit's damage scales with the swing's charge: wait for the held weapon's full one.
                     Kit carried = kit;

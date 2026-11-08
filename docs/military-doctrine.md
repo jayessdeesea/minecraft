@@ -239,6 +239,11 @@ In the combat simulation, three zombies on one soldier's flank kill a lone soldi
 100. A squad spread 10 blocks apart without the drill still wins, but loses its flank soldier 66
 times in 100. With the drill it loses nobody.
 
+A squad closing on one hostile stands round it, and a sword's sweep hits every body within a block
+of what it strikes, squadmates included. So a soldier holding a sword doesn't swing while another
+player stands within 1.6 blocks of its target across and a block and a half up or down
+(`DeterministicSoldier.SWEEP_REACH`). It waits until one of them moves.
+
 ## 9. Pace control and supporting distance
 
 A leader keeps the unit's elements within supporting distance, close enough to reinforce each
