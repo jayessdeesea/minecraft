@@ -422,6 +422,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     static final int WALL_RADIUS = 8;
     /** Fewer blocks than this carried, and a mason goes and digs dirt for the wall. */
     static final int WALL_BLOCKS_LOW = 4;
+    /** How close behind the cutter, across and up the stairs, the rest of a squad mining at night keeps. */
+    static final double MINE_FOLLOW = 3;
     /** Each connected soldier's hunting, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Hunter> hunters = new ConcurrentHashMap<>();
     /** Soldiers free to hunt when hungry: by day, out of contact, not walling in a base - squad loop writes, tick reads. */
@@ -1061,12 +1063,17 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 stairsProgress.remove(soldierName);
             }
             if (stairs != null && !squadInContact) {
-                // The cutter stands where the stairs need it; the rest hold the top, clear of the shaft.
-                Position place = soldierName.equals(cutter)
-                        ? miners.get(soldierName).standAt().orElse(centre(stairs.head()))
+                // The cutter stands where the stairs need it; the rest hold the top, clear of the shaft -
+                // by day. By night they go down behind it: the top is the dark, and down the stairs
+                // nothing spawns within 24 blocks of them.
+                boolean dark = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
+                Position cutterAt = cutter == null ? centre(stairs.head()) : miners.get(cutter).standAt().orElse(centre(stairs.head()));
+                boolean isCutter = soldierName.equals(cutter);
+                Position place = isCutter ? cutterAt
+                        : dark ? cutterAt
                         : new Position(stairs.head().x() - 1.5 + i, stairs.head().y(), stairs.head().z() + 3.5);
                 byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(),
-                        soldierName.equals(cutter) ? 0.3 : 1.5, soldierName.equals(cutter) ? 0.5 : 4, Risk.LOW));
+                        isCutter ? 0.3 : dark ? MINE_FOLLOW : 1.5, isCutter ? 0.5 : dark ? MINE_FOLLOW : 4, Risk.LOW));
                 continue;
             }
             Order given = orders.get(i);

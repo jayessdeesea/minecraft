@@ -514,9 +514,10 @@ CANTCO.
 
 Where the operator's standing rule is set (`minecraft.general.shelter-at-night`, for a garrison),
 no squad spends the night in the open: from 90 seconds before dark - a hut takes minutes, more
-with dirt to dig - an order that isn't a patrol base, for a squad outside one or sealed inside
-one, is replaced by the patrol base it was already ordered to build, or, with none, by one
-where its point man stands; the log says what the general had ordered (`ChainOfCommand.sheltered`).
+with dirt to dig - an order that isn't a patrol base or a mine is replaced. The first squad in the
+roster holds the camp: it gets the patrol base it was already ordered to build, or, with none, one
+where its point man stands. Every other squad works the night shift down the camp's mine (§ 16).
+The log says what the general had ordered (`ChainOfCommand.sheltered`).
 
 The base is lit as well as sealed. Light is checked alongside breaches (`PatrolBase.Plan.unlit`):
 a torch gives its cell block light 14, which falls by one a block through open cells. A floor cell
@@ -633,8 +634,13 @@ one block. It's cut no deeper than y=-58, clear of bedrock.
 
 One soldier, the first in squad order carrying a pickaxe, cuts it (`bot.supply.Miner`). It stands
 on the step above the first not yet cut, breaks that step's cells, walks down onto it, and cuts
-the next. The rest hold the top, clear of the shaft. Until one of them has a pickaxe, every one
-makes one. The stairs' state is the world's, so a run stopped by a fight or a restart picks up
+the next. By day the rest hold the top, clear of the shaft. By night they follow it down, within 3
+blocks: the top is open ground in the dark, and on the stairs no monster spawns within 24 blocks
+of a player. Until one of them has a pickaxe, every one makes one.
+
+The camp's mine is the night shift's work (§ 14): its head 4 blocks east and 4 north of the camp's
+centre, inside the wall, cut down to the iron at y=16 (`ChainOfCommand.nightShift`). Once the
+stairs reach the iron, their tunnels are the mining. The stairs' state is the world's, so a run stopped by a fight or a restart picks up
 where they end. A dig waits out the block's own break time: its hardness, and the pickaxe in hand
 against the least tier that gets its drop. Both come from the server jar (`bot.world.Hardness`;
 DEVELOPMENT.md § 7). Ore it can see on the way - beside its body or the step it cuts, outside the

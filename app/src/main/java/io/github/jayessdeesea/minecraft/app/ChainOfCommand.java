@@ -134,9 +134,17 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     Objective sheltered(Objective objective, io.github.jayessdeesea.minecraft.command.SquadStatus squad) {
         io.github.jayessdeesea.minecraft.command.TimeOfDay now = time;
         // A squad already sealed in is the one most to keep there: an order out of it is no exception.
+        // Nor is a squad down a mine: underground, nothing spawns within 24 blocks of the soldiers.
         if (!shelterAtNight || now == null || !(now.dark() || now.ticksUntilDark() <= SHELTER_LEAD_TICKS)
-                || objective.patrolBase() || squad.soldiers().isEmpty()) {
+                || objective.patrolBase() || objective.mine() || squad.soldiers().isEmpty()) {
             return objective;
+        }
+        // The night isn't wasted: one squad holds the camp, and the rest go down the camp's mine.
+        Optional<Objective> nightShift = nightShift(squad.squadName());
+        if (nightShift.isPresent()) {
+            LOG.warn("[General -> {}] at or near night, ordered '{}' ({}) - the operator's rule sends it down the camp's mine instead, at {}",
+                    squad.squadName(), objective.mission(), objective.task(), at(nightShift.get().location()));
+            return nightShift.get();
         }
         // A base already ordered is the one to finish: sited again wherever the point man stands at
         // each decision, a squad starts hut after hut and finishes none before dawn.
@@ -153,6 +161,27 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         LOG.warn("[General -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule shelters it instead, at {}",
                 squad.squadName(), objective.mission(), objective.task(), at(shelter.location()));
         return shelter;
+    }
+
+    /** Where the camp's mine is cut, from the camp's centre: inside its wall, clear of the huts. */
+    static final int MINE_HEAD_DX = 4;
+    static final int MINE_HEAD_DZ = -4;
+    /** How deep the night shift cuts: the iron, commonest round y=16. */
+    static final int MINE_DEPTH = 16;
+
+    /**
+     * The night's work for {@code squad} at the camp's mine - for every squad but the first, which
+     * holds the camp - or empty for the first, or with no camp measured yet.
+     */
+    Optional<Objective> nightShift(String squad) {
+        io.github.jayessdeesea.minecraft.command.Foothold camp = foothold;
+        if (camp == null || squads.isEmpty() || squads.keySet().iterator().next().equals(squad)) {
+            return Optional.empty();
+        }
+        Position c = camp.camp();
+        return Optional.of(new Objective("Cut the camp's mine down to the iron through the night",
+                new Position(Math.floor(c.x()) + MINE_HEAD_DX, MINE_DEPTH, Math.floor(c.z()) + MINE_HEAD_DZ),
+                "Stone and iron for the camp, and the night spent working underground", new Objective.Task.Mine()));
     }
 
     /**

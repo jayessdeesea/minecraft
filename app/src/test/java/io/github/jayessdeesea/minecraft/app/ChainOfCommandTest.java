@@ -44,4 +44,31 @@ class ChainOfCommandTest {
         assertTrue(given.patrolBase(), given.toString());
         assertEquals(new Position(0, 64, 0), given.location());
     }
+
+    @Test
+    void atNightTheFirstSquadHoldsTheCampAndTheRestGoDownItsMine() {
+        ChainOfCommand two = new ChainOfCommand(
+                (General) Proxy.newProxyInstance(General.class.getClassLoader(), new Class<?>[]{General.class}, (proxy, method, args) -> null),
+                ChatClient.create((org.springframework.ai.chat.model.ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob"), true);
+        two.setGround((x, z, nearY) -> java.util.OptionalInt.of(64));
+        two.onTime(TimeOfDay.of(18000, true));
+        two.onFoothold(new io.github.jayessdeesea.minecraft.command.Foothold(new Position(-48, 64, 44), List.of()));
+
+        Objective alpha = two.sheltered(WALL, squad("Alpha", "Alice"));
+        Objective bravo = two.sheltered(WALL, squad("Bravo", "Bob"));
+
+        assertTrue(alpha.patrolBase(), alpha.toString());
+        assertTrue(bravo.mine(), bravo.toString());
+        assertEquals(new Position(-44, ChainOfCommand.MINE_DEPTH, 40), bravo.location());
+        assertEquals(bravo, two.sheltered(bravo, squad("Bravo", "Bob")), "a squad down the mine stays there");
+    }
+
+    private static SquadStatus squad(String name, String soldier) {
+        return new SquadStatus(name, new Report.InPosition(),
+                List.of(new SoldierStatus(soldier, new Position(0.5, 64, 0.5), new Order.Idle(), new Report.InPosition(), Optional.empty())),
+                List.of(), Optional.empty(), false);
+    }
 }

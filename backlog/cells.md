@@ -41,7 +41,7 @@ adding cells outward.
 - **Torches:** coal or charcoal.
 - **Levelling** to y=63 on uneven ground can be thousands of blocks a chunk. The ground by the
   water is closest to it.
-- It replaces the ring wall as FORTIFY's work. The keep's existing wall stays, as the keep's.
+- At the main base it replaces the ring wall as FORTIFY's work. The foothold keeps its wall.
 
 ## Done when
 - The keep and the 8 cells round it are lit, fenced, gated and level at y=63, each with a purpose,
@@ -49,8 +49,8 @@ adding cells outward.
 - No monster spawns inside the fence line through a night, measured over a multi-day garrison run.
 
 ## Notes
-- **Needs a decision (operator):** where the keep goes. The operator keeps a main base near
-  (0, 63, 0), within 100 blocks in each direction, because it's easy to find. The camp is now at
-  (-48, 44), with a wall 113 of 170 blocks built. Moving it there starts the keep again.
+- **Decided (operator):** the cells are the main base, at (0, 63, 0) within 100 blocks each way,
+  flattened to sea level - built once the foothold at (-48, 44) has the shelter, food and tools
+  to move that much ground (backlog/roadmap.md).
 - Depends on wood that grows back (backlog/renewables.md), and on torches made from charcoal or
   mined coal (backlog/mining.md).
