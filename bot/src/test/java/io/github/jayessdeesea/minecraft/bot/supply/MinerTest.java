@@ -168,4 +168,27 @@ class MinerTest {
                 .filter(id -> io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.miningTier(id).equals(java.util.OptionalInt.of(tier)))
                 .findFirst().orElseThrow();
     }
+
+    @Test
+    void theStairsAreSitedClearOfAPondBesideThePlaceAsked() {
+        // A pond east of the place asked, through the top few blocks.
+        for (int x = 1; x <= 5; x++) {
+            for (int z = -4; z <= 4; z++) {
+                for (int y = GROUND - 4; y < GROUND; y++) {
+                    water.add(new BlockPos(x, y, z));
+                }
+            }
+        }
+
+        Staircase stairs = Staircase.site(world, 0, 0, GROUND, 16).orElseThrow();
+
+        assertTrue(stairs.clear(world), "every step clear of the water");
+        assertTrue(stairs.head().x() < 0, "sited away from the pond, west: " + stairs.head());
+        assertTrue(Math.max(Math.abs(stairs.head().x()), Math.abs(stairs.head().z())) <= Staircase.SITE_RADIUS);
+    }
+
+    @Test
+    void openGroundTakesTheStairsWhereAsked() {
+        assertEquals(new BlockPos(0, GROUND, 0), Staircase.site(world, 0, 0, GROUND, 16).orElseThrow().head());
+    }
 }

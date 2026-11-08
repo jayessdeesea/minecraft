@@ -30,14 +30,12 @@ Live, the soldiers wander and stall, and nothing short of a live server shows wh
 - **The squad loop out of `SoldierRunner`**, as a pure function in `command` or `bot`: squad
   statuses, the world model and the objective in, an order per soldier out. `SoldierRunner` keeps
   only the connections.
-- **A squad simulation** (test-only): `SyntheticWorld`, a fake server per soldier answering digs,
-  placements, windows and crafting as the real one does, the squad loop, and a scripted general.
-  It runs in seconds, with no Docker and no model.
+- **The squad simulation** is built (docs/architecture.md, squad simulation) and needs to model
+  more: container windows and crafting, hostiles, hunger, damage and respawning.
 
 ## Scenarios to pressure-test it
-1. **Cut a mine shaft at the camp:** ground by water, no pickaxe in the squad, the nearest crafting
-   table on a ledge. Done when the stairs reach y=16 and the squad carries cobblestone and raw
-   iron.
+1. **Cut a mine shaft with no pickaxe in the squad**, the nearest crafting table on a ledge.
+   (With pickaxes, on open ground and beside a pond, it passes.)
 2. **The night shift:** dusk falls during scenario 1. The squad follows its cutter down, and
    nobody stands at the top in the dark.
 3. **A patrol base on a slope**, with a fight in the middle of building it. The squad goes back

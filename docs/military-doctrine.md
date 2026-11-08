@@ -618,8 +618,11 @@ together.
 | **Class IV and the supply chain** | Construction materials come from where they are, and the supply chain carries them to where they're needed. | FM 4-0 |
 
 *How we use it:* stone near the surface runs out round a camp, and iron and diamonds lie deep.
-An objective's task can be `MINE`: the squad cuts a staircase down at the objective's x and z to
-its y, the only task whose y is a depth rather than the ground's height.
+An objective's task can be `MINE`: the squad cuts a staircase down to its y, the only task whose
+y is a depth rather than the ground's height. The stairs go at the objective's x and z, or the
+nearest head within 8 blocks where every step can be cut clear of water and lava and over a floor,
+as the loaded chunks show them (`Staircase.site`). Beside a pond, the shaft moves off it rather
+than stopping at its first step.
 
 The staircase (`bot.supply.Staircase`) is a spiral round a central pillar: one block down a
 step, round the eight cells about the pillar, so the shaft stays inside 3x3 and passes under its

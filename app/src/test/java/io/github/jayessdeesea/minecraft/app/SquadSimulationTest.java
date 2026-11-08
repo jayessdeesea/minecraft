@@ -90,10 +90,10 @@ class SquadSimulationTest {
                 new ChatResponse(List.of(new Generation(new AssistantMessage(reply)))));
     }
 
-    @Test
-    void aSquadWithPickaxesCutsTheMineDownToTheIron() {
+    /** Runs Alpha, four soldiers with stone pickaxes, on MINE at x=4 z=4 for 15 simulated minutes. */
+    private SimServer mine(SimServer.Terrain ground) {
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000); // morning
+        SimServer server = new SimServer(clock, ground, 1000); // morning
         Position head = new Position(4, 16, 4);
         Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", head,
@@ -105,15 +105,33 @@ class SquadSimulationTest {
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16})));
-
         runner.run();
         clock.advance(15 * 60_000);
+        return server;
+    }
 
-        int iron = roster.squads().getFirst().soldiers().stream().mapToInt(n -> server.count(n, SimServer.ITEM_RAW_IRON)).sum();
-        int cobblestone = roster.squads().getFirst().soldiers().stream()
-                .mapToInt(n -> server.count(n, SimServer.ITEM_COBBLESTONE)).sum();
+    private static final List<String> ALPHA = List.of("Alice", "Bob", "Carol", "Dana");
+
+    private static void assertMinedToTheIron(SimServer server) {
+        int iron = ALPHA.stream().mapToInt(n -> server.count(n, SimServer.ITEM_RAW_IRON)).sum();
+        int cobblestone = ALPHA.stream().mapToInt(n -> server.count(n, SimServer.ITEM_COBBLESTONE)).sum();
         assertTrue(iron > 0, "raw iron carried: " + iron + "; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
         assertTrue(cobblestone > 0, "cobblestone carried: " + cobblestone);
+    }
+
+    @Test
+    void aSquadWithPickaxesCutsTheMineDownToTheIron() {
+        assertMinedToTheIron(mine(SquadSimulationTest::flat));
+    }
+
+    /**
+     * As at the camp, live: the objective's x and z beside a pond. The stairs can't be cut next to
+     * water, so the mine has to go where they can.
+     */
+    @Test
+    void aMineObjectiveBesideAPondIsCutClearOfTheWater() {
+        assertMinedToTheIron(mine((x, y, z) -> x >= 5 && x <= 9 && z >= 0 && z <= 8 && y >= 60 && y <= GROUND
+                ? SimServer.WATER : flat(x, y, z)));
     }
 }

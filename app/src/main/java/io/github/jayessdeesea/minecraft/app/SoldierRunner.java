@@ -137,6 +137,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         String torchbearer;
         /** The squad's staircase, while its objective is MINE. */
         io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs;
+        /** The objective's x and z the stairs were sited for. */
+        int[] stairsFor;
         /** Torches left to put down round a SECURE objective, at the last check: -1 before the first. */
         int torchesLeft = -1;
         /** The squad's wall, laid out once round its FORTIFY objective's ground. */
@@ -943,19 +945,22 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs = chainOfCommand.mineObjective(squadName).map(o -> {
             int x = (int) Math.floor(o.location().x());
             int z = (int) Math.floor(o.location().z());
-            if (state.stairs != null && state.stairs.head().x() == x && state.stairs.head().z() == z) {
+            if (state.stairs != null && state.stairsFor != null && state.stairsFor[0] == x && state.stairsFor[1] == z) {
                 return state.stairs;
             }
-            Optional<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> head = io.github.jayessdeesea.minecraft.bot.supply.Staircase.headAt(
-                    world, x, z, (int) Math.floor(statuses.get(0).position().y()));
-            if (head.isEmpty()) {
-                LOG.warn("[{}] MINE: no ground to start a staircase on at x={} z={}", squadName, x, z);
+            // Where the stairs can be cut all the way down: the objective's x and z can be beside
+            // water - live, the camp's mine stopped at its second step by a pond.
+            Optional<io.github.jayessdeesea.minecraft.bot.supply.Staircase> sited = io.github.jayessdeesea.minecraft.bot.supply.Staircase.site(
+                    world, x, z, (int) Math.floor(statuses.get(0).position().y()), (int) Math.floor(o.location().y()));
+            if (sited.isEmpty()) {
+                LOG.warn("[{}] MINE: nowhere within {} blocks of x={} z={} a staircase can be cut down clear of water and lava",
+                        squadName, io.github.jayessdeesea.minecraft.bot.supply.Staircase.SITE_RADIUS, x, z);
+                state.stairsFor = new int[]{x, z};
                 return null;
             }
-            int bottom = Math.max(io.github.jayessdeesea.minecraft.bot.supply.Staircase.DEEPEST,
-                    Math.min((int) Math.floor(o.location().y()), head.get().y() - 1));
-            LOG.info("[{}] MINE: a staircase down from {} to y={}", squadName, head.get(), bottom);
-            return new io.github.jayessdeesea.minecraft.bot.supply.Staircase(head.get(), bottom);
+            LOG.info("[{}] MINE: a staircase down from {} to y={}", squadName, sited.get().head(), sited.get().bottom());
+            state.stairsFor = new int[]{x, z};
+            return sited.get();
         }).orElse(null);
         state.stairs = stairs;
         // The one who cuts it: the first soldier carrying a pickaxe. Until one does, all make one.

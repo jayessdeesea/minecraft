@@ -169,3 +169,20 @@ walkthrough of an actual join, and the reasoning behind every structural choice 
 state, swappable delegates over pipeline surgery, unrecognized-packet handling, resource-exhaustion
 guards. Keep that doc in sync whenever a stage's responsibility changes — this section states the
 rule, that doc is where the detail and the "why" for each stage lives.
+
+## Squad simulation: the app's own code, with no server and no model
+
+`app`'s `SquadSimulationTest` runs a whole squad through a task with the real runner, chain of
+command, drills and routines, in seconds:
+- **Time and threads** come from `Clockwork`: the wall clock and real threads in the app, and in
+  the test `SimClock`, which runs every scheduler on one simulated clock, in time order, on the
+  test's thread. A run is the same every time, and a task that throws fails it.
+- **The server** is `SimServer`: one world, and a `PlaySession` per soldier answering as the
+  vanilla server does - blocks broken and placed, drops picked up, slots swapped, the time of day -
+  and refusing what's out of reach. What it doesn't model throws, naming the action.
+- **The general and squad leader are scripted**: a `General` that hands out a fixed objective, and
+  a `ChatModel` that answers a fixed `SquadOrder`.
+
+A live failure becomes a scenario there first: the world that caused it, and the outcome the
+squad should reach (cobblestone and raw iron carried, say), not the steps it should take. The app
+log goes to `app/target/test.log`.

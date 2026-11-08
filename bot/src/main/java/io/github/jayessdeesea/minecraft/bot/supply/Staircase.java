@@ -111,6 +111,55 @@ public record Staircase(BlockPos head, int bottom) {
     }
 
     /** The staircase's head at the ground at ({@code x}, {@code z}): the highest standing cell within 24 blocks of {@code nearY}. */
+    /** How far from the place asked a staircase is sited, when the ground there won't take one. */
+    public static final int SITE_RADIUS = 8;
+
+    /**
+     * A staircase down to {@code depth} (no deeper than {@link #DEEPEST}) as near ({@code x},
+     * {@code z}) as one can be cut all the way: every step clear of water and lava beside it and
+     * with a floor under it, as the world shows them. The nearest such head within
+     * {@link #SITE_RADIUS}, or empty with none.
+     */
+    public static Optional<Staircase> site(WorldView world, int x, int z, int nearY, int depth) {
+        for (int r = 0; r <= SITE_RADIUS; r++) {
+            Optional<Staircase> best = Optional.empty();
+            double bestDistance = Double.MAX_VALUE;
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
+                        continue;
+                    }
+                    Optional<BlockPos> head = headAt(world, x + dx, z + dz, nearY);
+                    if (head.isEmpty()) {
+                        continue;
+                    }
+                    int bottom = Math.max(DEEPEST, Math.min(depth, head.get().y() - 1));
+                    Staircase stairs = new Staircase(head.get(), bottom);
+                    double distance = Math.hypot(dx, dz);
+                    if (distance < bestDistance && stairs.clear(world)) {
+                        best = Optional.of(stairs);
+                        bestDistance = distance;
+                    }
+                }
+            }
+            if (best.isPresent()) {
+                return best;
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** Whether every step can be cut as the world shows it: no water or lava beside one, and a floor under each. */
+    boolean clear(WorldView world) {
+        List<Cut> all = cuts();
+        for (int k = 0; k < steps(); k++) {
+            if (Miner.hazard(world, all.get(k), k).isPresent()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static Optional<BlockPos> headAt(WorldView world, int x, int z, int nearY) {
         for (int y = nearY + 24; y >= nearY - 24; y--) {
             BlockPos cell = new BlockPos(x, y, z);

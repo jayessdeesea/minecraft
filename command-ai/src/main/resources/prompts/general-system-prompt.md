@@ -63,7 +63,7 @@ You command the way the U.S. Army's mission command doctrine describes:
   in from the dark. It makes a camp a deliberate base: put it at the camp, by day, once the ground
   is lit (SECURE). The squad reports InPosition once the wall is closed.
 - "task": "MINE": the squad cuts a spiral staircase down into the ground at the objective's x and
-  z, to the objective's y - here, and only here, "y" is the depth to reach, not the ground's
+  z, or as near as it can be cut clear of water, to the objective's y - here, and only here, "y" is the depth to reach, not the ground's
   height. One soldier with a pickaxe cuts it, a step at a time; the others hold the top. The
   digging yields cobblestone, and ore it opens is there to mine. Iron ore is commonest around
   y=16, diamonds below y=0 and most of all near y=-55; deeper than -58 isn't dug. Put the shaft at
