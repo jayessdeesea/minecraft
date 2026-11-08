@@ -91,11 +91,10 @@ public final class Mason {
         if (cooldown > 0 || blocks(inventory) == 0) {
             return;
         }
-        // The lowest row first: a block goes on the one under it - or, for the lip, beside it.
-        int lowest = open.stream().mapToInt(BlockPos::y).min().orElseThrow();
+        // Any cell with a block to go against - the one under it, or for the lip the wall beside it -
+        // so each column rises from its own ground: on a slope the wall's rows are at many heights.
         // The nearest with somewhere inside to stand: one without it waits, rather than holding up the rest.
-        open.stream().filter(c -> !claims.contains(c) && c.y() <= lowest + 1
-                        && Builder.support(world, c).isPresent())
+        open.stream().filter(c -> !claims.contains(c) && Builder.support(world, c).isPresent())
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
                 .flatMap(cell -> inside(world, cell, centre, radius).map(stand -> java.util.Map.entry(cell, stand)).stream())
                 .findFirst().ifPresent(job -> start(world, job.getKey(), job.getValue()));

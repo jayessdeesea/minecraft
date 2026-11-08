@@ -119,6 +119,41 @@ class MasonTest {
         assertTrue(mason.failure().isEmpty(), mason.failure().orElse(""));
     }
 
+    @Test
+    void aWallOnASlopeRisesColumnByColumnNotRowByRowAcrossTheCamp() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.DIRT), 64});
+        // The ground steps up a block for each column east: the wall's rows are at seven heights.
+        WorldView slope = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND + Math.max(0, x + 3) || placed.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        List<BlockPos> layout = Perimeter.layout(slope, CENTRE, 3);
+        Mason mason = new Mason("Alice", inventory, new Footing(session, inventory), new HashSet<>());
+        Position soldier = new Position(0.5, GROUND + 3, 0.5);
+
+        for (int tick = 0; tick < 8000 && !Perimeter.open(slope, layout).isEmpty(); tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            mason.tick(soldier, slope, CENTRE, 3, Perimeter.open(slope, layout), true);
+            soldier = mason.standAt().orElse(soldier);
+        }
+
+        assertEquals(List.of(), Perimeter.open(slope, layout).stream().filter(c -> Math.max(Math.abs(c.x()), Math.abs(c.z())) == 3).toList(),
+                "every wall cell built, high side and low");
+    }
+
     private static int item(ItemClass itemClass) {
         return IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(itemClass))).findFirst().orElseThrow();
     }

@@ -414,6 +414,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final int TREES_GROWING = 8;
     /** How far out from a FORTIFY objective its wall stands. */
     static final int WALL_RADIUS = 8;
+    /** Fewer blocks than this carried, and a mason goes and digs dirt for the wall. */
+    static final int WALL_BLOCKS_LOW = 4;
     /** Each connected soldier's hunting, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Hunter> hunters = new ConcurrentHashMap<>();
     /** Soldiers free to hunt when hungry: by day, out of contact, not walling in a base - squad loop writes, tick reads. */
@@ -962,7 +964,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 walling.put(soldierName, wallLeft);
                 wallCentres.put(soldierName, state.wallCentre);
                 Kit bricks = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
-                if (bricks != null && bricks.stone() + bricks.dirt() == 0) {
+                // Nearly out counts as out: a soldier down to its last block or two otherwise neither
+                // digs more nor has enough to work with - live, one with a single dirt stood about.
+                if (bricks != null && bricks.stone() + bricks.dirt() < WALL_BLOCKS_LOW) {
                     // Nothing to build with: dirt, dug outside the wall so the ground inside stays whole.
                     gathering.put(soldierName, new io.github.jayessdeesea.minecraft.command.Objective("Dig dirt for the wall",
                             new Position(state.wallCentre.x() + WALL_RADIUS + SOIL_OFFSET, state.wallCentre.y(), state.wallCentre.z()),

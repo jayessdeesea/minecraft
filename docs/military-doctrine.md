@@ -574,10 +574,12 @@ step cut through the wall (`bot.supply.Perimeter`). It's laid out once, by which
 it first, and shared - laid out again after a row, the ground would be the wall's top. So the
 layout is kept on disk too (`app.WallStore`, under `minecraft.state-dir`), and a restarted garrison
 builds the wall it laid out before rather than a second one on top of it. Its
-cells join the ones every dig skips, so nobody quarries it. Each soldier takes the nearest open cell of the
-lowest row no squadmate has taken, stands just inside it, and puts a block there, cobblestone
-first, then dirt, breaking first whatever stands in the cell that a block can't replace - a torch,
-a flower (`bot.supply.Mason`); one with neither digs dirt outside the wall. On top goes a lip, a
+cells join the ones every dig skips, so nobody quarries it. Each soldier takes the nearest open cell no
+squadmate has taken that has a block to go against - so each column rises from its own ground,
+and on a slope the rows stand at many heights - stands just inside it, and puts a block there,
+cobblestone first, then dirt, breaking first whatever stands in the cell that a block can't
+replace - a torch, a flower (`bot.supply.Mason`); one down to fewer than 4 digs dirt outside the
+wall. On top goes a lip, a
 ring of blocks one out from the wall's top row, against its outer face: an overhang a spider
 climbing the wall can't get round. None outside the doorway, where it would stand at head height
 in the way out. A mason places each lip block from the column nearest it just inside the wall,
