@@ -1,6 +1,6 @@
 ---
 status: ready
-priority: P2
+priority: P3
 depends-on: [patrol-base]
 doctrine: ATP 3-21.8 (patrol base priorities of work - rest plan)
 ---
@@ -11,8 +11,10 @@ doctrine: ATP 3-21.8 (patrol base priorities of work - rest plan)
 A Minecraft player needs no sleep to keep going, but sleep does three things the squads go
 without:
 - **Phantoms.** A player who hasn't slept in three in-game days, and hasn't died meanwhile, draws
-  phantoms from the night sky. Squads that never sleep get them from the fourth night on. A
-  roofed hut shelters from them; open ground doesn't.
+  phantoms from the night sky - but only while it stands above sea level where it can see the sky
+  (the server's phantom spawner checks both). A soldier sealed under its hut's roof draws none; the
+  three phantom deaths seen were soldiers out after dark, and the shelter rule
+  (docs/military-doctrine.md § 14) is what keeps them in. Beds would end the draw outright.
 - **Respawn.** Sleeping in a bed sets the player's spawn point there. A dead soldier now respawns
   at world spawn and links up from there (docs/military-doctrine.md § 6); with a bed it would wake
   in the camp.
@@ -40,6 +42,10 @@ part of the unit sleeps (ATP 3-21.8, ch. 7).
 - A soldier that dies respawns at its bed.
 
 ## Notes
+- **A bed needs room in the hut.** The hasty hut's floor is the squad's own cells, two blocks high
+  to the roof - no room to stand on a bed - so a bed means a bigger floor (2x3 for four). A
+  sleeper is refused with a monster within 8 blocks of the bed, walls or not, so beds work best
+  inside the lit, walled camp.
 - **Decided (operator):** the night skips only the way it does for any player - when everyone in
   the overworld is asleep, the operator included. `players_sleeping_percentage` stays at its
   default of 100: the soldiers sleeping never ends the operator's night for them.
