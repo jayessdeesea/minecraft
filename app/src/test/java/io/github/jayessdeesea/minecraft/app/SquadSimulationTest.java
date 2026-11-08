@@ -148,4 +148,37 @@ class SquadSimulationTest {
                 new int[]{37, SimServer.ITEM_BREAD, 16},
                 new int[]{9, SimServer.ITEM_OAK_LOG, 8})));
     }
+
+    /**
+     * The operator's night rule with two squads: dusk falls, Alpha holds the camp and Bravo goes down
+     * the camp's mine (docs/echelons/general/operator-rules.md). In the dark nobody of Bravo stands
+     * at the top of the stairs.
+     */
+    @Test
+    void atNightTheSecondSquadWorksTheCampsMineBelowGround() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 11_000); // an hour before dusk
+        Roster roster = new Roster("Alpha:Alice,Bob;Bravo:Carol,Dana");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, true, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, SimServer.ITEM_OAK_LOG, 16},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})));
+        runner.run();
+
+        // To midnight: dusk is at tick 13178, an hour of game time is 1000 ticks.
+        clock.advance((18_000 - 11_000) * 50L);
+
+        List<String> atTheTop = List.of("Carol", "Dana").stream()
+                .filter(n -> server.position(n).y() >= GROUND).toList();
+        assertTrue(atTheTop.isEmpty(), "Bravo at the top at midnight: " + atTheTop + " - "
+                + List.of("Carol", "Dana").stream().map(n -> n + " at " + server.position(n)).toList());
+    }
 }
