@@ -12,7 +12,8 @@ import java.util.OptionalInt;
 
 /**
  * One hungry soldier with nothing to eat killing an animal for meat (docs/military-doctrine.md §11,
- * pre-combat checks): the nearest cow, pig, sheep, chicken or rabbit within {@link #SEARCH_RADIUS}.
+ * pre-combat checks): a cow, pig, sheep, chicken or rabbit within {@link #SEARCH_RADIUS} of its
+ * hunting ground - its squad's objective, so one hunt after another doesn't carry it off.
  * It walks at it, strikes it from arm's length each time the weapon in hand is charged, and once it
  * dies walks over where it fell for the meat. Raw meat is a ration, eaten as any other.
  *
@@ -45,9 +46,9 @@ public final class Hunter {
         this.name = name;
     }
 
-    /** Whether there's game within {@link #SEARCH_RADIUS} of {@code soldier} to hunt. */
-    public static boolean gameInSight(WorldView world, Position soldier) {
-        return !world.gameNear(soldier, SEARCH_RADIUS).isEmpty();
+    /** Whether there's game within {@link #SEARCH_RADIUS} of {@code ground} to hunt. */
+    public static boolean gameInSight(WorldView world, Position ground) {
+        return !world.gameNear(ground, SEARCH_RADIUS).isEmpty();
     }
 
     public synchronized boolean active() {
@@ -65,6 +66,11 @@ public final class Hunter {
      * takes to charge.
      */
     public synchronized OptionalInt tick(Position soldier, WorldView world, boolean wanted, int charge) {
+        return tick(soldier, soldier, world, wanted, charge);
+    }
+
+    /** As {@link #tick(Position, WorldView, boolean, int)}, game looked for round {@code ground}, not round the soldier. */
+    public synchronized OptionalInt tick(Position soldier, Position ground, WorldView world, boolean wanted, int charge) {
         if (chargeTicks > 0) {
             chargeTicks--;
         }
@@ -77,7 +83,8 @@ public final class Hunter {
             return OptionalInt.empty();
         }
         if (quarry == null) {
-            Optional<TrackedEntity> nearest = world.gameNear(soldier, SEARCH_RADIUS).stream().findFirst();
+            Optional<TrackedEntity> nearest = world.gameNear(ground, SEARCH_RADIUS).stream()
+                    .min(java.util.Comparator.comparingDouble(e -> distance(soldier, e.position())));
             if (nearest.isEmpty()) {
                 return OptionalInt.empty();
             }

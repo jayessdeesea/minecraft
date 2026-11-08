@@ -404,6 +404,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Hunter> hunters = new ConcurrentHashMap<>();
     /** Soldiers free to hunt when hungry: by day, out of contact, not walling in a base - squad loop writes, tick reads. */
     private final java.util.Set<String> huntAllowed = ConcurrentHashMap.newKeySet();
+    /** Where each soldier looks for game: round its squad's objective, so a run of hunts doesn't carry it off. */
+    private final Map<String, Position> huntGrounds = new ConcurrentHashMap<>();
     /** At this food level or below, with no rations, a soldier free to hunts for meat: it has missed a meal or two. */
     static final int HUNT_BELOW_FOOD = 14;
 
@@ -931,6 +933,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             boolean night = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
             if (!night && !squadInContact && building == null) {
                 huntAllowed.add(soldierName);
+                huntGrounds.put(soldierName, chainOfCommand.objective(squadName).map(io.github.jayessdeesea.minecraft.command.Objective::location)
+                        .orElse(statuses.get(i).position()));
             } else {
                 huntAllowed.remove(soldierName);
             }
@@ -1612,8 +1616,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             boolean huntWanted = hungry && huntAllowed.contains(name) && !inContact;
             // Food first: the day's work - gathering, lighting, walling, planting - gives the hands
             // up when there's game in sight to eat, and the hunter takes them next tick.
-            boolean huntCalls = huntWanted && !hunter.active() && io.github.jayessdeesea.minecraft.bot.supply.Hunter.gameInSight(world, status.position());
-            turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), world,
+            Position huntGround = huntGrounds.getOrDefault(name, status.position());
+            boolean huntCalls = huntWanted && !hunter.active() && io.github.jayessdeesea.minecraft.bot.supply.Hunter.gameInSight(world, huntGround);
+            turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), huntGround, world,
                     free && huntWanted,
                     io.github.jayessdeesea.minecraft.bot.world.WeaponStats.melee(eating == null ? Optional.empty() : eating.weapon()).ticksToCharge())
                     .ifPresent(target -> {

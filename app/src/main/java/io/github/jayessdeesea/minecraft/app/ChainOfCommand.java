@@ -236,8 +236,13 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     private volatile String lastFoothold = "";
     /** The home base's progress, last measured - a soldier's thread writes, the squads' read. */
     private volatile io.github.jayessdeesea.minecraft.command.Foothold foothold;
-    /** Each squad's readiness as last seen, so only a change of it is logged. */
+    /** Each squad's readiness as last logged, so only a change of it is. */
     private final Map<String, io.github.jayessdeesea.minecraft.command.Readiness> readiness = new java.util.concurrent.ConcurrentHashMap<>();
+    /** A squad's readiness seen since the last logged, and in how many SITREPs running: a change is logged once it holds. */
+    private final Map<String, io.github.jayessdeesea.minecraft.command.Readiness> readinessSeen = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Integer> readinessHeld = new java.util.concurrent.ConcurrentHashMap<>();
+    /** SITREPs a new readiness holds before it's logged: soldiers ranging in and out of the camp flip it back and forth. */
+    static final int READINESS_HOLDS = 3;
 
     /** Logs each squad's readiness where it changed: safety where it stands, and its C-rating. */
     private void logReadiness(List<Sitrep> sitreps) {
@@ -245,9 +250,17 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             io.github.jayessdeesea.minecraft.command.Readiness now = io.github.jayessdeesea.minecraft.command.Readiness.of(
                     new SquadStatus(sitrep.squad(), squads.get(sitrep.squad()).report(), sitrep.soldiers(), List.of(), Optional.empty(),
                             sitrep.holdingBase()), Optional.ofNullable(foothold));
-            io.github.jayessdeesea.minecraft.command.Readiness was = readiness.put(sitrep.squad(), now);
+            io.github.jayessdeesea.minecraft.command.Readiness was = readiness.get(sitrep.squad());
             // A change of state, not of the counts behind it: hunger and health move every few seconds.
-            if (was == null || now.safety() != was.safety() || now.rating() != was.rating()) {
+            boolean changed = was == null || now.safety() != was.safety() || now.rating() != was.rating();
+            io.github.jayessdeesea.minecraft.command.Readiness seen = readinessSeen.put(sitrep.squad(), now);
+            boolean same = seen != null && seen.safety() == now.safety() && seen.rating() == now.rating();
+            int held = same ? readinessHeld.merge(sitrep.squad(), 1, Integer::sum) : 1;
+            if (!same) {
+                readinessHeld.put(sitrep.squad(), 1);
+            }
+            if (changed && (was == null || held >= READINESS_HOLDS)) {
+                readiness.put(sitrep.squad(), now);
                 LOG.info("[Readiness] {}: {}, C-{}{}", sitrep.squad(), now.safety(), now.rating(),
                         now.shortfall().isEmpty() ? "" : " - " + now.shortfall());
             }

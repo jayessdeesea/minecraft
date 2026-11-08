@@ -92,8 +92,11 @@ hands (`bot.supply.Rations`): the food goes into a hotbar slot without a weapon 
 times the meal, and the weapon comes back to hand. Rations are the food items it carries, less
 those that poison or are too precious to eat (`tools/item-class-generator`). A soldier with no rations
 left hunts at food 14 or below, or wounded and below food 18, where it would heal: by day, out of contact and not walling in a patrol base, it
-chases the nearest cow, pig, sheep, chicken or rabbit within 48 blocks, strikes it each time its
-weapon is charged, and stands where it fell for the meat (`bot.supply.Hunter`). Raw meat is a ration
+chases the nearest cow, pig, sheep, chicken or rabbit within 48 blocks of its squad's objective -
+not of itself, or one hunt after another carries it off - strikes it each time its
+weapon is charged, and stands where it fell for the meat (`bot.supply.Hunter`). Food comes first:
+with game in sight, a soldier that wants food puts down its day's work - gathering, lighting,
+walling, farming, planting - at its next step, and the hunter takes its hands. Raw meat is a ration
 like any other. It reports `Hunting`. Squad leaders aggregate their
 soldiers' SITREPs into one for the general, with a LOGSTAT summed from the soldiers' LACE
 (`command.Logstat`): hungry soldiers (Class I), empty armour slots (Class II), bare-handed
@@ -604,7 +607,8 @@ camp has met (SHELTER, AIRHEAD, BUILDUP, ESTABLISHED); away from it, SHELTER if 
 patrol base and otherwise EXPOSED, the first night of an air drop, whatever the camp has. Beside it
 is a C-rating, the worst of the shares of the squad armed, armoured, fed (at food 18, where health
 comes back) and above half health. Both are worked out from where the soldiers stand and what they
-carry, and the log says each time either changes (`[Readiness]`). The general isn't shown them:
+carry, and the log says each time either changes and the change holds three SITREPs running
+(`[Readiness]`) - soldiers ranging in and out of the camp would flip it back and forth. The general isn't shown them:
 with the foothold in view it already keeps an exposed squad near shelter (GeneralScenarioIT's
 `exposed-far-out`).
 
