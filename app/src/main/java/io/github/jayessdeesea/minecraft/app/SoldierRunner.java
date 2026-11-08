@@ -1009,9 +1009,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 // Nearly out counts as out: a soldier down to its last block or two otherwise neither
                 // digs more nor has enough to work with - live, one with a single dirt stood about.
                 if (bricks != null && bricks.stone() + bricks.dirt() < WALL_BLOCKS_LOW) {
-                    // Nothing to build with: dirt, dug outside the wall so the ground inside stays whole.
+                    // Nothing to build with: dirt, dug outside the wall so the ground inside stays whole -
+                    // each mason on its own side, so one pit isn't dug out under all of them.
+                    int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+                    int[] side = sides[i % sides.length];
                     gathering.put(soldierName, new io.github.jayessdeesea.minecraft.command.Objective("Dig dirt for the wall",
-                            new Position(state.wallCentre.x() + WALL_RADIUS + SOIL_OFFSET, state.wallCentre.y(), state.wallCentre.z()),
+                            new Position(state.wallCentre.x() + side[0] * (WALL_RADIUS + SOIL_OFFSET), state.wallCentre.y(),
+                                    state.wallCentre.z() + side[1] * (WALL_RADIUS + SOIL_OFFSET)),
                             "Blocks to wall the camp in",
                             new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.SOIL)));
                 }

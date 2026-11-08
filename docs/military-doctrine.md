@@ -606,7 +606,7 @@ and on a slope the rows stand at many heights - stands just inside it, within 0.
 centre as a hut builder does, and puts a block there,
 cobblestone first, then dirt, breaking first whatever stands in the cell that a block can't
 replace - a torch, a flower (`bot.supply.Mason`); one down to fewer than 4 digs dirt outside the
-wall. A cell that fails - its place not walked to, inside an old hut or across water, or its block
+wall, each mason on its own side of the camp so no one pit is dug out under all of them. A cell that fails - its place not walked to, inside an old hut or across water, or its block
 refused - it passes over for two minutes and builds the rest. On top goes a lip, a
 ring of blocks one out from the wall's top row, against its outer face: an overhang a spider
 climbing the wall can't get round. None outside the doorway, where it would stand at head height
