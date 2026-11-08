@@ -74,12 +74,17 @@ alive at the time.
 
 ## What's in the way
 In the order the timetable meets them:
-- **Falls** (day 1). One cause is found and fixed: blocks with no collision that our model read
-  as solid, sugar cane among them (docs/world-data-spec.md § 2). Whether falls stop is for the
-  casualty reports (docs/military-doctrine.md § 6) to show. The server's "standing on air" log line
-  isn't evidence either way: it's drawn when a client claims ground and its last move hit nothing
-  below, and its rate (15 to 19 a minute for 8 soldiers) didn't change with the fix. A position report
-  with no movement, which a vanilla client sends as a status-only packet, may draw it on its own.
+- **Falls** (day 1). Two causes found and fixed: blocks with no collision read as solid, sugar
+  cane among them (docs/world-data-spec.md § 2), and steps in a fight taken over a drop
+  (docs/military-doctrine.md § 8). The casualty reports (§ 6) behind the second showed what made
+  short falls fatal: every one was a soldier at 2 health or less.
+- **Hunger and phantoms** (days 1-2). Those soldiers were starving at food 0, and fighting
+  phantoms at dawn: the ground round the camp is hunted out, wheat takes days, and soldiers who
+  never sleep draw phantoms (backlog/rest-plan.md). Food that comes sooner than wheat - fishing,
+  or a pen of animals to breed (backlog/renewables.md) - and beds are what's left.
+- **Respawning on the mountain.** A dead soldier respawns at world spawn, on a peak whose only way
+  down costs 14 of its 20 health, and stands there reporting CANTCO. Beds in the camp would move
+  its respawn there (backlog/rest-plan.md); see Notes for the quicker fix.
 - **Kit lost at death** (every day). Until deaths are rare, kit is rebuilt after every one. See
   Notes for the gamerule.
 - **Health below full** (day 2). Food at 18 or more is the standard, not just "not hungry". Hunting
@@ -92,6 +97,9 @@ In the order the timetable meets them:
   8+, backlog/readiness.md).
 
 ## Notes
+- **Needs a decision (operator).** Each soldier's respawn point could be set to the camp from the
+  console (`spawnpoint <soldier> -48 67 44`), ending the stranding on the mountain until beds do it
+  in game. It changes the operator's server, so it's the operator's call.
 - **Needs a decision (operator).** Two server gamerules would change the timetable:
   - `keepInventory` would end gear loss at death. It makes the experiment easier, but less honest
     about what the chain of command achieves.
