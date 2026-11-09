@@ -849,7 +849,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             String task = clearing.containsKey(n) ? (state.coverLeft > 0 ? "clear the camp's sky" : "level the camp")
                     : walling.containsKey(n) ? "wall the camp"
                     : repointing.containsKey(n) ? "wall the camp in stone"
-                    : lighting.containsKey(n) ? "light the ground"
+                    // Lighting only with torches carried or being made: live, a soldier with none farmed
+                    // while the register had it lighting, and its farm CANTCO was filed under the light.
+                    : lighting.containsKey(n) && (torchesCarried.getOrDefault(n, 0) > 0
+                            || Optional.ofNullable(torchmakers.get(n)).map(t -> t.active() || t.standAt().isPresent()).orElse(false))
+                    ? "light the ground"
                     : cutting.containsKey(n) ? "cut the mine"
                     : farming.containsKey(n) ? "keep the farm"
                     : planting.containsKey(n) ? "plant the tree farm"
@@ -859,9 +863,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (task == null) {
                 continue;
             }
-            List<?> left = clearing.containsKey(n) ? clearing.get(n) : walling.containsKey(n) ? walling.get(n)
-                    : repointing.containsKey(n) ? repointing.get(n)
-                    : lighting.containsKey(n) ? lighting.get(n) : null;
+            List<?> left = switch (task) {
+                case "clear the camp's sky", "level the camp" -> clearing.get(n);
+                case "wall the camp" -> walling.get(n);
+                case "wall the camp in stone" -> repointing.get(n);
+                case "light the ground" -> lighting.get(n);
+                default -> null;
+            };
             on.put(n, new io.github.jayessdeesea.minecraft.command.TaskRegister.Assignment(task, s.report(),
                     left == null ? java.util.OptionalInt.empty() : java.util.OptionalInt.of(left.size())));
         }
