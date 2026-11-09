@@ -4,6 +4,7 @@
 # S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;
 # U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;
 # E wheat seeds, Y wheat, Z hoes, B saplings, D dirt; J string, Q flint, V feathers, I diamonds, G raw copper, c copper ingot.
+# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket.
 # Everything NOT listed is just carried.
 55 D dirt
 62 K cobblestone
@@ -50,8 +51,36 @@
 186 L stripped_mangrove_log
 187 L stripped_poplar_log
 395 T torch
+404 h chest
 405 C crafting_table
 407 U furnace
+408 l ladder
+417 f oak_fence
+418 f spruce_fence
+419 f birch_fence
+420 f jungle_fence
+421 f acacia_fence
+422 f cherry_fence
+423 f dark_oak_fence
+424 f pale_oak_fence
+425 f mangrove_fence
+426 f poplar_fence
+427 f bamboo_fence
+428 f crimson_fence
+429 f warped_fence
+932 g oak_fence_gate
+933 g spruce_fence_gate
+934 g birch_fence_gate
+935 g jungle_fence_gate
+936 g acacia_fence_gate
+937 g cherry_fence_gate
+938 g dark_oak_fence_gate
+939 g pale_oak_fence_gate
+940 g mangrove_fence_gate
+941 g poplar_fence_gate
+942 g bamboo_fence_gate
+943 g crimson_fence_gate
+944 g warped_fence_gate
 1001 A turtle_helmet
 1007 F apple
 1008 W bow
@@ -129,6 +158,8 @@
 1096 Q flint
 1097 F porkchop
 1098 F cooked_porkchop
+1128 b bucket
+1129 w water_bucket
 1190 F cod
 1191 F salmon
 1192 F tropical_fish

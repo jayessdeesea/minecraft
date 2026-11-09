@@ -54,6 +54,19 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
     public static final Recipe BREAD = material("bread", ItemClass.FOOD, 1, Station.TABLE, List.of("WWW"), Map.of('W', ItemClass.WHEAT));
     public static final Recipe SHIELD = material("shield", ItemClass.SHIELD, 1, Station.TABLE, List.of("PIP", "PPP", " P "),
             Map.of('P', ItemClass.PLANKS, 'I', ItemClass.IRON_INGOT));
+    // A site's fixtures and fittings (backlog/sites.md, backlog/cells.md). A fence and its gate want
+    // one wood's planks, as vanilla's recipes do: planks are counted as one class, so a mixed stack
+    // can be short at the table - said there, loudly.
+    public static final Recipe CHEST = material("chest", ItemClass.CHEST, 1, Station.TABLE, List.of("PPP", "P P", "PPP"),
+            Map.of('P', ItemClass.PLANKS));
+    public static final Recipe LADDER = material("ladder", ItemClass.LADDER, 3, Station.TABLE, List.of("S S", "SSS", "S S"),
+            Map.of('S', ItemClass.STICK));
+    public static final Recipe FENCE = material("fence", ItemClass.FENCE, 3, Station.TABLE, List.of("PSP", "PSP"),
+            Map.of('P', ItemClass.PLANKS, 'S', ItemClass.STICK));
+    public static final Recipe FENCE_GATE = material("fence gate", ItemClass.FENCE_GATE, 1, Station.TABLE, List.of("SPS", "SPS"),
+            Map.of('P', ItemClass.PLANKS, 'S', ItemClass.STICK));
+    public static final Recipe BUCKET = material("bucket", ItemClass.BUCKET, 1, Station.TABLE, List.of("I I", " I "),
+            Map.of('I', ItemClass.IRON_INGOT));
 
     /** String from spiders: the bow a soldier shoots back with (docs/military-doctrine.md § 8). */
     public static final Recipe BOW = new Recipe("bow", ItemClass.WEAPON, Optional.of("bow"), 1, Station.TABLE,
@@ -87,7 +100,7 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
 
     /** Every recipe a soldier knows. */
     public static final List<Recipe> ALL = List.of(PLANKS, STICKS, CRAFTING_TABLE, TORCHES, FURNACE, CHARCOAL, IRON_INGOT, COPPER_INGOT, SHIELD,
-            WOODEN_HOE, BREAD, COPPER_HELMET, COPPER_CHESTPLATE, COPPER_LEGGINGS, COPPER_BOOTS,
+            WOODEN_HOE, BREAD, CHEST, LADDER, FENCE, FENCE_GATE, BUCKET, COPPER_HELMET, COPPER_CHESTPLATE, COPPER_LEGGINGS, COPPER_BOOTS,
             BOW, ARROWS,
             WOODEN_SWORD, WOODEN_PICKAXE, STONE_SWORD, STONE_PICKAXE, IRON_SWORD, IRON_PICKAXE, IRON_AXE,
             IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS,
