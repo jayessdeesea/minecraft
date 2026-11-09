@@ -456,7 +456,8 @@ LOGSTAT already shows it bare-handed. A failed pickaxe is, when the order is to 
 
 *How we use it:* the general can give a squad an objective with `gather: WOOD` or `STONE`
 (`command.Objective.gather`). Its soldiers gather nearest the objective on their own - within 16 blocks, and
-when that's bare within 32, then 48, before reporting nothing left (`bot.supply.Gatherer`, digging with `Digger`, shared with §11): each works a log or a block of
+when that's bare within 32, then 48, before reporting nothing left; a soldier digging for its own
+tools' makings looks as far (`bot.supply.Gatherer`, digging with `Digger`, shared with §11): each works a log or a block of
 stone no squadmate has claimed, checks it actually broke, walks onto the drop wherever it landed
 (done once it's off the ground - a squadmate working the same trees often gets there first), and
 stops at its load (16 logs, 32

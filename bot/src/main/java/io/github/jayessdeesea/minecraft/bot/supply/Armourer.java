@@ -310,9 +310,17 @@ public final class Armourer {
             }
             Set<BlockPos> excluded = spots.barredNow(ticks);
             excluded.addAll(claims);
-            Optional<Digger.Spot> spot = Digger.findSpot(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), excluded, target);
+            // Nearest first, then wider, as a gatherer looks: live, soldiers at a camp cleared of
+            // trees went without a pickaxe for an hour for want of a log 16 blocks off.
+            Optional<Digger.Spot> spot = Optional.empty();
+            for (int radius : Gatherer.WIDER) {
+                spot = Digger.findSpot(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), excluded, target, radius);
+                if (spot.isPresent()) {
+                    break;
+                }
+            }
             if (spot.isEmpty()) {
-                giveUp("no " + target + " within " + Digger.SEARCH_RADIUS + " blocks");
+                giveUp("no " + target + " within " + Gatherer.WIDER[Gatherer.WIDER.length - 1] + " blocks");
                 return;
             }
             LOG.info("{} goes to dig {} for {} - {} short - at {}", name, target, describe(making), count, spot.get().block());
