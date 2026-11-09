@@ -753,7 +753,8 @@ public final class DeterministicSoldier implements Soldier {
 
         BlockPos waypoint = route.get(routeIndex);
         BlockPos here = BlockPos.containing(position.x(), position.y() + EPSILON, position.z());
-        List<BlockPos> cut = onGround ? toCut(world, here, waypoint, carriesPickaxe()) : List.of();
+        // Afloat too: the planner cuts a step out of a pool whose banks are too high to climb.
+        List<BlockPos> cut = onGround || afloat ? toCut(world, here, waypoint, carriesPickaxe()) : List.of();
         if (!cut.isEmpty()) {
             cutting = cut;
             cuttingTicks++;
