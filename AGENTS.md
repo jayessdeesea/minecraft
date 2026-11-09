@@ -37,6 +37,8 @@ Each points to its home, which has the reasons.
 - **Standard formats through standard libraries**, never hand-built strings. [docs/conventions.md](docs/conventions.md#standard-formats-go-through-standard-libraries)
 - **`docs/` is what's built; `backlog/` is what's planned. Each fact has one home.**
   [docs/conventions.md](docs/conventions.md#docs)
+- **Don't ask the order of work.** What needs doing, do; ask only what changes what gets built.
+  [docs/conventions.md](docs/conventions.md#working-without-guidance)
 
 ## References
 | Read | When |

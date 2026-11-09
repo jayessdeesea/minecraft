@@ -105,5 +105,6 @@ Before writing code, update or delete the item, or raise the mismatch with the u
 ## Working without guidance
 
 When a set of independent tasks all needs doing and nothing says which comes first, pick one and
-keep going until all are done - don't stop to ask about the order. Stop for a question only when
-the answer changes what gets built, not when it.
+keep going until all are done - don't stop to ask about the order. Work found along the way that
+plainly needs doing is done too, not offered. Stop for a question only when the answer changes what
+gets built, not when it; a question that doesn't block the work goes in the report at the end.
