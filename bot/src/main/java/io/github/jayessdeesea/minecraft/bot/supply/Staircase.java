@@ -67,9 +67,11 @@ public record Staircase(BlockPos head, int bottom) {
     }
 
     /**
-     * Where the stairs are lit, so nothing spawns on them: a torch on a step once a turn, halfway
-     * round, and one at the landing's stand. A torch stands in the cell a body walks through and
-     * stops none.
+     * Where the stairs and tunnels are lit, so nothing spawns in them: a torch on a step once a
+     * turn, halfway round, one at the landing's stand, one every {@link #TUNNEL_LIGHT_EVERY} along
+     * the main tunnel, and one {@link #BRANCH_LIGHT} into every other pair of branches - a torch
+     * lights 7 blocks either way, and the pairs between are 3 off. A torch stands in the cell a body
+     * walks through and stops none.
      */
     public List<BlockPos> lights() {
         List<BlockPos> lights = new java.util.ArrayList<>();
@@ -77,8 +79,26 @@ public record Staircase(BlockPos head, int bottom) {
             lights.add(step(k));
         }
         lights.add(landingStand());
+        BlockPos last = step(steps() - 1);
+        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
+        int dx = d[0] != 0 ? d[0] : 0;
+        int dz = d[0] != 0 ? 0 : d[1];
+        for (int i = TUNNEL_LIGHT_EVERY; i <= MAIN_TUNNEL; i += TUNNEL_LIGHT_EVERY) {
+            lights.add(last.offset(dx * i, 0, dz * i));
+        }
+        for (int i = BRANCH_EVERY; i <= MAIN_TUNNEL; i += 2 * BRANCH_EVERY) {
+            BlockPos root = last.offset(dx * i, 0, dz * i);
+            for (int side : new int[]{1, -1}) {
+                lights.add(root.offset(-dz * side * BRANCH_LIGHT, 0, dx * side * BRANCH_LIGHT));
+            }
+        }
         return List.copyOf(lights);
     }
+
+    /** Blocks along the main tunnel between its torches. */
+    static final int TUNNEL_LIGHT_EVERY = 6;
+    /** How far into a branch its torch goes: the middle of its 8. */
+    static final int BRANCH_LIGHT = 4;
 
     /** Whether the landing is cut: both recesses open, or holding the mine base's table and furnace. */
     public boolean landingCut(WorldView world) {

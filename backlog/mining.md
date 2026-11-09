@@ -14,8 +14,8 @@ y=-55, in veins a few blocks off any one shaft. A player at a camp near spawn di
 working base at each mining level - y=32 and y=0, say - and runs tunnels out from it.
 
 ## Done when
-- **Branch tunnels, the rest.** The tunnels are cut (docs/military-doctrine.md § 16). What's left:
-  lighting them with torches, and the LOGSTAT counting raw iron and diamonds.
+- **Branch tunnels, the rest.** The tunnels are cut and lit (docs/military-doctrine.md § 16). What's
+  left: the LOGSTAT counting raw iron and diamonds.
 - **Levels.** The landing at the bottom is cut, with the mine base's workshop, and the stairs are
   lit (docs/military-doctrine.md § 16). What's left: the rest of the mine base (backlog/sites.md),
   and the night shift sheltering there.

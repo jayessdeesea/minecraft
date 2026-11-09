@@ -773,9 +773,10 @@ of a player. Until one of them has a pickaxe, every one makes one.
 
 Nothing is crafted on the stairs. At the bottom, beside the main tunnel's first cell, the cutter
 cuts a **landing**: a recess each side (`Staircase.landing`), the mine base's table and furnace
-(§11), never dug out again once they stand. The stairs are lit as they're cut, so the shaft
-spawns nothing: a torch on a step once a turn, halfway round, and one at the landing's stand
-(`Staircase.lights`), put down by the squad holding the top - those carrying torches, or the
+(§11), never dug out again once they stand. The stairs and tunnels are lit as they're cut, so the
+mine spawns nothing: a torch on a step once a turn, halfway round, one at the landing's stand, one
+every 6 blocks along the main tunnel and one 4 blocks into every other pair of branches - within 7
+blocks of every tunnel cell (`Staircase.lights`), put down by the squad holding the top - those carrying torches, or the
 makings and a furnace's 8 cobblestone, so lighting sends nobody off with nothing to make them
 from. A cutter wanting a tool goes to its workshop - the mine base once the landing is cut, the
 squad's at the top until then - and the stairs wait while it makes the tool there. The tool is the
