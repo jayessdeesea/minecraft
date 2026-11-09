@@ -140,8 +140,11 @@ of standing at it.
 carries a **basic load** of 6 rations, and is short below 2:
 1. **The soldier feeds itself.** Hungry, it eats. Below its basic load it bakes all the wheat it
    carries into bread at its workshop (§11). Short, it hunts any game in sight, fed or not.
-2. **The squad shares.** A short soldier gets two rations from the nearest squadmate with more
-   than two (cross-leveling, §13).
+2. **The squad shares, and keeps the camp's farm.** A short soldier gets two rations from the
+   nearest squadmate with more than two (cross-leveling, §13). And while the squad is AMBER or
+   RED, every other soldier of it keeps the camp's farm by day, whatever its task - harvesting
+   what's ripe, sowing and tilling (§12) - as feeding is a unit's first priority of work, not only
+   the general's to order.
 3. **The squad asks.** A soldier still short with none of those means - no wheat, no game in sight,
    nobody sharing - makes the squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
    I RED - request: ... The squad can't feed itself."

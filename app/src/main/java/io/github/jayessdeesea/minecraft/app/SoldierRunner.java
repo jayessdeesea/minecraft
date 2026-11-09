@@ -405,6 +405,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         long hungry = everyone.stream().filter(s -> s.condition().map(SoldierRunner::wantsFood).orElse(false)).count();
         Optional<io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> farm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at,
                 CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL);
+        campFarm = farm.orElse(null);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
         // Food is buildup - unless the force is starving now: then it comes before the wall, as a
         // unit eats before it improves its position. Live, both squads walled the camp while all
@@ -477,6 +478,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final int CAMP_FARM_RADIUS = 48;
     /** And how far up or down: a camp on a hill farms by the water below it. */
     private static final int CAMP_FARM_VERTICAL = 32;
+    /** The camp's farm ground by water, as the foothold last measured it: kept by squads short of food. */
+    private volatile io.github.jayessdeesea.minecraft.bot.farm.FarmPlan campFarm;
     /** The camp's ground, found once. */
     private io.github.jayessdeesea.minecraft.bot.nav.BlockPos campGround;
     /** Farm cells growing wheat for the camp's food to count as met. */
@@ -1525,8 +1528,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 return there;
             });
             gather.ifPresentOrElse(o -> gathering.put(soldierName, o), () -> gathering.remove(soldierName));
-            if (farm != null && !squadInContact) {
-                farming.put(soldierName, farm);
+            // Feeding the squad is its own first priority of work (FM 4-0, field feeding): short of
+            // food, half of it keeps the camp's farm by day whatever its task - live, the farm was
+            // tended only under a FARM order, and the squads went hungry for hours with wheat to grow.
+            boolean hungrySquad = state.classOne != null
+                    && state.classOne.rating() != io.github.jayessdeesea.minecraft.command.Subsistence.Rating.GREEN;
+            boolean farmDay = !chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
+            io.github.jayessdeesea.minecraft.bot.farm.FarmPlan kept = farm != null ? farm
+                    : hungrySquad && farmDay && nth % 2 == 0 ? campFarm : null;
+            if (kept != null && !squadInContact) {
+                farming.put(soldierName, kept);
             } else {
                 farming.remove(soldierName);
             }
