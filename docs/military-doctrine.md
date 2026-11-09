@@ -144,7 +144,8 @@ carries a **basic load** of 6 rations, and is short below 2:
    nearest squadmate with more than two (cross-leveling, §13). And while the squad is AMBER or
    RED, every other soldier of it keeps the camp's farm by day, whatever its task - harvesting
    what's ripe, sowing and tilling (§12) - as feeding is a unit's first priority of work, not only
-   the general's to order.
+   the general's to order. The camp's farm is sited once, on ground by water near the camp, and
+   kept while its water is there.
 3. **The squad asks.** A soldier still short with none of those means - no wheat, no game in sight,
    nobody sharing - makes the squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
    I RED - request: ... The squad can't feed itself."

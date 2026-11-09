@@ -403,9 +403,17 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                         + (wallSoft > 0 ? ", and " + wallSoft + " of dirt to replace with stone" : "")
                         : wallSoft + " of its blocks dirt, to replace with stone", "FORTIFY"));
         long hungry = everyone.stream().filter(s -> s.condition().map(SoldierRunner::wantsFood).orElse(false)).count();
-        Optional<io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> farm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at,
-                CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL);
-        campFarm = farm.orElse(null);
+        // The camp's farm, sited once and kept while its water is there: a farm is tended for days,
+        // and live a farm sited again each check moved between ponds, and its crop was left to new ground.
+        io.github.jayessdeesea.minecraft.bot.farm.FarmPlan keptFarm = campFarm;
+        if (keptFarm == null || !world.isWater(keptFarm.water().x(), keptFarm.water().y(), keptFarm.water().z())) {
+            keptFarm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at, CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL).orElse(null);
+            if (keptFarm != null) {
+                LOG.info("[Foothold] the camp's farm: by the water at {}, {} cells", keptFarm.water(), keptFarm.plot().size());
+            }
+            campFarm = keptFarm;
+        }
+        Optional<io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> farm = Optional.ofNullable(keptFarm);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
         // Food is buildup - unless the force is starving now: then it comes before the wall, as a
         // unit eats before it improves its position. Live, both squads walled the camp while all
