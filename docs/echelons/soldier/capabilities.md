@@ -12,7 +12,7 @@ seconds or when stuck:
 - **Drops three blocks** unhurt. Further only within the fall allowance its order's risk gives it,
   and only when no route without a fall exists ([military-doctrine.md § 7](../../military-doctrine.md#7-risk-acceptance)).
 - **Swims** across water at the surface. It never enters lava or fire.
-- **Cuts a step** into a bank too high to jump: soil by hand, stone with a pickaxe, never sand or
+- **Cuts a step** into a bank too high to jump, from the ground or out of water: soil by hand, stone with a pickaxe, never sand or
   gravel, never where it would tunnel or let water in.
 - **Pillars** with cobblestone or dirt it carries, beside a wall: jumps and places a block under
   itself.

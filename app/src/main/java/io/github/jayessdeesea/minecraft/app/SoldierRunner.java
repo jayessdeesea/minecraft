@@ -1195,8 +1195,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // Securing: the torches still to put down round the objective, worked out again each cycle -
         // every torch put down, by anyone, changes what's left.
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> torchesLeft = chainOfCommand.secureObjective(squadName).map(o -> {
-            io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
-                    io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(o.location().x(), o.location().y(), o.location().z()));
+            // Round the ground most of the camp stands on, as the wall and the foothold's measure are:
+            // live, the ground found from the objective's height was a hut roof, and SECURE reported
+            // done with 371 cells of the camp still dark.
+            io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = typicalGround((int) Math.floor(o.location().x()),
+                    (int) Math.floor(o.location().z()), (int) Math.floor(o.location().y()))
+                    .orElse(io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
+                            io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(o.location().x(), o.location().y(), o.location().z())));
             // Not on a wall's line - one laid out, or the camp's still to be: a torch there holds a
             // cell the mason needs.
             java.util.Set<Long> wallColumns = walls.values().stream().flatMap(List::stream).map(c -> column(c.x(), c.z()))

@@ -263,17 +263,19 @@ public final class Pathfinder {
                 moves.add(new Move(level, SWIM_COST));
                 continue;
             }
-            if (afloat) {
-                continue; // no step is cut, nor drop walked off, from the water
-            }
             if (world.isSolid(level.x(), level.y(), level.z())) {
-                // A step too high to jump: cut it lower.
+                // A step too high to jump: cut it lower - from the water too, where a bank two high
+                // round a pool is otherwise a cell with no way out. Live, a soldier swam in a flooded
+                // pit for hours with a pickaxe in its pack.
                 List<BlockPos> cut = stepCut(world, from, up, pickaxe);
                 if (!cut.isEmpty()) {
                     double digging = cut.stream().mapToDouble(c -> world.isSoil(c.x(), c.y(), c.z()) ? DIG_COST : STONE_DIG_COST).sum();
                     moves.add(new Move(up, JUMP_COST + digging));
                 }
                 continue;
+            }
+            if (afloat) {
+                continue; // no drop is walked off from the water
             }
             if (clear(world, level)) {
                 int deepest = Math.min(MAX_FALL, MAX_DROP + (int) Math.floor(falls.maxDamage() / falls.damageFactor()));

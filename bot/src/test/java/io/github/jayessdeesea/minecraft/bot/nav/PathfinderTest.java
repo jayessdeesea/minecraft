@@ -404,6 +404,50 @@ class PathfinderTest {
         };
     }
 
+    /**
+     * A pool one block deep and one cell wide, its water at y=GROUND-1, in soil whose top is at
+     * GROUND+1: a bank two blocks above the water all round, too high to climb out of.
+     */
+    static WorldView pit() {
+        return new WorldView() {
+            private boolean water(int x, int y, int z) {
+                return x == 0 && z == 0 && y == GROUND - 1;
+            }
+
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= GROUND && !water(x, y, z) && !(x == 0 && z == 0 && y == GROUND);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return water(x, y, z);
+            }
+
+            @Override
+            public boolean isWater(int x, int y, int z) {
+                return water(x, y, z);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    @Test
+    void aSwimmerInAPitWithBanksTooHighCutsAStepOutOfTheWater() {
+        BlockPos afloat = new BlockPos(0, GROUND - 1, 0);
+
+        assertTrue(Pathfinder.find(pit(), afloat, exactly(4, GROUND + 1, 0), 5000).reachesGoal(), "a step cut in the soil bank");
+    }
+
     @Test
     void swimsARiverThereIsNoWayRound() {
         Pathfinder.Result result = Pathfinder.find(river(), START, exactly(6, GROUND, 0), 2000);
