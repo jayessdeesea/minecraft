@@ -478,6 +478,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final int CAMP_FARM_RADIUS = 48;
     /** And how far up or down: a camp on a hill farms by the water below it. */
     private static final int CAMP_FARM_VERTICAL = 32;
+    /** Farm cells a farmer couldn't work, passed over by every farmer for a while. */
+    private final io.github.jayessdeesea.minecraft.bot.supply.Setbacks<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> farmCellsFailed =
+            new io.github.jayessdeesea.minecraft.bot.supply.Setbacks<>(io.github.jayessdeesea.minecraft.bot.supply.Farmer.PASS_OVER_TICKS,
+                    16L * io.github.jayessdeesea.minecraft.bot.supply.Farmer.PASS_OVER_TICKS);
     /** The camp's farm ground by water, as the foothold last measured it: kept by squads short of food. */
     private volatile io.github.jayessdeesea.minecraft.bot.farm.FarmPlan campFarm;
     /** The camp's ground, found once. */
@@ -2245,7 +2249,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         Gatherer gatherer = new Gatherer(name, session, inventory, treeClaims);
         gatherers.put(name, gatherer);
         io.github.jayessdeesea.minecraft.bot.supply.Farmer farmer = new io.github.jayessdeesea.minecraft.bot.supply.Farmer(name, session,
-                inventory, treeClaims);
+                inventory, treeClaims, farmCellsFailed);
         farmers.put(name, farmer);
         io.github.jayessdeesea.minecraft.bot.supply.Forester forester = new io.github.jayessdeesea.minecraft.bot.supply.Forester(name, session,
                 inventory, treeClaims);

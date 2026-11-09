@@ -115,6 +115,25 @@ class FarmerTest {
     }
 
     @Test
+    void aCellASquadmateCouldntWorkIsPassedOverByEveryFarmer() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.HOE), 1});
+        inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item(ItemClass.SEEDS), 5});
+        Setbacks<BlockPos> shared = new Setbacks<>(Farmer.PASS_OVER_TICKS, 16L * Farmer.PASS_OVER_TICKS);
+        shared.failed(PLOT.get(0), 0);
+        Farmer farmer = new Farmer("Bob", session, inventory, new HashSet<>(), shared);
+        Position soldier = new Position(0.5, GROUND + 1, 1.5);
+
+        for (int tick = 0; tick < 400; tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            farmer.tick(soldier, world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+            soldier = farmer.standAt().orElse(soldier);
+        }
+
+        assertEquals(Set.of(PLOT.get(1)), farmland, "the other cell only");
+    }
+
+    @Test
     void tillsThePlotThenPlantsIt() {
         inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.HOE), 1});
         inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item(ItemClass.SEEDS), 5});

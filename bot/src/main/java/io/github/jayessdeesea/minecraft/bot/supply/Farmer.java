@@ -60,11 +60,24 @@ public final class Farmer {
     private String failure;
 
     public Farmer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims) {
+        this(name, session, inventory, claims, new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS));
+    }
+
+    /**
+     * As {@link #Farmer(String, PlaySession, Inventory, Set)}, with the cells squadmates working the
+     * same farm couldn't work, {@code shared}: one out of one soldier's reach is passed over by all
+     * of them - live, four soldiers each found the same unreachable wheat for themselves.
+     */
+    public Farmer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Setbacks<BlockPos> shared) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
         this.claims = claims;
+        this.shared = shared;
     }
+
+    /** The cells any farmer working this farm couldn't work, for a while. */
+    private final Setbacks<BlockPos> shared;
 
     public synchronized boolean active() {
         return digger != null || fieldWork != null;
@@ -84,7 +97,7 @@ public final class Farmer {
     /** How far a farmer looks for grass to break for seeds. */
     static final int SEEDS_RADIUS = 32;
     /** How long a plot cell whose job failed - not walked to, not answered - is first passed over; longer each time. */
-    static final int PASS_OVER_TICKS = 2400;
+    public static final int PASS_OVER_TICKS = 2400;
     private long ticks;
     private final Setbacks<BlockPos> passedOver = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
 
@@ -141,7 +154,7 @@ public final class Farmer {
 
     /** The most pressing job left on {@code farm}, started. */
     private void next(WorldView world, FarmPlan farm) {
-        List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks))
+        List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && !shared.barred(c, ticks))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()))).toList();
         Optional<BlockPos> ripe = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).findFirst();
         if (ripe.isPresent()) {
@@ -233,10 +246,10 @@ public final class Farmer {
         // Its cell out of reach - across water, behind a wall - or its job refused: the rest first.
         // A harvest is a dig, its spot the crop over the plot cell: live, with no cell passed over
         // for it, four soldiers walked at one ripe wheat they couldn't reach all day.
-        if (digger != null) {
-            passedOver.failed(digger.spot().block().offset(0, -1, 0), ticks, why);
-        } else if (claimed != null) {
-            passedOver.failed(claimed, ticks, why);
+        BlockPos cell = digger != null ? digger.spot().block().offset(0, -1, 0) : claimed;
+        if (cell != null) {
+            passedOver.failed(cell, ticks, why);
+            shared.failed(cell, ticks);
         }
         LOG.warn("{} stops farming for a while - {}", name, why);
         failure = why;
