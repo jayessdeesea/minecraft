@@ -460,6 +460,10 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         return resourcesSeen.getOrDefault(squad, List.of());
     }
 
+    public Optional<Objective> patrolObjective(String squad) {
+        return squads.get(squad).patrolObjective();
+    }
+
     public Optional<Objective> secureObjective(String squad) {
         return squads.get(squad).secureObjective();
     }

@@ -75,6 +75,11 @@ You command the way the U.S. Army's mission command doctrine describes:
   the camp, so the squads come back to it: a staircase is cut once and walked from then on. The
   squad reports Mining with its step; it stops with CANTCO at water, lava or an open cave beside
   the stairs.
+- "task": "PATROL": the squad walks the ground round the objective, round and round just inside
+  where its wall goes (8 blocks out), each soldier at its own point of the round, and fights what
+  it meets. It is security, not work: a squad holding the camp by day while another works patrols
+  rather than stands, so trouble is met before it reaches the workers. It never reports DONE; give
+  it other work when the camp needs it more.
 - If there is a <supply_point>, a squad sent there re-arms: its soldiers short of a weapon or
   armour take them from the chest. Send a squad that is badly short of either there before
   committing it to a fight, if the mission allows the time.

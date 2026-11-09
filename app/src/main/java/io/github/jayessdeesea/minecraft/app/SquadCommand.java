@@ -132,6 +132,11 @@ final class SquadCommand {
         return current != null && current.mine() ? Optional.of(current) : Optional.empty();
     }
 
+    Optional<Objective> patrolObjective() {
+        Objective current = objective;
+        return current != null && current.patrol() ? Optional.of(current) : Optional.empty();
+    }
+
     Optional<Objective> secureObjective() {
         Objective current = objective;
         return current != null && current.secure() ? Optional.of(current) : Optional.empty();

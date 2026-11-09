@@ -47,6 +47,10 @@ public record Objective(String mission, Position location, String intent, Task t
         /** Cut a staircase down at the location's x and z, to its y: stone, and the ore it opens (§16). */
         record Mine() implements Task {
         }
+
+        /** Walk the ground round the location, round and round inside its wall line: security, not work (§15). */
+        record Patrol() implements Task {
+        }
     }
 
     public Objective {
@@ -100,6 +104,10 @@ public record Objective(String mission, Position location, String intent, Task t
 
     public boolean secure() {
         return task instanceof Task.Secure;
+    }
+
+    public boolean patrol() {
+        return task instanceof Task.Patrol;
     }
 
     public boolean fortify() {

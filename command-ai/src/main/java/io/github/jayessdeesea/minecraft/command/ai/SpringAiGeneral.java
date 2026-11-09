@@ -213,6 +213,7 @@ public final class SpringAiGeneral implements General {
             case Objective.Task.Secure() -> "SECURE";
             case Objective.Task.Fortify() -> "FORTIFY";
             case Objective.Task.Mine() -> "MINE";
+            case Objective.Task.Patrol() -> "PATROL";
         };
         StringBuilder line = new StringBuilder("Standing order: ").append(task).append(" - ").append(standing.mission())
                 .append(" at ").append(squad.soldiers().isEmpty() ? SpringAiSquadLeader.describe(standing.location())
@@ -398,6 +399,7 @@ public final class SpringAiGeneral implements General {
                         case SECURE -> new Objective.Task.Secure();
                         case FORTIFY -> new Objective.Task.Fortify();
                         case MINE -> new Objective.Task.Mine();
+                        case PATROL -> new Objective.Task.Patrol();
                     }));
         }
         if (bySquad.size() != squadStatuses.size()) {

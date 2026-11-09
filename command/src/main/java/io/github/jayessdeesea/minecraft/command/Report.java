@@ -71,6 +71,10 @@ public sealed interface Report {
     record Securing() implements Report {
     }
 
+    /** Walking its patrol round the objective (PATROL): moving, on watch. */
+    record Patrolling() implements Report {
+    }
+
     /** Building a structure laid out for it ({@link Order.Place}): {@code placed} of its {@code cells} in. */
     record Building(int placed, int cells) implements Report {
     }

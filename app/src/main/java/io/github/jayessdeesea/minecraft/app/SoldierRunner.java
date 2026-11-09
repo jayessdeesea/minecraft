@@ -491,6 +491,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     /** The day's deaths and idlers, reviewed at each dawn. */
     private final AfterActionReview afterActionReview = new AfterActionReview();
     /** Cutters wanting a tool, sent to their mine's landing to make it - tick writes, squad loop reads. */
+    /** Soldiers walking a PATROL, and the leg of its round each is on - squad loop writes, tick reads. */
+    private final Map<String, Integer> patrolLegs = new ConcurrentHashMap<>();
+    /** How far out from a PATROL objective its round goes: just inside the wall line. */
+    static final int PATROL_RADIUS = WALL_RADIUS - 2;
     /** Soldiers short of food with no means of their own to get any: wheat, game in sight. Tick writes, squad loop reads. */
     private final java.util.Set<String> foodless = ConcurrentHashMap.newKeySet();
     /** The workshop each soldier crafts at (backlog/sites.md): its squad's, or the mine base below ground. */
@@ -799,6 +803,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     left = Optional.of("the stairs " + stairsCut.get() + " of " + state.stairs.steps() + " steps down");
                 }
             }
+            case io.github.jayessdeesea.minecraft.command.Objective.Task.Patrol() -> left = Optional.of("walking the round, on watch");
             default -> {
             }
         }
@@ -1236,6 +1241,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
             state.torchesLeft = torchesLeft.size();
         }
+        List<Position> patrolRound = chainOfCommand.patrolObjective(squadName).map(o -> patrolRound(o.location())).orElse(List.of());
         int baseBlocks = !baseOrdered ? 0 : state.baseBlocksLeft.orElse(PatrolBase.hasty(new Position(0, 0, 0), statuses.size()).cells().size());
         int stoneShare = (baseBlocks + statuses.size() - 1) / statuses.size();
         for (int i = 0; i < statuses.size(); i++) {
@@ -1404,6 +1410,21 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 continue;
             }
             Order given = orders.get(i);
+            // On patrol: round the objective's ground, waypoint to waypoint, each soldier at its own
+            // point of the round - moving, on watch. Contact takes over as it always does.
+            if (!patrolRound.isEmpty() && !squadInContact && !(given instanceof Order.Place)) {
+                int leg = patrolLegs.computeIfAbsent(soldierName, n -> nth * patrolRound.size() / statuses.size());
+                Position waypoint = patrolRound.get(Math.floorMod(leg, patrolRound.size()));
+                Position at = statuses.get(i).position();
+                if (Math.hypot(at.x() - waypoint.x(), at.z() - waypoint.z()) < PATROL_REACHED) {
+                    leg++;
+                    patrolLegs.put(soldierName, leg);
+                    waypoint = patrolRound.get(Math.floorMod(leg, patrolRound.size()));
+                }
+                byName.get(soldierName).receiveOrder(new Order.MoveTo(waypoint.x(), waypoint.y(), waypoint.z(), 1.0, 3, Risk.LOW));
+                continue;
+            }
+            patrolLegs.remove(soldierName);
             if (given instanceof Order.Place place) {
                 // Concrete work: the soldier builds the cells, standing where the building says.
                 List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = place.cells().stream()
@@ -1615,6 +1636,27 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         return java.util.stream.Stream.concat(plan.floor().stream(), plan.cells().stream())
                 .map(c -> column((int) Math.floor(c.x()), (int) Math.floor(c.z())))
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    /** How near a waypoint counts as there, for a patrol's next leg. */
+    private static final double PATROL_REACHED = 2.5;
+
+    /**
+     * A patrol's round: the corners and the midpoints of the square {@link #PATROL_RADIUS} out from
+     * the ground the objective stands on, clockwise from the north-west, each on the ground there.
+     */
+    private List<Position> patrolRound(Position objective) {
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos centre = typicalGround((int) Math.floor(objective.x()), (int) Math.floor(objective.z()), (int) Math.floor(objective.y()))
+                .orElse(io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
+                        io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(objective.x(), objective.y(), objective.z())));
+        int r = PATROL_RADIUS;
+        int[][] round = {{-r, -r}, {0, -r}, {r, -r}, {r, 0}, {r, r}, {0, r}, {-r, r}, {-r, 0}};
+        List<Position> waypoints = new java.util.ArrayList<>();
+        for (int[] p : round) {
+            io.github.jayessdeesea.minecraft.bot.nav.BlockPos ground = io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world, centre.offset(p[0], 0, p[1]));
+            waypoints.add(new Position(ground.x() + 0.5, ground.y(), ground.z() + 0.5));
+        }
+        return List.copyOf(waypoints);
     }
 
     /**
@@ -2272,7 +2314,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     // Only a tool the order needs makes its failure the order's: a pickaxe to quarry with.
                     // A sword is the soldier's own pre-combat check - going without shows in the LOGSTAT
                     // as bare-handed, not as CANTCO of the mission.
-                    : needsPickaxe && armourer.failure().isPresent() ? new Report.Cantco(armourer.failure().get()) : null);
+                    : needsPickaxe && armourer.failure().isPresent() ? new Report.Cantco(armourer.failure().get())
+                    : patrolLegs.containsKey(name) && !inContact ? new Report.Patrolling() : null);
             Position current = status.position();
             if (soldier.sprinting() != sprintingSent.get()) {
                 sprintingSent.set(soldier.sprinting());

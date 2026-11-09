@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -238,6 +239,44 @@ class SquadSimulationTest {
         int bread = server.count("Alice", food) + server.count("Bob", food);
         assertTrue(bread >= 6, "bread baked from the wheat carried: " + bread + "; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+    }
+
+    /**
+     * As live: soldiers holding the camp stood still all day. On PATROL each walks the round inside
+     * the wall line, at its own point of it, and keeps walking: over a few minutes every soldier
+     * covers the round's four sides.
+     */
+    @Test
+    void aSquadOnPatrolWalksTheRoundAndKeepsMoving() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Patrol the camp", camp, "Trouble met before it arrives",
+                new Objective.Task.Patrol())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        java.util.Map<String, java.util.Set<String>> sides = new java.util.HashMap<>();
+        for (int second = 0; second < 240; second++) {
+            clock.advance(1000);
+            for (String name : List.of("Alice", "Bob")) {
+                PlayerPosition at = server.position(name);
+                // Each side's line is PATROL_RADIUS out from the camp's cell centre, turned 2.5 short of.
+                double near = SoldierRunner.PATROL_RADIUS - 2.5;
+                String side = at.z() < 0.5 - near ? "N" : at.z() > 0.5 + near ? "S" : at.x() < 0.5 - near ? "W" : at.x() > 0.5 + near ? "E" : null;
+                if (side != null) {
+                    sides.computeIfAbsent(name, n -> new java.util.TreeSet<>()).add(side);
+                }
+            }
+        }
+        assertEquals(java.util.Map.of("Alice", java.util.Set.of("E", "N", "S", "W"), "Bob", java.util.Set.of("E", "N", "S", "W")), sides,
+                "each soldier round all four sides");
     }
 
     /** Ground rising a block every 3 east of x=-6: the camp's wall stands on many heights. */

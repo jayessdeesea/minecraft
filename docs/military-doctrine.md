@@ -599,6 +599,14 @@ it never finished, walks out.
 
 ## 15. Securing the camp
 
+*Patrol* (ATP 3-21.8, local security patrols): a squad holding ground it works on doesn't stand -
+it walks a round so trouble is met before it reaches the workers. An objective's task `PATROL`
+lays a round out: the corners and midpoints of a square 6 blocks out from the camp's ground, just
+inside its wall line, each on the ground there. Each soldier starts at its own point of the round,
+spread round it by its place in the squad, and walks waypoint to waypoint, turning for the next
+within 2.5 blocks of one, reporting `Patrolling`. Contact interrupts it like any order. It never
+reports DONE: the general gives the squad other work when the camp needs it more.
+
 | Practice | Content | Source |
 |---|---|---|
 | **Secure** | A tactical mission task: prevent a unit, facility or location from being damaged or destroyed by enemy action. | ADP 3-90 |
