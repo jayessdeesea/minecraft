@@ -131,6 +131,9 @@ public final class Farmer {
                     passedOver.worked(digger.spot().block().offset(0, -1, 0));
                     stopDigging();
                 }
+                // The crop gone before it got there is a squadmate's harvest, not a failure: live,
+                // it was counted one, and soldiers reported CANTCO on a farm being worked.
+                case Digger.Progress.Failed _ when !digger.spot().target().at(world, digger.spot().block()) -> stopDigging();
                 case Digger.Progress.Failed(String why) -> fail(why);
             }
             return;
