@@ -591,6 +591,21 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void atLowRiskOnlyAMinorFallAndNotBelowFifteen() {
+        DeterministicSoldier healthy = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        healthy.reportHealth(20, 6);
+        DeterministicSoldier hurt = new DeterministicSoldier("Bob", new Position(0.5, GROUND, 0.5));
+        hurt.reportHealth(16, 6);
+        DeterministicSoldier wounded = new DeterministicSoldier("Carol", new Position(0.5, GROUND, 0.5));
+        wounded.reportHealth(15, 6);
+        Order.MoveTo low = new Order.MoveTo(10.5, GROUND, 0.5, 1, 1, Risk.LOW);
+
+        assertEquals(new FallAllowance(3, Risk.LOW.costPerHealth()), healthy.fallAllowance(low), "3 at most, though 5 would leave 15");
+        assertEquals(new FallAllowance(1, Risk.LOW.costPerHealth()), hurt.fallAllowance(low));
+        assertEquals(FallAllowance.NONE, wounded.fallAllowance(low), "nothing that leaves less than 15");
+    }
+
+    @Test
     void routesAroundATree() {
         // A 2-high trunk at x=3 in a 3-wide band - straight-line walking used to stop dead here.
         WorldView tree = blocks((x, y, z) -> y < GROUND || (x == 3 && z >= -1 && z <= 1 && y < GROUND + 2));

@@ -242,10 +242,12 @@ blocks, at 1 health per block beyond 3, cut by the worn armour's Feather Falling
 and Protection (1 a level) at 4% a point, capped at 20 points - vanilla's enchantment protection.
 `command.Kit.fallProtection` carries it. Each soldier turns the order's
 risk and its own condition into a fall allowance:
-- **The floor:** it never falls below the risk's minimum health (LOW allows no damage, MEDIUM keeps
-  10, HIGH keeps 4).
-- **The price:** each point of damage costs extra route length, halved for a well-fed soldier
-  because it regenerates.
+- **The floor:** it never falls below the risk's minimum health (LOW keeps 15 and spends at most 3 on
+  a route, MEDIUM keeps 10, HIGH keeps 4). LOW's minor fall is the squad's standing risk decision,
+  as a unit's SOP carries one so its leader isn't asked each time: a soldier a block too high on a
+  roof or a ledge gets down without a call, and anything more is still CANTCO, the leader's to grant.
+- **The price:** each point of damage costs extra route length - 40 blocks at LOW, 20 at MEDIUM, 5
+  at HIGH - halved for a well-fed soldier because it regenerates.
 
 So a safe route always wins when one exists, and a fall is planned only when there's none, on
 foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier with no such

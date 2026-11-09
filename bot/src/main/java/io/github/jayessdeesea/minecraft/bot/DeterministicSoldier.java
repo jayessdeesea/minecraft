@@ -1005,7 +1005,7 @@ public final class DeterministicSoldier implements Soldier {
             return FallAllowance.NONE;
         }
         double cost = move.risk().costPerHealth() * (known.food() >= Condition.REGENERATION_FOOD ? 0.5 : 1);
-        return new FallAllowance((int) Math.floor(spare), cost, fallDamageFactor());
+        return new FallAllowance((int) Math.min(Math.floor(spare), move.risk().maxDamage()), cost, fallDamageFactor());
     }
 
     /** The share of fall damage this soldier's worn armour lets through - 1 until its kit is reported. */
