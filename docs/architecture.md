@@ -66,7 +66,9 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
     table finishes its sword (`bot.craft.Crafter`).
   - **Plan, then act.** Work out the whole job first, then batch it so each station is visited once
     (`bot.craft.CraftPlan`): 20 torches are one furnace load and one round of crafting, and a sword
-    and a pickaxe come from one opening of the table. Use what is already standing within reach.
+    and a pickaxe come from one opening of the table. Use what is already standing within reach;
+    a station that isn't is missing from the plan, never made and put down: it's the workshop's
+    ([military-doctrine.md § 11](military-doctrine.md#11-pre-combat-checks)).
   - **Tested against a fake server** that answers as the real one does (`FakeCraftingServer`,
     `FakeChestServer`), a tick late, including one that never answers.
   - **Sending back to back is fine when the server applies in order.** Several clicks, or a swap,

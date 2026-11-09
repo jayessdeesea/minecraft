@@ -82,7 +82,7 @@ public final class Miner {
     static java.util.OptionalInt firstUncut(WorldView world, List<Staircase.Cut> cuts, java.util.Set<Integer> blocked) {
         for (int k = 0; k < cuts.size(); k++) {
             Staircase.Cut cut = cuts.get(k);
-            if (blocked.contains(cut.tunnel()) || cut.cells().stream().noneMatch(c -> world.isSolid(c.x(), c.y(), c.z()))) {
+            if (blocked.contains(cut.tunnel()) || cut.cells().stream().noneMatch(c -> world.isSolid(c.x(), c.y(), c.z()) && world.workstation(c.x(), c.y(), c.z()).isEmpty())) {
                 continue;
             }
             BlockPos stand = cut.stand();

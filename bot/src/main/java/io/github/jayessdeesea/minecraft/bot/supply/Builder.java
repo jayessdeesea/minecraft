@@ -83,10 +83,20 @@ public final class Builder {
     private Position lookAt;
     private boolean done;
 
+    /** What it builds with, in the order it's spent. */
+    private final List<ItemClass> materials;
+
+    /** A builder of walls and steps: with {@link #MATERIALS}. */
     public Builder(String name, PlaySession session, Inventory inventory) {
+        this(name, session, inventory, MATERIALS);
+    }
+
+    /** A builder with {@code materials} only: a workshop's fixture, say, built from its one item. */
+    public Builder(String name, PlaySession session, Inventory inventory, List<ItemClass> materials) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
+        this.materials = List.copyOf(materials);
     }
 
     /** Whether the last tick found every cell of the plan solid. */
@@ -160,7 +170,7 @@ public final class Builder {
                 return new Progress.Failed("nothing to build against for the " + remaining.size() + " cell(s) left");
             }
         }
-        int material = MATERIALS.stream().mapToInt(inventory::slotOf).filter(slot -> slot >= 0).findFirst().orElse(-1);
+        int material = materials.stream().mapToInt(inventory::slotOf).filter(slot -> slot >= 0).findFirst().orElse(-1);
         if (material < 0) {
             stop();
             return new Progress.Failed("no blocks to build with");
@@ -205,7 +215,7 @@ public final class Builder {
     private Script place(BlockPos cell) {
         return new Script(name, List.of(
                 new Step(MATERIAL_IN_HAND, this::materialInHand, () -> {
-                    int material = MATERIALS.stream().mapToInt(inventory::slotOf).filter(slot -> slot >= 0).findFirst()
+                    int material = materials.stream().mapToInt(inventory::slotOf).filter(slot -> slot >= 0).findFirst()
                             .orElseThrow(() -> new IllegalStateException("no blocks to build with"));
                     int hotbar = freeHotbarSlot();
                     if (previousHotbar < 0) {
@@ -238,7 +248,7 @@ public final class Builder {
 
     private boolean materialInHand() {
         Optional<ItemClass> held = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot()));
-        return held.isPresent() && MATERIALS.contains(held.get());
+        return held.isPresent() && materials.contains(held.get());
     }
 
     /** Tries again every cell given up on - the ground changed (a breach found), so a cell that wouldn't take a block may now. */
@@ -277,7 +287,7 @@ public final class Builder {
     private int freeHotbarSlot() {
         for (int hotbar = 8; hotbar >= 0; hotbar--) {
             Optional<ItemClass> held = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + hotbar));
-            if (held.isEmpty() || MATERIALS.contains(held.get())) {
+            if (held.isEmpty() || materials.contains(held.get())) {
                 return hotbar;
             }
         }

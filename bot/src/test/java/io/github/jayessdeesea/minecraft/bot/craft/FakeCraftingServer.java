@@ -98,6 +98,11 @@ final class FakeCraftingServer {
                     }
                     case "selectHotbarSlot" -> held = (int) args[0];
                     case "useBlock" -> use(new BlockPos((int) args[0], (int) args[1], (int) args[2]));
+                    // A block placed against a face: into the cell beside it, as useBlock on the ground below that cell.
+                    case "useBlockFace" -> {
+                        io.github.jayessdeesea.minecraft.protocol.BlockFace face = (io.github.jayessdeesea.minecraft.protocol.BlockFace) args[3];
+                        use(new BlockPos((int) args[0] + face.dx, (int) args[1] + face.dy - 1, (int) args[2] + face.dz));
+                    }
                     default -> throw new AssertionError("unexpected " + method.getName());
                 }
                 return null;
@@ -172,7 +177,7 @@ final class FakeCraftingServer {
             return;
         }
         if (open != null && stations.get(open) == Workstation.FURNACE) {
-            int[][] f = furnaces.get(open);
+            int[][] f = furnaces.computeIfAbsent(open, k -> new int[3][]);
             if (slot < 3 && f[slot] != null) {
                 store(f[slot]);
                 f[slot] = null;
@@ -293,7 +298,7 @@ final class FakeCraftingServer {
         }
         int size = containerSize();
         if (slot < size) {
-            return stations.get(open) == Workstation.FURNACE ? furnaces.get(open) : tableGrid;
+            return stations.get(open) == Workstation.FURNACE ? furnaces.computeIfAbsent(open, k -> new int[3][]) : tableGrid;
         }
         return slots;
     }
@@ -348,7 +353,7 @@ final class FakeCraftingServer {
 
     private void sendWindow() {
         int size = containerSize();
-        int[][] own = stations.get(open) == Workstation.FURNACE ? furnaces.get(open) : tableGrid;
+        int[][] own = stations.get(open) == Workstation.FURNACE ? furnaces.computeIfAbsent(open, k -> new int[3][]) : tableGrid;
         List<Optional<ItemSlot>> window = new ArrayList<>();
         for (int i = 0; i < size; i++) {
             window.add(item(own[i]));

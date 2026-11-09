@@ -10,6 +10,7 @@ import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.bot.world.Workstation;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
@@ -69,11 +70,20 @@ public final class Armourer {
         this.inventory = inventory;
         this.claims = claims;
         this.kitChanged = kitChanged;
-        this.crafter = new Crafter(name, session, inventory, furnaces, claims);
+        this.crafter = new Crafter(name, session, inventory, furnaces);
+        this.fitter = new Fitter(name, session, inventory, furnaces);
     }
 
+    /** Fits out the workshop it's sent to, when a fixture it needs isn't standing there. */
+    private final Fitter fitter;
+
     public synchronized boolean active() {
-        return digger != null || crafter.active();
+        return digger != null || crafter.active() || fitter.active();
+    }
+
+    /** Where to look while it places a workshop's fixture. */
+    public synchronized Optional<Position> lookAt() {
+        return fitter.lookAt();
     }
 
     /**
@@ -146,6 +156,16 @@ public final class Armourer {
      * it - digging first for what it's short of. {@code threatened} pauses it.
      */
     public synchronized void tick(Position soldier, WorldView world, Set<Recipe> wanted, boolean threatened) {
+        tick(soldier, world, wanted, threatened, Optional.empty());
+    }
+
+    /**
+     * As {@link #tick(Position, WorldView, Set, boolean)}, with the {@code workshop} the engineer
+     * sited for the soldier: where it goes to make what needs a table or furnace it has none of
+     * nearby, and fits out with one if none stands there yet. A soldier never puts one down anywhere
+     * else (backlog/sites.md).
+     */
+    public synchronized void tick(Position soldier, WorldView world, Set<Recipe> wanted, boolean threatened, Optional<Workshop> workshop) {
         if (cooldown > 0) {
             cooldown--;
         }
@@ -153,34 +173,56 @@ public final class Armourer {
             stopDigging();
             making = Set.copyOf(wanted);
         }
+        boolean fitting = false;
+        try {
+            fitting = tickMaking(soldier, world, threatened, workshop);
+        } finally {
+            if (!fitting) {
+                fitter.stop(soldier, world);
+            }
+        }
+    }
+
+    /** The making itself, after {@link #tick}'s bookkeeping: whether it fitted out the workshop this tick. */
+    private boolean tickMaking(Position soldier, WorldView world, boolean threatened, Optional<Workshop> workshop) {
         Map<Recipe, Integer> items = once(making);
         if (!crafter.active()) {
             craftingAt = soldier;
         }
         if (crafter.active() || making.isEmpty()) {
+            if (making.isEmpty() && !fitter.active()) {
+                toStation = null; // nothing wanted: no errand to walk on
+            }
             made(crafter.tick(soldier, world, items, threatened));
-            return;
+            return false;
         }
         if (threatened) {
             stopDigging(); // back to it once clear
-            return;
+            return false;
         }
         // Planned with the tables and furnaces a walk away as well as those in reach: one standing
         // nearby is gone to and used, not made again.
         CraftPlan plan = CraftPlan.of(items, Stock.of(inventory), stationsNear(world, soldier));
         if (plan.nothingToDo()) {
-            return;
+            return false;
         }
         Map<ItemClass, Integer> short_ = plan.short_();
         if (short_.isEmpty()) {
             stopDigging();
+            if (!plan.missing().isEmpty()) {
+                if (cooldown == 0 || fitter.active()) {
+                    fitOut(soldier, world, plan.missing(), workshop);
+                    return true;
+                }
+                return false;
+            }
             if (crafter.plan(items, world, soldier).feasible()) {
                 toStation = null;
                 made(crafter.tick(soldier, world, items, false));
             } else if (cooldown == 0) {
                 walkToStation(soldier, world);
             }
-            return;
+            return false;
         }
         Optional<ItemClass> next = DUG.keySet().stream().filter(short_::containsKey).findFirst();
         if (!short_.keySet().stream().allMatch(DUG::containsKey) || next.isEmpty()) {
@@ -188,6 +230,8 @@ public final class Armourer {
         } else if (digger != null || cooldown == 0) {
             dig(soldier, world, DUG.get(next.get()), short_.get(next.get()));
         }
+    
+        return false;
     }
 
     /** Walks to beside the nearest usable station a walk away - a furnace first, the scarcer - and not yet in reach. */
@@ -214,7 +258,32 @@ public final class Armourer {
 
     public synchronized void onContainer(ContainerUpdate update) {
         crafter.onContainer(update);
+        fitter.onContainer(update);
     }
+
+    /** To the workshop, and its missing fixtures fitted there: none sited is said, loudly. */
+    private void fitOut(Position soldier, WorldView world, Set<Workstation> missing, Optional<Workshop> workshop) {
+        if (workshop.isEmpty()) {
+            giveUp("no " + missing + " within " + Digger.SEARCH_RADIUS + " blocks, and no workshop sited to make it at");
+            return;
+        }
+        Workshop w = workshop.get();
+        Position stand = new Position(w.stand().x() + 0.5, w.stand().y(), w.stand().z() + 0.5);
+        if (Math.hypot(soldier.x() - stand.x(), soldier.z() - stand.z()) > WORKSHOP_TOLERANCE || Math.abs(soldier.y() - stand.y()) > 1) {
+            if (!stand.equals(toStation)) {
+                LOG.info("{} goes to the workshop at {} for {}", name, w.stand(), describe(making));
+            }
+            toStation = stand;
+            return;
+        }
+        toStation = stand;
+        if (!fitter.tick(soldier, world, w, missing, false)) {
+            fitter.failure().ifPresent(this::giveUp);
+        }
+    }
+
+    /** How near the workshop's stand counts as there: within reach of both fixtures. */
+    static final double WORKSHOP_TOLERANCE = 0.8;
 
     private void made(Crafter.Outcome outcome) {
         if (outcome != Crafter.Outcome.MADE) {
@@ -260,6 +329,7 @@ public final class Armourer {
         LOG.warn("{} gives up making {} - {}", name, describe(making), why);
         failure = "can't make " + describe(making) + ": " + why;
         stopDigging();
+        toStation = null; // nowhere to go for it now
         cooldown = COOLDOWN_TICKS;
     }
 

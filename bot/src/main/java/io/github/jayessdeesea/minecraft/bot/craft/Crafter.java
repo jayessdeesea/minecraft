@@ -105,16 +105,12 @@ public final class Crafter {
     private String failure;
     private Position soldier;
     private WorldView world;
-    /** Where a table or furnace was last tried; one that didn't land isn't tried again. */
-    private BlockPos placing;
-    private final Set<BlockPos> blocked = new HashSet<>();
     private int windowId = -1;
     private int windowSlots;
     private int openedMenu = -1;
     private boolean contentsSeen;
     @SuppressWarnings("unchecked")
     private final Optional<ItemSlot>[] furnace = new Optional[FURNACE_SLOTS];
-    private int previousHotbar = -1;
     /** The furnace whose window is open. */
     private BlockPos furnaceAt;
     /** What it left smelting, by furnace: made by now or soon, though not yet in the inventory. */
@@ -122,15 +118,12 @@ public final class Crafter {
 
     /** Each furnace in use, and the soldier holding it - shared between soldiers. */
     private final Map<BlockPos, String> furnaces;
-    /** Cells squadmates have claimed to dig from or stand in: no table or furnace goes there. */
-    private final Set<BlockPos> claims;
 
-    public Crafter(String name, PlaySession session, Inventory inventory, Map<BlockPos, String> furnaces, Set<BlockPos> claims) {
+    public Crafter(String name, PlaySession session, Inventory inventory, Map<BlockPos, String> furnaces) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
         this.furnaces = furnaces;
-        this.claims = claims;
         Arrays.fill(furnace, Optional.empty());
     }
 
@@ -261,7 +254,6 @@ public final class Crafter {
             case Script.Status.Running() -> Outcome.WORKING;
             case Script.Status.Done() -> {
                 LOG.info("{} made {} - {}", name, describe(this.wanted), inventory.summary());
-                blocked.clear();
                 end(0);
                 yield Outcome.MADE;
             }
@@ -272,9 +264,6 @@ public final class Crafter {
             case Script.Status.Failed(String step, String reason) -> {
                 LOG.warn("{} gives up crafting {} at '{}' - {} - {}", name, describe(this.wanted), step, reason, inventory.summary());
                 failure = "can't make " + describe(this.wanted) + ": " + step + ": " + reason;
-                if (step.startsWith("place") && placing != null) {
-                    blocked.add(placing);
-                }
                 end(COOLDOWN_TICKS);
                 yield Outcome.FAILED;
             }
@@ -292,12 +281,10 @@ public final class Crafter {
             switch (visit.station()) {
                 case GRID -> visit.batches().forEach(b -> steps.add(craft(b, false)));
                 case TABLE -> {
-                    steps.add(place(Workstation.CRAFTING_TABLE, ItemClass.CRAFTING_TABLE));
                     steps.add(open(Workstation.CRAFTING_TABLE, CRAFTING_MENU, Optional.empty()));
                     visit.batches().forEach(b -> steps.add(craft(b, true)));
                 }
                 case FURNACE -> {
-                    steps.add(place(Workstation.FURNACE, ItemClass.FURNACE));
                     steps.add(open(Workstation.FURNACE, FURNACE_MENU, Optional.empty()));
                     visit.batches().forEach(b -> steps.add(smelt(b)));
                 }
@@ -497,27 +484,6 @@ public final class Crafter {
         return best;
     }
 
-    /** A table or furnace put down beside the soldier - skipped when one is already within reach. */
-    private Step place(Workstation station, ItemClass item) {
-        String label = label(station);
-        return new Step("place a " + label, () -> usable(world, soldier, station).isPresent(), () -> {
-            close();
-            Set<BlockPos> notThere = new HashSet<>(blocked);
-            notThere.addAll(claims);
-            placing = placement(soldier, world, notThere);
-            hold(need(item));
-            session.useBlock(placing.x(), placing.y() - 1, placing.z()); // the top of the ground there
-        }, new Expect("a " + label + " in the world", () -> placed(station)), ANSWER_TICKS);
-    }
-
-    private boolean placed(Workstation station) {
-        boolean placed = world.workstation(placing.x(), placing.y(), placing.z()).equals(Optional.of(station));
-        if (placed && station == Workstation.FURNACE) {
-            claim(placing);
-        }
-        return placed;
-    }
-
     private void claim(BlockPos furnaceAt) {
         furnaces.put(furnaceAt, name);
     }
@@ -625,54 +591,6 @@ public final class Crafter {
         return Optional.ofNullable(best);
     }
 
-    /**
-     * Where to put a table or furnace: a free cell beside the soldier with ground under it, clear of
-     * its body and anyone else's - the server won't place a block into a squadmate.
-     */
-    public static BlockPos placement(Position soldier, WorldView world, Set<BlockPos> blocked) {
-        BlockPos at = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
-        List<Position> bodies = world.bodiesNear(soldier, 3);
-        for (int[] side : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}}) {
-            BlockPos cell = at.offset(side[0], 0, side[1]);
-            boolean underBody = soldier.x() + HALF_WIDTH > cell.x() && soldier.x() - HALF_WIDTH < cell.x() + 1
-                    && soldier.z() + HALF_WIDTH > cell.z() && soldier.z() - HALF_WIDTH < cell.z() + 1;
-            boolean someoneThere = bodies.stream().anyMatch(b -> b.x() + HALF_WIDTH > cell.x() && b.x() - HALF_WIDTH < cell.x() + 1
-                    && b.z() + HALF_WIDTH > cell.z() && b.z() - HALF_WIDTH < cell.z() + 1 && b.y() < cell.y() + 1 && b.y() + 1.8 > cell.y());
-            if (!underBody && !someoneThere && !blocked.contains(cell) && world.isSolid(cell.x(), cell.y() - 1, cell.z())
-                    && !world.isSolid(cell.x(), cell.y(), cell.z()) && !world.isHazard(cell.x(), cell.y(), cell.z())) {
-                return cell;
-            }
-        }
-        throw new IllegalStateException("no free cell beside " + at + " to put a block down - walls or squadmates all round");
-    }
-
-    /** Puts the item in {@code slot} in hand through a hotbar slot with no weapon or tool. */
-    private void hold(int slot) {
-        int hotbar = 8;
-        for (; hotbar > 0; hotbar--) {
-            Optional<ItemClass> held = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + hotbar));
-            if (held.isEmpty() || held.get() != ItemClass.WEAPON && held.get() != ItemClass.PICKAXE) {
-                break;
-            }
-        }
-        if (previousHotbar < 0) {
-            previousHotbar = inventory.heldHotbarSlot();
-        }
-        if (slot != Inventory.HOTBAR_FIRST + hotbar) {
-            session.swapWithHotbar(0, 0, slot, hotbar);
-        }
-        session.selectHotbarSlot(hotbar);
-        inventory.selectHotbar(hotbar);
-    }
-
-    private int need(ItemClass itemClass) {
-        int slot = inventory.slotOf(itemClass);
-        if (slot < 0) {
-            throw new IllegalStateException("no " + itemClass + " in the inventory - " + inventory.summary());
-        }
-        return slot;
-    }
-
     private void close() {
         if (windowId >= 0) {
             session.closeContainer(windowId);
@@ -684,14 +602,8 @@ public final class Crafter {
     private void end(int cooldownTicks) {
         close();
         session.closeContainer(0); // anything left in the 2x2 grid or on the cursor goes back
-        if (previousHotbar >= 0) {
-            session.selectHotbarSlot(previousHotbar);
-            inventory.selectHotbar(previousHotbar);
-            previousHotbar = -1;
-        }
         script = null;
         plan = null;
-        placing = null;
         // A furnace this run left nothing in is free for the next soldier.
         if (furnaceAt != null && !smelting.containsKey(furnaceAt)) {
             furnaces.remove(furnaceAt, name);

@@ -142,8 +142,9 @@ public final class Breacher {
                 .orElse(io.github.jayessdeesea.minecraft.bot.world.Hardness.HAND);
     }
 
+    /** Solid, and to be broken: a workshop's table or furnace in a cut - the landing's recesses - is left standing. */
     private boolean solid(BlockPos cell) {
-        return world.isSolid(cell.x(), cell.y(), cell.z());
+        return world.isSolid(cell.x(), cell.y(), cell.z()) && world.workstation(cell.x(), cell.y(), cell.z()).isEmpty();
     }
 
     private boolean pickaxeInHand() {

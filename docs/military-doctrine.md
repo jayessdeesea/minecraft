@@ -353,9 +353,8 @@ A tool that wears out is made again, since it no longer holds its rung.
 
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
-It crafts planks, sticks and a crafting table in its 2x2 inventory grid, places the table (or walks
-to one standing within 16 blocks), smelts ore in a furnace it makes or walks to, and crafts the rest at the
-table. What's made is put on: armour worn, the best weapon in hand. And whenever its hands are
+It crafts what it can in its 2x2 inventory grid. What needs a table or a furnace it makes at one
+standing within 16 blocks, walked to, or else at its squad's workshop. What's made is put on: armour worn, the best weapon in hand. And whenever its hands are
 free, a soldier stands to: every two seconds it puts on any better armour it carries and takes its
 best weapon back in hand, rather than the seeds or dirt its last job left there. A first wooden sword takes
 about a minute. While crafting or smelting, the soldier stays where it began, since a window closes
@@ -365,7 +364,23 @@ The squad climbs together. Nobody works above the lowest rung a squadmate is sti
 so the first soldier up the ladder doesn't dig out the ore the rest need for their shields. A
 table is shared, since each player's crafting grid is its own, but a furnace isn't: whoever opens
 it can take what's in it. So a soldier holds the furnace it smelts in until it has collected what
-it left there, and a squadmate puts down its own.
+it left there, and a squadmate waits for it.
+
+**Workshops.** A soldier never chooses where a table goes: the engineer sites each workshop
+(`bot.engineer.Workshop`), and the soldier is sent to it.
+- **The camp's**, at the camp's ground: for every squad whose objective is within 48 blocks of it.
+- **A hasty one** at the objective's ground otherwise. It is sited round a table already standing
+  there, if there is one, so the same workshop is found after a restart, and never in the squad's
+  patrol base or on its wall.
+- **The mine base's**, at the bottom of the camp's stairs (§16): for a soldier more than 3 blocks
+  down, once the landing is cut. By night it's a mining squad's only workshop, so nobody climbs
+  out into the dark for a tool.
+
+Each names a cell to stand in, and a cell each for the table and the furnace, on adjacent sides so
+the stand stays open on the other two. A fixture not standing yet is fitted by the first soldier
+that needs it (`bot.supply.Fitter`): it crafts the item - the table in its grid, the furnace from 8
+cobblestone at the table - and places it into its cell. With no workshop sited, the soldier says so
+rather than putting a table down where it stands.
 
 The squad leader decides whether there's time: its order's `rearm` lets soldiers make a weapon.
 Climbing past it waits until the squad isn't ordered to a patrol base, since shelter comes first
@@ -532,25 +547,22 @@ left at 0 is ground a monster can spawn on once no soldier is within 24 blocks. 
 spawn only at block light 0, and never within 24 blocks of a player.
 
 A squad with a base to light and no torch has one soldier make them before it seals itself in
-(`bot.supply.Torchmaker`), using what squads carry: 3 logs and 8 cobblestone. The soldier works 4-6
-blocks outside the walls, so its table and furnace land clear of the hut. A table or furnace
-already within reach is used rather than made:
+(`bot.supply.Torchmaker`), using what squads carry: 3 logs, and 8 cobblestone if the workshop has
+no furnace yet. The soldier makes them at its squad's workshop, sited clear of the hut (§11):
 1. Planks and sticks in the 2x2 grid.
-2. A crafting table, placed.
-3. A furnace from 8 cobblestone, made at the table and placed.
-4. A log smelted to charcoal, with a plank for fuel.
-5. Charcoal over a stick: 4 torches.
-The table and furnace stay behind as the camp's kit. Contact pauses the work as it does a sword
+2. The workshop's table and furnace, fitted if they aren't standing.
+3. A log smelted to charcoal, with a plank for fuel.
+4. Charcoal over a stick: 4 torches.
+Contact pauses the work as it does a sword
 (§11). A furnace keeps smelting with nobody at it, so the soldier collects what it left there before
 anything else when it comes back. The others wait inside, since building starts
 only once all are in, and a bare-handed one may make its sword meanwhile. Once the base is sealed
 and dark, a soldier inside with a torch puts it down where it stands.
 
 A squad sealed in with no torch - after a restart, or after its torchbearer's run failed - lights
-the base the same way. A soldier who carries the makings cuts a doorway toward the workshop spot
+the base the same way. A soldier who carries the makings cuts a doorway toward the workshop
 and goes out; the doorway stays off the build list until a torch is back inside, then is rebuilt
-and the torch goes down. A table and furnace left from the first run are used again if they're in
-reach.
+and the torch goes down.
 
 The log reports "SEALED and LIT", or "UNLIT at" with the dark cells. While the squad holds the
 base, its walls and roof are off-limits to digging: a soldier short of wood looks for a tree, not
@@ -656,14 +668,16 @@ the next. By day the rest hold the top, clear of the shaft. By night they follow
 blocks: the top is open ground in the dark, and on the stairs no monster spawns within 24 blocks
 of a player. Until one of them has a pickaxe, every one makes one.
 
-On the stairs there's no floor for a table. So once a turn, on the step east of the pillar, the
-cutter cuts an **alcove**: one cell out of the shaft's side (`Staircase.alcoves`). At the bottom,
-beside the main tunnel's first cell, it cuts a **landing**: a recess each side
-(`Staircase.landing`). A cutter wanting a tool goes to its workshop (`Staircase.workshop`), the
-landing once it's cut and until then the deepest alcove, and the stairs wait while it makes the
-tool there. The tool is the ladder's next rung, or a stone pickaxe once it carries the cobblestone,
-since iron ore drops nothing to a wooden one. It goes only for the pickaxe the stairs need, and
-not while making it is failing: a weapon it can't make would hold the stairs for good. A soldier
+Nothing is crafted on the stairs. At the bottom, beside the main tunnel's first cell, the cutter
+cuts a **landing**: a recess each side (`Staircase.landing`), the mine base's table and furnace
+(§11), never dug out again once they stand. The stairs are lit as they're cut, so the shaft
+spawns nothing: a torch on a step once a turn, halfway round, and one at the landing's stand
+(`Staircase.lights`), put down by the squad holding the top - those carrying torches, or the
+makings and a furnace's 8 cobblestone, so lighting sends nobody off with nothing to make them
+from. A cutter wanting a tool goes to its workshop - the mine base once the landing is cut, the
+squad's at the top until then - and the stairs wait while it makes the tool there. The tool is the
+ladder's next rung, or a stone pickaxe once it carries the cobblestone, since iron ore drops
+nothing to a wooden one. A soldier
 whose pickaxe wears out is no longer the cutter, and the next with a pickaxe takes over; the worn-out
 one makes a stone pickaxe from the cobblestone it carries, or a wooden one from logs if it has
 fewer than three. The stairs and tunnels are claimed (`Staircase.walkway`):

@@ -599,7 +599,11 @@ final class SimServer {
         @Override
         public void useBlockFace(int x, int y, int z, BlockFace face) {
             Optional<Integer> held = heldItem();
-            Optional<Integer> block = held.flatMap(SimServer::placesAs);
+            // A workshop's table or furnace goes in against a face like any block.
+            Optional<ItemClass> station = held.flatMap(ItemClassRegistry::classOf)
+                    .filter(c -> c == ItemClass.CRAFTING_TABLE || c == ItemClass.FURNACE);
+            Optional<Integer> block = station.<Integer>map(c -> c == ItemClass.FURNACE ? FURNACE : CRAFTING_TABLE)
+                    .or(() -> held.flatMap(SimServer::placesAs));
             if (block.isEmpty()) {
                 throw new UnsupportedOperationException("simulated: using " + held + " on block " + block(x, y, z) + " at " + x + "," + y + "," + z);
             }
@@ -616,6 +620,9 @@ final class SimServer {
             slots[36 + this.held] = s[1] == 1 ? null : new int[]{s[0], s[1] - 1};
             sendSlot(36 + this.held);
             set(px, py, pz, block.get());
+            if (block.get() == FURNACE) {
+                furnaces.put(key(px, py, pz), new int[3][]);
+            }
             log.add(name + " placed " + block.get() + " at " + px + "," + py + "," + pz);
         }
 

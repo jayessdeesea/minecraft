@@ -22,11 +22,12 @@ import java.util.TreeMap;
  * <p>Pure: worked out from counts, not the live inventory. Expanded backwards from what's wanted -
  * each thing short is made from its {@link Recipe}, whose own ingredients are taken from what's
  * carried first, then made in turn - so a batch always comes after the batches it uses. A station
- * not already in reach is made and placed: the table or furnace item becomes a need of its own.
- * What nothing carried can make (logs, cobblestone) is {@link #short_}: the plan can't start
- * until it's gathered.
+ * not in reach is {@link #missing}: a soldier never puts one down to craft at, it crafts at a
+ * workshop the engineer sited (backlog/sites.md). What nothing carried can make (logs,
+ * cobblestone) is {@link #short_}. Either way the plan can't start: the soldier goes to the
+ * workshop, or gathers what it's short of.
  */
-public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_) {
+public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_, Set<Workstation> missing) {
 
     /** {@code times} crafts of {@code recipe}: {@code times x yield} of what it makes. */
     public record Batch(Recipe recipe, int times) {
@@ -42,11 +43,12 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_) 
     public CraftPlan {
         sessions = List.copyOf(sessions);
         short_ = Map.copyOf(short_);
+        missing = Set.copyOf(missing);
     }
 
-    /** Whether everything it takes is carried: the plan can run. */
+    /** Whether everything it takes is carried, at stations in reach: the plan can run. */
     public boolean feasible() {
-        return short_.isEmpty();
+        return short_.isEmpty() && missing.isEmpty();
     }
 
     /** Whether nothing needs making: all of it is already carried. */
@@ -78,6 +80,7 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_) 
         /** The batches each batch uses: what decides which visit it can be made on. */
         private final Map<Recipe, Set<Recipe>> uses = new LinkedHashMap<>();
         private final Map<ItemClass, Integer> short_ = new EnumMap<>(ItemClass.class);
+        private final Set<Workstation> missing = java.util.EnumSet.noneOf(Workstation.class);
 
         private final Stock carried;
 
@@ -124,7 +127,7 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_) 
             if (recipe.station() == Station.FURNACE) {
                 addUse(used, need(ItemClass.PLANKS, Recipe.fuelFor(crafts)));
             }
-            station(recipe.station()).ifPresent(item -> addUse(used, item));
+            station(recipe.station());
             times.merge(recipe, crafts, Integer::sum);
             uses.computeIfAbsent(recipe, r -> new HashSet<>()).addAll(used);
             if (recipe.item().isEmpty()) {
@@ -133,19 +136,16 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_) 
             return recipe;
         }
 
-        /** The station a recipe needs, made and placed if none is in reach: the batch that makes it, if one does. */
-        private java.util.Optional<Recipe> station(Station station) {
+        /** The station a recipe needs, noted as missing when none is in reach. */
+        private void station(Station station) {
             Workstation block = switch (station) {
                 case GRID -> null;
                 case TABLE -> Workstation.CRAFTING_TABLE;
                 case FURNACE -> Workstation.FURNACE;
             };
-            if (block == null || stations.contains(block)) {
-                return java.util.Optional.empty();
+            if (block != null && !stations.contains(block)) {
+                missing.add(block);
             }
-            stations.add(block); // placed once, used by everything after
-            Recipe made = need(block == Workstation.CRAFTING_TABLE ? ItemClass.CRAFTING_TABLE : ItemClass.FURNACE, 1);
-            return java.util.Optional.ofNullable(made);
         }
 
         private static void addUse(Set<Recipe> used, Recipe recipe) {
@@ -172,7 +172,7 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_) 
             visit.forEach((recipe, at) -> byVisit.computeIfAbsent(at, v -> new ArrayList<>()).add(new Batch(recipe, times.get(recipe))));
             List<Session> sessions = new ArrayList<>();
             byVisit.forEach((at, batches) -> sessions.add(new Session(Station.values()[at % 3], batches)));
-            return new CraftPlan(sessions, short_);
+            return new CraftPlan(sessions, short_, missing);
         }
 
         /** The batches, each after every batch it uses. */

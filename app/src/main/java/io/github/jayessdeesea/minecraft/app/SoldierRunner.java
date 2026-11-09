@@ -165,6 +165,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.command.Objective workedFor;
         /** The last progress measured, logged when its state changes. */
         io.github.jayessdeesea.minecraft.command.Progress progress;
+        /** Where the squad crafts on the surface, sited by the engineer near its objective; null with nowhere to put one. */
+        io.github.jayessdeesea.minecraft.bot.engineer.Workshop workshop;
+        /** The ground {@code workshop} was sited at: sited again only when the objective moves. */
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos workshopFor;
         /** The doorway cut to let a torchbearer out of a sealed, dark base - left open until it's back with torches. */
         List<Position> torchDoor;
         /** The base's breaches at the last check - logged when they change. */
@@ -252,6 +256,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, SquadState> squadStates = new HashMap<>(); // squad thread only
     /** Each connected soldier's kit-making routine, by name - set on join, read by the squad loop. */
     private final Map<String, Armourer> armourers = new ConcurrentHashMap<>();
+    private final Map<String, Torchmaker> torchmakers = new ConcurrentHashMap<>();
     /** Whether each soldier's squad leader lets it stop to rearm, with its squad out of contact - squad loop writes, tick reads. */
     private final Map<String, Boolean> rearmAllowed = new ConcurrentHashMap<>();
     /**
@@ -484,7 +489,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     /** The day's deaths and idlers, reviewed at each dawn. */
     private final AfterActionReview afterActionReview = new AfterActionReview();
     /** Cutters wanting a tool, sent to their mine's landing to make it - tick writes, squad loop reads. */
-    private final java.util.Set<String> atLanding = ConcurrentHashMap.newKeySet();
+    /** The workshop each soldier crafts at (backlog/sites.md): its squad's, or the mine base below ground. */
+    private final Map<String, io.github.jayessdeesea.minecraft.bot.engineer.Workshop> workshops = new ConcurrentHashMap<>();
+    /** The camp's own workshop, at its ground: every squad near the camp crafts there. */
+    private volatile io.github.jayessdeesea.minecraft.bot.engineer.Workshop campWorkshop;
+    /** How near the camp an objective is for its squad to craft at the camp's workshop. */
+    private static final int CAMP_WORKSHOP_RANGE = 48;
     /** Ticks to each soldier's next stand-to check. */
     private final Map<String, Integer> standTo = new ConcurrentHashMap<>();
     /** Soldiers stood still by day: an alarm each spell. */
@@ -644,6 +654,84 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt()));
         }
     }
+
+    /**
+     * The squad's surface workshop, sited by the engineer ({@code bot.engineer.Workshop}): the
+     * camp's, for an objective within {@link #CAMP_WORKSHOP_RANGE} of it, else a hasty one at the
+     * objective's ground - where the squad stands with no objective. Sited again only when that ground
+     * moves, or the stand stops being standable. Never in its patrol base: {@code hut}'s cells are left alone.
+     */
+    private void siteWorkshop(String squad, SquadState state, List<SoldierStatus> statuses, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> hut) {
+        // A MINE objective's height is the depth to reach: its workshop is at the stairs' head.
+        Position at = state.stairs != null
+                ? new Position(state.stairs.head().x(), state.stairs.head().y(), state.stairs.head().z())
+                : chainOfCommand.objective(squad).map(io.github.jayessdeesea.minecraft.command.Objective::location)
+                .orElse(statuses.getFirst().position());
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> claimed = new java.util.HashSet<>(treeClaims);
+        claimed.addAll(hut);
+        // Clear of the shaft: its 3x3 is dug out from under anything put down beside its head.
+        if (state.stairs != null) {
+            io.github.jayessdeesea.minecraft.bot.nav.BlockPos head = state.stairs.head();
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    for (int dy = -1; dy <= 2; dy++) {
+                        claimed.add(head.offset(dx, dy, dz));
+                    }
+                }
+            }
+        }
+        if (state.wall != null) {
+            claimed.addAll(state.wall);
+        }
+        if (campGround != null && Math.hypot(at.x() - campGround.x(), at.z() - campGround.z()) <= CAMP_WORKSHOP_RANGE) {
+            io.github.jayessdeesea.minecraft.bot.engineer.Workshop camp = campWorkshop;
+            if (camp == null || !io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.standable(world, camp.stand())) {
+                camp = io.github.jayessdeesea.minecraft.bot.engineer.Workshop.hasty(world, campGround, claimed).orElse(null);
+                if (camp == null) {
+                    LOG.warn("[{}] nowhere at the camp's ground {} to site its workshop", squad, campGround);
+                } else {
+                    LOG.info("[{}] the camp's workshop: stand {}, table {}, furnace {}", squad, camp.stand(), camp.table(), camp.furnace());
+                }
+                campWorkshop = camp;
+            }
+            state.workshop = camp;
+            state.workshopFor = campGround;
+            return;
+        }
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos ground = io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world, io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(at.x(), at.y(), at.z()));
+        if (ground.equals(state.workshopFor) && state.workshop != null
+                && io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.standable(world, state.workshop.stand())) {
+            return;
+        }
+        state.workshopFor = ground;
+        state.workshop = io.github.jayessdeesea.minecraft.bot.engineer.Workshop.hasty(world, ground, claimed).orElse(null);
+        if (state.workshop == null) {
+            LOG.warn("[{}] nowhere near {} to site a workshop", squad, ground);
+        } else {
+            LOG.info("[{}] a hasty workshop at {}: stand {}, table {}, furnace {}", squad, ground, state.workshop.stand(),
+                    state.workshop.table(), state.workshop.furnace());
+        }
+    }
+
+    /**
+     * Where a soldier at {@code at} crafts: the mine base once its landing is cut, for one down the
+     * stairs; else its squad's. By night a mining squad crafts only at the mine base: the top is
+     * the dark, and nobody goes up the stairs for a tool.
+     */
+    private io.github.jayessdeesea.minecraft.bot.engineer.Workshop workshopOf(SquadState state, Position at) {
+        if (state.stairs == null) {
+            return state.workshop;
+        }
+        boolean landing = state.stairs.landingCut(world);
+        if (landing && at.y() < state.stairs.head().y() - MINE_BELOW) {
+            return io.github.jayessdeesea.minecraft.bot.engineer.Workshop.mine(state.stairs);
+        }
+        boolean dark = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
+        return dark ? (landing ? io.github.jayessdeesea.minecraft.bot.engineer.Workshop.mine(state.stairs) : null) : state.workshop;
+    }
+
+    /** How far below the stairs' head a soldier is down the mine, for the mine base's workshop. */
+    private static final int MINE_BELOW = 3;
 
     /**
      * How the squad's task stands, from the world where the task leaves a mark - the wall's open
@@ -907,7 +995,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 .filter(n -> canMakeTorches.getOrDefault(n, false))
                 .min(java.util.Comparator.comparing(n -> !n.equals(state.torchbearer))).orElse(null);
         state.torchbearer = torchbearer;
-        Position workshop = torchbearer == null ? null : workshop(plan).orElse(null);
+        // The torchbearer makes them at the squad's workshop, sited clear of the hut.
+        Position workshop = torchbearer == null || state.workshop == null ? null : centre(state.workshop.stand());
         // Sealed in and dark, with no torch but the makings of some: a soldier who can make them cuts
         // a doorway toward the workshop and goes out. Once it's open the base isn't sealed, so the
         // torchbearer above takes over; the doorway goes back on the build list when it returns.
@@ -918,7 +1007,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         if (plan != null && sealedIn && !lit && !squadHasTorch) {
             Optional<String> maker = statuses.stream().map(SoldierStatus::name).filter(n -> canMakeTorches.getOrDefault(n, false))
                     .min(java.util.Comparator.comparing(n -> !n.equals(state.torchbearer)));
-            Optional<Position> outside = maker.isEmpty() ? Optional.empty() : workshop(plan);
+            Optional<Position> outside = maker.isEmpty() || state.workshop == null ? Optional.empty() : Optional.of(centre(state.workshop.stand()));
             if (outside.isPresent()) {
                 List<Position> door = plan.doorway(outside.get(), this::walkable);
                 if (state.torchDoor == null) {
@@ -1096,6 +1185,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             return sited.get();
         }).orElse(null);
         state.stairs = stairs;
+        siteWorkshop(squadName, state, statuses, plan == null ? List.of()
+                : java.util.stream.Stream.of(plan.cells(), plan.floor(), plan.floor().stream().map(f -> new Position(f.x(), f.y() + 1, f.z())).toList())
+                        .flatMap(List::stream).map(c -> io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(c.x(), c.y(), c.z())).toList());
         // The one who cuts it: the first soldier carrying a pickaxe. Until one does, all make one.
         String cutter = stairs == null || squadInContact ? null : statuses.stream()
                 .filter(st -> st.condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false))
@@ -1124,6 +1216,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int stoneShare = (baseBlocks + statuses.size() - 1) / statuses.size();
         for (int i = 0; i < statuses.size(); i++) {
             String soldierName = statuses.get(i).name();
+            Optional.ofNullable(workshopOf(state, statuses.get(i).position()))
+                    .ifPresentOrElse(w -> workshops.put(soldierName, w), () -> workshops.remove(soldierName));
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
                     .ifPresentOrElse(t -> deliveries.put(soldierName, t), () -> deliveries.remove(soldierName));
             rearmAllowed.put(soldierName, order.rearm() && !squadInContact);
@@ -1223,6 +1317,23 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             } else {
                 lighting.remove(soldierName);
             }
+            // The mine's stairs lit as they're cut, a torch a turn: by the squad holding the top, not
+            // the cutter. Live, the dark shaft spawned the zombies that killed a soldier at dawn.
+            // Only by one with torches, or their makings and a furnace's stone: lighting isn't a
+            // reason to leave the shaft for a workshop and come back with nothing.
+            Kit lamp = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
+            boolean canLight = torchesCarried.getOrDefault(soldierName, 0) > 0
+                    || canMakeTorches.getOrDefault(soldierName, false) && lamp != null && lamp.stone() >= TORCH_STONE;
+            if (stairs != null && !squadInContact && torchesLeft.isEmpty() && !soldierName.equals(cutter) && canLight) {
+                List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> stairsDark = stairs.lights().stream()
+                        .filter(c -> !world.isSolid(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z()) && !world.isTorch(c.x(), c.y(), c.z()))
+                        .toList();
+                if (stairsDark.isEmpty()) {
+                    lighting.remove(soldierName);
+                } else {
+                    lighting.put(soldierName, stairsDark);
+                }
+            }
             if (stairs != null) {
                 mining.add(soldierName);
             } else {
@@ -1240,9 +1351,19 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 // nothing spawns within 24 blocks of them.
                 boolean dark = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
                 Position cutterAt = cutter == null ? centre(stairs.head())
-                        : atLanding.contains(cutter) ? centre(stairs.workshop(world).orElse(stairs.landingStand()))
-                        : miners.get(cutter).standAt().orElse(centre(stairs.head()));
+                        : armourers.get(cutter).standAt().or(() -> miners.get(cutter).standAt()).orElse(centre(stairs.head()));
                 boolean isCutter = soldierName.equals(cutter);
+                // One holding the top goes on its errand first: its kit at the workshop, torches made, the stairs lit.
+                // Not by night: the top is the dark, and the squad stays down with its cutter.
+                Optional<Position> errand = isCutter || dark ? Optional.empty()
+                        : Optional.ofNullable(armourers.get(soldierName)).flatMap(Armourer::standAt)
+                        .or(() -> Optional.ofNullable(torchmakers.get(soldierName)).flatMap(Torchmaker::standAt))
+                        .or(() -> Optional.ofNullable(lamplighters.get(soldierName))
+                                .flatMap(io.github.jayessdeesea.minecraft.bot.supply.Lamplighter::standAt));
+                if (errand.isPresent()) {
+                    byName.get(soldierName).receiveOrder(new Order.MoveTo(errand.get().x(), errand.get().y(), errand.get().z(), 0.3, 0.5, Risk.LOW));
+                    continue;
+                }
                 Position place = isCutter ? cutterAt
                         : dark ? cutterAt
                         : new Position(stairs.head().x() - 1.5 + i, stairs.head().y(), stairs.head().z() + 3.5);
@@ -1324,6 +1445,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             Optional<Position> stand = Optional.ofNullable(hunters.get(soldierName)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Hunter::standAt);
             if (stand.isEmpty() && armourer != null) {
                 stand = armourer.standAt();
+            }
+            if (stand.isEmpty() && torchmakers.containsKey(soldierName)) {
+                stand = torchmakers.get(soldierName).standAt();
             }
             if (stand.isEmpty() && depositors.containsKey(soldierName)) {
                 stand = depositors.get(soldierName).standAt();
@@ -1441,31 +1565,6 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final int GROUND_SEARCH = 8;
 
     /**
-     * Where a torchbearer works: a standing spot a few blocks out from the hut's walls, so the table
-     * and furnace it puts down beside it land clear of the hut and everyone's places.
-     */
-    private Optional<Position> workshop(PatrolBase.Plan plan) {
-        double minX = plan.floor().stream().mapToDouble(Position::x).min().orElseThrow();
-        double maxX = plan.floor().stream().mapToDouble(Position::x).max().orElseThrow();
-        double minZ = plan.floor().stream().mapToDouble(Position::z).min().orElseThrow();
-        double maxZ = plan.floor().stream().mapToDouble(Position::z).max().orElseThrow();
-        int y = (int) plan.floor().getFirst().y();
-        for (int out = 4; out <= 6; out++) {
-            for (double[] c : new double[][]{{maxX + out, minZ}, {minX - out, minZ}, {minX, maxZ + out}, {minX, minZ - out}}) {
-                for (int dy = 0; dy <= 2; dy++) {
-                    for (int cy : new int[]{y + dy, y - dy}) {
-                        int cx = (int) c[0];
-                        int cz = (int) c[1];
-                        if (world.isSolid(cx, cy - 1, cz) && !world.isSolid(cx, cy, cz) && !world.isSolid(cx, cy + 1, cz)
-                                && !world.isHazard(cx, cy, cz)) {
-                            return Optional.of(new Position(cx + 0.5, cy, cz + 0.5));
-                        }
-                    }
-                }
-            }
-        }
-        return Optional.empty();
-    }
     /** How far from the general's point to look for level ground for a patrol base. */
     private static final int SITE_SEARCH = 8;
     /**
@@ -1803,7 +1902,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         java.util.concurrent.atomic.AtomicBoolean drawingSent = new java.util.concurrent.atomic.AtomicBoolean();
         io.github.jayessdeesea.minecraft.bot.supply.Quiver quiver = new io.github.jayessdeesea.minecraft.bot.supply.Quiver(session, inventory);
         armourerRef.set(armourer);
-        Torchmaker torchmaker = new Torchmaker(name, session, inventory, furnaces, treeClaims);
+        Torchmaker torchmaker = new Torchmaker(name, session, inventory, furnaces);
+        torchmakers.put(name, torchmaker);
         java.util.concurrent.atomic.AtomicInteger ladderTicks = new java.util.concurrent.atomic.AtomicInteger();
         AtomicReference<Optional<Recipe>> ladderStep = new AtomicReference<>(Optional.empty());
         // Ticks while told to light the base: one torch tried a second, until the light check sees it.
@@ -1873,16 +1973,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (stairs != null && Ladder.bestPickaxe(inventory) < 1 && inventory.count(ItemClass.COBBLESTONE) >= 3) {
                 tools.add(Recipe.STONE_PICKAXE);
             }
-            // On the stairs there's no room for a table: the cutter makes its pickaxe at the landing,
-            // or above it at the deepest alcove cut - the squad loop sends it there, and the stairs
-            // wait meanwhile. Only for the pickaxe, and not while making it fails: in the squad
-            // simulation a stone sword wanted, with no logs for its stick, held the stairs for good.
-            boolean pickaxeWanted = tools.contains(Recipe.STONE_PICKAXE) || tools.contains(ORDER_PICKAXE);
-            if (stairs != null && pickaxeWanted && armourer.failure().isEmpty() && stairs.workshop(world).isPresent()) {
-                atLanding.add(name);
-            } else {
-                atLanding.remove(name);
-            }
+            // What needs a table or furnace is made at the workshop the engineer sited: the squad's,
+            // or the mine base for a soldier down the stairs. The armourer walks there itself.
+            Optional<io.github.jayessdeesea.minecraft.bot.engineer.Workshop> workshop = Optional.ofNullable(workshops.get(name));
             // A farmer's hoe, and its wheat baked into bread three at a time.
             io.github.jayessdeesea.minecraft.bot.farm.FarmPlan field = farming.get(name);
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
@@ -1941,7 +2034,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             boolean torchesWanted = !lights.isEmpty() && inventory.count(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.TORCH) == 0;
             turns.put(Hands.Routine.TORCHMAKER, turn(torchmaker::active,
                     free -> torchmaker.tick(status.position(), world, !free ? 0 : atWorkshop ? Torchmaker.TORCHES
-                            : torchesWanted ? Math.min(LIGHTING_TORCHES, (lights.size() + 3) / 4 * 4) : 0, threatened)));
+                            : torchesWanted ? Math.min(LIGHTING_TORCHES, (lights.size() + 3) / 4 * 4) : 0, threatened, workshop)));
             turns.put(Hands.Routine.RATIONS, turn(rations::active,
                     free -> rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD), free && !threatened,
                             soldier.yaw(), soldier.pitch())));
@@ -1971,7 +2064,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                         session.attack(target);
                     })));
             turns.put(Hands.Routine.ARMOURER, turn(armourer::active,
-                    free -> armourer.tick(status.position(), world, free ? craftable : java.util.Set.of(), threatened)));
+                    free -> armourer.tick(status.position(), world, free ? craftable : java.util.Set.of(), threatened, workshop)));
             turns.put(Hands.Routine.BUILDER, turn(() -> fort != null && fort.allInside() && !builder.done(), free -> {
                 if (free && atBuildPlace) {
                     boolean wasDone = builder.done();
@@ -2010,7 +2103,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     miner.stop();
                 } else {
                     io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress cut = miner.tick(status.position(), world, stairs,
-                            free && !threatened && !atLanding.contains(name));
+                            free && !threatened && armourer.standAt().isEmpty());
                     stairsProgress.put(name, cut);
                     if (cut instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Working(int step, int steps)) {
                         stairsCut.accumulateAndGet(Math.min(step, stairs.steps()), Math::max);

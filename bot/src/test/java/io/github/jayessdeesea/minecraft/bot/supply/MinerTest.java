@@ -113,24 +113,6 @@ class MinerTest {
     }
 
     @Test
-    void onceATurnAnAlcoveIsCutOffTheWalkwayWhereACutterMakesItsTools() {
-        Staircase stairs = new Staircase(HEAD, GROUND - 14);
-        assertEquals(java.util.Optional.empty(), stairs.workshop(world), "nothing cut yet");
-
-        dig(stairs, 30000);
-
-        assertEquals(2, stairs.alcoves().size());
-        for (BlockPos alcove : stairs.alcoves()) {
-            assertTrue(!world.isSolid(alcove.x(), alcove.y(), alcove.z()) && world.isSolid(alcove.x(), alcove.y() - 1, alcove.z()),
-                    alcove + " cut, with a floor for a table");
-            assertTrue(!stairs.walkway().contains(alcove), alcove + " off the walkway");
-            assertTrue(Math.abs(alcove.x() - HEAD.x()) == 2, alcove + " out of the shaft's side");
-        }
-        // The landing's cut now, so it's the workshop: before it, the deepest alcove's step.
-        assertEquals(java.util.Optional.of(stairs.landingStand()), stairs.workshop(world));
-    }
-
-    @Test
     void stopsShortOfWaterBesideAStep() {
         Staircase stairs = new Staircase(HEAD, GROUND - 12);
         BlockPos beside = stairs.step(4).offset(0, 0, -1);
