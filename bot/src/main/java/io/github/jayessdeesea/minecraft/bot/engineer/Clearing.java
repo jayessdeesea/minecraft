@@ -82,6 +82,45 @@ public final class Clearing {
         return List.copyOf(humps);
     }
 
+    /** How far below the camp's feet level a hollow is filled from. */
+    static final int HOLLOW_DEPTH = 16;
+
+    /**
+     * The camp's hollows, the third phase once its high ground is down: every open cell inside the
+     * wall line (within {@code radius} of {@code centre}) below the camp's feet level, down to the
+     * ground in its column - lowest first, so each is filled on the one beneath it and the floor
+     * rises under whoever fills it. Never one in {@code keep}: the mine's shaft, the squads' huts.
+     * Not under water, which is a hazard to stand in, and not deeper than {@link #HOLLOW_DEPTH}: a
+     * cave below isn't the camp's ground. Live, a pit 13 deep under the wall line left the wall
+     * nothing to stand on.
+     */
+    public static List<BlockPos> hollows(WorldView world, BlockPos centre, int radius, Set<BlockPos> keep) {
+        List<BlockPos> hollows = new ArrayList<>();
+        for (int x = centre.x() - radius; x <= centre.x() + radius; x++) {
+            for (int z = centre.z() - radius; z <= centre.z() + radius; z++) {
+                int ground = Integer.MIN_VALUE;
+                for (int y = centre.y() - 1; y >= centre.y() - HOLLOW_DEPTH; y--) {
+                    if (world.isSolid(x, y, z) || world.isHazard(x, y, z)) {
+                        ground = y;
+                        break;
+                    }
+                }
+                if (ground == Integer.MIN_VALUE || world.isHazard(x, ground, z)) {
+                    continue;
+                }
+                for (int y = ground + 1; y < centre.y(); y++) {
+                    BlockPos cell = new BlockPos(x, y, z);
+                    if (keep.contains(cell)) {
+                        break;
+                    }
+                    hollows.add(cell);
+                }
+            }
+        }
+        hollows.sort(java.util.Comparator.comparingInt(BlockPos::y));
+        return List.copyOf(hollows);
+    }
+
     /**
      * The next block of {@code cover} to cut for a soldier at {@code soldier}: one not {@code excluded},
      * with a cell to stand in that its eyes reach it from - the lowest and nearest first.

@@ -741,8 +741,16 @@ own height, so the squads see across it: each column's top block, where it's dir
 above the camp's feet level, is dug off, a layer at a time (`Clearing.humps`, the same clearer's
 work, and its dirt is the wall's). Every squad's hut and the ground under each workshop are
 spared; an old hut somewhere else is high ground like any other. Progress reads "N blocks of high
-ground inside the wall to level" until it's done. Hollows aren't filled yet, and nothing but dirt
-and grass is dug.
+ground inside the wall to level" until it's done; nothing but dirt and grass is dug.
+
+Then the hollows, filled from the bottom (`Clearing.hollows`, `bot.supply.Filler`): every open
+cell inside the wall line below the camp's feet level, down to the ground in its column and no
+more than 16 deep, so a pit under the wall line becomes footing again. A soldier carrying
+cobblestone or dirt puts a block only in a cell on solid ground, nearest first - a pit's sides
+would hold one at any height, and one put in high would seal an air pocket under it. The mine's
+shaft and landing are never a hollow, nor a squad's hut or a workshop. Progress reads "N cells of
+hollow inside the wall to fill". Live, a pit 13 deep under the east wall line left 42 wall cells
+nothing to stand on.
 
 ## 16. Mining down
 

@@ -43,6 +43,8 @@ public final class Hands {
         MINER,
         /** Clearing the trees over a camp, before its wall. */
         CLEARER,
+        /** Filling a camp's hollows, before its wall. */
+        FILLER,
         /** Building the wall round a camp. */
         MASON,
         /** Putting torches down on the ground the squad secures. */

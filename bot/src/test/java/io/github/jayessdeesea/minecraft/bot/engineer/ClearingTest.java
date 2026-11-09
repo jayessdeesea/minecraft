@@ -142,6 +142,35 @@ class ClearingTest {
         assertTrue(!cut.stand().equals(hump.offset(0, 1, 0)), "not on top of it: " + cut.stand());
     }
 
+    /** Flat ground, feet at y=64, with a pit 3 deep in column (1, 1). */
+    private static final WorldView PIT = new WorldView() {
+        @Override
+        public boolean isSolid(int x, int y, int z) {
+            return y <= 63 && !(x == 1 && z == 1 && y >= 61);
+        }
+
+        @Override
+        public boolean isHazard(int x, int y, int z) {
+            return false;
+        }
+
+        @Override
+        public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+            return List.of();
+        }
+    };
+
+    @Test
+    void aPitInTheCampIsFilledFromItsBottomUp() {
+        assertEquals(List.of(new BlockPos(1, 61, 1), new BlockPos(1, 62, 1), new BlockPos(1, 63, 1)),
+                Clearing.hollows(PIT, CENTRE, 7, Set.of()));
+    }
+
+    @Test
+    void theMinesShaftIsNotAHollow() {
+        assertEquals(List.of(), Clearing.hollows(PIT, CENTRE, 7, Set.of(new BlockPos(1, 61, 1))));
+    }
+
     @Test
     void anExcludedBlockIsLeftForAnother() {
         Set<BlockPos> logs = trunk(3, 3, 2);

@@ -343,6 +343,49 @@ class SquadSimulationTest {
         assertTrue(review.stream().anyMatch(l -> l.matches("  clear the camp's sky: [12] done, 0 taken off unfinished")), review.toString());
     }
 
+    /** Flat, with a pit 6 deep and 3 across inside the camp's wall line. */
+    private static int pitInCamp(int x, int y, int z) {
+        return x >= 3 && x <= 5 && z >= 3 && z <= 5 && y > GROUND - 6 && y <= GROUND ? SimServer.AIR : flat(x, y, z);
+    }
+
+    /**
+     * FORTIFY fills the camp's hollows from the bottom before walling: live, a pit under the wall
+     * line left the wall nothing to stand on.
+     */
+    @Test
+    void aSquadFillsAPitInTheCampFromTheBottom() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::pitInCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
+                new Objective.Task.Fortify())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, SimServer.ITEM_DIRT, 64})));
+        runner.run();
+
+        clock.advance(8 * 60_000);
+
+        // Level with the ground, nothing open to the sky: a step a soldier built to climb out can
+        // seal a pocket under it, underground and harmless.
+        List<String> open = new java.util.ArrayList<>();
+        for (int x = 3; x <= 5; x++) {
+            for (int z = 3; z <= 5; z++) {
+                if (server.block(x, GROUND, z) == SimServer.AIR) {
+                    open.add(x + "," + GROUND + "," + z);
+                }
+            }
+        }
+        assertEquals(List.of(), open, "the pit's top still open; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
     /** Flat, with a pond by the camp: farm ground by water. */
     private static int pondByCamp(int x, int y, int z) {
         return x >= 6 && x <= 8 && z >= 6 && z <= 8 && y == GROUND ? SimServer.WATER : flat(x, y, z);
@@ -479,7 +522,7 @@ class SquadSimulationTest {
 
     /**
      * FORTIFY on a slope: the squad levels the high ground inside the wall line first, then digs its
-     * own dirt and closes the wall round the camp - in a day and a few minutes.
+     * own dirt, fills the low ground with it and closes the wall round the camp - in two days.
      */
     @Test
     void aSquadWallsInTheCampOnASlope() {
@@ -498,7 +541,7 @@ class SquadSimulationTest {
                         new int[]{38, SimServer.ITEM_BREAD, 16})));
         runner.run();
 
-        clock.advance(25 * 60_000); // levelled, then walled
+        clock.advance(40 * 60_000); // levelled both ways, then walled
 
         // Closed - of dirt, with no stone to hand, so the standard itself waits on stone.
         Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()

@@ -159,6 +159,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int softLeft = -1;
         /** Blocks of high ground inside the wall line to dig off, at the last check: -1 before the first. */
         int humpsLeft = -1;
+        /** Open cells of the camp's hollows to fill, at the last check: -1 before the first. */
+        int hollowsLeft = -1;
         /** Who in the squad is on what, followed to completion and checked against the world. */
         final io.github.jayessdeesea.minecraft.command.TaskRegister register = new io.github.jayessdeesea.minecraft.command.TaskRegister();
         /**
@@ -332,6 +334,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     /** Each connected soldier's wall building, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Mason> masons = new ConcurrentHashMap<>();
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Clearer> clearers = new ConcurrentHashMap<>();
+    private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Filler> fillers = new ConcurrentHashMap<>();
+    /** The camp's hollows each soldier fortifying fills - squad loop writes, tick reads. */
+    private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> filling = new ConcurrentHashMap<>();
     /** The dirt in its squad's closed wall each soldier replaces with stone - squad loop writes, tick reads. */
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> repointing = new ConcurrentHashMap<>();
     /** The cover over its camp each soldier fortifying it clears first - squad loop writes, tick reads. */
@@ -846,7 +851,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         Map<String, io.github.jayessdeesea.minecraft.command.TaskRegister.Assignment> on = new java.util.LinkedHashMap<>();
         for (SoldierStatus s : statuses) {
             String n = s.name();
-            String task = clearing.containsKey(n) ? (state.coverLeft > 0 ? "clear the camp's sky" : "level the camp")
+            String task = filling.containsKey(n) ? "fill the camp's hollows"
+                    : clearing.containsKey(n) ? (state.coverLeft > 0 ? "clear the camp's sky" : "level the camp")
                     : walling.containsKey(n) ? "wall the camp"
                     : repointing.containsKey(n) ? "wall the camp in stone"
                     // Lighting only with torches carried or being made: live, a soldier with none farmed
@@ -865,6 +871,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
             List<?> left = switch (task) {
                 case "clear the camp's sky", "level the camp" -> clearing.get(n);
+                case "fill the camp's hollows" -> filling.get(n);
                 case "wall the camp" -> walling.get(n);
                 case "wall the camp in stone" -> repointing.get(n);
                 case "light the ground" -> lighting.get(n);
@@ -880,6 +887,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         if (state.humpsLeft >= 0) {
             measured.put("level the camp", state.humpsLeft);
+        }
+        if (state.hollowsLeft >= 0) {
+            measured.put("fill the camp's hollows", state.hollowsLeft);
         }
         if (state.wallLeft >= 0) {
             measured.put("wall the camp", state.wallLeft);
@@ -924,6 +934,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private Optional<Position> standOf(String soldier, Hands.Routine routine) {
         return switch (routine) {
             case CLEARER -> Optional.ofNullable(clearers.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Clearer::standAt);
+            case FILLER -> Optional.ofNullable(fillers.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Filler::standAt);
             case MASON -> Optional.ofNullable(masons.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Mason::standAt);
             case LAMPLIGHTER -> Optional.ofNullable(lamplighters.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Lamplighter::standAt);
             case ARMOURER -> Optional.ofNullable(armourers.get(soldier)).flatMap(Armourer::standAt);
@@ -1021,6 +1032,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     done = Optional.empty();
                 } else if (state.humpsLeft > 0) {
                     left = Optional.of(state.humpsLeft + " blocks of high ground inside the wall to level" + left.map(l -> ", and " + l).orElse(""));
+                    done = Optional.empty();
+                } else if (state.hollowsLeft > 0) {
+                    left = Optional.of(state.hollowsLeft + " cells of hollow inside the wall to fill" + left.map(l -> ", and " + l).orElse(""));
                     done = Optional.empty();
                 }
             }
@@ -1452,6 +1466,21 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         } else if (state.wallCentre == null) {
             state.humpsLeft = -1;
         }
+        // Then its hollows, filled from the bottom: a pit under the wall line leaves the wall nothing to
+        // stand on. The mine's shaft is never one.
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> fillKeep = new java.util.HashSet<>(campKeep());
+        squadStates.values().stream().filter(s -> s.stairs != null).forEach(s -> {
+            fillKeep.addAll(s.stairs.walkway());
+            fillKeep.addAll(s.stairs.landing());
+        });
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> hollows = state.wallCentre == null || !cover.isEmpty() || !humps.isEmpty() ? List.of()
+                : io.github.jayessdeesea.minecraft.bot.engineer.Clearing.hollows(world, state.wallCentre, WALL_RADIUS, fillKeep);
+        if (state.wallCentre != null && cover.isEmpty() && humps.isEmpty() && hollows.size() != state.hollowsLeft) {
+            LOG.info("[{}] FORTIFY: {} cells of hollow inside the wall still to fill", squadName, hollows.size());
+            state.hollowsLeft = hollows.size();
+        } else if (state.wallCentre == null) {
+            state.hollowsLeft = -1;
+        }
         // Mining: the staircase at the objective's x and z, down to its y - kept while the objective
         // stays put, its head where the ground is when first sited.
         io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs = chainOfCommand.mineObjective(squadName).map(o -> {
@@ -1566,6 +1595,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 farming.remove(soldierName);
             }
             long now = clockwork.millis();
+            if (!hollows.isEmpty() && !squadInContact && !state.relieved(soldierName, "fill the camp's hollows", now)) {
+                filling.put(soldierName, hollows);
+            } else {
+                filling.remove(soldierName);
+            }
             if ((!cover.isEmpty() || !humps.isEmpty()) && !squadInContact
                     && !state.relieved(soldierName, cover.isEmpty() ? "level the camp" : "clear the camp's sky", now)) {
                 clearing.put(soldierName, cover.isEmpty() ? humps : cover);
@@ -2316,6 +2350,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.supply.Clearer clearer = new io.github.jayessdeesea.minecraft.bot.supply.Clearer(name, session, inventory,
                 clearClaims);
         clearers.put(name, clearer);
+        io.github.jayessdeesea.minecraft.bot.supply.Filler filler = new io.github.jayessdeesea.minecraft.bot.supply.Filler(name, session, inventory);
+        fillers.put(name, filler);
         io.github.jayessdeesea.minecraft.bot.supply.Scavenger scavenger = new io.github.jayessdeesea.minecraft.bot.supply.Scavenger(name);
         scavengers.put(name, scavenger);
         io.github.jayessdeesea.minecraft.bot.supply.Miner miner = new io.github.jayessdeesea.minecraft.bot.supply.Miner(name, session, inventory);
@@ -2556,6 +2592,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walling.getOrDefault(name, List.of());
             turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
                     clearing.getOrDefault(name, List.of()), free && !threatened && !foodCalls)));
+            turns.put(Hands.Routine.FILLER, turn(filler::active, free -> {
+                filler.tick(status.position(), world, filling.getOrDefault(name, List.of()), free && !threatened && !foodCalls);
+                filler.lookAt().ifPresent(soldier::lookAt);
+            }));
             io.github.jayessdeesea.minecraft.bot.nav.BlockPos wallCentre = wallCentres.getOrDefault(name,
                     io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(status.position().x(), status.position().y(), status.position().z()));
             List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> repoint = repointing.getOrDefault(name, List.of());
@@ -2636,7 +2676,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     ? new Report.Building((int) placing.get(name).stream().filter(c -> world.isSolid(c.x(), c.y(), c.z())).count(),
                             placing.get(name).size())
                     : hunter.active() ? new Report.Hunting()
-                    : mason.active() || clearer.active() ? new Report.Fortifying()
+                    : mason.active() || clearer.active() || filler.active() ? new Report.Fortifying()
                     // Out of ways of its own - each of its last tries failed, on whatever it tried -
                     // it asks for help: live, a soldier opened a chest that wasn't there all night.
                     : !clearing.getOrDefault(name, List.of()).isEmpty() && clearer.stuck().isPresent() ? new Report.Cantco(clearer.stuck().get())
