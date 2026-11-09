@@ -64,7 +64,3 @@ Scenarios, each a mission with a measurable end state:
   that holds a squad in place, or a harness mode with the general and squad leaders stood down.
 - A scenario is a test fixture, so it lives in code (`bot`'s `scenario` package for offline, a
   live harness in `app` for live) and this item becomes docs when it lands.
-- **The simulator doesn't grow wheat.** `SimServer` has no farmland, no crops and no growth, so
-  farming - a hungry squad keeping the camp's farm (docs/military-doctrine.md § 4), harvests out of
-  reach passed over - is verified only live. Tilling, sowing, a growth tick and ripe wheat's drops
-  would let a scenario check a hungry squad is fed from its farm.

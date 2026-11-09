@@ -44,6 +44,12 @@ final class SimServer {
     static final int CHEST_SLOTS = 27;
     /** What each chest holds, by its cell's key. */
     final Map<Long, int[][]> chests = new HashMap<>();
+    /** Farmland, and wheat at its growth stages 0 to 7, as the server numbers their states. */
+    static final int FARMLAND = 6875, WHEAT_SPROUT = 6867, WHEAT_RIPE = 6874;
+    /** Ticks a crop takes per growth stage: far faster than the server's random ticks, so a scenario ripens in minutes. */
+    static final int GROWTH_TICKS = 200;
+    /** Each crop's place, and the tick it last grew. */
+    private final Map<Long, int[]> crops = new HashMap<>();
     static final int ITEM_COBBLESTONE = 62, ITEM_DIRT = 55, ITEM_RAW_IRON = 1017, ITEM_COAL = 1010,
             ITEM_WOODEN_PICKAXE = 1027, ITEM_STONE_PICKAXE = 1037, ITEM_WOODEN_SWORD = 1025, ITEM_BREAD = 1067,
             ITEM_TORCH = 395, ITEM_OAK_LOG = 163;
@@ -157,6 +163,7 @@ final class SimServer {
     private void tick() {
         dayTicks++;
         zombies();
+        grow();
         furnaces.forEach((at, f) -> {
             int[] state = burning.computeIfAbsent(at, a -> new int[2]);
             if (f[0] == null) {
@@ -182,6 +189,27 @@ final class SimServer {
         if (dayTicks % 20 == 0) {
             players.values().forEach(Player::sendTime);
         }
+    }
+
+    /** Each crop a stage further every {@link #GROWTH_TICKS}, until it's ripe. */
+    private void grow() {
+        crops.entrySet().removeIf(e -> {
+            int[] c = e.getValue();
+            int state = block(c[0], c[1], c[2]);
+            if (state < WHEAT_SPROUT || state > WHEAT_RIPE) {
+                return true; // harvested or trampled
+            }
+            if (state < WHEAT_RIPE && dayTicks - c[3] >= GROWTH_TICKS) {
+                c[3] = (int) dayTicks;
+                set(c[0], c[1], c[2], state + 1);
+            }
+            return false;
+        });
+    }
+
+    /** Ripe wheat, by place, for a scenario to read. */
+    long ripeWheat() {
+        return crops.values().stream().filter(c -> block(c[0], c[1], c[2]) == WHEAT_RIPE).count();
     }
 
     /** The joins: each soldier spawns at {@code spawn} carrying {@code kit} ([slot, item, count] each). */
@@ -254,6 +282,9 @@ final class SimServer {
             case TORCH -> Optional.of(ITEM_TORCH);
             case OAK_LOG -> Optional.of(ITEM_OAK_LOG);
             case CRAFTING_TABLE -> Optional.of(itemOf(ItemClass.CRAFTING_TABLE));
+            case WHEAT_RIPE -> Optional.of(itemOf(ItemClass.WHEAT));
+            case WHEAT_SPROUT, WHEAT_SPROUT + 1, WHEAT_SPROUT + 2, WHEAT_SPROUT + 3, WHEAT_SPROUT + 4, WHEAT_SPROUT + 5, WHEAT_SPROUT + 6
+                    -> Optional.of(itemOf(ItemClass.SEEDS));
             default -> throw new UnsupportedOperationException("simulated: breaking block state " + state);
         };
     }
@@ -625,6 +656,25 @@ final class SimServer {
         @Override
         public void useBlockFace(int x, int y, int z, BlockFace face) {
             Optional<Integer> held = heldItem();
+            Optional<ItemClass> using = held.flatMap(ItemClassRegistry::classOf);
+            // A hoe tills dirt or grass with nothing on it; seeds go into farmland with nothing on it.
+            if (using.equals(Optional.of(ItemClass.HOE)) || using.equals(Optional.of(ItemClass.SEEDS))) {
+                if (!reaches(x, y, z) || block(x, y + 1, z) != AIR) {
+                    return;
+                }
+                if (using.get() == ItemClass.HOE && (block(x, y, z) == DIRT || block(x, y, z) == GRASS)) {
+                    set(x, y, z, FARMLAND);
+                    log.add(name + " tilled " + x + "," + y + "," + z);
+                } else if (using.get() == ItemClass.SEEDS && block(x, y, z) == FARMLAND) {
+                    int[] s = slots[36 + this.held];
+                    slots[36 + this.held] = s[1] == 1 ? null : new int[]{s[0], s[1] - 1};
+                    sendSlot(36 + this.held);
+                    set(x, y + 1, z, WHEAT_SPROUT);
+                    crops.put(key(x, y + 1, z), new int[]{x, y + 1, z, (int) dayTicks});
+                    log.add(name + " sowed " + x + "," + (y + 1) + "," + z);
+                }
+                return;
+            }
             // A workshop's table or furnace goes in against a face like any block.
             Optional<ItemClass> station = held.flatMap(ItemClassRegistry::classOf)
                     .filter(c -> c == ItemClass.CRAFTING_TABLE || c == ItemClass.FURNACE || c == ItemClass.CHEST);
@@ -817,6 +867,9 @@ final class SimServer {
                 throw new AssertionError(name + " dug at bedrock at " + x + "," + y + "," + z);
             }
             drop(state, heldItem()).ifPresent(this::give);
+            if (state == WHEAT_RIPE) {
+                give(itemOf(ItemClass.SEEDS)); // ripe wheat drops its seed too
+            }
             set(x, y, z, AIR);
             log.add(name + " dug " + state + " at " + x + "," + y + "," + z);
             int[] tool = slots[36 + held];

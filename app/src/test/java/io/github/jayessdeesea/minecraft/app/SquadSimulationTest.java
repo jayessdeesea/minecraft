@@ -343,6 +343,43 @@ class SquadSimulationTest {
         assertTrue(review.stream().anyMatch(l -> l.matches("  clear the camp's sky: [12] done, 0 taken off unfinished")), review.toString());
     }
 
+    /** Flat, with a pond by the camp: farm ground by water. */
+    private static int pondByCamp(int x, int y, int z) {
+        return x >= 6 && x <= 8 && z >= 6 && z <= 8 && y == GROUND ? SimServer.WATER : flat(x, y, z);
+    }
+
+    /**
+     * Field feeding: a squad with no food and nothing to hunt, under another task, keeps the camp's
+     * farm - tills, sows, harvests the wheat as it ripens and bakes it - without a FARM order. Live,
+     * the farm was tended only under one, and the squads went hungry for hours.
+     */
+    @Test
+    void aHungrySquadKeepsTheCampsFarmWithoutBeingOrderedTo() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::pondByCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.HOE), 1},
+                        new int[]{9, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.SEEDS), 12},
+                        new int[]{10, SimServer.ITEM_OAK_LOG, 4})));
+        runner.run();
+
+        clock.advance(8 * 60_000);
+
+        io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass wheat = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.WHEAT;
+        io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass food = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FOOD;
+        int harvested = server.count("Alice", wheat) + server.count("Bob", wheat) + server.count("Alice", food) + server.count("Bob", food);
+        assertTrue(harvested > 0, "wheat harvested, or baked; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
     /** Flat, ringed 8 blocks out by a dirt wall two high: closed, but an enderman's to open. */
     private static int dirtWall(int x, int y, int z) {
         boolean ring = Math.max(Math.abs(x), Math.abs(z)) == 8;

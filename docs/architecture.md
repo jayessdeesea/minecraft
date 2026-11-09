@@ -181,8 +181,9 @@ command, drills and routines, in seconds:
   the test `SimClock`, which runs every scheduler on one simulated clock, in time order, on the
   test's thread. A run is the same every time, and a task that throws fails it.
 - **The server** is `SimServer`: one world, and a `PlaySession` per soldier answering as the
-  vanilla server does - blocks broken and placed, drops picked up, slots swapped, the time of day -
-  and refusing what's out of reach. What it doesn't model throws, naming the action.
+  vanilla server does - blocks broken and placed, drops picked up, slots swapped, the time of day,
+  ground tilled and sown, wheat that ripens a stage every 10 seconds (far faster than the server's
+  random ticks) - and refusing what's out of reach. What it doesn't model throws, naming the action.
 - **The general and squad leader are scripted**: a `General` that hands out a fixed objective, and
   a `ChatModel` that answers a fixed `SquadOrder`.
 
