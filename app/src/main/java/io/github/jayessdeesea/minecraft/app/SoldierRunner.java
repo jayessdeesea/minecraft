@@ -2622,6 +2622,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     : !lights.isEmpty() && torchesWanted && !torchmaker.active() && !gatherer.active() && !armourer.active()
                     ? new Report.Cantco("no torches to light the ground with, and short of "
                             + Torchmaker.shortOf(inventory, LIGHTING_TORCHES) + " to make them")
+                    : farming.containsKey(name) && !farmer.active() && farmer.stuck().isPresent() ? new Report.Cantco(farmer.stuck().get())
                     : farmer.active() || armourer.active() && armourer.making().stream()
                             .allMatch(r -> r == Recipe.WOODEN_HOE || r == Recipe.BREAD) ? new Report.Farming()
                     : armourer.active()

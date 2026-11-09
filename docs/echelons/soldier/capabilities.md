@@ -28,7 +28,7 @@ seconds or when stuck:
   across water or a torch on leaves is tried less and less.
 - **Asks for help when it's out of ways of its own.** The ladder is: try again later, try another
   target or route, then ask. A routine whose last 3 tries in a row all failed, whatever they were
-  at, reports CANTCO with the last one's place and reason - clearing, walling, lighting, or
+  at, reports CANTCO with the last one's place and reason - clearing, walling, lighting, farming, or
   carrying to the stockpile - and that CANTCO is a request to its squad leader, timed and alarmed
   (docs/military-doctrine.md § 4). One success, or the work going away, ends it.
 - **Sprints** on a long move (over 8 blocks) while it carries rations, or on an urgent order or

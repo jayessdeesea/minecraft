@@ -83,16 +83,24 @@ public final class Farmer {
     /** Each tick: works {@code farm} while {@code free}; anything else stops the job under way. */
     /** How far a farmer looks for grass to break for seeds. */
     static final int SEEDS_RADIUS = 32;
-    /** How long a plot cell whose job failed - not walked to, not answered - is passed over. */
+    /** How long a plot cell whose job failed - not walked to, not answered - is first passed over; longer each time. */
     static final int PASS_OVER_TICKS = 2400;
     private long ticks;
-    private final java.util.Map<BlockPos, Long> passedOver = new java.util.HashMap<>();
+    private final Setbacks<BlockPos> passedOver = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
+
+    /** Why it needs its squad leader's help, if it's out of ways of its own ({@link Setbacks#stuck}). */
+    public synchronized Optional<String> stuck() {
+        return passedOver.stuck().map(s -> "can't keep the farm: " + s);
+    }
 
     public synchronized void tick(Position soldier, WorldView world, Optional<FarmPlan> farm, boolean free) {
         this.soldier = soldier;
         ticks++;
         if (cooldown > 0) {
             cooldown--;
+        }
+        if (farm.isEmpty()) {
+            passedOver.noWork();
         }
         if (!free || farm.isEmpty()) {
             stop();
@@ -102,7 +110,10 @@ public final class Farmer {
             switch (digger.tick(soldier, world)) {
                 case Digger.Progress.Working _ -> {
                 }
-                case Digger.Progress.Done _ -> stopDigging();
+                case Digger.Progress.Done _ -> {
+                    passedOver.worked(digger.spot().block().offset(0, -1, 0));
+                    stopDigging();
+                }
                 case Digger.Progress.Failed(String why) -> fail(why);
             }
             return;
@@ -111,7 +122,12 @@ public final class Farmer {
             switch (fieldWork.tick()) {
                 case Script.Status.Running _ -> {
                 }
-                case Script.Status.Done _ -> endFieldWork();
+                case Script.Status.Done _ -> {
+                    if (claimed != null) {
+                        passedOver.worked(claimed);
+                    }
+                    endFieldWork();
+                }
                 case Script.Status.Interrupted _ -> endFieldWork();
                 case Script.Status.Failed(String step, String reason) -> fail(step + ": " + reason);
             }
@@ -125,8 +141,7 @@ public final class Farmer {
 
     /** The most pressing job left on {@code farm}, started. */
     private void next(WorldView world, FarmPlan farm) {
-        passedOver.values().removeIf(until -> until <= ticks);
-        List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !passedOver.containsKey(c))
+        List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()))).toList();
         Optional<BlockPos> ripe = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).findFirst();
         if (ripe.isPresent()) {
@@ -215,9 +230,13 @@ public final class Farmer {
     }
 
     private void fail(String why) {
-        if (claimed != null) {
-            // Its cell out of reach - across water, behind a wall - or its job refused: the rest first.
-            passedOver.put(claimed, ticks + PASS_OVER_TICKS);
+        // Its cell out of reach - across water, behind a wall - or its job refused: the rest first.
+        // A harvest is a dig, its spot the crop over the plot cell: live, with no cell passed over
+        // for it, four soldiers walked at one ripe wheat they couldn't reach all day.
+        if (digger != null) {
+            passedOver.failed(digger.spot().block().offset(0, -1, 0), ticks, why);
+        } else if (claimed != null) {
+            passedOver.failed(claimed, ticks, why);
         }
         LOG.warn("{} stops farming for a while - {}", name, why);
         failure = why;

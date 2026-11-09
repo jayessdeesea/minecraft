@@ -498,8 +498,9 @@ one cell at a time (`bot.supply.Farmer`), in this order:
 4. With no seeds, breaks grass for them, since one in eight drops some - out to 32 blocks, as a
    squad soon clears what grows near.
 
-A plot cell whose job fails - its place not walked to, the server not answering - is passed over
-for two minutes, and the rest of the plot is worked first.
+A plot cell whose job fails - its place not walked to, the server not answering, a ripe crop it
+can't reach - is passed over for two minutes, longer each time it fails again, and the rest of the
+plot is worked first.
 
 Each job is an expect script: stand on the cell, item in hand, use it on the cell, and done when
 the server's block update shows farmland or a sprout. A soldier without a hoe makes a wooden one,
