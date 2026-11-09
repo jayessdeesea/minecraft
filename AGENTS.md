@@ -29,7 +29,8 @@ Each points to its home, which has the reasons.
   waits for the server's confirming event, never for time. [docs/architecture.md](docs/architecture.md#behavior-modeling-functional-core-imperative-shell)
 - **Module boundaries hold, enforced by `ArchitectureTest`:** Netty only in `protocol`; `command`
   free of Spring and Netty; `bot` and `command` never depend on `command-ai`. [docs/architecture.md](docs/architecture.md#maven-module-layout)
-- **No fallbacks: fail loud.** Never `@Primary`; `@Qualifier` at every injection point.
+- **No fallbacks: fail loud - per request, never the whole app.** A tick fails like a web request
+  does, logged and counted; the next one runs. Never `@Primary`; `@Qualifier` at every injection point.
   [docs/conventions.md](docs/conventions.md#no-fallbacks--fail-loud-not-gracefully-wrong)
 - **Model calls go through Spring AI's abstraction only**, provider chosen in config; nothing
   Anthropic-specific in decision logic. [docs/stack.md](docs/stack.md#stack)

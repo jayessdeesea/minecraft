@@ -29,6 +29,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public boolean isChest(int x, int y, int z) {
+        return chunks.isChest(x, y, z);
+    }
+
+    @Override
     public java.util.Optional<Workstation> workstation(int x, int y, int z) {
         return chunks.workstation(x, y, z);
     }

@@ -30,6 +30,11 @@ public interface WorldView {
         return false;
     }
 
+    /** Whether the block at (x, y, z) is a chest (it's also {@link #isSolid}). */
+    default boolean isChest(int x, int y, int z) {
+        return false;
+    }
+
     /** The crafting table or furnace at (x, y, z), if there is one (it's also {@link #isSolid}). */
     default java.util.Optional<Workstation> workstation(int x, int y, int z) {
         return java.util.Optional.empty();

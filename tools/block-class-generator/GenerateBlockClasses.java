@@ -34,6 +34,8 @@ import java.util.zip.ZipFile;
  *       itself.
  *   <li>{@code W} workstation - solid, and opened to craft or smelt: {@code crafting_table},
  *       {@code furnace}. Named, so a soldier knows its camp's table from any other block.
+ *   <li>{@code C} chest - solid like any other block, and opened to store: {@code chest}. Named,
+ *       so a soldier knows the chest it stocks from a block that only stands where one was meant to.
  *   <li>{@code D} soil - solid, and dug by hand in about a second: the dirt family, clay, moss and
  *       snow blocks, hardness 0.65 or less. Not sand or gravel: they fall into what's dug under them.
  *   <li>{@code O} iron ore - solid, and mined with a stone pickaxe or better for raw iron:
@@ -142,6 +144,7 @@ public class GenerateBlockClasses {
                 char cls = blockName.endsWith("_log") && !"true".equals(state.path("properties").path("waterlogged").asText())
                         ? 'L' : blockName.equals("stone") ? 'Q'
                         : blockName.equals("crafting_table") || blockName.equals("furnace") ? 'W'
+                        : blockName.equals("chest") && !"true".equals(state.path("properties").path("waterlogged").asText()) ? 'C'
                         : blockName.equals("iron_ore") || blockName.equals("deepslate_iron_ore") ? 'O'
                         : blockName.equals("farmland") ? 'F'
                         : SOIL_BLOCKS.contains(blockName) && !"true".equals(state.path("properties").path("waterlogged").asText()) ? 'D'
@@ -172,7 +175,7 @@ public class GenerateBlockClasses {
         try (PrintWriter out = new PrintWriter(args[2])) {
             out.println("# Generated from the pinned server jar's `--reports` blocks.json by");
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
-            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore, F = farmland (all solid);");
+            out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, C = chest, D = soil, O = iron ore, F = farmland (all solid);");
             out.println("# R = rock (mined with a pickaxe), G = grit (dug by hand, falls), V = leaves;");
             out.println("# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, <hardness> on grit.");
             out.println("# Every state NOT listed is solid (safe to walk into, not to stand on: the generator prints the types it left solid).");

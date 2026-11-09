@@ -41,6 +41,8 @@ public final class Hands {
         HANDOVER,
         /** Cutting the squad's staircase down. */
         MINER,
+        /** Clearing the trees over a camp, before its wall. */
+        CLEARER,
         /** Building the wall round a camp. */
         MASON,
         /** Putting torches down on the ground the squad secures. */

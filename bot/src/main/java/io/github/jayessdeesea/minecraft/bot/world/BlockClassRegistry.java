@@ -52,6 +52,8 @@ final class BlockClassRegistry {
 
     /** Block states that are torches - the light a patrol base is lit by. Filled while loading. */
     private static final java.util.BitSet TORCHES = new java.util.BitSet();
+    /** Block states that are chests, dry or waterlogged - a stockpile is opened at one. Filled while loading. */
+    private static final java.util.BitSet CHESTS = new java.util.BitSet();
     /** Water source blocks (level 0): what a farm is tilled beside. Filled while loading. */
     private static final java.util.BitSet WATER_SOURCES = new java.util.BitSet();
     /**
@@ -92,6 +94,11 @@ final class BlockClassRegistry {
     /** Whether {@code stateId} is a torch, standing or on a wall. */
     static boolean isTorch(int stateId) {
         return stateId >= 0 && TORCHES.get(stateId);
+    }
+
+    /** Whether {@code stateId} is a chest. */
+    static boolean isChest(int stateId) {
+        return stateId >= 0 && CHESTS.get(stateId);
     }
 
     static boolean isWaterSource(int stateId) {
@@ -180,6 +187,9 @@ final class BlockClassRegistry {
                     if (fields.length > 2 && (fields[2].equals("torch") || fields[2].equals("wall_torch"))) {
                         TORCHES.set(stateId);
                     }
+                    if (fields.length > 2 && fields[2].equals("chest")) {
+                        CHESTS.set(stateId);
+                    }
                     if (fields.length > 2 && fields[2].endsWith("_sapling")) {
                         SAPLINGS.set(stateId);
                         TREES.put(stateId, fields[2].substring(0, fields[2].length() - "_sapling".length()));
@@ -224,6 +234,7 @@ final class BlockClassRegistry {
                             yield BlockClass.ROCK;
                         }
                         case "V" -> BlockClass.LEAVES;
+                        case "C" -> BlockClass.SOLID;
                         case "G" -> {
                             HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Hardness.HAND));
                             yield BlockClass.GRIT;

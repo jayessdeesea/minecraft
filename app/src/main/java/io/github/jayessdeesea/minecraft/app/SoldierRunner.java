@@ -153,6 +153,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.nav.BlockPos wallCentre;
         /** Wall cells left to fill at the last check: -1 before the first. */
         int wallLeft = -1;
+        /** Logs and leaves over the camp inside its wall line, at the last check: -1 before the first. */
+        int coverLeft = -1;
+        /** Blocks of high ground inside the wall line to dig off, at the last check: -1 before the first. */
+        int humpsLeft = -1;
         /** The squad's tree farm, while it has one. */
         io.github.jayessdeesea.minecraft.bot.farm.TreeFarm trees;
         /** The squad's farm, while it has one. */
@@ -312,6 +316,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Scavenger> scavengers = new ConcurrentHashMap<>();
     /** Each connected soldier's wall building, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Mason> masons = new ConcurrentHashMap<>();
+    private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Clearer> clearers = new ConcurrentHashMap<>();
+    /** The cover over its camp each soldier fortifying it clears first - squad loop writes, tick reads. */
+    private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> clearing = new ConcurrentHashMap<>();
+    /** The blocks of cover a clearer has taken, and where it stands for each: shared, so each takes another. */
+    private final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> clearClaims = ConcurrentHashMap.newKeySet();
     /** The wall cells each soldier's squad still has to fill, while its objective is FORTIFY - squad loop writes, tick reads. */
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> walling = new ConcurrentHashMap<>();
     /** The centre of the wall each soldier's squad builds - squad loop writes, tick reads. */
@@ -591,6 +600,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     /** The clock and threads the soldiers run on. */
     private Clockwork clockwork;
     private Connector connector;
+    /** Every periodic task's faults: none dies of one. Read off whichever clock is set. */
+    private final Faults faults = new Faults(() -> clockwork.millis());
 
     /** Runs on {@code clockwork}'s time and threads, connecting through {@code connector}: a simulation's. */
     SoldierRunner simulated(Clockwork clockwork, Connector connector) {
@@ -611,7 +622,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         ScheduledExecutorService squad = clockwork.scheduler("squad");
         schedulers.add(squad);
         squad.scheduleAtFixedRate(loudly("the squad loop", this::leadSquad), SQUAD_PERIOD_MILLIS, SQUAD_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
-        squad.scheduleAtFixedRate(this::logSquadSitrep, STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
+        squad.scheduleAtFixedRate(loudly("the SITREP log", this::logSquadSitrep), STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
     }
 
     /**
@@ -630,7 +641,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             measureFoothold().ifPresent(chainOfCommand::onFoothold);
         }
         chainOfCommand.time().flatMap(t -> afterActionReview.time(t.dark(), chainOfCommand.foothold()))
-                .ifPresent(review -> LOG.info("[AAR] {}\n  {}", review, String.join("\n  ", chainOfCommand.requestReview())));
+                .ifPresent(review -> LOG.info("[AAR] {}\n  {}\n  {}", review, String.join("\n  ", chainOfCommand.requestReview()),
+                        String.join("\n  ", faults.review())));
         List<Present> present = new java.util.ArrayList<>();
         for (Roster.Squad squad : roster.squads()) {
             List<DeterministicSoldier> soldiers = presentSoldiers(squad.name());
@@ -671,9 +683,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft, progress(p.squad(), state, p.statuses()),
                     Optional.of(classOne(p.squad(), state, p.statuses())));
         }).toList());
+        // Each squad on its own: one squad's fault doesn't leave the other without orders.
         for (Present p : present) {
-            chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
-                    orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt()));
+            faults.run(p.squad() + "'s orders", () -> chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
+                    orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt())));
         }
     }
 
@@ -783,6 +796,32 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 : Optional.of(new Position(w.chest().get().x() + 0.5, w.chest().get().y(), w.chest().get().z() + 0.5));
     }
 
+    /**
+     * What levelling the camp never digs: every squad's hut, and the ground under each workshop's
+     * stand and fixtures - a workshop on a rise stays standing.
+     */
+    private java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campKeep() {
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> keep = new java.util.HashSet<>();
+        for (SquadState s : squadStates.values()) {
+            if (s.builtBase != null) {
+                s.builtBase.cells().forEach(c -> keep.add(io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(c.x(), c.y(), c.z())));
+                s.builtBase.floor().forEach(c -> keep.add(io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(c.x(), c.y() - 1, c.z())));
+            }
+        }
+        java.util.List<io.github.jayessdeesea.minecraft.bot.engineer.Workshop> shops = new java.util.ArrayList<>(workshops.values());
+        if (campWorkshop != null) {
+            shops.add(campWorkshop);
+        }
+        for (io.github.jayessdeesea.minecraft.bot.engineer.Workshop w : shops) {
+            java.util.stream.Stream.concat(java.util.stream.Stream.of(w.stand(), w.table(), w.furnace()), w.chest().stream())
+                    .forEach(c -> {
+                        keep.add(c);
+                        keep.add(c.offset(0, -1, 0));
+                    });
+        }
+        return keep;
+    }
+
     /** How far below the stairs' head a soldier is down the mine, for the mine base's workshop. */
     private static final int MINE_BELOW = 3;
 
@@ -813,6 +852,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     done = Optional.of("the wall is closed, all " + state.wall.size() + " blocks of it");
                 } else if (state.wall != null && state.wallLeft > 0) {
                     left = Optional.of(state.wallLeft + " of " + state.wall.size() + " wall blocks to place");
+                }
+                if (state.coverLeft > 0) {
+                    left = Optional.of(state.coverLeft + " blocks of trees over the camp to clear" + left.map(l -> ", and " + l).orElse(""));
+                    done = Optional.empty();
+                } else if (state.humpsLeft > 0) {
+                    left = Optional.of(state.humpsLeft + " blocks of high ground inside the wall to level" + left.map(l -> ", and " + l).orElse(""));
+                    done = Optional.empty();
                 }
             }
             case io.github.jayessdeesea.minecraft.command.Objective.Task.Secure() -> {
@@ -1214,6 +1260,26 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             LOG.info("[{}] FORTIFY: {} of {} wall blocks still to place", squadName, wallLeft.size(), state.wall.size());
             state.wallLeft = wallLeft.size();
         }
+        // Fortifying starts with the sky: every log and leaf over the camp inside the wall line cut,
+        // so a monster left standing at dawn has no shade to stand in and burns.
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cover = state.wallCentre == null ? List.of()
+                : io.github.jayessdeesea.minecraft.bot.engineer.Clearing.cover(world, state.wallCentre, WALL_RADIUS);
+        if (state.wallCentre != null && cover.size() != state.coverLeft) {
+            LOG.info("[{}] FORTIFY: {} blocks of trees over the camp still to clear", squadName, cover.size());
+            state.coverLeft = cover.size();
+        } else if (state.wallCentre == null) {
+            state.coverLeft = -1;
+        }
+        // Then the high ground inside the wall line, dug down to the camp's own height: the squads'
+        // huts and the workshops' footings spared.
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> humps = state.wallCentre == null || !cover.isEmpty() ? List.of()
+                : io.github.jayessdeesea.minecraft.bot.engineer.Clearing.humps(world, state.wallCentre, WALL_RADIUS - 1, campKeep());
+        if (state.wallCentre != null && cover.isEmpty() && humps.size() != state.humpsLeft) {
+            LOG.info("[{}] FORTIFY: {} blocks of high ground inside the wall still to level", squadName, humps.size());
+            state.humpsLeft = humps.size();
+        } else if (state.wallCentre == null) {
+            state.humpsLeft = -1;
+        }
         // Mining: the staircase at the objective's x and z, down to its y - kept while the objective
         // stays put, its head where the ground is when first sited.
         io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs = chainOfCommand.mineObjective(squadName).map(o -> {
@@ -1247,8 +1313,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 .filter(st -> st.condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false))
                 .map(SoldierStatus::name).findFirst().orElse(null);
         // Securing: the torches still to put down round the objective, worked out again each cycle -
-        // every torch put down, by anyone, changes what's left.
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> torchesLeft = chainOfCommand.secureObjective(squadName).map(o -> {
+        // every torch put down, by anyone, changes what's left. Read once: the general's thread may
+        // change the squad's task mid-cycle - live, a second read found SECURE gone and the squad
+        // loop died on it.
+        Optional<io.github.jayessdeesea.minecraft.command.Objective> secureTask = chainOfCommand.secureObjective(squadName);
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> torchesLeft = secureTask.map(o -> {
             // Round the ground most of the camp stands on, as the wall and the foothold's measure are:
             // live, the ground found from the objective's height was a hut roof, and SECURE reported
             // done with 371 cells of the camp still dark.
@@ -1262,7 +1331,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // torches that stand, so one gone - washed away, broken, dug out - is put back.
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campDark = campGround == null ? List.of() : torchPlan(campGround);
         if (torchesLeft.size() != state.torchesLeft) {
-            if (chainOfCommand.secureObjective(squadName).isPresent()) {
+            if (secureTask.isPresent()) {
                 LOG.info("[{}] SECURE: {} torches still to put down", squadName, torchesLeft.size());
             }
             state.torchesLeft = torchesLeft.size();
@@ -1311,6 +1380,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 farming.put(soldierName, farm);
             } else {
                 farming.remove(soldierName);
+            }
+            if ((!cover.isEmpty() || !humps.isEmpty()) && !squadInContact) {
+                clearing.put(soldierName, cover.isEmpty() ? humps : cover);
+            } else {
+                clearing.remove(soldierName);
             }
             if (!wallLeft.isEmpty() && !squadInContact) {
                 walling.put(soldierName, wallLeft);
@@ -1368,7 +1442,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 // logs, then cobblestone for the furnace - rather than reporting the shortage forever.
                 Kit makings = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
                 if (makings != null && torchesCarried.getOrDefault(soldierName, 0) == 0) {
-                    io.github.jayessdeesea.minecraft.command.Objective secure = chainOfCommand.secureObjective(squadName).orElseThrow();
+                    io.github.jayessdeesea.minecraft.command.Objective secure = secureTask.orElseThrow();
                     Optional<io.github.jayessdeesea.minecraft.command.Resource> missing = makings.logs() < TORCH_LOGS
                             ? Optional.of(io.github.jayessdeesea.minecraft.command.Resource.WOOD)
                             : makings.stone() < TORCH_STONE && !furnaces.containsValue(soldierName)
@@ -1556,6 +1630,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // A mason stands as close to its place's centre as a hut builder: a body off centre leans
             // into the wall cell beside it, and the server won't place a block where a body is.
             double tolerance = 0.3;
+            if (stand.isEmpty() && clearers.containsKey(soldierName)) {
+                stand = clearers.get(soldierName).standAt();
+            }
             if (stand.isEmpty() && masons.containsKey(soldierName)) {
                 stand = masons.get(soldierName).standAt();
                 tolerance = stand.isPresent() ? HUT_PLACE_TOLERANCE : tolerance;
@@ -1579,20 +1656,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
     }
 
-    /**
-     * {@code task}, failing loudly: a periodic task that throws is cancelled by its executor with
-     * nothing said - a soldier frozen mid-stride, its last report standing. Logged with the stack
-     * trace, then rethrown, so the task still ends as it would.
-     */
-    private static Runnable loudly(String what, Runnable task) {
-        return () -> {
-            try {
-                task.run();
-            } catch (RuntimeException | Error e) {
-                LOG.error("{} failed and has stopped: {}", what, e.toString(), e);
-                throw e;
-            }
-        };
+    /** {@code task} guarded by {@link #faults}: a fault on one tick is logged and counted, and the next tick runs. */
+    private Runnable loudly(String what, Runnable task) {
+        return faults.guard(what, task);
     }
 
     /**
@@ -2050,6 +2116,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.supply.Mason mason = new io.github.jayessdeesea.minecraft.bot.supply.Mason(name, inventory, footing,
                 wallClaims);
         masons.put(name, mason);
+        io.github.jayessdeesea.minecraft.bot.supply.Clearer clearer = new io.github.jayessdeesea.minecraft.bot.supply.Clearer(name, session, inventory,
+                clearClaims);
+        clearers.put(name, clearer);
         io.github.jayessdeesea.minecraft.bot.supply.Scavenger scavenger = new io.github.jayessdeesea.minecraft.bot.supply.Scavenger(name);
         scavengers.put(name, scavenger);
         io.github.jayessdeesea.minecraft.bot.supply.Miner miner = new io.github.jayessdeesea.minecraft.bot.supply.Miner(name, session, inventory);
@@ -2283,6 +2352,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 }
             }));
             List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walling.getOrDefault(name, List.of());
+            turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
+                    clearing.getOrDefault(name, List.of()), free && !threatened && !foodCalls)));
             turns.put(Hands.Routine.MASON, turn(mason::active, free -> mason.tick(status.position(), world,
                     wallCentres.getOrDefault(name, io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(status.position().x(),
                             status.position().y(), status.position().z())), WALL_RADIUS, wall, free && !threatened && !foodCalls)));
@@ -2352,11 +2423,18 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     ? new Report.Building((int) placing.get(name).stream().filter(c -> world.isSolid(c.x(), c.y(), c.z())).count(),
                             placing.get(name).size())
                     : hunter.active() ? new Report.Hunting()
-                    : mason.active() ? new Report.Fortifying()
+                    : mason.active() || clearer.active() ? new Report.Fortifying()
+                    // Out of ways of its own - each of its last tries failed, on whatever it tried -
+                    // it asks for help: live, a soldier opened a chest that wasn't there all night.
+                    : !clearing.getOrDefault(name, List.of()).isEmpty() && clearer.stuck().isPresent() ? new Report.Cantco(clearer.stuck().get())
+                    : !walling.getOrDefault(name, List.of()).isEmpty() && mason.stuck().isPresent() ? new Report.Cantco(mason.stuck().get())
+                    : depositor.stuck().isPresent() && !depositor.active() ? new Report.Cantco(depositor.stuck().get())
                     : forester.active() ? new Report.Planting()
                     : grove != null && forester.failure().isPresent() && !io.github.jayessdeesea.minecraft.bot.supply.Forester.planted(world, grove)
                     ? new Report.Cantco("can't plant the tree farm: " + forester.failure().get())
-                    : lamplighter.active() || torchmaker.active() && torchesWanted ? new Report.Securing()
+                    // On its way to the workshop for them counts: live, that walk was reported "short of {}".
+                    : lamplighter.active() || (torchmaker.active() || torchmaker.standAt().isPresent()) && torchesWanted ? new Report.Securing()
+                    : !lights.isEmpty() && lamplighter.stuck().isPresent() ? new Report.Cantco(lamplighter.stuck().get())
                     : !lights.isEmpty() && torchesWanted && torchmaker.failure().isPresent()
                     ? new Report.Cantco("can't make torches to light the ground: " + torchmaker.failure().get())
                     // Gone for the makings, between one dig and the next: still at it, not unable.
@@ -2431,8 +2509,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             footing.tick();
             session.endTick();
         }), 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
-        scheduler.scheduleAtFixedRate(
-                () -> LOG.debug("{} status: {} - plan: {} - session open: {}", name, soldier.status(), soldier.lastPlan(), session.isOpen()),
+        scheduler.scheduleAtFixedRate(loudly(name + "'s status log",
+                () -> LOG.debug("{} status: {} - plan: {} - session open: {}", name, soldier.status(), soldier.lastPlan(), session.isOpen())),
                 STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
     }
 

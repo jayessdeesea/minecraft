@@ -48,6 +48,9 @@ public final class Depositor {
 
     private Script script;
     private int cooldown;
+    /** A stockpile its trips keep failing at - not reached, or not opened - is left longer each time. */
+    private final Setbacks<Position> trips = new Setbacks<>(COOLDOWN_TICKS, 60L * COOLDOWN_TICKS);
+    private long ticks;
     private Position at;
     private Position soldierAt;
     private boolean wanted;
@@ -77,14 +80,23 @@ public final class Depositor {
      * Each tick: starts a trip to {@code stockpile} when {@code wanted} (a full load, nothing near),
      * and advances one under way.
      */
+    /** Why it needs its squad leader's help, if it's out of ways of its own ({@link Setbacks#stuck}). */
+    public synchronized Optional<String> stuck() {
+        return trips.stuck().map(s -> "can't reach the stockpile: " + s);
+    }
+
     public synchronized void tick(Position soldier, Optional<Position> stockpile, boolean wanted) {
         this.soldierAt = soldier;
         this.wanted = wanted;
+        ticks++;
         if (cooldown > 0) {
             cooldown--;
         }
+        if (stockpile.isEmpty()) {
+            trips.noWork();
+        }
         if (script == null) {
-            if (!wanted || cooldown > 0 || stockpile.isEmpty()) {
+            if (!wanted || cooldown > 0 || stockpile.isEmpty() || trips.barred(stockpile.get(), ticks)) {
                 return;
             }
             at = stockpile.get();
@@ -98,11 +110,13 @@ public final class Depositor {
                 Stockpile seen = new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE));
                 LOG.info("{} stockpiled its load - the chest holds {} logs, {} cobblestone", name, seen.logs(), seen.stone());
                 stockpileSeen.accept(seen);
+                trips.worked(at);
                 finish();
             }
             case Script.Status.Interrupted _ -> finish();
             case Script.Status.Failed failed -> {
                 LOG.warn("{} couldn't stockpile its load: {}: {}", name, failed.step(), failed.reason());
+                trips.failed(at, ticks, failed.step() + ": " + failed.reason());
                 finish();
             }
         }
@@ -117,11 +131,15 @@ public final class Depositor {
     public synchronized void tickDraw(Position soldier, Optional<Position> stockpile, ItemClass material, int carry, boolean wanted) {
         this.soldierAt = soldier;
         this.wanted = wanted;
+        ticks++;
         if (cooldown > 0) {
             cooldown--;
         }
+        if (stockpile.isEmpty()) {
+            trips.noWork();
+        }
         if (script == null) {
-            if (!wanted || cooldown > 0 || stockpile.isEmpty()) {
+            if (!wanted || cooldown > 0 || stockpile.isEmpty() || trips.barred(stockpile.get(), ticks)) {
                 return;
             }
             at = stockpile.get();
@@ -138,11 +156,13 @@ public final class Depositor {
                 LOG.info("{} drew {} from the stockpile, carrying {} - the chest holds {} logs, {} cobblestone", name, material,
                         inventory.count(material), seen.logs(), seen.stone());
                 stockpileSeen.accept(seen);
+                trips.worked(at);
                 finish();
             }
             case Script.Status.Interrupted _ -> finish();
             case Script.Status.Failed failed -> {
                 LOG.warn("{} couldn't draw {} from the stockpile: {}: {}", name, material, failed.step(), failed.reason());
+                trips.failed(at, ticks, failed.step() + ": " + failed.reason());
                 finish();
             }
         }

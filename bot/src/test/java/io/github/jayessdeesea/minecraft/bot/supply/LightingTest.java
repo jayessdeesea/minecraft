@@ -63,6 +63,34 @@ class LightingTest {
     }
 
     @Test
+    void aCanopyIsLeftDark() {
+        WorldView canopy = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return flat.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public java.util.Optional<String> leaves(int x, int y, int z) {
+                return y == GROUND - 1 ? java.util.Optional.of("oak") : java.util.Optional.empty();
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(List.of(), Lighting.plan(canopy, CENTRE, 12), "nothing spawns on leaves, and no torch stands on them");
+        assertEquals(0, Lighting.dark(canopy, CENTRE, 12));
+    }
+
+    @Test
     void groundAlreadyLitNeedsNoMoreTorches() {
         torches.addAll(Lighting.plan(flat, CENTRE, 12));
 

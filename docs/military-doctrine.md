@@ -414,7 +414,8 @@ Each names a cell to stand in, and a cell each for the table and the furnace, on
 the stand stays open on the other two. A surface workshop also names a chest's cell, behind its
 table or its furnace and in reach of the stand: the site's store (§12). A fixture not standing yet is fitted by the first soldier
 that needs it (`bot.supply.Fitter`): it crafts the item - the table in its grid, the furnace from 8
-cobblestone at the table - and places it into its cell. With no workshop sited, the soldier says so
+cobblestone at the table - and places it into its cell. A fixture counts as standing only when its own block is in the cell:
+another block there - a wall's cobblestone - isn't the chest. With no workshop sited, the soldier says so
 rather than putting a table down where it stands.
 
 The squad leader decides whether there's time: its order's `rearm` lets soldiers make a weapon.
@@ -649,7 +650,7 @@ standing count, so the plan shrinks as torches go down and a secured place needs
 The plan is worked out again every cycle, so a torch that's gone - washed away, broken, dug out -
 is planned again. And the camp is kept lit whatever the task: by day, a soldier within 24 blocks of
 the camp with torches in its pack puts one down wherever the camp's ground has gone dark.
-Farmland is left bare. Light is worked out from where torches stand, not read from the server's
+Farmland and leaves are left bare: a torch won't stand on either, and nothing spawns on leaves. Light is worked out from where torches stand, not read from the server's
 light data.
 
 Each soldier takes the nearest planned cell no squadmate has taken, walks onto it and puts a torch
@@ -683,7 +684,7 @@ cobblestone first, then dirt, breaking first whatever stands in the cell that a 
 replace - a torch, a flower (`bot.supply.Mason`); one down to fewer than 4 digs dirt outside the
 wall, each mason on its own side of the camp so no one pit is dug out under all of them, and once
 digging it digs a load of 32 before it builds again, rather than walking back with every fourth. A cell that fails - its place not walked to, inside an old hut or across water, or its block
-refused - it passes over for two minutes and builds the rest. On top goes a lip, a
+refused - it passes over for two minutes, longer each time it fails again, and builds the rest. On top goes a lip, a
 ring of blocks one out from the wall's top row, against its outer face: an overhang a spider
 climbing the wall can't get round. None outside the doorway, where it would stand at head height
 in the way out. A mason places each lip block from the column nearest it just inside the wall,
@@ -691,6 +692,25 @@ never from the wall's top; where the ground inside has been dug away, from the c
 A mason with blocks and cells left that it can't build says why: how many have nothing to go
 against, and how many nowhere to stand. The log says how many blocks are still to place. Seen live in `wall-the-camp`: two squads close a 128-block wall
 together.
+
+Fortifying starts with the sky. Zombies and skeletons burn in daylight only under open sky, so a
+tree over the camp is shade for whatever the night left inside the wall. Every log and leaf over
+the camp's ground within the wall line is cover (`bot.engineer.Clearing`), and while any is left,
+each soldier fortifying cuts the lowest one it can reach, keeping the logs (`bot.supply.Clearer`,
+a `Digger` job; it outranks the mason for the hands). It stands on the ground, never on the tree,
+and reaches a block whose nearest face is within 5 blocks of its eyes: from the ground, six up.
+Leaves out of reach go by themselves once their tree's logs do, since cut-off leaves decay.
+A block it couldn't cut it leaves for longer each time (`Setbacks`). FORTIFY isn't done while cover
+is left: its progress reads "N blocks of trees over the camp to clear" before the wall's count, so
+a tree too tall to fell from the ground shows as the task stalled.
+
+Then the ground. With the sky clear, the high ground inside the wall line comes down to the camp's
+own height, so the squads see across it: each column's top block, where it's dirt or grass at or
+above the camp's feet level, is dug off, a layer at a time (`Clearing.humps`, the same clearer's
+work, and its dirt is the wall's). Every squad's hut and the ground under each workshop are
+spared; an old hut somewhere else is high ground like any other. Progress reads "N blocks of high
+ground inside the wall to level" until it's done. Hollows aren't filled yet, and nothing but dirt
+and grass is dug.
 
 ## 16. Mining down
 

@@ -86,6 +86,12 @@ public final class ChunkCache {
         return stateId != UNKNOWN && BlockClassRegistry.isTorch(stateId);
     }
 
+    /** Whether the block at (x, y, z) is a chest. False for a block nobody has cached. */
+    public boolean isChest(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId != UNKNOWN && BlockClassRegistry.isChest(stateId);
+    }
+
     /** The workstation at (x, y, z), if there is one. Empty for a block nobody has cached. */
     public java.util.Optional<Workstation> workstation(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);

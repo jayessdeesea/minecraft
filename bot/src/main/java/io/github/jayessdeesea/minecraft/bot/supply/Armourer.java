@@ -62,6 +62,9 @@ public final class Armourer {
     private Set<Recipe> making = Set.of();
     private int cooldown;
     private String failure;
+    /** Spots it couldn't dig - not walked to, or the block not taken - left for longer each time. */
+    private final Setbacks<BlockPos> spots = new Setbacks<>(COOLDOWN_TICKS, 20L * COOLDOWN_TICKS);
+    private long ticks;
 
     public Armourer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Map<BlockPos, String> furnaces,
                     Runnable kitChanged) {
@@ -168,6 +171,7 @@ public final class Armourer {
      * else (backlog/sites.md).
      */
     public synchronized void tick(Position soldier, WorldView world, Set<Recipe> wanted, boolean threatened, Optional<Workshop> workshop) {
+        ticks++;
         if (cooldown > 0) {
             cooldown--;
         }
@@ -304,7 +308,9 @@ public final class Armourer {
                 giveUp("no pickaxe good enough to dig " + target + " - " + inventory.summary());
                 return;
             }
-            Optional<Digger.Spot> spot = Digger.findSpot(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), claims, target);
+            Set<BlockPos> excluded = spots.barredNow(ticks);
+            excluded.addAll(claims);
+            Optional<Digger.Spot> spot = Digger.findSpot(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), excluded, target);
             if (spot.isEmpty()) {
                 giveUp("no " + target + " within " + Digger.SEARCH_RADIUS + " blocks");
                 return;
@@ -315,8 +321,15 @@ public final class Armourer {
         switch (digger.tick(soldier, world)) {
             case Digger.Progress.Working _ -> {
             }
-            case Digger.Progress.Done _ -> stopDigging(); // the next tick plans again from what's carried now
-            case Digger.Progress.Failed(String why) -> giveUp(why);
+            case Digger.Progress.Done _ -> {
+                spots.worked(digger.spot().block());
+                stopDigging(); // the next tick plans again from what's carried now
+            }
+            case Digger.Progress.Failed(String why) -> {
+                // Another spot next time: live, a soldier walked at one log it couldn't reach 213 times.
+                spots.failed(digger.spot().block(), ticks, why);
+                giveUp(why);
+            }
         }
     }
 

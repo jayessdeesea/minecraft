@@ -95,13 +95,12 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
 
     /**
      * The chest's cell: behind the table from the stand, else behind the furnace - two blocks out,
-     * in reach - free, or holding a block already (the chest put there before).
+     * in reach - free, or holding the chest put there before.
      */
     private static Optional<BlockPos> chestBehind(WorldView world, BlockPos stand, BlockPos table, BlockPos furnace, Set<BlockPos> claimed) {
         for (BlockPos fixture : List.of(table, furnace)) {
             BlockPos behind = fixture.offset(fixture.x() - stand.x(), 0, fixture.z() - stand.z());
-            boolean taken = world.isSolid(behind.x(), behind.y(), behind.z()) && world.workstation(behind.x(), behind.y(), behind.z()).isEmpty()
-                    && world.isSolid(behind.x(), behind.y() - 1, behind.z()) && !world.isSolid(behind.x(), behind.y() + 1, behind.z());
+            boolean taken = world.isChest(behind.x(), behind.y(), behind.z());
             if (!claimed.contains(behind) && (free(world, behind, claimed) || taken)) {
                 return Optional.of(behind);
             }
@@ -109,9 +108,11 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
         return Optional.empty();
     }
 
-    /** Whether the workshop's chest stands in its cell: a block there, which nothing else is put in. */
+    /** Whether the workshop's chest stands in its cell. */
     public boolean chestStands(WorldView world) {
-        return chest.filter(c -> world.isSolid(c.x(), c.y(), c.z())).isPresent();
+        // A chest, not any block: live, a block that stood in the chest's cell was taken for one, and
+        // the squad's loads went to it two thousand times over a night.
+        return chest.filter(c -> world.isChest(c.x(), c.y(), c.z())).isPresent();
     }
 
     /** A furnace already beside {@code stand}, else a free cell beside it next to the table's side. */

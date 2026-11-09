@@ -69,6 +69,11 @@ final class FakeCraftingServer {
         }
 
         @Override
+        public boolean isChest(int x, int y, int z) {
+            return chests.contains(new BlockPos(x, y, z));
+        }
+
+        @Override
         public Optional<Workstation> workstation(int x, int y, int z) {
             return Optional.ofNullable(stations.get(new BlockPos(x, y, z)));
         }

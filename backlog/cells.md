@@ -54,8 +54,8 @@ adding cells outward.
   to move that much ground (backlog/roadmap.md).
 - **Expected (operator, 2026-11-08): the foothold gets the same treatment, smaller.** Fences, clear
   sky and flatter ground at the camp: clear sky so the zombies left at dawn burn, flat ground so
-  the squads see across it. First, as a blueprint the engineer inspects like the wall: every
-  column of the camp's ground open to the sky (leaves, logs, old hut roofs dug off), then the
-  ground inside the wall levelled to its typical height, then a fence on the wall's line.
+  the squads see across it. Trees over the camp are felled and its dirt humps dug off as FORTIFY's
+  first two phases (docs/military-doctrine.md § 15). Left: cobblestone and other blocks over the
+  camp, stone humps, hollows filled; then a fence on the wall's line.
 - Depends on the engineer and concrete commands (backlog/echelon-contracts.md), wood that grows back (backlog/renewables.md), and on torches made from charcoal or
   mined coal (backlog/mining.md).

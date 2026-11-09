@@ -43,11 +43,11 @@ public final class Mason {
     private Position standAt;
     private Position soldier;
     private int cooldown;
-    /** Ticks this mason has run, and the cells it couldn't walk to the place for, until when. */
+    /** Ticks this mason has run, and the cells that failed - their place not walked to, or their block not taken. */
     private long ticks;
-    private final java.util.Map<BlockPos, Long> passedOver = new java.util.HashMap<>();
-    /** How long a cell that failed - its place not walked to, or its block not taken - is passed over. */
+    /** How long a cell that failed is first passed over; longer each time it fails again. */
     static final int PASS_OVER_TICKS = 2400;
+    private final Setbacks<BlockPos> passedOver = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
     private String failure;
     /** Why the last look found no cell to build, while there were cells open - said once each time it changes. */
     private String stalled;
@@ -71,6 +71,12 @@ public final class Mason {
         return cooldown > 0 ? Optional.ofNullable(failure) : Optional.empty();
     }
 
+    /** Why it needs its squad leader's help, if it's out of ways of its own ({@link Setbacks#stuck}). */
+    public synchronized Optional<String> stuck() {
+        return passedOver.stuck().map(s -> "can't build the wall: " + s)
+                .or(() -> job == null && cooldown == 0 ? Optional.ofNullable(stalled).map(s -> "can't build the wall: " + s) : Optional.empty());
+    }
+
     /** Blocks carried to build with. */
     public static int blocks(Inventory inventory) {
         return MATERIALS.stream().mapToInt(inventory::count).sum();
@@ -83,6 +89,9 @@ public final class Mason {
         if (cooldown > 0) {
             cooldown--;
         }
+        if (open.isEmpty()) {
+            passedOver.noWork();
+        }
         if (!free || open.isEmpty()) {
             stop();
             return;
@@ -91,7 +100,11 @@ public final class Mason {
             switch (job.tick()) {
                 case Script.Status.Running _ -> {
                 }
-                case Script.Status.Done _, Script.Status.Interrupted _ -> end();
+                case Script.Status.Done _ -> {
+                    passedOver.worked(claimed);
+                    end();
+                }
+                case Script.Status.Interrupted _ -> end();
                 case Script.Status.Failed(String step, String reason) -> fail(step + ": " + reason);
             }
             return;
@@ -102,9 +115,8 @@ public final class Mason {
         // Any cell with a block to go against - the one under it, or for the lip the wall beside it -
         // so each column rises from its own ground: on a slope the wall's rows are at many heights.
         // The nearest with somewhere inside to stand: one without it waits, rather than holding up the rest.
-        passedOver.values().removeIf(until -> until <= ticks);
         Optional<java.util.Map.Entry<BlockPos, BlockPos>> next = open.stream()
-                .filter(c -> !claims.contains(c) && !passedOver.containsKey(c) && Builder.support(world, c).isPresent())
+                .filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && Builder.support(world, c).isPresent())
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
                 .flatMap(cell -> inside(world, cell, centre, radius).map(stand -> java.util.Map.entry(cell, stand)).stream())
                 .findFirst();
@@ -115,10 +127,10 @@ public final class Mason {
         }
         // Blocks carried and cells open, and none to build: say which way each is stuck, once.
         long claimed = open.stream().filter(claims::contains).count();
-        long passed = open.stream().filter(c -> !claims.contains(c) && passedOver.containsKey(c)).count();
-        List<BlockPos> unsupported = open.stream().filter(c -> !claims.contains(c) && !passedOver.containsKey(c)
+        long passed = open.stream().filter(c -> !claims.contains(c) && passedOver.barred(c, ticks)).count();
+        List<BlockPos> unsupported = open.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks)
                 && Builder.support(world, c).isEmpty()).toList();
-        List<BlockPos> noStand = open.stream().filter(c -> !claims.contains(c) && !passedOver.containsKey(c)
+        List<BlockPos> noStand = open.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks)
                 && Builder.support(world, c).isPresent() && inside(world, c, centre, radius).isEmpty()).toList();
         String why = open.size() + " wall cells open and none to build: " + claimed + " taken by squadmates, " + passed
                 + " passed over after a failure, " + unsupported.size() + " with nothing to go against"
@@ -179,7 +191,7 @@ public final class Mason {
         if (claimed != null) {
             // Its place out of reach - inside an old hut, across water - or a block the server won't
             // take there: the rest of the wall first.
-            passedOver.put(claimed, ticks + PASS_OVER_TICKS);
+            passedOver.failed(claimed, ticks, why);
         }
         LOG.warn("{} stops walling for a while - {}", name, why);
         failure = why;

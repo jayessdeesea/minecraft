@@ -1,6 +1,6 @@
 # Generated from the pinned server jar's `--reports` blocks.json by
 # tools/block-class-generator. One block state per line: <id> <class> <blockName>,
-# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, D = soil, O = iron ore, F = farmland (all solid);
+# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, C = chest, D = soil, O = iron ore, F = farmland (all solid);
 # R = rock (mined with a pickaxe), G = grit (dug by hand, falls), V = leaves;
 # then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, <hardness> on grit.
 # Every state NOT listed is solid (safe to walk into, not to stand on: the generator prints the types it left solid).
@@ -2394,17 +2394,29 @@
 5539 H oak_stairs
 5541 H oak_stairs
 5543 H chest
+5544 C chest
 5545 H chest
+5546 C chest
 5547 H chest
+5548 C chest
 5549 H chest
+5550 C chest
 5551 H chest
+5552 C chest
 5553 H chest
+5554 C chest
 5555 H chest
+5556 C chest
 5557 H chest
+5558 C chest
 5559 H chest
+5560 C chest
 5561 H chest
+5562 C chest
 5563 H chest
+5564 C chest
 5565 H chest
+5566 C chest
 5567 P redstone_wire
 5568 P redstone_wire
 5569 P redstone_wire

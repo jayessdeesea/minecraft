@@ -76,6 +76,18 @@ noticed and closed, not forgotten. The question that actually matters isn't "did
 an anomaly" — it's "is this an *expected, tracked* gap that's *provably* safe to skip, or a
 violated invariant we're guessing our way past?" Only the first is legitimate to continue through.
 
+**Loud is not dead: a request fails, the app recovers.** Think of a website: one request fails
+the moment an assertion does, and the server goes on serving the next. Here the request is a tick
+- one soldier's, one squad's orders, one model call. A periodic task that throws - the squad loop, a
+soldier's tick - is cancelled by its executor for good, which is the quietest failure there is:
+one line in the log, then soldiers working their last orders with no squad leader or general. So
+every periodic task runs guarded (`app.Faults`): a fault is logged with its stack trace the first
+time, counted after that and raised as an alarm once a minute while it lasts, its recovery said,
+and every fault since the last dawn is in the AAR. Each squad's orders are guarded on their own,
+so one squad's fault leaves the other its orders. The next tick starts from the world and the
+chain of command as they stand, so carrying on guesses nothing - unlike a fallback. A JVM
+`Error` isn't caught.
+
 ## Standard formats go through standard libraries
 
 XML, JSON, CSV and other standard formats are written and read with a library, never marshalled

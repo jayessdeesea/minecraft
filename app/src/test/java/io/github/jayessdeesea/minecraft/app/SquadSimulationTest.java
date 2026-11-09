@@ -310,6 +310,37 @@ class SquadSimulationTest {
         assertEquals(80, stored, "both loads in it; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
+    /** Flat, with an oak six logs tall inside the camp's wall line at x=3 z=3. */
+    private static int treeInCamp(int x, int y, int z) {
+        return x == 3 && z == 3 && y > GROUND && y <= GROUND + 6 ? SimServer.OAK_LOG : flat(x, y, z);
+    }
+
+    /** FORTIFY starts with the sky: a tree inside the wall line is felled to its last log. */
+    @Test
+    void aSquadFellsTheTreesOverItsCampBeforeWallingIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::treeInCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
+                new Objective.Task.Fortify())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(5 * 60_000);
+
+        for (int y = GROUND + 1; y <= GROUND + 6; y++) {
+            assertEquals(SimServer.AIR, server.block(3, y, 3), "the log at y=" + y + "; last server events: "
+                    + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+        }
+    }
+
     /** Ground rising a block every 3 east of x=-6: the camp's wall stands on many heights. */
     private static int slope(int x, int y, int z) {
         int top = GROUND + Math.max(0, Math.floorDiv(x + 6, 3));

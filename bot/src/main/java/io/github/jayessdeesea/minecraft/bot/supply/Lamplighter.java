@@ -30,6 +30,8 @@ public final class Lamplighter {
     static final int WALK_TICKS = 400;
     static final int ANSWER_TICKS = 40;
     static final int COOLDOWN_TICKS = 200;
+    /** How long a cell that failed - not walked to, or its torch not taken - is first passed over. */
+    static final int PASS_OVER_TICKS = 1200;
 
     private final String name;
     private final Inventory inventory;
@@ -42,6 +44,8 @@ public final class Lamplighter {
     private Position soldier;
     private int cooldown;
     private String failure;
+    private long ticks;
+    private final Setbacks<BlockPos> passedOver = new Setbacks<>(PASS_OVER_TICKS, 20L * PASS_OVER_TICKS);
 
     public Lamplighter(String name, Inventory inventory, Footing footing, Set<BlockPos> claims) {
         this.name = name;
@@ -64,11 +68,20 @@ public final class Lamplighter {
         return cooldown > 0 ? Optional.ofNullable(failure) : Optional.empty();
     }
 
+    /** Why it needs its squad leader's help, if it's out of ways of its own ({@link Setbacks#stuck}). */
+    public synchronized Optional<String> stuck() {
+        return passedOver.stuck().map(s -> "can't light the ground: " + s);
+    }
+
     /** Each tick: lights the {@code plan}'s cells while {@code free}; anything else stops the torch under way. */
     public synchronized void tick(Position soldier, WorldView world, List<BlockPos> plan, boolean free) {
         this.soldier = soldier;
+        ticks++;
         if (cooldown > 0) {
             cooldown--;
+        }
+        if (plan.isEmpty()) {
+            passedOver.noWork();
         }
         if (!free || plan.isEmpty()) {
             stop();
@@ -78,7 +91,11 @@ public final class Lamplighter {
             switch (job.tick()) {
                 case Script.Status.Running _ -> {
                 }
-                case Script.Status.Done _, Script.Status.Interrupted _ -> end();
+                case Script.Status.Done _ -> {
+                    passedOver.worked(claimed);
+                    end();
+                }
+                case Script.Status.Interrupted _ -> end();
                 case Script.Status.Failed(String step, String reason) -> fail(step + ": " + reason);
             }
             return;
@@ -86,7 +103,8 @@ public final class Lamplighter {
         if (cooldown > 0 || inventory.count(ItemClass.TORCH) == 0) {
             return;
         }
-        plan.stream().filter(c -> !claims.contains(c) && !world.isTorch(c.x(), c.y(), c.z()))
+        // Not a cell that keeps failing: the next one along, and that one again only later.
+        plan.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && !world.isTorch(c.x(), c.y(), c.z()))
                 .min(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
                 .ifPresent(cell -> start(world, cell));
     }
@@ -112,6 +130,9 @@ public final class Lamplighter {
     }
 
     private void fail(String why) {
+        if (claimed != null) {
+            passedOver.failed(claimed, ticks, why);
+        }
         LOG.warn("{} stops lighting for a while - {}", name, why);
         failure = why;
         cooldown = COOLDOWN_TICKS;

@@ -70,6 +70,41 @@ class WorkshopTest {
     }
 
     @Test
+    void onlyAChestInTheChestsCellIsTheChest() {
+        Workshop w = Workshop.hasty(flat(Map.of()), new BlockPos(0, 64, 0), Set.of()).orElseThrow();
+        BlockPos cell = w.chest().orElseThrow();
+
+        assertTrue(!w.chestStands(withBlock(cell, false)), "a block of cobblestone there isn't a chest to stock");
+        assertTrue(w.chestStands(withBlock(cell, true)));
+    }
+
+    /** Flat ground with one block on it at {@code cell}: a chest, or some other block. */
+    private static WorldView withBlock(BlockPos cell, boolean chest) {
+        WorldView ground = flat(Map.of());
+        return new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return ground.isSolid(x, y, z) || cell.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isChest(int x, int y, int z) {
+                return chest && cell.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    @Test
     void theMineBasesTableAndFurnaceGoInTheLandingsRecesses() {
         Staircase stairs = new Staircase(new BlockPos(0, 64, 0), 40);
         Workshop w = Workshop.mine(stairs);
