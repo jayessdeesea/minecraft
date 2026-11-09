@@ -13,16 +13,24 @@ import java.util.List;
  * {@code standing} is the objective the general last gave it, if any - an order stands until the
  * general changes it - {@code holdingBase} whether the squad is sealed inside its patrol base, and
  * {@code baseBlocksLeft} how many blocks of the base it has laid out are still to place (empty
- * while it has none laid out).
+ * while it has none laid out), and {@code progress} how the standing order's task stands (empty
+ * with no task to measure).
  */
 public record SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers, List<ResourceSite> resources,
-                          java.util.Optional<Objective> standing, boolean holdingBase, java.util.OptionalInt baseBlocksLeft) {
+                          java.util.Optional<Objective> standing, boolean holdingBase, java.util.OptionalInt baseBlocksLeft,
+                          java.util.Optional<Progress> progress) {
 
     public SquadStatus {
         resources = List.copyOf(resources);
         if (holdingBase && baseBlocksLeft.orElse(-1) != 0) {
             throw new IllegalArgumentException("holding a base with " + baseBlocksLeft + " blocks of it left to place");
         }
+    }
+
+    /** A squad whose task's progress isn't measured. */
+    public SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers, List<ResourceSite> resources,
+                       java.util.Optional<Objective> standing, boolean holdingBase, java.util.OptionalInt baseBlocksLeft) {
+        this(squadName, report, soldiers, resources, standing, holdingBase, baseBlocksLeft, java.util.Optional.empty());
     }
 
     /** A squad holding a finished base, or with none laid out. */

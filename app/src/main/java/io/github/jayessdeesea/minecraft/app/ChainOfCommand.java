@@ -65,11 +65,19 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     /**
      * One squad's SITREP for a cycle: its soldiers, its terrain (surveyed only if its leader
      * decides), its principal, what it can see to gather (surveyed only if the general decides), and
-     * how its patrol base stands.
+     * how its patrol base and its task stand.
      */
     public record Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain,
                          Optional<Position> principalAt, Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources,
-                         boolean holdingBase, java.util.OptionalInt baseBlocksLeft) {
+                         boolean holdingBase, java.util.OptionalInt baseBlocksLeft,
+                         Optional<io.github.jayessdeesea.minecraft.command.Progress> progress) {
+
+        /** A SITREP with no task's progress measured. */
+        public Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt,
+                      Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources, boolean holdingBase,
+                      java.util.OptionalInt baseBlocksLeft) {
+            this(squad, soldiers, terrain, principalAt, resources, holdingBase, baseBlocksLeft, Optional.empty());
+        }
     }
 
     private final General general;
@@ -518,7 +526,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                 long started = clockwork.millis();
                 List<SquadStatus> statuses = sitreps.stream().map(s -> new SquadStatus(s.squad(),
                         squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
-                        s.holdingBase(), s.baseBlocksLeft())).toList();
+                        s.holdingBase(), s.baseBlocksLeft(), s.progress())).toList();
                 statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
                 List<Objective> objectives = general.decide(statuses);
                 if (missionVersion.get() != missionAsked) {
@@ -532,6 +540,9 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                     Objective given = sheltered(grounded(objectives.get(i), statuses.get(i).soldiers()), statuses.get(i));
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
                         LOG.info("[General -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
+                        // The feedback not taken: the squad said its task is finished or stuck, and it was kept.
+                        statuses.get(i).progress().filter(p -> p.state() != io.github.jayessdeesea.minecraft.command.Progress.State.UNDER_WAY)
+                                .ifPresent(p -> LOG.warn("[Feedback] the general kept {}'s task though it reported {}: {}", name, p.state(), p.detail()));
                         decided.put(name, Optional.empty());
                         continue;
                     }

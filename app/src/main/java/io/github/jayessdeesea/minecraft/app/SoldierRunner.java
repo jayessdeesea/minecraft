@@ -159,6 +159,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.farm.FarmPlan farm;
         /** Blocks of the laid-out base still to place, at the last check - empty with none laid out. */
         java.util.OptionalInt baseBlocksLeft = java.util.OptionalInt.empty();
+        /** When a soldier of the squad last worked at its task, or the task was given: what a stall is measured from. */
+        long workedAt = Long.MIN_VALUE;
+        /** The task {@code workedAt} was measured for: a new task starts the clock again. */
+        io.github.jayessdeesea.minecraft.command.Objective workedFor;
+        /** The last progress measured, logged when its state changes. */
+        io.github.jayessdeesea.minecraft.command.Progress progress;
         /** The doorway cut to let a torchbearer out of a sealed, dark base - left open until it's back with torches. */
         List<Position> torchDoor;
         /** The base's breaches at the last check - logged when they change. */
@@ -631,12 +637,67 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan, climbBlocks, stoneSteps,
                     chainOfCommand.objective(p.squad()).map(io.github.jayessdeesea.minecraft.command.Objective::location)), p.principalAt(),
                     () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, pointMan), holdingBase,
-                    holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft);
+                    holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft, progress(p.squad(), state, p.statuses()));
         }).toList());
         for (Present p : present) {
             chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
                     orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt()));
         }
+    }
+
+    /**
+     * How the squad's task stands, from the world where the task leaves a mark - the wall's open
+     * cells, the torches still to put down, the stairs cut - and from its soldiers' reports: the
+     * acknowledgement the general decides on. Empty with no task, or a patrol base, whose own status
+     * line says how it stands.
+     */
+    private Optional<io.github.jayessdeesea.minecraft.command.Progress> progress(String squad, SquadState state, List<SoldierStatus> statuses) {
+        Optional<io.github.jayessdeesea.minecraft.command.Objective> standing = chainOfCommand.objective(squad);
+        if (standing.isEmpty() || standing.get().task() instanceof io.github.jayessdeesea.minecraft.command.Objective.Task.None
+                || standing.get().task() instanceof io.github.jayessdeesea.minecraft.command.Objective.Task.PatrolBase) {
+            state.workedFor = null;
+            state.progress = null;
+            return Optional.empty();
+        }
+        long now = clockwork.millis();
+        if (!standing.get().equals(state.workedFor) || statuses.stream().anyMatch(s -> io.github.jayessdeesea.minecraft.command.Progress.working(s.report()))) {
+            state.workedAt = now;
+            state.workedFor = standing.get();
+        }
+        Optional<String> done = Optional.empty();
+        Optional<String> left = Optional.empty();
+        switch (standing.get().task()) {
+            case io.github.jayessdeesea.minecraft.command.Objective.Task.Fortify() -> {
+                if (state.wall != null && state.wallLeft == 0) {
+                    done = Optional.of("the wall is closed, all " + state.wall.size() + " blocks of it");
+                } else if (state.wall != null && state.wallLeft > 0) {
+                    left = Optional.of(state.wallLeft + " of " + state.wall.size() + " wall blocks to place");
+                }
+            }
+            case io.github.jayessdeesea.minecraft.command.Objective.Task.Secure() -> {
+                if (state.torchesLeft == 0) {
+                    done = Optional.of("every walkable cell round the objective is lit");
+                } else if (state.torchesLeft > 0) {
+                    left = Optional.of(state.torchesLeft + " torches to put down");
+                }
+            }
+            case io.github.jayessdeesea.minecraft.command.Objective.Task.Mine() -> {
+                if (state.stairs != null && statuses.stream().anyMatch(s -> stairsProgress.get(s.name()) instanceof io.github.jayessdeesea.minecraft.bot.supply.Miner.Progress.Done)) {
+                    done = Optional.of("the stairs are cut down to y=" + state.stairs.bottom() + ", and the ore beside them taken");
+                } else if (state.stairs != null) {
+                    left = Optional.of("the stairs " + stairsCut.get() + " of " + state.stairs.steps() + " steps down");
+                }
+            }
+            default -> {
+            }
+        }
+        io.github.jayessdeesea.minecraft.command.Progress measured = io.github.jayessdeesea.minecraft.command.Progress.of(done, left, statuses,
+                now - state.workedAt);
+        if (state.progress == null || state.progress.state() != measured.state()) {
+            LOG.info("[{}] task {}: {} - {}", squad, standing.get().task(), measured.state(), measured.detail());
+        }
+        state.progress = measured;
+        return Optional.of(measured);
     }
 
     /**

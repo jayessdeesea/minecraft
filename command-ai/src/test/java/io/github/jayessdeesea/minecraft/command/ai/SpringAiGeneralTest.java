@@ -162,6 +162,20 @@ class SpringAiGeneralTest {
     }
 
     @Test
+    void aFinishedOrStalledTaskSaysSoInTheStandingOrder() {
+        Objective mine = new Objective("cut the mine", new Position(0, 16, 0), "iron", new Objective.Task.Mine());
+        SquadStatus done = new SquadStatus("Bravo", new Report.InPosition(), BRAVO.soldiers(), List.of(), java.util.Optional.of(mine), false,
+                java.util.OptionalInt.empty(), java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Progress(
+                        io.github.jayessdeesea.minecraft.command.Progress.State.DONE, "the stairs are cut down to y=16")));
+        assertTrue(SpringAiGeneral.describeStanding(done).endsWith(
+                "Status: DONE - the stairs are cut down to y=16. Nothing is left to do here: give the squad its next task."));
+        SquadStatus stalled = new SquadStatus("Bravo", new Report.InPosition(), BRAVO.soldiers(), List.of(), java.util.Optional.of(mine), false,
+                java.util.OptionalInt.empty(), java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Progress(
+                        io.github.jayessdeesea.minecraft.command.Progress.State.STALLED, "nobody has worked at it for 4 min")));
+        assertTrue(SpringAiGeneral.describeStanding(stalled).contains("Status: STALLED - nobody has worked at it for 4 min."));
+    }
+
+    @Test
     void decideRoundTripsStructuredOutputInSquadOrder() {
         String reply = """
                 {"objectives": [

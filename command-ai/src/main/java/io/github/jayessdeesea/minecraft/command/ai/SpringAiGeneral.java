@@ -224,6 +224,12 @@ public final class SpringAiGeneral implements General {
                     : left == 0 ? " Status: the patrol base is built, but not everyone is inside."
                     : String.format(Locale.ROOT, " Status: the patrol base is laid out, %d blocks of it still to place.", left));
         }
+        // The task's acknowledgement, measured: a finished task and a stalled one otherwise read as one to keep.
+        squad.progress().ifPresent(p -> line.append(switch (p.state()) {
+            case DONE -> " Status: DONE - " + p.detail() + ". Nothing is left to do here: give the squad its next task.";
+            case STALLED -> " Status: STALLED - " + p.detail() + ". Kept, the squad stands idle: change the task or the place.";
+            case UNDER_WAY -> " Status: under way - " + p.detail() + ".";
+        }));
         return line.toString();
     }
 

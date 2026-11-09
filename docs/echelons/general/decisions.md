@@ -14,6 +14,16 @@ In its user prompt (`command-ai/src/main/resources/prompts/general-user-prompt.m
   [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)).
 - **Each squad's status:** its report, soldiers, resources seen near it, its current objective,
   whether it holds a patrol base and how many blocks that base has left.
+- **Each task's progress** (`command.Progress`), the squad's answer to the task, measured rather
+  than claimed:
+  - **DONE**, where the world shows it: the wall closed, every cell lit, the stairs cut.
+  - **STALLED** once no soldier has worked at it for a minute, with the soldiers' CANTCO reasons
+    counted and how many stand with nothing to do.
+  - **Under way** otherwise, with what's left where that's measured.
+
+  The prompt tells it a DONE or STALLED task is a reason to change the order. A patrol base is the
+  exception: a sealed one is kept through the night. Each time it keeps such an order anyway, the
+  log says so (`[Feedback]`).
 
 It keeps nothing between calls but each squad's current objective (backlog/operations-map.md).
 
