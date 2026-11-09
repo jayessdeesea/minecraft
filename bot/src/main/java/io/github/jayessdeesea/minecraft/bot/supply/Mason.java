@@ -49,8 +49,10 @@ public final class Mason {
     static final int PASS_OVER_TICKS = 2400;
     private final Setbacks<BlockPos> passedOver = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
     private String failure;
-    /** Why the last look found no cell to build, while there were cells open - said once each time it changes. */
+    /** Why the last look found no cell to build, while there were cells open; cleared to look again. */
     private String stalled;
+    /** The last such reason logged: said once each time it changes. */
+    private String said;
 
     public Mason(String name, Inventory inventory, Footing footing, Set<BlockPos> claims) {
         this.name = name;
@@ -122,6 +124,7 @@ public final class Mason {
                 .findFirst();
         if (next.isPresent()) {
             stalled = null;
+            said = null;
             start(world, next.get().getKey(), next.get().getValue());
             return;
         }
@@ -137,10 +140,93 @@ public final class Mason {
                 + unsupported.stream().limit(3).map(BlockPos::toString).collect(java.util.stream.Collectors.joining(", ", " (", ")"))
                 + ", " + noStand.size() + " with nowhere inside to stand"
                 + noStand.stream().limit(3).map(BlockPos::toString).collect(java.util.stream.Collectors.joining(", ", " (", ")"));
-        if (!why.equals(stalled)) {
+        if (!why.equals(said)) {
             LOG.warn("{} {}", name, why);
-            stalled = why;
+            said = why;
         }
+        stalled = why;
+    }
+
+    /** Whether the job under way is replacing dirt, not building. */
+    public synchronized boolean repointing() {
+        return job != null && repointJob;
+    }
+
+    /** Whether its last look at the wall found cells open and none it could build: time for other work. */
+    public synchronized boolean nothingToBuild() {
+        return job == null && stalled != null;
+    }
+
+    /**
+     * Each tick, with no wall cell it can build: replaces the wall's {@code soft} cells - dirt or grass,
+     * which an enderman picks up and opens a hole with (backlog/building-guide.md) - with
+     * cobblestone, one at a time while {@code free} and carrying some: dug out, then built again.
+     */
+    public synchronized void repoint(Position soldier, WorldView world, BlockPos centre, int radius, List<BlockPos> soft, boolean free) {
+        this.soldier = soldier;
+        ticks++;
+        if (cooldown > 0) {
+            cooldown--;
+        }
+        if (soft.isEmpty()) {
+            passedOver.noWork();
+        }
+        if (!free || soft.isEmpty()) {
+            stop();
+            return;
+        }
+        if (job != null) {
+            switch (job.tick()) {
+                case Script.Status.Running _ -> {
+                }
+                case Script.Status.Done _ -> {
+                    passedOver.worked(claimed);
+                    end();
+                }
+                case Script.Status.Interrupted _ -> end();
+                case Script.Status.Failed(String step, String reason) -> fail(step + ": " + reason);
+            }
+            return;
+        }
+        // Between jobs it looks at the wall again: a cell that couldn't be built may be buildable now.
+        stalled = null;
+        if (cooldown > 0 || inventory.count(ItemClass.COBBLESTONE) == 0) {
+            return;
+        }
+        soft.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && world.isSoil(c.x(), c.y(), c.z()))
+                .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
+                .flatMap(cell -> inside(world, cell, centre, radius).map(stand -> java.util.Map.entry(cell, stand)).stream())
+                .findFirst().ifPresent(next -> startRepoint(world, next.getKey(), next.getValue()));
+    }
+
+    /** Break time for dirt by hand, hardness 0.5 - about 15 ticks - with the margin the server's dig timing wants. */
+    static final int DIRT_DIG_TICKS = 25;
+
+    private boolean repointJob;
+
+    private void startRepoint(WorldView world, BlockPos cell, BlockPos stand) {
+        repointJob = true;
+        claimed = cell;
+        claims.add(cell);
+        standAt = new Position(stand.x() + 0.5, stand.y(), stand.z() + 0.5);
+        long[] digStarted = {0};
+        job = new Script(name, List.of(
+                new Step("walk to " + stand, () -> {
+                }, new Expect("standing in " + stand, () -> on(stand)), WALK_TICKS),
+                new Step("dig the dirt at " + cell, () -> {
+                    digStarted[0] = ticks;
+                    footing.startDigging(cell);
+                }, new Expect("the break time to pass", () -> ticks - digStarted[0] >= DIRT_DIG_TICKS), DIRT_DIG_TICKS + 2),
+                new Step("break the dirt at " + cell, () -> footing.finishDigging(cell),
+                        new Expect("the dirt at " + cell + " gone", () -> !world.isSolid(cell.x(), cell.y(), cell.z())), ANSWER_TICKS),
+                new Step("stone at " + cell, () -> {
+                    if (!footing.place(cell, ItemClass.COBBLESTONE, Builder.support(world, cell).orElseThrow(
+                            () -> new IllegalStateException("nothing beside " + cell + " to put a block against")))) {
+                        throw new IllegalStateException("no COBBLESTONE carried - " + inventory.summary());
+                    }
+                }, new Expect("cobblestone at " + cell, () -> world.isSolid(cell.x(), cell.y(), cell.z())
+                        && !world.isSoil(cell.x(), cell.y(), cell.z())), ANSWER_TICKS)));
+        LOG.info("{} replaces the wall's dirt at {} with cobblestone", name, cell);
     }
 
     /**
@@ -164,6 +250,7 @@ public final class Mason {
     }
 
     private void start(WorldView world, BlockPos cell, BlockPos stand) {
+        repointJob = false;
         claimed = cell;
         claims.add(cell);
         standAt = new Position(stand.x() + 0.5, stand.y(), stand.z() + 0.5);

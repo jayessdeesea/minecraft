@@ -16,7 +16,7 @@ import java.util.Map;
  * tries in a row have all failed, whatever they were at, the routine is out of ways of its own and
  * says so ({@link #stuck}): the soldier reports CANTCO, which is a request to its squad leader.
  *
- * <p>Not thread-safe: each routine keeps its own, under its own lock.
+ * <p>Thread-safe: a routine keeps its own, and one shared by soldiers' ticks is safe too.
  */
 public final class Setbacks<T> {
 
@@ -40,7 +40,7 @@ public final class Setbacks<T> {
     }
 
     /** {@code target} failed at tick {@code now} for {@code why}: it's left alone for longer than the last time. */
-    public void failed(T target, long now, String why) {
+    public synchronized void failed(T target, long now, String why) {
         streak++;
         lastTarget = target;
         lastWhy = why;
@@ -48,7 +48,7 @@ public final class Setbacks<T> {
     }
 
     /** {@code target} failed at tick {@code now}: it's left alone for longer than the last time. */
-    public void failed(T target, long now) {
+    public synchronized void failed(T target, long now) {
         long[] entry = failed.computeIfAbsent(target, t -> new long[]{0, 0});
         long wait = Math.min(most, first << Math.min(entry[0], 30));
         entry[0]++;
@@ -56,13 +56,13 @@ public final class Setbacks<T> {
     }
 
     /** {@code target} worked: its failures are forgotten, and the routine's run of them ends. */
-    public void worked(T target) {
+    public synchronized void worked(T target) {
         failed.remove(target);
         streak = 0;
     }
 
     /** The work is gone - done by someone else, or no longer asked for: nothing to ask help with. */
-    public void noWork() {
+    public synchronized void noWork() {
         streak = 0;
     }
 
@@ -70,19 +70,19 @@ public final class Setbacks<T> {
      * Why the routine needs help, once its last {@link #ESCALATE} tries in a row all failed: how
      * many, and the last one's target and reason.
      */
-    public java.util.Optional<String> stuck() {
+    public synchronized java.util.Optional<String> stuck() {
         return streak < ESCALATE ? java.util.Optional.empty()
                 : java.util.Optional.of(streak + " tries in a row failed, the last at " + lastTarget + ": " + lastWhy);
     }
 
     /** Whether {@code target} is still being left alone at tick {@code now}. */
-    public boolean barred(T target, long now) {
+    public synchronized boolean barred(T target, long now) {
         long[] entry = failed.get(target);
         return entry != null && entry[1] > now;
     }
 
     /** The targets still being left alone at tick {@code now}. */
-    public java.util.Set<T> barredNow(long now) {
+    public synchronized java.util.Set<T> barredNow(long now) {
         java.util.Set<T> barred = new java.util.HashSet<>();
         failed.forEach((target, entry) -> {
             if (entry[1] > now) {
@@ -93,7 +93,7 @@ public final class Setbacks<T> {
     }
 
     /** How many times in a row {@code target} has failed. */
-    public int failures(T target) {
+    public synchronized int failures(T target) {
         long[] entry = failed.get(target);
         return entry == null ? 0 : (int) entry[0];
     }

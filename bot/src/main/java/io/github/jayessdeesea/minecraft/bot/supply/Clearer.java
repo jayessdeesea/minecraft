@@ -79,6 +79,12 @@ public final class Clearer {
                     failed.worked(digger.spot().block());
                     stop();
                 }
+                // The block gone is the cut done, whatever became of its drop: live, a leaf's sapling
+                // fell out of reach and the cut counted as failed.
+                case Digger.Progress.Failed _ when !digger.spot().target().at(world, digger.spot().block()) -> {
+                    failed.worked(digger.spot().block());
+                    stop();
+                }
                 case Digger.Progress.Failed(String why) -> {
                     LOG.info("{} leaves that cut for now - {}", name, why);
                     failed.failed(digger.spot().block(), ticks, why);

@@ -90,6 +90,16 @@ public final class Footing {
         return place(cell, item, support);
     }
 
+    /** Starts digging the block at {@code cell}: the server times the dig, so finish it only after its break time. */
+    public synchronized void startDigging(BlockPos cell) {
+        session.startDigging(cell.x(), cell.y(), cell.z());
+    }
+
+    /** Finishes the dig at {@code cell} started by {@link #startDigging}. */
+    public synchronized void finishDigging(BlockPos cell) {
+        session.finishDigging(cell.x(), cell.y(), cell.z());
+    }
+
     /** Each tick: the weapon back in hand once the climbing has stopped. */
     public synchronized void tick() {
         if (previousHotbar >= 0 && ++idleTicks >= REARM_TICKS) {

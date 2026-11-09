@@ -20,9 +20,8 @@ against what's built, each pointing at the item it belongs to.
 - **Chunk-aligned cells** that can each be lost alone: backlog/cells.md.
 
 ## Gaps, by where they go
-- **No dirt, grass, sand or gravel in walls** - endermen take them and open holes. The camp wall
-  and the hut fall back to dirt (§ 14-15). A wall block of dirt should be a standard unmet, and
-  replaced with cobblestone once the stockpile has stone. backlog/cells.md.
+- **No dirt, grass, sand or gravel in walls** - endermen take them and open holes. The camp wall's
+  dirt is replaced with stone (§ 15); the hasty hut is still built of dirt. backlog/durable-shelter.md.
 - **Openings: fence gates or iron doors, never wooden doors** - zombies break wooden doors on hard
   difficulty, vindicators in raids. backlog/durable-shelter.md.
 - **Clear sky 32 blocks out, not just inside the wall,** and a lit band beyond it extended ring by

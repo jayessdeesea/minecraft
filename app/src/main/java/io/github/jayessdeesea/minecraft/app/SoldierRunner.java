@@ -155,6 +155,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int wallLeft = -1;
         /** Logs and leaves over the camp inside its wall line, at the last check: -1 before the first. */
         int coverLeft = -1;
+        /** The wall's blocks of dirt or grass, to replace with stone, at the last check: -1 before the first. */
+        int softLeft = -1;
         /** Blocks of high ground inside the wall line to dig off, at the last check: -1 before the first. */
         int humpsLeft = -1;
         /** Who in the squad is on what, followed to completion and checked against the world. */
@@ -330,6 +332,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     /** Each connected soldier's wall building, by name. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Mason> masons = new ConcurrentHashMap<>();
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Clearer> clearers = new ConcurrentHashMap<>();
+    /** The dirt in its squad's closed wall each soldier replaces with stone - squad loop writes, tick reads. */
+    private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> repointing = new ConcurrentHashMap<>();
     /** The cover over its camp each soldier fortifying it clears first - squad loop writes, tick reads. */
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> clearing = new ConcurrentHashMap<>();
     /** The blocks of cover a clearer has taken, and where it stands for each: shared, so each takes another. */
@@ -392,8 +396,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 .filter(e -> Math.hypot(Integer.parseInt(e.getKey().split(",")[0]) - camp[0], Integer.parseInt(e.getKey().split(",")[1]) - camp[1])
                         <= WALL_RADIUS).map(Map.Entry::getValue).findFirst().orElse(null);
         int wallLeft = wall == null ? -1 : io.github.jayessdeesea.minecraft.bot.supply.Perimeter.open(world, wall).size();
-        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", wallLeft == 0,
-                wall == null ? "not begun" : wallLeft + " of " + wall.size() + " wall blocks still to place", "FORTIFY"));
+        // Of stone: an enderman picks a dirt block out of a wall and opens a hole (backlog/building-guide.md).
+        long wallSoft = wall == null ? 0 : wall.stream().filter(c -> world.isSoil(c.x(), c.y(), c.z())).count();
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", wallLeft == 0 && wallSoft == 0,
+                wall == null ? "not begun" : wallLeft > 0 ? wallLeft + " of " + wall.size() + " wall blocks still to place"
+                        + (wallSoft > 0 ? ", and " + wallSoft + " of dirt to replace with stone" : "")
+                        : wallSoft + " of its blocks dirt, to replace with stone", "FORTIFY"));
         long hungry = everyone.stream().filter(s -> s.condition().map(SoldierRunner::wantsFood).orElse(false)).count();
         Optional<io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> farm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at,
                 CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL);
@@ -825,6 +833,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             String n = s.name();
             String task = clearing.containsKey(n) ? (state.coverLeft > 0 ? "clear the camp's sky" : "level the camp")
                     : walling.containsKey(n) ? "wall the camp"
+                    : repointing.containsKey(n) ? "wall the camp in stone"
                     : lighting.containsKey(n) ? "light the ground"
                     : cutting.containsKey(n) ? "cut the mine"
                     : farming.containsKey(n) ? "keep the farm"
@@ -836,6 +845,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 continue;
             }
             List<?> left = clearing.containsKey(n) ? clearing.get(n) : walling.containsKey(n) ? walling.get(n)
+                    : repointing.containsKey(n) ? repointing.get(n)
                     : lighting.containsKey(n) ? lighting.get(n) : null;
             on.put(n, new io.github.jayessdeesea.minecraft.command.TaskRegister.Assignment(task, s.report(),
                     left == null ? java.util.OptionalInt.empty() : java.util.OptionalInt.of(left.size())));
@@ -850,6 +860,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         if (state.wallLeft >= 0) {
             measured.put("wall the camp", state.wallLeft);
+        }
+        if (state.softLeft >= 0) {
+            measured.put("wall the camp in stone", state.softLeft);
         }
         // Only SECURE's plan is counted: lighting the camp's upkeep or the stairs isn't, and live a
         // squad off upkeep read as done with SECURE's empty plan.
@@ -875,6 +888,30 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 state.relieved.worked(key);
             }
         }
+    }
+
+    /** Each soldier's failed tries at fitting its workshop's chest: tried again later each time. */
+    private final io.github.jayessdeesea.minecraft.bot.supply.Setbacks<String> chestFits =
+            new io.github.jayessdeesea.minecraft.bot.supply.Setbacks<>(60_000, 20 * 60_000);
+
+    /** The routine holding each soldier's hands, after its last tick - tick writes, squad loop reads. */
+    private final Map<String, Hands.Routine> handsHeld = new ConcurrentHashMap<>();
+
+    /** Where {@code routine}, holding {@code soldier}'s hands, wants it to stand, if anywhere. */
+    private Optional<Position> standOf(String soldier, Hands.Routine routine) {
+        return switch (routine) {
+            case CLEARER -> Optional.ofNullable(clearers.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Clearer::standAt);
+            case MASON -> Optional.ofNullable(masons.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Mason::standAt);
+            case LAMPLIGHTER -> Optional.ofNullable(lamplighters.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Lamplighter::standAt);
+            case ARMOURER -> Optional.ofNullable(armourers.get(soldier)).flatMap(Armourer::standAt);
+            case TORCHMAKER -> Optional.ofNullable(torchmakers.get(soldier)).flatMap(Torchmaker::standAt);
+            case DEPOSITOR -> Optional.ofNullable(depositors.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Depositor::standAt);
+            case FORESTER -> Optional.ofNullable(foresters.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Forester::standAt);
+            case FARMER -> Optional.ofNullable(farmers.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Farmer::standAt);
+            case GATHERER -> Optional.ofNullable(gatherers.get(soldier)).flatMap(Gatherer::standAt);
+            case HUNTER -> Optional.ofNullable(hunters.get(soldier)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Hunter::standAt);
+            default -> Optional.empty();
+        };
     }
 
     /** {@code squad}'s open taskings - for the squad simulation to read. */
@@ -949,7 +986,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         Optional<String> left = Optional.empty();
         switch (standing.get().task()) {
             case io.github.jayessdeesea.minecraft.command.Objective.Task.Fortify() -> {
-                if (state.wall != null && state.wallLeft == 0) {
+                if (state.wall != null && state.wallLeft == 0 && state.softLeft > 0) {
+                    left = Optional.of(state.softLeft + " of the wall's blocks dirt, to replace with stone");
+                } else if (state.wall != null && state.wallLeft == 0) {
                     done = Optional.of("the wall is closed, all " + state.wall.size() + " blocks of it");
                 } else if (state.wall != null && state.wallLeft > 0) {
                     left = Optional.of(state.wallLeft + " of " + state.wall.size() + " wall blocks to place");
@@ -1361,6 +1400,15 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             LOG.info("[{}] FORTIFY: {} of {} wall blocks still to place", squadName, wallLeft.size(), state.wall.size());
             state.wallLeft = wallLeft.size();
         }
+        // A closed wall of dirt isn't done: each block of it is replaced with stone by a mason carrying some.
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> soft = state.wall == null ? List.of()
+                : state.wall.stream().filter(c -> world.isSoil(c.x(), c.y(), c.z())).toList();
+        if (state.wall != null && soft.size() != state.softLeft) {
+            LOG.info("[{}] FORTIFY: {} of the wall's blocks dirt, to replace with stone", squadName, soft.size());
+            state.softLeft = soft.size();
+        } else if (state.wall == null) {
+            state.softLeft = -1;
+        }
         // Fortifying starts with the sky: every log and leaf over the camp inside the wall line cut,
         // so a monster left standing at dawn has no shade to stand in and burns.
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cover = state.wallCentre == null ? List.of()
@@ -1488,6 +1536,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 clearing.put(soldierName, cover.isEmpty() ? humps : cover);
             } else {
                 clearing.remove(soldierName);
+            }
+            if (!soft.isEmpty() && !squadInContact && !state.relieved(soldierName, "wall the camp in stone", now)) {
+                repointing.put(soldierName, soft);
+                wallCentres.put(soldierName, state.wallCentre);
+            } else {
+                repointing.remove(soldierName);
             }
             if (!wallLeft.isEmpty() && !squadInContact && !state.relieved(soldierName, "wall the camp", now)) {
                 walling.put(soldierName, wallLeft);
@@ -1707,7 +1761,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             Armourer armourer = armourers.get(soldierName);
             Gatherer gatherer = gatherers.get(soldierName);
             // Food first: a hungry soldier chasing an animal is wherever the animal is.
-            Optional<Position> stand = Optional.ofNullable(hunters.get(soldierName)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Hunter::standAt);
+            // The routine with the hands says where to stand: live, a mason under way and an armourer
+            // walking to a workshop each sent the soldier its own way, and it reached neither.
+            Optional<Position> stand = Optional.ofNullable(handsHeld.get(soldierName)).flatMap(h -> standOf(soldierName, h));
+            if (stand.isEmpty()) {
+                stand = Optional.ofNullable(hunters.get(soldierName)).flatMap(io.github.jayessdeesea.minecraft.bot.supply.Hunter::standAt);
+            }
             if (stand.isEmpty() && armourer != null) {
                 stand = armourer.standAt();
             }
@@ -2410,12 +2469,17 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             io.github.jayessdeesea.minecraft.bot.supply.Fitter chestFitter = storeFitters.get(name);
             Optional<io.github.jayessdeesea.minecraft.bot.engineer.Workshop> shop = Optional.ofNullable(workshops.get(name));
             // A full load and no chest to put it in: the workshop's is fitted first, at its stand.
+            long fitNow = clockwork.millis();
             boolean fitStore = fullLoad && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
-                    && !shop.get().chestStands(world) && !threatened && fort == null;
+                    && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
             turns.put(Hands.Routine.DEPOSITOR, turn(() -> depositor.active() || chestFitter.active(), free -> {
                 if (free && fitStore && atStand(status.position(), shop.get())) {
                     if (!chestFitter.tickChest(status.position(), world, shop.get(), threatened)) {
-                        chestFitter.failure().ifPresent(why -> LOG.warn("{} can't fit the workshop's chest: {}", name, why));
+                        // Once, then later and later: live, it was said every tick with no log to make a table from.
+                        chestFitter.failure().ifPresent(why -> {
+                            chestFits.failed(name, fitNow, why);
+                            LOG.warn("{} can't fit the workshop's chest: {} - tries again in a while", name, why);
+                        });
                     }
                     chestFitter.lookAt().ifPresent(soldier::lookAt);
                     return;
@@ -2457,9 +2521,19 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walling.getOrDefault(name, List.of());
             turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
                     clearing.getOrDefault(name, List.of()), free && !threatened && !foodCalls)));
-            turns.put(Hands.Routine.MASON, turn(mason::active, free -> mason.tick(status.position(), world,
-                    wallCentres.getOrDefault(name, io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(status.position().x(),
-                            status.position().y(), status.position().z())), WALL_RADIUS, wall, free && !threatened && !foodCalls)));
+            io.github.jayessdeesea.minecraft.bot.nav.BlockPos wallCentre = wallCentres.getOrDefault(name,
+                    io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(status.position().x(), status.position().y(), status.position().z()));
+            List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> repoint = repointing.getOrDefault(name, List.of());
+            turns.put(Hands.Routine.MASON, turn(mason::active, free -> {
+                // Its dirt replaced while there's no open cell it can build: live, one cell nobody
+                // could reach held a whole wall's stone back.
+                if (!repoint.isEmpty() && inventory.count(ItemClass.COBBLESTONE) > 0
+                        && (wall.isEmpty() || mason.nothingToBuild() || mason.active() && mason.repointing())) {
+                    mason.repoint(status.position(), world, wallCentre, WALL_RADIUS, repoint, free && !threatened && !foodCalls);
+                } else {
+                    mason.tick(status.position(), world, wallCentre, WALL_RADIUS, wall, free && !threatened && !foodCalls);
+                }
+            }));
             turns.put(Hands.Routine.LAMPLIGHTER, turn(lamplighter::active,
                     free -> lamplighter.tick(status.position(), world, lights, free && !threatened && !foodCalls)));
             io.github.jayessdeesea.minecraft.bot.farm.TreeFarm grove = planting.get(name);
@@ -2473,6 +2547,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             turns.put(Hands.Routine.SCAVENGER, turn(scavenger::active,
                     free -> scavenger.tick(status.position(), world, free && !threatened && fort == null && !foodCalls)));
             Optional<Hands.Routine> hands = Hands.tick(turns);
+            hands.ifPresentOrElse(h -> handsHeld.put(name, h), () -> handsHeld.remove(name));
             // Stand-to: hands free, the soldier wears the best armour it carries and holds its best
             // weapon - not the seeds or the dirt its last job left in its hand.
             if (hands.isEmpty() && standTo.merge(name, -1, Integer::sum) <= 0) {

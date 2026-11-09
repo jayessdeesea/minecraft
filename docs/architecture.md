@@ -77,7 +77,8 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
 
 - **One routine has the hands at a time, by one priority order** (`bot.Hands`). Routines tick in
   that order, each told whether it's free: free while no other is under way. Nothing preempts;
-  a routine that should give way mid-run says so in its own guard.
+  a routine that should give way mid-run says so in its own guard. The routine holding the hands
+  also says where the soldier stands; another's stand counts only when none is held.
 - **Borrowed from the actor model's discipline, not its runtime.** An actor's single-threaded
   mailbox processing is *one* way to guarantee a unit of state is never touched by two threads at
   once; a per-tick loop that's the sole writer of its own Soldier's state is another. We get the

@@ -719,6 +719,14 @@ A block it couldn't cut it leaves for longer each time (`Setbacks`). FORTIFY isn
 is left: its progress reads "N blocks of trees over the camp to clear" before the wall's count, so
 a tree too tall to fell from the ground shows as the task stalled.
 
+A wall of dirt isn't finished: an enderman picks a dirt block out of it and opens a hole. So each
+of the wall's blocks of dirt or grass is replaced with cobblestone (`Mason.repoint`): a mason
+carrying some, with no open wall cell it can build, stands inside the wall by the block, digs it
+out by hand for the server's break time, and puts stone in its place, each step confirmed by the
+block update. "The camp walled in" isn't met, and FORTIFY isn't done, while any dirt is left in
+the wall; its progress says how many blocks. With no stone to hand that shows as the task
+stalled - the general's cue for stone.
+
 Then the ground. With the sky clear, the high ground inside the wall line comes down to the camp's
 own height, so the squads see across it: each column's top block, where it's dirt or grass at or
 above the camp's feet level, is dug off, a layer at a time (`Clearing.humps`, the same clearer's

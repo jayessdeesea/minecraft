@@ -343,6 +343,60 @@ class SquadSimulationTest {
         assertTrue(review.stream().anyMatch(l -> l.matches("  clear the camp's sky: [12] done, 0 taken off unfinished")), review.toString());
     }
 
+    /** Flat, ringed 8 blocks out by a dirt wall two high: closed, but an enderman's to open. */
+    private static int dirtWall(int x, int y, int z) {
+        boolean ring = Math.max(Math.abs(x), Math.abs(z)) == 8;
+        return ring && y > GROUND && y <= GROUND + 2 ? SimServer.DIRT : flat(x, y, z);
+    }
+
+    /** A closed wall of dirt isn't done: masons with cobblestone replace it block by block. */
+    @Test
+    void aSquadRebuildsADirtWallInStone() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::dirtWall, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
+                new Objective.Task.Fortify())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, SimServer.ITEM_COBBLESTONE, 64},
+                        new int[]{10, SimServer.ITEM_COBBLESTONE, 64},
+                        new int[]{11, SimServer.ITEM_COBBLESTONE, 64})));
+        // The wall as it was laid out, on the flat ground, before it was built of dirt - as the
+        // garrison keeps it on disk; laid out over the dirt, it would stand on top of it.
+        io.github.jayessdeesea.minecraft.bot.world.WorldView ground = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return flat(x, y, z) != SimServer.AIR;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> layout = io.github.jayessdeesea.minecraft.bot.supply.Perimeter.layout(ground,
+                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(0, GROUND + 1, 0), 8);
+        new WallStore(state).save("0,0", layout);
+        runner.run();
+
+        clock.advance(9 * 60_000); // by dusk
+
+        long dirt = layout.stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.DIRT).count();
+        assertEquals(0, dirt, "dirt left in the wall; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+    }
+
     /** Flat, with one log too high over the camp to cut from the ground. */
     private static int logOutOfReach(int x, int y, int z) {
         return x == 3 && z == 3 && y == GROUND + 10 ? SimServer.OAK_LOG : flat(x, y, z);
@@ -386,7 +440,10 @@ class SquadSimulationTest {
                 : y == top ? SimServer.GRASS : SimServer.AIR;
     }
 
-    /** FORTIFY on a slope: in a day the squad digs its own dirt and closes the wall round the camp. */
+    /**
+     * FORTIFY on a slope: the squad levels the high ground inside the wall line first, then digs its
+     * own dirt and closes the wall round the camp - in a day and a few minutes.
+     */
     @Test
     void aSquadWallsInTheCampOnASlope() {
         SimClock clock = new SimClock();
@@ -404,11 +461,12 @@ class SquadSimulationTest {
                         new int[]{38, SimServer.ITEM_BREAD, 16})));
         runner.run();
 
-        clock.advance(20 * 60_000); // a day
+        clock.advance(25 * 60_000); // levelled, then walled
 
+        // Closed - of dirt, with no stone to hand, so the standard itself waits on stone.
         Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
                 .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
-        assertTrue(walled.met(), "after a day: " + walled.status());
+        assertEquals(java.util.OptionalInt.of(0), runner.wallLeft("Alpha"), "after a day: " + walled.status());
     }
 
     /**
