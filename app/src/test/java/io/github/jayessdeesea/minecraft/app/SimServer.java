@@ -202,6 +202,17 @@ final class SimServer {
         return players.get(name).position;
     }
 
+    /** How many items of {@code itemClass} {@code name} carries. */
+    int count(String name, ItemClass itemClass) {
+        int total = 0;
+        for (int[] slot : players.get(name).slots) {
+            if (slot != null && ItemClassRegistry.classOf(slot[0]).equals(Optional.of(itemClass))) {
+                total += slot[1];
+            }
+        }
+        return total;
+    }
+
     int count(String name, int item) {
         int total = 0;
         for (int[] slot : players.get(name).slots) {

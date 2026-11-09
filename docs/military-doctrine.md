@@ -103,8 +103,26 @@ in hand and arrows, equipment is armour worn (`command.Kit`). A soldier below fo
 health regenerates at, eats from its rations when it's out of contact and nothing else has its
 hands (`bot.supply.Rations`): the food goes into a hotbar slot without a weapon or tool, the server
 times the meal, and the weapon comes back to hand. Rations are the food items it carries, less
-those that poison or are too precious to eat (`tools/item-class-generator`). A soldier with no rations
-left hunts at food 14 or below, or wounded and below food 18, where it would heal: by day, out of contact and not walling in a patrol base, it
+those that poison or are too precious to eat (`tools/item-class-generator`).
+
+*Class I, by echelon* (`command.Subsistence`; FM 4-0, ATP 4-41 field feeding). Each soldier
+carries a **basic load** of 6 rations, and is short below 2:
+1. **The soldier feeds itself.** Hungry, it eats. Below its basic load it bakes all the wheat it
+   carries into bread at its workshop (§11). Short, it hunts any game in sight, fed or not.
+2. **The squad shares.** A short soldier gets two rations from the nearest squadmate with more
+   than two (cross-leveling, §13).
+3. **The squad asks.** A soldier still short with none of those means - no wheat, no game in sight,
+   nobody sharing - makes the squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
+   I RED - request: ... The squad can't feed itself."
+4. **The general answers.** Feeding a force is planned above the squad, as field feeding is above
+   the company. Its answer to RED is a `FARM` task at ground by water, which harvests what's ripe
+   and bakes it, or an objective where game is.
+
+GREEN is everyone carrying food, and AMBER is some short but each with a means. The rating is
+logged when it changes.
+
+A soldier short of rations hunts at food 14 or below, or wounded and below food 18, where it would
+heal, and at any food with game in sight: by day, out of contact and not walling in a patrol base, it
 chases the nearest cow, pig, sheep, chicken or rabbit within 48 blocks of its squad's objective -
 not of itself, or one hunt after another carries it off; 96 once it's starving, at the food 6 it
 can no longer sprint at, since the ground round a camp is hunted out first - and within 8 blocks
@@ -598,6 +616,9 @@ that isn't within 7 blocks (taxicab) of a torch. That's half a torch's reach, so
 between them still leaves the cell lit. Torches go first on the lattice where taxicab circles of
 that radius tile the ground exactly, then on any cell the lattice left dark. Torches already
 standing count, so the plan shrinks as torches go down and a secured place needs nothing more.
+The plan is worked out again every cycle, so a torch that's gone - washed away, broken, dug out -
+is planned again. And the camp is kept lit whatever the task: by day, a soldier within 24 blocks of
+the camp with torches in its pack puts one down wherever the camp's ground has gone dark.
 Farmland is left bare. Light is worked out from where torches stand, not read from the server's
 light data.
 

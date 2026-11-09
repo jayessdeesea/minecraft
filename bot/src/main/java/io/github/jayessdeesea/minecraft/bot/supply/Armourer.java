@@ -134,7 +134,9 @@ public final class Armourer {
 
     /** Logs it's short of to make {@code wanted} from what it carries, with no table to hand. */
     public static int logsShort(Inventory inventory, Set<Recipe> wanted) {
-        return CraftPlan.of(once(wanted), Stock.of(inventory), Set.of()).short_().getOrDefault(ItemClass.LOG, 0);
+        Map<Recipe, Integer> once = new LinkedHashMap<>();
+        wanted.forEach(r -> once.put(r, 1));
+        return CraftPlan.of(once, Stock.of(inventory), Set.of()).short_().getOrDefault(ItemClass.LOG, 0);
     }
 
     /**
@@ -337,9 +339,15 @@ public final class Armourer {
         return recipes.stream().map(Recipe::name).sorted().collect(Collectors.joining(" and "));
     }
 
-    private static Map<Recipe, Integer> once(Set<Recipe> recipes) {
+    /**
+     * How many of what each recipe makes: one tool or piece of kit; bread, all the wheat carried
+     * makes, on top of the food already carried - its target is the class, so one asked for was
+     * "some food", and live a soldier with a loaf in its pack carried 22 wheat for days.
+     */
+    private Map<Recipe, Integer> once(Set<Recipe> recipes) {
         Map<Recipe, Integer> items = new LinkedHashMap<>();
-        recipes.forEach(r -> items.put(r, 1));
+        recipes.forEach(r -> items.put(r, r == Recipe.BREAD
+                ? inventory.count(ItemClass.FOOD) + Math.max(1, inventory.count(ItemClass.WHEAT) / 3) : 1));
         return items;
     }
 }

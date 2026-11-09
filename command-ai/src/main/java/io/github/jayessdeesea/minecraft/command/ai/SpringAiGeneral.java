@@ -179,7 +179,8 @@ public final class SpringAiGeneral implements General {
                             || squad.standing().filter(Objective::patrolBase).isPresent()),
                     "report", SpringAiSquadLeader.describe(squad.report()),
                     "soldiers", soldiers.toString(),
-                    "logstat", describe(Logstat.of(squad.soldiers()), squad.baseBlocksLeft()),
+                    "logstat", describe(Logstat.of(squad.soldiers()), squad.baseBlocksLeft())
+                            + squad.classOne().map(c -> " " + c.line()).orElse(""),
                     "resources", describeResources(squad, time.filter(TimeOfDay::dark).isEmpty())))).append('\n');
         }
         // What the operator sees from where they stand: worth weighing, not an order.

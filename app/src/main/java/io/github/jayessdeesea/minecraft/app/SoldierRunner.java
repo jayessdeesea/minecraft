@@ -163,6 +163,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         long workedAt = Long.MIN_VALUE;
         /** The task {@code workedAt} was measured for: a new task starts the clock again. */
         io.github.jayessdeesea.minecraft.command.Objective workedFor;
+        /** The squad's Class I at the last SITREP, logged when its rating changes. */
+        io.github.jayessdeesea.minecraft.command.Subsistence.Status classOne;
         /** The last progress measured, logged when its state changes. */
         io.github.jayessdeesea.minecraft.command.Progress progress;
         /** Where the squad crafts on the surface, sited by the engineer near its objective; null with nowhere to put one. */
@@ -476,7 +478,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      * wounded and short of the food it heals at - otherwise a wound taken at food 15 never heals.
      */
     static boolean wantsFood(io.github.jayessdeesea.minecraft.command.Condition condition) {
-        return condition.kit().map(k -> k.rations() == 0).orElse(true)
+        return condition.kit().map(k -> io.github.jayessdeesea.minecraft.command.Subsistence.short_(k.rations())).orElse(true)
                 && (condition.food() <= HUNT_BELOW_FOOD || condition.health() < io.github.jayessdeesea.minecraft.command.Condition.MAX_HEALTH
                 && condition.food() < io.github.jayessdeesea.minecraft.command.Condition.REGENERATION_FOOD);
     }
@@ -489,6 +491,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     /** The day's deaths and idlers, reviewed at each dawn. */
     private final AfterActionReview afterActionReview = new AfterActionReview();
     /** Cutters wanting a tool, sent to their mine's landing to make it - tick writes, squad loop reads. */
+    /** Soldiers short of food with no means of their own to get any: wheat, game in sight. Tick writes, squad loop reads. */
+    private final java.util.Set<String> foodless = ConcurrentHashMap.newKeySet();
     /** The workshop each soldier crafts at (backlog/sites.md): its squad's, or the mine base below ground. */
     private final Map<String, io.github.jayessdeesea.minecraft.bot.engineer.Workshop> workshops = new ConcurrentHashMap<>();
     /** The camp's own workshop, at its ground: every squad near the camp crafts there. */
@@ -647,12 +651,31 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan, climbBlocks, stoneSteps,
                     chainOfCommand.objective(p.squad()).map(io.github.jayessdeesea.minecraft.command.Objective::location)), p.principalAt(),
                     () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, pointMan), holdingBase,
-                    holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft, progress(p.squad(), state, p.statuses()));
+                    holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft, progress(p.squad(), state, p.statuses()),
+                    Optional.of(classOne(p.squad(), state, p.statuses())));
         }).toList());
         for (Present p : present) {
             chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
                     orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt()));
         }
+    }
+
+    /**
+     * The squad's Class I ({@code command.Subsistence}): who is short of food, and of them who has no
+     * means of getting any - no wheat, no game in sight - and isn't being shared some by a squadmate.
+     * Logged when its rating changes.
+     */
+    private io.github.jayessdeesea.minecraft.command.Subsistence.Status classOne(String squad, SquadState state, List<SoldierStatus> statuses) {
+        java.util.Set<String> shared = state.crossLeveling.stream().filter(t -> t.item() == CrossLevel.Item.RATIONS)
+                .map(CrossLevel.Transfer::receiver).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> noMeans = statuses.stream().map(SoldierStatus::name)
+                .filter(n -> foodless.contains(n) && !shared.contains(n)).collect(java.util.stream.Collectors.toSet());
+        io.github.jayessdeesea.minecraft.command.Subsistence.Status status = io.github.jayessdeesea.minecraft.command.Subsistence.of(statuses, noMeans);
+        if (state.classOne == null || state.classOne.rating() != status.rating()) {
+            LOG.info("[{}] {}", squad, status.line());
+        }
+        state.classOne = status;
+        return status;
     }
 
     /**
@@ -1202,15 +1225,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     (int) Math.floor(o.location().z()), (int) Math.floor(o.location().y()))
                     .orElse(io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
                             io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(o.location().x(), o.location().y(), o.location().z())));
-            // Not on a wall's line - one laid out, or the camp's still to be: a torch there holds a
-            // cell the mason needs.
-            java.util.Set<Long> wallColumns = walls.values().stream().flatMap(List::stream).map(c -> column(c.x(), c.z()))
-                    .collect(java.util.stream.Collectors.toSet());
-            return io.github.jayessdeesea.minecraft.bot.supply.Lighting.plan(world, at, SECURE_RADIUS).stream()
-                    .filter(cell -> !wallColumns.contains(column(cell.x(), cell.z())) && (camp == null
-                            || Math.max(Math.abs(cell.x() - camp[0]), Math.abs(cell.z() - camp[1])) != WALL_RADIUS))
-                    .toList();
+            return torchPlan(at);
         }).orElse(List.of());
+        // The camp kept lit whatever the task: the plan is worked out again each cycle from the
+        // torches that stand, so one gone - washed away, broken, dug out - is put back.
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campDark = campGround == null ? List.of() : torchPlan(campGround);
         if (torchesLeft.size() != state.torchesLeft) {
             if (chainOfCommand.secureObjective(squadName).isPresent()) {
                 LOG.info("[{}] SECURE: {} torches still to put down", squadName, torchesLeft.size());
@@ -1321,6 +1340,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 }
             } else {
                 lighting.remove(soldierName);
+            }
+            // Upkeep: a soldier at the camp with torches in its pack puts one down wherever the camp's
+            // ground has gone dark, by day, whatever its task.
+            boolean daylight = !chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
+            if (!lighting.containsKey(soldierName) && !campDark.isEmpty() && !squadInContact && daylight
+                    && torchesCarried.getOrDefault(soldierName, 0) > 0 && campGround != null
+                    && Math.hypot(statuses.get(i).position().x() - campGround.x(), statuses.get(i).position().z() - campGround.z()) <= SECURE_RADIUS * 2) {
+                lighting.put(soldierName, campDark);
             }
             // The mine's stairs lit as they're cut, a torch a turn: by the squad holding the top, not
             // the cutter. Live, the dark shaft spawned the zombies that killed a soldier at dawn.
@@ -1588,6 +1615,20 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         return java.util.stream.Stream.concat(plan.floor().stream(), plan.cells().stream())
                 .map(c -> column((int) Math.floor(c.x()), (int) Math.floor(c.z())))
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    /**
+     * The torches that would light the ground within {@link #SECURE_RADIUS} of {@code at} so nothing
+     * spawns on it (block light 0 is where monsters spawn), from the torches standing now - not on a
+     * wall's line, one laid out or the camp's still to be: a torch there holds a cell the mason needs.
+     */
+    private List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> torchPlan(io.github.jayessdeesea.minecraft.bot.nav.BlockPos at) {
+        java.util.Set<Long> wallColumns = walls.values().stream().flatMap(List::stream).map(c -> column(c.x(), c.z()))
+                .collect(java.util.stream.Collectors.toSet());
+        return io.github.jayessdeesea.minecraft.bot.supply.Lighting.plan(world, at, SECURE_RADIUS).stream()
+                .filter(cell -> !wallColumns.contains(column(cell.x(), cell.z())) && (camp == null
+                        || Math.max(Math.abs(cell.x() - camp[0]), Math.abs(cell.z() - camp[1])) != WALL_RADIUS))
+                .toList();
     }
 
     private static long column(int x, int z) {
@@ -1986,7 +2027,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
                 tools.add(Recipe.WOODEN_HOE);
             }
-            if (field != null && inventory.count(ItemClass.WHEAT) >= 3) {
+            // Bread from the wheat it carries: a farmer's work, and anyone's below its basic load
+            // (command.Subsistence) - live, a soldier carried 22 wheat for days while its squad starved.
+            int carriedRations = status.condition().flatMap(c -> c.kit()).map(Kit::rations).orElse(0);
+            if (inventory.count(ItemClass.WHEAT) >= 3 && (field != null || carriedRations < io.github.jayessdeesea.minecraft.command.Subsistence.BASIC_LOAD)) {
                 tools.add(Recipe.BREAD);
             }
             // Arrows from the flint and feathers it has picked up, while it has a bow to shoot them.
@@ -2048,13 +2092,23 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // Feathers for arrows, for a soldier with a bow and few arrows: a chicken, hunted like any game.
             boolean wantsFeathers = inventory.slotOfNamed("bow") >= 0 && inventory.count(ItemClass.ARROWS) < ARROWS_WANTED
                     && inventory.count(ItemClass.FEATHER) == 0;
-            java.util.function.IntPredicate quarry = hungry ? kind -> true
+            // Short of its basic load's low mark, it restocks: any game in sight is hunted, fed or not.
+            boolean shortOfFood = eating != null && io.github.jayessdeesea.minecraft.command.Subsistence.short_(eating.rations());
+            java.util.function.IntPredicate quarry = hungry || shortOfFood ? kind -> true
                     : kind -> kind == io.github.jayessdeesea.minecraft.bot.world.EntityTracker.CHICKEN_TYPE_ID;
-            boolean huntWanted = (hungry || wantsFeathers) && huntAllowed.contains(name) && !inContact;
             // Food first: the day's work - gathering, lighting, walling, planting - gives the hands
             // up when there's game in sight to eat, and the hunter takes them next tick.
             Position huntGround = huntGrounds.getOrDefault(name, status.position());
             int food = status.condition().map(Condition::food).orElse(Condition.MAX_FOOD);
+            boolean gameNear = (hungry || shortOfFood) && io.github.jayessdeesea.minecraft.bot.supply.Hunter.gameInSight(world, huntGround, food, quarry);
+            boolean huntWanted = (hungry || wantsFeathers || shortOfFood && gameNear) && huntAllowed.contains(name) && !inContact;
+            // Short with no means of its own - no wheat to bake, no game in sight - it's the squad's
+            // to solve: a squadmate shares, or the squad asks for food (Class I RED).
+            if (shortOfFood && inventory.count(ItemClass.WHEAT) < 3 && !gameNear) {
+                foodless.add(name);
+            } else {
+                foodless.remove(name);
+            }
             // And a meal carried comes before either: live, a soldier on a stone run back to back sat at
             // food 0 with two rations in its pack.
             boolean foodCalls = huntWanted && !hunter.active()

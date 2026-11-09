@@ -70,13 +70,21 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     public record Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain,
                          Optional<Position> principalAt, Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources,
                          boolean holdingBase, java.util.OptionalInt baseBlocksLeft,
-                         Optional<io.github.jayessdeesea.minecraft.command.Progress> progress) {
+                         Optional<io.github.jayessdeesea.minecraft.command.Progress> progress,
+                         Optional<io.github.jayessdeesea.minecraft.command.Subsistence.Status> classOne) {
+
+        /** A SITREP with no food measured. */
+        public Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt,
+                      Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources, boolean holdingBase,
+                      java.util.OptionalInt baseBlocksLeft, Optional<io.github.jayessdeesea.minecraft.command.Progress> progress) {
+            this(squad, soldiers, terrain, principalAt, resources, holdingBase, baseBlocksLeft, progress, Optional.empty());
+        }
 
         /** A SITREP with no task's progress measured. */
         public Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt,
                       Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources, boolean holdingBase,
                       java.util.OptionalInt baseBlocksLeft) {
-            this(squad, soldiers, terrain, principalAt, resources, holdingBase, baseBlocksLeft, Optional.empty());
+            this(squad, soldiers, terrain, principalAt, resources, holdingBase, baseBlocksLeft, Optional.empty(), Optional.empty());
         }
     }
 
@@ -526,7 +534,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                 long started = clockwork.millis();
                 List<SquadStatus> statuses = sitreps.stream().map(s -> new SquadStatus(s.squad(),
                         squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
-                        s.holdingBase(), s.baseBlocksLeft(), s.progress())).toList();
+                        s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne())).toList();
                 statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
                 List<Objective> objectives = general.decide(statuses);
                 if (missionVersion.get() != missionAsked) {
