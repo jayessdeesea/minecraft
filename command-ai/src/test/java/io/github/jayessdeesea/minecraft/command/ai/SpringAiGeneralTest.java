@@ -41,7 +41,7 @@ class SpringAiGeneralTest {
                 java.util.Optional.empty(), List.of(ALPHA, BRAVO_IN_BASE)).prompt();
 
         assertTrue(prompt.contains("Standing order: none yet - there is nothing to keep"), prompt);
-        assertTrue(prompt.contains("Standing order: PATROL_BASE - Build a shelter at x=10 z=10, about level with the squad. Intent: safe until dawn "
+        assertTrue(prompt.contains("Standing order: PATROL_BASE - \"Build a shelter\"; its ground x=10 z=10, about level with the squad. Intent: safe until dawn "
                 + "Status: the patrol base is built and sealed, the squad inside it."), prompt);
     }
 

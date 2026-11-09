@@ -59,6 +59,12 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     private static final long GENERAL_PERIOD_MILLIS = 120_000;
     /** Least time between decisions, however many CANTCOs arrive - stops a stuck soldier spamming the model. */
     private static final long MIN_GAP_MILLIS = 8_000;
+    /**
+     * The least time between the general's decisions that a new contact or CANTCO brings forward:
+     * the general thinks on a slow clock, and contact is the squad's drill to handle - live, at
+     * night, every new contact asked it again, a call every ten seconds rewriting the same order.
+     */
+    private static final long GENERAL_URGENT_GAP_MILLIS = 60_000;
     /** Vanilla chat's own limit is 256 characters. */
     static final int CHAT_LINE_LIMIT = 250;
 
@@ -591,7 +597,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             unordered |= !squad.hasObjective();
         }
         if (!underGeneral.isEmpty() && (unordered || now - lastGeneralMillis >= GENERAL_PERIOD_MILLIS
-                || ((newCantco || newContact) && now - lastGeneralMillis >= MIN_GAP_MILLIS))) {
+                || ((newCantco || newContact) && now - lastGeneralMillis >= GENERAL_URGENT_GAP_MILLIS))) {
             askGeneral(underGeneral, now);
         }
         for (Sitrep sitrep : sitreps) {

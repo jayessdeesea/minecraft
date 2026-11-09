@@ -50,5 +50,6 @@ It keeps nothing between calls but each squad's current objective (backlog/opera
 
 ## When it decides
 Every 2 minutes, at once on a new mission from the operator or a squad with no objective, and on a
-squad's new CANTCO or contact if 8 seconds have passed since the last. A failed call (a malformed
+squad's new CANTCO or contact if a minute has passed since the last - contact is the squad's to
+handle, and live, a new contact every few seconds at night asked the general every ten. A failed call (a malformed
 reply, the model down) is logged loudly, and the squads keep their last objectives.

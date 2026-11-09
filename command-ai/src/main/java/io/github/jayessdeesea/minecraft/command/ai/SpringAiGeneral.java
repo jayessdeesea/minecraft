@@ -219,8 +219,10 @@ public final class SpringAiGeneral implements General {
             case Objective.Task.Mine() -> "MINE";
             case Objective.Task.Patrol() -> "PATROL";
         };
-        StringBuilder line = new StringBuilder("Standing order: ").append(task).append(" - ").append(standing.mission())
-                .append(" at ").append(squad.soldiers().isEmpty() ? SpringAiSquadLeader.describe(standing.location())
+        // The mission in quotes, its ground apart: written as "<mission> at <place>", the model copied
+        // the whole of it into its next mission, and the place grew a clause with every decision.
+        StringBuilder line = new StringBuilder("Standing order: ").append(task).append(" - \"").append(standing.mission())
+                .append("\"; its ground ").append(squad.soldiers().isEmpty() ? SpringAiSquadLeader.describe(standing.location())
                         : relative(standing.location(), squad.soldiers().getFirst().position()))
                 .append(". Intent: ").append(standing.intent());
         if (standing.patrolBase()) {
