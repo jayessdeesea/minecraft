@@ -121,6 +121,19 @@ first. One still open past its echelon's deadline - 60 seconds for a squad leade
 the general - raises `[Request] ALARM`, once. The dawn review gives each echelon's answers, their
 median and longest time, the alarms, and what's still open.
 
+*Supervise and refine: the squad's task register* (`command.TaskRegister`; ATP 3-21.8, the last
+step of troop leading procedures). Each squad keeps who is on what. Every cycle each soldier's
+tasking - clear the camp's sky, level the camp, wall the camp, light the ground, cut the mine, keep
+the farm, plant the tree farm, gather a resource, patrol - is recorded with its report and what's
+left of the task as the world measures it (cover, high ground, wall blocks, torches). The report is
+trusted and verified: a soldier reporting work while what's left hasn't fallen in 2 minutes is
+logged as `[Verify] ... hasn't fallen` and its tasking marked STALLED, until progress shows again.
+A CANTCO is held open on its tasking. A tasking ends done when what's left reaches 0 - or when its
+soldier moves off a task that now measures 0, as when the last log falls - or is counted as taken
+off unfinished. Ended taskings are counted in the dawn review and forgotten; what's still open is
+listed. The register only records and verifies so far: what a STALLED finding should change is
+backlog/task-register.md.
+
 *Class I, by echelon* (`command.Subsistence`; FM 4-0, ATP 4-41 field feeding). Each soldier
 carries a **basic load** of 6 rations, and is short below 2:
 1. **The soldier feeds itself.** Hungry, it eats. Below its basic load it bakes all the wheat it

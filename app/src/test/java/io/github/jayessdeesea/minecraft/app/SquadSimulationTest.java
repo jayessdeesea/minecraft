@@ -339,6 +339,41 @@ class SquadSimulationTest {
             assertEquals(SimServer.AIR, server.block(3, y, 3), "the log at y=" + y + "; last server events: "
                     + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
         }
+        List<String> review = runner.taskingReview("Alpha");
+        assertTrue(review.stream().anyMatch(l -> l.matches("  clear the camp's sky: [12] done, 0 taken off unfinished")), review.toString());
+    }
+
+    /** Flat, with one log too high over the camp to cut from the ground. */
+    private static int logOutOfReach(int x, int y, int z) {
+        return x == 3 && z == 3 && y == GROUND + 10 ? SimServer.OAK_LOG : flat(x, y, z);
+    }
+
+    /**
+     * Trust but verify: the squad reports Fortifying, but the sky over the camp isn't clearing - the
+     * register marks the task STALLED rather than taking the report's word for it.
+     */
+    @Test
+    void workTheWorldDoesntBearOutIsMarkedStalled() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::logOutOfReach, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
+                new Objective.Task.Fortify())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(4 * 60_000);
+
+        List<io.github.jayessdeesea.minecraft.command.TaskRegister.Tasking> open = runner.taskings("Alpha");
+        assertTrue(open.stream().anyMatch(t -> t.task().equals("clear the camp's sky")
+                && t.state() == io.github.jayessdeesea.minecraft.command.TaskRegister.State.STALLED), open.toString());
     }
 
     /** Ground rising a block every 3 east of x=-6: the camp's wall stands on many heights. */

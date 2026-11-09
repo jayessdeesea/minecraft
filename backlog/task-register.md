@@ -58,7 +58,13 @@ base) or forgets it (a tree felled).
 - Completed site taskings appear on the operations map; completed transient ones are gone from
   the prompt.
 
+## Built so far
+- The squad's register over its soldiers (docs/military-doctrine.md § 4): taskings recorded,
+  verified against the world's measure, CANTCOs held, ends counted in the dawn review. Left: the
+  general's register over its squads, a STALLED finding acted on (re-tasked by the squad's drills,
+  or seen by the general), RequestLedger folded in, and completed sites handed to the map.
+
 ## Notes
-- Built so far, its pieces: `command.Progress` (a squad's task done or stalled, from the world),
+- Built before the register, its pieces: `command.Progress` (a squad's task done or stalled, from the world),
   `app.RequestLedger` (requests timed and alarmed), `bot.supply.Setbacks` (a soldier's escalation
   to CANTCO), `app.WallStore` (one site, persisted).

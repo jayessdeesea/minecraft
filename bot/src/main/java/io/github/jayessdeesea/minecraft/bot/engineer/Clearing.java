@@ -91,7 +91,9 @@ public final class Clearing {
         double bestScore = Double.MAX_VALUE;
         int lowest = cover.stream().mapToInt(BlockPos::y).min().orElse(0);
         for (BlockPos block : cover) {
-            if (excluded.contains(block)) {
+            // The list is the squad loop's, up to a cycle old: a block a squadmate has cut since is gone.
+            if (excluded.contains(block) || !world.isLog(block.x(), block.y(), block.z())
+                    && world.leaves(block.x(), block.y(), block.z()).isEmpty() && !world.isSoil(block.x(), block.y(), block.z())) {
                 continue;
             }
             // Cover is lowest first: past the best score, nothing higher can beat it.

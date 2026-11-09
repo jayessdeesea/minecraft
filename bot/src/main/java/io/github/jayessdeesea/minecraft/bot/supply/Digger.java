@@ -67,7 +67,7 @@ final class Digger {
         WHEAT(3, 1, null, 0, ItemClass.WHEAT),
         /** Gravel, by hand in about a second (hardness 0.6): flint one time in ten, for arrows. At feet or head height. */
         GRAVEL(25, 1, null, 0, ItemClass.FLINT, false),
-        /** Dirt or grass at the feet, by hand in about a second: dirt, for a patrol base's walls. */
+        /** Dirt or grass at the feet or the ground beside them, by hand in about a second: dirt, for a patrol base's walls. */
         SOIL(25, 0, null, 0, ItemClass.DIRT),
         /** Spruce leaves - the pine the camp prefers - by hand: a spruce sapling, one time in twenty. */
         SPRUCE_LEAVES(10, 3, null, 0, ItemClass.SAPLING, false),
@@ -364,7 +364,9 @@ final class Digger {
                         continue;
                     }
                     for (int[] side : sides) {
-                        for (int up = 0; up <= target.reachUp; up++) {
+                        // Soil also from the ground beside its feet: on flat ground there's none at
+                        // feet height, and that's where a pit starts.
+                        for (int up = target == Target.SOIL ? -1 : 0; up <= target.reachUp; up++) {
                             BlockPos block = stand.offset(side[0], up, side[1]);
                             if (!claimed.contains(block) && target.at(world, block)) {
                                 double distance = Math.hypot(dx, dz) + Math.abs(dy) + up * 0.1;

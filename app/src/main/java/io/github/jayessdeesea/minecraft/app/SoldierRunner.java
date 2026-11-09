@@ -157,6 +157,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int coverLeft = -1;
         /** Blocks of high ground inside the wall line to dig off, at the last check: -1 before the first. */
         int humpsLeft = -1;
+        /** Who in the squad is on what, followed to completion and checked against the world. */
+        final io.github.jayessdeesea.minecraft.command.TaskRegister register = new io.github.jayessdeesea.minecraft.command.TaskRegister();
         /** The squad's tree farm, while it has one. */
         io.github.jayessdeesea.minecraft.bot.farm.TreeFarm trees;
         /** The squad's farm, while it has one. */
@@ -641,8 +643,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             measureFoothold().ifPresent(chainOfCommand::onFoothold);
         }
         chainOfCommand.time().flatMap(t -> afterActionReview.time(t.dark(), chainOfCommand.foothold()))
-                .ifPresent(review -> LOG.info("[AAR] {}\n  {}\n  {}", review, String.join("\n  ", chainOfCommand.requestReview()),
-                        String.join("\n  ", faults.review())));
+                .ifPresent(review -> LOG.info("[AAR] {}\n  {}\n  {}\n  {}", review, String.join("\n  ", chainOfCommand.requestReview()),
+                        String.join("\n  ", registerReview()), String.join("\n  ", faults.review())));
         List<Present> present = new java.util.ArrayList<>();
         for (Roster.Squad squad : roster.squads()) {
             List<DeterministicSoldier> soldiers = presentSoldiers(squad.name());
@@ -687,6 +689,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         for (Present p : present) {
             faults.run(p.squad() + "'s orders", () -> chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
                     orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt())));
+            faults.run(p.squad() + "'s register", () -> register(squadStates.get(p.squad()), p.statuses()));
         }
     }
 
@@ -794,6 +797,76 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.engineer.Workshop w = workshops.get(soldier);
         return w == null || !w.chestStands(world) ? Optional.empty()
                 : Optional.of(new Position(w.chest().get().x() + 0.5, w.chest().get().y(), w.chest().get().z() + 0.5));
+    }
+
+    /**
+     * Records in the squad's register what each soldier is on this cycle - the work it was handed,
+     * in the order its hands take it - with its report and what's left as the world measures it,
+     * and logs what changed: a tasking given, done or dropped, a CANTCO, a report the world
+     * doesn't bear out (backlog/task-register.md).
+     */
+    private void register(SquadState state, List<SoldierStatus> statuses) {
+        Map<String, io.github.jayessdeesea.minecraft.command.TaskRegister.Assignment> on = new java.util.LinkedHashMap<>();
+        for (SoldierStatus s : statuses) {
+            String n = s.name();
+            String task = clearing.containsKey(n) ? (state.coverLeft > 0 ? "clear the camp's sky" : "level the camp")
+                    : walling.containsKey(n) ? "wall the camp"
+                    : lighting.containsKey(n) ? "light the ground"
+                    : cutting.containsKey(n) ? "cut the mine"
+                    : farming.containsKey(n) ? "keep the farm"
+                    : planting.containsKey(n) ? "plant the tree farm"
+                    : gathering.get(n) instanceof io.github.jayessdeesea.minecraft.command.Objective o
+                            && o.task() instanceof io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(var r) ? "gather " + r
+                    : patrolLegs.containsKey(n) ? "patrol" : null;
+            if (task == null) {
+                continue;
+            }
+            List<?> left = clearing.containsKey(n) ? clearing.get(n) : walling.containsKey(n) ? walling.get(n)
+                    : lighting.containsKey(n) ? lighting.get(n) : null;
+            on.put(n, new io.github.jayessdeesea.minecraft.command.TaskRegister.Assignment(task, s.report(),
+                    left == null ? java.util.OptionalInt.empty() : java.util.OptionalInt.of(left.size())));
+        }
+        // What's left of each task the squad measures, for a soldier moved off one as its work ran out.
+        Map<String, Integer> measured = new java.util.HashMap<>();
+        if (state.coverLeft >= 0) {
+            measured.put("clear the camp's sky", state.coverLeft);
+        }
+        if (state.humpsLeft >= 0) {
+            measured.put("level the camp", state.humpsLeft);
+        }
+        if (state.wallLeft >= 0) {
+            measured.put("wall the camp", state.wallLeft);
+        }
+        if (state.torchesLeft >= 0) {
+            measured.put("light the ground", state.torchesLeft);
+        }
+        for (String finding : state.register.update(clockwork.millis(), on, measured)) {
+            if (finding.startsWith("[Verify]") && !finding.contains("again")) {
+                LOG.warn(finding);
+            } else {
+                LOG.info(finding);
+            }
+        }
+    }
+
+    /** {@code squad}'s open taskings - for the squad simulation to read. */
+    List<io.github.jayessdeesea.minecraft.command.TaskRegister.Tasking> taskings(String squad) {
+        return squadStates.containsKey(squad) ? squadStates.get(squad).register.open() : List.of();
+    }
+
+    /** {@code squad}'s register review, ended taskings cleared - for the squad simulation to read. */
+    List<String> taskingReview(String squad) {
+        return squadStates.containsKey(squad) ? squadStates.get(squad).register.review(clockwork.millis()) : List.of();
+    }
+
+    /** Each squad's register for the dawn review: what was done and dropped since the last, and what's open. */
+    private List<String> registerReview() {
+        List<String> lines = new java.util.ArrayList<>();
+        squadStates.forEach((squad, s) -> {
+            lines.add("  " + squad + "'s taskings:");
+            lines.addAll(s.register.review(clockwork.millis()));
+        });
+        return lines;
     }
 
     /**
