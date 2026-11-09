@@ -5,7 +5,9 @@ Rules the operator sets in configuration, applied to the general's objectives af
 ordered.
 
 ## Shelter at night (`minecraft.general.shelter-at-night`)
-From 90 seconds before dark until dawn - a hut takes minutes, more with dirt to dig:
+From nightfall until dawn - a hut goes up in a minute or two, faster than the night's first
+monsters spawn and walk in, so the day is worked to its end. The general is still asked 90 seconds
+before dark, to plan the night:
 - **The first squad in the roster holds the camp.** An order that isn't a patrol base is replaced
   by the patrol base it was already ordered to build, or with none, by one where its point man
   stands. A squad sealed in is never ordered out.

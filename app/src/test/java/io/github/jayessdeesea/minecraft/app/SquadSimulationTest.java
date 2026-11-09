@@ -279,6 +279,37 @@ class SquadSimulationTest {
                 "each soldier round all four sides");
     }
 
+    /**
+     * As live: a soldier carried 627 cobblestone while the other squad's masons stood idle for want
+     * of blocks, there being nowhere to leave it. With no supply point, the camp's workshop chest is
+     * the stockpile: fitted by the first soldier with a full load, and the loads go into it.
+     */
+    @Test
+    void fullLoadsGoIntoTheCampsChestFittedAtItsWorkshop() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, SimServer.ITEM_COBBLESTONE, 40},
+                        new int[]{10, SimServer.ITEM_OAK_LOG, 4})));
+        runner.run();
+
+        clock.advance(3 * 60_000);
+
+        int stored = server.chests.values().stream().flatMap(java.util.Arrays::stream)
+                .filter(st -> st != null && st[0] == SimServer.ITEM_COBBLESTONE).mapToInt(st -> st[1]).sum();
+        assertEquals(1, server.chests.size(), "one chest, the camp's");
+        assertEquals(80, stored, "both loads in it; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+    }
+
     /** Ground rising a block every 3 east of x=-6: the camp's wall stands on many heights. */
     private static int slope(int x, int y, int z) {
         int top = GROUND + Math.max(0, Math.floorDiv(x + 6, 3));

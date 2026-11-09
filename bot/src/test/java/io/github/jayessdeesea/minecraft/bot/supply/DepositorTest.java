@@ -41,6 +41,31 @@ class DepositorTest {
     }
 
     @Test
+    void drawsStacksOfAMaterialOutUntilItCarriesEnough() {
+        server.chestItems[0] = itemOf(ItemClass.COBBLESTONE);
+        server.chestCounts[0] = 64;
+        server.chestItems[1] = itemOf(ItemClass.LOG);
+        server.chestCounts[1] = 10;
+        server.chestItems[2] = itemOf(ItemClass.COBBLESTONE);
+        server.chestCounts[2] = 64;
+
+        for (int i = 0; i < 3; i++) {
+            server.tick();
+            depositor.tickDraw(FAR, Optional.of(CHEST), ItemClass.COBBLESTONE, 40, true);
+        }
+        assertEquals(Optional.of(CHEST), depositor.standAt());
+        for (int i = 0; i < 10; i++) {
+            server.tick();
+            depositor.tickDraw(BESIDE, Optional.of(CHEST), ItemClass.COBBLESTONE, 40, true);
+        }
+
+        assertFalse(depositor.active());
+        assertEquals(64, server.inventory.count(ItemClass.COBBLESTONE), "one stack makes up the 40");
+        assertEquals(0, server.inventory.count(ItemClass.LOG), "nothing else taken");
+        assertEquals(List.of(new Stockpile(10, 64)), seen);
+    }
+
+    @Test
     void walksOverAndPutsInTheFullLoadOnlyThenReportsTheStockpile() {
         server.inventory.setSlot(10, new int[]{itemOf(ItemClass.COBBLESTONE), 20});
         server.inventory.setSlot(11, new int[]{itemOf(ItemClass.COBBLESTONE), Gatherer.CARRY_STONE - 20});

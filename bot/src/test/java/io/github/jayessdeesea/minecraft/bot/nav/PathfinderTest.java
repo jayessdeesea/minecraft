@@ -449,6 +449,20 @@ class PathfinderTest {
     }
 
     @Test
+    void aCellItGotStuckShortOfIsRoutedRoundNotTriedAgain() {
+        WorldView flat = world((x, y, z) -> y < GROUND);
+        BlockPos blockedStep = new BlockPos(2, GROUND, 0);
+        Pathfinder.Result straight = Pathfinder.find(flat, START, exactly(4, GROUND, 0), 2000);
+        assertTrue(straight.path().contains(blockedStep), "the straight way: " + straight.path());
+
+        Pathfinder.Result round = Pathfinder.find(flat, START, exactly(4, GROUND, 0), 2000, FallAllowance.NONE, 0, false, false,
+                java.util.Set.of(blockedStep));
+
+        assertTrue(round.reachesGoal());
+        assertFalse(round.path().contains(blockedStep), "round it: " + round.path());
+    }
+
+    @Test
     void swimsARiverThereIsNoWayRound() {
         Pathfinder.Result result = Pathfinder.find(river(), START, exactly(6, GROUND, 0), 2000);
 

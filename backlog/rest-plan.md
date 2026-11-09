@@ -1,6 +1,6 @@
 ---
 status: ready
-priority: P3
+priority: P2
 depends-on: [patrol-base]
 doctrine: ATP 3-21.8 (patrol base priorities of work - rest plan)
 ---

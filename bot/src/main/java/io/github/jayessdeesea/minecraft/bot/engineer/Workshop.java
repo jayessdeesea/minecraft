@@ -21,11 +21,20 @@ import java.util.Set;
  * the landing's recesses; and a hasty one, sited beside a squad's objective on open ground, where a
  * table already standing is taken as its own - so the same workshop is found again after a restart.
  *
+ * <p>A workshop on the surface also has a chest: behind its table or its furnace, within reach of the
+ * stand. It's the site's store - what a full pack leaves, and what one squad leaves for another.
+ *
  * @param stand   where the soldier stands to work
  * @param table   the crafting table's cell
  * @param furnace the furnace's cell
+ * @param chest   the chest's cell, where there's room for one
  */
-public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace) {
+public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optional<BlockPos> chest) {
+
+    /** A workshop with no store. */
+    public Workshop(BlockPos stand, BlockPos table, BlockPos furnace) {
+        this(stand, table, furnace, Optional.empty());
+    }
 
     /** How far round the ground asked a hasty workshop is looked for. */
     static final int SEARCH = 6;
@@ -62,7 +71,7 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace) {
                     if (Pathfinder.standable(world, stand) && !claimed.contains(stand)) {
                         Optional<BlockPos> furnace = furnaceBeside(world, stand, table, claimed);
                         if (furnace.isPresent()) {
-                            return Optional.of(new Workshop(stand, table, furnace.get()));
+                            return Optional.of(new Workshop(stand, table, furnace.get(), chestBehind(world, stand, table, furnace.get(), claimed)));
                         }
                     }
                 }
@@ -77,11 +86,32 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace) {
                 int[] next = SIDES[(i + 1) % SIDES.length];
                 BlockPos furnace = stand.offset(next[0], 0, next[1]);
                 if (free(world, table, claimed) && free(world, furnace, claimed)) {
-                    return Optional.of(new Workshop(stand, table, furnace));
+                    return Optional.of(new Workshop(stand, table, furnace, chestBehind(world, stand, table, furnace, claimed)));
                 }
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * The chest's cell: behind the table from the stand, else behind the furnace - two blocks out,
+     * in reach - free, or holding a block already (the chest put there before).
+     */
+    private static Optional<BlockPos> chestBehind(WorldView world, BlockPos stand, BlockPos table, BlockPos furnace, Set<BlockPos> claimed) {
+        for (BlockPos fixture : List.of(table, furnace)) {
+            BlockPos behind = fixture.offset(fixture.x() - stand.x(), 0, fixture.z() - stand.z());
+            boolean taken = world.isSolid(behind.x(), behind.y(), behind.z()) && world.workstation(behind.x(), behind.y(), behind.z()).isEmpty()
+                    && world.isSolid(behind.x(), behind.y() - 1, behind.z()) && !world.isSolid(behind.x(), behind.y() + 1, behind.z());
+            if (!claimed.contains(behind) && (free(world, behind, claimed) || taken)) {
+                return Optional.of(behind);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** Whether the workshop's chest stands in its cell: a block there, which nothing else is put in. */
+    public boolean chestStands(WorldView world) {
+        return chest.filter(c -> world.isSolid(c.x(), c.y(), c.z())).isPresent();
     }
 
     /** A furnace already beside {@code stand}, else a free cell beside it next to the table's side. */

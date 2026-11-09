@@ -18,7 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FitterTest {
 
     private static final Position SOLDIER = new Position(0.5, 64, 0.5);
-    private static final Workshop WORKSHOP = new Workshop(new BlockPos(0, 64, 0), new BlockPos(1, 64, 0), new BlockPos(0, 64, 1));
+    private static final Workshop WORKSHOP = new Workshop(new BlockPos(0, 64, 0), new BlockPos(1, 64, 0), new BlockPos(0, 64, 1),
+            java.util.Optional.of(new BlockPos(2, 64, 0)));
 
     private final FakeCraftingServer server = new FakeCraftingServer();
     private final Fitter fitter = new Fitter("Dana", server.session, server.inventory, new java.util.HashMap<>());
@@ -58,6 +59,21 @@ class FitterTest {
         assertEquals(java.util.Optional.empty(), fitter.failure());
         assertEquals(Workstation.CRAFTING_TABLE, server.stations.get(WORKSHOP.table()));
         assertEquals(Workstation.FURNACE, server.stations.get(WORKSHOP.furnace()));
+    }
+
+    @Test
+    void theStoreIsAChestMadeAtTheTableAndPutBehindIt() {
+        server.give(9, ItemClass.LOG, 3);
+
+        boolean done = false;
+        for (int tick = 0; tick < 800 && !done; tick++) {
+            server.tick();
+            done = !fitter.tickChest(SOLDIER, server.world, WORKSHOP, false);
+        }
+
+        assertEquals(java.util.Optional.empty(), fitter.failure());
+        assertEquals(Workstation.CRAFTING_TABLE, server.stations.get(WORKSHOP.table()), "the table first");
+        assertTrue(server.chests.contains(new BlockPos(2, 64, 0)), "then the chest, in its cell");
     }
 
     @Test

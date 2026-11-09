@@ -120,10 +120,13 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     /** Every echelon's model decisions, timed and alarmed on. */
     private final ModelCalls modelCalls = new ModelCalls();
     /**
-     * How long before dark the rule starts: a hut takes a few minutes, more with dirt to dig first,
-     * so a squad set to it only once it's dark is building in the dark.
+     * How long before dark the rule starts: none - at nightfall. A hut goes up in a minute or two,
+     * and the first monsters of the night take longer than that to spawn and walk in, so the last
+     * ninety seconds of the day are worked rather than spent waiting in a hut (operator, 2026-11-08).
      */
-    static final long SHELTER_LEAD_TICKS = 1800;
+    static final long SHELTER_LEAD_TICKS = 0;
+    /** How long before dark the general is asked anyway: time to plan the night before it starts. */
+    static final long DUSK_DECIDE_TICKS = 1800;
 
     @Autowired
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient,
@@ -376,9 +379,72 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         }
     }
 
+    /** Every request going up the chain, timed from raised to answered (docs/military-doctrine.md § 4). */
+    private final RequestLedger requests = new RequestLedger();
+    /** The order each soldier held when its CANTCO went up: a different one is the squad leader's answer. */
+    private final Map<String, io.github.jayessdeesea.minecraft.command.Order> cantcoOrders = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Requests raised and settled from this cycle's SITREPs: each soldier's CANTCO to its squad
+     * leader, each squad's finished or stalled task and its Class I RED to the general. Overdue ones alarm.
+     */
+    private void trackRequests(List<Sitrep> sitreps, long now) {
+        for (Sitrep sitrep : sitreps) {
+            for (SoldierStatus soldier : sitrep.soldiers()) {
+                String key = "soldier:" + soldier.name();
+                if (soldier.report() instanceof io.github.jayessdeesea.minecraft.command.Report.Cantco(String reason)) {
+                    io.github.jayessdeesea.minecraft.command.Order held = cantcoOrders.putIfAbsent(soldier.name(), soldier.order());
+                    if (held != null && !held.equals(soldier.order())) {
+                        requests.answer(key, now).ifPresent(LOG::info);
+                        cantcoOrders.put(soldier.name(), soldier.order());
+                    }
+                    requests.raise(key, RequestLedger.Echelon.SQUAD_LEADER, soldier.name() + " of " + sitrep.squad(), "CANTCO: " + reason, now)
+                            .ifPresent(LOG::info);
+                } else if (cantcoOrders.remove(soldier.name()) instanceof io.github.jayessdeesea.minecraft.command.Order held) {
+                    if (held.equals(soldier.order())) {
+                        requests.settle(key);
+                    } else {
+                        requests.answer(key, now).ifPresent(LOG::info);
+                    }
+                }
+            }
+            String task = sitrep.squad() + ":task";
+            Optional<io.github.jayessdeesea.minecraft.command.Progress> finished = sitrep.progress()
+                    .filter(p -> p.state() != io.github.jayessdeesea.minecraft.command.Progress.State.UNDER_WAY);
+            if (finished.isPresent()) {
+                requests.raise(task, RequestLedger.Echelon.GENERAL, sitrep.squad(), "task " + finished.get().state() + ": " + finished.get().detail(), now)
+                        .ifPresent(LOG::info);
+            } else {
+                requests.settle(task);
+            }
+            String food = sitrep.squad() + ":food";
+            Optional<io.github.jayessdeesea.minecraft.command.Subsistence.Status> red = sitrep.classOne()
+                    .filter(c -> c.rating() == io.github.jayessdeesea.minecraft.command.Subsistence.Rating.RED);
+            if (red.isPresent()) {
+                requests.raise(food, RequestLedger.Echelon.GENERAL, sitrep.squad(), red.get().line(), now).ifPresent(LOG::info);
+            } else {
+                requests.settle(food);
+            }
+        }
+        requests.alarms(now).forEach(LOG::warn);
+    }
+
+    /** The requests' part of the dawn review: each echelon's answers and how fast, and what's still open. */
+    public List<String> requestReview() {
+        return requests.review(clockwork.millis());
+    }
+
     /** A soldier saw what the stockpile holds - the general is told, for its next decision. */
     public void onStockpile(io.github.jayessdeesea.minecraft.command.Stockpile stockpile) {
+        this.stockpile = stockpile;
         general.receiveStockpile(stockpile);
+    }
+
+    private volatile io.github.jayessdeesea.minecraft.command.Stockpile stockpile;
+
+    /** What the stockpile held when a soldier last looked in it, if anyone has. */
+    public Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile() {
+        return Optional.ofNullable(stockpile);
     }
 
     /** The server sent the time of day - the general plans around nightfall. Dusk and dawn are logged. */
@@ -389,8 +455,8 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             LOG.info("[Clock] {} - tick {} of the day, the chain of command told", time.dark() ? "NIGHT" : "DAY", time.ticks());
             lastGeneralMillis = Long.MIN_VALUE / 2; // dusk and dawn change what every squad should be doing
         }
-        boolean nearDark = !time.dark() && time.ticksUntilDark() <= SHELTER_LEAD_TICKS;
-        if (last != null && nearDark && !(!last.dark() && last.ticksUntilDark() <= SHELTER_LEAD_TICKS)) {
+        boolean nearDark = !time.dark() && time.ticksUntilDark() <= DUSK_DECIDE_TICKS;
+        if (last != null && nearDark && !(!last.dark() && last.ticksUntilDark() <= DUSK_DECIDE_TICKS)) {
             LOG.info("[Clock] DUSK NEAR - dark in {} ticks, the general decides now", time.ticksUntilDark());
             lastGeneralMillis = Long.MIN_VALUE / 2;
         }
@@ -490,6 +556,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             return;
         }
         logReadiness(sitreps);
+        trackRequests(sitreps, clockwork.millis());
         long traceNow = clockwork.millis();
         for (OrderTrace trace : traces) {
             for (Sitrep sitrep : sitreps) {
@@ -559,6 +626,10 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                         continue;
                     }
                     decided.put(name, Optional.of(given));
+                    // The general's answer to what the squad asked, if it asked.
+                    long answeredAt = clockwork.millis();
+                    requests.answer(name + ":task", answeredAt).ifPresent(LOG::info);
+                    requests.answer(name + ":food", answeredAt).ifPresent(LOG::info);
                     LOG.info("[General -> {}] ({} ms, {}) OPORD: {} at {}{}. Intent: {}", name, millis, phase(time), given.mission(),
                             at(given.location()), task(given), given.intent());
                     transmit("[General -> " + name + "] OPORD: " + given.mission() + " at " + at(given.location())

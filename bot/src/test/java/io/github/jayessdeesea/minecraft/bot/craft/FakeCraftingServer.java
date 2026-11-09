@@ -41,6 +41,8 @@ final class FakeCraftingServer {
     private int[] cursor;
     private int held;
     final Map<BlockPos, Workstation> stations = new HashMap<>();
+    /** Chests put down: solid, and opened by nothing here. */
+    final java.util.Set<BlockPos> chests = new java.util.HashSet<>();
     private final Map<BlockPos, int[][]> furnaces = new HashMap<>();
     private final Map<BlockPos, int[]> burning = new HashMap<>(); // fuel ticks left, smelt progress
     private int[][] tableGrid;
@@ -58,7 +60,7 @@ final class FakeCraftingServer {
     final WorldView world = new WorldView() {
         @Override
         public boolean isSolid(int x, int y, int z) {
-            return y < 64 || stations.containsKey(new BlockPos(x, y, z));
+            return y < 64 || stations.containsKey(new BlockPos(x, y, z)) || chests.contains(new BlockPos(x, y, z));
         }
 
         @Override
@@ -280,6 +282,13 @@ final class FakeCraftingServer {
         Optional<ItemClass> itemClass = item == null ? Optional.empty() : ItemClassRegistry.classOf(item[0]);
         BlockPos above = new BlockPos(at.x(), at.y() + 1, at.z());
         boolean blocked = bodies.stream().anyMatch(b -> (int) Math.floor(b.x()) == above.x() && (int) Math.floor(b.z()) == above.z());
+        if (!blocked && itemClass.equals(Optional.of(ItemClass.CHEST))) {
+            chests.add(above);
+            take(slots, hand);
+            log.add("placed CHEST");
+            sync();
+            return;
+        }
         if (!blocked && (itemClass.equals(Optional.of(ItemClass.CRAFTING_TABLE)) || itemClass.equals(Optional.of(ItemClass.FURNACE)))) {
             Workstation placed = itemClass.get() == ItemClass.FURNACE ? Workstation.FURNACE : Workstation.CRAFTING_TABLE;
             stations.put(above, placed);

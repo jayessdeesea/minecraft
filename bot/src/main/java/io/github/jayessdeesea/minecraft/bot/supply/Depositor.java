@@ -53,6 +53,9 @@ public final class Depositor {
     private boolean wanted;
     private boolean walking;
     private Set<ItemClass> load = Set.of();
+    /** What a draw takes out, and how many it wants to carry: empty on a trip to put a load in. */
+    private Optional<ItemClass> drawing = Optional.empty();
+    private int drawTo;
 
     public Depositor(String name, PlaySession session, Inventory inventory, Consumer<Stockpile> stockpileSeen) {
         this.name = name;
@@ -105,6 +108,75 @@ public final class Depositor {
         }
     }
 
+    /**
+     * Each tick: starts a trip to {@code stockpile} to draw {@code material} out when {@code wanted} -
+     * the stacks of it shift-clicked across until the soldier carries {@code carry} or the chest has
+     * no more - and advances one under way. One squad's surplus is another's supply: live, masons
+     * stood idle for want of blocks while a soldier of the other squad carried 627 cobblestone.
+     */
+    public synchronized void tickDraw(Position soldier, Optional<Position> stockpile, ItemClass material, int carry, boolean wanted) {
+        this.soldierAt = soldier;
+        this.wanted = wanted;
+        if (cooldown > 0) {
+            cooldown--;
+        }
+        if (script == null) {
+            if (!wanted || cooldown > 0 || stockpile.isEmpty()) {
+                return;
+            }
+            at = stockpile.get();
+            drawing = Optional.of(material);
+            drawTo = carry;
+            LOG.info("{} goes to the stockpile at {} for {} {} - {}", name, at, carry, material, inventory.summary());
+            script = drawTrip();
+        }
+        switch (script.tick()) {
+            case Script.Status.Running _ -> {
+            }
+            case Script.Status.Done _ -> {
+                Stockpile seen = new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE));
+                LOG.info("{} drew {} from the stockpile, carrying {} - the chest holds {} logs, {} cobblestone", name, material,
+                        inventory.count(material), seen.logs(), seen.stone());
+                stockpileSeen.accept(seen);
+                finish();
+            }
+            case Script.Status.Interrupted _ -> finish();
+            case Script.Status.Failed failed -> {
+                LOG.warn("{} couldn't draw {} from the stockpile: {}: {}", name, material, failed.step(), failed.reason());
+                finish();
+            }
+        }
+    }
+
+    private Script drawTrip() {
+        walking = true;
+        return new Script(name, List.of(
+                new Step("walk to the stockpile", () -> walking = true,
+                        new Expect("the chest in reach", () -> ChestWindow.withinReach(soldierAt, at)), WALK_TIMEOUT_TICKS),
+                new Step("open the chest", () -> {
+                    walking = false;
+                    chest.open(at);
+                }, new Expect("the chest's contents", chest::isOpen), ChestWindow.ANSWER_TICKS),
+                new Step("take it out", this::take,
+                        new Expect("carrying enough, or the chest out of it",
+                                () -> inventory.count(drawing.orElseThrow()) >= drawTo || chest.chestCount(drawing.orElseThrow()) == 0),
+                        ChestWindow.ANSWER_TICKS)),
+                List.of(new Guard("the trip is no longer wanted", () -> wanted || !walking)));
+    }
+
+    /** Shift-clicks stacks of what it draws out of the chest until they'd make up what it wants to carry. */
+    private void take() {
+        ItemClass material = drawing.orElseThrow();
+        int coming = inventory.count(material);
+        List<Integer> items = chest.chestItems();
+        for (int slot = 0; slot < items.size() && coming < drawTo; slot++) {
+            if (ItemClassRegistry.classOf(items.get(slot)).equals(Optional.of(material))) {
+                chest.quickMove(slot);
+                coming += chest.countAt(slot);
+            }
+        }
+    }
+
     private Script trip() {
         walking = true;
         return new Script(name, List.of(
@@ -148,6 +220,7 @@ public final class Depositor {
         script = null;
         walking = false;
         load = Set.of();
+        drawing = Optional.empty();
         cooldown = COOLDOWN_TICKS;
     }
 }

@@ -121,6 +121,19 @@ public final class Pathfinder {
      */
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
                               boolean pickaxe, boolean build) {
+        return find(world, start, goal, maxExpanded, falls, blocks, pickaxe, build, java.util.Set.of());
+    }
+
+    /**
+     * What a step into one of the cells a soldier just failed to reach costs on top: enough that a
+     * route round it is taken if there's one, not so much that none at all is left. The same thing
+     * tried again and again - live, a soldier jumping at the same block - is a soldier stuck.
+     */
+    static final double AVOID_COST = 20;
+
+    /** As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance, int, boolean, boolean)}, a step into {@code avoid} costing {@link #AVOID_COST} more. */
+    public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
+                              boolean pickaxe, boolean build, java.util.Set<BlockPos> avoid) {
         if (goal.contains(start)) {
             return new Result(List.of(), true);
         }
@@ -156,7 +169,7 @@ public final class Pathfinder {
             // Built steps only toward the goal's height, for the same reason.
             int heading = !build ? 0 : goal.y() < current.y() - goal.verticalTolerance() ? -1 : goal.y() > current.y() + goal.verticalTolerance() ? 1 : 0;
             for (Move move : moves(world, current, falls, used < blocks && besideWall(world, current), pickaxe, blocks - used, heading)) {
-                double cost = base + move.cost();
+                double cost = base + move.cost() + (avoid.contains(move.to()) ? AVOID_COST : 0);
                 Double known = costSoFar.get(move.to());
                 if (known == null || cost < known) {
                     costSoFar.put(move.to(), cost);

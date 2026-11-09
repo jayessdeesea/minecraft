@@ -495,6 +495,19 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, Integer> patrolLegs = new ConcurrentHashMap<>();
     /** How far out from a PATROL objective its round goes: just inside the wall line. */
     static final int PATROL_RADIUS = WALL_RADIUS - 2;
+    /** Where a soldier walks to fit its workshop's chest, while it does - tick writes, squad loop reads. */
+    private final Map<String, Optional<Position>> storeWalks = new ConcurrentHashMap<>();
+
+    /** Whether {@code at} is at {@code workshop}'s stand: within reach of its fixtures. */
+    private static boolean atStand(Position at, io.github.jayessdeesea.minecraft.bot.engineer.Workshop workshop) {
+        return Math.hypot(at.x() - workshop.stand().x() - 0.5, at.z() - workshop.stand().z() - 0.5) <= Armourer.WORKSHOP_TOLERANCE
+                && Math.abs(at.y() - workshop.stand().y()) <= 1;
+    }
+
+    /** Masons out of blocks sent to draw cobblestone from the stockpile - squad loop writes, tick reads. */
+    private final java.util.Set<String> drawingStone = ConcurrentHashMap.newKeySet();
+    /** Each soldier's fitting of its workshop's chest, by name. */
+    private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Fitter> storeFitters = new ConcurrentHashMap<>();
     /** Soldiers short of food with no means of their own to get any: wheat, game in sight. Tick writes, squad loop reads. */
     private final java.util.Set<String> foodless = ConcurrentHashMap.newKeySet();
     /** The workshop each soldier crafts at (backlog/sites.md): its squad's, or the mine base below ground. */
@@ -617,7 +630,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             measureFoothold().ifPresent(chainOfCommand::onFoothold);
         }
         chainOfCommand.time().flatMap(t -> afterActionReview.time(t.dark(), chainOfCommand.foothold()))
-                .ifPresent(review -> LOG.info("[AAR] {}", review));
+                .ifPresent(review -> LOG.info("[AAR] {}\n  {}", review, String.join("\n  ", chainOfCommand.requestReview())));
         List<Present> present = new java.util.ArrayList<>();
         for (Roster.Squad squad : roster.squads()) {
             List<DeterministicSoldier> soldiers = presentSoldiers(squad.name());
@@ -755,6 +768,19 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         boolean dark = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
         return dark ? (landing ? io.github.jayessdeesea.minecraft.bot.engineer.Workshop.mine(state.stairs) : null) : state.workshop;
+    }
+
+    /**
+     * Where {@code soldier}'s loads go and are drawn from: the supply point the operator set up, else
+     * its workshop's chest once it stands (backlog/sites.md).
+     */
+    private Optional<Position> stockpileFor(String soldier) {
+        if (supplyPoint.isPresent()) {
+            return supplyPoint;
+        }
+        io.github.jayessdeesea.minecraft.bot.engineer.Workshop w = workshops.get(soldier);
+        return w == null || !w.chestStands(world) ? Optional.empty()
+                : Optional.of(new Position(w.chest().get().x() + 0.5, w.chest().get().y(), w.chest().get().z() + 0.5));
     }
 
     /** How far below the stairs' head a soldier is down the mine, for the mine base's workshop. */
@@ -1300,7 +1326,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 } else if (carriedBlocks >= WALL_BLOCKS_LOAD) {
                     diggingForWall.remove(soldierName);
                 }
-                if (bricks != null && diggingForWall.contains(soldierName)) {
+                // The stockpile first, when it was last seen holding a load: one squad's quarrying is
+                // another's wall.
+                boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() >= WALL_BLOCKS_LOAD).orElse(false)
+                        && stockpileFor(soldierName).isPresent();
+                if (stocked && diggingForWall.contains(soldierName)) {
+                    drawingStone.add(soldierName);
+                } else {
+                    drawingStone.remove(soldierName);
+                }
+                if (bricks != null && diggingForWall.contains(soldierName) && !stocked) {
                     // Nothing to build with: dirt, dug outside the wall so the ground inside stays whole -
                     // each mason on its own side, so one pit isn't dug out under all of them.
                     int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
@@ -1504,6 +1539,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
             if (stand.isEmpty() && depositors.containsKey(soldierName)) {
                 stand = depositors.get(soldierName).standAt();
+            }
+            if (stand.isEmpty()) {
+                stand = storeWalks.getOrDefault(soldierName, Optional.empty());
             }
             if (stand.isEmpty() && handovers.containsKey(soldierName)) {
                 stand = handovers.get(soldierName).standAt();
@@ -1870,6 +1908,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     if (depositor != null) {
                         depositor.onContainer(container);
                     }
+                    io.github.jayessdeesea.minecraft.bot.supply.Fitter chestFitter = storeFitters.get(definition.name());
+                    if (chestFitter != null) {
+                        chestFitter.onContainer(container);
+                    }
                 },
                 // Configuration syncs the registries before any inventory arrives.
                 (registry, entries) -> {
@@ -1970,6 +2012,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 inventory, treeClaims);
         foresters.put(name, forester);
         Depositor depositor = new Depositor(name, session, inventory, chainOfCommand::onStockpile);
+        io.github.jayessdeesea.minecraft.bot.supply.Fitter storeFitter = new io.github.jayessdeesea.minecraft.bot.supply.Fitter(name, session,
+                inventory, furnaces);
+        storeFitters.put(name, storeFitter);
         depositors.put(name, depositor);
         depositorRef.set(depositor);
         Handover handover = new Handover(name, session, inventory);
@@ -2190,8 +2235,29 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     placer.stop();
                 }
             }));
-            turns.put(Hands.Routine.DEPOSITOR, turn(depositor::active,
-                    free -> depositor.tick(status.position(), supplyPoint, free && fullLoad && !threatened && fort == null)));
+            io.github.jayessdeesea.minecraft.bot.supply.Fitter chestFitter = storeFitters.get(name);
+            Optional<io.github.jayessdeesea.minecraft.bot.engineer.Workshop> shop = Optional.ofNullable(workshops.get(name));
+            // A full load and no chest to put it in: the workshop's is fitted first, at its stand.
+            boolean fitStore = fullLoad && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
+                    && !shop.get().chestStands(world) && !threatened && fort == null;
+            turns.put(Hands.Routine.DEPOSITOR, turn(() -> depositor.active() || chestFitter.active(), free -> {
+                if (free && fitStore && atStand(status.position(), shop.get())) {
+                    if (!chestFitter.tickChest(status.position(), world, shop.get(), threatened)) {
+                        chestFitter.failure().ifPresent(why -> LOG.warn("{} can't fit the workshop's chest: {}", name, why));
+                    }
+                    chestFitter.lookAt().ifPresent(soldier::lookAt);
+                    return;
+                }
+                chestFitter.stop(status.position(), world);
+                if (drawingStone.contains(name)) {
+                    depositor.tickDraw(status.position(), stockpileFor(name), ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
+                } else {
+                    depositor.tick(status.position(), stockpileFor(name), free && fullLoad && !threatened && fort == null);
+                }
+            }));
+            storeWalks.put(name, fitStore && !atStand(status.position(), shop.get())
+                    ? Optional.of(new Position(shop.get().stand().x() + 0.5, shop.get().stand().y(), shop.get().stand().z() + 0.5))
+                    : Optional.empty());
             turns.put(Hands.Routine.HANDOVER, turn(handover::active, free -> {
                 Optional<Handover.Delivery> delivery = !free || giving == null || threatened || fort != null
                         ? Optional.empty()

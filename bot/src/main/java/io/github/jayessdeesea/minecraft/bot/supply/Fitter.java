@@ -40,6 +40,53 @@ public final class Fitter {
         this.crafter = new Crafter(name, session, inventory, furnaces);
         this.table = new Builder(name, session, inventory, List.of(ItemClass.CRAFTING_TABLE));
         this.furnace = new Builder(name, session, inventory, List.of(ItemClass.FURNACE));
+        this.chest = new Builder(name, session, inventory, List.of(ItemClass.CHEST));
+    }
+
+    private final Builder chest;
+
+    /**
+     * Each tick, standing at {@code workshop}: fits its chest - the table first, the chest made at
+     * it from 8 planks. True while there's fitting to do, false once the chest stands or it can't be
+     * ({@link #failure} says why: none sited, or short of planks).
+     */
+    public synchronized boolean tickChest(Position soldier, WorldView world, Workshop workshop, boolean threatened) {
+        if (workshop.chest().isEmpty()) {
+            failure = "no room for a chest at the workshop at " + workshop.stand();
+            return false;
+        }
+        if (workshop.chestStands(world)) {
+            busy = false;
+            return false;
+        }
+        if (!workshop.stands(world, Workstation.CRAFTING_TABLE)) {
+            return tick(soldier, world, workshop, Set.of(Workstation.CRAFTING_TABLE), threatened) || failure == null && !workshop.chestStands(world);
+        }
+        failure = null;
+        if (crafter.active()) {
+            crafter.tick(soldier, world, making, threatened);
+            crafter.failure().ifPresent(this::fail);
+            return failure == null;
+        }
+        busy = true;
+        if (inventory.count(ItemClass.CHEST) == 0) {
+            making = Map.of(Recipe.CHEST, 1);
+            CraftPlan plan = crafter.plan(making, world, soldier);
+            if (!plan.feasible()) {
+                return fail("short of " + plan.short_() + " for the workshop's chest");
+            }
+            crafter.tick(soldier, world, making, threatened);
+            crafter.failure().ifPresent(this::fail);
+            return failure == null;
+        }
+        if (threatened) {
+            chest.stop();
+            return true;
+        }
+        if (chest.tick(soldier, world, List.of(workshop.chest().get())) instanceof Builder.Progress.Failed(String why)) {
+            return fail("can't put the workshop's chest at " + workshop.chest().get() + ": " + why);
+        }
+        return true;
     }
 
     /** Whether it's making or placing a fixture. */
@@ -107,6 +154,7 @@ public final class Fitter {
         busy = false;
         table.stop();
         furnace.stop();
+        chest.stop();
         return false;
     }
 
@@ -124,7 +172,7 @@ public final class Fitter {
 
     /** Where to look while placing, if it is. */
     public synchronized Optional<Position> lookAt() {
-        return table.lookAt().or(furnace::lookAt);
+        return table.lookAt().or(furnace::lookAt).or(chest::lookAt);
     }
 
     public void onContainer(ContainerUpdate update) {

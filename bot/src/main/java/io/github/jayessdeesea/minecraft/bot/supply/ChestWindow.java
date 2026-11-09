@@ -93,6 +93,11 @@ final class ChestWindow {
         return chest;
     }
 
+    /** How many items the chest's slot {@code slot} holds. */
+    int countAt(int slot) {
+        return counts[slot];
+    }
+
     /** How many of {@code itemClass} the chest holds. */
     int chestCount(ItemClass itemClass) {
         int total = 0;

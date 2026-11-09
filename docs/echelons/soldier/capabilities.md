@@ -19,6 +19,9 @@ seconds or when stuck:
 - **Builds steps** with those blocks, down a sheer drop or up to ground above, when that's the
   only way that reaches its goal (`Pathfinder.stepBuild`): one block a step against ground beside
   it, two in open air.
+- **Doesn't try the same thing forever.** Stuck short of a waypoint - jumping at a block that
+  won't take it, a squadmate on the same step - it routes round that cell for 10 seconds, at a
+  cost that leaves the cell usable if there's no other way, and comes back to it only after.
 - **Sprints** on a long move (over 8 blocks) while it carries rations, or on an urgent order or
   under fire, and never at food 6 or below.
 

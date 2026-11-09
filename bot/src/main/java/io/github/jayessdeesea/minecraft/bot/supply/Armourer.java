@@ -285,7 +285,7 @@ public final class Armourer {
     }
 
     /** How near the workshop's stand counts as there: within reach of both fixtures. */
-    static final double WORKSHOP_TOLERANCE = 0.8;
+    public static final double WORKSHOP_TOLERANCE = 0.8;
 
     private void made(Crafter.Outcome outcome) {
         if (outcome != Crafter.Outcome.MADE) {

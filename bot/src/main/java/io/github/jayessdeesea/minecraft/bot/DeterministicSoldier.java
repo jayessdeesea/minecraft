@@ -636,6 +636,12 @@ public final class DeterministicSoldier implements Soldier {
     static final int REPLAN_TICKS = 40;
     /** Ticks without real progress along the route before re-planning. */
     private static final int STUCK_TICKS = 20;
+    /** How long a cell it got stuck short of is routed round: long enough for a squadmate in the way to move on. */
+    private static final int AVOID_TICKS = 200;
+    /** Cells it got stuck short of, and the tick each is tried again from: plans route round them meanwhile. */
+    private final java.util.Map<BlockPos, Integer> avoided = new java.util.HashMap<>();
+    private static final org.apache.logging.log4j.Logger LOG = org.apache.logging.log4j.LogManager.getLogger(DeterministicSoldier.class);
+    private int navTicks;
     /** Cell visits per plan - bounds the planning cost per tick (see {@link Pathfinder}). */
     private static final int PLAN_BUDGET = 4000;
     private static final double WAYPOINT_REACHED = 0.25;
@@ -717,15 +723,27 @@ public final class DeterministicSoldier implements Soldier {
         }
         boolean replan = route == null || routeIndex >= route.size()
                 || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS;
+        navTicks++;
+        avoided.values().removeIf(until -> until <= navTicks);
         if (replan && (onGround || afloat)) {
             boolean stuck = stuckTicks >= STUCK_TICKS;
+            // Stuck short of a waypoint: not tried again straight away. The next plan goes round it if
+            // there's a way - a squadmate may be on the same step - and comes back to it only later.
+            if (stuck && route != null && routeIndex < route.size() && !goal.contains(route.get(routeIndex))) {
+                BlockPos failed = route.get(routeIndex);
+                if (avoided.put(failed, navTicks + AVOID_TICKS) == null) {
+                    LOG.info("{} stuck short of {} - tries another way round it for a while", name, failed);
+                }
+            }
+            java.util.Set<BlockPos> avoid = java.util.Set.copyOf(avoided.keySet());
             // A fall is the exception, never the plan: first a route with none - walked, then with
             // steps built from what it carries - and only with no such route one the order's risk allows.
             BlockPos start = BlockPos.containing(position.x(), position.y(), position.z());
-            Pathfinder.Result plan = Pathfinder.find(world, start, goal, PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(), carriesPickaxe());
+            Pathfinder.Result plan = Pathfinder.find(world, start, goal, PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(), carriesPickaxe(),
+                    false, avoid);
             if (!plan.reachesGoal() && pillarBlocks() > 0) {
                 Pathfinder.Result built = Pathfinder.find(world, start, goal, PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(),
-                        carriesPickaxe(), true);
+                        carriesPickaxe(), true, avoid);
                 // Only one that gets there: a partial one, toward a goal beyond one search, leads it astray.
                 if (built.reachesGoal()) {
                     plan = built;
@@ -733,7 +751,7 @@ public final class DeterministicSoldier implements Soldier {
             }
             FallAllowance allowance = fallAllowance(current);
             if (!plan.reachesGoal() && !allowance.equals(FallAllowance.NONE)) {
-                Pathfinder.Result risky = Pathfinder.find(world, start, goal, PLAN_BUDGET, allowance, pillarBlocks(), carriesPickaxe());
+                Pathfinder.Result risky = Pathfinder.find(world, start, goal, PLAN_BUDGET, allowance, pillarBlocks(), carriesPickaxe(), false, avoid);
                 if (risky.reachesGoal()) {
                     plan = risky;
                 }

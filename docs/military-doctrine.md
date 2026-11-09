@@ -105,6 +105,18 @@ hands (`bot.supply.Rations`): the food goes into a hotbar slot without a weapon 
 times the meal, and the weapon comes back to hand. Rations are the food items it carries, less
 those that poison or are too precious to eat (`tools/item-class-generator`).
 
+*Requests up the chain, timed* (`app.RequestLedger`). A soldier asks its squad leader for help by
+reporting CANTCO with its reason; a squad asks the general by its task's progress (DONE or
+STALLED) and by its Class I RED. There's no queue to wait in: each SITREP carries them, every
+second to the squad leader's drills and every squad-leader cycle to its model, and to the general
+at its next decision, two minutes at most, sooner at dusk, dawn or a CANTCO. Each request is
+logged when raised (`[Request] Bob of Alpha -> squad leader: CANTCO: ...`). It's answered when the
+echelon it went to changes the order it was about: the soldier's order, or the squad's objective.
+The answer is logged with how long it took. One settles by itself when what raised it clears
+first. One still open past its echelon's deadline - 60 seconds for a squad leader, 5 minutes for
+the general - raises `[Request] ALARM`, once. The dawn review gives each echelon's answers, their
+median and longest time, the alarms, and what's still open.
+
 *Class I, by echelon* (`command.Subsistence`; FM 4-0, ATP 4-41 field feeding). Each soldier
 carries a **basic load** of 6 rations, and is short below 2:
 1. **The soldier feeds itself.** Hungry, it eats. Below its basic load it bakes all the wheat it
@@ -395,7 +407,8 @@ it left there, and a squadmate waits for it.
   out into the dark for a tool.
 
 Each names a cell to stand in, and a cell each for the table and the furnace, on adjacent sides so
-the stand stays open on the other two. A fixture not standing yet is fitted by the first soldier
+the stand stays open on the other two. A surface workshop also names a chest's cell, behind its
+table or its furnace and in reach of the stand: the site's store (§12). A fixture not standing yet is fitted by the first soldier
 that needs it (`bot.supply.Fitter`): it crafts the item - the table in its grid, the furnace from 8
 cobblestone at the table - and places it into its cell. With no workshop sited, the soldier says so
 rather than putting a table down where it stands.
@@ -440,10 +453,15 @@ reach), each with its count, distance and direction (`bot.supply.ResourceSurveyo
 `command.SquadStatus.resources`). A soldier that can't make the pickaxe it needs - no trees in reach
 - reports CANTCO too.
 
-The supply point's chest is also the stockpile. A soldier with a full load walks it over and puts in
+The supply point's chest is also the stockpile; with no supply point set up, the stockpile is the
+chest of the soldier's workshop (§11), fitted by the first soldier with a full load and nowhere to
+put it - crafted from 8 planks at the workshop's table, placed in its cell. A soldier with a full load walks it over and puts in
 the material it has a full load of (`bot.supply.Depositor`) - only that, so a soldier quarrying stone
 keeps the logs for its next pickaxe, which wears out in 59 blocks. What the chest holds when it's
-opened goes to the general (`General.receiveStockpile`), shown with the supply point. Logs carried show in each
+opened goes to the general (`General.receiveStockpile`), shown with the supply point. It's drawn on
+too: a mason out of blocks, when the stockpile was last seen holding a load of cobblestone, walks
+over and shift-clicks stacks out until it carries a load (`Depositor.tickDraw`) before it digs any
+dirt - so one squad's quarrying walls another's camp. Logs carried show in each
 soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
 
 Food is grown as well as gathered. The survey also reports ground to farm: the largest plot of

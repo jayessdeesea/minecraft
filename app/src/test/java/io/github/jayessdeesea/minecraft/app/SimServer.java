@@ -39,11 +39,15 @@ import java.util.concurrent.CompletableFuture;
 final class SimServer {
 
     static final int AIR = 0, STONE = 1, GRASS = 9, DIRT = 10, COBBLESTONE = 14, BEDROCK = 88, WATER = 89,
-            IRON_ORE = 134, COAL_ORE = 136, TORCH = 4926, OAK_LOG = 140, CRAFTING_TABLE = 6866, FURNACE = 6884;
+            IRON_ORE = 134, COAL_ORE = 136, TORCH = 4926, OAK_LOG = 140, CRAFTING_TABLE = 6866, FURNACE = 6884, CHEST = 5544;
+    /** A chest's own slots, as vanilla's single chest. */
+    static final int CHEST_SLOTS = 27;
+    /** What each chest holds, by its cell's key. */
+    final Map<Long, int[][]> chests = new HashMap<>();
     static final int ITEM_COBBLESTONE = 62, ITEM_DIRT = 55, ITEM_RAW_IRON = 1017, ITEM_COAL = 1010,
             ITEM_WOODEN_PICKAXE = 1027, ITEM_STONE_PICKAXE = 1037, ITEM_WOODEN_SWORD = 1025, ITEM_BREAD = 1067,
             ITEM_TORCH = 395, ITEM_OAK_LOG = 163;
-    private static final int CRAFTING_MENU = 12, FURNACE_MENU = 14;
+    private static final int CRAFTING_MENU = 12, FURNACE_MENU = 14, GENERIC_9X3_MENU = 2;
     static final int ZOMBIE_TYPE = 154;
     /** A zombie: 20 health, 3 a hit once a second within reach, a slow walk. */
     private static final double ZOMBIE_REACH = 1.5, ZOMBIE_STEP = 0.08;
@@ -513,6 +517,13 @@ final class SimServer {
                 return;
             }
             int state = block(x, y, z);
+            if (state == CHEST) {
+                open = key(x, y, z);
+                openId = nextId++;
+                listeners.onContainer().accept(new ContainerUpdate.Opened(openId, GENERIC_9X3_MENU));
+                sync();
+                return;
+            }
             if (state == CRAFTING_TABLE || state == FURNACE) {
                 open = key(x, y, z);
                 openId = nextId++;
@@ -549,15 +560,19 @@ final class SimServer {
             return open != null && furnaces.containsKey(open);
         }
 
+        private boolean chestOpen() {
+            return open != null && chests.containsKey(open);
+        }
+
         private int containerSize() {
-            return furnaceOpen() ? 3 : 10;
+            return furnaceOpen() ? 3 : chestOpen() ? CHEST_SLOTS : 10;
         }
 
         private int[][] holderFor(int window, int slot) {
             if (window == 0) {
                 return slot >= 1 && slot <= 4 ? grid2 : slots;
             }
-            return slot < containerSize() ? furnaceOpen() ? furnaces.get(open) : tableGrid : slots;
+            return slot < containerSize() ? furnaceOpen() ? furnaces.get(open) : chestOpen() ? chests.get(open) : tableGrid : slots;
         }
 
         private int indexFor(int window, int slot) {
@@ -592,7 +607,7 @@ final class SimServer {
                 return;
             }
             int size = containerSize();
-            int[][] own = furnaceOpen() ? furnaces.get(open) : tableGrid;
+            int[][] own = furnaceOpen() ? furnaces.get(open) : chestOpen() ? chests.get(open) : tableGrid;
             List<Optional<ItemSlot>> window = new ArrayList<>();
             for (int i = 0; i < size; i++) {
                 window.add(stack(own[i]));
@@ -612,8 +627,8 @@ final class SimServer {
             Optional<Integer> held = heldItem();
             // A workshop's table or furnace goes in against a face like any block.
             Optional<ItemClass> station = held.flatMap(ItemClassRegistry::classOf)
-                    .filter(c -> c == ItemClass.CRAFTING_TABLE || c == ItemClass.FURNACE);
-            Optional<Integer> block = station.<Integer>map(c -> c == ItemClass.FURNACE ? FURNACE : CRAFTING_TABLE)
+                    .filter(c -> c == ItemClass.CRAFTING_TABLE || c == ItemClass.FURNACE || c == ItemClass.CHEST);
+            Optional<Integer> block = station.<Integer>map(c -> c == ItemClass.FURNACE ? FURNACE : c == ItemClass.CHEST ? CHEST : CRAFTING_TABLE)
                     .or(() -> held.flatMap(SimServer::placesAs));
             if (block.isEmpty()) {
                 throw new UnsupportedOperationException("simulated: using " + held + " on block " + block(x, y, z) + " at " + x + "," + y + "," + z);
@@ -633,6 +648,9 @@ final class SimServer {
             set(px, py, pz, block.get());
             if (block.get() == FURNACE) {
                 furnaces.put(key(px, py, pz), new int[3][]);
+            }
+            if (block.get() == CHEST) {
+                chests.put(key(px, py, pz), new int[CHEST_SLOTS][]);
             }
             log.add(name + " placed " + block.get() + " at " + px + "," + py + "," + pz);
         }
@@ -658,6 +676,25 @@ final class SimServer {
         public void quickMove(int window, int stateId, int slot) {
             if (window != 0 && window != openId) {
                 return; // the server ignores a click for a window that isn't open
+            }
+            if (window != 0 && chestOpen()) {
+                int[][] chest = chests.get(open);
+                if (slot < CHEST_SLOTS) {
+                    if (chest[slot] != null) {
+                        store(chest[slot]);
+                        chest[slot] = null;
+                    }
+                } else {
+                    int from = slot - CHEST_SLOTS + 9;
+                    for (int c = 0; c < CHEST_SLOTS && slots[from] != null; c++) {
+                        if (chest[c] == null) {
+                            chest[c] = slots[from];
+                            slots[from] = null;
+                        }
+                    }
+                }
+                sync();
+                return;
             }
             if (window != 0 && furnaceOpen()) {
                 int[][] f = furnaces.get(open);

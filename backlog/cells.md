@@ -52,5 +52,10 @@ adding cells outward.
 - **Decided (operator):** the cells are the main base, at (0, 63, 0) within 100 blocks each way,
   flattened to sea level - built once the foothold at (-48, 44) has the shelter, food and tools
   to move that much ground (backlog/roadmap.md).
+- **Expected (operator, 2026-11-08): the foothold gets the same treatment, smaller.** Fences, clear
+  sky and flatter ground at the camp: clear sky so the zombies left at dawn burn, flat ground so
+  the squads see across it. First, as a blueprint the engineer inspects like the wall: every
+  column of the camp's ground open to the sky (leaves, logs, old hut roofs dug off), then the
+  ground inside the wall levelled to its typical height, then a fence on the wall's line.
 - Depends on the engineer and concrete commands (backlog/echelon-contracts.md), wood that grows back (backlog/renewables.md), and on torches made from charcoal or
   mined coal (backlog/mining.md).
