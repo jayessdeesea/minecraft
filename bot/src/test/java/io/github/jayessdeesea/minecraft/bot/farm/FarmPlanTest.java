@@ -59,6 +59,16 @@ class FarmPlanTest {
     }
 
     @Test
+    void groundNoFarmerCanWalkToIsNoFarm() {
+        BlockPos pond = new BlockPos(10, GROUND, 0);
+
+        assertTrue(FarmPlan.site(ground(Set.of(pond), Set.of()), new BlockPos(0, GROUND, 0), 16, 4, cell -> false).isEmpty(),
+                "a pond across water nobody can reach is no farm");
+        FarmPlan half = FarmPlan.site(ground(Set.of(pond), Set.of()), new BlockPos(0, GROUND, 0), 16, 4, cell -> cell.x() <= 10).orElseThrow();
+        assertTrue(half.plot().stream().allMatch(c -> c.x() <= 10), "only the walkable side: " + half.plot());
+    }
+
+    @Test
     void groundThatWontTillOrIsCoveredIsLeftOutAndTooLittleIsNoFarm() {
         BlockPos pond = new BlockPos(0, GROUND, 0);
         java.util.Set<BlockPos> stone = new java.util.HashSet<>();

@@ -412,7 +412,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // and live a farm sited again each check moved between ponds, and its crop was left to new ground.
         io.github.jayessdeesea.minecraft.bot.farm.FarmPlan keptFarm = campFarm;
         if (keptFarm == null || !world.isWater(keptFarm.water().x(), keptFarm.water().y(), keptFarm.water().z())) {
-            keptFarm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at, CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL).orElse(null);
+            java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> walkable =
+                    io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.reachable(world, at, CAMP_FARM_RADIUS + 4, FARM_REACH_BUDGET);
+            keptFarm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at, CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL,
+                    walkable::contains).orElse(null);
             if (keptFarm != null) {
                 LOG.info("[Foothold] the camp's farm: by the water at {}, {} cells", keptFarm.water(), keptFarm.plot().size());
             }
@@ -495,6 +498,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final io.github.jayessdeesea.minecraft.bot.supply.Setbacks<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> farmCellsFailed =
             new io.github.jayessdeesea.minecraft.bot.supply.Setbacks<>(io.github.jayessdeesea.minecraft.bot.supply.Farmer.PASS_OVER_TICKS,
                     16L * io.github.jayessdeesea.minecraft.bot.supply.Farmer.PASS_OVER_TICKS);
+    /** How many cells the flood that finds a farm's walkable ground may expand: the ground within some 50 blocks. */
+    private static final int FARM_REACH_BUDGET = 40_000;
     /** The camp's farm ground by water, as the foothold last measured it: kept by squads short of food. */
     private volatile io.github.jayessdeesea.minecraft.bot.farm.FarmPlan campFarm;
     /** The camp's ground, found once. */
@@ -1359,8 +1364,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (state.farm != null && Math.hypot(state.farm.water().x() - at.x(), state.farm.water().z() - at.z()) <= FARM_SITE_RADIUS) {
                 return state.farm;
             }
+            Position from = statuses.get(0).position();
+            java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> walkable = io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.reachable(
+                    world, io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(from.x(), from.y(), from.z()),
+                    (int) Math.hypot(at.x() - from.x(), at.z() - from.z()) + FARM_SITE_RADIUS + 4, FARM_REACH_BUDGET);
             io.github.jayessdeesea.minecraft.bot.farm.FarmPlan sited = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at,
-                    FARM_SITE_RADIUS, FARM_SITE_RADIUS).orElse(null);
+                    FARM_SITE_RADIUS, FARM_SITE_RADIUS, walkable::contains).orElse(null);
             if (sited == null) {
                 LOG.warn("[{}] no ground to farm by water within {} blocks of {}", squadName, FARM_SITE_RADIUS, o.location());
             } else {

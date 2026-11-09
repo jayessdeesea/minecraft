@@ -40,6 +40,16 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot) {
 
     /** {@link #site(WorldView, BlockPos, int)}, looking {@code vertical} blocks below and above {@code around} for water. */
     public static Optional<FarmPlan> site(WorldView world, BlockPos around, int radius, int vertical) {
+        return site(world, around, radius, vertical, cell -> true);
+    }
+
+    /**
+     * As {@link #site(WorldView, BlockPos, int, int)}, counting only plot cells whose standing cell
+     * - the one over it - {@code walkable} says the squad can walk to: live, a farm sited by the
+     * ground alone lay where no farmer could reach it, and it was kept.
+     */
+    public static Optional<FarmPlan> site(WorldView world, BlockPos around, int radius, int vertical,
+                                          java.util.function.Predicate<BlockPos> walkable) {
         FarmPlan best = null;
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -radius; dx <= radius; dx++) {
@@ -49,7 +59,7 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot) {
                     if (!world.isWaterSource(water.x(), water.y(), water.z())) {
                         continue;
                     }
-                    List<BlockPos> plot = plotAround(world, water);
+                    List<BlockPos> plot = plotAround(world, water).stream().filter(c -> walkable.test(c.offset(0, 1, 0))).toList();
                     double distance = Math.hypot(dx, dz);
                     if (plot.size() >= MIN_CELLS && (best == null || plot.size() > best.plot().size()
                             || plot.size() == best.plot().size() && distance < bestDistance)) {
