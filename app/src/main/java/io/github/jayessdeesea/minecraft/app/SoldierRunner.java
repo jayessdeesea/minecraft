@@ -1538,8 +1538,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             boolean hungrySquad = state.classOne != null
                     && state.classOne.rating() != io.github.jayessdeesea.minecraft.command.Subsistence.Rating.GREEN;
             boolean farmDay = !chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
+            // Every other soldier by its place in the squad's roster, not in this cycle's reports:
+            // live, their order changed cycle to cycle, and a farmer was taken off its harvest every
+            // few seconds and never reached it.
+            boolean farmHalf = statuses.stream().map(SoldierStatus::name).sorted().toList().indexOf(soldierName) % 2 == 0;
             io.github.jayessdeesea.minecraft.bot.farm.FarmPlan kept = farm != null ? farm
-                    : hungrySquad && farmDay && nth % 2 == 0 ? campFarm : null;
+                    : hungrySquad && farmDay && farmHalf ? campFarm : null;
             if (kept != null && !squadInContact) {
                 farming.put(soldierName, kept);
             } else {

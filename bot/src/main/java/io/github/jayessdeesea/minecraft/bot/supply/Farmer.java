@@ -116,6 +116,10 @@ public final class Farmer {
             passedOver.noWork();
         }
         if (!free || farm.isEmpty()) {
+            if (active()) {
+                // Said, so a job stopped over and over shows why: live, a harvest restarted every few seconds.
+                LOG.info("{} leaves its farm work - {}", name, farm.isEmpty() ? "the farm is no longer its task" : "its hands are needed elsewhere");
+            }
             stop();
             return;
         }
