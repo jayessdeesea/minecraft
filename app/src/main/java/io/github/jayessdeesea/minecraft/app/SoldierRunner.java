@@ -2605,14 +2605,18 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     // Out of ways of its own - each of its last tries failed, on whatever it tried -
                     // it asks for help: live, a soldier opened a chest that wasn't there all night.
                     : !clearing.getOrDefault(name, List.of()).isEmpty() && clearer.stuck().isPresent() ? new Report.Cantco(clearer.stuck().get())
-                    : !walling.getOrDefault(name, List.of()).isEmpty() && mason.stuck().isPresent() ? new Report.Cantco(mason.stuck().get())
+                    // Each routine's CANTCO only while its work is the soldier's task: live, soldiers
+                    // levelling the camp reported the mason's "none to build" between their cuts.
+                    : !clearing.containsKey(name) && !walling.getOrDefault(name, List.of()).isEmpty() && mason.stuck().isPresent()
+                    ? new Report.Cantco(mason.stuck().get())
                     : depositor.stuck().isPresent() && !depositor.active() ? new Report.Cantco(depositor.stuck().get())
                     : forester.active() ? new Report.Planting()
                     : grove != null && forester.failure().isPresent() && !io.github.jayessdeesea.minecraft.bot.supply.Forester.planted(world, grove)
                     ? new Report.Cantco("can't plant the tree farm: " + forester.failure().get())
                     // On its way to the workshop for them counts: live, that walk was reported "short of {}".
                     : lamplighter.active() || (torchmaker.active() || torchmaker.standAt().isPresent()) && torchesWanted ? new Report.Securing()
-                    : !lights.isEmpty() && lamplighter.stuck().isPresent() ? new Report.Cantco(lamplighter.stuck().get())
+                    : !clearing.containsKey(name) && !walling.containsKey(name) && !lights.isEmpty() && lamplighter.stuck().isPresent()
+                    ? new Report.Cantco(lamplighter.stuck().get())
                     : !lights.isEmpty() && torchesWanted && torchmaker.failure().isPresent()
                     ? new Report.Cantco("can't make torches to light the ground: " + torchmaker.failure().get())
                     // Gone for the makings, between one dig and the next: still at it, not unable.
