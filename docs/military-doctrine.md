@@ -131,8 +131,10 @@ logged as `[Verify] ... hasn't fallen` and its tasking marked STALLED, until pro
 A CANTCO is held open on its tasking. A tasking ends done when what's left reaches 0 - or when its
 soldier moves off a task that now measures 0, as when the last log falls - or is counted as taken
 off unfinished. Ended taskings are counted in the dawn review and forgotten; what's still open is
-listed. The register only records and verifies so far: what a STALLED finding should change is
-backlog/task-register.md.
+listed. A STALLED finding is acted on: the squad takes the soldier off that task (clearing,
+levelling, walling or lighting) for its next work, and puts it back after 5 minutes - twice as long
+each time it stalls there again, up to 40 - so a soldier at a tree too tall to fell walls instead
+of standing at it.
 
 *Class I, by echelon* (`command.Subsistence`; FM 4-0, ATP 4-41 field feeding). Each soldier
 carries a **basic load** of 6 rations, and is short below 2:
@@ -453,8 +455,8 @@ LOGSTAT already shows it bare-handed. A failed pickaxe is, when the order is to 
 | **Class IV supply** | Construction and barrier materials - lumber, sandbags, wire - requisitioned or, in the field, obtained locally. | FM 4-0, *Sustainment Operations* |
 
 *How we use it:* the general can give a squad an objective with `gather: WOOD` or `STONE`
-(`command.Objective.gather`). Its soldiers gather within 16 blocks of the objective on their own
-(`bot.supply.Gatherer`, digging with `Digger`, shared with §11): each works a log or a block of
+(`command.Objective.gather`). Its soldiers gather nearest the objective on their own - within 16 blocks, and
+when that's bare within 32, then 48, before reporting nothing left (`bot.supply.Gatherer`, digging with `Digger`, shared with §11): each works a log or a block of
 stone no squadmate has claimed, checks it actually broke, walks onto the drop wherever it landed
 (done once it's off the ground - a squadmate working the same trees often gets there first), and
 stops at its load (16 logs, 32

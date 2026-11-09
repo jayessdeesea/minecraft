@@ -35,6 +35,8 @@ public final class Gatherer {
     /** Flint enough for eight arrows: some twenty gravel blocks dug. */
     public static final int CARRY_FLINT = 2;
     static final int RETRY_TICKS = 600;
+    /** How far round the objective it looks, nearest ring first. */
+    static final int[] WIDER = {Digger.SEARCH_RADIUS, 2 * Digger.SEARCH_RADIUS, 3 * Digger.SEARCH_RADIUS};
 
     private final String name;
     private final PlaySession session;
@@ -158,10 +160,19 @@ public final class Gatherer {
     private void next(WorldView world, Position around, Digger.Target target) {
         Set<BlockPos> excluded = new java.util.HashSet<>(claims);
         excluded.addAll(avoid);
-        Optional<Digger.Spot> spot = Digger.findSpot(world, BlockPos.containing(around.x(), around.y(), around.z()), excluded, target);
+        // Nearest first, then further out: none within reach of the objective is a reason to look
+        // wider before asking for help - live, a camp long since cleared of trees had a wood a
+        // minute's walk off, and its squad stood reporting CANTCO.
+        Optional<Digger.Spot> spot = Optional.empty();
+        for (int radius : WIDER) {
+            spot = Digger.findSpot(world, BlockPos.containing(around.x(), around.y(), around.z()), excluded, target, radius);
+            if (spot.isPresent()) {
+                break;
+            }
+        }
         if (spot.isEmpty()) {
             if (digger != null || retry == 0) {
-                LOG.info("{}: no {} within {} blocks of the objective", name, target, Digger.SEARCH_RADIUS);
+                LOG.info("{}: no {} within {} blocks of the objective", name, target, WIDER[WIDER.length - 1]);
             }
             digger = null;
             retry = RETRY_TICKS;

@@ -349,8 +349,9 @@ class SquadSimulationTest {
     }
 
     /**
-     * Trust but verify: the squad reports Fortifying, but the sky over the camp isn't clearing - the
-     * register marks the task STALLED rather than taking the report's word for it.
+     * Trust but verify: the squad reports working, but the sky over the camp isn't clearing - the
+     * register marks the task STALLED rather than taking the report's word for it, and the squad
+     * takes its soldiers off it for their next work, the wall.
      */
     @Test
     void workTheWorldDoesntBearOutIsMarkedStalled() {
@@ -372,8 +373,10 @@ class SquadSimulationTest {
         clock.advance(4 * 60_000);
 
         List<io.github.jayessdeesea.minecraft.command.TaskRegister.Tasking> open = runner.taskings("Alpha");
-        assertTrue(open.stream().anyMatch(t -> t.task().equals("clear the camp's sky")
-                && t.state() == io.github.jayessdeesea.minecraft.command.TaskRegister.State.STALLED), open.toString());
+        assertTrue(open.stream().noneMatch(t -> t.task().equals("clear the camp's sky")), "taken off it: " + open);
+        assertTrue(open.stream().anyMatch(t -> t.task().equals("wall the camp")), "on to the wall: " + open);
+        List<String> review = runner.taskingReview("Alpha");
+        assertTrue(review.stream().anyMatch(l -> l.matches("  clear the camp's sky: 0 done, [12] taken off unfinished")), review.toString());
     }
 
     /** Ground rising a block every 3 east of x=-6: the camp's wall stands on many heights. */

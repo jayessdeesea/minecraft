@@ -60,9 +60,10 @@ base) or forgets it (a tree felled).
 
 ## Built so far
 - The squad's register over its soldiers (docs/military-doctrine.md § 4): taskings recorded,
-  verified against the world's measure, CANTCOs held, ends counted in the dawn review. Left: the
-  general's register over its squads, a STALLED finding acted on (re-tasked by the squad's drills,
-  or seen by the general), RequestLedger folded in, and completed sites handed to the map.
+  verified against the world's measure, CANTCOs held, ends counted in the dawn review, and a
+  STALLED soldier re-tasked with a growing wait before it's tried there again. Left: the general's
+  register over its squads (and its open taskings in its prompt), RequestLedger folded in, and
+  completed sites handed to the map.
 
 ## Notes
 - Built before the register, its pieces: `command.Progress` (a squad's task done or stalled, from the world),

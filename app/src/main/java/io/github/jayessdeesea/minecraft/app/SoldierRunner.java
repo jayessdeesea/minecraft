@@ -159,6 +159,17 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int humpsLeft = -1;
         /** Who in the squad is on what, followed to completion and checked against the world. */
         final io.github.jayessdeesea.minecraft.command.TaskRegister register = new io.github.jayessdeesea.minecraft.command.TaskRegister();
+        /**
+         * Soldiers taken off a task the register found STALLED, by "soldier|task": each goes to its
+         * next work, and back to that task after a wait that grows each time it stalls there again.
+         */
+        final io.github.jayessdeesea.minecraft.bot.supply.Setbacks<String> relieved =
+                new io.github.jayessdeesea.minecraft.bot.supply.Setbacks<>(RELIEVED_MILLIS, 8 * RELIEVED_MILLIS);
+
+        /** Whether {@code soldier} is off {@code task} for now. */
+        boolean relieved(String soldier, String task, long now) {
+            return relieved.barred(soldier + "|" + task, now);
+        }
         /** The squad's tree farm, while it has one. */
         io.github.jayessdeesea.minecraft.bot.farm.TreeFarm trees;
         /** The squad's farm, while it has one. */
@@ -449,6 +460,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 .min(java.util.Comparator.comparingInt(c -> Math.abs(c.x() - camp[0]) + Math.abs(c.z() - camp[1])));
     }
 
+    /** How long a soldier is first kept off a task it stalled on (the squad's register's finding). */
+    static final long RELIEVED_MILLIS = 5 * 60_000;
+
     /** How far round the camp its tree farm is looked for. */
     private static final int CAMP_RADIUS = 24;
     /** How far round the camp its farm is looked for: the water it needs can be a way off. */
@@ -689,7 +703,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         for (Present p : present) {
             faults.run(p.squad() + "'s orders", () -> chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
                     orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt())));
-            faults.run(p.squad() + "'s register", () -> register(squadStates.get(p.squad()), p.statuses()));
+            faults.run(p.squad() + "'s register", () -> register(p.squad(), squadStates.get(p.squad()), p.statuses()));
         }
     }
 
@@ -805,7 +819,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      * and logs what changed: a tasking given, done or dropped, a CANTCO, a report the world
      * doesn't bear out (backlog/task-register.md).
      */
-    private void register(SquadState state, List<SoldierStatus> statuses) {
+    private void register(String squad, SquadState state, List<SoldierStatus> statuses) {
         Map<String, io.github.jayessdeesea.minecraft.command.TaskRegister.Assignment> on = new java.util.LinkedHashMap<>();
         for (SoldierStatus s : statuses) {
             String n = s.name();
@@ -837,14 +851,28 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         if (state.wallLeft >= 0) {
             measured.put("wall the camp", state.wallLeft);
         }
-        if (state.torchesLeft >= 0) {
+        // Only SECURE's plan is counted: lighting the camp's upkeep or the stairs isn't, and live a
+        // squad off upkeep read as done with SECURE's empty plan.
+        if (state.torchesLeft >= 0 && chainOfCommand.secureObjective(squad).isPresent()) {
             measured.put("light the ground", state.torchesLeft);
         }
-        for (String finding : state.register.update(clockwork.millis(), on, measured)) {
+        long now = clockwork.millis();
+        for (String finding : state.register.update(now, on, measured)) {
             if (finding.startsWith("[Verify]") && !finding.contains("again")) {
                 LOG.warn(finding);
             } else {
                 LOG.info(finding);
+            }
+        }
+        // Supervise and refine: a soldier stalled on a task is taken off it for its next work, and
+        // tried there again later - longer each time; one done with it is forgotten.
+        for (io.github.jayessdeesea.minecraft.command.TaskRegister.Tasking t : state.register.open()) {
+            String key = t.who() + "|" + t.task();
+            if (t.state() == io.github.jayessdeesea.minecraft.command.TaskRegister.State.STALLED && !state.relieved.barred(key, now)) {
+                state.relieved.failed(key, now);
+                LOG.warn("[Register] {} taken off {} for now: the world shows no progress", t.who(), t.task());
+            } else if (t.state() == io.github.jayessdeesea.minecraft.command.TaskRegister.State.DONE) {
+                state.relieved.worked(key);
             }
         }
     }
@@ -1454,12 +1482,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             } else {
                 farming.remove(soldierName);
             }
-            if ((!cover.isEmpty() || !humps.isEmpty()) && !squadInContact) {
+            long now = clockwork.millis();
+            if ((!cover.isEmpty() || !humps.isEmpty()) && !squadInContact
+                    && !state.relieved(soldierName, cover.isEmpty() ? "level the camp" : "clear the camp's sky", now)) {
                 clearing.put(soldierName, cover.isEmpty() ? humps : cover);
             } else {
                 clearing.remove(soldierName);
             }
-            if (!wallLeft.isEmpty() && !squadInContact) {
+            if (!wallLeft.isEmpty() && !squadInContact && !state.relieved(soldierName, "wall the camp", now)) {
                 walling.put(soldierName, wallLeft);
                 wallCentres.put(soldierName, state.wallCentre);
                 Kit bricks = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
@@ -1509,7 +1539,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             } else {
                 planting.remove(soldierName);
             }
-            if (!torchesLeft.isEmpty() && !squadInContact) {
+            if (!torchesLeft.isEmpty() && !squadInContact && !state.relieved(soldierName, "light the ground", now)) {
                 lighting.put(soldierName, torchesLeft);
                 // Out of torches and short of their makings: it gathers them near the objective -
                 // logs, then cobblestone for the furnace - rather than reporting the shortage forever.
@@ -2527,7 +2557,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     : handover.active() ? handover.report().orElseThrow()
                     : gatherer.active() ? new Report.Gathering(gather.gather().orElseThrow())
                     : gather != null && gatherer.exhausted()
-                    ? new Report.Cantco("nothing left to gather within 16 blocks of the objective")
+                    ? new Report.Cantco("nothing left to gather within 48 blocks of the objective")
                     // Only a tool the order needs makes its failure the order's: a pickaxe to quarry with.
                     // A sword is the soldier's own pre-combat check - going without shows in the LOGSTAT
                     // as bare-handed, not as CANTCO of the mission.
