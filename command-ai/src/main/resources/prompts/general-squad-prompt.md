@@ -1,4 +1,7 @@
 <squad name="«name»">
+«if(request)»
+REQUEST: «request»
+«endif»
 «standing»
 «if(night)»
 It is night and this squad is not sealed in a patrol base: monsters are spawning round it.

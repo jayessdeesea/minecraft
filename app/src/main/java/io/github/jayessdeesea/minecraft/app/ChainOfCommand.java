@@ -394,14 +394,14 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                 String key = "soldier:" + soldier.name();
                 if (soldier.report() instanceof io.github.jayessdeesea.minecraft.command.Report.Cantco(String reason)) {
                     io.github.jayessdeesea.minecraft.command.Order held = cantcoOrders.putIfAbsent(soldier.name(), soldier.order());
-                    if (held != null && !held.equals(soldier.order())) {
+                    if (held != null && answers(held, soldier.order())) {
                         requests.answer(key, now).ifPresent(LOG::info);
                         cantcoOrders.put(soldier.name(), soldier.order());
                     }
                     requests.raise(key, RequestLedger.Echelon.SQUAD_LEADER, soldier.name() + " of " + sitrep.squad(), "CANTCO: " + reason, now)
                             .ifPresent(LOG::info);
                 } else if (cantcoOrders.remove(soldier.name()) instanceof io.github.jayessdeesea.minecraft.command.Order held) {
-                    if (held.equals(soldier.order())) {
+                    if (!answers(held, soldier.order())) {
                         requests.settle(key);
                     } else {
                         requests.answer(key, now).ifPresent(LOG::info);
@@ -427,6 +427,20 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
             }
         }
         requests.alarms(now).forEach(LOG::warn);
+    }
+
+    /** How far a soldier's ordered place has to move to be a new order: a formation's places shift a block or two every cycle. */
+    static final double ANSWER_MOVE = 4;
+
+    /**
+     * Whether {@code now} answers a CANTCO raised under {@code held}: another kind of order, or a
+     * place more than {@link #ANSWER_MOVE} away - not the cycle-to-cycle shuffle of a formation.
+     */
+    static boolean answers(io.github.jayessdeesea.minecraft.command.Order held, io.github.jayessdeesea.minecraft.command.Order now) {
+        if (held instanceof io.github.jayessdeesea.minecraft.command.Order.MoveTo a && now instanceof io.github.jayessdeesea.minecraft.command.Order.MoveTo b) {
+            return Math.hypot(a.x() - b.x(), a.z() - b.z()) > ANSWER_MOVE || Math.abs(a.y() - b.y()) > ANSWER_MOVE;
+        }
+        return held.getClass() != now.getClass();
     }
 
     /** The requests' part of the dawn review: each echelon's answers and how fast, and what's still open. */
@@ -626,10 +640,17 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                         continue;
                     }
                     decided.put(name, Optional.of(given));
-                    // The general's answer to what the squad asked, if it asked.
+                    // The general's answer to what the squad asked, if it asked: any new order answers a
+                    // finished or stalled task; only a farm answers a request for food - live, the
+                    // general answered a starving squad with torches, and that was counted an answer.
                     long answeredAt = clockwork.millis();
                     requests.answer(name + ":task", answeredAt).ifPresent(LOG::info);
-                    requests.answer(name + ":food", answeredAt).ifPresent(LOG::info);
+                    if (given.task() instanceof Objective.Task.Farm) {
+                        requests.answer(name + ":food", answeredAt).ifPresent(LOG::info);
+                    } else if (requests.isOpen(name + ":food")) {
+                        LOG.warn("[Request] the General's order for {} doesn't answer its Class I RED: {} ({})", name, given.mission(),
+                                OrderTrace.taskName(given.task()));
+                    }
                     LOG.info("[General -> {}] ({} ms, {}) OPORD: {} at {}{}. Intent: {}", name, millis, phase(time), given.mission(),
                             at(given.location()), task(given), given.intent());
                     transmit("[General -> " + name + "] OPORD: " + given.mission() + " at " + at(given.location())

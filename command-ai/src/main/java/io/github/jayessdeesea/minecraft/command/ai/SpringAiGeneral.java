@@ -172,6 +172,9 @@ public final class SpringAiGeneral implements General {
             squads.append(PromptTemplate.render(prompts.squad(), Map.of(
                     "name", squad.squadName(),
                     "standing", describeStanding(squad),
+                    // A request first, where a small model reads it: in the LOGSTAT's middle it went unanswered.
+                    "request", squad.classOne().filter(c -> c.rating() == io.github.jayessdeesea.minecraft.command.Subsistence.Rating.RED)
+                            .<Object>map(c -> c.line() + " Answer it with \"task\": \"FARM\" at ground to farm by water.").orElse(false),
                     // Said where the squad is listed, not left to be put together from <time> and its state.
                     "night", time.filter(TimeOfDay::dark).isPresent() && !squad.holdingBase(),
                     // And the morning: nothing else says the night is over for a squad still sheltering.
@@ -180,7 +183,8 @@ public final class SpringAiGeneral implements General {
                     "report", SpringAiSquadLeader.describe(squad.report()),
                     "soldiers", soldiers.toString(),
                     "logstat", describe(Logstat.of(squad.soldiers()), squad.baseBlocksLeft())
-                            + squad.classOne().map(c -> " " + c.line()).orElse(""),
+                            + squad.classOne().filter(c -> c.rating() != io.github.jayessdeesea.minecraft.command.Subsistence.Rating.RED)
+                            .map(c -> " " + c.line()).orElse(""),
                     "resources", describeResources(squad, time.filter(TimeOfDay::dark).isEmpty())))).append('\n');
         }
         // What the operator sees from where they stand: worth weighing, not an order.

@@ -111,7 +111,11 @@ STALLED) and by its Class I RED. There's no queue to wait in: each SITREP carrie
 second to the squad leader's drills and every squad-leader cycle to its model, and to the general
 at its next decision, two minutes at most, sooner at dusk, dawn or a CANTCO. Each request is
 logged when raised (`[Request] Bob of Alpha -> squad leader: CANTCO: ...`). It's answered when the
-echelon it went to changes the order it was about: the soldier's order, or the squad's objective.
+echelon it went to changes the order it was about: the soldier's to another kind, or to a place
+more than 4 blocks off (a formation's places shift a block or two every cycle, which answers
+nothing); the squad's objective, for a task; and only a `FARM` objective for a request for food -
+another order is logged as not answering it, and the request stays open. In the general's prompt
+a RED request heads the squad's section.
 The answer is logged with how long it took. One settles by itself when what raised it clears
 first. One still open past its echelon's deadline - 60 seconds for a squad leader, 5 minutes for
 the general - raises `[Request] ALARM`, once. The dawn review gives each echelon's answers, their
