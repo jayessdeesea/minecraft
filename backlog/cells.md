@@ -56,6 +56,9 @@ adding cells outward.
   sky and flatter ground at the camp: clear sky so the zombies left at dawn burn, flat ground so
   the squads see across it. Trees over the camp are felled and its dirt humps dug off as FORTIFY's
   first two phases (docs/military-doctrine.md § 15). Left: cobblestone and other blocks over the
-  camp, stone humps, hollows filled; then a fence on the wall's line.
+  camp, stone humps, hollows filled; then a fence on the wall's line. Hollows matter first: live
+  (field18), a pit some 13 deep inside the camp's east side, under the wall line, left 42 wall
+  cells with nothing to build against and nowhere inside to stand, and FORTIFY stalled there. A
+  pit under the wall line is filled from its bottom up, as footing, before the wall goes on it.
 - Depends on the engineer and concrete commands (backlog/echelon-contracts.md), wood that grows back (backlog/renewables.md), and on torches made from charcoal or
   mined coal (backlog/mining.md).
