@@ -2815,7 +2815,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // Bread from the wheat it carries: a farmer's work, and anyone's below its basic load
             // (command.Subsistence) - live, a soldier carried 22 wheat for days while its squad starved.
             int carriedRations = status.condition().flatMap(c -> c.kit()).map(Kit::rations).orElse(0);
-            if (inventory.count(ItemClass.WHEAT) >= 3 && (field != null || carriedRations < io.github.jayessdeesea.minecraft.command.Subsistence.BASIC_LOAD)) {
+            // And still wanted while a loaf is under way: its wheat in the table's grid isn't carried.
+            // Live, a soldier with 4 wheat put 3 in the grid, wanted no bread with the 1 left, and
+            // started and dropped the loaf 518 times.
+            if (inventory.count(ItemClass.WHEAT) >= 3 && (field != null || carriedRations < io.github.jayessdeesea.minecraft.command.Subsistence.BASIC_LOAD)
+                    || armourer.making(Recipe.BREAD)) {
                 tools.add(Recipe.BREAD);
             }
             // Arrows from the flint and feathers it has picked up, while it has a bow to shoot them.

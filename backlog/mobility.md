@@ -52,6 +52,13 @@ What's left:
     filled from water buckets (`Recipe.BUCKET` exists; carrying water needs the bucket's use), soul
     sand at the foot once there's Nether access, or a plain column until then - and a soldier's moves
     include riding it.
+- **Stranded, starving, with only a pickaxe.** Live (field50-52), Eli stood for an hour on a
+  cobblestone ledge outside the camp's wall at 8 health and food 0: every way down a fall that
+  would kill it, nobody in the squad carrying 24 blocks, and its own 8 logs spent on a sword and a
+  pickaxe before the recovery drill (docs/military-doctrine.md § 7) could have it build its own
+  stair. A player there digs down: a stair cut into the block underfoot and on down, as
+  `Stairway.up` cuts one up. And the drill could send a squadmate with bread to anyone stranded
+  at food 0, since health only comes back fed.
 - **The respawn platform, live.** Replacements respawn on a patch of glass at y=102 near (-5, 9),
   17 blocks over the ground. The recovery drill's stair (docs/military-doctrine.md § 7) passes the
   squad simulation's copy of it; it wants seeing live, the next time a replacement lands there.

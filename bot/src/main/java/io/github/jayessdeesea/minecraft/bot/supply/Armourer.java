@@ -84,6 +84,11 @@ public final class Armourer {
         return digger != null || crafter.active() || fitter.active();
     }
 
+    /** Whether a run making {@code recipe} is under way. */
+    public synchronized boolean making(Recipe recipe) {
+        return crafter.active() && making.contains(recipe);
+    }
+
     /** Where to look while it places a workshop's fixture. */
     public synchronized Optional<Position> lookAt() {
         return fitter.lookAt();
