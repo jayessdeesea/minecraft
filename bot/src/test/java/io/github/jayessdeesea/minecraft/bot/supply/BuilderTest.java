@@ -136,6 +136,21 @@ class BuilderTest {
     }
 
     @Test
+    void aHotbarFullOfFoodAndTorchesTakesTheBlocksInPlaceOfTheLast() {
+        for (int hotbar = 1; hotbar <= 8; hotbar++) {
+            ItemClass kind = hotbar % 3 == 0 ? ItemClass.FOOD : hotbar % 3 == 1 ? ItemClass.TORCH : ItemClass.SEEDS;
+            inventory.setSlot(Inventory.HOTBAR_FIRST + hotbar, new int[]{itemOf(kind), 4});
+        }
+        Builder builder = new Builder("Alice", session, inventory);
+
+        Builder.Progress progress = run(builder, new Position(0.5, 64, 0.5), List.of(new BlockPos(2, 64, 0)), 100);
+
+        assertInstanceOf(Builder.Progress.Done.class, progress);
+        assertEquals(List.of("swap 20 to hotbar 8", "select 8", "place BlockPos[x=2, y=64, z=0]", "select 0"), calls);
+        assertEquals(itemOf(ItemClass.WEAPON), inventory.itemAt(Inventory.HOTBAR_FIRST), "the sword kept");
+    }
+
+    @Test
     void aCellSomeoneStandsInIsWaitedOnNotGivenUp() {
         Builder builder = new Builder("Alice", session, inventory);
         BlockPos cell = new BlockPos(2, 64, 0);

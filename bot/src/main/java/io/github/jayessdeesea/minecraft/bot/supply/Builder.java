@@ -296,11 +296,25 @@ public final class Builder {
         return Optional.empty();
     }
 
-    /** A hotbar slot holding no weapon or tool - the last such, out of the way. */
+    /** What a soldier keeps in its hotbar whatever it builds: its weapons and tools. */
+    private static final Set<ItemClass> KEPT_IN_HAND = Set.of(ItemClass.WEAPON, ItemClass.PICKAXE, ItemClass.HOE, ItemClass.SHIELD);
+
+    /**
+     * The hotbar slot to build from - the last, out of the way: one empty or holding building
+     * material, else one holding anything but a weapon or tool, swapped out to where the material
+     * was. Live, two soldiers whose hotbars held bread, torches and seeds failed every block they
+     * were given, three times a second.
+     */
     private int freeHotbarSlot() {
         for (int hotbar = 8; hotbar >= 0; hotbar--) {
             Optional<ItemClass> held = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + hotbar));
             if (held.isEmpty() || materials.contains(held.get())) {
+                return hotbar;
+            }
+        }
+        for (int hotbar = 8; hotbar >= 0; hotbar--) {
+            Optional<ItemClass> held = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + hotbar));
+            if (held.isPresent() && !KEPT_IN_HAND.contains(held.get())) {
                 return hotbar;
             }
         }
