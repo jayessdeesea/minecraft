@@ -388,8 +388,30 @@ public final class Crafter {
                 smelting.computeIfAbsent(furnaceAt, a -> new EnumMap<>(ItemClass.class)).merge(recipe.makes(), loaded, Integer::sum);
                 return new Expect("the furnace loaded", () -> furnace[FURNACE_IN].isPresent(), ANSWER_TICKS);
             }
+            // Something to smelt and nothing to burn: a squadmate's batch, left when it gave up with its
+            // fuel spent. Burned for it, the furnace comes free - its smelts are taken out as they're done,
+            // whoever's they were. Live, each soldier in turn waited on a cold furnace, gave up, and left
+            // its own batch for the next.
+            if (furnace[FURNACE_FUEL].isEmpty()) {
+                fuel(furnace[FURNACE_IN].get().count());
+            }
             return smeltDone();
         }, SMELT_TICKS);
+    }
+
+    /** Planks into the empty fuel slot, enough to burn {@code smelts}; none carried, none put in. */
+    private void fuel(int smelts) {
+        int planks = biggest(ItemClass.PLANKS, -1);
+        if (planks < 0) {
+            return;
+        }
+        int fuel = Math.min(Recipe.fuelFor(smelts), inventory.countAt(planks));
+        int window = windowId;
+        session.click(window, 0, planks - Inventory.MAIN_FIRST + windowSlots, false);
+        for (int i = 0; i < fuel; i++) {
+            session.click(window, 0, FURNACE_FUEL, true);
+        }
+        session.click(window, 0, planks - Inventory.MAIN_FIRST + windowSlots, false);
     }
 
     /** Collecting what was left smelting in the furnace at {@code at}: each smelt taken out as it's done. */

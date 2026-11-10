@@ -116,6 +116,12 @@ final class FakeCraftingServer {
             });
 
     /** Gives the soldier {@code count} of the first item of {@code itemClass}, into {@code slot}. */
+    /** The furnace at {@code at} left holding {@code count} of {@code itemClass} to smelt, and no fuel. */
+    FakeCraftingServer leftSmelting(BlockPos at, ItemClass itemClass, int count) {
+        furnaces.computeIfAbsent(at, k -> new int[3][])[0] = new int[]{itemOf(itemClass, 0), count};
+        return this;
+    }
+
     FakeCraftingServer give(int slot, ItemClass itemClass, int count) {
         return give(slot, itemOf(itemClass, 0), count);
     }

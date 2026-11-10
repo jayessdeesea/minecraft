@@ -52,6 +52,18 @@ class CrafterTest {
     }
 
     @Test
+    void aFurnaceLeftLoadedAndColdIsBurnedFreeForTheTorches() {
+        workshop();
+        server.leftSmelting(new BlockPos(-2, 64, 0), ItemClass.LOG, 2); // a squadmate's, its fuel spent
+        server.give(9, ItemClass.LOG, 4);
+
+        Outcome outcome = run(Map.of(Recipe.TORCHES, 8), t -> false, 3000);
+
+        assertEquals(Outcome.MADE, outcome, crafter.failure().orElse(""));
+        assertTrue(server.count(ItemClass.TORCH) >= 8, server.count(ItemClass.TORCH) + " torches");
+    }
+
+    @Test
     void aSwordAndAPickaxeAtOneOpeningOfTheTable() {
         workshop();
         server.give(Inventory.HOTBAR_FIRST, ItemClass.LOG, 5); // bare-handed: the weapon slot holds logs
