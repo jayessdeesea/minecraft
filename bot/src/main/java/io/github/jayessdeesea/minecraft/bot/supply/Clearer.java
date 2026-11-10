@@ -80,8 +80,11 @@ public final class Clearer {
                     stop();
                 }
                 // The block gone is the cut done, whatever became of its drop: live, a leaf's sapling
-                // fell out of reach and the cut counted as failed.
-                case Digger.Progress.Failed _ when !digger.spot().target().at(world, digger.spot().block()) -> {
+                // fell out of reach and the cut counted as failed. Gone as the clearing counts it, not
+                // as the digger's target does: live, soil under a wall wasn't the digger's SOIL, read
+                // as gone, and was picked again every tick.
+                case Digger.Progress.Failed _ when !Clearing.diggable(world, digger.spot().block().x(), digger.spot().block().y(),
+                        digger.spot().block().z()) -> {
                     failed.worked(digger.spot().block());
                     stop();
                 }

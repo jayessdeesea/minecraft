@@ -42,7 +42,9 @@ public final class Clearing {
      * What an {@code Order.Dig} of {@code box} digs: every log, leaf, soil, plain stone or gravel
      * block in it but {@code except}, in the order it's dug - a tree's logs and leaves lowest first
      * (cut-off leaves decay), the ground top down (soil is dug only from an open top). Anything else
-     * - cobblestone, a table, rock - is left for the soldier to report.
+     * - cobblestone, a table, rock - is left for the soldier to report, and so is the ground under
+     * it or under a cell in {@code except}: it can't be dug from its top, and it's what that stands on.
+     * Live, a soldier tried soil under a hut's wall every tick, its digger finding no open top.
      */
     public static List<BlockPos> toClear(WorldView world, io.github.jayessdeesea.minecraft.command.Box box,
                                          Set<io.github.jayessdeesea.minecraft.command.Cell> except) {
@@ -50,7 +52,11 @@ public final class Clearing {
         for (int x = box.minX(); x <= box.maxX(); x++) {
             for (int z = box.minZ(); z <= box.maxZ(); z++) {
                 for (int y = box.minY(); y <= box.maxY(); y++) {
-                    if (!except.contains(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z)) && diggable(world, x, y, z)) {
+                    boolean ground = !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty();
+                    boolean coveredFast = world.isSolid(x, y + 1, z) && (!diggable(world, x, y + 1, z)
+                            || except.contains(new io.github.jayessdeesea.minecraft.command.Cell(x, y + 1, z)));
+                    if (!except.contains(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z)) && diggable(world, x, y, z)
+                            && !(ground && coveredFast)) {
                         cells.add(new BlockPos(x, y, z));
                     }
                 }
@@ -97,7 +103,7 @@ public final class Clearing {
      * Whether a clear digs the block at (x, y, z): a tree's, or the ground's - never ground with
      * water beside or over it, which would flow into the hole and the camp.
      */
-    static boolean diggable(WorldView world, int x, int y, int z) {
+    public static boolean diggable(WorldView world, int x, int y, int z) {
         if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
             return true;
         }

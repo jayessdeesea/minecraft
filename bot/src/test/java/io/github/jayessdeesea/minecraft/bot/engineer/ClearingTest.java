@@ -141,6 +141,12 @@ class ClearingTest {
     }
 
     @Test
+    void groundUnderAKeptCellIsLeft() {
+        assertEquals(List.of(new BlockPos(-2, 64, -2)), Clearing.toClear(MOUND, SKY, Set.of(new Cell(2, 65, 2))),
+                "the mound's top kept: the block under it stays, the other mound is dug");
+    }
+
+    @Test
     void groundWithWaterBesideItIsLeft() {
         WorldView pond = new WorldView() {
             @Override

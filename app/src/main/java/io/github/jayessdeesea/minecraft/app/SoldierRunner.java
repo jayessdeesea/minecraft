@@ -912,7 +912,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         for (SoldierStatus s : statuses) {
             String n = s.name();
             boolean otherWork = (clearing.containsKey(n) || filling.containsKey(n) || groundGather.containsKey(n)) && !upkeeping.contains(n)
-                    || walling.containsKey(n) || repointing.containsKey(n) || farming.containsKey(n)
+                    || walling.containsKey(n) || repointing.containsKey(n)
+                    || farming.containsKey(n) && (Optional.ofNullable(farmers.get(n)).map(f -> f.active()).orElse(false)
+                            || io.github.jayessdeesea.minecraft.bot.supply.Farmer.hasWork(world, farming.get(n)))
                     // Lighting is work only while it's lighting: live, a squad handed a light plan of
                     // one cell nobody could reach stood about rather than keep the camp.
                     || lighting.containsKey(n) && (Optional.ofNullable(lamplighters.get(n)).map(l -> l.active()).orElse(false)

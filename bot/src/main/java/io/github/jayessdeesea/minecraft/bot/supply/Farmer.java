@@ -79,6 +79,17 @@ public final class Farmer {
     /** The cells any farmer working this farm couldn't work, for a while. */
     private final Setbacks<BlockPos> shared;
 
+    /**
+     * Whether {@code farm} has work in it: wheat ripe, farmland bare, or ground to till. A planted
+     * plot growing has none - its farmers are free for other work until it ripens: live, a squad's
+     * farm half stood by its growing wheat with the camp to keep.
+     */
+    public static boolean hasWork(WorldView world, FarmPlan farm) {
+        return farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE
+                || world.isFarmland(c.x(), c.y(), c.z()) && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z())
+                || world.isTillable(c.x(), c.y(), c.z()));
+    }
+
     public synchronized boolean active() {
         return digger != null || fieldWork != null;
     }

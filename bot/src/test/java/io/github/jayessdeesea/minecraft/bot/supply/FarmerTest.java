@@ -134,6 +134,19 @@ class FarmerTest {
     }
 
     @Test
+    void aPlotGrowingHasNoWorkUntilItRipens() {
+        FarmPlan farm = new FarmPlan(WATER, PLOT);
+        assertTrue(Farmer.hasWork(world, farm), "to till");
+        PLOT.forEach(c -> {
+            farmland.add(c);
+            wheat.put(c.offset(0, 1, 0), 3);
+        });
+        assertTrue(!Farmer.hasWork(world, farm), "growing");
+        wheat.put(PLOT.get(1).offset(0, 1, 0), Digger.RIPE);
+        assertTrue(Farmer.hasWork(world, farm), "ripe");
+    }
+
+    @Test
     void wheatASquadmateIsHarvestingIsLeftToIt() {
         PLOT.forEach(c -> {
             farmland.add(c);

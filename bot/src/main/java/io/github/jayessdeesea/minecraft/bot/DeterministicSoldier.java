@@ -299,7 +299,11 @@ public final class DeterministicSoldier implements Soldier {
     public SoldierStatus status() {
         Kit carried = kit;
         Report busy = task;
-        Report now = busy != null && !(report instanceof Report.InContact) ? busy : report;
+        // A routine that can't go on gives way to an order the soldier can't even reach: no route is
+        // what the squad's recovery drill reads. Live, a replacement respawned on a peak reported the
+        // torches it couldn't make, and nobody came for it.
+        boolean noRoute = report instanceof Report.Cantco(String why) && why.startsWith("no route from");
+        Report now = busy != null && !(report instanceof Report.InContact) && !(busy instanceof Report.Cantco && noRoute) ? busy : report;
         return new SoldierStatus(name, position, order, now, java.util.Optional.ofNullable(condition)
                 .map(c -> new Condition(c.health(), c.food(), c.deaths(), java.util.Optional.ofNullable(carried))));
     }
