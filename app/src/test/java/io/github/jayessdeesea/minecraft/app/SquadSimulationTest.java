@@ -638,6 +638,34 @@ class SquadSimulationTest {
         assertEquals(List.of(), last, "still building the base");
     }
 
+    /**
+     * As live: a soldier at a third of a heart and food 0 beside a squadmate with one ration, which it
+     * kept as its own - none had more than two to spare. Buddy aid: the squadmate hands it over.
+     */
+    @Test
+    void aSoldierStarvingAtDeathsDoorIsHandedASquadmatesLastRation() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Fran,Hal");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(n -> new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> n.equals("Fran") ? List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 1})
+                                : List.<int[]>of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1})));
+        runner.run();
+        clock.advance(1_000); // joined
+        server.starve("Hal", 0.5f);
+
+        clock.advance(60_000);
+
+        assertEquals(1, server.count("Hal", io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FOOD),
+                "Fran's ration handed to Hal; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+    }
+
     /** Flat, with a shaft 6 deep down the 3x3 columns round the camp's mine head, (4, -4) from its centre. */
     private static int shaftAtTheMineHead(int x, int y, int z) {
         return x >= 3 && x <= 5 && z >= -5 && z <= -3 && y > GROUND - 6 && y <= GROUND ? SimServer.AIR : flat(x, y, z);

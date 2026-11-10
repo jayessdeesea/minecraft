@@ -18,6 +18,23 @@ class CrossLevelTest {
     }
 
     @Test
+    void oneStarvingAtDeathsDoorGetsAMealFromASquadmateWithOnlyItsKeep() {
+        Kit none = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false);
+        Kit one = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 1, false);
+        List<SoldierStatus> squad = List.of(
+                new SoldierStatus("Hal", new Position(0, 19, 0), SLOT, new Report.InPosition(), Optional.of(new Condition(0.33, 0, 0, Optional.of(none)))),
+                new SoldierStatus("Fran", new Position(1, 19, 0), SLOT, new Report.InPosition(), Optional.of(new Condition(20, 20, 0, Optional.of(one)))));
+
+        assertEquals(List.of(new CrossLevel.Transfer("Fran", "Hal", CrossLevel.Item.RATIONS, 1)),
+                CrossLevel.pair(squad, Map.of(), Map.of("Hal", CrossLevel.RATIONS_GIVEN)));
+        List<SoldierStatus> hungryOnly = List.of(
+                new SoldierStatus("Hal", new Position(0, 19, 0), SLOT, new Report.InPosition(), Optional.of(new Condition(12, 0, 0, Optional.of(none)))),
+                squad.get(1));
+        assertEquals(List.of(), CrossLevel.pair(hungryOnly, Map.of(), Map.of("Hal", CrossLevel.RATIONS_GIVEN)),
+                "hungry but not at death's door: only from a squadmate with rations beyond its keep");
+    }
+
+    @Test
     void aBareHandedSoldierGetsASquadmatesSpareWeaponFirst() {
         Condition bare = new Condition(20, 20, 1, Optional.of(new Kit(Optional.empty(), 0, 0)));
         Condition spare = new Condition(20, 20, 0, Optional.of(new Kit(Optional.of("stone_sword"), 0, 0, 0, 8, 0, 0, false, false, 0, false, 1)));

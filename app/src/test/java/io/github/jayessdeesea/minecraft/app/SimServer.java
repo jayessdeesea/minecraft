@@ -261,6 +261,13 @@ final class SimServer {
     }
 
     /** Wears the pickaxes {@code name} carries down to {@code left} uses each. */
+    /** {@code name} starved to {@code health} with nothing in its stomach - the simulator has no hunger of its own. */
+    void starve(String name, float health) {
+        Player p = players.get(name);
+        p.health = health;
+        p.listeners.onHealth().accept(new HealthUpdate(health, 0));
+    }
+
     void wear(String name, int left) {
         Player p = players.get(name);
         for (int[] s : p.slots) {

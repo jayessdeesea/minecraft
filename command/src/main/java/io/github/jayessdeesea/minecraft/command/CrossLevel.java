@@ -24,6 +24,11 @@ public final class CrossLevel {
     public static final int KEEP_RATIONS = 2;
     /** Rations handed to a soldier with none: two meals, a hungry soldier's way back to full. */
     public static final int RATIONS_GIVEN = 2;
+    /**
+     * Health at or under which a starving soldier is one hit from death: it gets a meal from any
+     * squadmate carrying one, its keep or not - buddy aid, before anything else is handed across.
+     */
+    public static final double CRITICAL_HEALTH = 6;
 
     /** What's handed across. */
     public enum Item {
@@ -83,10 +88,39 @@ public final class CrossLevel {
         }
         List<Transfer> transfers = new ArrayList<>();
         Set<String> busy = new HashSet<>();
+        buddyAid(squad, busy, transfers);
         pair(squad, Item.WEAPON, weaponsWanted, busy, transfers);
         pair(squad, Item.LOGS, logsWanted, busy, transfers);
         pair(squad, Item.RATIONS, rationsWanted, busy, transfers);
         return List.copyOf(transfers);
+    }
+
+    /** Whether {@code soldier} is starving one hit from death, with nothing to eat. */
+    static boolean critical(SoldierStatus soldier) {
+        return soldier.condition().filter(c -> c.food() == 0 && c.health() <= CRITICAL_HEALTH
+                && c.kit().map(Kit::rations).orElse(0) == 0).isPresent();
+    }
+
+    /**
+     * A meal for each soldier starving one hit from death, from the nearest squadmate carrying any
+     * who isn't itself: live, a soldier stood at a third of a heart and food 0 beside a squadmate
+     * with a ration it kept, since none had more than two to spare.
+     */
+    private static void buddyAid(List<SoldierStatus> squad, Set<String> busy, List<Transfer> transfers) {
+        for (SoldierStatus receiver : squad) {
+            if (!critical(receiver) || busy.contains(receiver.name()) || receiver.report() instanceof Report.LinkingUp) {
+                continue;
+            }
+            squad.stream()
+                    .filter(giver -> !giver.name().equals(receiver.name()) && !busy.contains(giver.name()) && !critical(giver)
+                            && !(giver.report() instanceof Report.LinkingUp) && Item.RATIONS.carried(giver) > 0)
+                    .min(Comparator.comparingDouble(giver -> Cohesion.distance(giver.position(), receiver.position())))
+                    .ifPresent(giver -> {
+                        busy.add(giver.name());
+                        busy.add(receiver.name());
+                        transfers.add(new Transfer(giver.name(), receiver.name(), Item.RATIONS, 1));
+                    });
+        }
     }
 
     private static void pair(List<SoldierStatus> squad, Item item, Map<String, Integer> wantedBy, Set<String> busy, List<Transfer> transfers) {
