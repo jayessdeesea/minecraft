@@ -2096,6 +2096,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 stairsProgress.remove(soldierName);
             }
             if (stairs != null && !squadInContact) {
+                // No hut on a mining squad's hands: the branch below never reaches where a patrol base's
+                // plan is let go, and live, a squad sent from its night's base to the mine went on
+                // building the base's doorway at the stairs' head, reporting Fortifying.
+                fortifying.remove(soldierName);
                 // The cutter stands where the stairs need it; the rest hold the top, clear of the shaft -
                 // by day. By night they go down behind it: the top is the dark, and down the stairs
                 // nothing spawns within 24 blocks of them.

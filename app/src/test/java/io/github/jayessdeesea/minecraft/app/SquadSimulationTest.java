@@ -602,6 +602,42 @@ class SquadSimulationTest {
         }
     }
 
+    /**
+     * As live: a squad ordered from building its patrol base to the camp's mine goes to the mine, the
+     * base's plan let go - it went on building the base at the stairs' head, reporting Fortifying.
+     */
+    @Test
+    void aSquadSentFromItsPatrolBaseToTheMineStopsBuildingTheBase() throws java.io.IOException {
+        java.util.concurrent.atomic.AtomicBoolean mine = new java.util.concurrent.atomic.AtomicBoolean();
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> mine.get()
+                ? new Objective("Cut the mine down to the iron", new Position(4, 16, 4), "Stone and iron for the camp", new Objective.Task.Mine())
+                : new Objective("Build a patrol base where you stand", camp, "Shelter", new Objective.Task.PatrolBase())),
+                squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})));
+        runner.run();
+
+        clock.advance(20_000); // the base laid out and begun
+        Path log = Path.of("target/sim/aSquadSentFromItsPatrolBaseToTheMineStopsBuildingTheBase.log");
+        assertTrue(java.nio.file.Files.readAllLines(log).stream().anyMatch(l -> l.contains("Fortifying")), "the base begun");
+        mine.set(true);
+        clock.advance(6 * 60_000); // the general's next call, and the squad on its way
+        List<String> lines = java.nio.file.Files.readAllLines(log);
+        List<String> last = lines.subList(Math.max(0, lines.size() - 40), lines.size()).stream()
+                .filter(l -> l.contains("Fortifying")).toList();
+        assertEquals(List.of(), last, "still building the base");
+    }
+
     /** Flat, with a shaft 6 deep down the 3x3 columns round the camp's mine head, (4, -4) from its centre. */
     private static int shaftAtTheMineHead(int x, int y, int z) {
         return x >= 3 && x <= 5 && z >= -5 && z <= -3 && y > GROUND - 6 && y <= GROUND ? SimServer.AIR : flat(x, y, z);
