@@ -381,6 +381,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final WallStore wallStore;
     /** The camp's farm, kept on disk like the wall: sited again after a restart, it moved to another pond. */
     private final WallStore farmStore;
+    /**
+     * The camp's mine - its staircase's walkway and landing - kept on disk like the wall, and kept
+     * out of the camp's ground work whatever the squads' tasks: with no squad on MINE, the shaft
+     * was no squad's, and the camp's fill would have poured dirt down it.
+     */
+    private final WallStore mineStore;
+    /** The camp's mine's cells, as last saved - null until loaded. Squad loop only. */
+    private List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campMine;
     /** The camp the squads build up, x and z - null for none. */
     private final int[] camp;
     /** Squad-loop cycles between measures of the foothold: about ten seconds. */
@@ -671,6 +679,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         this.roster = roster;
         this.wallStore = new WallStore(java.nio.file.Path.of(stateDir));
         this.farmStore = new WallStore(java.nio.file.Path.of(stateDir), "farm");
+        this.mineStore = new WallStore(java.nio.file.Path.of(stateDir), "mine");
         this.camp = camp.isBlank() ? null : java.util.Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
         if (this.camp != null && this.camp.length != 2) {
             throw new IllegalArgumentException("minecraft.camp is x,z - not " + camp);
@@ -976,6 +985,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private Map<String, io.github.jayessdeesea.minecraft.command.Order> groundwork(String squad, SquadState state, io.github.jayessdeesea.minecraft.bot.nav.BlockPos feet, List<SoldierStatus> hands) {
         java.util.Set<io.github.jayessdeesea.minecraft.command.Cell> except = new java.util.HashSet<>();
         campKeep().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
+        campMine().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
         squadStates.values().stream().filter(s -> s.stairs != null).forEach(s -> {
             s.stairs.walkway().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
             s.stairs.landing().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
@@ -1233,6 +1243,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      * What levelling the camp never digs: its wall, every squad's hut, and the ground under each
      * workshop's stand and fixtures - a workshop on a rise stays standing.
      */
+    /** The camp's mine's walkway and landing, as kept on disk: empty for no camp, or no mine cut. */
+    private List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campMine() {
+        if (campMine == null) {
+            campMine = camp == null ? List.of() : mineStore.load(camp[0] + "," + camp[1]).orElse(List.of());
+        }
+        return campMine;
+    }
+
     private java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campKeep() {
         java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> keep = new java.util.HashSet<>();
         // Never the wall: levelled round the camp's ground, not the wall's centre, its high ground
@@ -1774,6 +1792,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             return sited.get();
         }).orElse(null);
         state.stairs = stairs;
+        if (stairs != null && camp != null) {
+            List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> mine = new java.util.ArrayList<>(stairs.walkway());
+            mine.addAll(stairs.landing());
+            mine.sort(java.util.Comparator.comparingInt(io.github.jayessdeesea.minecraft.bot.nav.BlockPos::y)
+                    .thenComparingInt(io.github.jayessdeesea.minecraft.bot.nav.BlockPos::x).thenComparingInt(io.github.jayessdeesea.minecraft.bot.nav.BlockPos::z));
+            if (!mine.equals(campMine())) {
+                mineStore.save(camp[0] + "," + camp[1], mine);
+                campMine = List.copyOf(mine);
+            }
+        }
         siteWorkshop(squadName, state, statuses, plan == null ? List.of()
                 : java.util.stream.Stream.of(plan.cells(), plan.floor(), plan.floor().stream().map(f -> new Position(f.x(), f.y() + 1, f.z())).toList())
                         .flatMap(List::stream).map(c -> io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(c.x(), c.y(), c.z())).toList());

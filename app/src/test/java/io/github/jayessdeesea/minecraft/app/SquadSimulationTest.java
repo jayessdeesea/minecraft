@@ -362,6 +362,42 @@ class SquadSimulationTest {
         return x >= 3 && x <= 5 && z >= 3 && z <= 5 && y > GROUND - 6 && y <= GROUND ? SimServer.AIR : flat(x, y, z);
     }
 
+    /**
+     * The camp's mine is the camp's, whatever the squads' tasks: a squad keeping the camp with no
+     * MINE order leaves the shaft open. Without it, the camp's fill would have poured dirt down it.
+     */
+    @Test
+    void theCampsMineIsLeftOpenByAnIdleSquadKeepingTheCamp() {
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> shaft = new java.util.ArrayList<>();
+        for (int x = 3; x <= 5; x++) {
+            for (int z = 3; z <= 5; z++) {
+                for (int y = GROUND - 5; y <= GROUND; y++) {
+                    shaft.add(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
+                }
+            }
+        }
+        new WallStore(state, "mine").save("0,0", shaft);
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::pitInCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})));
+        runner.run();
+
+        clock.advance(4 * 60_000);
+
+        long filled = shaft.stream().filter(c -> server.block(c.x(), c.y(), c.z()) != SimServer.AIR).count();
+        assertEquals(0, filled, "cells of the mine filled in");
+    }
+
     /** As {@link #pitInCamp}, with water in its bottom two layers: a flooded shaft. */
     private static int floodedPitInCamp(int x, int y, int z) {
         boolean pit = x >= 3 && x <= 5 && z >= 3 && z <= 5;
