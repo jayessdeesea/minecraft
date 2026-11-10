@@ -145,6 +145,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int[] stairsFor;
         /** The recovery drill: who's stranded, the stair laid out for each, and who's fetching. */
         final io.github.jayessdeesea.minecraft.command.Recovery recovery = new io.github.jayessdeesea.minecraft.command.Recovery(STRANDED_REPORTS);
+        /** Soldiers the recovery drill is sending down on their own - said once a spell. */
+        final java.util.Set<String> escaping = new java.util.HashSet<>();
         /** Torches left to put down round a SECURE objective, at the last check: -1 before the first. */
         int torchesLeft = -1;
         /** The squad's wall, laid out once round its FORTIFY objective's ground. */
@@ -1917,10 +1919,15 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // the stand its own routine wants and can't reach.
             Optional<Order.MoveTo> escape = squadInContact ? Optional.empty() : state.recovery.escape(soldierName);
             if (escape.isPresent()) {
+                if (state.escaping.add(soldierName)) {
+                    LOG.info("[{}] RECOVERY: {} has nobody to fetch it - goes down to its squad itself, at MEDIUM risk, to {}",
+                            squadName, soldierName, new Position(escape.get().x(), escape.get().y(), escape.get().z()));
+                }
                 upkeeping.remove(soldierName);
                 byName.get(soldierName).receiveOrder(escape.get());
                 continue;
             }
+            state.escaping.remove(soldierName);
             Optional.ofNullable(workshopOf(state, statuses.get(i).position()))
                     .ifPresentOrElse(w -> workshops.put(soldierName, w), () -> workshops.remove(soldierName));
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
