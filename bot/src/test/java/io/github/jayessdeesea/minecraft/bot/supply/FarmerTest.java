@@ -134,6 +134,25 @@ class FarmerTest {
     }
 
     @Test
+    void aFarmerFarFromThePlotIsGivenTheWalkThere() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.HOE), 1});
+        Farmer farmer = new Farmer("Bob", session, inventory, new HashSet<>());
+        // 60 blocks off, closing at 2 blocks a second - a winding route's pace: half a minute there.
+        Position soldier = new Position(60.5, GROUND + 1, 0.5);
+
+        for (int tick = 0; tick < 1_000 && farmland.isEmpty(); tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            farmer.tick(soldier, world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+            Position to = farmer.standAt().orElse(soldier);
+            double dx = to.x() - soldier.x(), dz = to.z() - soldier.z(), d = Math.hypot(dx, dz);
+            soldier = d <= 0.1 ? to : new Position(soldier.x() + dx / d * 0.1, soldier.y(), soldier.z() + dz / d * 0.1);
+        }
+
+        assertEquals(Set.of(PLOT.get(1)), farmland, "the nearest cell tilled at the first walk, none given up on the way");
+    }
+
+    @Test
     void aPlotCellWithABlockOnItIsNotTilled() {
         Set<BlockPos> blocked = Set.of(PLOT.get(0).offset(0, 1, 0)); // a pillar's cobblestone on the nearer cell
         WorldView world = new WorldView() {

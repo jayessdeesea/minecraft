@@ -32,6 +32,18 @@ final class Digger {
     /** How far a soldier looks for something to dig. */
     static final int SEARCH_RADIUS = 16;
     static final int WALK_TIMEOUT_TICKS = 400;
+    /** Ticks a walk is given per block of the way, past {@link #WALK_TIMEOUT_TICKS}: a block a second, round what's in the way. */
+    static final int WALK_TICKS_PER_BLOCK = 20;
+
+    /**
+     * How long a walk from {@code from} to {@code to} is given before it's a failure: at least
+     * {@link #WALK_TIMEOUT_TICKS}, and a second a block of the way. Live, farmers 45 blocks from the
+     * camp's farm failed every walk to it, given 20 seconds for each.
+     */
+    static int walkTicks(Position from, BlockPos to) {
+        double blocks = Math.sqrt(Math.pow(to.x() + 0.5 - from.x(), 2) + Math.pow(to.y() - from.y(), 2) + Math.pow(to.z() + 0.5 - from.z(), 2));
+        return Math.max(WALK_TIMEOUT_TICKS, (int) Math.ceil(blocks * WALK_TICKS_PER_BLOCK));
+    }
     /** For the server to answer: the inventory resent, a block update. */
     static final int ANSWER_TICKS = 40;
     /**
@@ -201,6 +213,11 @@ final class Digger {
 
     /** Starts a dig at {@code spot}, claiming its block and stand cell until {@link #release}. */
     Digger(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Spot spot) {
+        this(name, session, inventory, claims, spot, WALK_TIMEOUT_TICKS);
+    }
+
+    /** As {@link #Digger(String, PlaySession, Inventory, Set, Spot)}, given {@code walkTicks} to reach the spot. */
+    Digger(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Spot spot, int walkTicks) {
         this.session = session;
         this.inventory = inventory;
         this.claims = claims;
@@ -216,7 +233,7 @@ final class Digger {
                         throw new IllegalStateException("the " + target + " at " + block + " is gone");
                     }
                     return at(soldierAt, spot.stand());
-                }), WALK_TIMEOUT_TICKS),
+                }), walkTicks),
                 new Step("take " + (target.tool == null ? "an empty hand" : target.tool) + " in hand", this::inHand, this::takeInHand,
                         new Expect((target.tool == null ? "an empty hand" : target.tool) + " in hand", this::inHand), ANSWER_TICKS),
                 // The server times the dig itself: finishing early is refused, so wait out its break time.

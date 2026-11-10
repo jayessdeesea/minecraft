@@ -180,7 +180,7 @@ public final class Farmer {
         Optional<BlockPos> ripe = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).findFirst();
         if (ripe.isPresent()) {
             BlockPos crop = ripe.get().offset(0, 1, 0);
-            digger = new Digger(name, session, inventory, claims, new Digger.Spot(Digger.Target.WHEAT, crop, crop));
+            digger = new Digger(name, session, inventory, claims, new Digger.Spot(Digger.Target.WHEAT, crop, crop), Digger.walkTicks(soldier, crop));
             LOG.info("{} harvests the wheat at {}", name, crop);
             return;
         }
@@ -219,7 +219,7 @@ public final class Farmer {
         standAt = new Position(cell.x() + 0.5, cell.y() + 1, cell.z() + 0.5);
         fieldWork = new Script(name, List.of(
                 new Step("walk to " + cell, () -> {
-                }, new Expect("standing on " + cell, () -> on(cell)), WALK_TICKS),
+                }, new Expect("standing on " + cell, () -> on(cell)), Math.max(WALK_TICKS, Digger.walkTicks(soldier, cell))),
                 new Step(item + " in hand", () -> inHand(item), () -> takeInHand(item),
                         new Expect(item + " in hand", () -> inHand(item)), ANSWER_TICKS),
                 new Step(job, done, () -> {
