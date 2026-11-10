@@ -77,6 +77,15 @@ public final class Gatherer {
      */
     public synchronized void tick(Position soldier, WorldView world, Optional<Resource> resource, Position around,
                                   boolean wanted) {
+        tick(soldier, world, resource, around, wanted, java.util.OptionalInt.empty());
+    }
+
+    /**
+     * As {@link #tick(Position, WorldView, Optional, Position, boolean)}, carrying {@code amount}
+     * when it's given - an {@code Order.Gather}'s - rather than the resource's usual load.
+     */
+    public synchronized void tick(Position soldier, WorldView world, Optional<Resource> resource, Position around,
+                                  boolean wanted, java.util.OptionalInt amount) {
         if (retry > 0) {
             retry--;
         }
@@ -91,12 +100,12 @@ public final class Gatherer {
             case FLINT -> ItemClass.FLINT;
             default -> ItemClass.COBBLESTONE;
         };
-        int load = switch (resource.get()) {
+        int load = amount.orElse(switch (resource.get()) {
             case WOOD -> CARRY_LOGS;
             case SOIL -> CARRY_SOIL;
             case FLINT -> CARRY_FLINT;
             default -> CARRY_STONE;
-        };
+        });
         if (resource.get() == Resource.STONE && inventory.slotOf(ItemClass.PICKAXE) < 0) {
             stop(); // a pickaxe first - Armourer makes one
             return;

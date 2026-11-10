@@ -123,17 +123,18 @@ median and longest time, the alarms, and what's still open.
 
 *Supervise and refine: the squad's task register* (`command.TaskRegister`; ATP 3-21.8, the last
 step of troop leading procedures). Each squad keeps who is on what. Every cycle each soldier's
-tasking - clear the camp's sky, level the camp, wall the camp, light the ground, cut the mine, keep
-the farm, plant the tree farm, gather a resource, patrol (in that order of precedence; lighting only
-for a soldier with torches carried or being made) - is recorded with its report and what's
-left of the task as the world measures it (cover, high ground, wall blocks, torches). The report is
+tasking - gather SOIL for the ground work, fill the camp's ground, dig the camp's ground, wall the
+camp, wall the camp in stone, light the ground, cut the mine, keep the farm, plant the tree farm,
+gather a resource, patrol (in that order of precedence; lighting only for a soldier with torches
+carried or being made) - is recorded with its report and what's left of the task as the world
+measures it (cells to dig or fill, wall blocks, torches). The report is
 trusted and verified: a soldier reporting work while what's left hasn't fallen in 2 minutes is
 logged as `[Verify] ... hasn't fallen` and its tasking marked STALLED, until progress shows again.
 A CANTCO is held open on its tasking. A tasking ends done when what's left reaches 0 - or when its
 soldier moves off a task that now measures 0, as when the last log falls - or is counted as taken
 off unfinished. Ended taskings are counted in the dawn review and forgotten; what's still open is
-listed. A STALLED finding is acted on: the squad takes the soldier off that task (clearing,
-levelling, walling or lighting) for its next work, and puts it back after 5 minutes - twice as long
+listed. A STALLED finding is acted on: the squad takes the soldier off that task (digging,
+filling, walling or lighting) for its next work, and puts it back after 5 minutes - twice as long
 each time it stalls there again, up to 40 - so a soldier at a tree too tall to fell walls instead
 of standing at it.
 
@@ -722,15 +723,27 @@ against, and how many nowhere to stand. The log says how many blocks are still t
 together.
 
 Fortifying starts with the sky. Zombies and skeletons burn in daylight only under open sky, so a
-tree over the camp is shade for whatever the night left inside the wall. Every log and leaf over
-the camp's ground within the wall line is cover (`bot.engineer.Clearing`), and while any is left,
-each soldier fortifying cuts the lowest one it can reach, keeping the logs (`bot.supply.Clearer`,
-a `Digger` job; it outranks the mason for the hands). It stands on the ground, never on the tree,
-and reaches a block whose nearest face is within 5 blocks of its eyes: from the ground, six up.
-Leaves out of reach go by themselves once their tree's logs do, since cut-off leaves decay.
-A block it couldn't cut it leaves for longer each time (`Setbacks`). FORTIFY isn't done while cover
-is left: its progress reads "N blocks of trees over the camp to clear" before the wall's count, so
-a tree too tall to fell from the ground shows as the task stalled.
+tree over the camp is shade for whatever the night left inside the wall.
+
+The ground work is handed down as concrete commands, not "level the camp": the engineer's two
+boxes (`command.Groundwork`) - a dig box from the camp's feet level 24 up, and a fill box from 16
+below up to the ground, both inside the wall line - and the squad's drill (`command.Tasking`)
+splits the work left in them into a strip for each soldier. Digging first: while anything in the
+dig box is left, each soldier's command is `Order.Dig(box, except)`, every log, leaf, dirt, stone
+or gravel block in its strip. Then filling: `Order.Fill(box, except)`, every open cell in each
+column of its strip from the top down to the first solid block or water. The strips are cut from
+where the work is left, not the whole site, so no soldier is handed a strip with nothing in it.
+`except` is what neither touches: the squads' huts, the workshops, the farm, the wall line, the
+mine's walkway and landing. A soldier reports `Working(command, cells left)`.
+
+A dig (`bot.engineer.Clearing.toClear`, `bot.supply.Clearer`, a `Digger` job; it outranks the
+mason for the hands) fells a tree from the bottom and takes the ground from the top down. It
+stands on the ground, never on the tree or the block, and reaches a block whose nearest face is
+within 5 blocks of its eyes: from the ground, six up. Leaves out of reach go by themselves once
+their tree's logs do, since cut-off leaves decay. A block it couldn't dig - no tool for it, out of
+reach - it leaves for longer each time (`Setbacks`). FORTIFY isn't done while the dig box holds
+anything: its progress reads "N blocks over the camp's ground to dig" before the wall's count, so a
+tree too tall to fell from the ground shows as the task stalled.
 
 A wall of dirt isn't finished: an enderman picks a dirt block out of it and opens a hole. So each
 of the wall's blocks of dirt or grass is replaced with cobblestone (`Mason.repoint`): a mason
@@ -740,31 +753,28 @@ block update. "The camp walled in" isn't met, and FORTIFY isn't done, while any 
 the wall; its progress says how many blocks. With no stone to hand that shows as the task
 stalled - the general's cue for stone.
 
-Then the ground. With the sky clear, the high ground inside the wall line comes down to the camp's
-own height, so the squads see across it: each column's top block, where it's dirt or grass at or
-above the camp's feet level, is dug off, a layer at a time (`Clearing.humps`, the same clearer's
-work, and its dirt is the wall's). Every squad's hut and the ground under each workshop are
-spared; an old hut somewhere else is high ground like any other. Progress reads "N blocks of high
-ground inside the wall to level" until it's done; nothing but dirt and grass is dug.
+A fill (`Clearing.toFill`, `bot.supply.Filler`) puts cobblestone or dirt in its strip's cells,
+the lowest it can reach first, nearest first, so a pit under the wall line becomes footing again;
+a block put in high can seal a pocket of air under it, underground and harmless. A cell it can't
+reach, or whose stand it doesn't get to within 20 seconds, is skipped for the next. A flooded pit
+is filled too, its water the floor: capped from the rim, since nobody stands in water to fill it
+from below - live, the camp's mine shaft flooded with soldiers afloat in it. And no dig breaks
+ground with water or lava beside or above it (`Clearing.letsInWater`, for every dig): opened, the
+water flows into the hole, which is how that shaft was flooded. Progress reads "N cells under the
+camp's ground to fill". Live, a pit 13 deep under the east wall line left 42 wall cells nothing to
+stand on.
+
+Its blocks are the squad's own: no supply is issued for the fill. A soldier with fewer than 4
+blocks is sent off base instead, `Order.Gather(SOIL, box, 32)` - a borrow pit 6 wide and 3 deep,
+3 out past the wall line on its own side of the camp - and keeps at it until it carries 32, so it
+doesn't walk back for every fourth block. A mason back outside the wall line from a dirt run builds
+from the outside first, and claims its stand with its cell, so two masons never contest one stand.
 
 A soldier with nothing else to do keeps the camp the same way, whatever the squad's task: by day,
-out of contact and within 24 blocks of the camp, with no other work handed to it, it cuts the
-trees over the camp, digs its high ground down and fills its hollows (`SoldierRunner.campUpkeep`),
-so an idle squad flattens the camp rather than stand in it. Live, three soldiers stood a day in a
-lit camp with their task all but done.
-
-Then the hollows, filled from the bottom (`Clearing.hollows`, `bot.supply.Filler`): every open
-cell inside the wall line below the camp's feet level, down to the ground in its column and no
-more than 16 deep, so a pit under the wall line becomes footing again. A soldier carrying
-cobblestone or dirt fills the lowest cells it can reach first, nearest first; a block put in high
-can seal a pocket of air under it, underground and harmless. A flooded pit is a hollow too, its
-water the floor: capped from the rim, since nobody stands in water to fill it from below - live,
-the camp's mine shaft flooded with soldiers afloat in it. And no dig breaks a block with water or
-lava beside or above it (`Digger`, `Clearing.humps`): opened, the water flows into the hole, which
-is how that shaft was flooded. The mine's
-shaft and landing are never a hollow, nor a squad's hut or a workshop. Progress reads "N cells of
-hollow inside the wall to fill". Live, a pit 13 deep under the east wall line left 42 wall cells
-nothing to stand on.
+out of contact and within 24 blocks of the camp, with no other work handed to it, it is handed the
+same drill's commands round the camp (`SoldierRunner.campUpkeep`), so an idle squad flattens the
+camp rather than stand in it. Live, three soldiers stood a day in a lit camp with their task all
+but done.
 
 ## 16. Mining down
 

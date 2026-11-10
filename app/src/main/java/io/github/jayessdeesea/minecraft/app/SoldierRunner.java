@@ -153,14 +153,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.bot.nav.BlockPos wallCentre;
         /** Wall cells left to fill at the last check: -1 before the first. */
         int wallLeft = -1;
-        /** Logs and leaves over the camp inside its wall line, at the last check: -1 before the first. */
-        int coverLeft = -1;
+        /** Blocks of the camp's ground work still to dig - trees over it, ground above its level - at the last check: -1 before the first. */
+        int digLeft = -1;
         /** The wall's blocks of dirt or grass, to replace with stone, at the last check: -1 before the first. */
         int softLeft = -1;
-        /** Blocks of high ground inside the wall line to dig off, at the last check: -1 before the first. */
-        int humpsLeft = -1;
-        /** Open cells of the camp's hollows to fill, at the last check: -1 before the first. */
-        int hollowsLeft = -1;
+        /** Open cells of the camp's ground work still to fill, at the last check: -1 before the first. */
+        int fillLeft = -1;
+        /** Soldiers sent off base for dirt by the ground work's drill, until they carry a load. */
+        final java.util.Set<String> fetchingDirt = new java.util.HashSet<>();
         /** When the torches still to put down last changed: a plan stuck at a cell or two is done. */
         long torchesChangedAt;
         /** When a staircase nobody could site at {@code stairsFor} is looked for again. */
@@ -350,11 +350,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     static final double STUCK_IN_WATER_MOVE = 1.5;
     /** How far round itself a soldier stuck in water plugs the water's sources. */
     static final int SEAL_REACH = 4;
-    /** The camp's hollows each soldier fortifying fills - squad loop writes, tick reads. */
+    /** The cells of each soldier's {@code Order.Fill} - squad loop writes, tick reads. */
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> filling = new ConcurrentHashMap<>();
     /** The dirt in its squad's closed wall each soldier replaces with stone - squad loop writes, tick reads. */
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> repointing = new ConcurrentHashMap<>();
-    /** The cover over its camp each soldier fortifying it clears first - squad loop writes, tick reads. */
+    /** The blocks of each soldier's {@code Order.Dig} - squad loop writes, tick reads. */
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> clearing = new ConcurrentHashMap<>();
     /** The blocks of cover a clearer has taken, and where it stands for each: shared, so each takes another. */
     private final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> clearClaims = ConcurrentHashMap.newKeySet();
@@ -893,46 +893,152 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         boolean daylight = !chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
         boolean contact = statuses.stream().anyMatch(s -> s.report() instanceof Report.InContact);
         if (campGround == null || !daylight || contact) {
-            statuses.forEach(s -> upkeeping.remove(s.name()));
+            statuses.forEach(s -> {
+                if (upkeeping.remove(s.name())) {
+                    route(s.name(), null);
+                }
+            });
             return;
         }
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cover = io.github.jayessdeesea.minecraft.bot.engineer.Clearing.cover(world, campGround, WALL_RADIUS);
-        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> keep = new java.util.HashSet<>(campKeep());
-        squadStates.values().stream().filter(s -> s.stairs != null).forEach(s -> {
-            keep.addAll(s.stairs.walkway());
-            keep.addAll(s.stairs.landing());
-        });
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> humps = !cover.isEmpty() ? List.of()
-                : io.github.jayessdeesea.minecraft.bot.engineer.Clearing.humps(world, campGround, WALL_RADIUS - 1, keep);
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> hollows = !cover.isEmpty() || !humps.isEmpty() ? List.of()
-                : io.github.jayessdeesea.minecraft.bot.engineer.Clearing.hollows(world, campGround, WALL_RADIUS, keep);
+        List<SoldierStatus> idle = new java.util.ArrayList<>();
         for (SoldierStatus s : statuses) {
             String n = s.name();
-            boolean otherWork = (clearing.containsKey(n) && !upkeeping.contains(n)) || (filling.containsKey(n) && !upkeeping.contains(n))
-                    || walling.containsKey(n) || repointing.containsKey(n) || lighting.containsKey(n) || farming.containsKey(n)
-                    || planting.containsKey(n) || gathering.containsKey(n) || cutting.containsKey(n) || patrolLegs.containsKey(n);
+            boolean otherWork = (clearing.containsKey(n) || filling.containsKey(n) || groundGather.containsKey(n)) && !upkeeping.contains(n)
+                    || walling.containsKey(n) || repointing.containsKey(n) || farming.containsKey(n)
+                    // Lighting is work only while it's lighting: live, a squad handed a light plan of
+                    // one cell nobody could reach stood about rather than keep the camp.
+                    || lighting.containsKey(n) && Optional.ofNullable(lamplighters.get(n)).map(l -> l.active()).orElse(false)
+                    || planting.containsKey(n) || gathering.containsKey(n) && !groundGather.containsKey(n) || cutting.containsKey(n)
+                    || patrolLegs.containsKey(n);
             boolean near = Math.hypot(s.position().x() - campGround.x(), s.position().z() - campGround.z()) <= SECURE_RADIUS * 2;
-            if (otherWork || !near || (cover.isEmpty() && humps.isEmpty() && hollows.isEmpty())) {
+            if (otherWork || !near) {
                 if (upkeeping.remove(n)) {
-                    clearing.remove(n);
-                    filling.remove(n);
+                    route(n, null);
+                }
+            } else {
+                idle.add(s);
+            }
+        }
+        if (idle.isEmpty()) {
+            return;
+        }
+        SquadState state = squadStates.get(squad);
+        Map<String, io.github.jayessdeesea.minecraft.command.Order> work = groundwork(squad, state, campGround, idle);
+        for (SoldierStatus s : idle) {
+            io.github.jayessdeesea.minecraft.command.Order order = work.get(s.name());
+            if (order == null) {
+                if (upkeeping.remove(s.name())) {
+                    route(s.name(), null);
                 }
                 continue;
             }
-            if (upkeeping.add(n)) {
-                LOG.info("[{}] {} has nothing else to do - keeps the camp: {}", squad, n,
-                        !cover.isEmpty() ? cover.size() + " blocks of trees over it" : !humps.isEmpty() ? humps.size() + " blocks of high ground"
-                                : hollows.size() + " cells of hollow");
+            if (upkeeping.add(s.name())) {
+                LOG.info("[{}] {} has nothing else to do - keeps the camp: {}", squad, s.name(), order);
             }
-            if (!cover.isEmpty() || !humps.isEmpty()) {
-                clearing.put(n, cover.isEmpty() ? humps : cover);
-                filling.remove(n);
-            } else {
-                filling.put(n, hollows);
-                clearing.remove(n);
+            route(s.name(), order);
+        }
+    }
+
+    /**
+     * The ground work round {@code feet}: the engineer's dig box over the camp's ground and fill box
+     * under it (command.Groundwork), what's left in each logged as it changes, and each of
+     * {@code hands}'s concrete command from the squad's drill (command.Tasking). Never the cells of
+     * a hut, a workshop, the wall or the mine.
+     */
+    private Map<String, io.github.jayessdeesea.minecraft.command.Order> groundwork(String squad, SquadState state, io.github.jayessdeesea.minecraft.bot.nav.BlockPos feet, List<SoldierStatus> hands) {
+        java.util.Set<io.github.jayessdeesea.minecraft.command.Cell> except = new java.util.HashSet<>();
+        campKeep().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
+        squadStates.values().stream().filter(s -> s.stairs != null).forEach(s -> {
+            s.stairs.walkway().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
+            s.stairs.landing().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
+        });
+        io.github.jayessdeesea.minecraft.command.Cell at = new io.github.jayessdeesea.minecraft.command.Cell(feet.x(), feet.y(), feet.z());
+        io.github.jayessdeesea.minecraft.command.Box dig = io.github.jayessdeesea.minecraft.command.Groundwork.dig(at, WALL_RADIUS - 1);
+        // Inside the wall line, as the dig is: the wall's own footing is the masons' (Perimeter.open).
+        io.github.jayessdeesea.minecraft.command.Box fill = io.github.jayessdeesea.minecraft.command.Groundwork.fill(at, WALL_RADIUS - 1);
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> toDig = io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toClear(world, dig, except);
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> toFill = toDig.isEmpty()
+                ? io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toFill(world, fill, except) : List.of();
+        int digLeft = toDig.size();
+        int fillLeft = digLeft > 0 ? -1 : toFill.size();
+        if (digLeft != state.digLeft || fillLeft != state.fillLeft) {
+            LOG.info("[{}] ground work round {}: {} blocks to dig ({}){}", squad, feet, digLeft, dig,
+                    fillLeft < 0 ? "" : ", " + fillLeft + " cells to fill (" + fill + ")");
+            state.digLeft = digLeft;
+            state.fillLeft = fillLeft;
+        }
+        List<io.github.jayessdeesea.minecraft.command.Tasking.Hand> crew = hands.stream().map(h -> new io.github.jayessdeesea.minecraft.command.Tasking.Hand(h.name(),
+                h.condition().flatMap(c -> c.kit()).map(k -> k.stone() + k.dirt()).orElse(0))).toList();
+        // Split where the work is, not the whole site: live in the squad simulation, a pit in one
+        // half of the camp left the soldier given the other half nothing to fill.
+        Map<String, io.github.jayessdeesea.minecraft.command.Order> orders = io.github.jayessdeesea.minecraft.command.Tasking.allocate(crew, at, WALL_RADIUS,
+                bounds(toDig), bounds(toFill), except, state.fetchingDirt);
+        state.fetchingDirt.clear();
+        orders.forEach((n, o) -> {
+            if (o instanceof io.github.jayessdeesea.minecraft.command.Order.Gather) {
+                state.fetchingDirt.add(n);
+            }
+        });
+        return orders;
+    }
+
+    /** The least box holding every one of {@code cells}, if there are any. */
+    private static Optional<io.github.jayessdeesea.minecraft.command.Box> bounds(List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells) {
+        if (cells.isEmpty()) {
+            return Optional.empty();
+        }
+        int[] lo = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE}, hi = {Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};
+        for (io.github.jayessdeesea.minecraft.bot.nav.BlockPos c : cells) {
+            lo[0] = Math.min(lo[0], c.x());
+            lo[1] = Math.min(lo[1], c.y());
+            lo[2] = Math.min(lo[2], c.z());
+            hi[0] = Math.max(hi[0], c.x());
+            hi[1] = Math.max(hi[1], c.y());
+            hi[2] = Math.max(hi[2], c.z());
+        }
+        return Optional.of(new io.github.jayessdeesea.minecraft.command.Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]));
+    }
+
+    /** The register's name for a ground-work command: what it's on. */
+    private static String groundTask(io.github.jayessdeesea.minecraft.command.Order order) {
+        return switch (order) {
+            case io.github.jayessdeesea.minecraft.command.Order.Dig _ -> "dig the camp's ground";
+            case io.github.jayessdeesea.minecraft.command.Order.Fill _ -> "fill the camp's ground";
+            default -> "gather SOIL";
+        };
+    }
+
+    /**
+     * {@code soldier}'s ground-work command to the routine that does it: a dig's cells to its
+     * clearer, a fill's to its filler, a gather's box to its gatherer. None, and it's off all three.
+     */
+    private void route(String soldier, io.github.jayessdeesea.minecraft.command.Order order) {
+        switch (order) {
+            case io.github.jayessdeesea.minecraft.command.Order.Dig d -> {
+                clearing.put(soldier, io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toClear(world, d.box(), d.except()));
+                filling.remove(soldier);
+                groundGather.remove(soldier);
+            }
+            case io.github.jayessdeesea.minecraft.command.Order.Fill f -> {
+                filling.put(soldier, io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toFill(world, f.box(), f.except()));
+                clearing.remove(soldier);
+                groundGather.remove(soldier);
+            }
+            case io.github.jayessdeesea.minecraft.command.Order.Gather g -> {
+                groundGather.put(soldier, g);
+                clearing.remove(soldier);
+                filling.remove(soldier);
+            }
+            case null, default -> {
+                clearing.remove(soldier);
+                filling.remove(soldier);
+                groundGather.remove(soldier);
             }
         }
     }
+
+    /** Each soldier's {@code Order.Gather} from the ground work's drill - squad loop writes, tick reads. */
+    private final Map<String, io.github.jayessdeesea.minecraft.command.Order.Gather> groundGather = new ConcurrentHashMap<>();
 
     /** Soldiers on camp upkeep, their clearing or filling the upkeep's - squad loop only. */
     private final java.util.Set<String> upkeeping = ConcurrentHashMap.newKeySet();
@@ -947,8 +1053,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         Map<String, io.github.jayessdeesea.minecraft.command.TaskRegister.Assignment> on = new java.util.LinkedHashMap<>();
         for (SoldierStatus s : statuses) {
             String n = s.name();
-            String task = filling.containsKey(n) ? "fill the camp's hollows"
-                    : clearing.containsKey(n) ? (state.coverLeft > 0 ? "clear the camp's sky" : "level the camp")
+            String task = groundGather.containsKey(n) ? "gather SOIL"
+                    : filling.containsKey(n) ? "fill the camp's ground"
+                    : clearing.containsKey(n) ? "dig the camp's ground"
                     : walling.containsKey(n) ? "wall the camp"
                     : repointing.containsKey(n) ? "wall the camp in stone"
                     // Lighting only with torches carried or being made: live, a soldier with none farmed
@@ -966,8 +1073,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 continue;
             }
             List<?> left = switch (task) {
-                case "clear the camp's sky", "level the camp" -> clearing.get(n);
-                case "fill the camp's hollows" -> filling.get(n);
+                case "dig the camp's ground" -> clearing.get(n);
+                case "fill the camp's ground" -> filling.get(n);
                 case "wall the camp" -> walling.get(n);
                 case "wall the camp in stone" -> repointing.get(n);
                 case "light the ground" -> lighting.get(n);
@@ -978,14 +1085,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         // What's left of each task the squad measures, for a soldier moved off one as its work ran out.
         Map<String, Integer> measured = new java.util.HashMap<>();
-        if (state.coverLeft >= 0) {
-            measured.put("clear the camp's sky", state.coverLeft);
+        if (state.digLeft >= 0) {
+            measured.put("dig the camp's ground", state.digLeft);
         }
-        if (state.humpsLeft >= 0) {
-            measured.put("level the camp", state.humpsLeft);
-        }
-        if (state.hollowsLeft >= 0) {
-            measured.put("fill the camp's hollows", state.hollowsLeft);
+        if (state.fillLeft >= 0) {
+            measured.put("fill the camp's ground", state.fillLeft);
         }
         if (state.wallLeft >= 0) {
             measured.put("wall the camp", state.wallLeft);
@@ -1055,6 +1159,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         };
     }
 
+    /** What's left of {@code squad}'s ground work - blocks to dig, then cells to fill - once measured: for the squad simulation. */
+    java.util.OptionalInt levellingLeft(String squad) {
+        SquadState s = squadStates.get(squad);
+        return s == null || s.digLeft < 0 || s.digLeft == 0 && s.fillLeft < 0 ? java.util.OptionalInt.empty()
+                : java.util.OptionalInt.of(Math.max(0, s.digLeft) + Math.max(0, s.fillLeft));
+    }
+
     /** {@code squad}'s open taskings - for the squad simulation to read. */
     List<io.github.jayessdeesea.minecraft.command.TaskRegister.Tasking> taskings(String squad) {
         return squadStates.containsKey(squad) ? squadStates.get(squad).register.open() : List.of();
@@ -1076,11 +1187,15 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     }
 
     /**
-     * What levelling the camp never digs: every squad's hut, and the ground under each workshop's
-     * stand and fixtures - a workshop on a rise stays standing.
+     * What levelling the camp never digs: its wall, every squad's hut, and the ground under each
+     * workshop's stand and fixtures - a workshop on a rise stays standing.
      */
     private java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campKeep() {
         java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> keep = new java.util.HashSet<>();
+        // Never the wall: levelled round the camp's ground, not the wall's centre, its high ground
+        // took in the wall's own blocks, dug out as the masons put them back - live, soldiers broke
+        // blocks and put them back all day.
+        walls.values().forEach(keep::addAll);
         for (SquadState s : squadStates.values()) {
             if (s.builtBase != null) {
                 s.builtBase.cells().forEach(c -> keep.add(io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(c.x(), c.y(), c.z())));
@@ -1134,14 +1249,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 } else if (state.wall != null && state.wallLeft > 0) {
                     left = Optional.of(state.wallLeft + " of " + state.wall.size() + " wall blocks to place");
                 }
-                if (state.coverLeft > 0) {
-                    left = Optional.of(state.coverLeft + " blocks of trees over the camp to clear" + left.map(l -> ", and " + l).orElse(""));
+                if (state.digLeft > 0) {
+                    left = Optional.of(state.digLeft + " blocks over the camp's ground to dig" + left.map(l -> ", and " + l).orElse(""));
                     done = Optional.empty();
-                } else if (state.humpsLeft > 0) {
-                    left = Optional.of(state.humpsLeft + " blocks of high ground inside the wall to level" + left.map(l -> ", and " + l).orElse(""));
-                    done = Optional.empty();
-                } else if (state.hollowsLeft > 0) {
-                    left = Optional.of(state.hollowsLeft + " cells of hollow inside the wall to fill" + left.map(l -> ", and " + l).orElse(""));
+                } else if (state.fillLeft > 0) {
+                    left = Optional.of(state.fillLeft + " cells under the camp's ground to fill" + left.map(l -> ", and " + l).orElse(""));
                     done = Optional.empty();
                 }
             }
@@ -1563,40 +1675,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         } else if (state.wall == null) {
             state.softLeft = -1;
         }
-        // Fortifying starts with the sky: every log and leaf over the camp inside the wall line cut,
-        // so a monster left standing at dawn has no shade to stand in and burns.
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cover = state.wallCentre == null ? List.of()
-                : io.github.jayessdeesea.minecraft.bot.engineer.Clearing.cover(world, state.wallCentre, WALL_RADIUS);
-        if (state.wallCentre != null && cover.size() != state.coverLeft) {
-            LOG.info("[{}] FORTIFY: {} blocks of trees over the camp still to clear", squadName, cover.size());
-            state.coverLeft = cover.size();
-        } else if (state.wallCentre == null) {
-            state.coverLeft = -1;
-        }
-        // Then the high ground inside the wall line, dug down to the camp's own height: the squads'
-        // huts and the workshops' footings spared.
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> humps = state.wallCentre == null || !cover.isEmpty() ? List.of()
-                : io.github.jayessdeesea.minecraft.bot.engineer.Clearing.humps(world, state.wallCentre, WALL_RADIUS - 1, campKeep());
-        if (state.wallCentre != null && cover.isEmpty() && humps.size() != state.humpsLeft) {
-            LOG.info("[{}] FORTIFY: {} blocks of high ground inside the wall still to level", squadName, humps.size());
-            state.humpsLeft = humps.size();
-        } else if (state.wallCentre == null) {
-            state.humpsLeft = -1;
-        }
-        // Then its hollows, filled from the bottom: a pit under the wall line leaves the wall nothing to
-        // stand on. The mine's shaft is never one.
-        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> fillKeep = new java.util.HashSet<>(campKeep());
-        squadStates.values().stream().filter(s -> s.stairs != null).forEach(s -> {
-            fillKeep.addAll(s.stairs.walkway());
-            fillKeep.addAll(s.stairs.landing());
-        });
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> hollows = state.wallCentre == null || !cover.isEmpty() || !humps.isEmpty() ? List.of()
-                : io.github.jayessdeesea.minecraft.bot.engineer.Clearing.hollows(world, state.wallCentre, WALL_RADIUS, fillKeep);
-        if (state.wallCentre != null && cover.isEmpty() && humps.isEmpty() && hollows.size() != state.hollowsLeft) {
-            LOG.info("[{}] FORTIFY: {} cells of hollow inside the wall still to fill", squadName, hollows.size());
-            state.hollowsLeft = hollows.size();
-        } else if (state.wallCentre == null) {
-            state.hollowsLeft = -1;
+        // Fortifying starts with the ground: the engineer's dig and fill boxes round the camp,
+        // handed out by the squad's drill as each soldier's concrete command (command.Tasking).
+        Map<String, io.github.jayessdeesea.minecraft.command.Order> ground = state.wallCentre == null || squadInContact ? Map.of()
+                : groundwork(squadName, state, state.wallCentre, statuses);
+        if (state.wallCentre == null) {
+            state.digLeft = -1;
+            state.fillLeft = -1;
         }
         // Mining: the staircase at the objective's x and z, down to its y - kept while the objective
         // stays put, its head where the ground is when first sited.
@@ -1722,16 +1807,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 farming.remove(soldierName);
             }
             long now = clockwork.millis();
-            if (!hollows.isEmpty() && !squadInContact && !state.relieved(soldierName, "fill the camp's hollows", now)) {
-                filling.put(soldierName, hollows);
+            io.github.jayessdeesea.minecraft.command.Order work = ground.get(soldierName);
+            if (work != null && !state.relieved(soldierName, groundTask(work), now)) {
+                // The task's now, not the upkeep's: left the upkeep's, the upkeep would drop it again
+                // on seeing the wall - in the squad simulation, every soldier on and off its dig.
+                upkeeping.remove(soldierName);
+                route(soldierName, work);
             } else if (!upkeeping.contains(soldierName)) {
-                filling.remove(soldierName); // camp upkeep's, if it's on that, is the upkeep's to drop
-            }
-            if ((!cover.isEmpty() || !humps.isEmpty()) && !squadInContact
-                    && !state.relieved(soldierName, cover.isEmpty() ? "level the camp" : "clear the camp's sky", now)) {
-                clearing.put(soldierName, cover.isEmpty() ? humps : cover);
-            } else if (!upkeeping.contains(soldierName)) {
-                clearing.remove(soldierName);
+                route(soldierName, null); // camp upkeep's, if it's on that, is the upkeep's to drop
             }
             if (!soft.isEmpty() && !squadInContact && !state.relieved(soldierName, "wall the camp in stone", now)) {
                 repointing.put(soldierName, soft);
@@ -2798,9 +2881,19 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     free -> forester.tick(status.position(), world, Optional.ofNullable(grove), free && !threatened && !foodCalls)));
             turns.put(Hands.Routine.FARMER, turn(farmer::active,
                     free -> farmer.tick(status.position(), world, Optional.ofNullable(field), free && !threatened && !foodCalls)));
-            turns.put(Hands.Routine.GATHERER, turn(gatherer::active,
-                    free -> gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
-                            gather == null ? status.position() : gather.location(), free && !inContact && !foodCalls)));
+            // A supply run from the ground work's drill first: so much of a resource, from that box.
+            io.github.jayessdeesea.minecraft.command.Order.Gather groundRun = groundGather.get(name);
+            turns.put(Hands.Routine.GATHERER, turn(gatherer::active, free -> {
+                if (groundRun != null) {
+                    io.github.jayessdeesea.minecraft.command.Box b = groundRun.box();
+                    gatherer.tick(status.position(), world, Optional.of(groundRun.resource()),
+                            new Position((b.minX() + b.maxX()) / 2.0 + 0.5, (b.minY() + b.maxY()) / 2.0, (b.minZ() + b.maxZ()) / 2.0 + 0.5),
+                            free && !inContact && !foodCalls, java.util.OptionalInt.of(groundRun.amount()));
+                } else {
+                    gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
+                            gather == null ? status.position() : gather.location(), free && !inContact && !foodCalls);
+                }
+            }));
             turns.put(Hands.Routine.SCAVENGER, turn(scavenger::active,
                     free -> scavenger.tick(status.position(), world, free && !threatened && fort == null && !foodCalls)));
             Optional<Hands.Routine> hands = Hands.tick(turns);

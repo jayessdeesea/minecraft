@@ -354,7 +354,7 @@ class SquadSimulationTest {
                     + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
         }
         List<String> review = runner.taskingReview("Alpha");
-        assertTrue(review.stream().anyMatch(l -> l.matches("  clear the camp's sky: [12] done, 0 taken off unfinished")), review.toString());
+        assertTrue(review.stream().anyMatch(l -> l.matches("  dig the camp's ground: [12] done, 0 taken off unfinished")), review.toString());
     }
 
     /** Flat, with a pit 6 deep and 3 across inside the camp's wall line. */
@@ -429,8 +429,7 @@ class SquadSimulationTest {
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16},
-                        new int[]{9, SimServer.ITEM_DIRT, 64})));
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
         runner.run();
 
         clock.advance(8 * 60_000);
@@ -611,10 +610,10 @@ class SquadSimulationTest {
         clock.advance(4 * 60_000);
 
         List<io.github.jayessdeesea.minecraft.command.TaskRegister.Tasking> open = runner.taskings("Alpha");
-        assertTrue(open.stream().noneMatch(t -> t.task().equals("clear the camp's sky")), "taken off it: " + open);
+        assertTrue(open.stream().noneMatch(t -> t.task().equals("dig the camp's ground")), "taken off it: " + open);
         assertTrue(open.stream().anyMatch(t -> t.task().equals("wall the camp")), "on to the wall: " + open);
         List<String> review = runner.taskingReview("Alpha");
-        assertTrue(review.stream().anyMatch(l -> l.matches("  clear the camp's sky: 0 done, [12] taken off unfinished")), review.toString());
+        assertTrue(review.stream().anyMatch(l -> l.matches("  dig the camp's ground: 0 done, [12] taken off unfinished")), review.toString());
     }
 
     /** Ground rising a block every 3 east of x=-6: the camp's wall stands on many heights. */
@@ -624,12 +623,52 @@ class SquadSimulationTest {
                 : y == top ? SimServer.GRASS : SimServer.AIR;
     }
 
+    /** As {@link #slope}, but level inside the wall line at the camp's height: only the wall's ring slopes. */
+    private static int slopeLevelInside(int x, int y, int z) {
+        if (Math.max(Math.abs(x), Math.abs(z)) <= 7) {
+            int top = GROUND + 2;
+            return y <= -64 ? SimServer.BEDROCK : y < 55 ? SimServer.STONE : y < top ? SimServer.DIRT
+                    : y == top ? SimServer.GRASS : SimServer.AIR;
+        }
+        return slope(x, y, z);
+    }
+
     /**
-     * FORTIFY on a slope: the squad levels the high ground inside the wall line first, then digs its
-     * own dirt, fills the low ground with it and closes the wall round the camp - in two days.
+     * FORTIFY on a slope: the wall's ring stands at many heights, each column from its own ground.
+     * The camp inside is already level (levelling is {@link #aSquadLevelsTheCampOnASlope}); the
+     * squad digs its own dirt off base, as it would live.
      */
     @Test
     void aSquadWallsInTheCampOnASlope() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::slopeLevelInside, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
+        Position camp = new Position(0, GROUND + 3, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Wall the camp in", camp, "Nothing walks in",
+                new Objective.Task.Fortify())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 3, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(30 * 60_000); // its dirt dug off base, a trip at a time
+
+        // Closed - of dirt, with no stone to hand, so the standard itself waits on stone.
+        Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
+                .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
+        assertEquals(java.util.OptionalInt.of(0), runner.wallLeft("Alpha"), walled.status());
+    }
+
+    /**
+     * FORTIFY's levelling on a slope: the high ground inside the wall line dug down to the camp's
+     * height and the low ground filled up to it, before the wall.
+     */
+    @Test
+    void aSquadLevelsTheCampOnASlope() {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::slope, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
@@ -645,12 +684,9 @@ class SquadSimulationTest {
                         new int[]{38, SimServer.ITEM_BREAD, 16})));
         runner.run();
 
-        clock.advance(40 * 60_000); // levelled both ways, then walled
+        clock.advance(25 * 60_000);
 
-        // Closed - of dirt, with no stone to hand, so the standard itself waits on stone.
-        Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
-                .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
-        assertEquals(java.util.OptionalInt.of(0), runner.wallLeft("Alpha"), "after a day: " + walled.status());
+        assertEquals(java.util.OptionalInt.of(0), runner.levellingLeft("Alpha"), "high ground and hollows left inside the wall");
     }
 
     /**

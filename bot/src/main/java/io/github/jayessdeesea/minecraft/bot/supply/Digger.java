@@ -383,19 +383,8 @@ final class Digger {
         return Optional.ofNullable(best);
     }
 
-    /**
-     * Whether breaking {@code block} would open a way in for water or lava: one beside it or above
-     * it would flow into the hole. Live, digging by a pond flooded the camp's mine shaft, with
-     * soldiers in it - the miner checked this for its own cuts, and the other digs didn't.
-     */
     static boolean letsInWater(WorldView world, BlockPos block) {
-        int[][] sides = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, 1, 0}};
-        for (int[] d : sides) {
-            if (world.isHazard(block.x() + d[0], block.y() + d[1], block.z() + d[2])) {
-                return true;
-            }
-        }
-        return false;
+        return io.github.jayessdeesea.minecraft.bot.engineer.Clearing.letsInWater(world, block);
     }
 
     static boolean standable(WorldView world, BlockPos cell) {

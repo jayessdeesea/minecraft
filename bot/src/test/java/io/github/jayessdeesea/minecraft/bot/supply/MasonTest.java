@@ -220,8 +220,8 @@ class MasonTest {
         }
 
         BlockPos next = layout.get(1);
-        Position nextPlace = new Position(Mason.inside(flat, next, CENTRE, 3).orElseThrow().x() + 0.5, GROUND,
-                Mason.inside(flat, next, CENTRE, 3).orElseThrow().z() + 0.5);
+        Position nextPlace = new Position(Mason.inside(flat, next, CENTRE, 3, stuck).orElseThrow().x() + 0.5, GROUND,
+                Mason.inside(flat, next, CENTRE, 3, stuck).orElseThrow().z() + 0.5);
         assertEquals(Optional.of(nextPlace), mason.standAt(), "the next cell, not the one out of reach again");
     }
 

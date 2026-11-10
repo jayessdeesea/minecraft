@@ -11,17 +11,15 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * The camp's sky, cleared: every log and leaf over the camp's ground is cover a monster shelters
- * under at dawn, when the open sky would burn it (docs/military-doctrine.md § 15). Trees are felled
- * from the bottom, lowest cut first; leaves cut off from every log decay on their own, so the ones
+ * The cells of a soldier's ground-work command (command.Box): what an {@code Order.Dig} digs and an
+ * {@code Order.Fill} fills, and the next block to dig and where to stand for it. The camp's sky
+ * cleared - every log and leaf over its ground is cover a monster shelters under at dawn, when the
+ * open sky would burn it (docs/military-doctrine.md § 15) - and its ground brought to one height.
+ * Trees are felled from the bottom; leaves cut off from every log decay on their own, so the ones
  * out of reach go once the trunk does.
  */
 public final class Clearing {
 
-    /** How far above the camp's ground cover is looked for. */
-    static final int SKY = 24;
-    /** How far below it: a tree on a dip in the camp's ground still shades it. */
-    static final int BELOW = 2;
     /**
      * How far from its eyes a soldier digs, to the nearest face of the block: the server allows its
      * 4.5-block reach plus one, and this keeps a margin under that.
@@ -40,90 +38,92 @@ public final class Clearing {
     private Clearing() {
     }
 
-    /** Every log and leaf block over the ground within {@code radius} of {@code centre}, the camp's feet level - lowest first. */
-    public static List<BlockPos> cover(WorldView world, BlockPos centre, int radius) {
-        List<BlockPos> cover = new ArrayList<>();
-        for (int y = centre.y() - BELOW; y <= centre.y() + SKY; y++) {
-            for (int x = centre.x() - radius; x <= centre.x() + radius; x++) {
-                for (int z = centre.z() - radius; z <= centre.z() + radius; z++) {
-                    if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
-                        cover.add(new BlockPos(x, y, z));
+    /**
+     * What an {@code Order.Dig} of {@code box} digs: every log, leaf, soil, plain stone or gravel
+     * block in it but {@code except}, in the order it's dug - a tree's logs and leaves lowest first
+     * (cut-off leaves decay), the ground top down (soil is dug only from an open top). Anything else
+     * - cobblestone, a table, rock - is left for the soldier to report.
+     */
+    public static List<BlockPos> toClear(WorldView world, io.github.jayessdeesea.minecraft.command.Box box,
+                                         Set<io.github.jayessdeesea.minecraft.command.Cell> except) {
+        List<BlockPos> cells = new ArrayList<>();
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                for (int y = box.minY(); y <= box.maxY(); y++) {
+                    if (!except.contains(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z)) && diggable(world, x, y, z)) {
+                        cells.add(new BlockPos(x, y, z));
                     }
                 }
             }
         }
-        return List.copyOf(cover);
+        cells.sort(java.util.Comparator.comparingInt(c -> order(world, c)));
+        return List.copyOf(cells);
     }
 
     /**
-     * The camp's high ground, the second phase once the sky is clear: the top block of each column
-     * inside the wall line (within {@code radius} of {@code centre}) that is dirt or grass at or
-     * above the camp's feet level, and open above - dug off a layer at a time, so the ground comes
-     * down to the camp's own height and the squads see across it. Never one in {@code keep}: the
-     * squads' huts. Its dirt is the wall's.
+     * What an {@code Order.Fill} of {@code box} fills: in each column, the open cells from the box's
+     * top down to the first solid block or water - open to the sky, so a pit is filled and a
+     * flooded one capped over its water, and a cave underground is left alone. Never one in
+     * {@code except}. Lowest first.
      */
-    public static List<BlockPos> humps(WorldView world, BlockPos centre, int radius, Set<BlockPos> keep) {
-        List<BlockPos> humps = new ArrayList<>();
-        for (int x = centre.x() - radius; x <= centre.x() + radius; x++) {
-            for (int z = centre.z() - radius; z <= centre.z() + radius; z++) {
-                for (int y = centre.y() + SKY; y >= centre.y(); y--) {
-                    if (!world.isSolid(x, y, z)) {
+    public static List<BlockPos> toFill(WorldView world, io.github.jayessdeesea.minecraft.command.Box box,
+                                        Set<io.github.jayessdeesea.minecraft.command.Cell> except) {
+        List<BlockPos> cells = new ArrayList<>();
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                List<BlockPos> column = new ArrayList<>();
+                boolean grounded = false;
+                for (int y = box.maxY(); y >= box.minY(); y--) {
+                    if (world.isSolid(x, y, z) || world.isHazard(x, y, z)) {
+                        grounded = true;
+                        break;
+                    }
+                    if (except.contains(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z))) {
+                        column.clear(); // a kept cell is a floor of its own: nothing over it is a hollow
                         continue;
                     }
-                    BlockPos top = new BlockPos(x, y, z);
-                    // Never one with water beside it: dug off, it would let the water into the camp.
-                    boolean wet = world.isHazard(x + 1, y, z) || world.isHazard(x - 1, y, z) || world.isHazard(x, y, z + 1)
-                            || world.isHazard(x, y, z - 1) || world.isHazard(x, y + 1, z);
-                    if (world.isSoil(x, y, z) && !world.isFarmland(x, y, z) && !keep.contains(top) && !wet) {
-                        humps.add(top);
-                    }
-                    break;
+                    column.add(new BlockPos(x, y, z));
+                }
+                if (grounded || world.isSolid(x, box.minY() - 1, z) || world.isHazard(x, box.minY() - 1, z)) {
+                    cells.addAll(column);
                 }
             }
         }
-        humps.sort(java.util.Comparator.comparingInt(BlockPos::y));
-        return List.copyOf(humps);
+        cells.sort(java.util.Comparator.comparingInt(BlockPos::y));
+        return List.copyOf(cells);
     }
 
-    /** How far below the camp's feet level a hollow is filled from. */
-    static final int HOLLOW_DEPTH = 16;
+    /**
+     * Whether a clear digs the block at (x, y, z): a tree's, or the ground's - never ground with
+     * water beside or over it, which would flow into the hole and the camp.
+     */
+    static boolean diggable(WorldView world, int x, int y, int z) {
+        if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
+            return true;
+        }
+        return (world.isSoil(x, y, z) && !world.isFarmland(x, y, z) || world.isStone(x, y, z) || world.isGravel(x, y, z))
+                && !letsInWater(world, new BlockPos(x, y, z));
+    }
 
     /**
-     * The camp's hollows, the third phase once its high ground is down: every open cell inside the
-     * wall line (within {@code radius} of {@code centre}) below the camp's feet level, down to the
-     * ground in its column - lowest first, so each is filled on the one beneath it and the floor
-     * rises under whoever fills it. Never one in {@code keep}: the mine's shaft, the squads' huts.
-     * Not under water, which is a hazard to stand in, and not deeper than {@link #HOLLOW_DEPTH}: a
-     * cave below isn't the camp's ground. Live, a pit 13 deep under the wall line left the wall
-     * nothing to stand on.
+     * Whether breaking {@code block} would open a way in for water or lava: one beside it or above
+     * it would flow into the hole. Live, digging by a pond flooded the camp's mine shaft, with
+     * soldiers in it - the miner checked this for its own cuts, and the other digs didn't.
      */
-    public static List<BlockPos> hollows(WorldView world, BlockPos centre, int radius, Set<BlockPos> keep) {
-        List<BlockPos> hollows = new ArrayList<>();
-        for (int x = centre.x() - radius; x <= centre.x() + radius; x++) {
-            for (int z = centre.z() - radius; z <= centre.z() + radius; z++) {
-                int ground = Integer.MIN_VALUE;
-                for (int y = centre.y() - 1; y >= centre.y() - HOLLOW_DEPTH; y--) {
-                    if (world.isSolid(x, y, z) || world.isHazard(x, y, z)) {
-                        ground = y;
-                        break;
-                    }
-                }
-                // Water is the floor of a flooded pit: filled from its surface up, so the water is capped
-                // and whoever is afloat in it gets ground to stand on, rising as it fills.
-                if (ground == Integer.MIN_VALUE) {
-                    continue;
-                }
-                for (int y = ground + 1; y < centre.y(); y++) {
-                    BlockPos cell = new BlockPos(x, y, z);
-                    if (keep.contains(cell)) {
-                        break;
-                    }
-                    hollows.add(cell);
-                }
+    public static boolean letsInWater(WorldView world, BlockPos block) {
+        int[][] sides = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, 1, 0}};
+        for (int[] d : sides) {
+            if (world.isHazard(block.x() + d[0], block.y() + d[1], block.z() + d[2])) {
+                return true;
             }
         }
-        hollows.sort(java.util.Comparator.comparingInt(BlockPos::y));
-        return List.copyOf(hollows);
+        return false;
+    }
+
+    /** The order a clear digs in: a tree from its foot up, then the ground from its top down. */
+    static int order(WorldView world, BlockPos c) {
+        boolean tree = world.isLog(c.x(), c.y(), c.z()) || world.leaves(c.x(), c.y(), c.z()).isPresent();
+        return tree ? c.y() : 10_000 - c.y();
     }
 
     /**
@@ -133,15 +133,14 @@ public final class Clearing {
     public static Optional<Cut> next(WorldView world, List<BlockPos> cover, Position soldier, Set<BlockPos> excluded) {
         Cut best = null;
         double bestScore = Double.MAX_VALUE;
-        int lowest = cover.stream().mapToInt(BlockPos::y).min().orElse(0);
+        int lowest = cover.stream().mapToInt(c -> order(world, c)).min().orElse(0);
         for (BlockPos block : cover) {
             // The list is the squad loop's, up to a cycle old: a block a squadmate has cut since is gone.
-            if (excluded.contains(block) || !world.isLog(block.x(), block.y(), block.z())
-                    && world.leaves(block.x(), block.y(), block.z()).isEmpty() && !world.isSoil(block.x(), block.y(), block.z())) {
+            if (excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())) {
                 continue;
             }
-            // Cover is lowest first: past the best score, nothing higher can beat it.
-            if (HEIGHT_WEIGHT * (block.y() - lowest) > bestScore) {
+            // In digging order: past the best score, nothing later can beat it.
+            if (HEIGHT_WEIGHT * (order(world, block) - lowest) > bestScore) {
                 break;
             }
             Optional<BlockPos> stand = standFor(world, block, excluded);
@@ -150,7 +149,7 @@ public final class Clearing {
             }
             BlockPos s = stand.get();
             double score = Math.hypot(s.x() + 0.5 - soldier.x(), s.z() + 0.5 - soldier.z()) + Math.abs(s.y() - soldier.y())
-                    + HEIGHT_WEIGHT * (block.y() - lowest);
+                    + HEIGHT_WEIGHT * (order(world, block) - lowest);
             if (score < bestScore) {
                 best = new Cut(block, s, world.isLog(block.x(), block.y(), block.z()));
                 bestScore = score;

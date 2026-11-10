@@ -40,6 +40,11 @@ public final class Mason {
 
     private Script job;
     private BlockPos claimed;
+    /**
+     * Where it stands for {@link #claimed}, claimed with it: never a wall cell, so the one set holds
+     * both. In the squad simulation two masons sent to one corner stand pushed each other off it.
+     */
+    private BlockPos claimedStand;
     private Position standAt;
     private Position soldier;
     private int cooldown;
@@ -120,7 +125,8 @@ public final class Mason {
         Optional<java.util.Map.Entry<BlockPos, BlockPos>> next = open.stream()
                 .filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && Builder.support(world, c).isPresent())
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
-                .flatMap(cell -> inside(world, cell, centre, radius).map(stand -> java.util.Map.entry(cell, stand)).stream())
+                .flatMap(cell -> inside(world, cell, centre, radius, soldier).filter(stand -> !claims.contains(stand))
+                        .map(stand -> java.util.Map.entry(cell, stand)).stream())
                 .findFirst();
         if (next.isPresent()) {
             stalled = null;
@@ -134,7 +140,7 @@ public final class Mason {
         List<BlockPos> unsupported = open.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks)
                 && Builder.support(world, c).isEmpty()).toList();
         List<BlockPos> noStand = open.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks)
-                && Builder.support(world, c).isPresent() && inside(world, c, centre, radius).isEmpty()).toList();
+                && Builder.support(world, c).isPresent() && inside(world, c, centre, radius, soldier).isEmpty()).toList();
         String why = open.size() + " wall cells open and none to build: " + claimed + " taken by squadmates, " + passed
                 + " passed over after a failure, " + unsupported.size() + " with nothing to go against"
                 + unsupported.stream().limit(3).map(BlockPos::toString).collect(java.util.stream.Collectors.joining(", ", " (", ")"))
@@ -195,7 +201,8 @@ public final class Mason {
         }
         soft.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && world.isSoil(c.x(), c.y(), c.z()))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
-                .flatMap(cell -> inside(world, cell, centre, radius).map(stand -> java.util.Map.entry(cell, stand)).stream())
+                .flatMap(cell -> inside(world, cell, centre, radius, soldier).filter(stand -> !claims.contains(stand))
+                        .map(stand -> java.util.Map.entry(cell, stand)).stream())
                 .findFirst().ifPresent(next -> startRepoint(world, next.getKey(), next.getValue()));
     }
 
@@ -208,6 +215,8 @@ public final class Mason {
         repointJob = true;
         claimed = cell;
         claims.add(cell);
+        claimedStand = stand;
+        claims.add(stand);
         standAt = new Position(stand.x() + 0.5, stand.y(), stand.z() + 0.5);
         long[] digStarted = {0};
         job = new Script(name, List.of(
@@ -233,13 +242,18 @@ public final class Mason {
      * Where to stand to build {@code cell}: the column nearest it just inside the wall {@code radius}
      * out - beside a wall cell, two in from the lip, never on the wall's top - at a standing height
      * near the cell's. Where the ground inside has been dug away, the column just outside, under the
-     * lip.
+     * lip. A soldier outside the wall line - back from a dirt run off base - builds from outside
+     * first: in the squad simulation, one sent for a stand inside had no way in and walked nowhere.
      */
-    static Optional<BlockPos> inside(WorldView world, BlockPos cell, BlockPos centre, int radius) {
-        for (int ring : new int[]{radius - 1, radius + 1}) {
+    static Optional<BlockPos> inside(WorldView world, BlockPos cell, BlockPos centre, int radius, Position soldier) {
+        boolean out = Math.max(Math.abs(soldier.x() - (centre.x() + 0.5)), Math.abs(soldier.z() - (centre.z() + 0.5))) > radius + 0.5;
+        for (int ring : out ? new int[]{radius + 1, radius - 1} : new int[]{radius - 1, radius + 1}) {
             int x = centre.x() + Math.clamp(cell.x() - centre.x(), -ring, ring);
             int z = centre.z() + Math.clamp(cell.z() - centre.z(), -ring, ring);
-            for (int dy = 1; dy >= -3; dy--) {
+            // Up to three above the cell, as well as below: where the wall steps down a slope and the
+            // camp inside it is level, the ground inside stands higher - live, five wall cells with
+            // "nowhere inside to stand" held a wall open with a level camp a block or two above them.
+            for (int dy : new int[]{1, 0, -1, -2, 2, -3, 3}) { // nearest the cell's height first
                 BlockPos stand = new BlockPos(x, cell.y() + dy, z);
                 if (Pathfinder.standable(world, stand) && !stand.equals(cell) && !stand.equals(cell.offset(0, -1, 0))) {
                     return Optional.of(stand);
@@ -253,6 +267,8 @@ public final class Mason {
         repointJob = false;
         claimed = cell;
         claims.add(cell);
+        claimedStand = stand;
+        claims.add(stand);
         standAt = new Position(stand.x() + 0.5, stand.y(), stand.z() + 0.5);
         ItemClass material = MATERIALS.stream().filter(m -> inventory.count(m) > 0).findFirst().orElseThrow();
         job = new Script(name, List.of(
@@ -292,6 +308,10 @@ public final class Mason {
         if (claimed != null) {
             claims.remove(claimed);
             claimed = null;
+        }
+        if (claimedStand != null) {
+            claims.remove(claimedStand);
+            claimedStand = null;
         }
     }
 

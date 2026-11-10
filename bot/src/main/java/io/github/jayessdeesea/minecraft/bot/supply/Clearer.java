@@ -105,8 +105,16 @@ public final class Clearer {
             return;
         }
         Clearing.Cut c = cut.get();
+        BlockPos b = c.block();
         Digger.Target target = c.log() ? Digger.Target.LOG
-                : world.leaves(c.block().x(), c.block().y(), c.block().z()).isPresent() ? Digger.Target.LEAVES : Digger.Target.SOIL;
+                : world.leaves(b.x(), b.y(), b.z()).isPresent() ? Digger.Target.LEAVES
+                : world.isStone(b.x(), b.y(), b.z()) ? Digger.Target.STONE
+                : world.isGravel(b.x(), b.y(), b.z()) ? Digger.Target.GRAVEL : Digger.Target.SOIL;
+        if (!target.canDig(inventory)) {
+            failed.failed(b, ticks, "no tool to dig the " + target + " at " + b);
+            cooldown = COOLDOWN_TICKS;
+            return;
+        }
         digger = new Digger(name, session, inventory, claims, new Digger.Spot(target, c.stand(), c.block()));
     }
 

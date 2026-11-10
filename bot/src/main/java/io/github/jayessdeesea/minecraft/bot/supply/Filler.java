@@ -14,8 +14,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * One soldier filling its camp's hollows ({@code bot.engineer.Clearing.hollows}): cobblestone or
- * dirt into each open cell below the camp's ground, lowest first, nearest first among the lowest -
+ * One soldier on an {@code Order.Fill} ({@code bot.engineer.Clearing.toFill}): cobblestone or
+ * dirt into each open cell of its box, lowest first, nearest first among the lowest -
  * a {@link Builder} that stands where it reaches each and skips one it can't reach.
  * Out of blocks, it stops: a mason's dirt dig is the soldier's to make.
  */
@@ -33,6 +33,8 @@ public final class Filler {
     private String failure;
     /** Ticks to wait after a fill that couldn't go on, before trying again. */
     static final int COOLDOWN_TICKS = 200;
+    /** How many blocks' walk a layer higher is worth, choosing the next cell to fill. */
+    static final double LAYER_WEIGHT = 3;
     private int cooldown;
 
     public Filler(String name, PlaySession session, Inventory inventory) {
@@ -71,9 +73,13 @@ public final class Filler {
         // in, deep below the rim - is the builder's to skip for the next. A block put in high can
         // seal a pocket of air or water under it: underground and harmless, and a flooded shaft is
         // capped that way from its rim, as live one had to be with soldiers afloat in it.
+        // Nearness weighed against height - a layer up costs as much as a few blocks' walk - so each
+        // soldier fills its own patch upward instead of crossing the camp for every lowest cell. One
+        // out of reach is the builder's to skip for the next.
+        int lowest = hollows.stream().mapToInt(BlockPos::y).min().orElse(0);
         List<BlockPos> plan = hollows.stream()
-                .sorted(Comparator.comparingInt(BlockPos::y)
-                        .thenComparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
+                .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())
+                        + LAYER_WEIGHT * (c.y() - lowest)))
                 .toList();
         active = true;
         switch (builder.tick(soldier, world, plan)) {

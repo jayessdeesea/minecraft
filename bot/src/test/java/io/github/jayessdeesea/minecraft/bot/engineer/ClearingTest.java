@@ -3,6 +3,8 @@ package io.github.jayessdeesea.minecraft.bot.engineer;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.Box;
+import io.github.jayessdeesea.minecraft.command.Cell;
 import io.github.jayessdeesea.minecraft.command.Position;
 import org.junit.jupiter.api.Test;
 
@@ -47,7 +49,10 @@ class ClearingTest {
         };
     }
 
-    private static final BlockPos CENTRE = new BlockPos(0, 64, 0);
+    /** The dig over a camp with feet at y=64, 8 out: its ground's height up to its sky. */
+    private static final Box SKY = new Box(-8, 64, -8, 8, 88, 8);
+    /** The fill under it, 7 out. */
+    private static final Box GROUND = new Box(-7, 48, -7, 7, 63, 7);
 
     /** A trunk {@code height} logs tall at (x, z), and a layer of leaves round its top. */
     private static Set<BlockPos> trunk(int x, int z, int height) {
@@ -61,7 +66,7 @@ class ClearingTest {
     @Test
     void aTreeInTheCampIsCoverLogsAndLeaves() {
         Set<BlockPos> leaves = Set.of(new BlockPos(4, 69, 3), new BlockPos(2, 69, 2));
-        List<BlockPos> cover = Clearing.cover(with(trunk(3, 3, 5), leaves), CENTRE, 8);
+        List<BlockPos> cover = Clearing.toClear(with(trunk(3, 3, 5), leaves), SKY, Set.of());
 
         assertEquals(7, cover.size());
         assertEquals(new BlockPos(3, 64, 3), cover.getFirst(), "lowest first");
@@ -71,7 +76,7 @@ class ClearingTest {
     void theTreeIsFelledFromTheBottomStandingOnTheGround() {
         Set<BlockPos> logs = trunk(3, 3, 5);
         WorldView world = with(logs, Set.of());
-        List<BlockPos> cover = Clearing.cover(world, CENTRE, 8);
+        List<BlockPos> cover = Clearing.toClear(world, SKY, Set.of());
 
         Clearing.Cut cut = Clearing.next(world, cover, new Position(0.5, 64, 0.5), Set.of()).orElseThrow();
 
@@ -124,14 +129,43 @@ class ClearingTest {
     };
 
     @Test
-    void highGroundIsDugOffATopBlockAtATime() {
-        assertEquals(List.of(new BlockPos(-2, 64, -2), new BlockPos(2, 65, 2)), Clearing.humps(MOUND, CENTRE, 7, Set.of()),
-                "each column's top block above the camp's ground, never one with another on it");
+    void highGroundIsDugFromTheTopDown() {
+        assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(-2, 64, -2), new BlockPos(2, 64, 2)),
+                Clearing.toClear(MOUND, SKY, Set.of()), "every block of it above the camp's ground, the highest first");
     }
 
     @Test
     void aHutIsNotHighGround() {
-        assertEquals(List.of(new BlockPos(2, 65, 2)), Clearing.humps(MOUND, CENTRE, 7, Set.of(new BlockPos(-2, 64, -2))));
+        assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(2, 64, 2)),
+                Clearing.toClear(MOUND, SKY, Set.of(new Cell(-2, 64, -2))));
+    }
+
+    @Test
+    void groundWithWaterBesideItIsLeft() {
+        WorldView pond = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return MOUND.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return MOUND.isSoil(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return x == -3 && z == -2 && y == 64; // water lapping the low mound
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(2, 64, 2)), Clearing.toClear(pond, SKY, Set.of()),
+                "dug, it would let the water into the camp");
     }
 
     @Test
@@ -163,7 +197,7 @@ class ClearingTest {
     @Test
     void aPitInTheCampIsFilledFromItsBottomUp() {
         assertEquals(List.of(new BlockPos(1, 61, 1), new BlockPos(1, 62, 1), new BlockPos(1, 63, 1)),
-                Clearing.hollows(PIT, CENTRE, 7, Set.of()));
+                Clearing.toFill(PIT, GROUND, Set.of()));
     }
 
     @Test
@@ -185,13 +219,13 @@ class ClearingTest {
             }
         };
 
-        assertEquals(List.of(new BlockPos(1, 62, 1), new BlockPos(1, 63, 1)), Clearing.hollows(flooded, CENTRE, 7, Set.of()),
+        assertEquals(List.of(new BlockPos(1, 62, 1), new BlockPos(1, 63, 1)), Clearing.toFill(flooded, GROUND, Set.of()),
                 "capped over the water, up to the camp's ground");
     }
 
     @Test
     void theMinesShaftIsNotAHollow() {
-        assertEquals(List.of(), Clearing.hollows(PIT, CENTRE, 7, Set.of(new BlockPos(1, 61, 1))));
+        assertEquals(List.of(), Clearing.toFill(PIT, GROUND, Set.of(new Cell(1, 61, 1))));
     }
 
     @Test
@@ -199,7 +233,7 @@ class ClearingTest {
         Set<BlockPos> logs = trunk(3, 3, 2);
         WorldView world = with(logs, Set.of());
 
-        Clearing.Cut cut = Clearing.next(world, Clearing.cover(world, CENTRE, 8), new Position(0.5, 64, 0.5),
+        Clearing.Cut cut = Clearing.next(world, Clearing.toClear(world, SKY, Set.of()), new Position(0.5, 64, 0.5),
                 Set.of(new BlockPos(3, 64, 3))).orElseThrow();
 
         assertEquals(new BlockPos(3, 65, 3), cut.block());

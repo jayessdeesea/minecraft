@@ -42,4 +42,41 @@ public sealed interface Order {
             cells = java.util.List.copyOf(cells);
         }
     }
+
+    /**
+     * Dig out every block in {@code box} - logs, leaves, soil, stone - but the cells in
+     * {@code except}, keeping what it cuts: a tree from its foot up, the ground from its top down.
+     * Clears the sky over ground, takes a rise down. A block it can't reach or can't dig is left
+     * and reported. One call for a whole region, as a squad leader gives it: "dig x=0..31,
+     * y=64..88, z=0..31" - the soldier works out the cells.
+     */
+    record Dig(Box box, java.util.Set<Cell> except) implements Order {
+        public Dig {
+            except = java.util.Set.copyOf(except);
+        }
+    }
+
+    /**
+     * Put a block of cobblestone or dirt it carries into every open cell of {@code box} over ground
+     * - air or water - but the cells in {@code except}, lowest first: fill a pit, cap a flooded
+     * shaft, make a floor. A cell it can't reach is left and reported.
+     */
+    record Fill(Box box, java.util.Set<Cell> except) implements Order {
+        public Fill {
+            except = java.util.Set.copyOf(except);
+        }
+    }
+
+    /**
+     * Get {@code amount} of {@code resource} from {@code box} and carry it: a supply run - "dig 64
+     * dirt from x=-40..-30, y=60..64, z=30..40" - off base, before a fill or a wall. Done once it
+     * carries that much, or reported when the box has no more.
+     */
+    record Gather(Resource resource, Box box, int amount) implements Order {
+        public Gather {
+            if (amount < 1) {
+                throw new IllegalArgumentException("gather " + amount);
+            }
+        }
+    }
 }

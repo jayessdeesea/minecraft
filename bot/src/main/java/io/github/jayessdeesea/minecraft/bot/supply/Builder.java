@@ -80,6 +80,10 @@ public final class Builder {
     private WorldView world;
     private int previousHotbar = -1;
     private Position standAt;
+    /** Ticks spent walking to reach {@link #target}: a stand it never reaches skips the cell. */
+    private int walking;
+    /** How long a walk to a stand may take before the cell it's for is given up. */
+    static final int WALK_TICKS = 400;
     private Position lookAt;
     private boolean done;
 
@@ -150,6 +154,7 @@ public final class Builder {
         if (target != null && solid(world, target)) {
             target = null;
             attempts = 0;
+            walking = 0;
         }
         if (target != null && attempts >= ATTEMPTS) {
             LOG.warn("{} couldn't place a block at {} - skipping it", name, target);
@@ -177,13 +182,21 @@ public final class Builder {
         }
         if (!withinReach(soldier, target) || overlaps(soldier, target)) {
             standAt = inPlace ? null : standingSpot(world, soldier, target).orElse(null);
+            // A stand the soldier never gets to - no route there - gives the cell up, as one with no
+            // stand does: live in the squad simulation, a filler stood still for good walking nowhere.
+            if (standAt != null && ++walking > WALK_TICKS) {
+                LOG.info("{} couldn't get to {} to build {} - skipping it", name, standAt, target);
+                standAt = null;
+            }
             if (standAt == null) {
                 skipped.add(target);
                 target = null;
+                walking = 0;
             }
             return new Progress.Working();
         }
         standAt = null;
+        walking = 0;
         if (occupied(world, soldier, target)) {
             if (!waitingOn) {
                 LOG.info("{} waits for whoever is standing at {} to move", name, target);

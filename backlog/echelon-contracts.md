@@ -53,6 +53,13 @@ Four layers, each knowing only what it needs:
 - **The first concrete command and the first blueprint.** `Order.Place(cells)`, reported as
   `Building(placed, cells)`, and the engineer's stair down from a ledge (`bot.engineer.Stairway`),
   which the recovery drill hands to a squadmate (docs/echelons/soldier/orders.md).
+- **The ground work's commands.** `Dig(box, except)`, `Fill(box, except)` and
+  `Gather(resource, box, amount)` over a `command.Box`, reported as `Working(command, left)`; the
+  engineer's dig and fill boxes round a camp (`command.Groundwork`) and the squad's drill that
+  splits them into a strip a soldier and sends one short of blocks off base for dirt
+  (`command.Tasking`) - pure, and unit-tested in `command` (docs/military-doctrine.md § 15). Left:
+  the runner still routes each command to its routine through its own maps, and the wall, the
+  lights and the hut are still the routines' own layouts.
 
 ## Scenarios that must pass first
 Each runs in the squad simulation (`SquadSimulationTest`), against the code as it is, before

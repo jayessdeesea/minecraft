@@ -52,6 +52,10 @@ public sealed interface Report {
     }
 
     /** Building the squad's patrol base (docs/military-doctrine.md §14). */
+    /** On an {@link Order.Dig} or {@link Order.Fill}: {@code left} of its box's cells still to do. */
+    record Working(String command, int left) implements Report {
+    }
+
     record Fortifying() implements Report {
     }
 
