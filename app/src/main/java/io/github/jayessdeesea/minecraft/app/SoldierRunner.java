@@ -932,6 +932,17 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final io.github.jayessdeesea.minecraft.bot.supply.Setbacks<String> chestFits =
             new io.github.jayessdeesea.minecraft.bot.supply.Setbacks<>(60_000, 20 * 60_000);
 
+    /**
+     * Why a soldier can't make torches, for its CANTCO: what it's short of, or with the makings
+     * carried, that it has no workshop to make them at - live, a CANTCO read "short of {}".
+     */
+    private static String torchShortfall(Inventory inventory, io.github.jayessdeesea.minecraft.bot.engineer.Workshop workshop) {
+        Map<ItemClass, Integer> short_ = Torchmaker.shortOf(inventory, LIGHTING_TORCHES);
+        return !short_.isEmpty() ? "short of " + short_ + " to make them"
+                : workshop == null ? "the makings carried, but no workshop sited to make them at"
+                : "the makings carried, but not yet made at the workshop at " + workshop.stand();
+    }
+
     /** The routine holding each soldier's hands, after its last tick - tick writes, squad loop reads. */
     private final Map<String, Hands.Routine> handsHeld = new ConcurrentHashMap<>();
 
@@ -2708,8 +2719,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     ? new Report.Gathering(gather.gather().get())
                     // Nothing to make them from, and nothing said: the crafter doesn't start what it can't finish.
                     : !lights.isEmpty() && torchesWanted && !torchmaker.active() && !gatherer.active() && !armourer.active()
-                    ? new Report.Cantco("no torches to light the ground with, and short of "
-                            + Torchmaker.shortOf(inventory, LIGHTING_TORCHES) + " to make them")
+                    ? new Report.Cantco("no torches to light the ground with, and " + torchShortfall(inventory, workshops.get(name)))
                     : farming.containsKey(name) && !farmer.active() && farmer.stuck().isPresent() ? new Report.Cantco(farmer.stuck().get())
                     : farmer.active() || armourer.active() && armourer.making().stream()
                             .allMatch(r -> r == Recipe.WOODEN_HOE || r == Recipe.BREAD) ? new Report.Farming()
