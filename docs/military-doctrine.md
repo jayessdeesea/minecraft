@@ -779,8 +779,9 @@ doesn't walk back for every fourth block. A mason back outside the wall line fro
 from the outside first, and claims its stand with its cell, so two masons never contest one stand.
 
 A soldier with nothing else to do keeps the camp the same way, whatever the squad's task: by day,
-out of contact and within 24 blocks of the camp, with no other work handed to it, it is handed the
-same drill's commands round the camp (`SoldierRunner.campUpkeep`), so an idle squad flattens the
+out of contact and within 24 blocks of the camp - or by night inside the wall line of a camp lit
+to within 8 dark cells, since nothing spawns on lit ground - with no other work handed to it, it is
+handed the same drill's commands round the camp (`SoldierRunner.campUpkeep`), so an idle squad flattens the
 camp rather than stand in it. Live, three soldiers stood a day in a lit camp with their task all
 but done. A gather that found nothing within reach isn't work for 5 minutes - a squad sent for
 torch makings with no tree in reach keeps the camp meanwhile, while one carrying torches or their

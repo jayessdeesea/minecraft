@@ -907,7 +907,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private void campUpkeep(String squad, List<SoldierStatus> statuses) {
         boolean daylight = !chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
         boolean contact = statuses.stream().anyMatch(s -> s.report() instanceof Report.InContact);
-        if (campGround == null || !daylight || contact) {
+        // By night too in a camp that's lit: nothing spawns on lit ground, so a squad inside the wall
+        // line keeps working. Live, squads stood every night at their slots, a lit camp round them.
+        boolean litCamp = campGround != null && !daylight
+                && io.github.jayessdeesea.minecraft.bot.supply.Lighting.dark(world, campGround, SECURE_RADIUS) <= NIGHT_UPKEEP_DARK;
+        if (campGround == null || !daylight && !litCamp || contact) {
             statuses.forEach(s -> {
                 if (upkeeping.remove(s.name())) {
                     route(s.name(), null);
@@ -933,7 +937,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     || gathering.containsKey(n) && !groundGather.containsKey(n)
                     && clockwork.millis() - gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE / 2) > FOUND_NOTHING_MILLIS
                     || patrolLegs.containsKey(n);
-            boolean near = Math.hypot(s.position().x() - campGround.x(), s.position().z() - campGround.z()) <= SECURE_RADIUS * 2;
+            boolean near = Math.hypot(s.position().x() - campGround.x(), s.position().z() - campGround.z())
+                    <= (daylight ? SECURE_RADIUS * 2 : WALL_RADIUS);
             if (otherWork || !near) {
                 if (upkeeping.remove(n)) {
                     route(n, null);
@@ -1074,6 +1079,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, Long> gatherFoundNothing = new ConcurrentHashMap<>();
     /** How long a gather that found nothing isn't counted as work. */
     static final long FOUND_NOTHING_MILLIS = 5 * 60_000;
+
+    /** Cells of the camp's ground still dark, at most, for its upkeep to go on by night inside the wall line. */
+    static final int NIGHT_UPKEEP_DARK = 8;
 
     /** Soldiers on camp upkeep, their clearing or filling the upkeep's - squad loop only. */
     private final java.util.Set<String> upkeeping = ConcurrentHashMap.newKeySet();

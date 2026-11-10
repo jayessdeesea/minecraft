@@ -648,6 +648,47 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
     }
 
+    /** The mound in the camp, and torches standing on a 7-block lattice round it: the camp's ground lit. */
+    private static int moundInALitCamp(int x, int y, int z) {
+        boolean torch = y == GROUND + 1 && Math.floorMod(x, 7) == 0 && Math.floorMod(z, 7) == 0 && Math.abs(x) <= 14 && Math.abs(z) <= 14;
+        return torch ? SimServer.TORCH : moundInCamp(x, y, z);
+    }
+
+    /**
+     * A camp lit and an idle squad in it keeps it by night too: monsters don't spawn on lit ground,
+     * so the night isn't lost standing about. Live, squads stood every night at their slots.
+     */
+    @Test
+    void anIdleSquadKeepsALitCampByNight() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::moundInALitCamp, 14_000); // an hour after dusk
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(4 * 60_000);
+
+        long mound = 0;
+        for (int x = 3; x <= 4; x++) {
+            for (int z = 3; z <= 4; z++) {
+                for (int y = GROUND + 1; y <= GROUND + 2; y++) {
+                    if (server.block(x, y, z) != SimServer.AIR) {
+                        mound++;
+                    }
+                }
+            }
+        }
+        assertEquals(0, mound, "blocks of the mound left by night");
+    }
+
     /** Flat, with a pond by the camp: farm ground by water. */
     private static int pondByCamp(int x, int y, int z) {
         return x >= 6 && x <= 8 && z >= 6 && z <= 8 && y == GROUND ? SimServer.WATER : flat(x, y, z);
