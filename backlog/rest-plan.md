@@ -24,11 +24,12 @@ without:
 
 - **Seen live (field45, field47):** two soldiers of the night shift died in an hour, each at
   1.1-1.3 health and food 0, fighting a phantom at the mine head - knocked into the air and killed
-  by the fall. Under MINE only the miner goes down the stairs; the rest of the squad holds the head,
-  under open sky, all night. Until beds: a starving soldier under open sky at night is the phantom's.
-  Cheaper first steps, each its own change: the night shift's squadmates follow the miner down the
-  shaft (under the ground, nothing draws phantoms); a soldier at low health by night takes cover;
-  and the camp's food - one farm of 44 cells feeds eight soldiers too slowly (13 harvests, 7 bread
+  by the fall. No staircase could be sited then (fixed: the camp's staircase is kept on disk,
+  docs/military-doctrine.md § 16), so the whole squad held the head, under open sky, all night.
+  With the stairs cut, the night shift goes down them; whether that alone keeps phantoms off
+  wants a night watched. Until beds: a starving soldier under open sky at night is the phantom's.
+  Cheaper first steps, each its own change: a soldier at low health by night takes cover; and the
+  camp's food - one farm of 44 cells feeds eight soldiers too slowly (13 harvests, 7 bread
   in a run) - is grown on a second plot by another water.
 
 ## Doctrine
