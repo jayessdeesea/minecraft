@@ -24,8 +24,6 @@ public final class Recovery {
 
     /** Blocks a squadmate needs carried to be sent: a stair down from a ledge is two a step. */
     public static final int BLOCKS_TO_FETCH = 24;
-    /** Fewer blocks than this carried, and a stranded soldier can't build its own way down. */
-    public static final int CANT_BUILD_BELOW = 2;
     /** Moved this far from where it was stuck, a soldier is on its way down: recovered. */
     static final double MOVED_OFF = 2;
     static final double TOLERANCE = 1.5;
@@ -70,10 +68,13 @@ public final class Recovery {
         this.reports = reports;
     }
 
-    /** Whether {@code soldier} is stranded: no route, and too few blocks to build one. */
+    /**
+     * Whether {@code soldier} is stranded: no route. Blocks it carries don't make it otherwise - its
+     * own planner has already tried building its way with them: live, a soldier with 2 dirt stood
+     * in a pit by the camp's wall, never taken for stranded, its only way out falls.
+     */
     public static boolean stranded(SoldierStatus soldier) {
-        return soldier.report() instanceof Report.Cantco(String reason) && reason.startsWith("no route from")
-                && blocks(soldier) < CANT_BUILD_BELOW;
+        return soldier.report() instanceof Report.Cantco(String reason) && reason.startsWith("no route from");
     }
 
     /**

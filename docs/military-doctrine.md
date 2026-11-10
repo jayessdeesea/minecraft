@@ -264,7 +264,7 @@ risk and its own condition into a fall allowance:
 
 So a safe route always wins when one exists, and a fall is planned only when there's none, on
 foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier with no such
-route and nothing to build with is stranded - reported "no route" 20 squad cycles in a row (about
+route - its own planner having tried building its way with whatever it carries - is stranded - reported "no route" 20 squad cycles in a row (about
 20 seconds), since one failed hop across the camp isn't a soldier stuck; "no route" to where it's
 going outranks whatever its routine reports. The squad's recovery drill (`command.Recovery`) picks
 the nearest squadmate carrying 24 or more blocks - one at a time, never in contact - and sets it

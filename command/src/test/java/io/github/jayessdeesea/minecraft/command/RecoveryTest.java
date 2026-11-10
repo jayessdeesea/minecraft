@@ -34,6 +34,13 @@ class RecoveryTest {
     }
 
     @Test
+    void oneWithNoRouteIsStrandedWhateverItCarries() {
+        assertEquals(true, Recovery.stranded(soldier("Dana", new Position(-53, 63, 51), STUCK, 2)),
+                "2 dirt, and its own planner found no way with them");
+        assertEquals(false, Recovery.stranded(soldier("Dana", new Position(-53, 63, 51), new Report.InPosition(), 0)));
+    }
+
+    @Test
     void oneStrandedWithNobodyToFetchItGoesDownToItsSquadAtMediumRisk() {
         List<SoldierStatus> squad = List.of(
                 soldier("Gus", new Position(-50, 72, 53), STUCK, 0),
@@ -175,13 +182,12 @@ class RecoveryTest {
     }
 
     @Test
-    void noneIsSentForOneWithBlocksToBuildItsOwnWayOrStuckForAnotherReason() {
+    void noneIsSentForOneStuckForAnotherReason() {
         List<SoldierStatus> squad = List.of(
                 soldier("Bob", new Position(3, 64, 0), new Report.InPosition(), 64),
-                soldier("Carol", new Position(7, 81, 0), STUCK, 30),
                 soldier("Dana", new Position(7, 81, 0), new Report.Cantco("can't make 1 wooden pickaxe"), 0));
 
-        assertEquals(IDLE, new Recovery().orders(squad, IDLE, NO_STAIR));
+        assertEquals(List.of(new Order.Idle(), new Order.Idle()), new Recovery().orders(squad, List.of(new Order.Idle(), new Order.Idle()), NO_STAIR));
     }
 
     /** No squadmate with blocks: none is sent, and the stranded one goes down to the nearest itself. In contact, nothing. */
