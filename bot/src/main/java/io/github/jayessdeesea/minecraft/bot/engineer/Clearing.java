@@ -144,6 +144,12 @@ public final class Clearing {
         Cut best = null;
         double bestScore = Double.MAX_VALUE;
         int lowest = cover.stream().mapToInt(c -> order(world, c)).min().orElse(0);
+        // Where it stands, if it's somewhere to stand: up in a canopy already - climbed, or left there
+        // by a cut below - it cuts what it reaches from there, and so its way down. Live, a soldier in
+        // a canopy over the camp was sent to stands on the ground it had no way to, and stood an hour.
+        BlockPos here = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
+        boolean canStandHere = Pathfinder.standable(world, here) && !excluded.contains(here)
+                && (world.isLog(here.x(), here.y() - 1, here.z()) || world.leaves(here.x(), here.y() - 1, here.z()).isPresent());
         for (BlockPos block : cover) {
             // The list is the squad loop's, up to a cycle old: a block a squadmate has cut since is gone.
             if (excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())) {
@@ -160,7 +166,8 @@ public final class Clearing {
             if (HEIGHT_WEIGHT * (order(world, block) - lowest) > bestScore) {
                 break;
             }
-            Optional<BlockPos> stand = standFor(world, block, excluded);
+            Optional<BlockPos> stand = canStandHere && !here.offset(0, -1, 0).equals(block) && reach(here, block) <= REACH
+                    ? Optional.of(here) : standFor(world, block, excluded);
             if (stand.isEmpty()) {
                 continue;
             }

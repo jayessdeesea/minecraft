@@ -49,6 +49,26 @@ class ClearingTest {
         };
     }
 
+    @Test
+    void oneUpInACanopyCutsWhatItReachesFromWhereItStands() {
+        // A canopy floor at y=70, 6 over the ground, and the soldier on it: no stand on the ground
+        // reaches the leaves beside it.
+        Set<BlockPos> leaves = new HashSet<>();
+        for (int x = -3; x <= 3; x++) {
+            for (int z = -3; z <= 3; z++) {
+                leaves.add(new BlockPos(x, 70, z));
+            }
+        }
+        BlockPos beside = new BlockPos(1, 71, 0);
+        leaves.add(beside);
+
+        Clearing.Cut cut = Clearing.next(with(Set.of(), leaves), List.of(beside), new Position(0.5, 71, 0.5), Set.of()).orElseThrow();
+
+        assertEquals(new BlockPos(0, 71, 0), cut.stand(), "cut from where it stands");
+        assertEquals(Optional.empty(), Clearing.next(with(Set.of(), leaves), List.of(new BlockPos(0, 70, 0)), new Position(0.5, 71, 0.5), Set.of())
+                .filter(c -> c.stand().equals(new BlockPos(0, 71, 0))), "never the block it stands on");
+    }
+
     /** The dig over a camp with feet at y=64, 8 out: its ground's height up to its sky. */
     private static final Box SKY = new Box(-8, 64, -8, 8, 88, 8);
     /** The fill under it, 7 out. */
