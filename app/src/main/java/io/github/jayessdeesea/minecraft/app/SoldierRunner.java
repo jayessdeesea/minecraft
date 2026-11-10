@@ -2938,14 +2938,15 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
             FlightRecorder recorder = recorders.computeIfAbsent(name, n -> new FlightRecorder());
             if (recorder.due()) {
-                boolean day = chainOfCommand.time().map(t -> !t.dark()).orElse(false);
+                // Hiding or sleeping: the squad in its patrol base. Anything else still that long is worth a look.
+                boolean resting = chainOfCommand.patrolBaseObjective(definition.squad()).isPresent();
                 afterActionReview.commands.sample(squadTask(definition.squad()), status.order().getClass().getSimpleName(), status.report());
-                idleWatch.update(name, status.position(), clockwork.millis(), day, () -> "report " + status.report()
+                idleWatch.update(name, status.position(), clockwork.millis(), resting, () -> "report " + status.report()
                         + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free")
                         + ", squad's task " + chainOfCommand.objective(definition.squad())
                         .map(o -> OrderTrace.taskName(o.task()) + " at " + o.location()).orElse("none"))
                         .ifPresent(line -> {
-                            LOG.warn("[Idle] {}", line);
+                            LOG.warn("[Alert] {}", line);
                             if (line.contains("stationary")) {
                                 afterActionReview.idle(name);
                             }
@@ -3078,9 +3079,17 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 stepCutter.stop();
             }
             // Cobblestone stands in for whatever went in, dirt included, until the server's update says which.
-            soldier.takePlacement().ifPresent(cell -> io.github.jayessdeesea.minecraft.bot.supply.Builder.support(world, cell)
-                    .filter(face -> footing.placeStep(cell, face))
-                    .ifPresent(face -> chunkCache.setBlock(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE)));
+            // A torch in the cell is broken first - it goes at a touch, and the server won't put a block
+            // where one is: live, a soldier pillaring out of a pocket from a torch's cell jumped in place for good.
+            soldier.takePlacement().ifPresent(cell -> {
+                if (world.isTorch(cell.x(), cell.y(), cell.z())) {
+                    session.startDigging(cell.x(), cell.y(), cell.z());
+                    session.finishDigging(cell.x(), cell.y(), cell.z());
+                }
+                io.github.jayessdeesea.minecraft.bot.supply.Builder.support(world, cell)
+                        .filter(face -> footing.placeStep(cell, face))
+                        .ifPresent(face -> chunkCache.setBlock(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE));
+            });
             footing.tick();
             session.endTick();
         }), 0, TICK_PERIOD_MILLIS, TimeUnit.MILLISECONDS);

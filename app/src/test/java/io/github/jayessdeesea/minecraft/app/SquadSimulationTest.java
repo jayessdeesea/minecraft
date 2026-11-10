@@ -568,6 +568,49 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
     }
 
+    /**
+     * Flat, with a pit 3 deep and two across at (30, 30), away from the camp, one cell of it a block
+     * deeper - a step down, so it's no room to cut a door out of, as live - and a torch on every
+     * floor of it.
+     */
+    private static int torchInAPit(int x, int y, int z) {
+        if (x >= 30 && x <= 31 && z >= 30 && z <= 31) {
+            int floor = x == 31 && z == 31 ? GROUND - 4 : GROUND - 3;
+            if (y > floor && y <= GROUND) {
+                return y == floor + 1 ? SimServer.TORCH : SimServer.AIR;
+            }
+        }
+        return flat(x, y, z);
+    }
+
+    /**
+     * A soldier in a pit with a torch at its feet pillars out: the torch broken first, since the
+     * server won't put a block where a torch is. Live, a soldier jumped in place for good in a pocket
+     * it could only climb out of, standing in a torch.
+     */
+    @Test
+    void aSoldierStandingInATorchPillarsOutOfAPit() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::torchInAPit, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(6.5, GROUND + 1, 6.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(30.5, GROUND - 2, 30.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_DIRT, 16})));
+        runner.run();
+
+        clock.advance(2 * 60_000);
+
+        assertTrue(server.position("Alice").y() >= GROUND + 1, "Alice at " + server.position("Alice") + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
     /** Flat, with a pond by the camp: farm ground by water. */
     private static int pondByCamp(int x, int y, int z) {
         return x >= 6 && x <= 8 && z >= 6 && z <= 8 && y == GROUND ? SimServer.WATER : flat(x, y, z);

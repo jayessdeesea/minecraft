@@ -197,7 +197,7 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 (`garrison-state/`, git-ignored).
 
 The log lines to read first: `[Casualty]`, each death with the soldier's last seconds (§ 6);
-`[Idle]`, a soldier stood still for two minutes by day (§ 3); and `[AAR]`, each dawn's review of the
+`[Alert]`, a soldier stuck in place for a minute other than in its patrol base (§ 3); and `[AAR]`, each dawn's review of the
 day before (§ 17).
 
 A soldier rejoins where it last logged out, so a squad that last ran a scenario starts on the
