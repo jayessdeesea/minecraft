@@ -26,6 +26,13 @@ seconds or when stuck:
   fails is passed over for the next, and each time it fails again it's left twice as long
   (`bot.supply.Setbacks`). Something a squadmate was in the way of is tried again soon; a cell
   across water or a torch on leaves is tried less and less.
+- **Plugs the water it's stuck in, and says so.** Afloat and not 1.5 blocks further on in 30
+  seconds, it's stuck in the water: carrying cobblestone or dirt, it puts a block into each water
+  source within 4 of it, nearest first, from where it floats - stopping the flow, and each block
+  footing to climb out by. And it reports CANTCO "no route from (x, y, z) out of the water", which
+  the squad's recovery drill reads as stranded when it has too few blocks to build its own way:
+  a squadmate with blocks is sent to build it a stair (docs/military-doctrine.md § 7). Live, two
+  soldiers floated in a flooded shaft for hours reporting the wood they meant to gather.
 - **Asks for help when it's out of ways of its own.** The ladder is: try again later, try another
   target or route, then ask. A routine whose last 3 tries in a row all failed, whatever they were
   at, reports CANTCO with the last one's place and reason - clearing, walling, lighting, farming, or

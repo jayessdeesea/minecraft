@@ -27,6 +27,8 @@ public final class Hands {
         TORCHMAKER,
         /** Eating. */
         RATIONS,
+        /** Stuck in water: plugging the water round it with blocks, to stop the flow and climb out. */
+        SEALER,
         /** Killing an animal for food, with nothing left to eat. */
         HUNTER,
         /** Making its own kit: a weapon, tools, armour. */

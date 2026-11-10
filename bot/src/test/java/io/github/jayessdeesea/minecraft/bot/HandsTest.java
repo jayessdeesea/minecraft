@@ -48,7 +48,7 @@ class HandsTest {
 
     @Test
     void theOrderIsTheDoctrine() {
-        assertEquals(List.of(Routine.SUPPLY_RUN, Routine.DOORWAY, Routine.TORCHMAKER, Routine.RATIONS, Routine.HUNTER, Routine.ARMOURER,
+        assertEquals(List.of(Routine.SUPPLY_RUN, Routine.DOORWAY, Routine.TORCHMAKER, Routine.RATIONS, Routine.SEALER, Routine.HUNTER, Routine.ARMOURER,
                 Routine.BUILDER, Routine.PLACING, Routine.DEPOSITOR, Routine.HANDOVER, Routine.MINER, Routine.CLEARER, Routine.FILLER, Routine.MASON, Routine.LAMPLIGHTER, Routine.FARMER, Routine.FORESTER, Routine.GATHERER, Routine.SCAVENGER), List.of(Routine.values()));
     }
 

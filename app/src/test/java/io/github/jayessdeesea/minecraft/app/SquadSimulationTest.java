@@ -364,6 +364,36 @@ class SquadSimulationTest {
     }
 
     /**
+     * Live, two soldiers floated for hours in a flooded shaft, reporting the wood they meant to
+     * gather. Stuck in the water, a soldier with blocks plugs the water round it - and says it's
+     * stuck, so the squad's recovery drill hears it.
+     */
+    @Test
+    void aSoldierStuckInWaterPlugsIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::floodedPitInCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(4.5, GROUND - 4, 4.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, SimServer.ITEM_DIRT, 64})));
+        runner.run();
+
+        clock.advance(3 * 60_000);
+
+        // Out: plugging the water round it gave it footing, and it built its way up out of the pit.
+        assertTrue(server.log.stream().anyMatch(e -> e.startsWith("Alice placed")), "it plugged the water: " + server.log);
+        assertTrue(server.position("Alice").y() >= GROUND - 2, "out of the water, at y=" + server.position("Alice").y()
+                + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
+    /**
      * FORTIFY fills the camp's hollows from the bottom before walling: live, a pit under the wall
      * line left the wall nothing to stand on.
      */

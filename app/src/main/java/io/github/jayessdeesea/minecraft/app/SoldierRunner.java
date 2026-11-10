@@ -337,6 +337,17 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Mason> masons = new ConcurrentHashMap<>();
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Clearer> clearers = new ConcurrentHashMap<>();
     private final Map<String, io.github.jayessdeesea.minecraft.bot.supply.Filler> fillers = new ConcurrentHashMap<>();
+    /**
+     * Each soldier afloat, where it was when it last moved and the tick: one that hasn't moved in
+     * {@link #STUCK_IN_WATER_TICKS} is stuck in the water - live, two soldiers floated in a flooded
+     * shaft for hours, reporting the wood they meant to gather.
+     */
+    private final Map<String, double[]> afloatSince = new ConcurrentHashMap<>();
+    static final int STUCK_IN_WATER_TICKS = 600;
+    /** How far it must have moved to count as getting somewhere. */
+    static final double STUCK_IN_WATER_MOVE = 1.5;
+    /** How far round itself a soldier stuck in water plugs the water's sources. */
+    static final int SEAL_REACH = 4;
     /** The camp's hollows each soldier fortifying fills - squad loop writes, tick reads. */
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> filling = new ConcurrentHashMap<>();
     /** The dirt in its squad's closed wall each soldier replaces with stone - squad loop writes, tick reads. */
@@ -2399,6 +2410,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         clearers.put(name, clearer);
         io.github.jayessdeesea.minecraft.bot.supply.Filler filler = new io.github.jayessdeesea.minecraft.bot.supply.Filler(name, session, inventory);
         fillers.put(name, filler);
+        Builder sealer = new Builder(name, session, inventory, List.of(ItemClass.COBBLESTONE, ItemClass.DIRT));
+        java.util.concurrent.atomic.AtomicBoolean sealing = new java.util.concurrent.atomic.AtomicBoolean();
+        java.util.concurrent.atomic.AtomicLong tickCount = new java.util.concurrent.atomic.AtomicLong();
         io.github.jayessdeesea.minecraft.bot.supply.Scavenger scavenger = new io.github.jayessdeesea.minecraft.bot.supply.Scavenger(name);
         scavengers.put(name, scavenger);
         io.github.jayessdeesea.minecraft.bot.supply.Miner miner = new io.github.jayessdeesea.minecraft.bot.supply.Miner(name, session, inventory);
@@ -2423,6 +2437,18 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             boolean threatened = inContact || world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).stream()
                     .anyMatch(h -> DeterministicSoldier.lineOfSight(world, eyes,
                             new Position(h.position().x(), h.position().y() + 1, h.position().z())));
+            // Afloat and getting nowhere: stuck in the water.
+            Position at = status.position();
+            int ax = (int) Math.floor(at.x()), az = (int) Math.floor(at.z());
+            boolean afloat = world.isWater(ax, (int) Math.floor(at.y()), az) || world.isWater(ax, (int) Math.floor(at.y() - 0.5), az);
+            long tickNow = tickCount.incrementAndGet();
+            double[] mark = afloatSince.get(name);
+            if (!afloat) {
+                afloatSince.remove(name);
+            } else if (mark == null || Math.hypot(at.x() - mark[0], at.z() - mark[2]) >= STUCK_IN_WATER_MOVE || Math.abs(at.y() - mark[1]) >= STUCK_IN_WATER_MOVE) {
+                afloatSince.put(name, new double[]{at.x(), at.y(), at.z(), tickNow});
+            }
+            boolean stuckInWater = afloat && afloatSince.containsKey(name) && tickNow - afloatSince.get(name)[3] >= STUCK_IN_WATER_TICKS;
             // Flint for arrows, for a soldier with a bow and few arrows, when nothing else is to be gathered.
             io.github.jayessdeesea.minecraft.command.Objective gather = gathering.get(name) != null || !huntAllowed.contains(name)
                     || inventory.slotOfNamed("bow") < 0 || inventory.count(ItemClass.ARROWS) >= ARROWS_WANTED
@@ -2520,6 +2546,42 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             turns.put(Hands.Routine.TORCHMAKER, turn(torchmaker::active,
                     free -> torchmaker.tick(status.position(), world, !free ? 0 : atWorkshop ? Torchmaker.TORCHES
                             : torchesWanted ? Math.min(LIGHTING_TORCHES, (lights.size() + 3) / 4 * 4) : 0, threatened, workshop)));
+            // Stuck in water: plug the sources round it - stopping the flow, and each block one more
+            // to climb out by - nearest first, from where it floats.
+            turns.put(Hands.Routine.SEALER, turn(sealing::get, free -> {
+                if (!free || !stuckInWater || inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT) == 0) {
+                    if (sealing.getAndSet(false)) {
+                        sealer.stop();
+                    }
+                    return;
+                }
+                List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> sources = new java.util.ArrayList<>();
+                int fy = (int) Math.floor(at.y());
+                for (int dx = -SEAL_REACH; dx <= SEAL_REACH; dx++) {
+                    for (int dz = -SEAL_REACH; dz <= SEAL_REACH; dz++) {
+                        for (int dy = -SEAL_REACH; dy <= SEAL_REACH; dy++) {
+                            int x = ax + dx, y = fy + dy, z = az + dz;
+                            boolean body = dx == 0 && dz == 0 && (dy == 0 || dy == 1);
+                            if (!body && world.isWaterSource(x, y, z)) {
+                                sources.add(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
+                            }
+                        }
+                    }
+                }
+                sources.sort(java.util.Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z())
+                        + Math.abs(c.y() - at.y())));
+                if (sources.isEmpty()) {
+                    sealing.set(false);
+                    sealer.stop();
+                    return;
+                }
+                if (!sealing.getAndSet(true)) {
+                    LOG.warn("{} stuck in the water at {} - plugs the {} water source(s) round it", name, at, sources.size());
+                }
+                if (sealer.tickInPlace(at, world, sources) instanceof Builder.Progress.Failed) {
+                    sealer.retrySkipped();
+                }
+            }));
             turns.put(Hands.Routine.RATIONS, turn(rations::active,
                     free -> rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD), free && !threatened,
                             soldier.yaw(), soldier.pitch())));
@@ -2722,6 +2784,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     : placing.containsKey(name) && !(placeProgress.get(name) instanceof Builder.Progress.Done)
                     ? new Report.Building((int) placing.get(name).stream().filter(c -> world.isSolid(c.x(), c.y(), c.z())).count(),
                             placing.get(name).size())
+                    // Stuck in the water says so, in the stranded soldier's words, so the squad's
+                    // recovery drill sends blocks: live, two soldiers afloat reported the wood they
+                    // meant to gather, and nobody came.
+                    : stuckInWater ? new Report.Cantco(String.format(java.util.Locale.ROOT, "no route from (%d, %d, %d) out of the water",
+                            ax, (int) Math.floor(at.y()), az))
                     : hunter.active() ? new Report.Hunting()
                     : mason.active() || clearer.active() || filler.active() ? new Report.Fortifying()
                     // Out of ways of its own - each of its last tries failed, on whatever it tried -
