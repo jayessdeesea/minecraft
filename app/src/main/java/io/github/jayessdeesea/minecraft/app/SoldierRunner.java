@@ -452,8 +452,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 kept.addAll(keptFarm.plot());
                 farmStore.save(camp[0] + "," + camp[1], kept);
             }
-            campFarm = keptFarm;
         }
+        // Kept however it was found - sited now, or as it was before a restart: live, a farm loaded
+        // from disk was never kept, and both squads starved under SECURE with a farm by the camp.
+        campFarm = keptFarm;
         Optional<io.github.jayessdeesea.minecraft.bot.farm.FarmPlan> farm = Optional.ofNullable(keptFarm);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
         // Food is buildup - unless the force is starving now: then it comes before the wall, as a
@@ -913,7 +915,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     || walling.containsKey(n) || repointing.containsKey(n) || farming.containsKey(n)
                     // Lighting is work only while it's lighting: live, a squad handed a light plan of
                     // one cell nobody could reach stood about rather than keep the camp.
-                    || lighting.containsKey(n) && Optional.ofNullable(lamplighters.get(n)).map(l -> l.active()).orElse(false)
+                    || lighting.containsKey(n) && (Optional.ofNullable(lamplighters.get(n)).map(l -> l.active()).orElse(false)
+                    // Torches carried, or the makings: on its way to put them down or make them. Live,
+                    // a torchmaker walking to the workshop was handed the upkeep's dig, its clearer
+                    // took the hands, and it set out for the workshop again every few ticks.
+                    || torchesCarried.getOrDefault(n, 0) > 0 || canMakeTorches.getOrDefault(n, false))
                     || planting.containsKey(n) || cutting.containsKey(n)
                     || gathering.containsKey(n) && !groundGather.containsKey(n)
                     && clockwork.millis() - gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE / 2) > FOUND_NOTHING_MILLIS

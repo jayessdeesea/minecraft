@@ -531,6 +531,43 @@ class SquadSimulationTest {
         assertTrue(raised <= 6, "requests to the squad leader in 4 minutes: " + review);
     }
 
+    /**
+     * A squad told to light the camp, carrying the makings, goes and makes its torches and puts them
+     * down: the camp's upkeep doesn't take it off to dig. Live, a torchmaker walking to the workshop
+     * was handed the upkeep's dig and set out for the workshop again every few ticks.
+     */
+    @Test
+    void aSquadWithTheMakingsLightsTheCampBeforeKeepingIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::moundInCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Light the camp", camp, "Nothing spawns inside",
+                new Objective.Task.Secure())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_OAK_LOG, 16},
+                        new int[]{11, SimServer.ITEM_COBBLESTONE, 16})));
+        runner.run();
+
+        clock.advance(6 * 60_000);
+
+        long torches = 0;
+        for (int x = -12; x <= 12; x++) {
+            for (int z = -12; z <= 12; z++) {
+                for (int y = GROUND + 1; y <= GROUND + 3; y++) {
+                    torches += server.block(x, y, z) == SimServer.TORCH ? 1 : 0;
+                }
+            }
+        }
+        assertTrue(torches >= 4, torches + " torches down; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
     /** Flat, with a pond by the camp: farm ground by water. */
     private static int pondByCamp(int x, int y, int z) {
         return x >= 6 && x <= 8 && z >= 6 && z <= 8 && y == GROUND ? SimServer.WATER : flat(x, y, z);
@@ -543,6 +580,23 @@ class SquadSimulationTest {
      */
     @Test
     void aHungrySquadKeepsTheCampsFarmWithoutBeingOrderedTo() {
+        hungrySquadFarms();
+    }
+
+    /**
+     * The same after a restart: the camp's farm as it was kept on disk, by its water. Live, a farm
+     * loaded from disk was never handed to the squads, and both starved under SECURE beside it.
+     */
+    @Test
+    void aHungrySquadKeepsTheCampsFarmAfterARestart() {
+        new WallStore(state, "farm").save("0,0", List.of(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(7, GROUND, 7),
+                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(5, GROUND, 6), new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(5, GROUND, 7),
+                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(5, GROUND, 8), new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(6, GROUND, 5),
+                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(7, GROUND, 5), new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(8, GROUND, 5)));
+        hungrySquadFarms();
+    }
+
+    private void hungrySquadFarms() {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::pondByCamp, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");

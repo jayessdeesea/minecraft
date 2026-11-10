@@ -775,7 +775,8 @@ out of contact and within 24 blocks of the camp, with no other work handed to it
 same drill's commands round the camp (`SoldierRunner.campUpkeep`), so an idle squad flattens the
 camp rather than stand in it. Live, three soldiers stood a day in a lit camp with their task all
 but done. A gather that found nothing within reach isn't work for 5 minutes - a squad sent for
-torch makings with no tree in reach keeps the camp meanwhile - and a soldier on a ground-work
+torch makings with no tree in reach keeps the camp meanwhile, while one carrying torches or their
+makings lights the camp first - and a soldier on a ground-work
 command reports `Working`, between one cut and the next too, so a CANTCO it is waiting on isn't
 raised anew every cycle.
 
