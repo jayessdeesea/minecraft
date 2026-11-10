@@ -794,7 +794,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private io.github.jayessdeesea.minecraft.command.Subsistence.Status classOne(String squad, SquadState state, List<SoldierStatus> statuses) {
         java.util.Set<String> shared = state.crossLeveling.stream().filter(t -> t.item() == CrossLevel.Item.RATIONS)
                 .map(CrossLevel.Transfer::receiver).collect(java.util.stream.Collectors.toSet());
-        java.util.Set<String> noMeans = statuses.stream().map(SoldierStatus::name)
+        // Wheat growing in the camp's farm is a means: the squad keeps it (field feeding, half of a
+        // hungry squad on it), and its bread is on the way. Live, squads with a farm growing raised
+        // Class I RED to the general all night, which it can't answer better than the farm already does.
+        io.github.jayessdeesea.minecraft.bot.farm.FarmPlan farm = campFarm;
+        boolean farmGrowing = farm != null && farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent());
+        java.util.Set<String> noMeans = farmGrowing ? java.util.Set.of() : statuses.stream().map(SoldierStatus::name)
                 .filter(n -> foodless.contains(n) && !shared.contains(n)).collect(java.util.stream.Collectors.toSet());
         io.github.jayessdeesea.minecraft.command.Subsistence.Status status = io.github.jayessdeesea.minecraft.command.Subsistence.of(statuses, noMeans);
         if (state.classOne == null || state.classOne.rating() != status.rating()) {

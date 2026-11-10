@@ -152,7 +152,8 @@ carries a **basic load** of 6 rations, and is short below 2:
    and kept while its water is there - on disk too, under `minecraft.state-dir` as the wall is
    (`app.WallStore`), since sited again after a restart it moved to another pond.
 3. **The squad asks.** A soldier still short with none of those means - no wheat, no game in sight,
-   nobody sharing - makes the squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
+   nobody sharing, and no wheat growing in the camp's farm, whose bread is on the way - makes the
+   squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
    I RED - request: ... The squad can't feed itself."
 4. **The general answers.** Feeding a force is planned above the squad, as field feeding is above
    the company. Its answer to RED is a `FARM` task at ground by water, which harvests what's ripe

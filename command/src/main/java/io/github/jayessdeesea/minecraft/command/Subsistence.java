@@ -59,7 +59,7 @@ public final class Subsistence {
         public String line() {
             return switch (rating) {
                 case GREEN -> "Class I GREEN: every soldier carries food.";
-                case AMBER -> String.format(Locale.ROOT, "Class I AMBER: %s short of food, getting some (baking, hunting or shared).",
+                case AMBER -> String.format(Locale.ROOT, "Class I AMBER: %s short of food, getting some (baking, hunting, farming or shared).",
                         String.join(", ", short_));
                 case RED -> String.format(Locale.ROOT, "Class I RED - request: %s out of food with no way to get any: no wheat to bake,"
                         + " no game in sight, no squadmate with any to share. The squad can't feed itself.", String.join(", ", helpless));
