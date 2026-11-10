@@ -1671,7 +1671,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // leaves it the same way as one it remembers: the room is read from the world.
         if (state.builtBase == null && chainOfCommand.objective(squadName).isPresent()) {
             statuses.stream().filter(st -> plan == null || !plan.inside(st.position()))
-                    .flatMap(st -> PatrolBase.enclosing(st.position(), c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z()))
+                    // Walled by what a squad builds with, not a tree: live, a soldier up a canopy was
+                    // taken for shut in a hut, cut a doorway out of the leaves, and fell ten blocks.
+                    .flatMap(st -> PatrolBase.enclosing(st.position(), c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z())
+                                    && !world.isLog((int) c.x(), (int) c.y(), (int) c.z())
+                                    && world.leaves((int) c.x(), (int) c.y(), (int) c.z()).isEmpty())
                             .map(room -> java.util.Map.entry(st.name(), room)).stream())
                     .findFirst().ifPresent(shutIn -> {
                         LOG.warn("[{}] {} is shut in at {} - cutting a way out", squadName, shutIn.getKey(), shutIn.getValue().floor());
