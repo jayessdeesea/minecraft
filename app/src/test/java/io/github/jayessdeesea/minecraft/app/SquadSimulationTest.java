@@ -1256,6 +1256,37 @@ class SquadSimulationTest {
     }
 
     /**
+     * As live round the camp: a soldier on a roof 8 blocks up - a drop costing 5 health of 20, more
+     * than the squad's LOW risk takes - with nothing to build with, and nobody carrying any. The
+     * recovery drill sends it down to its squad at MEDIUM, and it jumps.
+     */
+    @Test
+    void aSoldierStrandedWithNobodyToFetchItJumpsDownToItsSquad() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> y == GROUND + 8 && x >= 6 && x <= 8 && z >= -1 && z <= 1
+                ? SimServer.STONE : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Dana");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(
+                        n -> n.equals("Dana") ? new PlayerPosition(7.5, GROUND + 9, 0.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(3 * 60_000);
+
+        PlayerPosition dana = server.position("Dana");
+        assertTrue(dana.y() < GROUND + 4, "Dana still up at " + dana + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+        assertTrue(server.health("Dana") >= 10 && server.deaths.isEmpty(), "Dana came down at health "
+                + server.health("Dana") + ", deaths " + server.deaths);
+    }
+
+    /**
      * As live: Eli on a ledge, its only way down a fall costing most of its health, nobody in its
      * squad carrying blocks enough to come up for it - but logs in its own pack. It builds its own
      * stair from the top down, and walks down it.

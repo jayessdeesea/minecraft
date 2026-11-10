@@ -34,6 +34,21 @@ class RecoveryTest {
     }
 
     @Test
+    void oneStrandedWithNobodyToFetchItGoesDownToItsSquadAtMediumRisk() {
+        List<SoldierStatus> squad = List.of(
+                soldier("Gus", new Position(-50, 72, 53), STUCK, 0),
+                soldier("Alice", new Position(-48, 68, 44), new Report.InPosition(), 0));
+
+        Recovery recovery = new Recovery();
+        List<Order> orders = recovery.orders(squad, List.of(new Order.Idle(), new Order.Idle()), s -> Optional.empty());
+
+        Order.MoveTo down = new Order.MoveTo(-48, 68, 44, Recovery.ESCAPE_TOLERANCE, Recovery.ESCAPE_TOLERANCE, Risk.MEDIUM);
+        assertEquals(down, orders.get(0));
+        assertEquals(Optional.of(down), recovery.escape("Gus"));
+        assertEquals(Optional.empty(), recovery.escape("Alice"));
+    }
+
+    @Test
     void oneStrandedWithLogsEnoughBuildsItsOwnStairFromTheTopDown() {
         Position ledge = new Position(0.5, 70, 0.5);
         Kit logs = new Kit(Optional.empty(), 0, 0, 0, 8, 0, 0, false);
@@ -169,6 +184,7 @@ class RecoveryTest {
         assertEquals(IDLE, new Recovery().orders(squad, IDLE, NO_STAIR));
     }
 
+    /** No squadmate with blocks: none is sent, and the stranded one goes down to the nearest itself. In contact, nothing. */
     @Test
     void noneWithoutBlocksIsSentAndNoneInContact() {
         List<SoldierStatus> empty = List.of(
@@ -180,7 +196,9 @@ class RecoveryTest {
                 soldier("Carol", new Position(4, 64, 0), new Report.InPosition(), 64),
                 soldier("Dana", new Position(7, 81, 0), STUCK, 0));
 
-        assertEquals(IDLE, new Recovery().orders(empty, IDLE, NO_STAIR));
+        assertEquals(List.of(new Order.Idle(), new Order.Idle(),
+                        new Order.MoveTo(4, 64, 0, Recovery.ESCAPE_TOLERANCE, Recovery.ESCAPE_TOLERANCE, Risk.MEDIUM)),
+                new Recovery().orders(empty, IDLE, NO_STAIR), "nobody sent for Dana: she goes down to Carol, the nearest");
         assertEquals(IDLE, new Recovery().orders(fighting, IDLE, NO_STAIR));
     }
 }

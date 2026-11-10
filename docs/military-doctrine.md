@@ -283,7 +283,10 @@ below - boxed in a pocket, with no stair down to lay - gets the engineer's stair
 (`Stairway.up`): the cells to dig, one block up and one along a step to open ground, dug from the
 top as an `Order.Dig` by the nearest squadmate with a pickaxe. Live, a soldier waited two runs in
 a pocket walled partly in cobblestone. Where neither stair can be laid, the squadmate is sent to
-the stranded one instead. A recovery lasts until the
+the stranded one instead. With nobody to fetch it and nothing to build with, the stranded soldier
+goes down to its nearest squadmate itself at MEDIUM risk, over its own routine's stand: a fall
+that leaves it half its health or more. Live, soldiers stood for an hour on hut roofs, the wall
+and a canopy over the camp, a 4-block drop from the ground that the squad's LOW risk wouldn't take. A recovery lasts until the
 stranded soldier has moved two blocks off where it was stuck. Its own report flickers as it
 retries its route, and a recovery that ended with each flicker would pass the stair from one
 squadmate to another. A soldier that reports CANTCO prices the riskier

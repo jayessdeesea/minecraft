@@ -48,6 +48,8 @@ public final class Recovery {
     private final Map<String, Episode> recovering = new LinkedHashMap<>();
     /** How many reports in a row each soldier has been stranded for. */
     private final Map<String, Integer> strandedFor = new java.util.HashMap<>();
+    /** This cycle's escapes: each stranded soldier nobody can fetch, sent down to its squad itself. */
+    private final Map<String, Order.MoveTo> escaping = new java.util.HashMap<>();
     /**
      * Reports in a row a soldier must be stranded before it's fetched: a route that fails once, on a
      * hop across the camp, isn't a soldier stuck. Live, with no route outranking its routine's
@@ -111,6 +113,7 @@ public final class Recovery {
         }
         List<Order> result = new ArrayList<>(orders);
         List<String> names = List.copyOf(byName.keySet());
+        escaping.clear();
         for (Map.Entry<String, Episode> e : recovering.entrySet()) {
             Episode episode = e.getValue();
             // Carrying the blocks for its own stair - logs too - it builds it, from the top down:
@@ -128,6 +131,19 @@ public final class Recovery {
                 episode.fetcher = nearestCarrier(e.getKey(), episode.at, reported, episode.stair.isEmpty());
             }
             if (episode.fetcher == null) {
+                // Nobody to fetch it, and nothing to build its own way down with: it goes down to its
+                // squad itself, at MEDIUM - a fall that leaves it half its health or more. Live, soldiers
+                // stood for an hour on hut roofs, the wall and a canopy over the camp, a 4-block drop
+                // from the ground - 1 health of 20 - and the squad's LOW risk took no fall at all.
+                Optional<SoldierStatus> mate = reported.stream()
+                        .filter(m -> !recovering.containsKey(m.name()) && !(m.report() instanceof Report.LinkingUp))
+                        .min(java.util.Comparator.comparingDouble(m -> Cohesion.distance(m.position(), episode.at)));
+                if (mate.isPresent()) {
+                    Position to = mate.get().position();
+                    Order.MoveTo down = new Order.MoveTo(to.x(), to.y(), to.z(), ESCAPE_TOLERANCE, ESCAPE_TOLERANCE, Risk.MEDIUM);
+                    result.set(names.indexOf(e.getKey()), down);
+                    escaping.put(e.getKey(), down);
+                }
                 continue;
             }
             Position at = episode.at;
@@ -158,6 +174,17 @@ public final class Recovery {
         }
         formed.addAll(rear);
         return List.copyOf(formed);
+    }
+
+    /** How near its squadmate a stranded soldier going down on its own is sent. */
+    static final double ESCAPE_TOLERANCE = 3;
+
+    /**
+     * The order this cycle sends {@code soldier} down to its squad on its own, if it's stranded with
+     * nobody to fetch it - to outrank the stand its own routine sends it to, the one it can't reach.
+     */
+    public Optional<Order.MoveTo> escape(String soldier) {
+        return Optional.ofNullable(escaping.get(soldier));
     }
 
     /** An {@code Order.Dig} of just {@code cells}: their box, and every other cell in it kept. */

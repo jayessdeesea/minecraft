@@ -1913,6 +1913,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int stoneShare = (baseBlocks + statuses.size() - 1) / statuses.size();
         for (int i = 0; i < statuses.size(); i++) {
             String soldierName = statuses.get(i).name();
+            // Stranded with nobody to fetch it: the recovery drill sends it down to its squad, over
+            // the stand its own routine wants and can't reach.
+            Optional<Order.MoveTo> escape = squadInContact ? Optional.empty() : state.recovery.escape(soldierName);
+            if (escape.isPresent()) {
+                upkeeping.remove(soldierName);
+                byName.get(soldierName).receiveOrder(escape.get());
+                continue;
+            }
             Optional.ofNullable(workshopOf(state, statuses.get(i).position()))
                     .ifPresentOrElse(w -> workshops.put(soldierName, w), () -> workshops.remove(soldierName));
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
