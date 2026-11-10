@@ -50,6 +50,21 @@ class RecoveryTest {
     }
 
     @Test
+    void theSquadLeaderIsShownOneBeingRecoveredAsRecoveringAtTheRear() {
+        List<SoldierStatus> squad = List.of(
+                soldier("Dana", new Position(7, 81, 0), STUCK, 0),
+                soldier("Alice", new Position(0, 64, 0), new Report.InPosition(), 30));
+        Recovery recovery = new Recovery();
+        recovery.orders(squad, List.of(new Order.Idle(), new Order.Idle()), s -> Optional.of(List.of(new Cell(8, 64, 0))));
+
+        List<SoldierStatus> shown = recovery.asRecovering(squad);
+
+        assertEquals(List.of("Alice", "Dana"), shown.stream().map(SoldierStatus::name).toList(), "Dana at the rear");
+        assertEquals(new Report.Recovering(), shown.get(1).report());
+        assertEquals(squad, new Recovery().asRecovering(squad), "nobody being recovered: as it was");
+    }
+
+    @Test
     void withAStairUpLaidTheSquadmateWithAPickaxeDigsJustItsCells() {
         Position pocket = new Position(0.5, 60, 0.5);
         Kit pick = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, true, 0, false);

@@ -40,6 +40,15 @@ public sealed interface Report {
     }
 
     /**
+     * Stranded, and its squad's recovery drill getting it out (docs/military-doctrine.md §7): a
+     * squadmate sent with blocks, or steps it builds or digs itself. Assigned from the squad's view,
+     * as {@link LinkingUp} is - the soldier itself reports its CANTCO. Live, a squad leader shown
+     * that CANTCO took a stranded soldier for the squad's own and reported the mission one.
+     */
+    record Recovering() implements Report {
+    }
+
+    /**
      * Bare-handed and making itself a weapon (docs/military-doctrine.md §11): chopping wood and
      * crafting a wooden sword, with the squad leader's leave. About a minute; it drops the job the
      * moment a hostile comes near.

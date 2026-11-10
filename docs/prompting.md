@@ -24,5 +24,9 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
 - **Worked examples are copied the same way**, their coordinates and their choices: one example of
   a sealed squad sent to SECURE pulled every sealed squad out.
 - **Put a rule in the paragraph of the task it sets**, not in a general section after it.
+- **Show the state, don't add a rule about it.** Shown a stranded soldier's CANTCO, the squad
+  leader reported the mission CANTCO (6 of 14). A rule that he's the recovery drill's made it
+  worse (3 of 14): the model wrote the rule's own words into its CANTCO. Shown him as
+  `Recovering` instead, it got 14 of 14.
 - **A section that explains itself needs no paragraph about it:** a two-line note on `<foothold>`
   in the doctrine took the night rule from 6 of 6 to 0 of 6.

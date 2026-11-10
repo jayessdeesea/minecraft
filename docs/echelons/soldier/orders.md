@@ -49,6 +49,7 @@ works on ([routines.md](routines.md)).
 | `InContact(hostiles)` | Fighting. |
 | `Cantco(reason)` | Can't comply, and why: no route (with the price of a riskier route if one exists), or the routine's failure ("can't cut the staircase further: water or lava beside step 2"). After 3 failed plans. |
 | `LinkingUp` | Respawned, and closing on its squad. Set by the squad's drill, not by the soldier. |
+| `Recovering` | Stranded, and the squad's recovery drill getting it out. Shown to the squad leader in place of its CANTCO, at the rear; set by the drill, not by the soldier. |
 | `Building(placed, cells)` | Filling the cells of its `Place`: so many in. A `Place` it can't finish is a `Cantco`. |
 | `Working(command, left)` | On a ground-work command: so many of its cells left. |
 | `Rearming`, `Gathering(resource)`, `Fortifying`, `Farming`, `Hunting`, `Planting`, `Securing`, `Mining(step, steps)`, `CrossLeveling(to, item, count)` | The routine that has its hands. |

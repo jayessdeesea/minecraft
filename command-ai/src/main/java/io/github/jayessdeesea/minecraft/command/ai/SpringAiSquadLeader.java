@@ -299,6 +299,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             case Report.InPosition() -> "InPosition";
             case Report.InContact(int hostiles) -> "InContact with " + hostiles + " hostile(s)";
             case Report.LinkingUp() -> "LinkingUp (respawned, rejoining the squad)";
+            case Report.Recovering() -> "Recovering (stranded; the squad's recovery drill is getting him out)";
             case Report.Rearming() -> "Rearming (making himself a wooden sword)";
             case Report.Gathering(var resource) -> "Gathering " + resource;
             case Report.Fortifying() -> "Fortifying (building the patrol base)";

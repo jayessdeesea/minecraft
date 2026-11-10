@@ -28,7 +28,7 @@ public record Progress(State state, String detail) {
     /** Whether {@code report} shows a soldier at work, or on its way to it: anything but standing or refusing. */
     public static boolean working(Report report) {
         return switch (report) {
-            case Report.Idle _, Report.InPosition _, Report.Cantco _ -> false;
+            case Report.Idle _, Report.InPosition _, Report.Cantco _, Report.Recovering _ -> false;
             default -> true;
         };
     }

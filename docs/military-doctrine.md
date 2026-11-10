@@ -268,7 +268,12 @@ the nearest squadmate carrying 24 or more blocks - one at a time, never in conta
 to build the engineer's stair down from where the stranded one stands (`bot.engineer.Stairway`,
 an `Order.Place`). The stair runs one block down and one along from the ledge's edge to the
 ground, the shortest of the four headings with clear air over it and no water under it. Each step
-stands on a block of its own, so it's two blocks a step, built from the ground up. A stranded
+stands on a block of its own, so it's two blocks a step, built from the ground up. While the drill
+has it, the squad leader is shown the stranded soldier as `Recovering`, at the rear of the
+squad, not its CANTCO: shown the CANTCO, the squad leader took it for the mission's and reported
+the mission one (in `SquadLeaderScenarioIT`'s `stranded` variant, 6 of 14 right; 14 of 14 shown
+`Recovering`), and live the general spent the squad's days moving it to "resolve movement
+issues". A stranded
 soldier carrying the blocks for its own stair - stone, dirt or logs - builds it itself from the
 top down, nobody fetched: first a block under the ledge's edge, against its underside, since the
 top step touches the ledge only at a corner, then each step and the block under it in turn. Live,

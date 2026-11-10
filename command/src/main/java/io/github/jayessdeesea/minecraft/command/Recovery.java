@@ -138,6 +138,28 @@ public final class Recovery {
         return List.copyOf(result);
     }
 
+    /**
+     * {@code statuses} as the squad leader is shown them: each soldier being recovered reported
+     * {@link Report.Recovering} and put at the rear, so it's never the point man - its CANTCO is the
+     * drill's to answer, not the squad's.
+     */
+    public List<SoldierStatus> asRecovering(List<SoldierStatus> statuses) {
+        List<SoldierStatus> formed = new ArrayList<>();
+        List<SoldierStatus> rear = new ArrayList<>();
+        for (SoldierStatus s : statuses) {
+            if (recovering.containsKey(s.name())) {
+                rear.add(new SoldierStatus(s.name(), s.position(), s.order(), new Report.Recovering(), s.condition()));
+            } else {
+                formed.add(s);
+            }
+        }
+        if (formed.isEmpty()) {
+            return statuses; // all of it stranded: nobody else to lead
+        }
+        formed.addAll(rear);
+        return List.copyOf(formed);
+    }
+
     /** An {@code Order.Dig} of just {@code cells}: their box, and every other cell in it kept. */
     static Order.Dig dig(List<Cell> cells) {
         int[] lo = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE}, hi = {Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};

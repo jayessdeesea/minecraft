@@ -62,7 +62,12 @@ class SquadLeaderScenarioIT {
      * RETASKED: the squad is in position at its last order's spot, near the start, when a new
      * objective arrives - the case where a model can anchor on its standing order.
      */
-    private enum Variant { PLAIN, STUCK, RETASKED }
+    /**
+     * STRANDED as live (field50-53): a soldier on a ledge for an hour, starving, every way down a
+     * fall that would kill it - the recovery drill's, not the squad's mission's, to solve - shown as
+     * the squad leader sees it once the drill has it: Recovering, at the rear.
+     */
+    private enum Variant { PLAIN, STUCK, RETASKED, STRANDED }
 
     private record Outcome(Scenario scenario, Variant variant, long millis, String risk, List<String> failures) {
         String name() {
@@ -127,6 +132,7 @@ class SquadLeaderScenarioIT {
 
     private static Outcome run(ChatModel model, Scenario scenario, Variant variant) {
         boolean stuck = variant == Variant.STUCK;
+        boolean stranded = variant == Variant.STRANDED;
         Report settled = variant == Variant.RETASKED ? new Report.InPosition() : new Report.Idle();
         SyntheticWorld world = scenario.world();
         BlockPos start = scenario.start();
@@ -138,6 +144,9 @@ class SquadLeaderScenarioIT {
                 stuck ? new SoldierStatus("Carol", new Position(start.x() + 6.5, start.y() - 4, start.z() + 4.5),
                         new Order.Idle(), new Report.Cantco("no route from the pit to within 3 of the squad's slot; "
                                 + "a route with falls costing 7 of my 20 health exists (MEDIUM risk)"), HEALTHY)
+                        : stranded ? new SoldierStatus("Carol", new Position(start.x() + 6.5, start.y() + 4, start.z() + 4.5),
+                        new Order.Idle(), new Report.Recovering(),
+                        java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(8, 0, 0, java.util.Optional.empty())))
                         : soldierNear("Carol", world, start.x() + 2, start.z() + 2, settled));
         TerrainSurvey terrain = TerrainSurveyor.survey(world, pointMan);
 

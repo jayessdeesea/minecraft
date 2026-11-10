@@ -806,7 +806,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             boolean stoneSteps = p.statuses().get(0).condition().flatMap(c -> c.kit()).map(k -> k.pickaxe()).orElse(false);
             SquadState state = squadStates.get(p.squad());
             boolean holdingBase = state.allInside && state.breaches != null && state.breaches.isEmpty();
-            return new ChainOfCommand.Sitrep(p.squad(), p.statuses(), () -> TerrainSurveyor.survey(world, pointMan, climbBlocks, stoneSteps,
+            // A soldier the recovery drill has is shown to the squad leader as Recovering, at the rear:
+            // shown its CANTCO, the squad leader reported the mission one, and the general spent the
+            // squad's days moving it to "resolve movement issues".
+            return new ChainOfCommand.Sitrep(p.squad(), state.recovery.asRecovering(p.statuses()), () -> TerrainSurveyor.survey(world, pointMan, climbBlocks, stoneSteps,
                     chainOfCommand.objective(p.squad()).map(io.github.jayessdeesea.minecraft.command.Objective::location)), p.principalAt(),
                     () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, pointMan), holdingBase,
                     holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft, progress(p.squad(), state, p.statuses()),
