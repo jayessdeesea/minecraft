@@ -2090,6 +2090,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 } else {
                     lighting.put(soldierName, stairsDark);
                 }
+            } else if (stairs != null && torchesLeft.isEmpty()) {
+                // Out of torches and their makings, the stairs' lights aren't its job any more: live,
+                // one at the landing reported CANTCO for half an hour on lights handed it while it
+                // had torches, never taken back.
+                lighting.remove(soldierName);
             }
             if (stairs != null) {
                 mining.add(soldierName);
