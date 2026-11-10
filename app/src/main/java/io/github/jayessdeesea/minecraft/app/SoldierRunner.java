@@ -2059,8 +2059,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 // by day. By night they go down behind it: the top is the dark, and down the stairs
                 // nothing spawns within 24 blocks of them.
                 boolean dark = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
-                Position cutterAt = cutter == null ? centre(stairs.head())
-                        : armourers.get(cutter).standAt().or(() -> miners.get(cutter).standAt()).orElse(centre(stairs.head()));
+                // With nothing left to cut, by night the squad waits at the landing, under the
+                // ground: live, a mine cut to the bottom left it all night at the head, under the sky.
+                Position rest = dark && stairs.landingCut(world) ? centre(stairs.landingStand()) : centre(stairs.head());
+                Position cutterAt = cutter == null ? rest
+                        : armourers.get(cutter).standAt().or(() -> miners.get(cutter).standAt()).orElse(rest);
                 boolean isCutter = soldierName.equals(cutter);
                 // One holding the top goes on its errand first: its kit at the workshop, torches made, the stairs lit.
                 // Not by night: the top is the dark, and the squad stays down with its cutter.

@@ -452,6 +452,43 @@ class SquadSimulationTest {
         }
     }
 
+    /** Every cell of {@link #KEPT}'s cuts - stairs, landing, tunnels - as air: a mine cut to the bottom. */
+    private static final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> KEPT_CUT = KEPT.cuts().stream()
+            .flatMap(c -> c.cells().stream()).collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    private static int keptStairsAllCut(int x, int y, int z) {
+        return KEPT_CUT.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z)) ? SimServer.AIR : flat(x, y, z);
+    }
+
+    /**
+     * By night, with the camp's mine cut to the bottom and nothing left in it to cut, the squad
+     * waits at the landing, under the ground. Live, it stood all night at the head, under the sky.
+     */
+    @Test
+    void byNightASquadWithItsMineCutWaitsAtTheLanding() {
+        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsAllCut, 14_000); // an hour after dusk
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
+                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(4 * 60_000);
+
+        for (String name : List.of("Alice", "Bob")) {
+            PlayerPosition at = server.position(name);
+            assertTrue(at.y() < KEPT.head().y() - 24, name + " under the ground by night, not at " + at);
+        }
+    }
+
     /** Flat, with a shaft 6 deep down the 3x3 columns round the camp's mine head, (4, -4) from its centre. */
     private static int shaftAtTheMineHead(int x, int y, int z) {
         return x >= 3 && x <= 5 && z >= -5 && z <= -3 && y > GROUND - 6 && y <= GROUND ? SimServer.AIR : flat(x, y, z);
