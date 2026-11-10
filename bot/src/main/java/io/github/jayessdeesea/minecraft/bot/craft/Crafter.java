@@ -392,26 +392,32 @@ public final class Crafter {
             // fuel spent. Burned for it, the furnace comes free - its smelts are taken out as they're done,
             // whoever's they were. Live, each soldier in turn waited on a cold furnace, gave up, and left
             // its own batch for the next.
-            if (furnace[FURNACE_FUEL].isEmpty()) {
-                fuel(furnace[FURNACE_IN].get().count());
+            // With no planks to spare from its own smelts, the batch comes out instead: carried, not lost.
+            if (furnace[FURNACE_FUEL].isEmpty() && !fuel(furnace[FURNACE_IN].get().count(), Recipe.fuelFor(batch.yield() - made[0]))) {
+                session.quickMove(windowId, 0, FURNACE_IN);
+                return new Expect("the furnace emptied", () -> furnace[FURNACE_IN].isEmpty(), ANSWER_TICKS);
             }
             return smeltDone();
         }, SMELT_TICKS);
     }
 
-    /** Planks into the empty fuel slot, enough to burn {@code smelts}; none carried, none put in. */
-    private void fuel(int smelts) {
+    /**
+     * Planks into the empty fuel slot, enough to burn {@code smelts}, keeping {@code keep} for its
+     * own: whether it had them to spare.
+     */
+    private boolean fuel(int smelts, int keep) {
         int planks = biggest(ItemClass.PLANKS, -1);
-        if (planks < 0) {
-            return;
+        int fuel = Recipe.fuelFor(smelts);
+        if (planks < 0 || inventory.count(ItemClass.PLANKS) - fuel < keep || inventory.countAt(planks) < fuel) {
+            return false;
         }
-        int fuel = Math.min(Recipe.fuelFor(smelts), inventory.countAt(planks));
         int window = windowId;
         session.click(window, 0, planks - Inventory.MAIN_FIRST + windowSlots, false);
         for (int i = 0; i < fuel; i++) {
             session.click(window, 0, FURNACE_FUEL, true);
         }
         session.click(window, 0, planks - Inventory.MAIN_FIRST + windowSlots, false);
+        return true;
     }
 
     /** Collecting what was left smelting in the furnace at {@code at}: each smelt taken out as it's done. */
@@ -429,7 +435,11 @@ public final class Crafter {
         }, SMELT_TICKS);
     }
 
-    /** The furnace's result into the inventory; what came out is no longer smelting. */
+    /**
+     * The furnace's result into the inventory; what came out is no longer smelting. The result slot
+     * emptied is the step done, whatever was in it: live, a squadmate's copper was there, came out
+     * into the soldier's inventory, and waiting for charcoal it gave up.
+     */
     private Expect takeOut(ItemClass makes, java.util.function.IntConsumer onTaken) {
         int before = inventory.count(makes);
         BlockPos at = furnaceAt;
@@ -437,7 +447,7 @@ public final class Crafter {
         return new Expect(makes + " out of the furnace", () -> {
             int now = inventory.count(makes);
             if (now <= before) {
-                return false;
+                return furnace[FURNACE_OUT].isEmpty();
             }
             int taken = now - before;
             onTaken.accept(taken);

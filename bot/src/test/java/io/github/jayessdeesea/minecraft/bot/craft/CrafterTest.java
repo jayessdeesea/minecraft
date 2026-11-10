@@ -64,6 +64,19 @@ class CrafterTest {
     }
 
     @Test
+    void aSquadmatesCopperLeftInTheFurnaceComesOutOnTheWayToTheTorches() {
+        workshop();
+        server.leftSmelting(new BlockPos(-2, 64, 0), ItemClass.RAW_COPPER, 1); // as live: someone's ore, cold
+        server.give(9, ItemClass.LOG, 4); // no planks to spare: the copper comes out raw
+
+        Outcome outcome = run(Map.of(Recipe.TORCHES, 8), t -> false, 3000);
+
+        assertEquals(Outcome.MADE, outcome, crafter.failure().orElse(""));
+        assertTrue(server.count(ItemClass.TORCH) >= 8, server.count(ItemClass.TORCH) + " torches");
+        assertEquals(1, server.count(ItemClass.RAW_COPPER), "the copper taken out, not left in the way");
+    }
+
+    @Test
     void aSwordAndAPickaxeAtOneOpeningOfTheTable() {
         workshop();
         server.give(Inventory.HOTBAR_FIRST, ItemClass.LOG, 5); // bare-handed: the weapon slot holds logs
