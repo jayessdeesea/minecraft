@@ -87,7 +87,7 @@ public final class Farmer {
     public static boolean hasWork(WorldView world, FarmPlan farm) {
         return farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE
                 || world.isFarmland(c.x(), c.y(), c.z()) && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z())
-                || world.isTillable(c.x(), c.y(), c.z()));
+                || world.isTillable(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z()));
     }
 
     public synchronized boolean active() {
@@ -191,7 +191,10 @@ public final class Farmer {
             start(cell, ItemClass.SEEDS, "plant seeds at " + cell, () -> world.wheatAge(cell.x(), cell.y() + 1, cell.z()).isPresent());
             return;
         }
-        Optional<BlockPos> untilled = plot.stream().filter(c -> world.isTillable(c.x(), c.y(), c.z())).findFirst();
+        // Ground to till with room over it to stand in: a block put down on a plot cell - a pillar's,
+        // a fill's - leaves no stand, and live, farmers sent to stand inside one reported no route.
+        Optional<BlockPos> untilled = plot.stream().filter(c -> world.isTillable(c.x(), c.y(), c.z())
+                && !world.isSolid(c.x(), c.y() + 1, c.z())).findFirst();
         if (untilled.isPresent() && inventory.count(ItemClass.HOE) > 0) {
             BlockPos cell = untilled.get();
             start(cell, ItemClass.HOE, "till " + cell, () -> world.isFarmland(cell.x(), cell.y(), cell.z()));

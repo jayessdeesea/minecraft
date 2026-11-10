@@ -134,6 +134,39 @@ class FarmerTest {
     }
 
     @Test
+    void aPlotCellWithABlockOnItIsNotTilled() {
+        Set<BlockPos> blocked = Set.of(PLOT.get(0).offset(0, 1, 0)); // a pillar's cobblestone on the nearer cell
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return blocked.contains(new BlockPos(x, y, z)) || FarmerTest.this.world.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return FarmerTest.this.world.isHazard(x, y, z);
+            }
+
+            @Override
+            public boolean isTillable(int x, int y, int z) {
+                return FarmerTest.this.world.isTillable(x, y, z);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.HOE), 1});
+        Farmer farmer = new Farmer("Bob", session, inventory, new HashSet<>());
+
+        farmer.tick(new Position(0.5, GROUND + 1, 1.5), world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+
+        assertEquals(Optional.of(new Position(PLOT.get(1).x() + 0.5, GROUND + 1, PLOT.get(1).z() + 0.5)), farmer.standAt(),
+                "the free cell, not one with a block where it would stand");
+    }
+
+    @Test
     void aPlotGrowingHasNoWorkUntilItRipens() {
         FarmPlan farm = new FarmPlan(WATER, PLOT);
         assertTrue(Farmer.hasWork(world, farm), "to till");
