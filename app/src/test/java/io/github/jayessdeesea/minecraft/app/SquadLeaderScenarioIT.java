@@ -67,7 +67,7 @@ class SquadLeaderScenarioIT {
      * fall that would kill it - the recovery drill's, not the squad's mission's, to solve - shown as
      * the squad leader sees it once the drill has it: Recovering, at the rear.
      */
-    private enum Variant { PLAIN, STUCK, RETASKED, STRANDED }
+    private enum Variant { PLAIN, STUCK, RETASKED, STRANDED, STRUGGLING }
 
     private record Outcome(Scenario scenario, Variant variant, long millis, String risk, List<String> failures) {
         String name() {
@@ -133,12 +133,23 @@ class SquadLeaderScenarioIT {
     private static Outcome run(ChatModel model, Scenario scenario, Variant variant) {
         boolean stuck = variant == Variant.STUCK;
         boolean stranded = variant == Variant.STRANDED;
+        // STRUGGLING as live (field54): one refusing a job it can't start, one starving at 1 health,
+        // and the squad's mission still in reach - the squad leader called it CANTCO "but the squad
+        // can still proceed", and the general moved the squad on for it.
+        boolean struggling = variant == Variant.STRUGGLING;
         Report settled = variant == Variant.RETASKED ? new Report.InPosition() : new Report.Idle();
         SyntheticWorld world = scenario.world();
         BlockPos start = scenario.start();
         BlockPos objective = scenario.objective();
         Position pointMan = new Position(start.x() + 0.5, start.y(), start.z() + 0.5);
-        List<SoldierStatus> squad = List.of(
+        List<SoldierStatus> squad = struggling ? List.of(
+                new SoldierStatus("Alice", pointMan, new Order.Idle(), settled, HEALTHY),
+                new SoldierStatus("Bob", new Position(start.x() - 1.5, world.ground(start.x() - 2, start.z() + 2) + 1, start.z() + 2.5),
+                        new Order.Idle(), new Report.Cantco("can't make 1 wooden pickaxe: no table or furnace to use within 16 blocks, and not the makings of one"),
+                        HEALTHY),
+                new SoldierStatus("Carol", new Position(start.x() + 2.5, world.ground(start.x() + 2, start.z() + 2) + 1, start.z() + 2.5),
+                        new Order.Idle(), settled, java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(1, 0, 0, java.util.Optional.empty()))))
+                : List.of(
                 new SoldierStatus("Alice", pointMan, new Order.Idle(), settled, HEALTHY),
                 soldierNear("Bob", world, start.x() - 2, start.z() + 2, settled),
                 stuck ? new SoldierStatus("Carol", new Position(start.x() + 6.5, start.y() - 4, start.z() + 4.5),

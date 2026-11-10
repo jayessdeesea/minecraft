@@ -53,6 +53,13 @@ Scenarios, each a mission with a measurable end state:
 - React to contact: one squad engaged, the other supports.
 - Resupply and rearm from a bare-handed start.
 - Survive: no rations, with food nearby.
+- **The squad leader's false CANTCO, as live.** Live (field54-55) the squad leaders reported their
+  task CANTCO many times an hour, often adding "but the squad can still proceed", and the general
+  moved the squads on for it. `SquadLeaderScenarioIT`'s `stuck`, `stranded` and `struggling`
+  variants (one stuck soldier; one recovering; one refusing work and one starving) all pass 14 of
+  14, so they don't reproduce it. What live has that they don't: two or three soldiers reporting
+  "no route" at once - for the 20 reports before the recovery drill has each - and objectives other
+  than a move (FORTIFY, SECURE, a patrol base).
 
 ## Notes
 - **Decided:** the live tier runs targeted scenarios when a change touches them, and the full
