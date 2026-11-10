@@ -34,6 +34,25 @@ class RecoveryTest {
     }
 
     @Test
+    void aSoldierIsFetchedOnlyOnceItsBeenStrandedTheReportsAsked() {
+        Position ledge = new Position(7.5, 81, 0.5);
+        List<SoldierStatus> stuck = List.of(
+                soldier("Alice", new Position(20, 64, 0), new Report.InPosition(), 64),
+                soldier("Bob", new Position(3, 64, 0), new Report.InPosition(), 64),
+                soldier("Dana", ledge, STUCK, 0));
+        List<SoldierStatus> moving = List.of(stuck.get(0), stuck.get(1), soldier("Dana", ledge, new Report.Moving(), 0));
+        Recovery recovery = new Recovery(3);
+
+        assertEquals(IDLE, recovery.orders(stuck, IDLE, NO_STAIR));
+        assertEquals(IDLE, recovery.orders(stuck, IDLE, NO_STAIR));
+        assertEquals(IDLE, recovery.orders(moving, IDLE, NO_STAIR), "a report not stranded starts the count again");
+        assertEquals(IDLE, recovery.orders(stuck, IDLE, NO_STAIR));
+        assertEquals(IDLE, recovery.orders(stuck, IDLE, NO_STAIR));
+        assertEquals(new Order.MoveTo(7.5, 81, 0.5, Recovery.TOLERANCE, Recovery.TOLERANCE, Risk.LOW),
+                recovery.orders(stuck, IDLE, NO_STAIR).get(1), "three in a row");
+    }
+
+    @Test
     void withNoStairToLayASquadmateWithAPickaxeIsSentToCutTheWay() {
         Position pocket = new Position(7.5, 60, 0.5);
         Kit pick = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, true, 0, false);

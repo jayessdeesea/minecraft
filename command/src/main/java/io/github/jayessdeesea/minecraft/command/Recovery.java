@@ -43,6 +43,27 @@ public final class Recovery {
 
     /** Each stranded soldier being recovered, by name, in the order they were found. */
     private final Map<String, Episode> recovering = new LinkedHashMap<>();
+    /** How many reports in a row each soldier has been stranded for. */
+    private final Map<String, Integer> strandedFor = new java.util.HashMap<>();
+    /**
+     * Reports in a row a soldier must be stranded before it's fetched: a route that fails once, on a
+     * hop across the camp, isn't a soldier stuck. Live, with no route outranking its routine's
+     * report, soldiers walking about the camp were found stranded and fetched for a moment each.
+     */
+    private final int reports;
+
+    /** A recovery for a soldier stranded in its first report. */
+    public Recovery() {
+        this(1);
+    }
+
+    /** A recovery for a soldier stranded {@code reports} reports in a row. */
+    public Recovery(int reports) {
+        if (reports < 1) {
+            throw new IllegalArgumentException("a soldier is stranded in one report at the least, not " + reports);
+        }
+        this.reports = reports;
+    }
 
     /** Whether {@code soldier} is stranded: no route, and too few blocks to build one. */
     public static boolean stranded(SoldierStatus soldier) {
@@ -63,7 +84,11 @@ public final class Recovery {
         recovering.entrySet().removeIf(e -> !byName.containsKey(e.getKey())
                 || Cohesion.distance(byName.get(e.getKey()).position(), e.getValue().at) > MOVED_OFF);
         for (SoldierStatus s : reported) {
-            if (stranded(s) && !recovering.containsKey(s.name())) {
+            int stuck = stranded(s) ? strandedFor.merge(s.name(), 1, Integer::sum) : 0;
+            if (stuck == 0) {
+                strandedFor.remove(s.name());
+            }
+            if (stuck >= reports && !recovering.containsKey(s.name())) {
                 recovering.put(s.name(), new Episode(s.position(), stair.apply(s)));
             }
         }

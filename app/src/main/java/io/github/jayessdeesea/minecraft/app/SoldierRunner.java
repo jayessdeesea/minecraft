@@ -144,7 +144,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         /** The objective's x and z the stairs were sited for. */
         int[] stairsFor;
         /** The recovery drill: who's stranded, the stair laid out for each, and who's fetching. */
-        final io.github.jayessdeesea.minecraft.command.Recovery recovery = new io.github.jayessdeesea.minecraft.command.Recovery();
+        final io.github.jayessdeesea.minecraft.command.Recovery recovery = new io.github.jayessdeesea.minecraft.command.Recovery(STRANDED_REPORTS);
         /** Torches left to put down round a SECURE objective, at the last check: -1 before the first. */
         int torchesLeft = -1;
         /** The squad's wall, laid out once round its FORTIFY objective's ground. */
@@ -212,6 +212,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     }
 
     private static final long SQUAD_PERIOD_MILLIS = 1000;
+    /** Squad cycles in a row a soldier is stranded before a squadmate is sent: about 20 seconds. */
+    static final int STRANDED_REPORTS = 20;
 
     /** Currently connected soldiers by name - written by connect/disconnect, read by the squad loop. */
     private final Map<String, DeterministicSoldier> activeSoldiers = new ConcurrentHashMap<>();
