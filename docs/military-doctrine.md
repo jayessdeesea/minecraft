@@ -268,7 +268,11 @@ the nearest squadmate carrying 24 or more blocks - one at a time, never in conta
 to build the engineer's stair down from where the stranded one stands (`bot.engineer.Stairway`,
 an `Order.Place`). The stair runs one block down and one along from the ledge's edge to the
 ground, the shortest of the four headings with clear air over it and no water under it. Each step
-stands on a block of its own, so it's two blocks a step, built from the ground up. One stranded
+stands on a block of its own, so it's two blocks a step, built from the ground up. A stranded
+soldier carrying the blocks for its own stair - stone, dirt or logs - builds it itself from the
+top down, nobody fetched: first a block under the ledge's edge, against its underside, since the
+top step touches the ledge only at a corner, then each step and the block under it in turn. Live,
+a soldier stood a quarter of an hour on a ledge with 8 logs, no squadmate carrying 24. One stranded
 below - boxed in a pocket, with no stair down to lay - gets the engineer's stair up instead
 (`Stairway.up`): the cells to dig, one block up and one along a step to open ground, dug from the
 top as an `Order.Dig` by the nearest squadmate with a pickaxe. Live, a soldier waited two runs in

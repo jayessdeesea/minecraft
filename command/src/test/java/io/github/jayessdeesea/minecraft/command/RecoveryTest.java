@@ -34,6 +34,22 @@ class RecoveryTest {
     }
 
     @Test
+    void oneStrandedWithLogsEnoughBuildsItsOwnStairFromTheTopDown() {
+        Position ledge = new Position(0.5, 70, 0.5);
+        Kit logs = new Kit(Optional.empty(), 0, 0, 0, 8, 0, 0, false);
+        List<SoldierStatus> squad = List.of(
+                soldier("Alice", new Position(20, 64, 0), new Report.InPosition(), 0),
+                new SoldierStatus("Eli", ledge, new Order.Idle(), STUCK, Optional.of(new Condition(8, 20, 0, Optional.of(logs)))));
+        List<Cell> stair = List.of(new Cell(3, 64, 0), new Cell(3, 65, 0), new Cell(2, 66, 0), new Cell(2, 67, 0));
+
+        List<Order> orders = new Recovery().orders(squad, List.of(new Order.Idle(), new Order.Idle()), s -> Optional.of(stair));
+
+        assertEquals(new Order.Idle(), orders.get(0), "nobody fetched");
+        assertEquals(new Order.Place(List.of(new Cell(1, 67, 0), new Cell(2, 67, 0), new Cell(2, 66, 0), new Cell(3, 65, 0), new Cell(3, 64, 0))),
+                orders.get(1), "its own stair, from an anchor under the ledge's edge down");
+    }
+
+    @Test
     void withAStairUpLaidTheSquadmateWithAPickaxeDigsJustItsCells() {
         Position pocket = new Position(0.5, 60, 0.5);
         Kit pick = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, true, 0, false);

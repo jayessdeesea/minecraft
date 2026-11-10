@@ -113,6 +113,14 @@ public final class Recovery {
         List<String> names = List.copyOf(byName.keySet());
         for (Map.Entry<String, Episode> e : recovering.entrySet()) {
             Episode episode = e.getValue();
+            // Carrying the blocks for its own stair - logs too - it builds it, from the top down:
+            // live, a soldier stood a quarter of an hour on a ledge with 8 logs, nobody in its squad
+            // carrying blocks enough to come up for it.
+            SoldierStatus self = byName.get(e.getKey());
+            if (episode.stair.isPresent() && self != null && ownBlocks(self) >= episode.stair.get().size()) {
+                result.set(names.indexOf(e.getKey()), new Order.Place(fromTop(episode.stair.get())));
+                continue;
+            }
             if (episode.fetcher == null || !fetching(episode.fetcher, byName)) {
                 // With no stair to build - stranded below, not up on a ledge - a pickaxe is as good as
                 // blocks: its route there cuts the steps the stranded one walks out by. Live, a soldier
@@ -177,6 +185,30 @@ public final class Recovery {
             }
         }
         return best;
+    }
+
+    /**
+     * {@code stair} - laid out to be built from the ground up - in the order to build it from its
+     * top: first an anchor under the ledge's edge, against the ledge's underside, since the top
+     * step only touches the ledge at a corner; then the top step against the anchor, each block
+     * under a step against the step, and the next step against that.
+     */
+    static List<Cell> fromTop(List<Cell> stair) {
+        List<Cell> down = stair.reversed();
+        Cell top = down.getFirst();
+        Optional<Cell> next = down.stream().filter(c -> c.x() != top.x() || c.z() != top.z()).findFirst();
+        if (next.isEmpty()) {
+            return down;
+        }
+        List<Cell> built = new ArrayList<>();
+        built.add(new Cell(top.x() - (next.get().x() - top.x()), top.y(), top.z() - (next.get().z() - top.z())));
+        built.addAll(down);
+        return List.copyOf(built);
+    }
+
+    /** The blocks {@code soldier} could build with itself: stone and dirt, and logs. */
+    private static int ownBlocks(SoldierStatus soldier) {
+        return blocks(soldier) + soldier.condition().flatMap(Condition::kit).map(Kit::logs).orElse(0);
     }
 
     private static int blocks(SoldierStatus soldier) {

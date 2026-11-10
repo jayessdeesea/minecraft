@@ -294,6 +294,7 @@ final class SimServer {
         return switch (item) {
             case ITEM_COBBLESTONE -> Optional.of(COBBLESTONE);
             case ITEM_DIRT -> Optional.of(DIRT);
+            case ITEM_OAK_LOG -> Optional.of(OAK_LOG);
             case ITEM_TORCH -> Optional.of(TORCH);
             default -> Optional.empty();
         };

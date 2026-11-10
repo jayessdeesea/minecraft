@@ -340,13 +340,18 @@ public final class Builder {
         return horizontal && (cell.y() == feet || cell.y() == feet + 1);
     }
 
-    /** The nearest cell within reach of {@code cell} that a soldier can stand in without being in it. */
+    /**
+     * The nearest cell within reach of {@code cell} that a soldier can stand in without being in it
+     * - up to two above it, as on a ledge building the stair down from it: live in the squad
+     * simulation, a soldier with the blocks for its own stair skipped its top step, the one stand
+     * that reaches it left unlooked at.
+     */
     private static Optional<Position> standingSpot(WorldView world, Position soldier, BlockPos cell) {
         Position best = null;
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -3; dx <= 3; dx++) {
             for (int dz = -3; dz <= 3; dz++) {
-                for (int dy = -3; dy <= 1; dy++) {
+                for (int dy = -3; dy <= 2; dy++) {
                     int x = cell.x() + dx;
                     int y = cell.y() + dy;
                     int z = cell.z() + dz;
