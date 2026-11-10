@@ -12,7 +12,8 @@ import java.util.function.Function;
  * doesn't cost it a fall, and nothing to build steps with - a replacement respawned on a ledge, say -
  * is fetched by the nearest squadmate carrying blocks. The squadmate builds the stair the engineer
  * lays out from where the stranded one stands down to the ground, and the stranded one walks down
- * it. Where the engineer can lay none, the squadmate is sent to it, to build what steps it finds.
+ * it. Where the engineer can lay none, the squadmate is sent to it, to build what steps it finds - or,
+ * carrying a pickaxe and no blocks, to cut them on its way there.
  *
  * <p>A recovery, once begun, lasts until the stranded soldier has moved off where it was stuck: its
  * own report flickers as it tries its route again, and a recovery dropped each time would hand the
@@ -74,7 +75,10 @@ public final class Recovery {
         for (Map.Entry<String, Episode> e : recovering.entrySet()) {
             Episode episode = e.getValue();
             if (episode.fetcher == null || !fetching(episode.fetcher, byName)) {
-                episode.fetcher = nearestCarrier(e.getKey(), episode.at, reported);
+                // With no stair to build - stranded below, not up on a ledge - a pickaxe is as good as
+                // blocks: its route there cuts the steps the stranded one walks out by. Live, a soldier
+                // boxed in a pocket waited two runs, nobody in its squad carrying blocks enough.
+                episode.fetcher = nearestCarrier(e.getKey(), episode.at, reported, episode.stair.filter(c -> !c.isEmpty()).isEmpty());
             }
             if (episode.fetcher == null) {
                 continue;
@@ -92,13 +96,15 @@ public final class Recovery {
         return mate != null && !recovering.containsKey(fetcher) && !(mate.report() instanceof Report.LinkingUp);
     }
 
-    private String nearestCarrier(String stuck, Position at, List<SoldierStatus> reported) {
+    private String nearestCarrier(String stuck, Position at, List<SoldierStatus> reported, boolean diggingWillDo) {
         String best = null;
         double bestDistance = Double.MAX_VALUE;
         for (SoldierStatus mate : reported) {
             boolean taken = recovering.values().stream().anyMatch(e -> mate.name().equals(e.fetcher));
             double distance = Cohesion.distance(mate.position(), at);
-            if (!mate.name().equals(stuck) && !taken && blocks(mate) >= BLOCKS_TO_FETCH && !recovering.containsKey(mate.name())
+            boolean equipped = blocks(mate) >= BLOCKS_TO_FETCH
+                    || diggingWillDo && mate.condition().flatMap(Condition::kit).map(Kit::pickaxe).orElse(false);
+            if (!mate.name().equals(stuck) && !taken && equipped && !recovering.containsKey(mate.name())
                     && !(mate.report() instanceof Report.LinkingUp) && distance < bestDistance) {
                 best = mate.name();
                 bestDistance = distance;

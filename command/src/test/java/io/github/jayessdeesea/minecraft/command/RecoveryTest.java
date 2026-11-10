@@ -34,6 +34,22 @@ class RecoveryTest {
     }
 
     @Test
+    void withNoStairToLayASquadmateWithAPickaxeIsSentToCutTheWay() {
+        Position pocket = new Position(7.5, 60, 0.5);
+        Kit pick = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, true, 0, false);
+        List<SoldierStatus> squad = List.of(
+                soldier("Alice", new Position(20, 64, 0), new Report.InPosition(), 0),
+                new SoldierStatus("Bob", new Position(3, 64, 0), new Order.Idle(), new Report.InPosition(),
+                        Optional.of(new Condition(20, 20, 0, Optional.of(pick)))),
+                soldier("Dana", pocket, STUCK, 0));
+
+        List<Order> orders = new Recovery().orders(squad, IDLE, NO_STAIR);
+
+        assertEquals(new Order.MoveTo(7.5, 60, 0.5, Recovery.TOLERANCE, Recovery.TOLERANCE, Risk.LOW), orders.get(1));
+        assertEquals(new Order.Idle(), orders.get(0), "no pickaxe, no blocks");
+    }
+
+    @Test
     void theSquadmateBuildsTheStairTheEngineerLaysFromWhereTheStrandedOneStands() {
         List<Cell> stair = List.of(new Cell(5, 64, 0), new Cell(6, 65, 0));
         List<SoldierStatus> squad = List.of(
