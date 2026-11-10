@@ -29,6 +29,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DeterministicSoldierTest {
 
     @Test
+    void aSoldierOnABlocksEdgeRoutesFromTheBlockItStandsOn() {
+        // Flat ground at y=63, one block on it at (9, 64, 0); the soldier on its top, overhanging x=10.
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 || x == 9 && y == 64 && z == 0;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(new BlockPos(9, 65, 0), DeterministicSoldier.standingCell(world, new Position(10.2, 65, 0.5)),
+                "the block's cell, not the open one its body overhangs");
+        assertEquals(new BlockPos(5, 64, 0), DeterministicSoldier.standingCell(world, new Position(5.5, 64, 0.5)), "on the ground, its own");
+    }
+
+    @Test
     void trendsTowardTargetWhenUnobstructed() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(10, 64, 10));
         alice.receiveOrder(new Order.MoveTo(0, GROUND, 0, 1, 256, Risk.LOW));

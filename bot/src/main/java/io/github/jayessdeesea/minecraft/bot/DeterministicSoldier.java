@@ -184,6 +184,32 @@ public final class DeterministicSoldier implements Soldier {
     private static final double JUMP_VELOCITY = 0.42;
     private static final double BODY_HEIGHT = 1.8;
     private static final double HALF_WIDTH = 0.3; // a player's box is 0.6 x 1.8 x 0.6
+
+    /**
+     * The cell a route starts from: the one {@code at} is in, unless that has no floor and the body,
+     * 0.6 wide, stands on the edge of a block beside it - then that block's cell, the nearest such.
+     * Live, a farmer stood on a block's edge over the crop beside it, every plan started from the
+     * crop's cell, with no floor, and it reported no route for good.
+     */
+    static BlockPos standingCell(WorldView world, Position at) {
+        BlockPos here = BlockPos.containing(at.x(), at.y(), at.z());
+        if (Pathfinder.standable(world, here) || Pathfinder.swimmable(world, here)) {
+            return here;
+        }
+        BlockPos best = here;
+        double bestDistance = Double.MAX_VALUE;
+        for (int x = (int) Math.floor(at.x() - HALF_WIDTH); x <= (int) Math.floor(at.x() + HALF_WIDTH - EPSILON); x++) {
+            for (int z = (int) Math.floor(at.z() - HALF_WIDTH); z <= (int) Math.floor(at.z() + HALF_WIDTH - EPSILON); z++) {
+                BlockPos cell = new BlockPos(x, here.y(), z);
+                double distance = Math.hypot(x + 0.5 - at.x(), z + 0.5 - at.z());
+                if (!cell.equals(here) && Pathfinder.standable(world, cell) && distance < bestDistance) {
+                    best = cell;
+                    bestDistance = distance;
+                }
+            }
+        }
+        return best;
+    }
     private static final double EPSILON = 1e-9;
     /** Swimming at the surface, blocks per tick: about vanilla's 2 blocks/s, half a walk. */
     static final double SWIM_STEP = 0.1;
@@ -525,7 +551,7 @@ public final class DeterministicSoldier implements Soldier {
         if (pinnedCheckIn-- <= 0 && onGround) {
             pinnedCheckIn = PINNED_CHECK_TICKS;
             Goal reach = new Goal(threat.x(), threat.y(), threat.z(), ATTACK_REACH, Pathfinder.MAX_DROP);
-            pinned = !Pathfinder.find(world, BlockPos.containing(position.x(), position.y(), position.z()), reach, PLAN_BUDGET,
+            pinned = !Pathfinder.find(world, standingCell(world, position), reach, PLAN_BUDGET,
                     FallAllowance.NONE, pillarBlocks(), carriesPickaxe()).reachesGoal();
         }
         return pinned;
@@ -743,7 +769,7 @@ public final class DeterministicSoldier implements Soldier {
             java.util.Set<BlockPos> avoid = java.util.Set.copyOf(avoided.keySet());
             // A fall is the exception, never the plan: first a route with none - walked, then with
             // steps built from what it carries - and only with no such route one the order's risk allows.
-            BlockPos start = BlockPos.containing(position.x(), position.y(), position.z());
+            BlockPos start = standingCell(world, position);
             Pathfinder.Result plan = Pathfinder.find(world, start, goal, PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(), carriesPickaxe(),
                     false, avoid);
             if (!plan.reachesGoal() && pillarBlocks() > 0) {
@@ -969,7 +995,7 @@ public final class DeterministicSoldier implements Soldier {
         if (known == null || known.health() < 2) {
             return "";
         }
-        BlockPos start = BlockPos.containing(position.x(), position.y(), position.z());
+        BlockPos start = standingCell(world, position);
         double factor = fallDamageFactor();
         Pathfinder.Result route = Pathfinder.find(world, start, goal, PLAN_BUDGET,
                 new FallAllowance((int) Math.ceil(known.health()) - 1, 1, factor));
