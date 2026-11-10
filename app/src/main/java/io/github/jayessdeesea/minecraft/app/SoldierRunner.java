@@ -797,19 +797,23 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             present.add(new Present(squad.name(), soldiers, statuses, principalAt));
         }
         chainOfCommand.onSitreps(present.stream().map(p -> {
-            // Surveyed from where the squad is: the soldier at its middle height, so one stranded up a
-            // tower - respawned on a block over spawn - doesn't show the squad no ground at all.
-            Position pointMan = p.statuses().stream().map(SoldierStatus::position).sorted(java.util.Comparator.comparingDouble(Position::y))
-                    .toList().get(p.statuses().size() / 2);
-            // Climbing counts when the point man carries cobblestone to pillar with.
-            int climbBlocks = p.statuses().get(0).condition().flatMap(c -> c.kit()).map(k -> k.stone()).orElse(0);
-            boolean stoneSteps = p.statuses().get(0).condition().flatMap(c -> c.kit()).map(k -> k.pickaxe()).orElse(false);
             SquadState state = squadStates.get(p.squad());
-            boolean holdingBase = state.allInside && state.breaches != null && state.breaches.isEmpty();
             // A soldier the recovery drill has is shown to the squad leader as Recovering, at the rear:
             // shown its CANTCO, the squad leader reported the mission one, and the general spent the
             // squad's days moving it to "resolve movement issues".
-            return new ChainOfCommand.Sitrep(p.squad(), state.recovery.asRecovering(p.statuses()), () -> TerrainSurveyor.survey(world, pointMan, climbBlocks, stoneSteps,
+            List<SoldierStatus> shown = state.recovery.asRecovering(p.statuses());
+            // Surveyed from where the squad is: the soldier at its middle height, so one stranded up a
+            // tower - respawned on a block over spawn - doesn't show the squad no ground at all; and
+            // never one being recovered: live, the survey from one in a canopy, or in a hole under the
+            // mine's landing, showed the squad 0 of 81 cells reachable, and it reported its task CANTCO.
+            List<Position> formed = shown.stream().filter(s -> !(s.report() instanceof Report.Recovering))
+                    .map(SoldierStatus::position).sorted(java.util.Comparator.comparingDouble(Position::y)).toList();
+            Position pointMan = formed.isEmpty() ? shown.getFirst().position() : formed.get(formed.size() / 2);
+            // Climbing counts when the point man carries cobblestone to pillar with.
+            int climbBlocks = shown.get(0).condition().flatMap(c -> c.kit()).map(k -> k.stone()).orElse(0);
+            boolean stoneSteps = shown.get(0).condition().flatMap(c -> c.kit()).map(k -> k.pickaxe()).orElse(false);
+            boolean holdingBase = state.allInside && state.breaches != null && state.breaches.isEmpty();
+            return new ChainOfCommand.Sitrep(p.squad(), shown, () -> TerrainSurveyor.survey(world, pointMan, climbBlocks, stoneSteps,
                     chainOfCommand.objective(p.squad()).map(io.github.jayessdeesea.minecraft.command.Objective::location)), p.principalAt(),
                     () -> io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, pointMan), holdingBase,
                     holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft, progress(p.squad(), state, p.statuses()),
@@ -2113,8 +2117,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 Position place = isCutter ? cutterAt
                         : dark ? cutterAt
                         : new Position(stairs.head().x() - 1.5 + i, stairs.head().y(), stairs.head().z() + 3.5);
+                // Exactly where a cut wants it - or the head, where the next cut starts; but waiting the
+                // night out at the landing, as loosely as the rest: live, the landing's stand lost its
+                // floor to the ore under it, and the cutter, held to a spot it couldn't stand in,
+                // reported itself stranded a block below.
+                boolean cutting = isCutter && !(dark && cutterAt.equals(rest) && !rest.equals(centre(stairs.head())));
                 byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(),
-                        isCutter ? 0.3 : dark ? MINE_FOLLOW : 1.5, isCutter ? 0.5 : dark ? MINE_FOLLOW : 4, Risk.LOW));
+                        cutting ? 0.3 : dark ? MINE_FOLLOW : 1.5, cutting ? 0.5 : dark ? MINE_FOLLOW : 4, Risk.LOW));
                 continue;
             }
             Order given = orders.get(i);

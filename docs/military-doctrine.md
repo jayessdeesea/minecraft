@@ -273,7 +273,8 @@ has it, the squad leader is shown the stranded soldier as `Recovering`, at the r
 squad, not its CANTCO: shown the CANTCO, the squad leader took it for the mission's and reported
 the mission one (in `SquadLeaderScenarioIT`'s `stranded` variant, 6 of 14 right; 14 of 14 shown
 `Recovering`), and live the general spent the squad's days moving it to "resolve movement
-issues". A stranded
+issues". Nor is the squad's ground surveyed from where it stands: from one in a canopy, or in a
+hole under the mine's landing, the squad was shown none of its ground reachable. A stranded
 soldier carrying the blocks for its own stair - stone, dirt or logs - builds it itself from the
 top down, nobody fetched: first a block under the ledge's edge, against its underside, since the
 top step touches the ledge only at a corner, then each step and the block under it in turn. Live,
@@ -762,7 +763,9 @@ A dig (`bot.engineer.Clearing.toClear`, `bot.supply.Clearer`, a `Digger` job; it
 mason for the hands) fells a tree from the bottom and takes the ground from the top down. It
 stands on the ground, never on the tree or the block, and reaches a block whose nearest face is
 within 5 blocks of its eyes: from the ground, six up. Leaves out of reach go by themselves once
-their tree's logs do, since cut-off leaves decay. A block it couldn't dig - no tool for it, out of
+their tree's logs do, since cut-off leaves decay. One already up in a canopy cuts what it reaches
+from where it stands, never the block under its feet, and so works its way down: sent to stands
+on the ground, a soldier in a canopy over the camp had no way to them. A block it couldn't dig - no tool for it, out of
 reach - it leaves for longer each time (`Setbacks`). FORTIFY isn't done while the dig box holds
 anything: its progress reads "N blocks over the camp's ground to dig" before the wall's count, so a
 tree too tall to fell from the ground shows as the task stalled.

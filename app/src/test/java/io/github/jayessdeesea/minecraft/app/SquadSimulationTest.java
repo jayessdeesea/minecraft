@@ -559,6 +559,49 @@ class SquadSimulationTest {
         assertTrue(plot.size() > 80, "more than one water's plot: " + plot.size());
     }
 
+    /** As {@link #keptStairsAllCut}, with the landing's stand's floor gone: ore taken from under it. */
+    private static int keptStairsCutLandingHoled(int x, int y, int z) {
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos stand = KEPT.landingStand();
+        return x == stand.x() && y == stand.y() - 1 && z == stand.z() ? SimServer.AIR : keptStairsAllCut(x, y, z);
+    }
+
+    /**
+     * As live: the landing's stand lost its floor, and the cutter, held by night to exactly that spot,
+     * stood in the hole under it reporting no route - stranded, to the recovery drill. With nothing
+     * to cut, it waits there as loosely as the rest of the squad.
+     */
+    @Test
+    void byNightTheCutterWaitsAtALandingWhoseStandLostItsFloor() {
+        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsCutLandingHoled, 14_000); // an hour after dusk
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
+                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(5 * 60_000);
+
+        List<String> stranded;
+        try {
+            stranded = java.nio.file.Files.readAllLines(Path.of("target/sim/byNightTheCutterWaitsAtALandingWhoseStandLostItsFloor.log")).stream()
+                    .filter(l -> l.contains("RECOVERY") && l.contains("is stranded")).toList();
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+        assertEquals(List.of(), stranded);
+        for (String name : List.of("Alice", "Bob")) {
+            assertTrue(server.position(name).y() < KEPT.head().y() - 24, name + " under the ground by night, not at " + server.position(name));
+        }
+    }
+
     /** Flat, with a shaft 6 deep down the 3x3 columns round the camp's mine head, (4, -4) from its centre. */
     private static int shaftAtTheMineHead(int x, int y, int z) {
         return x >= 3 && x <= 5 && z >= -5 && z <= -3 && y > GROUND - 6 && y <= GROUND ? SimServer.AIR : flat(x, y, z);
