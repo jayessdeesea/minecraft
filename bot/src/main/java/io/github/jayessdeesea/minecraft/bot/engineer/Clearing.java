@@ -145,6 +145,13 @@ public final class Clearing {
             if (excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())) {
                 continue;
             }
+            // Ground only from an open top - the digger won't take it otherwise - so the block over it
+            // first: live, a soldier near a low block of a mound was handed it under one still there,
+            // its digger refused it every try, and it said it couldn't clear the camp.
+            boolean ground = !world.isLog(block.x(), block.y(), block.z()) && world.leaves(block.x(), block.y(), block.z()).isEmpty();
+            if (ground && world.isSolid(block.x(), block.y() + 1, block.z())) {
+                continue;
+            }
             // In digging order: past the best score, nothing later can beat it.
             if (HEIGHT_WEIGHT * (order(world, block) - lowest) > bestScore) {
                 break;

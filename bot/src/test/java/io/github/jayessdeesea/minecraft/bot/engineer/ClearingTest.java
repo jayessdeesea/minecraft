@@ -141,6 +141,13 @@ class ClearingTest {
     }
 
     @Test
+    void theBlockUnderOneASquadmateIsDiggingWaits() {
+        // The mound's top is a squadmate's: its foot can't be dug from an open top until that's gone.
+        assertEquals(Optional.empty(), Clearing.next(MOUND, List.of(new BlockPos(2, 64, 2), new BlockPos(2, 65, 2)),
+                new Position(3.5, 64, 2.5), Set.of(new BlockPos(2, 65, 2))));
+    }
+
+    @Test
     void groundUnderAKeptCellIsLeft() {
         assertEquals(List.of(new BlockPos(-2, 64, -2)), Clearing.toClear(MOUND, SKY, Set.of(new Cell(2, 65, 2))),
                 "the mound's top kept: the block under it stays, the other mound is dug");

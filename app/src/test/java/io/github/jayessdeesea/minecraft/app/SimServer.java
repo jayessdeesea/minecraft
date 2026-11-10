@@ -183,7 +183,7 @@ final class SimServer {
                 int out = smelted(f[0][0]);
                 take(f, 0);
                 f[2] = f[2] == null ? new int[]{out, 1} : new int[]{f[2][0], f[2][1] + 1};
-                players.values().stream().filter(p -> p.open != null && p.open == at).forEach(Player::sync);
+                players.values().stream().filter(p -> at.equals(p.open)).forEach(Player::sync);
             }
         });
         if (dayTicks % 20 == 0) {
