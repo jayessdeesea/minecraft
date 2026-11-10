@@ -74,6 +74,16 @@ class PathfinderTest {
     }
 
     @Test
+    void aFineGoalOnACellsEdgeIsReachedInTheCellHoldingIt() {
+        Goal edge = new Goal(5.0, GROUND, 5.0, 0.3, 0.5);
+
+        Pathfinder.Result route = Pathfinder.find(world((x, y, z) -> false), START, edge, 20_000);
+
+        assertTrue(route.reachesGoal(), "no cell centre is within 0.3 of a corner, but the cell holding it counts");
+        assertTrue(edge.contains(new BlockPos(5, GROUND, 5)));
+    }
+
+    @Test
     void aSoilBankTooHighToJumpHasAStepCutIntoIt() {
         BlockPos foot = new BlockPos(1, GROUND, 0);
         BlockPos step = new BlockPos(2, GROUND + 1, 0);

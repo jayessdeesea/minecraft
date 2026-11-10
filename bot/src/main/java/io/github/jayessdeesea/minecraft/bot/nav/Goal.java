@@ -13,9 +13,14 @@ public record Goal(double x, double y, double z, double horizontalTolerance, dou
         return horizontalDistance(px, pz) <= horizontalTolerance && Math.abs(py - y) <= verticalTolerance;
     }
 
-    /** Whether standing in {@code cell} counts - judged at the cell's centre. */
+    /**
+     * Whether standing in {@code cell} counts - judged at the cell's centre, or the cell holding the
+     * point itself. A goal finer than half a block on a cell's edge has no centre within it: live,
+     * soldiers ordered to such a point reported no route from the cell it was in.
+     */
     public boolean contains(BlockPos cell) {
-        return contains(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
+        return contains(cell.x() + 0.5, cell.y(), cell.z() + 0.5)
+                || (int) Math.floor(x) == cell.x() && (int) Math.floor(z) == cell.z() && Math.abs(cell.y() - y) <= verticalTolerance;
     }
 
     /** Admissible distance-to-go for A*: how far outside the tolerance zone the cell is. */
