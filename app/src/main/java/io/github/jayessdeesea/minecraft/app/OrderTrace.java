@@ -156,7 +156,7 @@ final class OrderTrace {
             case Objective.Task.Farm() -> report instanceof Report.Farming;
             case Objective.Task.TreeFarm() -> report instanceof Report.Planting;
             case Objective.Task.Secure() -> report instanceof Report.Securing;
-            case Objective.Task.Fortify() -> report instanceof Report.Fortifying;
+            case Objective.Task.Fortify() -> report instanceof Report.Fortifying || report instanceof Report.Working;
             case Objective.Task.Mine() -> report instanceof Report.Mining;
             case Objective.Task.Patrol() -> report instanceof Report.Patrolling;
         };

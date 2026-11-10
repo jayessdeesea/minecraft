@@ -159,6 +159,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int softLeft = -1;
         /** Open cells of the camp's ground work still to fill, at the last check: -1 before the first. */
         int fillLeft = -1;
+        /**
+         * What the ground work's log line last said: said again only when it changes. FORTIFY resets
+         * the counts each cycle it has no wall, and camp upkeep measures them again - live, the same
+         * line was logged every second.
+         */
+        String groundSaid;
         /** Soldiers sent off base for dirt by the ground work's drill, until they carry a load. */
         final java.util.Set<String> fetchingDirt = new java.util.HashSet<>();
         /** When the torches still to put down last changed: a plan stuck at a cell or two is done. */
@@ -908,7 +914,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     // Lighting is work only while it's lighting: live, a squad handed a light plan of
                     // one cell nobody could reach stood about rather than keep the camp.
                     || lighting.containsKey(n) && Optional.ofNullable(lamplighters.get(n)).map(l -> l.active()).orElse(false)
-                    || planting.containsKey(n) || gathering.containsKey(n) && !groundGather.containsKey(n) || cutting.containsKey(n)
+                    || planting.containsKey(n) || cutting.containsKey(n)
+                    || gathering.containsKey(n) && !groundGather.containsKey(n)
+                    && clockwork.millis() - gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE / 2) > FOUND_NOTHING_MILLIS
                     || patrolLegs.containsKey(n);
             boolean near = Math.hypot(s.position().x() - campGround.x(), s.position().z() - campGround.z()) <= SECURE_RADIUS * 2;
             if (otherWork || !near) {
@@ -961,12 +969,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 ? io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toFill(world, fill, except) : List.of();
         int digLeft = toDig.size();
         int fillLeft = digLeft > 0 ? -1 : toFill.size();
-        if (digLeft != state.digLeft || fillLeft != state.fillLeft) {
-            LOG.info("[{}] ground work round {}: {} blocks to dig ({}){}", squad, feet, digLeft, dig,
-                    fillLeft < 0 ? "" : ", " + fillLeft + " cells to fill (" + fill + ")");
-            state.digLeft = digLeft;
-            state.fillLeft = fillLeft;
+        String said = "ground work round " + feet + ": " + digLeft + " blocks to dig (" + dig + ")"
+                + (fillLeft < 0 ? "" : ", " + fillLeft + " cells to fill (" + fill + ")");
+        if (!said.equals(state.groundSaid)) {
+            LOG.info("[{}] {}", squad, said);
+            state.groundSaid = said;
         }
+        state.digLeft = digLeft;
+        state.fillLeft = fillLeft;
         List<io.github.jayessdeesea.minecraft.command.Tasking.Hand> crew = hands.stream().map(h -> new io.github.jayessdeesea.minecraft.command.Tasking.Hand(h.name(),
                 h.condition().flatMap(c -> c.kit()).map(k -> k.stone() + k.dirt()).orElse(0))).toList();
         // Split where the work is, not the whole site: live in the squad simulation, a pit in one
@@ -1039,6 +1049,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
 
     /** Each soldier's {@code Order.Gather} from the ground work's drill - squad loop writes, tick reads. */
     private final Map<String, io.github.jayessdeesea.minecraft.command.Order.Gather> groundGather = new ConcurrentHashMap<>();
+
+    /**
+     * When each soldier's gather last found nothing within reach - tick writes, squad loop reads. A
+     * gather that's found nothing isn't work for a while: live, a squad sent for torch makings with
+     * no tree in reach stood about rather than keep the camp. Its gatherer forgets it found nothing
+     * once another routine has the hands, so the time is kept here.
+     */
+    private final Map<String, Long> gatherFoundNothing = new ConcurrentHashMap<>();
+    /** How long a gather that found nothing isn't counted as work. */
+    static final long FOUND_NOTHING_MILLIS = 5 * 60_000;
 
     /** Soldiers on camp upkeep, their clearing or filling the upkeep's - squad loop only. */
     private final java.util.Set<String> upkeeping = ConcurrentHashMap.newKeySet();
@@ -2897,6 +2917,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             turns.put(Hands.Routine.SCAVENGER, turn(scavenger::active,
                     free -> scavenger.tick(status.position(), world, free && !threatened && fort == null && !foodCalls)));
             Optional<Hands.Routine> hands = Hands.tick(turns);
+            if (gatherer.exhausted()) {
+                gatherFoundNothing.put(name, clockwork.millis());
+            }
             hands.ifPresentOrElse(h -> handsHeld.put(name, h), () -> handsHeld.remove(name));
             // Stand-to: hands free, the soldier wears the best armour it carries and holds its best
             // weapon - not the seeds or the dirt its last job left in its hand.
@@ -2956,7 +2979,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     : stuckInWater ? new Report.Cantco(String.format(java.util.Locale.ROOT, "no route from (%d, %d, %d) out of the water",
                             ax, (int) Math.floor(at.y()), az))
                     : hunter.active() ? new Report.Hunting()
-                    : mason.active() || clearer.active() || filler.active() ? new Report.Fortifying()
+                    // A ground-work command is reported as itself, between one cut and the next too: live,
+                    // a soldier keeping the camp between cuts reported its lamplighter's CANTCO, raised anew
+                    // each cycle. A dirt run from the drill has no gather objective behind it.
+                    : groundGather.get(name) instanceof io.github.jayessdeesea.minecraft.command.Order.Gather g
+                    ? new Report.Working("gather " + g.resource(), Math.max(0, g.amount() - inventory.count(ItemClass.DIRT)))
+                    : clearer.active() || clearing.containsKey(name) && clearer.stuck().isEmpty()
+                    ? new Report.Working("dig the camp's ground", clearing.getOrDefault(name, List.of()).size())
+                    : filler.active() || filling.containsKey(name)
+                    ? new Report.Working("fill the camp's ground", filling.getOrDefault(name, List.of()).size())
+                    : mason.active() ? new Report.Fortifying()
                     // Out of ways of its own - each of its last tries failed, on whatever it tried -
                     // it asks for help: live, a soldier opened a chest that wasn't there all night.
                     : !clearing.getOrDefault(name, List.of()).isEmpty() && clearer.stuck().isPresent() ? new Report.Cantco(clearer.stuck().get())

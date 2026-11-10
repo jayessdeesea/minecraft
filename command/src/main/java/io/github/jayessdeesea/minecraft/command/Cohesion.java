@@ -37,7 +37,7 @@ public final class Cohesion {
             boolean canFollow = !(soldier.report() instanceof Report.Cantco || soldier.report() instanceof Report.LinkingUp
                     || soldier.report() instanceof Report.InContact || soldier.report() instanceof Report.Rearming
                     || soldier.report() instanceof Report.Gathering || soldier.report() instanceof Report.CrossLeveling
-                    || soldier.report() instanceof Report.Fortifying);
+                    || soldier.report() instanceof Report.Fortifying || soldier.report() instanceof Report.Working);
             if (canFollow && distance(point, soldier.position()) > SUPPORTING_DISTANCE
                     && (farthest == null || distance(point, soldier.position()) > distance(point, farthest.position()))) {
                 farthest = soldier;
