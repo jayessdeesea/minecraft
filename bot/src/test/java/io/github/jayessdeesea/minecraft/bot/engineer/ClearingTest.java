@@ -167,6 +167,29 @@ class ClearingTest {
     }
 
     @Test
+    void aFloodedPitIsFilledFromTheWatersSurfaceUp() {
+        WorldView flooded = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return PIT.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return x == 1 && z == 1 && y == 61; // water at the pit's bottom
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(List.of(new BlockPos(1, 62, 1), new BlockPos(1, 63, 1)), Clearing.hollows(flooded, CENTRE, 7, Set.of()),
+                "capped over the water, up to the camp's ground");
+    }
+
+    @Test
     void theMinesShaftIsNotAHollow() {
         assertEquals(List.of(), Clearing.hollows(PIT, CENTRE, 7, Set.of(new BlockPos(1, 61, 1))));
     }

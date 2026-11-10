@@ -63,6 +63,36 @@ class DiggerTest {
     }
 
     @Test
+    void neverDigsABlockWithWaterBesideIt() {
+        BlockPos byThePond = new BlockPos(5, GROUND, 0);
+        BlockPos pond = byThePond.offset(1, 0, 0);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND || byThePond.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return pond.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isLog(int x, int y, int z) {
+                return byThePond.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(Optional.empty(), Digger.findSpot(world, new BlockPos(0, GROUND, 0), Set.of(), Digger.Target.LOG),
+                "broken, the water would flow into its place");
+    }
+
+    @Test
     void choosesTheNearestTreeAndACellBesideItsTrunk() {
         BlockPos near = new BlockPos(5, GROUND, 0);
         BlockPos far = new BlockPos(12, GROUND, 0);

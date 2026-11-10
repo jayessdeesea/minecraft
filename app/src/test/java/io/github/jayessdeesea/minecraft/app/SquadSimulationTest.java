@@ -348,14 +348,33 @@ class SquadSimulationTest {
         return x >= 3 && x <= 5 && z >= 3 && z <= 5 && y > GROUND - 6 && y <= GROUND ? SimServer.AIR : flat(x, y, z);
     }
 
+    /** As {@link #pitInCamp}, with water in its bottom two layers: a flooded shaft. */
+    private static int floodedPitInCamp(int x, int y, int z) {
+        boolean pit = x >= 3 && x <= 5 && z >= 3 && z <= 5;
+        return pit && y > GROUND - 6 && y <= GROUND - 4 ? SimServer.WATER : pitInCamp(x, y, z);
+    }
+
+    /**
+     * Live, the camp's mine shaft flooded with soldiers in it. The pit is capped over the water and
+     * filled up to the camp's ground, as any hollow is.
+     */
+    @Test
+    void aFloodedPitInTheCampIsCappedAndFilled() {
+        assertPitFilled(SquadSimulationTest::floodedPitInCamp);
+    }
+
     /**
      * FORTIFY fills the camp's hollows from the bottom before walling: live, a pit under the wall
      * line left the wall nothing to stand on.
      */
     @Test
     void aSquadFillsAPitInTheCampFromTheBottom() {
+        assertPitFilled(SquadSimulationTest::pitInCamp);
+    }
+
+    private void assertPitFilled(SimServer.Terrain terrain) {
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::pitInCamp, 1000);
+        SimServer server = new SimServer(clock, terrain, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0, GROUND + 1, 0);
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Fortify the camp", camp, "Nothing walks in",

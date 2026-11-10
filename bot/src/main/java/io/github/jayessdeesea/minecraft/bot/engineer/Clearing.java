@@ -71,7 +71,10 @@ public final class Clearing {
                         continue;
                     }
                     BlockPos top = new BlockPos(x, y, z);
-                    if (world.isSoil(x, y, z) && !world.isFarmland(x, y, z) && !keep.contains(top)) {
+                    // Never one with water beside it: dug off, it would let the water into the camp.
+                    boolean wet = world.isHazard(x + 1, y, z) || world.isHazard(x - 1, y, z) || world.isHazard(x, y, z + 1)
+                            || world.isHazard(x, y, z - 1) || world.isHazard(x, y + 1, z);
+                    if (world.isSoil(x, y, z) && !world.isFarmland(x, y, z) && !keep.contains(top) && !wet) {
                         humps.add(top);
                     }
                     break;
@@ -105,7 +108,9 @@ public final class Clearing {
                         break;
                     }
                 }
-                if (ground == Integer.MIN_VALUE || world.isHazard(x, ground, z)) {
+                // Water is the floor of a flooded pit: filled from its surface up, so the water is capped
+                // and whoever is afloat in it gets ground to stand on, rising as it fills.
+                if (ground == Integer.MIN_VALUE) {
                     continue;
                 }
                 for (int y = ground + 1; y < centre.y(); y++) {

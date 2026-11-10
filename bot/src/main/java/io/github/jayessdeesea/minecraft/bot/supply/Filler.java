@@ -16,7 +16,7 @@ import java.util.Optional;
 /**
  * One soldier filling its camp's hollows ({@code bot.engineer.Clearing.hollows}): cobblestone or
  * dirt into each open cell below the camp's ground, lowest first, nearest first among the lowest -
- * a {@link Builder} that stands where it reaches each, so the floor rises under it as it fills.
+ * a {@link Builder} that stands where it reaches each and skips one it can't reach.
  * Out of blocks, it stops: a mason's dirt dig is the soldier's to make.
  */
 public final class Filler {
@@ -67,10 +67,11 @@ public final class Filler {
             stop();
             return;
         }
-        // Only a cell on solid ground, nearest first among the lowest: a pit's sides would hold a
-        // block at any height, and one put in high seals an air pocket under it that no later look
-        // finds - in the squad simulation, seven cells of a pit left hollow under a filled top.
-        List<BlockPos> plan = hollows.stream().filter(c -> world.isSolid(c.x(), c.y() - 1, c.z()))
+        // The lowest first, nearest first among them; one out of reach - over water nobody can stand
+        // in, deep below the rim - is the builder's to skip for the next. A block put in high can
+        // seal a pocket of air or water under it: underground and harmless, and a flooded shaft is
+        // capped that way from its rim, as live one had to be with soldiers afloat in it.
+        List<BlockPos> plan = hollows.stream()
                 .sorted(Comparator.comparingInt(BlockPos::y)
                         .thenComparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
                 .toList();

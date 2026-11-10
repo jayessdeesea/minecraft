@@ -368,7 +368,7 @@ final class Digger {
                         // feet height, and that's where a pit starts.
                         for (int up = target == Target.SOIL ? -1 : 0; up <= target.reachUp; up++) {
                             BlockPos block = stand.offset(side[0], up, side[1]);
-                            if (!claimed.contains(block) && target.at(world, block)) {
+                            if (!claimed.contains(block) && target.at(world, block) && !letsInWater(world, block)) {
                                 double distance = Math.hypot(dx, dz) + Math.abs(dy) + up * 0.1;
                                 if (distance < bestDistance) {
                                     best = new Spot(target, stand, block);
@@ -381,6 +381,21 @@ final class Digger {
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    /**
+     * Whether breaking {@code block} would open a way in for water or lava: one beside it or above
+     * it would flow into the hole. Live, digging by a pond flooded the camp's mine shaft, with
+     * soldiers in it - the miner checked this for its own cuts, and the other digs didn't.
+     */
+    static boolean letsInWater(WorldView world, BlockPos block) {
+        int[][] sides = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, 1, 0}};
+        for (int[] d : sides) {
+            if (world.isHazard(block.x() + d[0], block.y() + d[1], block.z() + d[2])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static boolean standable(WorldView world, BlockPos cell) {

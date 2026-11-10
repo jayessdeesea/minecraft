@@ -161,6 +161,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int humpsLeft = -1;
         /** Open cells of the camp's hollows to fill, at the last check: -1 before the first. */
         int hollowsLeft = -1;
+        /** When a staircase nobody could site at {@code stairsFor} is looked for again. */
+        long stairsRetryAt;
         /** Who in the squad is on what, followed to completion and checked against the world. */
         final io.github.jayessdeesea.minecraft.command.TaskRegister register = new io.github.jayessdeesea.minecraft.command.TaskRegister();
         /**
@@ -496,6 +498,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         return columns.stream().filter(c -> Math.abs(c.y() - typical) <= 1)
                 .min(java.util.Comparator.comparingInt(c -> Math.abs(c.x() - camp[0]) + Math.abs(c.z() - camp[1])));
     }
+
+    /** How long after a staircase couldn't be sited it's looked for again: the water or lava may have gone. */
+    static final long STAIRS_RETRY_MILLIS = 60_000;
 
     /** How long a soldier is first kept off a task it stalled on (the squad's register's finding). */
     static final long RELIEVED_MILLIS = 5 * 60_000;
@@ -1523,13 +1528,22 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 return state.stairs;
             }
             // Where the stairs can be cut all the way down: the objective's x and z can be beside
-            // water - live, the camp's mine stopped at its second step by a pond.
+            // water - live, the camp's mine stopped at its second step by a pond. Nowhere there is
+            // said once and looked for again a minute on: live, it was searched and said every
+            // second, 747 times, beside a flooded shaft.
+            boolean failedHere = state.stairsFor != null && state.stairsFor[0] == x && state.stairsFor[1] == z;
+            if (failedHere && clockwork.millis() < state.stairsRetryAt) {
+                return null;
+            }
             Optional<io.github.jayessdeesea.minecraft.bot.supply.Staircase> sited = io.github.jayessdeesea.minecraft.bot.supply.Staircase.site(
                     world, x, z, (int) Math.floor(statuses.get(0).position().y()), (int) Math.floor(o.location().y()));
             if (sited.isEmpty()) {
-                LOG.warn("[{}] MINE: nowhere within {} blocks of x={} z={} a staircase can be cut down clear of water and lava",
-                        squadName, io.github.jayessdeesea.minecraft.bot.supply.Staircase.SITE_RADIUS, x, z);
+                if (!failedHere) {
+                    LOG.warn("[{}] MINE: nowhere within {} blocks of x={} z={} a staircase can be cut down clear of water and lava",
+                            squadName, io.github.jayessdeesea.minecraft.bot.supply.Staircase.SITE_RADIUS, x, z);
+                }
                 state.stairsFor = new int[]{x, z};
+                state.stairsRetryAt = clockwork.millis() + STAIRS_RETRY_MILLIS;
                 return null;
             }
             LOG.info("[{}] MINE: a staircase down from {} to y={}", squadName, sited.get().head(), sited.get().bottom());
