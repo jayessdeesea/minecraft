@@ -41,7 +41,7 @@ public final class Lighting {
     /** The cells, nearest {@code centre} first, to place a torch in so the ground within {@code radius} of it is lit. */
     public static List<BlockPos> plan(WorldView world, BlockPos centre, int radius) {
         List<BlockPos> ground = Pathfinder.reachable(world, centre, radius, FLOOD_BUDGET).stream()
-                .filter(c -> spawnGround(world, c))
+                .filter(c -> spawnGround(world, c) && ground(centre, c))
                 .sorted(Comparator.comparingInt((BlockPos c) -> Math.abs(c.x() - centre.x()) + Math.abs(c.z() - centre.z()))
                         .thenComparingInt(BlockPos::y).thenComparingInt(BlockPos::x).thenComparingInt(BlockPos::z))
                 .toList();
@@ -68,8 +68,17 @@ public final class Lighting {
     public static int dark(WorldView world, BlockPos centre, int radius) {
         List<BlockPos> lights = torches(world, centre, radius + REACH);
         return (int) Pathfinder.reachable(world, centre, radius, FLOOD_BUDGET).stream()
-                .filter(c -> spawnGround(world, c))
+                .filter(c -> spawnGround(world, c) && ground(centre, c))
                 .filter(c -> !lit(c, lights)).count();
+    }
+
+    /**
+     * Whether {@code c} is the ground round {@code centre}, within {@link #VERTICAL} of its height:
+     * not a cave or a mine below it that a staircase reaches. Live, once the camp's mine was cut,
+     * its lighting followed the stairs down to y=17 and the camp's own ground was never done.
+     */
+    private static boolean ground(BlockPos centre, BlockPos c) {
+        return Math.abs(c.y() - centre.y()) <= VERTICAL;
     }
 
     /** Ground a monster could spawn on and a torch stand on: walkable, and neither farmland nor leaves. */

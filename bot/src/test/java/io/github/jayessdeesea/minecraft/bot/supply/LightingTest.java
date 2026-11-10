@@ -91,6 +91,32 @@ class LightingTest {
     }
 
     @Test
+    void aShaftDownFromTheGroundIsNotTheGround() {
+        // A trench along z=0 from x=3, dropping three blocks a block east - a safe fall each - to 27 below:
+        // reachable, the mine's, not the camp's.
+        WorldView shaft = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                boolean open = z == 0 && x >= 3 && x <= 12 && y >= GROUND - 1 - 3 * (x - 3) && y < GROUND;
+                return y < GROUND && !open;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertTrue(Lighting.plan(shaft, CENTRE, 12).stream().allMatch(c -> c.y() >= GROUND - 8),
+                "no torch down the shaft: " + Lighting.plan(shaft, CENTRE, 12));
+    }
+
+    @Test
     void groundAlreadyLitNeedsNoMoreTorches() {
         torches.addAll(Lighting.plan(flat, CENTRE, 12));
 
