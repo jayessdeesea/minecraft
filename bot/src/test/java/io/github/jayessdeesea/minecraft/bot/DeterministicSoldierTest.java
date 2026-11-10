@@ -302,6 +302,38 @@ class DeterministicSoldierTest {
     }
 
     @Test
+    void aSquadmateStandingWhereTheSwordsmanStandsIsStillInItsSweep() {
+        DeterministicSoldier eli = new DeterministicSoldier("Eli", new Position(0, 64, 0));
+        eli.reportKit(new Kit(java.util.Optional.of("wooden_sword"), 0, 0));
+        eli.entityId(7);
+        Position zombie = new Position(1.2, 64, 0);
+        WorldView halInHisBoots = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, 154, zombie));
+            }
+
+            @Override
+            public List<Position> playersNear(Position center, double radius, int except) {
+                // Hal, a tenth of a block from Eli - and Eli himself, entity 7, left out.
+                return except == 7 ? List.of(new Position(0.1, 64, 0)) : List.of(new Position(0, 64, 0), new Position(0.1, 64, 0));
+            }
+        };
+
+        assertEquals(OptionalInt.empty(), eli.tick(halInHisBoots), "Hal is in the sweep, a tenth of a block from Eli");
+    }
+
+    @Test
     void backingOffAHostileItStopsAtTheEdgeOfADrop() {
         // A ledge ten blocks up, its edge at x=0: west of it, the ground is at GROUND - 10.
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, 64, 0.5));

@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -122,8 +123,15 @@ public final class EntityTracker {
 
     /** Where the players within {@code radius} of {@code center} are - each soldier's squadmates, and itself as the others' connections see it. */
     public List<Position> nearbyPlayers(Position center, double radius) {
+        return nearbyPlayers(center, radius, Integer.MIN_VALUE);
+    }
+
+    /** As {@link #nearbyPlayers(Position, double)}, but not the player whose entity is {@code except}. */
+    public List<Position> nearbyPlayers(Position center, double radius, int except) {
         double radiusSquared = radius * radius;
-        return entities.values().stream()
+        return entities.entrySet().stream()
+                .filter(e -> e.getKey() != except)
+                .map(Map.Entry::getValue)
                 .filter(entry -> entry.typeId == PLAYER_TYPE_ID)
                 .map(entry -> entry.position)
                 .filter(position -> distanceSquared(center, position) <= radiusSquared)

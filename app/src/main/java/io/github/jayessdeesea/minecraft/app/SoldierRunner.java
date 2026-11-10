@@ -2681,6 +2681,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         LOG.info("{} joined at real spawn ({}, {}, {}): {}", name, spawn.x(), spawn.y(), spawn.z(), session.playState());
 
         DeterministicSoldier soldier = new DeterministicSoldier(name, new Position(spawn.x(), spawn.y(), spawn.z()));
+        soldier.entityId(session.playState().entityId());
         HealthUpdate health = lastHealth.get();
         if (health != null) {
             soldier.reportHealth(health.health(), health.food());

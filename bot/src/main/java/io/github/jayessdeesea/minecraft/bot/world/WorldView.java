@@ -136,6 +136,11 @@ public interface WorldView {
         return List.of();
     }
 
+    /** As {@link #playersNear(Position, double)}, leaving out the player whose entity is {@code except} - the asker itself. */
+    default List<Position> playersNear(Position center, double radius, int except) {
+        return playersNear(center, radius);
+    }
+
     /** Where the dropped items within {@code radius} of {@code center} are, nearest first. A view that tracks no entities sees none. */
     default List<TrackedEntity> gameNear(Position center, double radius) {
         return List.of();

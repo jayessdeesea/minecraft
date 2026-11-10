@@ -408,9 +408,22 @@ public final class DeterministicSoldier implements Soldier {
         if (carried == null || carried.weapon().filter(w -> w.endsWith("_sword")).isEmpty()) {
             return false;
         }
-        return world.playersNear(target, SWEEP_REACH + 1).stream()
-                .filter(p -> Math.hypot(p.x() - position.x(), p.z() - position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - position.y()) > 1)
-                .anyMatch(p -> Math.hypot(p.x() - target.x(), p.z() - target.z()) <= SWEEP_REACH && Math.abs(p.y() - target.y()) <= 1.5);
+        // Itself left out by its entity, once known - by where it stands, a squadmate in the same
+        // spot is taken for it: live, one stood a tenth of a block from the soldier swinging, at a
+        // third of a heart, and the sweep killed it.
+        int self = entityId;
+        java.util.stream.Stream<Position> others = self >= 0 ? world.playersNear(target, SWEEP_REACH + 1, self).stream()
+                : world.playersNear(target, SWEEP_REACH + 1).stream()
+                .filter(p -> Math.hypot(p.x() - position.x(), p.z() - position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - position.y()) > 1);
+        return others.anyMatch(p -> Math.hypot(p.x() - target.x(), p.z() - target.z()) <= SWEEP_REACH && Math.abs(p.y() - target.y()) <= 1.5);
+    }
+
+    /** Its own player entity's ID, as the server gave it on joining - -1 until told. */
+    private volatile int entityId = -1;
+
+    /** Tells it its own player entity's ID, so it never takes a squadmate for itself. */
+    public void entityId(int id) {
+        this.entityId = id;
     }
 
     /** The soldier itself, as its squadmates' connections see it, is within this of where it is. */
