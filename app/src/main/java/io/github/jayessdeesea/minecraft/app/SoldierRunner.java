@@ -2945,6 +2945,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 afterActionReview.commands.sample(squadTask(definition.squad()), status.order().getClass().getSimpleName(), status.report());
                 idleWatch.update(name, status.position(), clockwork.millis(), resting, () -> "report " + status.report()
                         + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free")
+                        // What holds routines back with free hands: food first, and the work it was handed.
+                        + (foodCalls ? ", food calls" : "") + (threatened ? ", threatened" : "")
+                        + ", " + lights.size() + " cells to light with " + inventory.count(ItemClass.TORCH) + " torches"
                         + ", squad's task " + chainOfCommand.objective(definition.squad())
                         .map(o -> OrderTrace.taskName(o.task()) + " at " + o.location()).orElse("none"))
                         .ifPresent(line -> {
