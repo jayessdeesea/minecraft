@@ -51,14 +51,18 @@ public final class Clearing {
         List<BlockPos> cells = new ArrayList<>();
         for (int x = box.minX(); x <= box.maxX(); x++) {
             for (int z = box.minZ(); z <= box.maxZ(); z++) {
-                for (int y = box.minY(); y <= box.maxY(); y++) {
+                // Down each column: ground is dug only from an open top, so a block of it is in the dig
+                // only with the cell over it open or in the dig too. Live, five blocks under ones the dig
+                // left - above the box, or kept - were counted for hours and never dug.
+                boolean clearAbove = !world.isSolid(x, box.maxY() + 1, z);
+                for (int y = box.maxY(); y >= box.minY(); y--) {
                     boolean ground = !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty();
-                    boolean coveredFast = world.isSolid(x, y + 1, z) && (!diggable(world, x, y + 1, z)
-                            || except.contains(new io.github.jayessdeesea.minecraft.command.Cell(x, y + 1, z)));
-                    if (!except.contains(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z)) && diggable(world, x, y, z)
-                            && !(ground && coveredFast)) {
+                    boolean dug = !except.contains(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z)) && diggable(world, x, y, z)
+                            && (!ground || clearAbove);
+                    if (dug) {
                         cells.add(new BlockPos(x, y, z));
                     }
+                    clearAbove = dug || !world.isSolid(x, y, z);
                 }
             }
         }
