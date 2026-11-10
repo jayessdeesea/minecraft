@@ -72,6 +72,30 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot) {
         return Optional.ofNullable(best);
     }
 
+    /** How far from a farm's first water the plots that grow it are looked for: one field, not a walk between two. */
+    public static final int GROWN_RADIUS = 16;
+
+    /**
+     * {@code farm} grown to at least {@code want} cells, if the ground allows: the plot round the
+     * best water within {@link #GROWN_RADIUS} of its own added, cells already in it left out, then
+     * the next, until it's big enough or there's no plot of {@link #MIN_CELLS} left to add. One
+     * water's plot is 80 cells at best, and by a pond's edge about half that: live, a camp's farm
+     * of 44 cells fed eight soldiers a few loaves an hour, and they went hungry.
+     */
+    public static FarmPlan grown(WorldView world, FarmPlan farm, int want, int vertical, java.util.function.Predicate<BlockPos> walkable) {
+        java.util.LinkedHashSet<BlockPos> plot = new java.util.LinkedHashSet<>(farm.plot());
+        while (plot.size() < want) {
+            java.util.Set<BlockPos> taken = java.util.Set.copyOf(plot);
+            Optional<FarmPlan> next = site(world, farm.water(), GROWN_RADIUS, vertical,
+                    stand -> walkable.test(stand) && !taken.contains(stand.offset(0, -1, 0)));
+            if (next.isEmpty()) {
+                break;
+            }
+            plot.addAll(next.get().plot());
+        }
+        return plot.size() == farm.plot().size() ? farm : new FarmPlan(farm.water(), List.copyOf(plot));
+    }
+
     /** The cells round {@code water} that make farmland: tillable or tilled, level with it, open above. */
     public static List<BlockPos> plotAround(WorldView world, BlockPos water) {
         List<BlockPos> plot = new ArrayList<>();

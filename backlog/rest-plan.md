@@ -28,9 +28,8 @@ without:
   docs/military-doctrine.md § 16), so the whole squad held the head, under open sky, all night.
   With the stairs cut, the night shift goes down them; whether that alone keeps phantoms off
   wants a night watched. Until beds: a starving soldier under open sky at night is the phantom's.
-  Cheaper first steps, each its own change: a soldier at low health by night takes cover; and the
-  camp's food - one farm of 44 cells feeds eight soldiers too slowly (13 harvests, 7 bread
-  in a run) - is grown on a second plot by another water.
+  A cheaper first step: a soldier at low health by night takes cover. (The camp's farm, 44 cells
+  then, is now grown with the plots by the waters beside it, docs/military-doctrine.md § 4.)
 
 ## Doctrine
 Rest is one of a patrol base's priorities of work, under a rest plan that keeps security while

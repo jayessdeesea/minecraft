@@ -59,6 +59,30 @@ class FarmPlanTest {
     }
 
     @Test
+    void aFarmIsGrownWithThePlotRoundTheNextWater() {
+        BlockPos first = new BlockPos(0, GROUND, 0);
+        BlockPos second = new BlockPos(8, GROUND, 0);
+        WorldView world = ground(Set.of(first, second), Set.of());
+        FarmPlan farm = FarmPlan.site(world, first, 0).orElseThrow();
+
+        FarmPlan grown = FarmPlan.grown(world, farm, 96, 4, cell -> true);
+
+        assertEquals(first, grown.water(), "kept by its first water");
+        assertTrue(grown.plot().containsAll(farm.plot()), "its own cells kept");
+        assertEquals(80 + 71, grown.plot().size(), "and the second's, less the column of 9 they share");
+        assertEquals(grown.plot().size(), Set.copyOf(grown.plot()).size(), "no cell twice");
+    }
+
+    @Test
+    void aFarmWithNoOtherWaterNearStaysAsItIs() {
+        BlockPos pond = new BlockPos(0, GROUND, 0);
+        WorldView world = ground(Set.of(pond, new BlockPos(FarmPlan.GROWN_RADIUS + 10, GROUND, 0)), Set.of());
+        FarmPlan farm = FarmPlan.site(world, pond, 0).orElseThrow();
+
+        assertEquals(farm, FarmPlan.grown(world, farm, 96, 4, cell -> true));
+    }
+
+    @Test
     void groundNoFarmerCanWalkToIsNoFarm() {
         BlockPos pond = new BlockPos(10, GROUND, 0);
 

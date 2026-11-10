@@ -453,12 +453,21 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     .map(cells -> new io.github.jayessdeesea.minecraft.bot.farm.FarmPlan(cells.getFirst(), cells.subList(1, cells.size())))
                     .orElse(null);
         }
-        if (keptFarm == null || !world.isWater(keptFarm.water().x(), keptFarm.water().y(), keptFarm.water().z())) {
+        boolean resite = keptFarm == null || !world.isWater(keptFarm.water().x(), keptFarm.water().y(), keptFarm.water().z());
+        if (resite || !campFarmGrown) {
             java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> walkable =
                     io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.reachable(world, at, CAMP_FARM_RADIUS + 4, FARM_REACH_BUDGET);
-            keptFarm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at, CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL,
-                    walkable::contains).orElse(null);
+            io.github.jayessdeesea.minecraft.bot.farm.FarmPlan before = resite ? null : keptFarm;
+            if (resite) {
+                keptFarm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, at, CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL,
+                        walkable::contains).orElse(null);
+            }
+            // Grown once a run to feed the camp: the plots round the waters beside its own.
             if (keptFarm != null) {
+                keptFarm = io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.grown(world, keptFarm, CAMP_FARM_CELLS, CAMP_FARM_VERTICAL, walkable::contains);
+                campFarmGrown = true;
+            }
+            if (keptFarm != null && !keptFarm.equals(before)) {
                 LOG.info("[Foothold] the camp's farm: by the water at {}, {} cells", keptFarm.water(), keptFarm.plot().size());
                 List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> kept = new java.util.ArrayList<>();
                 kept.add(keptFarm.water());
@@ -547,6 +556,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final int CAMP_RADIUS = 24;
     /** How far round the camp its farm is looked for: the water it needs can be a way off. */
     private static final int CAMP_FARM_RADIUS = 48;
+    /**
+     * The cells the camp's farm is grown to: eight working soldiers eat about a loaf and a half a
+     * minute, three wheat each, and hydrated wheat takes half an hour or so to ripen - this is about
+     * half of that, with hunting the rest. One water's plot is half of it by a pond.
+     */
+    static final int CAMP_FARM_CELLS = 96;
     /** And how far up or down: a camp on a hill farms by the water below it. */
     private static final int CAMP_FARM_VERTICAL = 32;
     /** Farm cells a farmer couldn't work, passed over by every farmer for a while. */
@@ -557,6 +572,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final int FARM_REACH_BUDGET = 40_000;
     /** The camp's farm ground by water, as the foothold last measured it: kept by squads short of food. */
     private volatile io.github.jayessdeesea.minecraft.bot.farm.FarmPlan campFarm;
+    /** Whether the camp's farm has been grown to {@link #CAMP_FARM_CELLS} this run, as far as the ground allows. */
+    private boolean campFarmGrown;
     /** The camp's ground, found once. */
     private io.github.jayessdeesea.minecraft.bot.nav.BlockPos campGround;
     /** Farm cells growing wheat for the camp's food to count as met. */
@@ -633,6 +650,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, Integer> standTo = new ConcurrentHashMap<>();
     /** Soldiers stood still by day: an alarm each spell. */
     private final IdleWatch idleWatch = new IdleWatch();
+    /**
+     * Each squad down its mine for the night, by its stairs' head height: below it, a soldier
+     * waiting is hiding, as one in a patrol base is - not stuck. Written by the squad loop, read by
+     * each soldier's tick.
+     */
+    private final Map<String, Integer> nightBelow = new java.util.concurrent.ConcurrentHashMap<>();
     /** Each soldier's last seconds, read out when it dies. */
     private final Map<String, FlightRecorder> recorders = new ConcurrentHashMap<>();
     /** Deaths since the app started, by the server's death message key: what kills soldiers most. */
@@ -1839,6 +1862,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             return sited.get();
         }).orElse(null);
         state.stairs = stairs;
+        if (stairs == null) {
+            nightBelow.remove(squadName);
+        }
         if (stairs != null && camp != null && !campStairs().equals(Optional.of(stairs))) {
             mineStore.save(camp[0] + "," + camp[1], List.of(stairs.head(), stairs.step(stairs.steps() - 1)));
             campStairs = Optional.of(stairs);
@@ -2059,6 +2085,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 // by day. By night they go down behind it: the top is the dark, and down the stairs
                 // nothing spawns within 24 blocks of them.
                 boolean dark = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
+                if (dark) {
+                    nightBelow.put(squadName, stairs.head().y());
+                } else {
+                    nightBelow.remove(squadName);
+                }
                 // With nothing left to cut, by night the squad waits at the landing, under the
                 // ground: live, a mine cut to the bottom left it all night at the head, under the sky.
                 Position rest = dark && stairs.landingCut(world) ? centre(stairs.landingStand()) : centre(stairs.head());
@@ -3052,8 +3083,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
             FlightRecorder recorder = recorders.computeIfAbsent(name, n -> new FlightRecorder());
             if (recorder.due()) {
-                // Hiding or sleeping: the squad in its patrol base. Anything else still that long is worth a look.
-                boolean resting = chainOfCommand.patrolBaseObjective(definition.squad()).isPresent();
+                // Hiding or sleeping: the squad in its patrol base, or down its mine for the night.
+                // Anything else still that long is worth a look.
+                Integer below = nightBelow.get(definition.squad());
+                boolean resting = chainOfCommand.patrolBaseObjective(definition.squad()).isPresent()
+                        || below != null && status.position().y() < below - MINE_BELOW;
                 afterActionReview.commands.sample(squadTask(definition.squad()), status.order().getClass().getSimpleName(), status.report());
                 idleWatch.update(name, status.position(), clockwork.millis(), resting, () -> "report " + status.report()
                         + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free")

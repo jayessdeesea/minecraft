@@ -82,7 +82,8 @@ each squad leader's FRAGO to a SITREP showing the squad's soldiers at the task -
 FORTIFY, Securing for SECURE, and so on - each hop timed, and each one late raising an alarm.
 
 A soldier is always meant to be at something, by night too (the mine), so one that hasn't moved 2
-blocks any way in a minute, other than while its squad hides or sleeps in its patrol base, raises
+blocks any way in a minute, other than while its squad hides or sleeps - in its patrol base, or
+down its mine for the night - raises
 an alert in the log, once a spell (`[Alert]`, `app.IdleWatch`): its report, its order, which
 routine has its hands, and its squad's task. It's logged again when it moves on. A soldier held at
 a table or furnace shows its routine; one with free hands and a task its routines can't start on is
@@ -150,7 +151,10 @@ carries a **basic load** of 6 rations, and is short below 2:
    the general's to order. The camp's farm is sited once, on ground by water near the camp that
    the squad can walk to - a flood from the camp's ground, as a FARM order's plot is from the squad -
    and kept while its water is there - on disk too, under `minecraft.state-dir` as the wall is
-   (`app.WallStore`), since sited again after a restart it moved to another pond.
+   (`app.WallStore`), since sited again after a restart it moved to another pond. Once a run it's
+   grown toward 96 cells with the plots round the waters within 16 blocks of its own
+   (`FarmPlan.grown`): one water's plot is 80 cells at best and about half that by a pond, and
+   eight working soldiers eat about a loaf and a half a minute.
 3. **The squad asks.** A soldier still short with none of those means - no wheat, no game in sight,
    nobody sharing, and no wheat growing in the camp's farm, whose bread is on the way - makes the
    squad's Class I **RED**. Its LOGSTAT then carries the request: "Class

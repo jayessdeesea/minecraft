@@ -487,6 +487,49 @@ class SquadSimulationTest {
             PlayerPosition at = server.position(name);
             assertTrue(at.y() < KEPT.head().y() - 24, name + " under the ground by night, not at " + at);
         }
+        // Waiting the night out down the mine is hiding, not a soldier stuck: no alert for it.
+        List<String> alerts;
+        try {
+            alerts = java.nio.file.Files.readAllLines(Path.of("target/sim/byNightASquadWithItsMineCutWaitsAtTheLanding.log")).stream()
+                    .filter(l -> l.contains("[Alert]") && l.contains("stationary")).toList();
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+        assertEquals(List.of(), alerts);
+    }
+
+    /** Flat, with two one-block ponds east of the camp, 10 apart: neither's plot alone the camp's farm. */
+    private static int twoPonds(int x, int y, int z) {
+        return y == GROUND && z == 0 && (x == 14 || x == 24) ? SimServer.WATER : flat(x, y, z);
+    }
+
+    /**
+     * The camp's farm takes in the ground round the next water too, to feed the camp: live, one
+     * pond's 44 cells fed eight soldiers a few loaves an hour, and they went hungry.
+     */
+    @Test
+    void theCampsFarmIsGrownRoundTheNextWater() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::twoPonds, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(60_000);
+
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> farm = new WallStore(state, "farm").load("0,0").orElseThrow();
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> plot = farm.subList(1, farm.size());
+        assertTrue(plot.stream().anyMatch(c -> c.x() < 19) && plot.stream().anyMatch(c -> c.x() > 19),
+                "round both ponds: " + plot.size() + " cells, x " + plot.stream().mapToInt(c -> c.x()).summaryStatistics());
+        assertTrue(plot.size() > 80, "more than one water's plot: " + plot.size());
     }
 
     /** Flat, with a shaft 6 deep down the 3x3 columns round the camp's mine head, (4, -4) from its centre. */
