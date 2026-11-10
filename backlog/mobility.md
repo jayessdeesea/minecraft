@@ -59,6 +59,15 @@ What's left:
   stair. A player there digs down: a stair cut into the block underfoot and on down, as
   `Stairway.up` cuts one up. And the drill could send a squadmate with bread to anyone stranded
   at food 0, since health only comes back fed.
+- **Sealed in a cobblestone pocket under the camp's edge.** Live (field60), three soldiers stood in
+  a 5x1 pocket at y=63 under the camp's south-west corner, roofed and walled in cobblestone where
+  the wall's footing and the camp's fill had closed over a dip. The recovery drill laid no stair
+  up: `Stairway.up` cuts only what `Clearing.diggable` takes (soil, natural stone, gravel, trees),
+  never cobblestone, so as never to breach the wall or a hut; and sent at MEDIUM risk they had no
+  route either. Letting the stair up cut cobblestone outside the camp's keep (`campKeep`) is the
+  shape of it, but the dig goes through the Clearer, `Clearing.toClear`/`next` and the Digger's
+  targets, which all take `diggable` - so cobblestone would join the camp's ground work too, and
+  every placed block round the camp with it. A choice to make deliberately, not in passing.
 - **The respawn platform, live.** Replacements respawn on a patch of glass at y=102 near (-5, 9),
   17 blocks over the ground. The recovery drill's stair (docs/military-doctrine.md § 7) passes the
   squad simulation's copy of it; it wants seeing live, the next time a replacement lands there.
