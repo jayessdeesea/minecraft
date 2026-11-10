@@ -258,6 +258,12 @@ public final class Crafter {
                 yield Outcome.MADE;
             }
             case Script.Status.Interrupted(String step, String guard) -> {
+                if (!asked.equals(this.wanted)) {
+                    // What changed, so a run dropped over and over shows why: live, a loaf was
+                    // started and dropped 518 times, and the log never said what it was asked instead.
+                    LOG.info("{} was asked for {} and is now asked for {}", name, describe(this.wanted),
+                            asked.isEmpty() ? "nothing" : describe(asked));
+                }
                 end(0);
                 yield Outcome.INTERRUPTED;
             }

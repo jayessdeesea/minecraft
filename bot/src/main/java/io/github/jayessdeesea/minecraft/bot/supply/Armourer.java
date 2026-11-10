@@ -191,7 +191,11 @@ public final class Armourer {
 
     /** The making itself, after {@link #tick}'s bookkeeping: whether it fitted out the workshop this tick. */
     private boolean tickMaking(Position soldier, WorldView world, boolean threatened, Optional<Workshop> workshop) {
-        Map<Recipe, Integer> items = once(making);
+        // Asked for once a run: what it asks is counted from what's carried, and a run moves what's
+        // carried - live, a loaf made raised the bread asked for, and the run was dropped as no
+        // longer wanted, 518 times over.
+        Map<Recipe, Integer> items = crafter.active() && asking != null && asking.keySet().equals(making) ? asking : once(making);
+        asking = items;
         if (!crafter.active()) {
             craftingAt = soldier;
         }
@@ -368,7 +372,10 @@ public final class Armourer {
     private Map<Recipe, Integer> once(Set<Recipe> recipes) {
         Map<Recipe, Integer> items = new LinkedHashMap<>();
         recipes.forEach(r -> items.put(r, r == Recipe.BREAD
-                ? inventory.count(ItemClass.FOOD) + Math.max(1, inventory.count(ItemClass.WHEAT) / 3) : 1));
+                ? inventory.count(ItemClass.FOOD) + inventory.count(ItemClass.WHEAT) / 3 : 1));
         return items;
     }
+
+    /** What the run under way was asked for, kept for its length - null before the first. */
+    private Map<Recipe, Integer> asking;
 }

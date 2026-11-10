@@ -226,6 +226,33 @@ class SquadSimulationTest {
     }
 
     /**
+     * As live: a soldier with 4 wheat - a loaf's and one over - started a loaf 518 times and made
+     * none, the loaf asked for counted again from the wheat left as each run went.
+     */
+    @Test
+    void aSoldierWithWheatForOneLoafAndOneOverBakesIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{9, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.WHEAT), 4},
+                        new int[]{10, SimServer.ITEM_OAK_LOG, 2})));
+        runner.run();
+
+        clock.advance(3 * 60_000);
+
+        assertEquals(1, server.count("Alice", io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FOOD),
+                "a loaf baked; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+    }
+
+    /**
      * As live: a soldier carried 22 wheat for days while its squad starved, since only a farmer
      * baked. Here nobody carries food, only wheat and the logs for a table: each, short of its basic
      * load, bakes its own bread at the camp's workshop, fitting the table there first.
