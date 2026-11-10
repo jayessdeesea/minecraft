@@ -188,5 +188,6 @@ command, drills and routines, in seconds:
   a `ChatModel` that answers a fixed `SquadOrder`.
 
 A live failure becomes a scenario there first: the world that caused it, and the outcome the
-squad should reach (cobblestone and raw iron carried, say), not the steps it should take. The app
-log goes to `app/target/test.log`.
+squad should reach (cobblestone and raw iron carried, say), not the steps it should take. Each
+scenario's app log goes to `app/target/sim/<scenario>.log`; scenarios run in parallel
+(docs/conventions.md, "Tests run in parallel").

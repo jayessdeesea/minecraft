@@ -88,6 +88,31 @@ so one squad's fault leaves the other its orders. The next tick starts from the 
 chain of command as they stand, so carrying on guesses nothing - unlike a fallback. A JVM
 `Error` isn't caught.
 
+## No mutable global state
+
+State lives in objects that own it, handed to whoever needs it - by Spring's constructor
+injection in `app`, by constructor arguments everywhere else - never in a static field or a
+singleton reached from anywhere. What a class depends on is then in its constructor, its state
+is visible where it's made, and two of it can run side by side: two soldiers, two squads, two
+tests. A static field is a constant. The one standing exception is the generated registries
+(`BlockClassRegistry`, `ItemClassRegistry`, `HostileMobRegistry`): data generated from the pinned
+server, filled once when their class loads and only read after, so they behave as constants.
+
+## Tests run in parallel
+
+Every test class and method runs at once (`junit-platform.properties`, in `app` and `bot`), so
+a test is written to share nothing with another:
+- **No mutable static state** (above), in tests or in the code they run.
+- **Each test owns its world:** its own `SimClock`, `SimServer`, runner and chain of command, and a
+  `@TempDir` for anything on disk - never a fixed path, a working-directory file or a system
+  property.
+- **Each scenario owns its log:** `SquadSimulationTest` names the scenario in log4j's
+  `ThreadContext`, and `log4j2-test.xml` routes its lines to `app/target/sim/<scenario>.log`. A
+  scenario's whole run is on its test's thread (`SimClock`), so the name follows every line.
+
+So the suite takes about as long as its slowest test, not the sum of them. While working on a
+change, run its own tests (`-Dtest=...`); the whole suite before a deploy or push.
+
 ## Standard formats go through standard libraries
 
 XML, JSON, CSV and other standard formats are written and read with a library, never marshalled

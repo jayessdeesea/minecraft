@@ -687,7 +687,9 @@ patrol base's), and reports `Securing` meanwhile. One short of the makings gathe
 its squad last saw them nearest the objective: logs, then the cobblestone for a furnace (making
 itself a pickaxe for it). One that
 still can't make any reports CANTCO with why.
-The log says how many torches are still to put down.
+The log says how many torches are still to put down. A plan down to 2 torches or fewer that hasn't
+changed in 2 minutes is done, its progress saying how many cells no soldier reached: live, a squad
+stood a day in a lit camp for one torch it couldn't put down.
 
 A lit camp still lets in what walks in from the dark beyond the light. An objective's task can be
 `FORTIFY`, which makes the camp a deliberate base: a wall two blocks high - one more than a
@@ -744,6 +746,12 @@ above the camp's feet level, is dug off, a layer at a time (`Clearing.humps`, th
 work, and its dirt is the wall's). Every squad's hut and the ground under each workshop are
 spared; an old hut somewhere else is high ground like any other. Progress reads "N blocks of high
 ground inside the wall to level" until it's done; nothing but dirt and grass is dug.
+
+A soldier with nothing else to do keeps the camp the same way, whatever the squad's task: by day,
+out of contact and within 24 blocks of the camp, with no other work handed to it, it cuts the
+trees over the camp, digs its high ground down and fills its hollows (`SoldierRunner.campUpkeep`),
+so an idle squad flattens the camp rather than stand in it. Live, three soldiers stood a day in a
+lit camp with their task all but done.
 
 Then the hollows, filled from the bottom (`Clearing.hollows`, `bot.supply.Filler`): every open
 cell inside the wall line below the camp's feet level, down to the ground in its column and no

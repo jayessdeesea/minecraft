@@ -34,6 +34,20 @@ class SquadSimulationTest {
     @TempDir
     Path state;
 
+    /**
+     * Each scenario logs to its own file, target/sim/&lt;scenario&gt;.log (log4j2-test.xml): scenarios
+     * run in parallel, and one log shared by all of them would interleave.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void nameTheScenario(org.junit.jupiter.api.TestInfo test) {
+        org.apache.logging.log4j.ThreadContext.put("scenario", test.getTestMethod().map(java.lang.reflect.Method::getName).orElse("unnamed"));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void endTheScenario() {
+        org.apache.logging.log4j.ThreadContext.remove("scenario");
+    }
+
     private static final int GROUND = 63;
 
     /** Flat: bedrock, stone, dirt, grass at y=63, and iron ore in a band round y=16. */
@@ -432,6 +446,47 @@ class SquadSimulationTest {
             }
         }
         assertEquals(List.of(), open, "the pit's top still open; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
+    /** Flat, with a mound of dirt two high in the camp. */
+    private static int moundInCamp(int x, int y, int z) {
+        return x >= 3 && x <= 4 && z >= 3 && z <= 4 && y > GROUND && y <= GROUND + 2 ? SimServer.DIRT : flat(x, y, z);
+    }
+
+    /**
+     * A squad with nothing to do keeps the camp: it digs the high ground down. Live, three soldiers
+     * stood a day in a lit camp with their task all but done.
+     */
+    @Test
+    void anIdleSquadFlattensTheCamp() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::moundInCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(4 * 60_000);
+
+        long mound = 0;
+        for (int x = 3; x <= 4; x++) {
+            for (int z = 3; z <= 4; z++) {
+                for (int y = GROUND + 1; y <= GROUND + 2; y++) {
+                    if (server.block(x, y, z) != SimServer.AIR) {
+                        mound++;
+                    }
+                }
+            }
+        }
+        assertEquals(0, mound, "blocks of the mound left; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
     }
 

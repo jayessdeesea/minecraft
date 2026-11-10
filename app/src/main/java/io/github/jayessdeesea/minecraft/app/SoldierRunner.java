@@ -161,6 +161,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         int humpsLeft = -1;
         /** Open cells of the camp's hollows to fill, at the last check: -1 before the first. */
         int hollowsLeft = -1;
+        /** When the torches still to put down last changed: a plan stuck at a cell or two is done. */
+        long torchesChangedAt;
         /** When a staircase nobody could site at {@code stairsFor} is looked for again. */
         long stairsRetryAt;
         /** Who in the squad is on what, followed to completion and checked against the world. */
@@ -510,6 +512,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 .min(java.util.Comparator.comparingInt(c -> Math.abs(c.x() - camp[0]) + Math.abs(c.z() - camp[1])));
     }
 
+    /** A SECURE plan this close to done, unchanged for {@link #NEAR_DONE_MILLIS}, is done. */
+    static final int NEAR_DONE_TORCHES = 2;
+    static final long NEAR_DONE_MILLIS = 120_000;
+
     /** How long after a staircase couldn't be sited it's looked for again: the water or lava may have gone. */
     static final long STAIRS_RETRY_MILLIS = 60_000;
 
@@ -765,6 +771,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         for (Present p : present) {
             faults.run(p.squad() + "'s orders", () -> chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
                     orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt())));
+            faults.run(p.squad() + "'s camp upkeep", () -> campUpkeep(p.squad(), p.statuses()));
             faults.run(p.squad() + "'s register", () -> register(p.squad(), squadStates.get(p.squad()), p.statuses()));
         }
     }
@@ -874,6 +881,61 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         return w == null || !w.chestStands(world) ? Optional.empty()
                 : Optional.of(new Position(w.chest().get().x() + 0.5, w.chest().get().y(), w.chest().get().z() + 0.5));
     }
+
+    /**
+     * Camp upkeep for a soldier with nothing else to do: by day, out of contact and near the camp,
+     * it works on the camp's ground as FORTIFY's first phases do - the trees over it cut, its high
+     * ground dug down, its hollows filled - so an idle squad flattens the camp rather than stand in
+     * it. Live, three soldiers stood a day in a lit camp with their task all but done. A soldier
+     * with any other work handed to it keeps that.
+     */
+    private void campUpkeep(String squad, List<SoldierStatus> statuses) {
+        boolean daylight = !chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
+        boolean contact = statuses.stream().anyMatch(s -> s.report() instanceof Report.InContact);
+        if (campGround == null || !daylight || contact) {
+            statuses.forEach(s -> upkeeping.remove(s.name()));
+            return;
+        }
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cover = io.github.jayessdeesea.minecraft.bot.engineer.Clearing.cover(world, campGround, WALL_RADIUS);
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> keep = new java.util.HashSet<>(campKeep());
+        squadStates.values().stream().filter(s -> s.stairs != null).forEach(s -> {
+            keep.addAll(s.stairs.walkway());
+            keep.addAll(s.stairs.landing());
+        });
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> humps = !cover.isEmpty() ? List.of()
+                : io.github.jayessdeesea.minecraft.bot.engineer.Clearing.humps(world, campGround, WALL_RADIUS - 1, keep);
+        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> hollows = !cover.isEmpty() || !humps.isEmpty() ? List.of()
+                : io.github.jayessdeesea.minecraft.bot.engineer.Clearing.hollows(world, campGround, WALL_RADIUS, keep);
+        for (SoldierStatus s : statuses) {
+            String n = s.name();
+            boolean otherWork = (clearing.containsKey(n) && !upkeeping.contains(n)) || (filling.containsKey(n) && !upkeeping.contains(n))
+                    || walling.containsKey(n) || repointing.containsKey(n) || lighting.containsKey(n) || farming.containsKey(n)
+                    || planting.containsKey(n) || gathering.containsKey(n) || cutting.containsKey(n) || patrolLegs.containsKey(n);
+            boolean near = Math.hypot(s.position().x() - campGround.x(), s.position().z() - campGround.z()) <= SECURE_RADIUS * 2;
+            if (otherWork || !near || (cover.isEmpty() && humps.isEmpty() && hollows.isEmpty())) {
+                if (upkeeping.remove(n)) {
+                    clearing.remove(n);
+                    filling.remove(n);
+                }
+                continue;
+            }
+            if (upkeeping.add(n)) {
+                LOG.info("[{}] {} has nothing else to do - keeps the camp: {}", squad, n,
+                        !cover.isEmpty() ? cover.size() + " blocks of trees over it" : !humps.isEmpty() ? humps.size() + " blocks of high ground"
+                                : hollows.size() + " cells of hollow");
+            }
+            if (!cover.isEmpty() || !humps.isEmpty()) {
+                clearing.put(n, cover.isEmpty() ? humps : cover);
+                filling.remove(n);
+            } else {
+                filling.put(n, hollows);
+                clearing.remove(n);
+            }
+        }
+    }
+
+    /** Soldiers on camp upkeep, their clearing or filling the upkeep's - squad loop only. */
+    private final java.util.Set<String> upkeeping = ConcurrentHashMap.newKeySet();
 
     /**
      * Records in the squad's register what each soldier is on this cycle - the work it was handed,
@@ -1086,6 +1148,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             case io.github.jayessdeesea.minecraft.command.Objective.Task.Secure() -> {
                 if (state.torchesLeft == 0) {
                     done = Optional.of("every walkable cell round the objective is lit");
+                } else if (state.torchesLeft > 0 && state.torchesLeft <= NEAR_DONE_TORCHES
+                        && clockwork.millis() - state.torchesChangedAt >= NEAR_DONE_MILLIS) {
+                    // All but a cell or two nobody has reached: done, said so - live, a squad stood a
+                    // day in a lit camp for one torch it couldn't put down, and the task never ended.
+                    done = Optional.of("the ground round the objective is lit but for " + state.torchesLeft
+                            + " cell(s) no soldier has reached in " + NEAR_DONE_MILLIS / 60_000 + " minutes");
                 } else if (state.torchesLeft > 0) {
                     left = Optional.of(state.torchesLeft + " torches to put down");
                 }
@@ -1590,6 +1658,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // torches that stand, so one gone - washed away, broken, dug out - is put back.
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campDark = campGround == null ? List.of() : torchPlan(campGround);
         if (torchesLeft.size() != state.torchesLeft) {
+            state.torchesChangedAt = clockwork.millis();
             if (secureTask.isPresent()) {
                 LOG.info("[{}] SECURE: {} torches still to put down", squadName, torchesLeft.size());
             }
@@ -1655,13 +1724,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             long now = clockwork.millis();
             if (!hollows.isEmpty() && !squadInContact && !state.relieved(soldierName, "fill the camp's hollows", now)) {
                 filling.put(soldierName, hollows);
-            } else {
-                filling.remove(soldierName);
+            } else if (!upkeeping.contains(soldierName)) {
+                filling.remove(soldierName); // camp upkeep's, if it's on that, is the upkeep's to drop
             }
             if ((!cover.isEmpty() || !humps.isEmpty()) && !squadInContact
                     && !state.relieved(soldierName, cover.isEmpty() ? "level the camp" : "clear the camp's sky", now)) {
                 clearing.put(soldierName, cover.isEmpty() ? humps : cover);
-            } else {
+            } else if (!upkeeping.contains(soldierName)) {
                 clearing.remove(soldierName);
             }
             if (!soft.isEmpty() && !squadInContact && !state.relieved(soldierName, "wall the camp in stone", now)) {
@@ -2562,21 +2631,25 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                         for (int dy = -SEAL_REACH; dy <= SEAL_REACH; dy++) {
                             int x = ax + dx, y = fy + dy, z = az + dz;
                             boolean body = dx == 0 && dz == 0 && (dy == 0 || dy == 1);
-                            if (!body && world.isWaterSource(x, y, z)) {
+                            // Any water, not only sources: live, the shaft's water round three
+                            // stuck soldiers was all flowing, its source out of reach, and with
+                            // only sources to plug they placed nothing.
+                            if (!body && world.isWater(x, y, z)) {
                                 sources.add(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
                             }
                         }
                     }
                 }
-                sources.sort(java.util.Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z())
-                        + Math.abs(c.y() - at.y())));
+                // Sources first, which stop the flow; then the water nearest it, which is footing.
+                sources.sort(java.util.Comparator.comparing((io.github.jayessdeesea.minecraft.bot.nav.BlockPos c) -> !world.isWaterSource(c.x(), c.y(), c.z()))
+                        .thenComparingDouble(c -> Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z()) + Math.abs(c.y() - at.y())));
                 if (sources.isEmpty()) {
                     sealing.set(false);
                     sealer.stop();
                     return;
                 }
                 if (!sealing.getAndSet(true)) {
-                    LOG.warn("{} stuck in the water at {} - plugs the {} water source(s) round it", name, at, sources.size());
+                    LOG.warn("{} stuck in the water at {} - fills the {} cell(s) of water round it", name, at, sources.size());
                 }
                 if (sealer.tickInPlace(at, world, sources) instanceof Builder.Progress.Failed) {
                     sealer.retrySkipped();

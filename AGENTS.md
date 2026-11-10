@@ -35,6 +35,9 @@ Each points to its home, which has the reasons.
 - **Model calls go through Spring AI's abstraction only**, provider chosen in config; nothing
   Anthropic-specific in decision logic. [docs/stack.md](docs/stack.md#stack)
 - **One pinned protocol version, offline mode only.** [docs/stack.md](docs/stack.md#target-environment)
+- **No mutable global state: inject it.** State lives in objects passed in, never in statics or
+  singletons, so tests run in parallel - each owns its clock, server, directory and log.
+  [docs/conventions.md](docs/conventions.md#no-mutable-global-state)
 - **Standard formats through standard libraries**, never hand-built strings. [docs/conventions.md](docs/conventions.md#standard-formats-go-through-standard-libraries)
 - **`docs/` is what's built; `backlog/` is what's planned. Each fact has one home.**
   [docs/conventions.md](docs/conventions.md#docs)

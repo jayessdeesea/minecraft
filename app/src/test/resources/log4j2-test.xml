@@ -1,10 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The app's own log, at INFO, to target/test.log: a squad simulation's run reads like a garrison's. -->
+<!--
+  The app's own log, at INFO: a squad simulation's run reads like a garrison's. Tests run in parallel
+  (docs/conventions.md, "Tests run in parallel"), so each scenario logs to its own file,
+  target/sim/<scenario>.log, keyed by the "scenario" ThreadContext value its test sets - a
+  scenario's whole run is on its test's thread (SimClock). Anything logged outside a scenario goes
+  to target/test.log.
+-->
 <Configuration status="WARN">
     <Appenders>
-        <File name="file" fileName="target/test.log" append="false">
-            <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level [%t] %c{1} : %msg%n"/>
-        </File>
+        <Routing name="file">
+            <Routes pattern="$${ctx:scenario}">
+                <!-- No scenario set: the shared file. -->
+                <Route key="$${ctx:scenario}">
+                    <File name="shared" fileName="target/test.log" append="false">
+                        <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level [%t] %c{1} : %msg%n"/>
+                    </File>
+                </Route>
+                <Route>
+                    <File name="scenario-${ctx:scenario}" fileName="target/sim/${ctx:scenario}.log" append="false">
+                        <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level [%t] %c{1} : %msg%n"/>
+                    </File>
+                </Route>
+            </Routes>
+        </Routing>
         <Console name="console" target="SYSTEM_OUT">
             <PatternLayout pattern="%-5level %c{1} : %msg%n"/>
         </Console>
