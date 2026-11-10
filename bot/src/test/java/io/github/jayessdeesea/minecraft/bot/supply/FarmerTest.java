@@ -134,6 +134,20 @@ class FarmerTest {
     }
 
     @Test
+    void wheatASquadmateIsHarvestingIsLeftToIt() {
+        PLOT.forEach(c -> {
+            farmland.add(c);
+            wheat.put(c.offset(0, 1, 0), Digger.RIPE);
+        });
+        Set<BlockPos> claims = new HashSet<>(Set.of(PLOT.get(0).offset(0, 1, 0))); // a squadmate's harvest of the nearer
+        Farmer farmer = new Farmer("Bob", session, inventory, claims);
+
+        farmer.tick(new Position(0.5, GROUND + 1, 1.5), world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+
+        assertTrue(claims.contains(PLOT.get(1).offset(0, 1, 0)), "the other wheat taken: " + claims);
+    }
+
+    @Test
     void tillsThePlotThenPlantsIt() {
         inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.HOE), 1});
         inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item(ItemClass.SEEDS), 5});

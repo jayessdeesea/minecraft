@@ -161,7 +161,10 @@ public final class Farmer {
 
     /** The most pressing job left on {@code farm}, started. */
     private void next(WorldView world, FarmPlan farm) {
-        List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && !shared.barred(c, ticks))
+        // A harvest claims the crop over its cell, not the cell: live, four farmers harvested one
+        // ripe wheat in turn, each checking the ground cell a squadmate's harvest hadn't claimed.
+        List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !claims.contains(c.offset(0, 1, 0))
+                        && !passedOver.barred(c, ticks) && !shared.barred(c, ticks))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()))).toList();
         Optional<BlockPos> ripe = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).findFirst();
         if (ripe.isPresent()) {
