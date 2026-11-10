@@ -16,15 +16,25 @@ import java.util.Optional;
  * wall is laid out on the ground as it is, and once built the ground reads as the wall's top: laid
  * out again after a restart, a second wall would go up on the first. One JSON file per wall, named
  * by its centre's column. A file that won't read is a fault, not a fresh start.
+ *
+ * <p>The same store keeps the camp's farm, under another {@code kind}: sited again after a restart,
+ * it moved to another pond and the crop growing at the first was left (§ 4).
  */
 final class WallStore {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final Path directory;
+    private final String kind;
 
     WallStore(Path directory) {
+        this(directory, "wall");
+    }
+
+    /** A store of {@code kind} layouts - "wall", "farm" - one file each, named by kind and key. */
+    WallStore(Path directory, String kind) {
         this.directory = directory;
+        this.kind = kind;
     }
 
     /** The layout kept for the wall round column {@code key} ("x,z"), if one was. */
@@ -38,7 +48,7 @@ final class WallStore {
             });
             return Optional.of(cells.stream().map(c -> new BlockPos(c[0], c[1], c[2])).toList());
         } catch (IOException e) {
-            throw new UncheckedIOException("the wall layout in " + file + " won't read", e);
+            throw new UncheckedIOException("the " + kind + " layout in " + file + " won't read", e);
         }
     }
 
@@ -48,11 +58,11 @@ final class WallStore {
             Files.createDirectories(directory);
             JSON.writeValue(file(key).toFile(), layout.stream().map(c -> new int[]{c.x(), c.y(), c.z()}).toList());
         } catch (IOException e) {
-            throw new UncheckedIOException("the wall layout for " + key + " won't write to " + directory, e);
+            throw new UncheckedIOException("the " + kind + " layout for " + key + " won't write to " + directory, e);
         }
     }
 
     private Path file(String key) {
-        return directory.resolve("wall_" + key.replace(',', '_') + ".json");
+        return directory.resolve(kind + "_" + key.replace(',', '_') + ".json");
     }
 }

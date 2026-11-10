@@ -27,6 +27,17 @@ class WallStoreTest {
     }
 
     @Test
+    void theCampsFarmIsKeptApartFromItsWall() {
+        List<BlockPos> wall = List.of(new BlockPos(-56, 67, 36));
+        List<BlockPos> farm = List.of(new BlockPos(-32, 62, 28), new BlockPos(-33, 62, 28));
+        new WallStore(directory).save("-48,44", wall);
+        new WallStore(directory, "farm").save("-48,44", farm);
+
+        assertEquals(Optional.of(wall), new WallStore(directory).load("-48,44"));
+        assertEquals(Optional.of(farm), new WallStore(directory, "farm").load("-48,44"));
+    }
+
+    @Test
     void aLayoutThatWontReadIsAFault() throws Exception {
         Files.writeString(directory.resolve("wall_-48_44.json"), "not json");
 

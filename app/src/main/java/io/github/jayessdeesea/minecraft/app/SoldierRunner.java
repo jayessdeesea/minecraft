@@ -356,6 +356,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos>> walls = new ConcurrentHashMap<>();
     /** Each wall's layout on disk: laid out again after a restart, it would go up on top of itself. */
     private final WallStore wallStore;
+    /** The camp's farm, kept on disk like the wall: sited again after a restart, it moved to another pond. */
+    private final WallStore farmStore;
     /** The camp the squads build up, x and z - null for none. */
     private final int[] camp;
     /** Squad-loop cycles between measures of the foothold: about ten seconds. */
@@ -411,6 +413,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // The camp's farm, sited once and kept while its water is there: a farm is tended for days,
         // and live a farm sited again each check moved between ponds, and its crop was left to new ground.
         io.github.jayessdeesea.minecraft.bot.farm.FarmPlan keptFarm = campFarm;
+        if (keptFarm == null) {
+            // As it was before a restart, while its water is there.
+            keptFarm = farmStore.load(camp[0] + "," + camp[1]).filter(cells -> cells.size() > 1)
+                    .map(cells -> new io.github.jayessdeesea.minecraft.bot.farm.FarmPlan(cells.getFirst(), cells.subList(1, cells.size())))
+                    .orElse(null);
+        }
         if (keptFarm == null || !world.isWater(keptFarm.water().x(), keptFarm.water().y(), keptFarm.water().z())) {
             java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> walkable =
                     io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.reachable(world, at, CAMP_FARM_RADIUS + 4, FARM_REACH_BUDGET);
@@ -418,6 +426,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     walkable::contains).orElse(null);
             if (keptFarm != null) {
                 LOG.info("[Foothold] the camp's farm: by the water at {}, {} cells", keptFarm.water(), keptFarm.plot().size());
+                List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> kept = new java.util.ArrayList<>();
+                kept.add(keptFarm.water());
+                kept.addAll(keptFarm.plot());
+                farmStore.save(camp[0] + "," + camp[1], kept);
             }
             campFarm = keptFarm;
         }
@@ -626,6 +638,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                          @Value("${minecraft.state-dir}") String stateDir) {
         this.roster = roster;
         this.wallStore = new WallStore(java.nio.file.Path.of(stateDir));
+        this.farmStore = new WallStore(java.nio.file.Path.of(stateDir), "farm");
         this.camp = camp.isBlank() ? null : java.util.Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
         if (this.camp != null && this.camp.length != 2) {
             throw new IllegalArgumentException("minecraft.camp is x,z - not " + camp);
