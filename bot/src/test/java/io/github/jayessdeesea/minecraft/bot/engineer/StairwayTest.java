@@ -66,6 +66,56 @@ class StairwayTest {
         assertTrue(route.reachesGoal(), "no route down the stair");
     }
 
+    /** Flat dirt ground at y=63, with a pocket at (0, 0) open from 60 to 61: a body boxed in below. */
+    private static boolean pocket(BlockPos c) {
+        return c.y() <= 63 && !(c.x() == 0 && c.z() == 0 && c.y() >= 60 && c.y() <= 61);
+    }
+
+    private static WorldView soil(Predicate<BlockPos> solid, Predicate<BlockPos> notSoil) {
+        WorldView base = world(solid, c -> false);
+        return new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return base.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return base.isSolid(x, y, z) && !notSoil.test(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    @Test
+    void aStairUpOutOfAPocketIsDugAndWalksOut() {
+        WorldView world = soil(StairwayTest::pocket, c -> false);
+        BlockPos feet = new BlockPos(0, 60, 0);
+
+        List<BlockPos> dig = Stairway.up(world, feet).orElseThrow();
+
+        Set<BlockPos> dug = new HashSet<>(dig);
+        WorldView after = world(c -> pocket(c) && !dug.contains(c), c -> false);
+        assertTrue(Pathfinder.find(after, feet, new Goal(10.5, 64, 0.5, 2, 0.5), 20_000).reachesGoal(), "no way out up the stair: " + dig);
+        assertTrue(!Pathfinder.find(world, feet, new Goal(10.5, 64, 0.5, 2, 0.5), 20_000).reachesGoal(), "boxed in before");
+    }
+
+    @Test
+    void noStairUpIsLaidThroughCobblestone() {
+        WorldView world = soil(StairwayTest::pocket, c -> c.y() >= 60);
+
+        assertEquals(java.util.Optional.empty(), Stairway.up(world, new BlockPos(0, 60, 0)));
+    }
+
     @Test
     void noneIsLaidForAStepDownOrOverWater() {
         WorldView step = world(c -> c.y() <= 63 || c.y() == 64 && c.x() >= 6, c -> false);

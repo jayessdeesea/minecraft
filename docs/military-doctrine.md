@@ -256,13 +256,19 @@ risk and its own condition into a fall allowance:
 
 So a safe route always wins when one exists, and a fall is planned only when there's none, on
 foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier with no such
-route and nothing to build with is stranded. The squad's recovery drill (`command.Recovery`) picks
+route and nothing to build with is stranded - reported "no route" 20 squad cycles in a row (about
+20 seconds), since one failed hop across the camp isn't a soldier stuck; "no route" to where it's
+going outranks whatever its routine reports. The squad's recovery drill (`command.Recovery`) picks
 the nearest squadmate carrying 24 or more blocks - one at a time, never in contact - and sets it
 to build the engineer's stair down from where the stranded one stands (`bot.engineer.Stairway`,
 an `Order.Place`). The stair runs one block down and one along from the ledge's edge to the
 ground, the shortest of the four headings with clear air over it and no water under it. Each step
-stands on a block of its own, so it's two blocks a step, built from the ground up. Where no stair
-can be laid, the squadmate is sent to the stranded one instead. A recovery lasts until the
+stands on a block of its own, so it's two blocks a step, built from the ground up. One stranded
+below - boxed in a pocket, with no stair down to lay - gets the engineer's stair up instead
+(`Stairway.up`): the cells to dig, one block up and one along a step to open ground, dug from the
+top as an `Order.Dig` by the nearest squadmate with a pickaxe. Live, a soldier waited two runs in
+a pocket walled partly in cobblestone. Where neither stair can be laid, the squadmate is sent to
+the stranded one instead. A recovery lasts until the
 stranded soldier has moved two blocks off where it was stuck. Its own report flickers as it
 retries its route, and a recovery that ended with each flicker would pass the stair from one
 squadmate to another. A soldier that reports CANTCO prices the riskier

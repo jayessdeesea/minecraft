@@ -33,11 +33,14 @@ public final class Recovery {
     private static final class Episode {
         final Position at;
         final Optional<List<Cell>> stair;
+        /** With no stair down: the cells of a stair up to dig, if one can be laid. */
+        final Optional<List<Cell>> cut;
         String fetcher;
 
-        Episode(Position at, Optional<List<Cell>> stair) {
+        Episode(Position at, Optional<List<Cell>> stair, Optional<List<Cell>> cut) {
             this.at = at;
             this.stair = stair;
+            this.cut = cut;
         }
     }
 
@@ -79,6 +82,16 @@ public final class Recovery {
      * contact.
      */
     public List<Order> orders(List<SoldierStatus> reported, List<Order> orders, Function<SoldierStatus, Optional<List<Cell>>> stair) {
+        return orders(reported, orders, stair, s -> Optional.empty());
+    }
+
+    /**
+     * As {@link #orders(List, List, Function)}, and for one stranded below - in a pocket, with no
+     * stair down to build - {@code cut}, the engineer's stair up, dug by the nearest squadmate with a
+     * pickaxe: an {@code Order.Dig} of just its cells.
+     */
+    public List<Order> orders(List<SoldierStatus> reported, List<Order> orders, Function<SoldierStatus, Optional<List<Cell>>> stair,
+                              Function<SoldierStatus, Optional<List<Cell>>> cut) {
         Map<String, SoldierStatus> byName = new LinkedHashMap<>();
         reported.forEach(s -> byName.put(s.name(), s));
         recovering.entrySet().removeIf(e -> !byName.containsKey(e.getKey())
@@ -89,7 +102,8 @@ public final class Recovery {
                 strandedFor.remove(s.name());
             }
             if (stuck >= reports && !recovering.containsKey(s.name())) {
-                recovering.put(s.name(), new Episode(s.position(), stair.apply(s)));
+                Optional<List<Cell>> down = stair.apply(s).filter(c -> !c.isEmpty());
+                recovering.put(s.name(), new Episode(s.position(), down, down.isPresent() ? Optional.empty() : cut.apply(s)));
             }
         }
         if (reported.stream().anyMatch(s -> s.report() instanceof Report.InContact)) {
@@ -103,16 +117,43 @@ public final class Recovery {
                 // With no stair to build - stranded below, not up on a ledge - a pickaxe is as good as
                 // blocks: its route there cuts the steps the stranded one walks out by. Live, a soldier
                 // boxed in a pocket waited two runs, nobody in its squad carrying blocks enough.
-                episode.fetcher = nearestCarrier(e.getKey(), episode.at, reported, episode.stair.filter(c -> !c.isEmpty()).isEmpty());
+                episode.fetcher = nearestCarrier(e.getKey(), episode.at, reported, episode.stair.isEmpty());
             }
             if (episode.fetcher == null) {
                 continue;
             }
             Position at = episode.at;
-            result.set(names.indexOf(episode.fetcher), episode.stair.filter(cells -> !cells.isEmpty()).<Order>map(Order.Place::new)
+            result.set(names.indexOf(episode.fetcher), episode.stair.<Order>map(Order.Place::new)
+                    .or(() -> episode.cut.map(Recovery::dig))
                     .orElse(new Order.MoveTo(at.x(), at.y(), at.z(), TOLERANCE, TOLERANCE, Risk.LOW)));
         }
         return List.copyOf(result);
+    }
+
+    /** An {@code Order.Dig} of just {@code cells}: their box, and every other cell in it kept. */
+    static Order.Dig dig(List<Cell> cells) {
+        int[] lo = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE}, hi = {Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};
+        for (Cell c : cells) {
+            lo[0] = Math.min(lo[0], c.x());
+            lo[1] = Math.min(lo[1], c.y());
+            lo[2] = Math.min(lo[2], c.z());
+            hi[0] = Math.max(hi[0], c.x());
+            hi[1] = Math.max(hi[1], c.y());
+            hi[2] = Math.max(hi[2], c.z());
+        }
+        java.util.Set<Cell> in = java.util.Set.copyOf(cells);
+        java.util.Set<Cell> except = new java.util.HashSet<>();
+        for (int x = lo[0]; x <= hi[0]; x++) {
+            for (int y = lo[1]; y <= hi[1]; y++) {
+                for (int z = lo[2]; z <= hi[2]; z++) {
+                    Cell c = new Cell(x, y, z);
+                    if (!in.contains(c)) {
+                        except.add(c);
+                    }
+                }
+            }
+        }
+        return new Order.Dig(new Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]), java.util.Set.copyOf(except));
     }
 
     /** Whether {@code fetcher} can go on fetching: still in the squad, and neither stranded nor rejoining itself. */

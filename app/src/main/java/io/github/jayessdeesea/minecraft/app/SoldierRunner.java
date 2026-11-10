@@ -1367,6 +1367,20 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         };
     }
 
+    /** The engineer's stair up for a soldier stranded below, from where it stands: the cells to dig. */
+    private java.util.function.Function<SoldierStatus, Optional<List<io.github.jayessdeesea.minecraft.command.Cell>>> stairUp(String squadName) {
+        return stuck -> {
+            Position at = stuck.position();
+            Optional<List<io.github.jayessdeesea.minecraft.command.Cell>> stair = io.github.jayessdeesea.minecraft.bot.engineer.Stairway.up(world,
+                            io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(at.x(), at.y(), at.z()))
+                    .map(cells -> cells.stream().map(c -> new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())).toList());
+            stair.ifPresentOrElse(
+                    s -> LOG.info("[{}] RECOVERY: {} is stranded below at {} - a stair up laid out, {} blocks to dig", squadName, stuck.name(), at, s.size()),
+                    () -> LOG.warn("[{}] RECOVERY: {} is stranded at {} and no stair up can be dug from there either", squadName, stuck.name(), at));
+            return stair;
+        };
+    }
+
     private void orderSquad(String squadName, SquadState state, List<DeterministicSoldier> squad, List<SoldierStatus> statuses,
                             SquadOrder order, Optional<Position> principalAt) {
         // Formation slots, then replacements' link-up, then pace control (the point man halts for
@@ -1386,7 +1400,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         } else {
             orders = ReactToContact.orders(statuses, state.recovery.orders(state.reported,
                     Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, Formations.assign(order, statuses))),
-                            order.objective(), supplyPoint), stairDown(squadName)));
+                            order.objective(), supplyPoint), stairDown(squadName), stairUp(squadName)));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
         if (!java.util.Objects.equals(straggler, state.haltedFor)) {
@@ -2000,6 +2014,17 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 continue;
             }
             patrolLegs.remove(soldierName);
+            if (given instanceof Order.Dig dig) {
+                // The recovery drill's stair up: dug as ground work is, its own and nobody's upkeep.
+                upkeeping.remove(soldierName);
+                route(soldierName, dig);
+                // Where the clearer stands for its next cut; until it has one, toward the stair's foot.
+                Position at = clearers.get(soldierName).standAt().orElse(new Position(dig.box().minX() + 0.5, dig.box().maxY() + 1,
+                        dig.box().minZ() + 0.5));
+                byName.get(soldierName).receiveOrder(new Order.MoveTo(at.x(), at.y(), at.z(), clearers.get(soldierName).standAt().isPresent() ? 0.3 : 3,
+                        clearers.get(soldierName).standAt().isPresent() ? 0.5 : 3, Risk.LOW));
+                continue;
+            }
             if (given instanceof Order.Place place) {
                 // Concrete work: the soldier builds the cells, standing where the building says.
                 List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = place.cells().stream()

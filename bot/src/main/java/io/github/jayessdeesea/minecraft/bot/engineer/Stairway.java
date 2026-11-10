@@ -95,6 +95,53 @@ public final class Stairway {
         return Optional.empty();
     }
 
+    /** Steps at most up out of a pocket: deeper than this is the mine's, not a pocket's. */
+    static final int MAX_STEPS_UP = 12;
+
+    /**
+     * The cells to dig for the shortest stair from {@code feet} - where a soldier stands boxed in
+     * below the ground - up and out, one block up and one along a step: each step's body room, and
+     * the head room over the step before it, so the soldier jumps up into it. Empty if none can be
+     * laid: on every heading a cell no clear digs (cobblestone, a table), water, no floor to step
+     * onto, or more than {@link #MAX_STEPS_UP} steps. Live, a soldier waited two runs in a pocket
+     * its squad had no stair down for (docs/military-doctrine.md § 7).
+     */
+    public static Optional<List<BlockPos>> up(WorldView world, BlockPos feet) {
+        return java.util.Arrays.stream(HEADINGS)
+                .map(h -> flightUp(world, feet, h[0], h[1]))
+                .flatMap(Optional::stream)
+                .min(Comparator.comparingInt(List::size));
+    }
+
+    private static Optional<List<BlockPos>> flightUp(WorldView world, BlockPos feet, int dx, int dz) {
+        List<BlockPos> dig = new ArrayList<>();
+        BlockPos last = feet;
+        for (int k = 1; k <= MAX_STEPS_UP; k++) {
+            BlockPos step = new BlockPos(feet.x() + dx * k, feet.y() + k, feet.z() + dz * k);
+            if (!world.isSolid(step.x(), step.y() - 1, step.z()) || world.isHazard(step.x(), step.y() - 1, step.z())) {
+                return Optional.empty(); // nothing to step up onto
+            }
+            for (BlockPos cell : List.of(last.offset(0, 2, 0), step, step.offset(0, 1, 0))) {
+                if (world.isHazard(cell.x(), cell.y(), cell.z())) {
+                    return Optional.empty();
+                }
+                if (world.isSolid(cell.x(), cell.y(), cell.z())) {
+                    if (!Clearing.diggable(world, cell.x(), cell.y(), cell.z())) {
+                        return Optional.empty();
+                    }
+                    dig.add(cell);
+                }
+            }
+            // Out: open sky over the step, the ground's own level.
+            if (!world.isSolid(step.x(), step.y() + 2, step.z()) && !world.isSolid(step.x(), step.y() + 3, step.z())
+                    && !world.isSolid(step.x() + dx, step.y(), step.z() + dz)) {
+                return dig.isEmpty() ? Optional.empty() : Optional.of(List.copyOf(dig));
+            }
+            last = step;
+        }
+        return Optional.empty();
+    }
+
     private static boolean open(WorldView world, BlockPos cell) {
         return !world.isSolid(cell.x(), cell.y(), cell.z()) && !world.isHazard(cell.x(), cell.y(), cell.z());
     }

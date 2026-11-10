@@ -52,13 +52,6 @@ What's left:
     filled from water buckets (`Recipe.BUCKET` exists; carrying water needs the bucket's use), soul
     sand at the foot once there's Nether access, or a plain column until then - and a soldier's moves
     include riding it.
-- **A stair up for a soldier stranded below.** The recovery drill's engineer lays a stair down
-  from a ledge, never one up out of a pocket. Live (field35 to field38), Bob was boxed in a pocket at
-  (-38, 62, 38), its east side cobblestone, with no pickaxe and no blocks. The drill found him
-  stranded and sent the nearest squadmate with a pickaxe, but the squadmate's route in was a drop,
-  not cut steps, so it opened no way out. Wanted: the engineer lays the cells of a stair up from
-  where the stranded one stands to the ground, and a squadmate with a pickaxe digs them (a dig
-  command like `Order.Place`'s list, or `Order.Dig` per step).
 - **The respawn platform, live.** Replacements respawn on a patch of glass at y=102 near (-5, 9),
   17 blocks over the ground. The recovery drill's stair (docs/military-doctrine.md § 7) passes the
   squad simulation's copy of it; it wants seeing live, the next time a replacement lands there.

@@ -171,8 +171,14 @@ public final class Clearing {
         return Optional.ofNullable(best);
     }
 
-    /** The nearest cell to {@code block} a soldier can stand in and reach it from. */
+    /**
+     * The nearest cell to {@code block} a soldier can stand in and reach it from. Ground is dug from
+     * no more than a block below where it can be, as a hole is dug from its top: in the squad
+     * simulation, a squadmate digging a stair up to one boxed in below was sent to stand in the box.
+     * Not from above only: then a mound is climbed, on blocks put down, to dig its top.
+     */
     static Optional<BlockPos> standFor(WorldView world, BlockPos block, Set<BlockPos> excluded) {
+        boolean ground = !world.isLog(block.x(), block.y(), block.z()) && world.leaves(block.x(), block.y(), block.z()).isEmpty();
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -STAND_ACROSS; dx <= STAND_ACROSS; dx++) {
@@ -184,8 +190,8 @@ public final class Clearing {
                             || world.isLog(stand.x(), stand.y() - 1, stand.z()) || world.leaves(stand.x(), stand.y() - 1, stand.z()).isPresent()) {
                         continue;
                     }
-                    double distance = reach(stand, block);
-                    if (distance <= REACH && distance < bestDistance) {
+                    double distance = reach(stand, block) + (ground && stand.y() < block.y() - 1 ? REACH : 0);
+                    if (reach(stand, block) <= REACH && distance < bestDistance) {
                         best = stand;
                         bestDistance = distance;
                     }

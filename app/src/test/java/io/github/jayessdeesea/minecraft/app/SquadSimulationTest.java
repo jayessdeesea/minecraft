@@ -898,6 +898,47 @@ class SquadSimulationTest {
     }
 
     /**
+     * Flat, with a closed pocket in a block of stone below the ground at (10, 0) - feet room at y=61
+     * and a cell beside it a block deeper, at (11, 0) - roofed by the stone itself.
+     */
+    private static int pocketBelow(int x, int y, int z) {
+        boolean open = z == 0 && (x == 10 && y >= GROUND - 2 && y <= GROUND - 1 || x == 11 && y >= GROUND - 3 && y <= GROUND - 1);
+        // In stone, as live: a pickaxe digs it, bare hands don't.
+        boolean rock = x >= 6 && x <= 15 && z >= -4 && z <= 4 && y >= GROUND - 6 && y <= GROUND;
+        return open ? SimServer.AIR : rock ? SimServer.STONE : flat(x, y, z);
+    }
+
+    /**
+     * As live (field35 to field38): Dana boxed in a pocket below the ground with nothing to dig or
+     * build with, no stair down to lay. The engineer lays a stair up, a squadmate with a pickaxe digs
+     * it from the top, and she walks out.
+     */
+    @Test
+    void aSoldierBoxedInBelowIsDugOutByASquadmateWithAPickaxe() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::pocketBelow, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Dana");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(
+                        n -> n.equals("Dana") ? new PlayerPosition(10.5, GROUND - 2, 0.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> n.equals("Dana") ? List.of(new int[]{37, SimServer.ITEM_BREAD, 16}) : List.of(
+                                new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                                new int[]{37, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(5 * 60_000);
+
+        PlayerPosition dana = server.position("Dana");
+        assertTrue(dana.y() >= GROUND + 1, "Dana still below at " + dana + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
+    /**
      * As at the live respawn point: Dana on a platform 17 blocks over the ground with nothing to
      * build with, her only way down a fall costing most of her health. A squadmate carrying dirt
      * builds steps up to her, and she walks down them.

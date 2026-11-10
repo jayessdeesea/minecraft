@@ -34,6 +34,25 @@ class RecoveryTest {
     }
 
     @Test
+    void withAStairUpLaidTheSquadmateWithAPickaxeDigsJustItsCells() {
+        Position pocket = new Position(0.5, 60, 0.5);
+        Kit pick = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, true, 0, false);
+        List<SoldierStatus> squad = List.of(
+                soldier("Alice", new Position(20, 64, 0), new Report.InPosition(), 0),
+                new SoldierStatus("Bob", new Position(3, 64, 0), new Order.Idle(), new Report.InPosition(),
+                        Optional.of(new Condition(20, 20, 0, Optional.of(pick)))),
+                soldier("Dana", pocket, STUCK, 0));
+        List<Cell> stair = List.of(new Cell(0, 62, 0), new Cell(1, 61, 0), new Cell(1, 62, 0), new Cell(1, 63, 0), new Cell(2, 62, 0));
+
+        List<Order> orders = new Recovery().orders(squad, IDLE, NO_STAIR, s -> Optional.of(stair));
+
+        Order.Dig dig = (Order.Dig) orders.get(1);
+        assertEquals(new Box(0, 61, 0, 2, 63, 0), dig.box());
+        assertEquals(java.util.Set.of(new Cell(0, 61, 0), new Cell(0, 63, 0), new Cell(2, 61, 0), new Cell(2, 63, 0)), dig.except(),
+                "every cell of the box but the stair's kept");
+    }
+
+    @Test
     void aSoldierIsFetchedOnlyOnceItsBeenStrandedTheReportsAsked() {
         Position ledge = new Position(7.5, 81, 0.5);
         List<SoldierStatus> stuck = List.of(
