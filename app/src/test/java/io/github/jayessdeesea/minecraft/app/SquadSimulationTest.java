@@ -398,6 +398,42 @@ class SquadSimulationTest {
         assertEquals(0, filled, "cells of the mine filled in");
     }
 
+    /** Flat, with a shaft 6 deep down the 3x3 columns round the camp's mine head, (4, -4) from its centre. */
+    private static int shaftAtTheMineHead(int x, int y, int z) {
+        return x >= 3 && x <= 5 && z >= -5 && z <= -3 && y > GROUND - 6 && y <= GROUND ? SimServer.AIR : flat(x, y, z);
+    }
+
+    /** With nothing on disk - no squad on MINE since a restart - the mine head's shaft is still nobody's fill. */
+    @Test
+    void theShaftAtTheCampsMineHeadIsLeftOpenWithNothingOnDisk() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::shaftAtTheMineHead, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})));
+        runner.run();
+
+        clock.advance(4 * 60_000);
+
+        long filled = 0;
+        for (int x = 3; x <= 5; x++) {
+            for (int z = -5; z <= -3; z++) {
+                for (int y = GROUND - 5; y <= GROUND; y++) {
+                    filled += server.block(x, y, z) != SimServer.AIR ? 1 : 0;
+                }
+            }
+        }
+        assertEquals(0, filled, "cells of the shaft filled in");
+    }
+
     /** As {@link #pitInCamp}, with water in its bottom two layers: a flooded shaft. */
     private static int floodedPitInCamp(int x, int y, int z) {
         boolean pit = x >= 3 && x <= 5 && z >= 3 && z <= 5;

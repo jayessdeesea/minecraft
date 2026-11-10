@@ -994,6 +994,20 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         io.github.jayessdeesea.minecraft.command.Box dig = io.github.jayessdeesea.minecraft.command.Groundwork.dig(at, WALL_RADIUS - 1);
         // Inside the wall line, as the dig is: the wall's own footing is the masons' (Perimeter.open).
         io.github.jayessdeesea.minecraft.command.Box fill = io.github.jayessdeesea.minecraft.command.Groundwork.fill(at, WALL_RADIUS - 1);
+        // The camp's mine's shaft - the 3x3 columns round its head, where the night shift cuts it - is
+        // never ground work, by day or night, whoever's on it: live, a day's fill with no squad on
+        // MINE would have poured dirt down it.
+        if (camp != null) {
+            int hx = camp[0] + ChainOfCommand.MINE_HEAD_DX;
+            int hz = camp[1] + ChainOfCommand.MINE_HEAD_DZ;
+            for (int x = hx - 1; x <= hx + 1; x++) {
+                for (int z = hz - 1; z <= hz + 1; z++) {
+                    for (int y = fill.minY(); y <= dig.maxY(); y++) {
+                        except.add(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z));
+                    }
+                }
+            }
+        }
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> toDig = io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toClear(world, dig, except);
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> toFill = toDig.isEmpty()
                 ? io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toFill(world, fill, except) : List.of();

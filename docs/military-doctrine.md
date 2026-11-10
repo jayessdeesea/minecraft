@@ -742,8 +742,8 @@ or gravel block in its strip. Then filling: `Order.Fill(box, except)`, every ope
 column of its strip from the top down to the first solid block or water. The strips are cut from
 where the work is left, not the whole site, so no soldier is handed a strip with nothing in it.
 `except` is what neither touches: the squads' huts, the workshops, the farm, the wall line, the
-mine's walkway and landing - the mine kept on disk as the wall and the farm are, so it's the
-camp's whatever the squads' tasks. A soldier reports `Working(command, cells left)`.
+mine - the 3x3 columns round its head, where the night shift cuts it, and its walkway and
+landing, kept on disk as the wall and the farm are - so it's the camp's whatever the squads' tasks. A soldier reports `Working(command, cells left)`.
 
 A dig (`bot.engineer.Clearing.toClear`, `bot.supply.Clearer`, a `Digger` job; it outranks the
 mason for the hands) fells a tree from the bottom and takes the ground from the top down. It
