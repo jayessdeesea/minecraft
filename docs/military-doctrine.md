@@ -737,7 +737,8 @@ it, solid when the wall is laid out: a dig takes the nearest dirt first, and a p
 would otherwise eat in under it. Where the ground under a wall cell has gone anyway, the cells
 down to what's left are its footing, built first (`Perimeter.open`). Each soldier takes the nearest open cell no
 squadmate has taken that has a block to go against - so each column rises from its own ground,
-and on a slope the rows stand at many heights - stands just inside it, within 0.15 of the place's
+and on a slope the rows stand at many heights - stands just inside it (or just outside, or a
+column along either way, where the camp has been built over its own), within 0.15 of the place's
 centre as a hut builder does, and puts a block there,
 cobblestone first, then dirt, breaking first whatever stands in the cell that a block can't
 replace - a torch, a flower (`bot.supply.Mason`); one down to fewer than 4 digs dirt outside the

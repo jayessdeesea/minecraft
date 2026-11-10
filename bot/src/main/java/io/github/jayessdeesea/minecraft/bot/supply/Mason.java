@@ -247,17 +247,32 @@ public final class Mason {
      */
     static Optional<BlockPos> inside(WorldView world, BlockPos cell, BlockPos centre, int radius, Position soldier) {
         boolean out = Math.max(Math.abs(soldier.x() - (centre.x() + 0.5)), Math.abs(soldier.z() - (centre.z() + 0.5))) > radius + 0.5;
-        for (int ring : out ? new int[]{radius + 1, radius - 1} : new int[]{radius - 1, radius + 1}) {
-            int x = centre.x() + Math.clamp(cell.x() - centre.x(), -ring, ring);
-            int z = centre.z() + Math.clamp(cell.z() - centre.z(), -ring, ring);
-            // Up to three above the cell, as well as below: where the wall steps down a slope and the
-            // camp inside it is level, the ground inside stands higher - live, five wall cells with
-            // "nowhere inside to stand" held a wall open with a level camp a block or two above them.
-            for (int dy : new int[]{1, 0, -1, -2, 2, -3, 3}) { // nearest the cell's height first
-                BlockPos stand = new BlockPos(x, cell.y() + dy, z);
-                if (Pathfinder.standable(world, stand) && !stand.equals(cell) && !stand.equals(cell.offset(0, -1, 0))) {
-                    return Optional.of(stand);
+        // Straight in or out from the cell first; then a column along the wall either side, still in
+        // reach: live, a cell's column in and out were both built over, and the wall stood three
+        // blocks short of closing for a day.
+        boolean onZFace = Math.abs(cell.z() - centre.z()) == radius;
+        for (int along : new int[]{0, 1, -1}) {
+            for (int ring : out ? new int[]{radius + 1, radius - 1} : new int[]{radius - 1, radius + 1}) {
+                Optional<BlockPos> stand = standIn(world, cell, centre, ring, onZFace ? along : 0, onZFace ? 0 : along);
+                if (stand.isPresent()) {
+                    return stand;
                 }
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** A stand in the column {@code ring} out from {@code centre} toward {@code cell}, shifted {@code (sx, sz)} along the wall. */
+    private static Optional<BlockPos> standIn(WorldView world, BlockPos cell, BlockPos centre, int ring, int sx, int sz) {
+        int x = centre.x() + Math.clamp(cell.x() - centre.x(), -ring, ring) + sx;
+        int z = centre.z() + Math.clamp(cell.z() - centre.z(), -ring, ring) + sz;
+        // Up to three above the cell, as well as below: where the wall steps down a slope and the
+        // camp inside it is level, the ground inside stands higher - live, five wall cells with
+        // "nowhere inside to stand" held a wall open with a level camp a block or two above them.
+        for (int dy : new int[]{1, 0, -1, -2, 2, -3, 3}) { // nearest the cell's height first
+            BlockPos stand = new BlockPos(x, cell.y() + dy, z);
+            if (Pathfinder.standable(world, stand) && !stand.equals(cell) && !stand.equals(cell.offset(0, -1, 0))) {
+                return Optional.of(stand);
             }
         }
         return Optional.empty();

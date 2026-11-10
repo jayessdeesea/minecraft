@@ -50,6 +50,33 @@ class MasonTest {
         }
     };
 
+    @Test
+    void aWallCellWhoseOwnColumnsAreBuiltOverIsBuiltFromTheColumnBeside() {
+        // The south wall cell (1, 64, 3) of a camp 3 out; its columns in (z=2) and out (z=4) filled to y=71.
+        WorldView builtOver = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND || x == 1 && (z == 2 || z == 4) && y <= GROUND + 7;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        BlockPos cell = new BlockPos(1, GROUND, 3);
+
+        BlockPos stand = Mason.inside(builtOver, cell, CENTRE, 3, new Position(0.5, GROUND, 0.5)).orElseThrow();
+
+        assertEquals(2, stand.z(), "inside the wall");
+        assertEquals(1, Math.abs(stand.x() - cell.x()), "a column along from the cell's own: " + stand);
+    }
+
     private final PlaySession session = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(),
             new Class<?>[]{PlaySession.class}, (proxy, method, args) -> {
                 switch (method.getName()) {
