@@ -743,7 +743,7 @@ column of its strip from the top down to the first solid block or water. The str
 where the work is left, not the whole site, so no soldier is handed a strip with nothing in it.
 `except` is what neither touches: the squads' huts, the workshops, the farm, the wall line, the
 mine - the 3x3 columns round its head, where the night shift cuts it, and its walkway and
-landing, kept on disk as the wall and the farm are - so it's the camp's whatever the squads' tasks. A soldier reports `Working(command, cells left)`.
+landing - so it's the camp's whatever the squads' tasks. A soldier reports `Working(command, cells left)`.
 
 A dig (`bot.engineer.Clearing.toClear`, `bot.supply.Clearer`, a `Digger` job; it outranks the
 mason for the hands) fells a tree from the bottom and takes the ground from the top down. It
@@ -800,9 +800,18 @@ raised anew every cycle.
 *How we use it:* stone near the surface runs out round a camp, and iron and diamonds lie deep.
 An objective's task can be `MINE`: the squad cuts a staircase down to its y, the only task whose
 y is a depth rather than the ground's height. The stairs go at the objective's x and z, or the
-nearest head within 8 blocks where every step can be cut clear of water and lava and over a floor,
+nearest head within 12 blocks where every step can be cut clear of water and lava and over a floor,
 as the loaded chunks show them (`Staircase.site`). Beside a pond, the shaft moves off it rather
-than stopping at its first step.
+than stopping at its first step. A head is on the ground: the highest standing cell near the
+camp's ground level that isn't on a tree, so an oak grown over the head doesn't lift it onto the
+canopy. When none can be sited, the log says why at the objective itself - the first step's
+water, lava or open cave.
+
+The camp's staircase is kept on disk, as the wall and the farm are (its head and last step,
+`app.WallStore` kind `stairs`), and after a restart it's cut on down where it was sited rather
+than sited again. Sited afresh each time, the ground over a part-cut shaft reads differently -
+a block dropped on the head, a soldier standing down the shaft - and each new staircase is
+started across the old ones, until no clear one is left near the head.
 
 The staircase (`bot.supply.Staircase`) is a spiral round a central pillar: one block down a
 step, round the eight cells about the pillar, so the shaft stays inside 3x3 and passes under its

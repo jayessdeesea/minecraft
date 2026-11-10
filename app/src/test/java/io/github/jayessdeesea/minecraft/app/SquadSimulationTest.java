@@ -376,7 +376,9 @@ class SquadSimulationTest {
                 }
             }
         }
-        new WallStore(state, "mine").save("0,0", shaft);
+        io.github.jayessdeesea.minecraft.bot.supply.Staircase kept = new io.github.jayessdeesea.minecraft.bot.supply.Staircase(
+                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(4, GROUND + 1, 4), GROUND - 5);
+        new WallStore(state, "stairs").save("0,0", List.of(kept.head(), kept.step(kept.steps() - 1)));
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::pitInCamp, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
@@ -396,6 +398,58 @@ class SquadSimulationTest {
 
         long filled = shaft.stream().filter(c -> server.block(c.x(), c.y(), c.z()) != SimServer.AIR).count();
         assertEquals(0, filled, "cells of the mine filled in");
+    }
+
+    /** The camp's mine as kept on disk in {@link #aRestartCutsTheCampsKeptStaircaseOnDown}: from (4, 64, 4) down to y=16. */
+    private static final io.github.jayessdeesea.minecraft.bot.supply.Staircase KEPT = new io.github.jayessdeesea.minecraft.bot.supply.Staircase(
+            new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(4, GROUND + 1, 4), 16);
+
+    /**
+     * Flat, with {@link #KEPT}'s first six steps cut, and a block of dirt dropped on its head - as
+     * live, where the ground over an old shaft read a block higher than when it was sited.
+     */
+    private static int keptStairsCut(int x, int y, int z) {
+        if (x == 4 && y == GROUND + 1 && z == 4) {
+            return SimServer.DIRT;
+        }
+        for (int k = 0; k < 6; k++) {
+            if (KEPT.cells(k).contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z))) {
+                return SimServer.AIR;
+            }
+        }
+        return flat(x, y, z);
+    }
+
+    /**
+     * After a restart the camp's mine is the staircase kept on disk, cut on down: live, sited again
+     * from the ground as it then read, a new one was started over the old each time - until none
+     * could be.
+     */
+    @Test
+    void aRestartCutsTheCampsKeptStaircaseOnDown() {
+        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsCut, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
+                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(10 * 60_000);
+
+        for (int k = 6; k < 16; k++) {
+            for (io.github.jayessdeesea.minecraft.bot.nav.BlockPos c : KEPT.cells(k)) {
+                assertEquals(SimServer.AIR, server.block(c.x(), c.y(), c.z()), "step " + (k + 1) + " of the kept staircase at " + c
+                        + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+            }
+        }
     }
 
     /** Flat, with a shaft 6 deep down the 3x3 columns round the camp's mine head, (4, -4) from its centre. */

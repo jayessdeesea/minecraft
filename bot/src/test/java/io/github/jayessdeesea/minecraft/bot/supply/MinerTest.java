@@ -31,13 +31,25 @@ class MinerTest {
     private final Set<BlockPos> dug = new HashSet<>();
     private final Set<BlockPos> water = new HashSet<>();
     private final Set<BlockPos> ore = new HashSet<>();
+    private final Set<BlockPos> tree = new HashSet<>();
     private final List<Runnable> answers = new ArrayList<>();
 
     private final WorldView world = new WorldView() {
         @Override
         public boolean isSolid(int x, int y, int z) {
             BlockPos cell = new BlockPos(x, y, z);
-            return y < GROUND && !dug.contains(cell) && !water.contains(cell);
+            return tree.contains(cell) || y < GROUND && !dug.contains(cell) && !water.contains(cell);
+        }
+
+        @Override
+        public Optional<String> leaves(int x, int y, int z) {
+            BlockPos cell = new BlockPos(x, y, z);
+            return tree.contains(cell) && !(x == 3 && z == 0) ? Optional.of("oak") : Optional.empty();
+        }
+
+        @Override
+        public boolean isLog(int x, int y, int z) {
+            return x == 3 && z == 0 && tree.contains(new BlockPos(x, y, z));
         }
 
         @Override
@@ -185,6 +197,25 @@ class MinerTest {
         assertTrue(stairs.clear(world), "every step clear of the water");
         assertTrue(stairs.head().x() < 0, "sited away from the pond, west: " + stairs.head());
         assertTrue(Math.max(Math.abs(stairs.head().x()), Math.abs(stairs.head().z())) <= Staircase.SITE_RADIUS);
+    }
+
+    @Test
+    void anOakOverThePlaceAskedTakesTheStairsFromTheGroundNotItsCanopy() {
+        // Live, an oak grew beside the camp's mine head, its canopy over it: the trunk 3 east, 4 high.
+        for (int y = GROUND; y < GROUND + 4; y++) {
+            tree.add(new BlockPos(3, y, 0));
+        }
+        for (int x = -2; x <= 5; x++) {
+            for (int z = -2; z <= 2; z++) {
+                for (int y = GROUND + 3; y <= GROUND + 4; y++) {
+                    tree.add(new BlockPos(x, y, z));
+                }
+            }
+        }
+
+        Staircase stairs = Staircase.site(world, 0, 0, GROUND, 16).orElseThrow();
+
+        assertEquals(new BlockPos(0, GROUND, 0), stairs.head(), "sited where asked, on the ground under the leaves");
     }
 
     @Test

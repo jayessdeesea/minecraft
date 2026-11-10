@@ -382,13 +382,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     /** The camp's farm, kept on disk like the wall: sited again after a restart, it moved to another pond. */
     private final WallStore farmStore;
     /**
-     * The camp's mine - its staircase's walkway and landing - kept on disk like the wall, and kept
-     * out of the camp's ground work whatever the squads' tasks: with no squad on MINE, the shaft
-     * was no squad's, and the camp's fill would have poured dirt down it.
+     * The camp's mine - its staircase, as its head and its last step's feet - kept on disk like the
+     * wall. After a restart the same staircase is cut on down, not sited afresh: live, sited again
+     * from wherever the squad stood, thirty-odd staircases were started round the mine head, until
+     * no new one could be cut between them. And its cells are kept out of the camp's ground work
+     * whatever the squads' tasks: with no squad on MINE, the shaft was no squad's, and the camp's
+     * fill would have poured dirt down it.
      */
     private final WallStore mineStore;
-    /** The camp's mine's cells, as last saved - null until loaded. Squad loop only. */
-    private List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campMine;
+    /** The camp's mine, as last saved - null until loaded, empty for none. Squad loop only. */
+    private Optional<io.github.jayessdeesea.minecraft.bot.supply.Staircase> campStairs;
     /** The camp the squads build up, x and z - null for none. */
     private final int[] camp;
     /** Squad-loop cycles between measures of the foothold: about ten seconds. */
@@ -679,7 +682,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         this.roster = roster;
         this.wallStore = new WallStore(java.nio.file.Path.of(stateDir));
         this.farmStore = new WallStore(java.nio.file.Path.of(stateDir), "farm");
-        this.mineStore = new WallStore(java.nio.file.Path.of(stateDir), "mine");
+        this.mineStore = new WallStore(java.nio.file.Path.of(stateDir), "stairs");
         this.camp = camp.isBlank() ? null : java.util.Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
         if (this.camp != null && this.camp.length != 2) {
             throw new IllegalArgumentException("minecraft.camp is x,z - not " + camp);
@@ -998,12 +1001,15 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // never ground work, by day or night, whoever's on it: live, a day's fill with no squad on
         // MINE would have poured dirt down it.
         if (camp != null) {
-            int hx = camp[0] + ChainOfCommand.MINE_HEAD_DX;
-            int hz = camp[1] + ChainOfCommand.MINE_HEAD_DZ;
-            for (int x = hx - 1; x <= hx + 1; x++) {
-                for (int z = hz - 1; z <= hz + 1; z++) {
-                    for (int y = fill.minY(); y <= dig.maxY(); y++) {
-                        except.add(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z));
+            List<int[]> heads = new java.util.ArrayList<>();
+            heads.add(new int[]{camp[0] + ChainOfCommand.MINE_HEAD_DX, camp[1] + ChainOfCommand.MINE_HEAD_DZ});
+            campStairs().ifPresent(s -> heads.add(new int[]{s.head().x(), s.head().z()}));
+            for (int[] h : heads) {
+                for (int x = h[0] - 1; x <= h[0] + 1; x++) {
+                    for (int z = h[1] - 1; z <= h[1] + 1; z++) {
+                        for (int y = fill.minY(); y <= dig.maxY(); y++) {
+                            except.add(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z));
+                        }
                     }
                 }
             }
@@ -1257,12 +1263,23 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      * What levelling the camp never digs: its wall, every squad's hut, and the ground under each
      * workshop's stand and fixtures - a workshop on a rise stays standing.
      */
-    /** The camp's mine's walkway and landing, as kept on disk: empty for no camp, or no mine cut. */
-    private List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campMine() {
-        if (campMine == null) {
-            campMine = camp == null ? List.of() : mineStore.load(camp[0] + "," + camp[1]).orElse(List.of());
+    /** The camp's mine, as kept on disk: empty for no camp, or no mine sited. */
+    private Optional<io.github.jayessdeesea.minecraft.bot.supply.Staircase> campStairs() {
+        if (campStairs == null) {
+            campStairs = camp == null ? Optional.empty() : mineStore.load(camp[0] + "," + camp[1])
+                    .filter(kept -> kept.size() == 2)
+                    .map(kept -> new io.github.jayessdeesea.minecraft.bot.supply.Staircase(kept.get(0), kept.get(1).y()));
         }
-        return campMine;
+        return campStairs;
+    }
+
+    /** The camp's mine's walkway and landing, as kept on disk: empty for no camp, or no mine sited. */
+    private List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campMine() {
+        return campStairs().map(s -> {
+            List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells = new java.util.ArrayList<>(s.walkway());
+            cells.addAll(s.landing());
+            return cells;
+        }).orElse(List.of());
     }
 
     private java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> campKeep() {
@@ -1784,16 +1801,32 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // water - live, the camp's mine stopped at its second step by a pond. Nowhere there is
             // said once and looked for again a minute on: live, it was searched and said every
             // second, 747 times, beside a flooded shaft.
+            // The camp's mine, kept from before a restart, is cut on down wherever it was sited.
+            int depth = (int) Math.floor(o.location().y());
+            Optional<io.github.jayessdeesea.minecraft.bot.supply.Staircase> kept = campStairs().filter(k ->
+                    Math.max(Math.abs(k.head().x() - x), Math.abs(k.head().z() - z)) <= io.github.jayessdeesea.minecraft.bot.supply.Staircase.SITE_RADIUS
+                            && k.bottom() == Math.max(io.github.jayessdeesea.minecraft.bot.supply.Staircase.DEEPEST, Math.min(depth, k.head().y() - 1)));
+            if (kept.isPresent()) {
+                LOG.info("[{}] MINE: the camp's staircase, kept on disk: down from {} to y={}", squadName, kept.get().head(), kept.get().bottom());
+                state.stairsFor = new int[]{x, z};
+                treeClaims.addAll(kept.get().walkway());
+                return kept.get();
+            }
             boolean failedHere = state.stairsFor != null && state.stairsFor[0] == x && state.stairsFor[1] == z;
             if (failedHere && clockwork.millis() < state.stairsRetryAt) {
                 return null;
             }
+            // Its head on the camp's ground, not where a soldier stands: live, one standing down an
+            // old shaft had a staircase sited from a step in it.
+            int nearY = campGround != null && Math.hypot(campGround.x() - x, campGround.z() - z) <= 2 * io.github.jayessdeesea.minecraft.bot.supply.Staircase.SITE_RADIUS
+                    ? campGround.y() : (int) Math.floor(statuses.get(0).position().y());
             Optional<io.github.jayessdeesea.minecraft.bot.supply.Staircase> sited = io.github.jayessdeesea.minecraft.bot.supply.Staircase.site(
-                    world, x, z, (int) Math.floor(statuses.get(0).position().y()), (int) Math.floor(o.location().y()));
+                    world, x, z, nearY, depth);
             if (sited.isEmpty()) {
                 if (!failedHere) {
-                    LOG.warn("[{}] MINE: nowhere within {} blocks of x={} z={} a staircase can be cut down clear of water and lava",
-                            squadName, io.github.jayessdeesea.minecraft.bot.supply.Staircase.SITE_RADIUS, x, z);
+                    LOG.warn("[{}] MINE: nowhere within {} blocks of x={} z={} a staircase can be cut down clear of water and lava - there itself, {}",
+                            squadName, io.github.jayessdeesea.minecraft.bot.supply.Staircase.SITE_RADIUS, x, z,
+                            io.github.jayessdeesea.minecraft.bot.supply.Staircase.whyNot(world, x, z, nearY, depth));
                 }
                 state.stairsFor = new int[]{x, z};
                 state.stairsRetryAt = clockwork.millis() + STAIRS_RETRY_MILLIS;
@@ -1806,15 +1839,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             return sited.get();
         }).orElse(null);
         state.stairs = stairs;
-        if (stairs != null && camp != null) {
-            List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> mine = new java.util.ArrayList<>(stairs.walkway());
-            mine.addAll(stairs.landing());
-            mine.sort(java.util.Comparator.comparingInt(io.github.jayessdeesea.minecraft.bot.nav.BlockPos::y)
-                    .thenComparingInt(io.github.jayessdeesea.minecraft.bot.nav.BlockPos::x).thenComparingInt(io.github.jayessdeesea.minecraft.bot.nav.BlockPos::z));
-            if (!mine.equals(campMine())) {
-                mineStore.save(camp[0] + "," + camp[1], mine);
-                campMine = List.copyOf(mine);
-            }
+        if (stairs != null && camp != null && !campStairs().equals(Optional.of(stairs))) {
+            mineStore.save(camp[0] + "," + camp[1], List.of(stairs.head(), stairs.step(stairs.steps() - 1)));
+            campStairs = Optional.of(stairs);
         }
         siteWorkshop(squadName, state, statuses, plan == null ? List.of()
                 : java.util.stream.Stream.of(plan.cells(), plan.floor(), plan.floor().stream().map(f -> new Position(f.x(), f.y() + 1, f.z())).toList())

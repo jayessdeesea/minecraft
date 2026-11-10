@@ -100,8 +100,20 @@ public record Staircase(BlockPos head, int bottom) {
     /** How far into a branch its torch goes: the middle of its 8. */
     static final int BRANCH_LIGHT = 4;
 
-    /** Whether the landing is cut: both recesses open, or holding the mine base's table and furnace. */
+    /**
+     * Whether the landing is cut: every step down to it open, and both recesses open or holding the
+     * mine base's table and furnace. Live, a cave at the landing's depth left its recesses open
+     * while the stairs were a third of the way down, and a soldier set off for a workshop it had
+     * no way to reach.
+     */
     public boolean landingCut(WorldView world) {
+        for (int k = 0; k < steps(); k++) {
+            for (BlockPos cell : cells(k)) {
+                if (world.isSolid(cell.x(), cell.y(), cell.z()) && world.workstation(cell.x(), cell.y(), cell.z()).isEmpty()) {
+                    return false;
+                }
+            }
+        }
         return landing().stream().allMatch(r -> (!world.isSolid(r.x(), r.y(), r.z()) || world.workstation(r.x(), r.y(), r.z()).isPresent())
                 && !world.isSolid(r.x(), r.y() + 1, r.z()));
     }
@@ -192,9 +204,8 @@ public record Staircase(BlockPos head, int bottom) {
         return List.of(feet.offset(0, 2, 0), feet.offset(0, 1, 0), feet);
     }
 
-    /** The staircase's head at the ground at ({@code x}, {@code z}): the highest standing cell within 24 blocks of {@code nearY}. */
     /** How far from the place asked a staircase is sited, when the ground there won't take one. */
-    public static final int SITE_RADIUS = 8;
+    public static final int SITE_RADIUS = 12;
 
     /**
      * A staircase down to {@code depth} (no deeper than {@link #DEEPEST}) as near ({@code x},
@@ -233,19 +244,40 @@ public record Staircase(BlockPos head, int bottom) {
 
     /** Whether every step can be cut as the world shows it: no water or lava beside one, and a floor under each. */
     boolean clear(WorldView world) {
-        List<Cut> all = cuts();
-        for (int k = 0; k < steps(); k++) {
-            if (Miner.hazard(world, all.get(k), k).isPresent()) {
-                return false;
-            }
-        }
-        return true;
+        return blocked(world).isEmpty();
     }
 
+    /** Why a step can't be cut as the world shows it - the first one's water, lava or open cave - or empty if every one can. */
+    public Optional<String> blocked(WorldView world) {
+        List<Cut> all = cuts();
+        for (int k = 0; k < steps(); k++) {
+            Optional<String> why = Miner.hazard(world, all.get(k), k);
+            if (why.isPresent()) {
+                return why;
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** The staircase {@link #site} tries at ({@code x}, {@code z}) itself, and why it won't do - for saying why none was sited. */
+    public static String whyNot(WorldView world, int x, int z, int nearY, int depth) {
+        Optional<BlockPos> head = headAt(world, x, z, nearY);
+        if (head.isEmpty()) {
+            return "no ground to stand on within 24 blocks of y=" + nearY;
+        }
+        Staircase stairs = new Staircase(head.get(), Math.max(DEEPEST, Math.min(depth, head.get().y() - 1)));
+        return "from " + head.get() + " to y=" + stairs.bottom() + ": " + stairs.blocked(world).orElse("clear");
+    }
+
+    /**
+     * The ground at ({@code x}, {@code z}): the highest standing cell within 24 blocks of {@code nearY}
+     * on something other than a tree. Live, an oak grew on the camp's mine head, and a staircase sited
+     * from its canopy found the open air under the leaves no floor.
+     */
     public static Optional<BlockPos> headAt(WorldView world, int x, int z, int nearY) {
         for (int y = nearY + 24; y >= nearY - 24; y--) {
             BlockPos cell = new BlockPos(x, y, z);
-            if (Pathfinder.standable(world, cell)) {
+            if (Pathfinder.standable(world, cell) && !world.isLog(x, y - 1, z) && world.leaves(x, y - 1, z).isEmpty()) {
                 return Optional.of(cell);
             }
         }
