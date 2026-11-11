@@ -788,6 +788,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * site with no water near it, reporting it was in position.
      */
     private final Map<String, String> farmless = new ConcurrentHashMap<>();
+    /** Soldiers already said to keep the camp's farm for a dry site - squad loop only. */
+    private final Set<String> farmlessLogged = ConcurrentHashMap.newKeySet();
     /** The key of the camp's wall its standard measures: the squads at the camp work this one - measure writes, squad loop reads. */
     private volatile String campWallKey;
     /** What each soldier's squad is gathering, and around where - squad loop writes, tick reads; absent when nothing. */
@@ -2433,12 +2435,19 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Position farmSite = farmOrdered.get().location();
                 String dry = String.format(Locale.ROOT, "no ground to farm by water within %d blocks of (%d, %d, %d)",
                         FARM_SITE_RADIUS, (int) Math.floor(farmSite.x()), (int) Math.floor(farmSite.y()), (int) Math.floor(farmSite.z()));
-                if (campFarm != null && !dry.equals(farmless.get(soldierName))) {
-                    LOG.info("[{}] {}: {} - keeps the camp's farm", squadName, soldierName, dry);
+                // Said only with no camp's farm to keep instead: live, a farmer keeping the camp's
+                // farm, pulled off it to fight, reported its dry site as CANTCO while in contact.
+                if (campFarm != null) {
+                    if (farmlessLogged.add(soldierName)) {
+                        LOG.info("[{}] {}: {} - keeps the camp's farm", squadName, soldierName, dry);
+                    }
+                    farmless.remove(soldierName);
+                } else {
+                    farmless.put(soldierName, dry);
                 }
-                farmless.put(soldierName, dry);
             } else {
                 farmless.remove(soldierName);
+                farmlessLogged.remove(soldierName);
             }
             long now = clockwork.millis();
             Order work = ground.get(soldierName);
