@@ -170,6 +170,19 @@ public final class Farmer {
         next(world, farm.get());
     }
 
+    /** Why the farm's cells aren't its next job: for a farmer stuck with work it doesn't start. */
+    public synchronized String passedOver(WorldView world, FarmPlan farm) {
+        List<BlockPos> plot = farm.plot();
+        long claimed = plot.stream().filter(c -> claims.contains(c) || claims.contains(c.offset(0, 1, 0))).count();
+        long barred = plot.stream().filter(c -> passedOver.barred(c, ticks)).count();
+        long sharedBarred = plot.stream().filter(c -> shared.barred(c, ticks)).count();
+        long tillable = plot.stream().filter(c -> world.isTillable(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z())).count();
+        long farmland = plot.stream().filter(c -> world.isFarmland(c.x(), c.y(), c.z())).count();
+        return plot.size() + " cells: " + claimed + " claimed, " + barred + " passed over, " + sharedBarred + " passed over by all, "
+                + tillable + " to till, " + farmland + " farmland; " + inventory.count(ItemClass.SEEDS) + " seeds, "
+                + inventory.count(ItemClass.HOE) + " hoes" + (cooldown > 0 ? ", cooling down" : "");
+    }
+
     /** The most pressing job left on {@code farm}, started. */
     private void next(WorldView world, FarmPlan farm) {
         // A harvest claims the crop over its cell, not the cell: live, four farmers harvested one

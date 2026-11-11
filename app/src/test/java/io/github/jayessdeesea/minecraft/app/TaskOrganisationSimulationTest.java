@@ -142,6 +142,22 @@ class TaskOrganisationSimulationTest {
     }
 
     /**
+     * A farmer sited where there's no ground to farm by water says so, so its squad leader can site
+     * it again: live, one stood a day at its site reporting it was in position.
+     */
+    @Test
+    void aFarmerSitedWithNoWaterSaysItCantFarmThere() throws IOException {
+        SimClock clock = new SimClock();
+        run(clock, SquadSimulationTest::flat, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 8, "y": %d, "z": 8}]""".formatted(GROUND + 1), "[]");
+        clock.advance(2 * 60_000);
+
+        List<String> log = Files.readAllLines(Path.of("target/sim/aFarmerSitedWithNoWaterSaysItCantFarmThere.log"));
+        assertTrue(log.stream().anyMatch(l -> l.contains("Alice") && l.contains("CANTCO") && l.contains("no ground to farm")),
+                "Alice says she can't farm there");
+    }
+
+    /**
      * As the model gives it: a new miner also sent to its site, at the mine's depth. It gets there on
      * the ground over it, and goes on to mine.
      */

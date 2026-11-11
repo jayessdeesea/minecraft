@@ -774,6 +774,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, List<BlockPos>> lighting = new ConcurrentHashMap<>();
     /** The farm each soldier keeps, while its squad's objective is one - squad loop writes, tick reads. */
     private final Map<String, FarmPlan> farming = new ConcurrentHashMap<>();
+    /**
+     * Why each soldier ordered to farm has no farm: no ground by water at its site - squad loop
+     * writes, tick reads. Said, so its squad leader sites it again: live, a farmer stood a day at a
+     * site with no water near it, reporting it was in position.
+     */
+    private final Map<String, String> farmless = new ConcurrentHashMap<>();
     /** What each soldier's squad is gathering, and around where - squad loop writes, tick reads; absent when nothing. */
     private final Map<String, Objective> gathering = new ConcurrentHashMap<>();
     /** No hostile this close to a soldier, nor any squadmate in contact, before it stops to make a sword. */
@@ -2398,6 +2404,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 farming.remove(soldierName);
             }
+            Optional<Objective> farmOrdered = taskOf(squadName, Objective.Task.Farm.class);
+            if (farmOrdered.isPresent() && farm == null) {
+                Position farmSite = farmOrdered.get().location();
+                farmless.put(soldierName, String.format(Locale.ROOT, "no ground to farm by water within %d blocks of (%d, %d, %d)",
+                        FARM_SITE_RADIUS, (int) Math.floor(farmSite.x()), (int) Math.floor(farmSite.y()), (int) Math.floor(farmSite.z())));
+            } else {
+                farmless.remove(soldierName);
+            }
             long now = clockwork.millis();
             Order work = ground.get(soldierName);
             if (work != null && !state.relieved(soldierName, groundTask(work), now)) {
@@ -3603,6 +3617,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + (foodCalls ? ", food calls" : "") + (threatened ? ", threatened" : "")
                         + ", " + lights.size() + " cells to light with " + inventory.count(ItemClass.TORCH) + " torches"
                         + (lights.isEmpty() ? "" : " (" + lamplighter.passedOver(world, lights) + ")")
+                        + (farming.get(name) == null ? "" : ", farm " + farmer.passedOver(world, farming.get(name)))
                         + ", squad's task " + objectiveOf(unitOf(name, definition.squad()))
                         .map(o -> OrderTrace.taskName(o.task()) + " at " + o.location()).orElse("none"))
                         .ifPresent(line -> {
@@ -3680,6 +3695,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     : !lights.isEmpty() && torchesWanted && !torchmaker.active() && !gatherer.active() && !armourer.active()
                     ? new Report.Cantco("no torches to light the ground with, and " + torchShortfall(inventory, workshops.get(name)))
                     : farming.containsKey(name) && !farmer.active() && farmer.stuck().isPresent() ? new Report.Cantco(farmer.stuck().get())
+                    : !farming.containsKey(name) && farmless.containsKey(name) ? new Report.Cantco(farmless.get(name))
                     : farmer.active() || armourer.active() && armourer.making().stream()
                             .allMatch(r -> r == Recipe.WOODEN_HOE || r == Recipe.BREAD) ? new Report.Farming()
                     : armourer.active()

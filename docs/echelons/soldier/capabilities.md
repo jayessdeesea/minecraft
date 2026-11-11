@@ -39,6 +39,8 @@ seconds or when stuck:
   at, reports CANTCO with the last one's place and reason - clearing, walling, lighting, farming, or
   carrying to the stockpile - and that CANTCO is a request to its squad leader, timed and alarmed
   (docs/military-doctrine.md § 4). One success, or the work going away, ends it.
+  Work it can't begin says so at once: a farm ordered where there's no ground by water within 8
+  blocks is CANTCO "no ground to farm by water within 8 blocks of (x, y, z)".
 - **Sprints** on a long move (over 8 blocks) while it carries rations, or on an urgent order or
   under fire, and never at food 6 or below.
 
