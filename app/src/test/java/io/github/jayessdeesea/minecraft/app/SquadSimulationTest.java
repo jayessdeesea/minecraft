@@ -938,6 +938,38 @@ class SquadSimulationTest {
     }
 
     /**
+     * SECURE ordered at the camp, the general's point a few blocks off its centre and above its
+     * ground, as live: the squad lights the camp's ground, and the camp's standard is met. Live,
+     * SECURE lit a disc round the point and reported DONE, while the camp's own disc had 8 cells dark
+     * for days - two measures of one standard, and nobody working the one that was open.
+     */
+    @Test
+    void aSquadSentToLightTheCampLightsTheCampsOwnGround() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position point = new Position(4.5, GROUND + 3, 4.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Light the camp", point, "Nothing spawns inside",
+                new Objective.Task.Secure())), squadLeader(point),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_OAK_LOG, 15},
+                        new int[]{11, SimServer.ITEM_COBBLESTONE, 16})));
+        runner.run();
+
+        clock.advance(30 * 60_000);
+
+        io.github.jayessdeesea.minecraft.command.Foothold.Standard lit = chain.foothold().orElseThrow().standards().stream()
+                .filter(s -> s.name().equals("the camp's ground lit")).findFirst().orElseThrow();
+        assertTrue(lit.met(), "the camp's ground: " + lit.status() + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 8), server.log.size()));
+    }
+
+    /**
      * Flat, with a pit 3 deep and two across at (30, 30), away from the camp, one cell of it a block
      * deeper - a step down, so it's no room to cut a door out of, as live - and a torch on every
      * floor of it.

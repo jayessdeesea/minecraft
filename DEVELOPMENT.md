@@ -197,8 +197,9 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 (`garrison-state/`, git-ignored).
 
 The log lines to read first: `[Casualty]`, each death with the soldier's last seconds (§ 6);
-`[Alert]`, a soldier stuck in place for a minute other than while its squad hides or sleeps (§ 3); and `[AAR]`, each dawn's review of the
-day before (§ 17).
+`[Alert]`, a soldier stuck in place for a minute other than while its squad hides or sleeps (§ 3); `[AAR]`, each dawn's review of the
+day before (§ 17); and `[Scoreboard]`, that day's score beside the day before's. The scoreboard's
+history, a line a day across restarts, is `garrison-state/scoreboard.jsonl`.
 
 A soldier rejoins where it last logged out, so a squad that last ran a scenario starts on the
 arena; `spreadplayers` puts them back on the ground. `minecraft.yield-to-experiments` stands the

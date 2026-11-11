@@ -53,6 +53,20 @@ final class CommandScorecard {
         orders.computeIfAbsent(order, o -> new Tally()).casualties++;
     }
 
+    /**
+     * The shares of soldier-time since the last review spent standing about (Idle, InPosition) and
+     * unable (CANTCO), in percent - each soldier-second counted once, by its order.
+     */
+    synchronized int[] shares() {
+        int seconds = orders.values().stream().mapToInt(t -> t.seconds).sum();
+        if (seconds == 0) {
+            return new int[]{0, 0};
+        }
+        int idle = orders.values().stream().mapToInt(t -> t.byReport.getOrDefault("Idle", 0) + t.byReport.getOrDefault("InPosition", 0)).sum();
+        int cantco = orders.values().stream().mapToInt(t -> t.byReport.getOrDefault("Cantco", 0)).sum();
+        return new int[]{(int) Math.round(100.0 * idle / seconds), (int) Math.round(100.0 * cantco / seconds)};
+    }
+
     /** The review's commands section since the last, as lines; the tally starts again. */
     synchronized List<String> review() {
         List<String> lines = new java.util.ArrayList<>();

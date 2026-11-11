@@ -116,6 +116,21 @@ class LightingTest {
                 "no torch down the shaft: " + Lighting.plan(shaft, CENTRE, 12));
     }
 
+    /**
+     * No torch on the wall's line, eight out: the cells beside it are lit from a cell off it. Ruled
+     * out after planning, live, the cells round the line's torches stayed dark with nothing planned.
+     */
+    @Test
+    void groundBesideCellsNoTorchMayGoInIsLitFromOthers() {
+        java.util.function.Predicate<BlockPos> offTheLine = c -> Math.max(Math.abs(c.x()), Math.abs(c.z())) != 8;
+        List<BlockPos> plan = Lighting.plan(flat, CENTRE, 12, offTheLine);
+
+        assertTrue(plan.stream().allMatch(offTheLine), "a torch on the line: " + plan);
+        torches.addAll(plan);
+        assertEquals(0, Lighting.darkCells(flat, CENTRE, 12).stream().filter(offTheLine).count(),
+                "dark off the line: " + Lighting.darkCells(flat, CENTRE, 12).stream().filter(offTheLine).toList());
+    }
+
     @Test
     void groundAlreadyLitNeedsNoMoreTorches() {
         torches.addAll(Lighting.plan(flat, CENTRE, 12));

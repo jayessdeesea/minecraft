@@ -701,8 +701,9 @@ block light is 0. A torch gives 14, falling by one a block, so ground lit everyw
 and the monsters that come are the ones that walk in from the dark beyond.
 
 An objective's task can be `SECURE`. Each squad-leader cycle, `bot.supply.Lighting` plans the
-torches the ground within 12 blocks of the objective still needs: every cell the squad can walk to
-that isn't within 7 blocks (taxicab) of a torch. That's half a torch's reach, so a wall or a step
+torches the ground within 12 blocks of the objective still needs - of the camp's ground, for an
+objective within 12 blocks of the camp, so the task lights exactly what the foothold's standard
+measures (§ 17) - every cell the squad can walk to that isn't within 7 blocks (taxicab) of a torch. That's half a torch's reach, so a wall or a step
 between them still leaves the cell lit. Torches go first on the lattice where taxicab circles of
 that radius tile the ground exactly, then on any cell the lattice left dark. Torches already
 standing count, so the plan shrinks as torches go down and a secured place needs nothing more.
@@ -712,9 +713,10 @@ the camp with torches in its pack puts one down wherever the camp's ground has g
 Farmland and leaves are left bare: a torch won't stand on either, and nothing spawns on leaves. Light is worked out from where torches stand, not read from the server's
 light data.
 
-Each soldier takes the nearest planned cell no squadmate has taken, walks onto it and puts a torch
-down where it stands (`bot.supply.Lamplighter`) - never on a wall's line, one laid out or the
-camp's still to be, where a torch would hold a cell the mason needs. The server's block update confirms it. A soldier
+No torch is planned on a wall's line, one laid out or the camp's still to be, where a torch
+would hold a cell the mason needs: a cell beside the line is lit from the nearest cell off it, and
+the line's own cells aren't counted dark. Each soldier takes the nearest planned cell no squadmate
+has taken, walks onto it and puts a torch down where it stands (`bot.supply.Lamplighter`). The server's block update confirms it. A soldier
 out of torches makes eight at a time where it stands (`bot.supply.Torchmaker`, the same run as a
 patrol base's), and reports `Securing` meanwhile. One short of the makings gathers them first, where
 its squad last saw them nearest the objective: logs, then the cobblestone for a furnace (making
@@ -938,6 +940,13 @@ with the foothold in view it already keeps an exposed squad near shelter (Genera
 Each dawn the log carries an after-action review (TC 25-20) of the day and night before (`[AAR]`,
 `app.AfterActionReview`): the camp's standards, met and open, as last measured; the deaths, by the
 server's cause, with who; and who raised an idle alarm by day (§ 3).
+
+The same dawn scores the day on the garrison's scoreboard (`app.Scoreboard`, `scoreboard.jsonl` in
+the state directory, one JSON line a day kept across restarts): the earliest phase not met, the
+standards met of all, the open ones earliest phase first, the deaths, the shares of soldier-time
+standing about (`Idle`, `InPosition`) and unable (`CANTCO`), and the soldiers hungry at dawn. The
+log's `[Scoreboard]` line sets it beside the day before and names the earliest open standard -
+the next thing to work on.
 
 It ends with the commands' scorecard (`app.CommandScorecard`). Each soldier is sampled once a
 second, and each kind of command is scored by how its soldiers spent their time: each task the

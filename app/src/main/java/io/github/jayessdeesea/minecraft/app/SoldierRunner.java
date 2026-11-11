@@ -429,7 +429,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = campGround;
         List<io.github.jayessdeesea.minecraft.command.Foothold.Standard> standards = new java.util.ArrayList<>();
-        int dark = io.github.jayessdeesea.minecraft.bot.supply.Lighting.dark(world, at, SECURE_RADIUS);
+        // The cells SECURE lights, no others: one measure for the standard and the task that meets it.
+        int dark = offTheWall(io.github.jayessdeesea.minecraft.bot.supply.Lighting.darkCells(world, at, SECURE_RADIUS)).size();
         // Torches are made from logs: with none carried and no tree in sight, lighting waits on wood
         // grown first - the lookup done for the general, which otherwise sends squads to SECURE with
         // nothing to make torches from.
@@ -714,6 +715,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         this.farmStore = new WallStore(java.nio.file.Path.of(stateDir), "farm");
         this.mineStore = new WallStore(java.nio.file.Path.of(stateDir), "stairs");
         this.planBook = new PlanBook(java.nio.file.Path.of(stateDir));
+        this.scoreboard = new Scoreboard(java.nio.file.Path.of(stateDir));
         this.camp = camp.isBlank() ? null : java.util.Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
         if (this.camp != null && this.camp.length != 2) {
             throw new IllegalArgumentException("minecraft.camp is x,z - not " + camp);
@@ -777,9 +779,16 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         if (camp != null && footholdTicks++ % FOOTHOLD_EVERY == 0) {
             measureFoothold().ifPresent(chainOfCommand::onFoothold);
         }
-        chainOfCommand.time().flatMap(t -> afterActionReview.time(t.dark(), chainOfCommand.foothold()))
-                .ifPresent(review -> LOG.info("[AAR] {}\n  {}\n  {}\n  {}", review, String.join("\n  ", chainOfCommand.requestReview()),
-                        String.join("\n  ", registerReview()), String.join("\n  ", faults.review())));
+        chainOfCommand.time().flatMap(t -> {
+                    List<SoldierStatus> all = activeSoldiers.values().stream().map(DeterministicSoldier::status).toList();
+                    int hungry = (int) all.stream().filter(s -> s.condition().map(SoldierRunner::wantsFood).orElse(false)).count();
+                    return afterActionReview.time(t.dark(), chainOfCommand.foothold(), hungry, all.size(), clockwork.millis());
+                })
+                .ifPresent(dawn -> {
+                    LOG.info("[AAR] {}\n  {}\n  {}\n  {}", dawn.review(), String.join("\n  ", chainOfCommand.requestReview()),
+                            String.join("\n  ", registerReview()), String.join("\n  ", faults.review()));
+                    LOG.info("[Scoreboard] {}", scoreboard.add(dawn.score()));
+                });
         List<Present> present = new java.util.ArrayList<>();
         for (Roster.Squad squad : roster.squads()) {
             List<DeterministicSoldier> soldiers = presentSoldiers(squad.name());
@@ -880,6 +889,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private final Map<String, String> unitOf = new ConcurrentHashMap<>();
     /** Every soldier's standing plan, kept on disk. */
     private final PlanBook planBook;
+    /** The garrison's score, a line each dawn, kept on disk. */
+    private final Scoreboard scoreboard;
 
     /**
      * Task organisation: the squad leader's plan changes made, once per order; each directive the
@@ -2153,6 +2164,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // Round the ground most of the camp stands on, as the wall and the foothold's measure are:
             // live, the ground found from the objective's height was a hut roof, and SECURE reported
             // done with 371 cells of the camp still dark.
+            // At the camp, the camp's own ground, as the foothold measures it: live, SECURE lit a disc
+            // round the general's point, 3 blocks off the camp's centre and 2 above its ground, and
+            // reported DONE for days with 8 of the camp's cells dark.
+            if (campGround != null && Math.hypot(o.location().x() - campGround.x(), o.location().z() - campGround.z()) <= SECURE_RADIUS) {
+                return torchPlan(campGround);
+            }
             io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = typicalGround((int) Math.floor(o.location().x()),
                     (int) Math.floor(o.location().z()), (int) Math.floor(o.location().y()))
                     .orElse(io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
@@ -2676,12 +2693,20 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      * wall's line, one laid out or the camp's still to be: a torch there holds a cell the mason needs.
      */
     private List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> torchPlan(io.github.jayessdeesea.minecraft.bot.nav.BlockPos at) {
+        return io.github.jayessdeesea.minecraft.bot.supply.Lighting.plan(world, at, SECURE_RADIUS, offTheWall());
+    }
+
+    /** {@code cells} but those on a wall's line: the wall's, not the lamplighter's. */
+    private List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> offTheWall(List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells) {
+        return cells.stream().filter(offTheWall()).toList();
+    }
+
+    /** Whether a cell is off every wall's line, laid out or the camp's still to be. */
+    private java.util.function.Predicate<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> offTheWall() {
         java.util.Set<Long> wallColumns = walls.values().stream().flatMap(List::stream).map(c -> column(c.x(), c.z()))
                 .collect(java.util.stream.Collectors.toSet());
-        return io.github.jayessdeesea.minecraft.bot.supply.Lighting.plan(world, at, SECURE_RADIUS).stream()
-                .filter(cell -> !wallColumns.contains(column(cell.x(), cell.z())) && (camp == null
-                        || Math.max(Math.abs(cell.x() - camp[0]), Math.abs(cell.z() - camp[1])) != WALL_RADIUS))
-                .toList();
+        return cell -> !wallColumns.contains(column(cell.x(), cell.z())) && (camp == null
+                || Math.max(Math.abs(cell.x() - camp[0]), Math.abs(cell.z() - camp[1])) != WALL_RADIUS);
     }
 
     private static long column(int x, int z) {

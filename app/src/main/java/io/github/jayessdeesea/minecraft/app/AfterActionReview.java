@@ -34,11 +34,21 @@ final class AfterActionReview {
         idle.merge(soldier, 1, Integer::sum);
     }
 
+    /** A dawn's review, as text, and its score for the scoreboard. */
+    record Dawn(String review, Scoreboard.Score score) {
+    }
+
+    /** As {@link #time(boolean, Optional, int, int, long)}, with nobody counted hungry. */
+    synchronized Optional<Dawn> time(boolean dark, Optional<Foothold> foothold) {
+        return time(dark, foothold, 0, 0, 0);
+    }
+
     /**
      * The time is now {@code dark} or not; at the dawn that ends a night, the review of the day and
-     * night before, with the camp as {@code foothold} measures it. The tally starts again.
+     * night before, with the camp as {@code foothold} measures it and {@code hungry} of
+     * {@code soldiers} short of food, and its score. The tally starts again.
      */
-    synchronized Optional<String> time(boolean dark, Optional<Foothold> foothold) {
+    synchronized Optional<Dawn> time(boolean dark, Optional<Foothold> foothold, int hungry, int soldiers, long now) {
         boolean dawn = wasDark && !dark;
         wasDark = dark;
         if (!dawn) {
@@ -52,12 +62,20 @@ final class AfterActionReview {
                     .append(s.met() ? "" : " - " + s.status()));
         });
         int dead = deaths.values().stream().mapToInt(List::size).sum();
+        int[] shares = commands.shares();
+        List<Foothold.Standard> standards = foothold.map(Foothold::standards).orElse(List.of());
+        Scoreboard.Score score = new Scoreboard.Score(now, day, foothold.flatMap(f -> f.nextPhase().isPresent()
+                ? Optional.of(f.nextPhase().getAsInt()) : Optional.empty()).orElse(0),
+                (int) standards.stream().filter(Foothold.Standard::met).count(), standards.size(),
+                standards.stream().filter(s -> !s.met()).sorted(java.util.Comparator.comparingInt(Foothold.Standard::phase))
+                        .map(s -> "phase " + s.phase() + " " + s.name() + " - " + s.status()).toList(),
+                dead, shares[0], shares[1], hungry, soldiers);
         review.append("\n  casualties: ").append(dead == 0 ? "none" : dead);
         deaths.forEach((cause, who) -> review.append("\n    ").append(cause).append(": ").append(String.join(", ", who)));
         review.append("\n  idle by day: ").append(idle.isEmpty() ? "none" : idle.toString());
         commands.review().forEach(line -> review.append("\n  ").append(line));
         deaths.clear();
         idle.clear();
-        return Optional.of(review.toString());
+        return Optional.of(new Dawn(review.toString(), score));
     }
 }

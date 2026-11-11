@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Where torches go so no monster spawns on the ground round a point (docs/military-doctrine.md §14):
@@ -40,6 +41,15 @@ public final class Lighting {
 
     /** The cells, nearest {@code centre} first, to place a torch in so the ground within {@code radius} of it is lit. */
     public static List<BlockPos> plan(WorldView world, BlockPos centre, int radius) {
+        return plan(world, centre, radius, cell -> true);
+    }
+
+    /**
+     * As {@link #plan(WorldView, BlockPos, int)}, with a torch only in cells {@code allowed} - not on
+     * a wall's line, say. A cell a torch can't go in is lit from one beside it: ruled out after the
+     * plan, its neighbours were counted lit by a torch never put down, and stayed dark.
+     */
+    public static List<BlockPos> plan(WorldView world, BlockPos centre, int radius, java.util.function.Predicate<BlockPos> allowed) {
         List<BlockPos> ground = Pathfinder.reachable(world, centre, radius, FLOOD_BUDGET).stream()
                 .filter(c -> spawnGround(world, c) && ground(centre, c))
                 .sorted(Comparator.comparingInt((BlockPos c) -> Math.abs(c.x() - centre.x()) + Math.abs(c.z() - centre.z()))
@@ -50,15 +60,21 @@ public final class Lighting {
         // The grid first, so torches stand evenly spaced; then any cell it left dark gets its own.
         for (BlockPos cell : ground) {
             if (Math.floorMod(LATTICE_STEP * (cell.x() - centre.x()) + (cell.z() - centre.z()), LATTICE) == 0
-                    && !lit(cell, lights)) {
+                    && allowed.test(cell) && !lit(cell, lights)) {
                 lights.add(cell);
                 plan.add(cell);
             }
         }
         for (BlockPos cell : ground) {
             if (!lit(cell, lights)) {
-                lights.add(cell);
-                plan.add(cell);
+                // In the cell itself, or the nearest one beside it a torch may go in that lights it.
+                Optional<BlockPos> torch = allowed.test(cell) ? Optional.of(cell) : ground.stream()
+                        .filter(c -> allowed.test(c) && lit(cell, List.of(c)))
+                        .min(Comparator.comparingInt(c -> Math.abs(c.x() - cell.x()) + Math.abs(c.y() - cell.y()) + Math.abs(c.z() - cell.z())));
+                if (torch.isPresent()) {
+                    lights.add(torch.get());
+                    plan.add(torch.get());
+                }
             }
         }
         return List.copyOf(plan);
@@ -66,10 +82,15 @@ public final class Lighting {
 
     /** How many of the walkable cells within {@code radius} of {@code centre} are still dark. */
     public static int dark(WorldView world, BlockPos centre, int radius) {
+        return darkCells(world, centre, radius).size();
+    }
+
+    /** The walkable cells within {@code radius} of {@code centre} still dark. */
+    public static List<BlockPos> darkCells(WorldView world, BlockPos centre, int radius) {
         List<BlockPos> lights = torches(world, centre, radius + REACH);
-        return (int) Pathfinder.reachable(world, centre, radius, FLOOD_BUDGET).stream()
+        return Pathfinder.reachable(world, centre, radius, FLOOD_BUDGET).stream()
                 .filter(c -> spawnGround(world, c) && ground(centre, c))
-                .filter(c -> !lit(c, lights)).count();
+                .filter(c -> !lit(c, lights)).toList();
     }
 
     /**

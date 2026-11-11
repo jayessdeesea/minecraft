@@ -38,6 +38,10 @@ Each a squad-simulation scenario, then seen live:
   drill's, to keep the model's round trips few - revisited if that proves too coarse.
 - **CLEAR(box).** Everything in a box dug out - an encampment's ground, so nothing hides in shade by
   day - reaching high blocks from pillars it takes down after. Bamboo scaffolding later.
+- **Torches from the stockpile's logs.** A soldier carrying a full load of logs takes it to the
+  workshop's chest, and the torchmaker draws only on logs it carries: in the squad simulation, a
+  squad with 64 logs each put them away and stopped lighting the camp with 189 cells dark, "no
+  logs". Live, "no LOG within 48 blocks" with the stockpile the general's lookup counts.
 - **A basic load per role.** Each role carries a standard load - a miner two pickaxes, torches and
   bread, say - and the soldier keeps itself at it as a standing duty, from the stockpile or by
   crafting, without a `rearm`. "Out of supplies" is a soldier below its basic load that can't make
@@ -55,7 +59,10 @@ Each a squad-simulation scenario, then seen live:
   wood - checked from the world and turned into directives by a drill, the model only choosing the
   template (backlog/echelon-contracts.md's engineer).
 - **The general's tasking.** The general can ask a squad for a detachment ("one soldier on the
-  mine"); SquadLeaderScenarioIT's MINER and POST variants are that case.
+  mine"); SquadLeaderScenarioIT's MINER and POST variants are that case. A system-prompt line
+  telling the general it can (detail soldiers by job, with labelled coordinates) took
+  GeneralScenarioIT from 71/72 to 67/72 - sheltering by day, pulling a squad from its base - so
+  it waits until a standard needs a detachment, and then wants its own GeneralScenarioIT situation.
 - **Overruling self-preservation.** An order that says hold under fire (`risk` HIGH, or its own
   flag) keeps a soldier on its work in contact.
 
