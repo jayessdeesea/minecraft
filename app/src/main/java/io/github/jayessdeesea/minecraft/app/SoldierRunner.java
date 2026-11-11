@@ -386,6 +386,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<BlockPos, String> furnaces = new ConcurrentHashMap<>();
     /** Logs and stand cells a soldier is working, shared so soldiers pick different trees. */
     private final Set<BlockPos> treeClaims = ConcurrentHashMap.newKeySet();
+    /**
+     * The cells a lamplighter is putting a torch in, shared so soldiers light different ones. Not
+     * {@link #treeClaims}: those say where nobody digs - a staircase's walkway, a base's walls - and
+     * live, holding torches to them left the mine's stairs never lit.
+     */
+    private final Set<BlockPos> torchClaims = ConcurrentHashMap.newKeySet();
     /** Each connected soldier's trips to the stockpile, by name. */
     private final Map<String, Depositor> depositors = new ConcurrentHashMap<>();
     /** Each connected soldier's handing of logs to a squadmate, by name. */
@@ -1091,6 +1097,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }
         }
+        // By name, not by place: link-up puts a respawned soldier at the back of the statuses, not of
+        // the soldiers. Live, a unit handed the soldier at its member's place in the other order left
+        // the squad's orders failing every tick until the replacement linked up.
+        Map<String, DeterministicSoldier> soldierNamed = new HashMap<>();
+        soldiers.forEach(s -> soldierNamed.put(s.status().name(), s));
         List<Unit> units = new ArrayList<>();
         members.forEach((unit, at) -> {
             if (at.isEmpty()) {
@@ -1099,7 +1110,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Plan first = planBook.of(names.get(at.getFirst()));
             Optional<Objective> objective = Plan.detachment(unit) ? first.objective(intent) : Optional.empty();
             objective.ifPresentOrElse(o -> detached.put(unit, o), () -> detached.remove(unit));
-            units.add(new Unit(unit, at.stream().map(soldiers::get).toList(), at.stream().map(statuses::get).toList(), objective,
+            units.add(new Unit(unit, at.stream().map(i -> soldierNamed.get(names.get(i))).toList(), at.stream().map(statuses::get).toList(), objective,
                     Plan.detachment(unit) ? first.current() : Optional.empty(), first.role() != Role.RIFLEMAN));
         });
         // A detachment nobody's in any more is stood down, and what it held let go.
@@ -3201,8 +3212,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Ticks while told to light the base: one torch tried a second, until the light check sees it.
         AtomicInteger torchTicks = new AtomicInteger();
         torchmakerRef.set(torchmaker);
-        Lamplighter lamplighter = new Lamplighter(
-                name, inventory, footing, treeClaims);
+        Lamplighter lamplighter = new Lamplighter(name, inventory, footing, torchClaims);
         lamplighters.put(name, lamplighter);
         Hunter hunter = new Hunter(name);
         hunters.put(name, hunter);
@@ -3582,6 +3592,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         // What holds routines back with free hands: food first, and the work it was handed.
                         + (foodCalls ? ", food calls" : "") + (threatened ? ", threatened" : "")
                         + ", " + lights.size() + " cells to light with " + inventory.count(ItemClass.TORCH) + " torches"
+                        + (lights.isEmpty() ? "" : " (" + lamplighter.passedOver(world, lights) + ")")
                         + ", squad's task " + objectiveOf(unitOf(name, definition.squad()))
                         .map(o -> OrderTrace.taskName(o.task()) + " at " + o.location()).orElse("none"))
                         .ifPresent(line -> {

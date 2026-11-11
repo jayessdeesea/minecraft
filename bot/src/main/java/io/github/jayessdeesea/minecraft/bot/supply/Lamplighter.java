@@ -148,6 +148,15 @@ public final class Lamplighter {
         }
     }
 
+    /** Why none of the {@code plan}'s cells is the next one: for a soldier stuck with work it doesn't start. */
+    public synchronized String passedOver(WorldView world, List<BlockPos> plan) {
+        long torched = plan.stream().filter(c -> world.isTorch(c.x(), c.y(), c.z())).count();
+        long claimed = plan.stream().filter(c -> claims.contains(c) && !c.equals(this.claimed)).count();
+        long barred = plan.stream().filter(c -> passedOver.barred(c, ticks)).count();
+        return torched + " already torches, " + claimed + " claimed by others, " + barred + " passed over"
+                + (plan.isEmpty() ? "" : ", nearest " + plan.getFirst());
+    }
+
     /** Stops the torch under way, its claim given up. */
     public synchronized void stop() {
         end();

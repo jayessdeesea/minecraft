@@ -20,8 +20,11 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.core.io.ClassPathResource;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -66,6 +69,16 @@ class TaskOrganisationSimulationTest {
 
     /** Alpha, Alice and Bob, holding the camp for the general, their squad leader's reply as given; started. */
     private SimServer run(SimClock clock, SimServer.Terrain ground, String roles, String orders) {
+        return run(clock, ground, roles, orders, List.of());
+    }
+
+    /** As {@link #run(SimClock, SimServer.Terrain, String, String)}, each soldier also carrying {@code more}. */
+    private SimServer run(SimClock clock, SimServer.Terrain ground, String roles, String orders, List<int[]> more) {
+        List<int[]> kit = new ArrayList<>(List.of(
+                new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                new int[]{38, SimServer.ITEM_BREAD, 16}));
+        kit.addAll(more);
         SimServer server = new SimServer(clock, ground, 1000); // morning
         Roster roster = new Roster("Alpha:Alice,Bob");
         ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
@@ -73,10 +86,7 @@ class TaskOrganisationSimulationTest {
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
-                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
-                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit))
                 .run();
         return server;
     }
@@ -146,6 +156,47 @@ class TaskOrganisationSimulationTest {
         second.advance(10 * 60_000);
         assertTrue(cutBelow(server) >= 20, "the miner went on mining: " + cutBelow(server) + " cells cut below y=53");
         assertTrue(fromCamp(server, "Bob") <= 8, "the rifleman holds the camp: " + server.position("Bob"));
+    }
+
+    /**
+     * The mine's stairs are lit as they're cut, by the squad holding the top. Live, every stair cell
+     * was out of the lamplighter's reach: torches shared their claims with the diggers', and the
+     * staircase claims its own walkway so nobody digs in it.
+     */
+    @Test
+    void theMinesStairsAreLitAsTheyreCut() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, SquadSimulationTest::flat, MINER_ALICE, "[]", List.<int[]>of(new int[]{39, SimServer.ITEM_TORCH, 16}));
+        clock.advance(10 * 60_000);
+
+        int torches = 0;
+        for (int x = 2; x <= 14; x++) {
+            for (int z = 2; z <= 14; z++) {
+                for (int y = 40; y <= GROUND; y++) {
+                    torches += server.block(x, y, z) == SimServer.TORCH ? 1 : 0;
+                }
+            }
+        }
+        assertTrue(cutBelow(server) >= 20, "the miner cut its stairs: " + cutBelow(server));
+        assertTrue(torches >= 2, "the stairs lit: " + torches + " torches down them");
+    }
+
+    /**
+     * A soldier killed and respawned goes to the back of its squad's order while it links up: its
+     * units still pair each soldier with its own status. Live, the miner's death left Alpha's orders
+     * failing every tick - each unit was handed the soldier at its member's place in the other order.
+     */
+    @Test
+    void aSoldierKilledAndRespawnedLeavesItsSquadsOrdersWhole() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, SquadSimulationTest::flat, MINER_ALICE, "[]");
+        clock.advance(60_000);
+        server.kill("Alice", "death.fell.accident.generic[Alice]");
+        clock.advance(2 * 60_000);
+
+        List<String> faults = Files.readAllLines(Path.of("target/sim/aSoldierKilledAndRespawnedLeavesItsSquadsOrdersWhole.log")).stream()
+                .filter(l -> l.contains("[Fault]")).toList();
+        assertEquals(List.of(), faults);
     }
 
     /** "Go to x, y, z": the soldier goes there and holds, whatever its squad does, until told otherwise. */
