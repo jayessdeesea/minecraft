@@ -105,6 +105,21 @@ class ClearingTest {
         assertEquals(64, cut.stand().y(), "on the ground beside it");
     }
 
+    /**
+     * Only from a stand the soldier can get to: live, the camp's last high block was handed out from
+     * a stand walled off on a diagonal, and the upkeep stood at "1 left" for hours.
+     */
+    @Test
+    void aCutIsOnlyHandedOutFromAStandTheSoldierCanReach() {
+        Set<BlockPos> logs = trunk(3, 3, 5);
+        WorldView world = with(logs, Set.of());
+        List<BlockPos> cover = Clearing.toClear(world, SKY, Set.of());
+
+        assertEquals(Optional.empty(), Clearing.next(world, cover, new Position(0.5, 64, 0.5), Set.of(), stand -> false), "none it can reach");
+        Clearing.Cut cut = Clearing.next(world, cover, new Position(0.5, 64, 0.5), Set.of(), stand -> stand.x() > 3).orElseThrow();
+        assertTrue(cut.stand().x() > 3, "from the side it can get to: " + cut.stand());
+    }
+
     @Test
     void aSoldierReachesSixBlocksUpFromTheGroundAndNoHigher() {
         BlockPos high = new BlockPos(3, 70, 3);

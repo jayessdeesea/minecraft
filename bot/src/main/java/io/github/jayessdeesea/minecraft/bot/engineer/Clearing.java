@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * The cells of a soldier's ground-work command (command.Box): what an {@code Order.Dig} digs and an
@@ -144,6 +145,16 @@ public final class Clearing {
      * with a cell to stand in that its eyes reach it from - the lowest and nearest first.
      */
     public static Optional<Cut> next(WorldView world, List<BlockPos> cover, Position soldier, Set<BlockPos> excluded) {
+        return next(world, cover, soldier, excluded, stand -> true);
+    }
+
+    /**
+     * As {@link #next(WorldView, List, Position, Set)}, its stand one the soldier can {@code reach}:
+     * live, the camp's last high block was handed out from a stand walled off on a diagonal, and the
+     * upkeep stood at "1 left" for hours, each try a "no route" CANTCO.
+     */
+    public static Optional<Cut> next(WorldView world, List<BlockPos> cover, Position soldier, Set<BlockPos> excluded,
+                                     Predicate<BlockPos> reach) {
         Cut best = null;
         double bestScore = Double.MAX_VALUE;
         int lowest = cover.stream().mapToInt(c -> order(world, c)).min().orElse(0);
@@ -170,7 +181,7 @@ public final class Clearing {
                 break;
             }
             Optional<BlockPos> stand = canStandHere && !here.offset(0, -1, 0).equals(block) && reach(here, block) <= REACH
-                    ? Optional.of(here) : standFor(world, block, excluded);
+                    ? Optional.of(here) : standFor(world, block, excluded, reach);
             if (stand.isEmpty()) {
                 continue;
             }
@@ -192,6 +203,11 @@ public final class Clearing {
      * Not from above only: then a mound is climbed, on blocks put down, to dig its top.
      */
     static Optional<BlockPos> standFor(WorldView world, BlockPos block, Set<BlockPos> excluded) {
+        return standFor(world, block, excluded, stand -> true);
+    }
+
+    /** As {@link #standFor(WorldView, BlockPos, Set)}, a stand the soldier can {@code reach}. */
+    static Optional<BlockPos> standFor(WorldView world, BlockPos block, Set<BlockPos> excluded, Predicate<BlockPos> reach) {
         boolean ground = !world.isLog(block.x(), block.y(), block.z()) && world.leaves(block.x(), block.y(), block.z()).isEmpty();
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
@@ -200,7 +216,7 @@ public final class Clearing {
                 for (int dy = -(int) Math.ceil(REACH + EYES); dy <= 1; dy++) {
                     BlockPos stand = block.offset(dx, dy, dz);
                     // On the ground, not on the tree: never on the log being cut, nor up in a canopy.
-                    if (excluded.contains(stand) || !Pathfinder.standable(world, stand) || stand.offset(0, -1, 0).equals(block)
+                    if (excluded.contains(stand) || !Pathfinder.standable(world, stand) || !reach.test(stand) || stand.offset(0, -1, 0).equals(block)
                             || world.isLog(stand.x(), stand.y() - 1, stand.z()) || world.leaves(stand.x(), stand.y() - 1, stand.z()).isPresent()) {
                         continue;
                     }

@@ -104,6 +104,22 @@ class DiggerTest {
                 "stand west of the near trunk, chop its lowest log first");
     }
 
+    /**
+     * A tree whose every stand the soldier can't walk to is passed for one it can: live, stands shut
+     * off on both sides of a diagonal were chosen one after another, each a "no route" CANTCO.
+     */
+    @Test
+    void aTreeItCantWalkToIsPassedForOneItCan() {
+        BlockPos near = new BlockPos(5, GROUND, 0);
+        BlockPos far = new BlockPos(9, GROUND, 0);
+        WorldView world = forest(Set.of(near, far));
+
+        Optional<Digger.Spot> tree = Digger.findSpot(world, new BlockPos(0, GROUND, 0), Set.of(), Digger.Target.LOG, Digger.SEARCH_RADIUS,
+                stand -> Math.abs(stand.x() - near.x()) + Math.abs(stand.z() - near.z()) > 1);
+
+        assertEquals(far, tree.orElseThrow().block());
+    }
+
     @Test
     void aClaimedLogSendsTheNextSoldierToAnotherTree() {
         BlockPos near = new BlockPos(5, GROUND, 0);

@@ -15,6 +15,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Digging out one block of a material: walk to a cell beside it, take the right thing in hand, dig
@@ -371,6 +372,16 @@ final class Digger {
 
     /** As {@link #findSpot(WorldView, BlockPos, Set, Target)}, out to {@code radius} blocks across. */
     static Optional<Spot> findSpot(WorldView world, BlockPos around, Set<BlockPos> claimed, Target target, int radius) {
+        return findSpot(world, around, claimed, target, radius, stand -> true);
+    }
+
+    /**
+     * As {@link #findSpot(WorldView, BlockPos, Set, Target, int)}, its stand one the soldier can
+     * {@code reach}: live, stands a block off on a diagonal, walled on both sides, were chosen one
+     * after another, each a "no route" CANTCO before it was passed over.
+     */
+    static Optional<Spot> findSpot(WorldView world, BlockPos around, Set<BlockPos> claimed, Target target, int radius,
+                                   Predicate<BlockPos> reach) {
         Spot best = null;
         double bestDistance = Double.MAX_VALUE;
         int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
@@ -378,7 +389,7 @@ final class Digger {
             for (int dz = -radius; dz <= radius; dz++) {
                 for (int dy = -4; dy <= 4; dy++) {
                     BlockPos stand = around.offset(dx, dy, dz);
-                    if (claimed.contains(stand) || !standable(world, stand)) {
+                    if (claimed.contains(stand) || !standable(world, stand) || !reach.test(stand)) {
                         continue;
                     }
                     for (int[] side : sides) {

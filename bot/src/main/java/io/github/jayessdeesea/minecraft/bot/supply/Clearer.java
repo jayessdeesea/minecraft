@@ -2,7 +2,9 @@ package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
@@ -32,6 +34,8 @@ public final class Clearer {
     private final Inventory inventory;
     private final Set<BlockPos> claims;
     private final Setbacks<BlockPos> failed = new Setbacks<>(600, 12_000);
+    /** How far past the furthest block the flood for stands looks, and how many cells it expands. */
+    static final int REACH_MARGIN = 6, REACH_BUDGET = 40_000;
 
     private Digger digger;
     private long ticks;
@@ -102,7 +106,13 @@ public final class Clearer {
         }
         Set<BlockPos> excluded = failed.barredNow(ticks);
         excluded.addAll(claims);
-        Optional<Clearing.Cut> cut = Clearing.next(world, cover, soldier, excluded);
+        // Stands it can get to from where it is - on foot, on the blocks it carries, or cutting steps.
+        BlockPos feet = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
+        int span = cover.stream().mapToInt(c -> Math.max(Math.abs(c.x() - feet.x()), Math.abs(c.z() - feet.z()))).max().orElse(0) + REACH_MARGIN;
+        Set<BlockPos> reachable = Pathfinder.climbs(world, feet, span, REACH_BUDGET,
+                inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT),
+                inventory.slotOf(ItemClass.PICKAXE) >= 0).keySet();
+        Optional<Clearing.Cut> cut = Clearing.next(world, cover, soldier, excluded, reachable::contains);
         if (cut.isEmpty()) {
             cooldown = COOLDOWN_TICKS;
             return;

@@ -26,6 +26,8 @@ seconds or when stuck:
   fails is passed over for the next, and each time it fails again it's left twice as long
   (`bot.supply.Setbacks`). Something a squadmate was in the way of is tried again soon; a cell
   across water or a torch on leaves is tried less and less.
+  A tree, a block to quarry or a cut of the camp's ground is only taken from a stand it can get
+  to from where it is - on foot, on blocks it carries, or cutting steps - not one walled off.
 - **Plugs the water it's stuck in, and says so.** Afloat and not 1.5 blocks further on in 30
   seconds, it's stuck in the water: carrying cobblestone, dirt or - with neither - logs, which it
   otherwise keeps for tools and won't build a route on, it puts a block into the water

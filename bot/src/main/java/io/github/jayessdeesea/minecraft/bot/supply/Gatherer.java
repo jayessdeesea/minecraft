@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
@@ -46,6 +47,9 @@ public final class Gatherer {
     private final Set<BlockPos> claims;
 
     private Digger digger;
+    /** How far the flood for stands it can walk to looks, in cells expanded. */
+    static final int REACH_BUDGET = 40_000;
+
     /** Trees this soldier failed at (out of reach, or the log wouldn't break) - not tried again. */
     private final Set<BlockPos> avoid = new HashSet<>();
     private int retry;
@@ -129,7 +133,7 @@ public final class Gatherer {
         };
         if (digger == null) {
             if (retry == 0) {
-                next(world, around, target);
+                next(world, soldier, around, target);
             }
             return;
         }
@@ -138,7 +142,7 @@ public final class Gatherer {
             }
             case Digger.Progress.Done done -> {
                 digger.release();
-                next(world, around, target);
+                next(world, soldier, around, target);
             }
             case Digger.Progress.Failed(String why) -> {
                 LOG.info("{} leaves that spot - {}", name, why);
@@ -168,8 +172,11 @@ public final class Gatherer {
         }
     }
 
-    private void next(WorldView world, Position around, Digger.Target target) {
+    private void next(WorldView world, Position soldier, Position around, Digger.Target target) {
         Set<BlockPos> excluded = new HashSet<>(claims);
+        // Stands it can walk to, from where it is: a stand on paper can be shut off on every side.
+        int span = (int) Math.ceil(Math.hypot(around.x() - soldier.x(), around.z() - soldier.z())) + WIDER[WIDER.length - 1] + 4;
+        Set<BlockPos> walkable = Pathfinder.reachable(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), span, REACH_BUDGET);
         excluded.addAll(avoid);
         // Nearest first, then further out: none within reach of the objective is a reason to look
         // wider before asking for help - live, a camp long since cleared of trees had a wood a
@@ -180,7 +187,7 @@ public final class Gatherer {
         // witch out there, and died.
         int[] rings = target == Digger.Target.SOIL ? new int[]{WIDER[0]} : WIDER;
         for (int radius : rings) {
-            spot = Digger.findSpot(world, BlockPos.containing(around.x(), around.y(), around.z()), excluded, target, radius);
+            spot = Digger.findSpot(world, BlockPos.containing(around.x(), around.y(), around.z()), excluded, target, radius, walkable::contains);
             if (spot.isPresent()) {
                 break;
             }
