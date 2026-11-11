@@ -128,6 +128,62 @@ class MasonTest {
     }
 
     /**
+     * As live: the wall's last dirt block had its stand inside the wall in a pocket sealed in the
+     * hill - standable, and no way to it - and every mason walked 400 ticks at it, gave up, and the
+     * next tried it again. Open ground outside was a stand too. A stand no route reaches isn't one.
+     */
+    @Test
+    void aStandNoRouteReachesIsPassedOverForOneThatIs() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.COBBLESTONE), 64});
+        BlockPos dirt = new BlockPos(3, GROUND, 0);
+        BlockPos pocket = new BlockPos(2, GROUND, 0);
+        BlockPos outside = new BlockPos(4, GROUND, 0);
+        // The pocket: the cell inside the wall cell, sealed round and over, so nobody gets in.
+        Set<BlockPos> sealing = new HashSet<>(Set.of(
+                new BlockPos(1, GROUND, 0), new BlockPos(1, GROUND + 1, 0),
+                new BlockPos(2, GROUND, 1), new BlockPos(2, GROUND + 1, 1),
+                new BlockPos(2, GROUND, -1), new BlockPos(2, GROUND + 1, -1),
+                new BlockPos(3, GROUND + 1, 0), dirt));
+        // The hill over the pocket and the wall cell, too high to stand on top of: the pocket is the
+        // first stand there is inside, as live.
+        for (int y = GROUND + 2; y <= GROUND + 6; y++) {
+            sealing.add(new BlockPos(2, y, 0));
+            sealing.add(new BlockPos(3, y, 0));
+        }
+        WorldView hill = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND || sealing.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return dirt.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Mason mason = new Mason("Alice", inventory, new Footing(session, inventory), new HashSet<>());
+
+        mason.repoint(new Position(0.5, GROUND, -3.5), hill, CENTRE, 3, List.of(dirt), true);
+
+        Position stand = mason.standAt().orElseThrow();
+        assertTrue(!BlockPos.containing(stand.x(), stand.y(), stand.z()).equals(pocket), "not the sealed " + pocket);
+        assertTrue(io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.find(hill, new BlockPos(0, GROUND, -3),
+                new io.github.jayessdeesea.minecraft.bot.nav.Goal(stand.x(), stand.y(), stand.z(), 0.3, 0.5), 20_000,
+                io.github.jayessdeesea.minecraft.bot.nav.FallAllowance.NONE, 64).reachesGoal(), "a stand a route reaches: " + stand
+                + " (open ground outside: " + outside + ")");
+    }
+
+    /**
      * As live: a soldier with a hostile hovering at the edge of reach is free one tick and not the
      * next, and its repointing started again at every free tick - 342 times for one cell - so the
      * dirt's break time never ran out. Taken for a moment, the job holds its place and goes on.

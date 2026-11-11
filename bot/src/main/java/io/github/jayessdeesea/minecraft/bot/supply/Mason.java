@@ -136,7 +136,7 @@ public final class Mason {
         Optional<java.util.Map.Entry<BlockPos, BlockPos>> next = open.stream()
                 .filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && Builder.support(world, c).isPresent())
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
-                .flatMap(cell -> inside(world, cell, centre, radius, soldier, this::standOpen).filter(stand -> !claims.contains(stand))
+                .flatMap(cell -> inside(world, cell, centre, radius, soldier, reached(world)).filter(stand -> !claims.contains(stand))
                         .map(stand -> java.util.Map.entry(cell, stand)).stream())
                 .findFirst();
         if (next.isPresent()) {
@@ -216,7 +216,7 @@ public final class Mason {
         }
         soft.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && world.isSoil(c.x(), c.y(), c.z()))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
-                .flatMap(cell -> inside(world, cell, centre, radius, soldier, this::standOpen).filter(stand -> !claims.contains(stand))
+                .flatMap(cell -> inside(world, cell, centre, radius, soldier, reached(world)).filter(stand -> !claims.contains(stand))
                         .map(stand -> java.util.Map.entry(cell, stand)).stream())
                 .findFirst().ifPresent(next -> startRepoint(world, next.getKey(), next.getValue()));
     }
@@ -262,6 +262,33 @@ public final class Mason {
      */
     static Optional<BlockPos> inside(WorldView world, BlockPos cell, BlockPos centre, int radius, Position soldier) {
         return inside(world, cell, centre, radius, soldier, stand -> true);
+    }
+
+    /** How far a route to a stand is looked for before the stand counts as out of reach. */
+    static final int STAND_ROUTE_BUDGET = 20_000;
+
+    /**
+     * Whether a stand is one to try: not lately one it couldn't get to, and one a route reaches from
+     * where the soldier stands - or it's barred now, not after a walk at it. Live, the wall's last
+     * dirt block had its stand in a pocket sealed in the hill, and every mason walked 400 ticks at it.
+     */
+    private java.util.function.Predicate<BlockPos> reached(WorldView world) {
+        return stand -> {
+            if (!standOpen(stand)) {
+                return false;
+            }
+            BlockPos from = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
+            // As the soldier gets about: pillaring and building steps on the blocks it carries, and
+            // cutting steps with a pickaxe if it has one - a wall going up is crossed that way.
+            int blocks = inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT);
+            boolean pickaxe = inventory.count(ItemClass.PICKAXE) > 0;
+            if (Pathfinder.find(world, from, new io.github.jayessdeesea.minecraft.bot.nav.Goal(stand.x() + 0.5, stand.y(), stand.z() + 0.5,
+                    ON_PLACE, 0.5), STAND_ROUTE_BUDGET, io.github.jayessdeesea.minecraft.bot.nav.FallAllowance.NONE, blocks, pickaxe).reachesGoal()) {
+                return true;
+            }
+            standsFailed.failed(stand, ticks, "no route to " + stand);
+            return false;
+        };
     }
 
     /** Whether {@code stand} hasn't lately been one it couldn't get to. */

@@ -758,6 +758,9 @@ ring of blocks one out from the wall's top row, against its outer face: an overh
 climbing the wall can't get round. None outside the doorway, where it would stand at head height
 in the way out. A mason places each lip block from the column nearest it just inside the wall,
 never from the wall's top; where the ground inside has been dug away, from the column just outside.
+A stand counts only if a route reaches it from where the mason stands, as it gets about - on foot,
+pillaring on the blocks it carries, cutting steps with a pickaxe: one sealed in a hill is passed
+over at once for the next, rather than walked at for 400 ticks by every mason in turn.
 A mason with blocks and cells left that it can't build says why: how many have nothing to go
 against, and how many nowhere to stand. The log says how many blocks are still to place. Seen live in `wall-the-camp`: two squads close a 128-block wall
 together.
