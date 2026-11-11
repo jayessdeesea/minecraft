@@ -132,6 +132,28 @@ class PatrolBaseTest {
         assertEquals(List.of(new Position(2, 64, 0), new Position(2, 65, 0)), room.doorway(new Position(50, 64, 0.5), outside -> true));
     }
 
+    /**
+     * As live: a sealed hut with a one-block pit in its floor, a soldier standing in it. Read as a
+     * way down and out, the room was never found, and three soldiers stood shut in it all morning.
+     */
+    @Test
+    void aHutWithAPitInItsFloorStillShutsItsSoldiersIn() {
+        PatrolBase.Plan hut = PatrolBase.hasty(new Position(0, 64, 0), 4);
+        Set<Position> built = new HashSet<>(hut.cells());
+        Position pit = new Position(1, 63, 1);
+        java.util.function.Predicate<Position> solid = cell -> (cell.y() < 64 && !cell.equals(pit)) || built.contains(cell);
+
+        PatrolBase.Plan fromTheFloor = PatrolBase.enclosing(new Position(0.5, 64, 0.5), solid).orElseThrow();
+        PatrolBase.Plan fromThePit = PatrolBase.enclosing(new Position(1.5, 63, 1.5), solid).orElseThrow();
+
+        assertEquals(fromTheFloor.floor(), fromThePit.floor(), "one room, from wherever in it");
+        assertTrue(fromTheFloor.floor().contains(pit), "the pit is the room's: " + fromTheFloor.floor());
+        // And a pit that's a way out - a shaft down to open ground below - still isn't shut in.
+        java.util.function.Predicate<Position> shaft = cell -> (cell.y() < 64 && !(cell.x() == 1 && cell.z() == 1 && cell.y() >= 50)
+                && !(cell.y() >= 50 && cell.y() <= 51 && Math.abs(cell.x()) < 10 && Math.abs(cell.z()) < 10)) || built.contains(cell);
+        assertTrue(PatrolBase.enclosing(new Position(0.5, 64, 0.5), shaft).isEmpty(), "a shaft down to a cave");
+    }
+
     @Test
     void aSoldierInTheOpenOrInAHutWithAWayOutIsntShutIn() {
         PatrolBase.Plan hut = PatrolBase.hasty(new Position(0, 64, 0), 4);

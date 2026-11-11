@@ -176,20 +176,30 @@ public final class PatrolBase {
         if (!fits.test(feet)) {
             return java.util.Optional.empty();
         }
+        // Everywhere a body gets from here - a step down into a hole, a step up with headroom, a fall
+        // - is the room; a room that grows past a hut's size is a way out. Live, a hut with a pit in
+        // its floor, read as a way down and out, was never found, and three soldiers stood shut in it.
         java.util.Set<Position> room = new java.util.LinkedHashSet<>(List.of(feet));
         java.util.ArrayDeque<Position> frontier = new java.util.ArrayDeque<>(room);
         while (!frontier.isEmpty()) {
             Position cell = frontier.poll();
-            if (!solid.test(new Position(cell.x(), cell.y() - 1, cell.z()))) {
-                return java.util.Optional.empty(); // a way down and out
-            }
-            for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-                Position next = new Position(cell.x() + d[0], cell.y(), cell.z() + d[1]);
-                if (!fits.test(next) && fits.test(new Position(next.x(), next.y() + 1, next.z()))
-                        && !solid.test(new Position(cell.x(), cell.y() + 2, cell.z()))) {
-                    return java.util.Optional.empty(); // a step up and out
+            java.util.List<Position> moves = new java.util.ArrayList<>();
+            Position below = new Position(cell.x(), cell.y() - 1, cell.z());
+            if (!solid.test(below)) {
+                moves.add(below); // it falls
+            } else {
+                for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                    Position next = new Position(cell.x() + d[0], cell.y(), cell.z() + d[1]);
+                    Position up = new Position(next.x(), next.y() + 1, next.z());
+                    if (fits.test(next)) {
+                        moves.add(next);
+                    } else if (fits.test(up) && !solid.test(new Position(cell.x(), cell.y() + 2, cell.z()))) {
+                        moves.add(up); // a step up
+                    }
                 }
-                if (fits.test(next) && room.add(next)) {
+            }
+            for (Position next : moves) {
+                if (room.add(next)) {
                     if (room.size() > MAX_ROOM_CELLS) {
                         return java.util.Optional.empty();
                     }
@@ -197,6 +207,8 @@ public final class PatrolBase {
                 }
             }
         }
+        // Where a body stands, not falls through.
+        room.removeIf(cell -> !solid.test(new Position(cell.x(), cell.y() - 1, cell.z())));
         List<Position> floor = room.stream()
                 .sorted(java.util.Comparator.comparingDouble(Position::z).thenComparingDouble(Position::x)).toList();
         List<Position> stands = floor.stream().map(cell -> new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5)).toList();
