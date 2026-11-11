@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.command.Directive;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Plan;
@@ -74,6 +75,11 @@ class TaskOrganisationSimulationTest {
 
     /** As {@link #run(SimClock, SimServer.Terrain, String, String)}, each soldier also carrying {@code more}. */
     private SimServer run(SimClock clock, SimServer.Terrain ground, String roles, String orders, List<int[]> more) {
+        return run(clock, ground, roles, orders, more, "");
+    }
+
+    /** As {@link #run(SimClock, SimServer.Terrain, String, String, List)}, with the camp at {@code camp} ("x,z"; "" for none). */
+    private SimServer run(SimClock clock, SimServer.Terrain ground, String roles, String orders, List<int[]> more, String camp) {
         List<int[]> kit = new ArrayList<>(List.of(
                 new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                 new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
@@ -85,7 +91,7 @@ class TaskOrganisationSimulationTest {
                 "A foothold", new Objective.Task.None())), squadLeader(roles, orders),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, camp, state.toString())
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit))
                 .run();
         return server;
@@ -139,6 +145,34 @@ class TaskOrganisationSimulationTest {
         clock.advance(10 * 60_000);
 
         assertTrue(cutBelow(server) >= 20, "the miner cut its stairs down: " + cutBelow(server) + " cells cut below y=53");
+    }
+
+    /** Flat, with a one-block pond six blocks east of the camp. */
+    private static int pondByTheCamp(int x, int y, int z) {
+        return x == 6 && z == 0 && y == GROUND ? SimServer.WATER : SquadSimulationTest.flat(x, y, z);
+    }
+
+    /**
+     * A farmer sited where there's no ground to farm works the camp's farm, and says so: live, the
+     * squad leader left a farmer's CANTCO unanswered all day, and it stood at a dry site.
+     */
+    @Test
+    void aFarmerSitedWithNoWaterWorksTheCampsFarm() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::pondByTheCamp, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.SEEDS), 32}), "0,0");
+        clock.advance(4 * 60_000);
+
+        int farmland = 0;
+        for (int x = 0; x <= 12; x++) {
+            for (int z = -6; z <= 6; z++) {
+                farmland += server.block(x, GROUND, z) == SimServer.FARMLAND ? 1 : 0;
+            }
+        }
+        assertTrue(farmland >= 4, "the camp's farm tilled: " + farmland + " cells");
+        List<String> log = Files.readAllLines(Path.of("target/sim/aFarmerSitedWithNoWaterWorksTheCampsFarm.log"));
+        assertTrue(log.stream().anyMatch(l -> l.contains("no ground to farm") && l.contains("the camp's farm")), "and says why it's there");
     }
 
     /** Flat, with a pool of water at the ground eight blocks south and one east of (8, 8). */

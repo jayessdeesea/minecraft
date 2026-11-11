@@ -2417,18 +2417,26 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // live, their order changed cycle to cycle, and a farmer was taken off its harvest every
             // few seconds and never reached it.
             boolean farmHalf = statuses.stream().map(SoldierStatus::name).sorted().toList().indexOf(soldierName) % 2 == 0;
+            // Ordered to farm where there's no ground to: the camp's farm, saying why it's there. Live,
+            // a farmer's CANTCO for a dry site went unanswered all day, and it stood there.
+            Optional<Objective> farmOrdered = taskOf(squadName, Objective.Task.Farm.class);
+            boolean siteDry = farmOrdered.isPresent() && farm == null;
             FarmPlan kept = farm != null ? farm
+                    : siteDry && campFarm != null ? campFarm
                     : hungrySquad && farmDay && farmHalf ? campFarm : null;
             if (kept != null && !squadInContact) {
                 farming.put(soldierName, kept);
             } else {
                 farming.remove(soldierName);
             }
-            Optional<Objective> farmOrdered = taskOf(squadName, Objective.Task.Farm.class);
-            if (farmOrdered.isPresent() && farm == null) {
+            if (siteDry) {
                 Position farmSite = farmOrdered.get().location();
-                farmless.put(soldierName, String.format(Locale.ROOT, "no ground to farm by water within %d blocks of (%d, %d, %d)",
-                        FARM_SITE_RADIUS, (int) Math.floor(farmSite.x()), (int) Math.floor(farmSite.y()), (int) Math.floor(farmSite.z())));
+                String dry = String.format(Locale.ROOT, "no ground to farm by water within %d blocks of (%d, %d, %d)",
+                        FARM_SITE_RADIUS, (int) Math.floor(farmSite.x()), (int) Math.floor(farmSite.y()), (int) Math.floor(farmSite.z()));
+                if (campFarm != null && !dry.equals(farmless.get(soldierName))) {
+                    LOG.info("[{}] {}: {} - keeps the camp's farm", squadName, soldierName, dry);
+                }
+                farmless.put(soldierName, dry);
             } else {
                 farmless.remove(soldierName);
             }
