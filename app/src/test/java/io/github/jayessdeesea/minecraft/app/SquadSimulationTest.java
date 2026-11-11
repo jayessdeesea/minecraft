@@ -1519,6 +1519,54 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
+    /**
+     * At dusk the squad shelters in the camp - but not over its workshop. Live, the night's hut at
+     * the camp's centre sealed the workshop's chest inside it, and the miners stood all night unable
+     * to put their loads away.
+     */
+    @Test
+    void theNightsBaseInTheCampLeavesItsWorkshopClear() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 12_300); // just before dusk
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, true, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(4.5, GROUND + 1, 9.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, SimServer.ITEM_COBBLESTONE, 64})))
+                .run();
+
+        clock.advance(4 * 60_000);
+
+        List<String> log;
+        try {
+            log = Files.readAllLines(Path.of("target/sim/theNightsBaseInTheCampLeavesItsWorkshopClear.log"));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        java.util.regex.Matcher shop = java.util.regex.Pattern.compile("the camp's workshop: stand BlockPos\\[x=(-?\\d+), y=-?\\d+, z=(-?\\d+)\\], "
+                + "table BlockPos\\[x=(-?\\d+), y=-?\\d+, z=(-?\\d+)\\], furnace BlockPos\\[x=(-?\\d+), y=-?\\d+, z=(-?\\d+)\\]")
+                .matcher(log.stream().filter(l -> l.contains("the camp's workshop:")).findFirst().orElseThrow(() -> new AssertionError("no workshop")));
+        assertTrue(shop.find());
+        java.util.regex.Matcher base = java.util.regex.Pattern.compile("PATROL BASE at Position\\[x=(-?[\\d.]+), y=-?[\\d.]+, z=(-?[\\d.]+)\\]")
+                .matcher(log.stream().filter(l -> l.contains("PATROL BASE at")).reduce((a, b) -> b).orElseThrow(() -> new AssertionError("no base")));
+        assertTrue(base.find());
+        int bx = (int) Math.floor(Double.parseDouble(base.group(1)));
+        int bz = (int) Math.floor(Double.parseDouble(base.group(2)));
+        // A hut for two: its floor at the site and one beyond, its walls one out round that.
+        for (int k = 1; k <= 5; k += 2) {
+            int x = Integer.parseInt(shop.group(k));
+            int z = Integer.parseInt(shop.group(k + 1));
+            assertTrue(x < bx - 1 || x > bx + 2 || z < bz - 1 || z > bz + 2,
+                    "the hut at " + bx + "," + bz + " is over the workshop's " + x + "," + z);
+        }
+    }
+
     /** Flat, with one log too high over the camp to cut from the ground. */
     private static int logOutOfReach(int x, int y, int z) {
         return x == 3 && z == 3 && y == GROUND + 10 ? SimServer.OAK_LOG : flat(x, y, z);

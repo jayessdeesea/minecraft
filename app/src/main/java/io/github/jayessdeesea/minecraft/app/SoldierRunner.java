@@ -2878,6 +2878,21 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 taken.addAll(columns);
             }
         });
+        // Clear of the camp's workshop and its mine head: live, the night's hut at the camp's centre
+        // sealed the workshop's chest inside it, and the miners stood all night unable to put their
+        // loads away.
+        Workshop shop = campWorkshop;
+        if (shop != null) {
+            Stream.concat(Stream.of(shop.stand(), shop.table(), shop.furnace()), shop.chest().stream())
+                    .forEach(c -> taken.add(column(c.x(), c.z())));
+        }
+        campStairs().ifPresent(st -> {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    taken.add(column(st.head().x() + dx, st.head().z() + dz));
+                }
+            }
+        });
         int ax = (int) Math.floor(asked.x());
         int az = (int) Math.floor(asked.z());
         int ay = (int) Math.floor(asked.y());
