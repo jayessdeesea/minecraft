@@ -30,6 +30,14 @@ doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
   beats three zombies 99 times in 100, and the squad drills stop separating in that sweep.
   Measuring vanilla's knockback would make the zombie numbers trustworthy again.
 
+- **Seen live (field67): a pillager patrol killed three of a squad in three minutes.** Two died at
+  the same cell, (-36.4, 63, 24.3), neither moving: one with a stone sword and a shield, its health
+  falling to 2 with nothing in its fight changing; the next, with a wooden sword and a shield,
+  raising its shield again and again as its health fell 8, 5, 2. Nothing in the fight looks at the
+  soldier's own health: an armed soldier always closes on an archer it can reach. A pillager's
+  crossbow isn't yet in `CombatScenarioTest`, and neither is a soldier hurt before the fight -
+  both first, then whether one at low health should take cover as a bare-handed one does.
+
 ## Notes
 - Exhaustion from damage taken (0.1 per hit) and from jumping (0.05) is charged by the server
   whatever the client does.
