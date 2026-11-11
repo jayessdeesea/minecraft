@@ -252,6 +252,28 @@ class MasonTest {
         assertEquals(Optional.of(nextPlace), mason.standAt(), "the next cell, not the one out of reach again");
     }
 
+    @Test
+    void aCellComingBackRoundIsBuiltFromAnotherPlaceThanTheOneOutOfReach() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.DIRT), 64});
+        BlockPos first = Perimeter.layout(flat, CENTRE, 3).getFirst();
+        Mason mason = new Mason("Alice", inventory, new Footing(session, inventory), new HashSet<>());
+        Position stuck = new Position(0.5, GROUND, 0.5);
+        BlockPos unreached = Mason.inside(flat, first, CENTRE, 3, stuck).orElseThrow();
+
+        // She never gets to the cell's first place; then, the cell passed over and back again, she
+        // goes for it from another.
+        for (int tick = 0; tick <= Mason.WALK_TICKS + 1; tick++) {
+            mason.tick(stuck, flat, CENTRE, 3, List.of(first), true);
+        }
+        for (int tick = 0; tick <= Mason.PASS_OVER_TICKS + Mason.COOLDOWN_TICKS + 2; tick++) {
+            mason.tick(stuck, flat, CENTRE, 3, List.of(first), true);
+        }
+
+        assertTrue(mason.standAt().isPresent(), "back at the cell");
+        assertTrue(!mason.standAt().get().equals(new Position(unreached.x() + 0.5, unreached.y(), unreached.z() + 0.5)),
+                "not the place it couldn't get to: " + mason.standAt());
+    }
+
     private static int item(ItemClass itemClass) {
         return IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(itemClass))).findFirst().orElseThrow();
     }

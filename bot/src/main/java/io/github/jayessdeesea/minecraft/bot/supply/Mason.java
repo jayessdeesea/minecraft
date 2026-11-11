@@ -53,6 +53,13 @@ public final class Mason {
     /** How long a cell that failed is first passed over; longer each time it fails again. */
     static final int PASS_OVER_TICKS = 2400;
     private final Setbacks<BlockPos> passedOver = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
+    /**
+     * Stands it couldn't get to, kept from for longer than their cells are passed over: back to a
+     * cell once the rest of the wall's done, it stands somewhere else. Live, the camp's wall's last
+     * two cells each had a first stand down an old shaft or in a sealed pocket, and were passed over
+     * for a day with others within reach.
+     */
+    private final Setbacks<BlockPos> standsFailed = new Setbacks<>(4L * PASS_OVER_TICKS, 64L * PASS_OVER_TICKS);
     private String failure;
     /** Why the last look found no cell to build, while there were cells open; cleared to look again. */
     private String stalled;
@@ -125,7 +132,7 @@ public final class Mason {
         Optional<java.util.Map.Entry<BlockPos, BlockPos>> next = open.stream()
                 .filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && Builder.support(world, c).isPresent())
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
-                .flatMap(cell -> inside(world, cell, centre, radius, soldier).filter(stand -> !claims.contains(stand))
+                .flatMap(cell -> inside(world, cell, centre, radius, soldier, this::standOpen).filter(stand -> !claims.contains(stand))
                         .map(stand -> java.util.Map.entry(cell, stand)).stream())
                 .findFirst();
         if (next.isPresent()) {
@@ -140,7 +147,7 @@ public final class Mason {
         List<BlockPos> unsupported = open.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks)
                 && Builder.support(world, c).isEmpty()).toList();
         List<BlockPos> noStand = open.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks)
-                && Builder.support(world, c).isPresent() && inside(world, c, centre, radius, soldier).isEmpty()).toList();
+                && Builder.support(world, c).isPresent() && inside(world, c, centre, radius, soldier, this::standOpen).isEmpty()).toList();
         String why = open.size() + " wall cells open and none to build: " + claimed + " taken by squadmates, " + passed
                 + " passed over after a failure, " + unsupported.size() + " with nothing to go against"
                 + unsupported.stream().limit(3).map(BlockPos::toString).collect(java.util.stream.Collectors.joining(", ", " (", ")"))
@@ -201,7 +208,7 @@ public final class Mason {
         }
         soft.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && world.isSoil(c.x(), c.y(), c.z()))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
-                .flatMap(cell -> inside(world, cell, centre, radius, soldier).filter(stand -> !claims.contains(stand))
+                .flatMap(cell -> inside(world, cell, centre, radius, soldier, this::standOpen).filter(stand -> !claims.contains(stand))
                         .map(stand -> java.util.Map.entry(cell, stand)).stream())
                 .findFirst().ifPresent(next -> startRepoint(world, next.getKey(), next.getValue()));
     }
@@ -246,6 +253,17 @@ public final class Mason {
      * first: in the squad simulation, one sent for a stand inside had no way in and walked nowhere.
      */
     static Optional<BlockPos> inside(WorldView world, BlockPos cell, BlockPos centre, int radius, Position soldier) {
+        return inside(world, cell, centre, radius, soldier, stand -> true);
+    }
+
+    /** Whether {@code stand} hasn't lately been one it couldn't get to. */
+    private boolean standOpen(BlockPos stand) {
+        return !standsFailed.barred(stand, ticks);
+    }
+
+    /** As {@link #inside(WorldView, BlockPos, BlockPos, int, Position)}, only among stands {@code allowed}. */
+    static Optional<BlockPos> inside(WorldView world, BlockPos cell, BlockPos centre, int radius, Position soldier,
+                                     java.util.function.Predicate<BlockPos> allowed) {
         boolean out = Math.max(Math.abs(soldier.x() - (centre.x() + 0.5)), Math.abs(soldier.z() - (centre.z() + 0.5))) > radius + 0.5;
         // Straight in or out from the cell first; then a column along the wall either side, still in
         // reach: live, a cell's column in and out were both built over, and the wall stood three
@@ -253,7 +271,7 @@ public final class Mason {
         boolean onZFace = Math.abs(cell.z() - centre.z()) == radius;
         for (int along : new int[]{0, 1, -1}) {
             for (int ring : out ? new int[]{radius + 1, radius - 1} : new int[]{radius - 1, radius + 1}) {
-                Optional<BlockPos> stand = standIn(world, cell, centre, ring, onZFace ? along : 0, onZFace ? 0 : along);
+                Optional<BlockPos> stand = standIn(world, cell, centre, ring, onZFace ? along : 0, onZFace ? 0 : along, allowed);
                 if (stand.isPresent()) {
                     return stand;
                 }
@@ -263,7 +281,8 @@ public final class Mason {
     }
 
     /** A stand in the column {@code ring} out from {@code centre} toward {@code cell}, shifted {@code (sx, sz)} along the wall. */
-    private static Optional<BlockPos> standIn(WorldView world, BlockPos cell, BlockPos centre, int ring, int sx, int sz) {
+    private static Optional<BlockPos> standIn(WorldView world, BlockPos cell, BlockPos centre, int ring, int sx, int sz,
+                                              java.util.function.Predicate<BlockPos> allowed) {
         int x = centre.x() + Math.clamp(cell.x() - centre.x(), -ring, ring) + sx;
         int z = centre.z() + Math.clamp(cell.z() - centre.z(), -ring, ring) + sz;
         // Up to three above the cell, as well as below: where the wall steps down a slope and the
@@ -271,7 +290,7 @@ public final class Mason {
         // "nowhere inside to stand" held a wall open with a level camp a block or two above them.
         for (int dy : new int[]{1, 0, -1, -2, 2, -3, 3}) { // nearest the cell's height first
             BlockPos stand = new BlockPos(x, cell.y() + dy, z);
-            if (Pathfinder.standable(world, stand) && !stand.equals(cell) && !stand.equals(cell.offset(0, -1, 0))) {
+            if (Pathfinder.standable(world, stand) && !stand.equals(cell) && !stand.equals(cell.offset(0, -1, 0)) && allowed.test(stand)) {
                 return Optional.of(stand);
             }
         }
@@ -308,8 +327,12 @@ public final class Mason {
     private void fail(String why) {
         if (claimed != null) {
             // Its place out of reach - inside an old hut, across water - or a block the server won't
-            // take there: the rest of the wall first.
+            // take there: the rest of the wall first. And a place out of reach isn't tried again
+            // when the cell comes back round.
             passedOver.failed(claimed, ticks, why);
+            if (claimedStand != null && why.startsWith("walk to ")) {
+                standsFailed.failed(claimedStand, ticks, why);
+            }
         }
         LOG.warn("{} stops walling for a while - {}", name, why);
         failure = why;
