@@ -202,6 +202,12 @@ public final class DeterministicSoldier implements Soldier {
      */
     static BlockPos standingCell(WorldView world, Position at) {
         BlockPos here = BlockPos.containing(at.x(), at.y(), at.z());
+        // On a block not quite a block high - farmland, a path - its feet are just under the next
+        // cell, and that's the one it stands in: live, farmers planned every route from inside the
+        // farmland under them, and reported "no route" to the cell they stood in.
+        if (world.isSolid(here.x(), here.y(), here.z()) && at.y() - here.y() >= PARTIAL_BLOCK_TOP) {
+            here = here.offset(0, 1, 0);
+        }
         if (Pathfinder.standable(world, here) || Pathfinder.swimmable(world, here)) {
             return here;
         }
@@ -220,6 +226,8 @@ public final class DeterministicSoldier implements Soldier {
         return best;
     }
     private static final double EPSILON = 1e-9;
+    /** Feet this far up a solid cell are on its top: farmland and paths are 15/16 high. */
+    static final double PARTIAL_BLOCK_TOP = 0.75;
     /** Swimming at the surface, blocks per tick: about vanilla's 2 blocks/s, half a walk. */
     static final double SWIM_STEP = 0.1;
     /** Afloat, the feet this far into the top block of water: the head stays out, so no drowning. */

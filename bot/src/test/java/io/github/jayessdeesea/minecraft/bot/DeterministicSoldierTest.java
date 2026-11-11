@@ -58,6 +58,33 @@ class DeterministicSoldierTest {
         assertEquals(new BlockPos(5, 64, 0), DeterministicSoldier.standingCell(world, new Position(5.5, 64, 0.5)), "on the ground, its own");
     }
 
+    /**
+     * On farmland - a block 15/16 high - its feet are just under the next cell: it stands in that
+     * one, not in the farmland. Live, farmers planned every route from inside the block they stood
+     * on, and reported "no route" to the cell they were in.
+     */
+    @Test
+    void aSoldierOnFarmlandStandsOverIt() {
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 62;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(new BlockPos(5, 63, 0), DeterministicSoldier.standingCell(world, new Position(5.5, 62.9375, 0.5)));
+    }
+
     @Test
     void trendsTowardTargetWhenUnobstructed() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(10, 64, 10));
