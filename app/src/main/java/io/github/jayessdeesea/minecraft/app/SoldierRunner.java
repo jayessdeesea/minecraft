@@ -2391,6 +2391,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (!soft.isEmpty() && !squadInContact && !state.relieved(soldierName, "wall the camp in stone", now)) {
                 repointing.put(soldierName, soft);
                 wallCentres.put(soldierName, state.wallCentre);
+                // No cobblestone to repoint with: from the stockpile, when it was last seen holding
+                // some, or quarried - as a mason short of blocks for a wall going up digs dirt. Live,
+                // the camp's wall's last dirt block stood a day, its masons carrying none and nothing
+                // sending them for it. Not while it's still walling: the open wall comes first.
+                Kit pack = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
+                if (pack != null && pack.stone() == 0 && wallLeft.isEmpty()) {
+                    boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false) && stockpileFor(soldierName).isPresent();
+                    if (stocked) {
+                        drawingStone.add(soldierName);
+                    } else {
+                        drawingStone.remove(soldierName);
+                        Position centre = new Position(state.wallCentre.x(), state.wallCentre.y(), state.wallCentre.z());
+                        gathering.put(soldierName, new Objective("Quarry cobblestone to wall the camp in stone",
+                                seenFor(squadName, i, Resource.STONE, centre), "The wall's dirt replaced with stone",
+                                new Objective.Task.Gather(Resource.STONE)));
+                    }
+                }
             } else {
                 repointing.remove(soldierName);
             }

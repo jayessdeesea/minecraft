@@ -799,8 +799,10 @@ of the wall's blocks of dirt or grass is replaced with cobblestone (`Mason.repoi
 carrying some, with no open wall cell it can build, stands inside the wall by the block, digs it
 out by hand for the server's break time, and puts stone in its place, each step confirmed by the
 block update. "The camp walled in" isn't met, and FORTIFY isn't done, while any dirt is left in
-the wall; its progress says how many blocks. With no stone to hand that shows as the task
-stalled - the general's cue for stone.
+the wall; its progress says how many blocks. A mason on it with no cobblestone, the wall
+otherwise closed, draws some from the stockpile when it was last seen holding stone, or quarries
+some where its squad saw stone nearest the camp - as one short of blocks for a wall going up digs
+dirt.
 
 A fill (`Clearing.toFill`, `bot.supply.Filler`) puts cobblestone or dirt in its strip's cells,
 the lowest it can reach first, nearest first, so a pit under the wall line becomes footing again;
