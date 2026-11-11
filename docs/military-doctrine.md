@@ -806,7 +806,9 @@ from the outside first, and claims its stand with its cell, so two masons never 
 
 A soldier with nothing else to do keeps the camp the same way, whatever the squad's task: by day,
 out of contact and within 24 blocks of the camp - or by night inside the wall line of a camp lit
-to within 8 dark cells, since nothing spawns on lit ground - with no other work handed to it, it is
+to within 8 dark cells, since nothing spawns on lit ground, if it's armed and at half health or
+more and its squad isn't sent to its patrol base: phantoms come down out of the sky on anyone
+under it, and live one killed an unarmed soldier at 4 health digging the camp - with no other work handed to it, it is
 handed the same drill's commands round the camp (`SoldierRunner.campUpkeep`), so an idle squad flattens the
 camp rather than stand in it. Live, three soldiers stood a day in a lit camp with their task all
 but done. A gather that found nothing within reach isn't work for 5 minutes - a squad sent for

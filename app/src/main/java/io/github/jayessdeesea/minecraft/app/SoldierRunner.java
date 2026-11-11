@@ -948,6 +948,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      * it. Live, three soldiers stood a day in a lit camp with their task all but done. A soldier
      * with any other work handed to it keeps that.
      */
+    /** Health a soldier keeps the camp by night with, besides a weapon: half its hearts. */
+    static final double NIGHT_UPKEEP_HEALTH = 10;
+
     private void campUpkeep(String squad, List<SoldierStatus> statuses) {
         boolean daylight = !chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
         boolean contact = statuses.stream().anyMatch(s -> s.report() instanceof Report.InContact);
@@ -955,7 +958,9 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // line keeps working. Live, squads stood every night at their slots, a lit camp round them.
         boolean litCamp = campGround != null && !daylight
                 && io.github.jayessdeesea.minecraft.bot.supply.Lighting.dark(world, campGround, SECURE_RADIUS) <= NIGHT_UPKEEP_DARK;
-        if (campGround == null || !daylight && !litCamp || contact) {
+        // Not a squad sent to its patrol base for the night: its place is inside.
+        boolean sheltering = !daylight && chainOfCommand.patrolBaseObjective(squad).isPresent();
+        if (campGround == null || !daylight && !litCamp || contact || sheltering) {
             statuses.forEach(s -> {
                 if (upkeeping.remove(s.name())) {
                     route(s.name(), null);
@@ -983,7 +988,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     || patrolLegs.containsKey(n);
             boolean near = Math.hypot(s.position().x() - campGround.x(), s.position().z() - campGround.z())
                     <= (daylight ? SECURE_RADIUS * 2 : WALL_RADIUS);
-            if (otherWork || !near) {
+            // By night only the fit: lit ground spawns nothing, but phantoms come down out of the sky
+            // on anyone under it. Live, an unarmed soldier at 4 health digging the camp by night was
+            // killed by one.
+            boolean fit = daylight || s.condition().filter(c -> c.health() >= NIGHT_UPKEEP_HEALTH
+                    && c.kit().flatMap(Kit::weapon).isPresent()).isPresent();
+            if (otherWork || !near || !fit) {
                 if (upkeeping.remove(n)) {
                     route(n, null);
                 }

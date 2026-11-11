@@ -1029,6 +1029,39 @@ class SquadSimulationTest {
         assertEquals(0, mound, "blocks of the mound left by night");
     }
 
+    /**
+     * By night only the fit keep the camp: lit ground spawns nothing, but phantoms come out of the
+     * sky. Live, an unarmed soldier at 4 health digging the camp by night was killed by one.
+     */
+    @Test
+    void byNightOneAtLowHealthDoesntKeepTheCamp() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::moundInALitCamp, 14_000); // an hour after dusk
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+        clock.advance(5_000); // joined, and the camp's work handed out
+        Path log = Path.of("target/sim/byNightOneAtLowHealthDoesntKeepTheCamp.log");
+        int before = java.nio.file.Files.readAllLines(log).size();
+        server.starve("Bob", 4);
+
+        clock.advance(2 * 60_000);
+
+        List<String> after = java.nio.file.Files.readAllLines(log);
+        after = after.subList(before, after.size());
+        assertTrue(after.stream().anyMatch(l -> l.contains("Bob taken off dig the camp's ground")), "Bob, at 4 health, taken off the camp's work");
+        assertTrue(after.stream().noneMatch(l -> l.contains("Bob has nothing else to do - keeps the camp")), "and not given it again");
+        assertTrue(after.stream().noneMatch(l -> l.contains("Alice taken off dig the camp's ground")), "Alice, fit, keeps at it");
+    }
+
     /** Flat, with a pond by the camp: farm ground by water. */
     private static int pondByCamp(int x, int y, int z) {
         return x >= 6 && x <= 8 && z >= 6 && z <= 8 && y == GROUND ? SimServer.WATER : flat(x, y, z);
