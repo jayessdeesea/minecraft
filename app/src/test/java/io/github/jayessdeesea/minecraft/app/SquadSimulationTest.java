@@ -583,6 +583,56 @@ class SquadSimulationTest {
         assertEquals(List.of(), alerts);
     }
 
+    /** As {@link #keptStairsAllCut}, the camp's ground lit by torches every 3 blocks, and a mound on it to dig. */
+    private static int keptStairsAllCutInALitCamp(int x, int y, int z) {
+        if (y == GROUND + 1 && Math.floorMod(x, 3) == 0 && Math.floorMod(z, 3) == 0 && Math.abs(x) <= 15 && Math.abs(z) <= 15
+                && !KEPT_CUT.contains(new BlockPos(x, y, z)) && Math.abs(x - 4) > 2 && Math.abs(z - 4) > 2) {
+            return SimServer.TORCH;
+        }
+        if (x >= -6 && x <= -5 && z >= -6 && z <= -5 && y > GROUND && y <= GROUND + 2) {
+            return SimServer.DIRT;
+        }
+        // And its stairs lit, as live.
+        if (KEPT.lights().contains(new BlockPos(x, y, z))) {
+            return SimServer.TORCH;
+        }
+        return keptStairsAllCut(x, y, z);
+    }
+
+    /**
+     * By night, in a lit camp with ground work to do, the squad down the mine stays down: the camp's
+     * upkeep is for those at the camp, and a soldier at the landing 48 blocks under it isn't. Live, one
+     * at the landing was handed the camp's dig, wall and lights, out of reach, all night - each
+     * stalled or taken back within seconds.
+     */
+    @Test
+    void byNightASquadDownTheMineIsntSentUpToKeepALitCamp() {
+        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsAllCutInALitCamp, 14_000); // an hour after dusk
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
+                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(6 * 60_000);
+
+        // Handed the camp's dig on the surface, as they joined, is fair; held on to down the mine isn't.
+        List<String> held = runner.taskings("Alpha").stream().filter(t -> t.task().equals("dig the camp's ground"))
+                .map(t -> t.line(0)).toList();
+        assertEquals(List.of(), held, "the camp's dig held by soldiers down the mine");
+        for (String name : List.of("Alice", "Bob")) {
+            assertTrue(server.position(name).y() < KEPT.head().y() - 24, name + " under the ground by night, not at " + server.position(name));
+        }
+    }
+
     /** Flat, with two one-block ponds east of the camp, 10 apart: neither's plot alone the camp's farm. */
     private static int twoPonds(int x, int y, int z) {
         return y == GROUND && z == 0 && (x == 14 || x == 24) ? SimServer.WATER : flat(x, y, z);

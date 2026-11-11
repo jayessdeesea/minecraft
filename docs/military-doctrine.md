@@ -820,7 +820,8 @@ doesn't walk back for every fourth block. A mason back outside the wall line fro
 from the outside first, and claims its stand with its cell, so two masons never contest one stand.
 
 A soldier with nothing else to do keeps the camp the same way, whatever the squad's task: by day,
-out of contact and within 24 blocks of the camp - or by night inside the wall line of a camp lit
+out of contact and within 24 blocks of the camp, and within 6 of its ground's height, not down
+the mine under it - or by night inside the wall line of a camp lit
 to within 8 dark cells, since nothing spawns on lit ground, if it's armed and at half health or
 more and its squad isn't sent to its patrol base: phantoms come down out of the sky on anyone
 under it, and live one killed an unarmed soldier at 4 health digging the camp - with no other work handed to it, it is

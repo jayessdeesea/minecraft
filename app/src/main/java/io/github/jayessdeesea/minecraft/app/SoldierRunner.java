@@ -1293,6 +1293,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * it. Live, three soldiers stood a day in a lit camp with their task all but done. A soldier
      * with any other work handed to it keeps that.
      */
+    /** How far above or below the camp's ground a soldier is still at the camp, for its upkeep. */
+    static final int CAMP_VERTICAL = 6;
+
     /** Health a soldier keeps the camp by night with, besides a weapon: half its hearts. */
     static final double NIGHT_UPKEEP_HEALTH = 10;
 
@@ -1331,8 +1334,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     || gathering.containsKey(n) && !groundGather.containsKey(n)
                     && clockwork.millis() - gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE / 2) > FOUND_NOTHING_MILLIS
                     || patrolLegs.containsKey(n);
+            // At the camp, not under it: live, one at the mine's landing 48 blocks down was handed the
+            // camp's dig, wall and lights all night, out of reach, each stalled or taken back in seconds.
             boolean near = Math.hypot(s.position().x() - campGround.x(), s.position().z() - campGround.z())
-                    <= (daylight ? SECURE_RADIUS * 2 : WALL_RADIUS);
+                    <= (daylight ? SECURE_RADIUS * 2 : WALL_RADIUS) && Math.abs(s.position().y() - campGround.y()) <= CAMP_VERTICAL;
             // By night only the fit: lit ground spawns nothing, but phantoms come down out of the sky
             // on anyone under it. Live, an unarmed soldier at 4 health digging the camp by night was
             // killed by one.
@@ -2469,7 +2474,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     || repointing.containsKey(soldierName) || planting.containsKey(soldierName) || gathering.containsKey(soldierName);
             if (!lighting.containsKey(soldierName) && !otherWork && !campDark.isEmpty() && !squadInContact && daylight
                     && torchesCarried.getOrDefault(soldierName, 0) > 0 && campGround != null
-                    && Math.hypot(statuses.get(i).position().x() - campGround.x(), statuses.get(i).position().z() - campGround.z()) <= SECURE_RADIUS * 2) {
+                    && Math.hypot(statuses.get(i).position().x() - campGround.x(), statuses.get(i).position().z() - campGround.z()) <= SECURE_RADIUS * 2
+                    && Math.abs(statuses.get(i).position().y() - campGround.y()) <= CAMP_VERTICAL) {
                 lighting.put(soldierName, campDark);
             }
             // The mine's stairs lit as they're cut, a torch a turn: by the squad holding the top, not
