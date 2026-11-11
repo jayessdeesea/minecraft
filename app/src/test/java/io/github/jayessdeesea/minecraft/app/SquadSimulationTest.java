@@ -860,6 +860,19 @@ class SquadSimulationTest {
      */
     @Test
     void aSoldierStuckInWaterPlugsIt() {
+        assertPlugsItsWayOut(SimServer.ITEM_DIRT, 64);
+    }
+
+    /**
+     * With logs, the only blocks it carries, it plugs the water just the same: live, a farmer with
+     * two logs and no dirt floated for minutes beside its farm, reporting no route out.
+     */
+    @Test
+    void aSoldierStuckInWaterWithOnlyLogsPlugsIt() {
+        assertPlugsItsWayOut(SimServer.ITEM_OAK_LOG, 8);
+    }
+
+    private void assertPlugsItsWayOut(int blocks, int count) {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::floodedPitInCamp, 1000);
         Roster roster = new Roster("Alpha:Alice");
@@ -872,7 +885,7 @@ class SquadSimulationTest {
                 .simulated(clock, server.connector(new PlayerPosition(4.5, GROUND - 4, 4.5), List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.ITEM_BREAD, 16},
-                        new int[]{9, SimServer.ITEM_DIRT, 64})));
+                        new int[]{9, blocks, count})));
         runner.run();
 
         clock.advance(3 * 60_000);

@@ -453,6 +453,7 @@ public final class DeterministicSoldier implements Soldier {
         if (ticksUntilAttack > 0) {
             ticksUntilAttack--;
         }
+        wet = world.isWater((int) Math.floor(position.x()), (int) Math.floor(position.y()), (int) Math.floor(position.z()));
 
         Position correction = pendingCorrection.getAndSet(null);
         if (correction != null) {
@@ -971,12 +972,16 @@ public final class DeterministicSoldier implements Soldier {
 
     /**
      * How many blocks a route can be planned on - pillar and built steps: one per cobblestone or
-     * dirt carried. Logs are kept for tools.
+     * dirt carried. Logs are kept for tools, except in the water: getting out comes first. Live, a
+     * farmer with two logs and no dirt floated beside its farm for minutes, with no route out.
      */
     private int pillarBlocks() {
         Kit carried = kit;
-        return carried == null ? 0 : carried.stone() + carried.dirt();
+        return carried == null ? 0 : carried.stone() + carried.dirt() + (wet ? carried.logs() : 0);
     }
+
+    /** Whether its feet were in water at its last tick. */
+    private volatile boolean wet;
 
     /**
      * The block to place this tick, if a pillar or built step wants one - taken, so it's asked for

@@ -49,7 +49,9 @@ public final class Footing {
      * dirt once that's gone. False with neither.
      */
     public synchronized boolean placeStep(BlockPos cell, BlockFace support) {
-        ItemClass block = inventory.slotOf(ItemClass.COBBLESTONE) >= 0 ? ItemClass.COBBLESTONE : ItemClass.DIRT;
+        // Logs last: a soldier only plans steps on them out of the water, with nothing else to build with.
+        ItemClass block = inventory.slotOf(ItemClass.COBBLESTONE) >= 0 ? ItemClass.COBBLESTONE
+                : inventory.slotOf(ItemClass.DIRT) >= 0 ? ItemClass.DIRT : ItemClass.LOG;
         return place(cell, block, support);
     }
 

@@ -27,7 +27,8 @@ seconds or when stuck:
   (`bot.supply.Setbacks`). Something a squadmate was in the way of is tried again soon; a cell
   across water or a torch on leaves is tried less and less.
 - **Plugs the water it's stuck in, and says so.** Afloat and not 1.5 blocks further on in 30
-  seconds, it's stuck in the water: carrying cobblestone or dirt, it puts a block into the water
+  seconds, it's stuck in the water: carrying cobblestone, dirt or - with neither - logs, which it
+  otherwise keeps for tools and won't build a route on, it puts a block into the water
   within 4 of it from where it floats - sources first, which stop the flow, then the water nearest
   it, flowing or not, which is footing to climb out by. And it reports CANTCO "no route from (x, y, z) out of the water", which
   the squad's recovery drill reads as stranded when it has too few blocks to build its own way:

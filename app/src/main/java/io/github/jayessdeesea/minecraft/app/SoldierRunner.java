@@ -3233,7 +3233,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         clearers.put(name, clearer);
         Filler filler = new Filler(name, session, inventory);
         fillers.put(name, filler);
-        Builder sealer = new Builder(name, session, inventory, List.of(ItemClass.COBBLESTONE, ItemClass.DIRT));
+        // Logs too, last: live, a farmer with two logs and no dirt floated beside its farm for minutes.
+        Builder sealer = new Builder(name, session, inventory, List.of(ItemClass.COBBLESTONE, ItemClass.DIRT, ItemClass.LOG));
         AtomicBoolean sealing = new AtomicBoolean();
         AtomicLong tickCount = new AtomicLong();
         Scavenger scavenger = new Scavenger(name);
@@ -3376,7 +3377,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Stuck in water: plug the sources round it - stopping the flow, and each block one more
             // to climb out by - nearest first, from where it floats.
             turns.put(Hands.Routine.SEALER, turn(sealing::get, free -> {
-                if (!free || !stuckInWater || inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT) == 0) {
+                if (!free || !stuckInWater || inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.LOG) == 0) {
                     if (sealing.getAndSet(false)) {
                         sealer.stop();
                     }
