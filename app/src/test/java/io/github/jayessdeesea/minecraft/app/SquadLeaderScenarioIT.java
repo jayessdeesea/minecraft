@@ -67,7 +67,13 @@ class SquadLeaderScenarioIT {
      * fall that would kill it - the recovery drill's, not the squad's mission's, to solve - shown as
      * the squad leader sees it once the drill has it: Recovering, at the rear.
      */
-    private enum Variant { PLAIN, STUCK, RETASKED, STRANDED, STRUGGLING }
+    /**
+     * The task organisation (docs/military-doctrine.md § 18): MINER, the general asks for one soldier
+     * on a mine at a point - one role change, MINER, at that site; POST, for Bob posted as a lookout
+     * at a point - his GO_TO there; KEPT, Carol already the squad's miner and nothing asked - her role
+     * left as it is. In every other variant, no plan changes at all.
+     */
+    private enum Variant { PLAIN, STUCK, RETASKED, STRANDED, STRUGGLING, MINER, POST, KEPT }
 
     private record Outcome(Scenario scenario, Variant variant, long millis, String risk, List<String> failures) {
         String name() {
@@ -163,7 +169,8 @@ class SquadLeaderScenarioIT {
 
         String standing = String.format(Locale.ROOT, """
                 {"x": %d, "y": %d, "z": %d, "formation": "WEDGE", "interval": "NORMAL", "verticalTolerance": 3,
-                 "risk": "LOW", "soldierRisks": [], "rearm": false, "intent": "hold the high ground and observe", "cantco": ""}""",
+                 "risk": "LOW", "soldierRisks": [], "rearm": false, "intent": "hold the high ground and observe", "cantco": "",
+                 "roleChanges": [], "detached": []}""",
                 start.x(), start.y(), start.z());
         ChatClient client = ChatClient.builder(variant == Variant.RETASKED ? answeringFirst(standing, model) : model).build();
         SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha", client, io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts.read(
@@ -172,8 +179,21 @@ class SquadLeaderScenarioIT {
             leader.receiveObjective(new Objective("Establish an observation post", pointMan, "watch for hostiles"));
             leader.decide(squad, terrain);
         }
-        leader.receiveObjective(new Objective("Move the squad to the objective",
-                new Position(objective.x(), objective.y(), objective.z()), "secure the objective"));
+        Position mine = new Position(start.x() + 6, 16, start.z() - 6);
+        Position post = new Position(start.x() + 4.5, world.ground(start.x() + 4, start.z() - 4) + 1, start.z() - 3.5);
+        String mission = switch (variant) {
+            case MINER -> String.format(Locale.ROOT, "Move the squad to the objective, and detail one soldier to mine for iron at x=%.0f, z=%.0f, down to y=%.0f",
+                    mine.x(), mine.z(), mine.y());
+            case POST -> String.format(Locale.ROOT, "Move the squad to the objective, and post Bob as a lookout at x=%.1f, y=%.0f, z=%.1f",
+                    post.x(), post.y(), post.z());
+            default -> "Move the squad to the objective";
+        };
+        io.github.jayessdeesea.minecraft.command.Plan carolMining = new io.github.jayessdeesea.minecraft.command.Plan(
+                io.github.jayessdeesea.minecraft.command.Role.MINER, java.util.Optional.of(mine), List.of());
+        if (variant == Variant.KEPT) {
+            leader.receivePlans(java.util.Map.of("Carol", carolMining));
+        }
+        leader.receiveObjective(new Objective(mission, new Position(objective.x(), objective.y(), objective.z()), "secure the objective"));
         long t0 = System.nanoTime();
         SquadOrder order;
         try {
@@ -197,6 +217,46 @@ class SquadLeaderScenarioIT {
                 && horizontal(s.x(), s.z(), objective) < startDistance - PROGRESS_SLACK);
         if (progressPossible && horizontal(target.x(), target.z(), objective) >= startDistance - PROGRESS_SLACK) {
             failures.add(String.format(Locale.ROOT, "no progress (%.0f, %.0f)", target.x(), target.z()));
+        }
+        // What the order changes: one restating a plan as it stands changes nothing, and the runner makes nothing of it.
+        java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> before = new java.util.HashMap<>();
+        squad.forEach(s -> before.put(s.name(), variant == Variant.KEPT && s.name().equals("Carol")
+                ? carolMining : io.github.jayessdeesea.minecraft.command.Plan.RIFLEMAN));
+        java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> after = new java.util.HashMap<>(before);
+        order.changes().forEach(c -> after.computeIfPresent(c.soldier(), (n, p) -> p.with(c)));
+        List<io.github.jayessdeesea.minecraft.command.Plan.Change> changes = order.changes().stream()
+                .filter(c -> !after.get(c.soldier()).equals(before.get(c.soldier()))).toList();
+        switch (variant) {
+            case MINER -> {
+                List<io.github.jayessdeesea.minecraft.command.Plan.Change> miners = changes.stream()
+                        .filter(c -> c.role().filter(r -> r == io.github.jayessdeesea.minecraft.command.Role.MINER).isPresent()).toList();
+                // A miner may be sent to its site first: it goes on to mine once there.
+                boolean onlyTheMiner = changes.stream().allMatch(c -> c.soldier().equals(miners.isEmpty() ? "" : miners.getFirst().soldier())
+                        && (c.role().isPresent() || c.directives().filter(d -> d.stream().allMatch(x -> x instanceof
+                        io.github.jayessdeesea.minecraft.command.Directive.GoTo(Position at) && Math.hypot(at.x() - mine.x(), at.z() - mine.z()) <= 2)).isPresent()));
+                if (miners.size() != 1 || miners.getFirst().site().filter(s -> Math.hypot(s.x() - mine.x(), s.z() - mine.z()) <= 2
+                        && Math.abs(s.y() - mine.y()) <= 2).isEmpty() || !onlyTheMiner) {
+                    failures.add("not one MINER at " + mine + ": " + changes);
+                }
+            }
+            case POST -> {
+                boolean posted = changes.stream().anyMatch(c -> c.soldier().equals("Bob") && c.directives().filter(d -> d.size() == 1
+                        && d.getFirst() instanceof io.github.jayessdeesea.minecraft.command.Directive.GoTo(Position at)
+                        && Math.hypot(at.x() - post.x(), at.z() - post.z()) <= 2).isPresent());
+                if (!posted || changes.stream().anyMatch(c -> !c.soldier().equals("Bob"))) {
+                    failures.add("Bob not posted alone at " + post + ": " + changes);
+                }
+            }
+            case KEPT -> {
+                if (changes.stream().anyMatch(c -> !c.soldier().equals("Carol") || !carolMining.with(c).equals(carolMining))) {
+                    failures.add("the standing miner's role changed, unasked: " + changes);
+                }
+            }
+            default -> {
+                if (!changes.isEmpty()) {
+                    failures.add("unasked plan changes: " + changes);
+                }
+            }
         }
         Goal goal = new Goal(objective.x() + 0.5, objective.y(), objective.z() + 0.5, 1.5, 1);
         if (leader.report() instanceof Report.Cantco(String reason)

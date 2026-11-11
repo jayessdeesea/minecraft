@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Objective;
+import io.github.jayessdeesea.minecraft.command.Plan;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.Risk;
@@ -52,6 +53,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
     private volatile SquadOrder lastOrder;
     private volatile Report report = new Report.Idle();
     private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time; // a connection's thread writes
+    private volatile Map<String, Plan> plans = Map.of(); // the squad loop's thread writes
 
     public SpringAiSquadLeader(String name, ChatClient chatClient, SquadLeaderPrompts prompts) {
         this.name = name;
@@ -75,6 +77,11 @@ public final class SpringAiSquadLeader implements SquadLeader {
     }
 
     @Override
+    public void receivePlans(Map<String, Plan> plans) {
+        this.plans = Map.copyOf(plans);
+    }
+
+    @Override
     public Report report() {
         return report;
     }
@@ -90,7 +97,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
         if (current == null) {
             return Optional.empty();
         }
-        SquadOrderReply reply = callModel(buildContext(prompts, name, current, lastOrder, soldierStatuses, terrain, Optional.ofNullable(time)));
+        SquadOrderReply reply = callModel(buildContext(prompts, name, current, lastOrder, soldierStatuses, terrain, Optional.ofNullable(time), plans));
         SquadOrder order = toSquadOrder(reply, soldierStatuses.stream().map(SoldierStatus::name).toList());
         lastOrder = order;
         report = reply.cantco() == null || reply.cantco().isBlank() ? new Report.Moving() : new Report.Cantco(reply.cantco());
@@ -102,10 +109,16 @@ public final class SpringAiSquadLeader implements SquadLeader {
         return buildContext(prompts, squadName, objective, lastOrder, soldierStatuses, terrain, Optional.empty());
     }
 
-    /** The situation, as {@code prompts}' user template's parameters. */
     static PromptContext buildContext(SquadLeaderPrompts prompts, String squadName, Objective objective, SquadOrder lastOrder,
                                       List<SoldierStatus> soldierStatuses, TerrainSurvey terrain,
                                       Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time) {
+        return buildContext(prompts, squadName, objective, lastOrder, soldierStatuses, terrain, time, Map.of());
+    }
+
+    /** The situation, as {@code prompts}' user template's parameters: a soldier with no plan kept is a rifleman. */
+    static PromptContext buildContext(SquadLeaderPrompts prompts, String squadName, Objective objective, SquadOrder lastOrder,
+                                      List<SoldierStatus> soldierStatuses, TerrainSurvey terrain,
+                                      Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time, Map<String, Plan> plans) {
         StringBuilder squad = new StringBuilder();
         for (int i = 0; i < soldierStatuses.size(); i++) {
             SoldierStatus soldier = soldierStatuses.get(i);
@@ -114,7 +127,8 @@ public final class SpringAiSquadLeader implements SquadLeader {
                     .append(i == 0 ? "" : String.format(Locale.ROOT, ", %.0f blocks from the point man",
                             Cohesion.distance(soldierStatuses.getFirst().position(), soldier.position())))
                     .append(": ").append(describe(soldier.report()))
-                    .append("; ").append(describe(soldier.condition())).append('\n');
+                    .append("; ").append(describe(soldier.condition()))
+                    .append("; role ").append(plans.getOrDefault(soldier.name(), Plan.RIFLEMAN).describe()).append('\n');
         }
         Map<String, Object> params = new HashMap<>();
         params.put("time", time.<Object>map(SpringAiGeneral::describe).orElse(false));
@@ -175,7 +189,50 @@ public final class SpringAiSquadLeader implements SquadLeader {
             }
         }
         return new SquadOrder(new Position(reply.x(), reply.y(), reply.z()), reply.formation(), reply.interval(),
-                reply.verticalTolerance(), reply.risk(), soldierRisk, reply.rearm(), reply.intent());
+                reply.verticalTolerance(), reply.risk(), soldierRisk, reply.rearm(), reply.intent(), changes(reply, squad));
+    }
+
+    /** The plan changes the reply makes: a soldier's role, then his directives, one change each way. */
+    static List<Plan.Change> changes(SquadOrderReply reply, List<String> squad) {
+        if (reply.roleChanges() == null || reply.detached() == null) {
+            throw new IllegalStateException("missing roleChanges or detached (empty when nobody's plan changes): " + reply);
+        }
+        List<Plan.Change> changes = new java.util.ArrayList<>();
+        java.util.Set<String> roled = new java.util.HashSet<>();
+        for (SquadOrderReply.RoleChange r : reply.roleChanges()) {
+            if (r == null || r.role() == null || !squad.contains(r.soldier())) {
+                throw new IllegalStateException("a role names nobody in the squad " + squad + ": " + reply);
+            }
+            if (!roled.add(r.soldier())) {
+                throw new IllegalStateException("two roles for " + r.soldier() + ": " + reply);
+            }
+            changes.add(Plan.Change.role(r.soldier(), r.role(), new Position(r.x(), r.y(), r.z())));
+        }
+        java.util.Set<String> ordered = new java.util.HashSet<>();
+        for (SquadOrderReply.SoldierOrder o : reply.detached()) {
+            if (o == null || o.order() == null || !squad.contains(o.soldier())) {
+                throw new IllegalStateException("an order names nobody in the squad " + squad + ": " + reply);
+            }
+            if (!ordered.add(o.soldier())) {
+                throw new IllegalStateException("two orders for " + o.soldier() + ": " + reply);
+            }
+            Position at = new Position(o.x(), o.y(), o.z());
+            List<io.github.jayessdeesea.minecraft.command.Directive> directives = switch (o.order()) {
+                case GO_TO -> List.of(new io.github.jayessdeesea.minecraft.command.Directive.GoTo(at));
+                case FETCH -> {
+                    if (o.resource() == null) {
+                        throw new IllegalStateException("a FETCH with no resource: " + reply);
+                    }
+                    yield List.of(new io.github.jayessdeesea.minecraft.command.Directive.Fetch(o.resource(), o.amount(), at));
+                }
+                case LEVEL -> List.of(new io.github.jayessdeesea.minecraft.command.Directive.Level(
+                        (int) Math.floor(Math.min(o.x(), o.x2())), (int) Math.floor(Math.min(o.z(), o.z2())),
+                        (int) Math.floor(Math.max(o.x(), o.x2())), (int) Math.floor(Math.max(o.z(), o.z2())), (int) Math.floor(o.y())));
+                case CANCEL -> List.of();
+            };
+            changes.add(Plan.Change.directives(o.soldier(), directives));
+        }
+        return changes;
     }
 
     /**

@@ -35,10 +35,21 @@ what a drill puts in its place (docs/echelons/squad-leader/drills.md). The routi
 hands can also send it somewhere - to a tree, a wall cell, a step of the staircase - with an order
 of the same kind ([routines.md](routines.md)).
 
-## The work: the squad's task
-Apart from `Place` and the ground work's commands, the work it does with its hands isn't in its order. It comes from its squad's `Objective.Task`,
-read by the runner (`app.SoldierRunner`), which hands each routine the site and the cells it
-works on ([routines.md](routines.md)).
+## Its plan: a role, and what it does first
+Its squad leader keeps a standing plan for it (`command.Plan`, kept on disk): one role at a site,
+and the directives it does first ([military-doctrine.md § 18](../../military-doctrine.md#18-task-organisation)).
+- **Role** (`command.Role`): `RIFLEMAN`, with the squad - its formation slot and the squad's task;
+  or `MINER`, `FARMER`, `MASON`, `FORESTER`, `WOODCUTTER`, `QUARRYMAN`, `SENTRY` - that task at
+  its site, with the rest of the squad in that role.
+- **Directives** (`command.Directive`), ahead of the role: `GoTo(at)`, held until replaced by a rifleman, done on arrival by one with a role;
+  `Fetch(resource, amount, near)`, done once it carries the amount; `Level(box, y)`, done once the
+  world shows the ground level.
+
+## The work: its unit's task
+Apart from `Place` and the ground work's commands, the work it does with its hands isn't in its
+order. It comes from its unit's objective - the general's `Objective.Task` for a rifleman, its
+role's task at its site for a detachment - read by the runner (`app.SoldierRunner`), which hands
+each routine the site and the cells it works on ([routines.md](routines.md)).
 
 ## What it reports: `command.Report`
 | Report | Meaning |

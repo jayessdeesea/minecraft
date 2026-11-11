@@ -947,6 +947,51 @@ reasons, and the deaths. Places and numbers are taken out of a reason, so the sa
 as one. A command that doesn't work shows as a large share of CANTCO, or of `InPosition` while
 there's work left.
 
+## 18. Task organisation
+
+| Practice | Content | Source |
+|---|---|---|
+| **Task organisation** | The commander organises the unit for its mission - who goes where, under whom, to do what - as the first thing an order says. | FM 6-0 (OPORD paragraph 1, Annex A) |
+| **Detachment** | A part of a unit separated from its main body for a task of its own. | FM 1-02.1 |
+| **Assembly area** | Where a force gathers to prepare for further action. | FM 1-02.1 |
+
+*How we use it:* each soldier has a standing plan (`command.Plan`), set by its squad leader and
+kept until changed: one **role** at a site, and the **directives** it does first, in order. Plans
+are kept on disk (`app.PlanBook`, `plans.json` in the state directory), so a restart finds every
+soldier where its squad leader put it; a soldier with none is a rifleman.
+
+- **Roles** (`command.Role`): a `RIFLEMAN` goes with the squad - the formation and the general's
+  task. Each other role is a task at its site, whatever the general's: `MINER` (§ 16, the site's y
+  its depth), `FARMER` (§ 4), `MASON` (§ 15's ground work and wall), `FORESTER`, `WOODCUTTER` and
+  `QUARRYMAN` (§ 12), `SENTRY` (§ 15's patrol). Everyone in a squad with one role works one site: a
+  new site for one moves them all.
+- **Directives** (`command.Directive`), each done by what the soldier or the world shows, never by
+  time, so one given again once it's done is done at once:
+  - `GoTo(at)`: go there. A rifleman holds - a post, an assembly area - until replaced or
+    cancelled. One with a role goes on to its role's work once there, at any height over or under
+    the point: a miner sent to its mine at its depth gets there on the ground above.
+  - `Fetch(resource, amount, near)`: wood, stone or soil gathered round a point, done once the
+    soldier carries the amount.
+  - `Level(x, z box, y)`: everything from y to 12 above dug off, every open cell from 4 below to
+    y - 1 filled, done once the world shows both. One carrying no blocks digs dirt within 16 first.
+
+Each soldier's plan names its **unit** (`Plan.unit`): a rifleman with nothing directed is in its
+squad's main body; one in another role in its squad's detachment for that role ("Alpha/miner"); one
+with a directive in a detachment of one until it's done ("Alpha/Bob"). Every unit is led as a squad
+is (`app.SoldierRunner`): the same drills (docs/echelons/squad-leader/drills.md), the same
+routines, to its own objective - the main body's the general's, a detachment's its role's task at its
+site or its directive's point - under the squad leader's risk, rearm and intent, in file at a tight
+interval. Contact, link-up, recovery and cross-levelling run within a unit; camp upkeep for every
+unit but a soldier on a directive. An escorting squad is all escort, whatever its plans.
+
+What a soldier does for itself sits under every plan, unordered: it eats, fights back and goes
+back to its work after, finds its own route, gets out of water and pits
+(docs/echelons/soldier/routines.md). The plan is the work.
+
+The squad leader sets plans in its reply: `roleChanges` to change a soldier's role and site, `detached` to
+replace what it does first (GO_TO, FETCH, LEVEL, CANCEL) - both usually empty, since what's set
+stays set. Each order's changes are made once. It sees each soldier's plan at the end of his line.
+
 ## Sources
 
 - FM 90-26, *Airborne Operations* (superseded by FM 3-99) - [airhead development, GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/90-26/Ch8.htm)

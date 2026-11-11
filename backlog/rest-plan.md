@@ -51,6 +51,10 @@ part of the unit sleeps (ATP 3-21.8, ch. 7).
 - A soldier that dies respawns at its bed.
 
 ## Notes
+- **Decided (operator): beds are for the surface roles; miners work through the night**
+  (docs/military-doctrine.md § 18). Phantoms come only to a player under open sky above sea
+  level, so a miner under rock draws none however long it goes unslept - until it surfaces by
+  night. A miner coming up at night is the case to watch.
 - **A bed needs room in the hut.** The hasty hut's floor is the squad's own cells, two blocks high
   to the roof - no room to stand on a bed - so a bed means a bigger floor (2x3 for four). A
   sleeper is refused with a monster within 8 blocks of the bed, walls or not, so beds work best

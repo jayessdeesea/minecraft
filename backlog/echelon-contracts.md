@@ -60,6 +60,9 @@ Four layers, each knowing only what it needs:
   (`command.Tasking`) - pure, and unit-tested in `command` (docs/military-doctrine.md § 15). Left:
   the runner still routes each command to its routine through its own maps, and the wall, the
   lights and the hut are still the routines' own layouts.
+- **The soldier's standing plan.** A role at a site and directives ahead of it, set by the
+  squad leader and kept on disk; each soldier's unit led to its own objective
+  (docs/military-doctrine.md § 18). Left of that: backlog/task-organisation.md.
 
 ## Scenarios that must pass first
 Each runs in the squad simulation (`SquadSimulationTest`), against the code as it is, before

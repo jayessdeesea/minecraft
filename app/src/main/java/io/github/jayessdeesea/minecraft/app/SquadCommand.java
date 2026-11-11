@@ -73,6 +73,11 @@ final class SquadCommand {
         squadLeader.receiveTime(time);
     }
 
+    /** Its soldiers' standing plans, as kept - the squad loop's thread sends them, for the squad leader's next look. */
+    void receivePlans(java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> plans) {
+        squadLeader.receivePlans(plans);
+    }
+
     private final ModelCalls modelCalls;
 
     SquadCommand(String name, SquadLeader squadLeader, Consumer<String> radio, ModelCalls modelCalls) {

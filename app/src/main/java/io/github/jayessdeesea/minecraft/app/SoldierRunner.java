@@ -34,6 +34,7 @@ import io.github.jayessdeesea.minecraft.command.Risk;
 import io.github.jayessdeesea.minecraft.command.Report;
 import java.util.HashMap;
 import io.github.jayessdeesea.minecraft.command.Order;
+import io.github.jayessdeesea.minecraft.command.Plan;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
@@ -122,6 +123,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
     private static final class SquadState {
         final LinkUp linkUp = new LinkUp();
         java.util.Set<String> linkingUp = java.util.Set.of();
+        /** The squad leader's order whose plan changes were last made - each order's are made once. */
+        SquadOrder planned;
         String haltedFor;
         boolean fortifying;
         boolean allInside;
@@ -708,6 +711,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         this.wallStore = new WallStore(java.nio.file.Path.of(stateDir));
         this.farmStore = new WallStore(java.nio.file.Path.of(stateDir), "farm");
         this.mineStore = new WallStore(java.nio.file.Path.of(stateDir), "stairs");
+        this.planBook = new PlanBook(java.nio.file.Path.of(stateDir));
         this.camp = camp.isBlank() ? null : java.util.Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
         if (this.camp != null && this.camp.length != 2) {
             throw new IllegalArgumentException("minecraft.camp is x,z - not " + camp);
@@ -821,13 +825,187 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     holdingBase ? java.util.OptionalInt.of(0) : state.baseBlocksLeft, progress(p.squad(), state, p.statuses()),
                     Optional.of(classOne(p.squad(), state, p.statuses())));
         }).toList());
-        // Each squad on its own: one squad's fault doesn't leave the other without orders.
+        // Each squad on its own: one squad's fault doesn't leave the other without orders. And each
+        // of its units - its main body, and each detachment its soldiers' plans make - led as a squad.
         for (Present p : present) {
-            faults.run(p.squad() + "'s orders", () -> chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
-                    orderSquad(p.squad(), squadStates.get(p.squad()), p.soldiers(), p.statuses(), order, p.principalAt())));
-            faults.run(p.squad() + "'s camp upkeep", () -> campUpkeep(p.squad(), p.statuses()));
-            faults.run(p.squad() + "'s register", () -> register(p.squad(), squadStates.get(p.squad()), p.statuses()));
+            List<Unit> units = new java.util.ArrayList<>();
+            faults.run(p.squad() + "'s task organisation", () -> units.addAll(organise(p.squad(), p.soldiers(), p.statuses(),
+                    chainOfCommand.currentOrder(p.squad()), p.principalAt().isPresent())));
+            for (Unit u : units) {
+                SquadState state = squadStates.computeIfAbsent(u.name(), name -> new SquadState());
+                if (Plan.detachment(u.name())) {
+                    java.util.Set<String> members = u.statuses().stream().map(SoldierStatus::name).collect(java.util.stream.Collectors.toSet());
+                    state.reported = squadStates.get(p.squad()).reported.stream().filter(s -> members.contains(s.name())).toList();
+                }
+                faults.run(u.name() + "'s orders", () -> chainOfCommand.currentOrder(p.squad()).ifPresent(order ->
+                        orderSquad(u.name(), state, u.soldiers(), u.statuses(), u.order(order), Plan.detachment(u.name()) ? Optional.empty() : p.principalAt())));
+                // Not one holding where it was sent, or on a job of its own: upkeep is for one with nothing to do.
+                if (u.directed().isEmpty()) {
+                    faults.run(u.name() + "'s camp upkeep", () -> campUpkeep(u.name(), u.statuses()));
+                }
+                faults.run(u.name() + "'s register", () -> register(u.name(), state, u.statuses()));
+            }
         }
+    }
+
+    /**
+     * A squad's unit: its main body, or a detachment its soldiers' plans make - led as a squad is, to
+     * {@code objective}. {@code directed} is the directive a detachment of one is on.
+     */
+    private record Unit(String name, List<DeterministicSoldier> soldiers, List<SoldierStatus> statuses,
+                        Optional<io.github.jayessdeesea.minecraft.command.Objective> objective,
+                        Optional<io.github.jayessdeesea.minecraft.command.Directive> directed, boolean roled) {
+
+        /** How far above or below a point a soldier with a role sent there may end up: the map's height. */
+        static final double ANY_HEIGHT = 384;
+
+        /** The squad leader's order as this unit takes it: a detachment goes to its own objective, in file, close. */
+        SquadOrder order(SquadOrder squad) {
+            if (objective.isEmpty()) {
+                return squad;
+            }
+            Position at = objective.get().location();
+            // One with a role sent to a point first goes to the ground over or under it: a miner sent to its mine at its depth.
+            boolean anyHeight = directed.filter(d -> d instanceof io.github.jayessdeesea.minecraft.command.Directive.GoTo).isPresent() && roled;
+            return new SquadOrder(at, io.github.jayessdeesea.minecraft.command.Formation.FILE, io.github.jayessdeesea.minecraft.command.Interval.TIGHT,
+                    anyHeight ? ANY_HEIGHT : squad.verticalTolerance(), squad.riskFor(statuses.getFirst().name()), squad.soldierRisk(), squad.rearm(), squad.intent());
+        }
+    }
+
+    /** Each detachment's objective, by its unit's name - squad loop writes, connections' threads read. */
+    private final Map<String, io.github.jayessdeesea.minecraft.command.Objective> detached = new ConcurrentHashMap<>();
+    /** Each soldier's unit, by its name: its squad's for one in the main body - squad loop writes, connections' threads read. */
+    private final Map<String, String> unitOf = new ConcurrentHashMap<>();
+    /** Every soldier's standing plan, kept on disk. */
+    private final PlanBook planBook;
+
+    /**
+     * Task organisation: the squad leader's plan changes made, once per order; each directive the
+     * soldier or the world shows done let go; then each soldier in its unit by its plan - main body,
+     * a role's detachment, or one on a directive. Escorting, the whole squad is the escort.
+     */
+    private List<Unit> organise(String squad, List<DeterministicSoldier> soldiers, List<SoldierStatus> statuses,
+                                Optional<SquadOrder> order, boolean escorting) {
+        SquadState main = squadStates.get(squad);
+        List<String> names = statuses.stream().map(SoldierStatus::name).toList();
+        if (order.isPresent() && order.get() != main.planned) {
+            main.planned = order.get();
+            for (Plan.Change change : order.get().changes()) {
+                Plan after = planBook.of(change.soldier()).with(change);
+                if (planBook.put(change.soldier(), after)) {
+                    LOG.info("[{} -> {}] TASKED: {}", squad, change.soldier(), after.describe());
+                }
+                // One site a role in a squad: a detachment works one place.
+                if (change.role().isPresent() && change.site().isPresent()) {
+                    for (String other : names) {
+                        Plan theirs = planBook.of(other);
+                        if (!other.equals(change.soldier()) && theirs.role() == after.role() && !theirs.site().equals(after.site())) {
+                            planBook.put(other, new Plan(theirs.role(), after.site(), theirs.directives()));
+                            LOG.info("[{} -> {}] TASKED: {} - the {}s' site moved", squad, other, planBook.of(other).describe(),
+                                    after.role().name().toLowerCase(java.util.Locale.ROOT));
+                        }
+                    }
+                }
+            }
+        }
+        for (SoldierStatus s : statuses) {
+            Plan plan = planBook.of(s.name());
+            while (plan.current().isPresent() && (plan.currentDoneBy(s)
+                    || plan.current().get() instanceof io.github.jayessdeesea.minecraft.command.Directive.Level level && levelWork(s, level).isEmpty())) {
+                LOG.info("[{} -> {}] DONE: {}", s.name(), squad, plan.current().get().describe());
+                plan = plan.done();
+                planBook.put(s.name(), plan);
+            }
+        }
+        chainOfCommand.receivePlans(squad, planBook.of(names));
+        String intent = order.map(SquadOrder::intent).orElse("");
+        Map<String, List<Integer>> members = new java.util.LinkedHashMap<>();
+        members.put(squad, new java.util.ArrayList<>());
+        for (int i = 0; i < statuses.size(); i++) {
+            String unit = escorting ? squad : planBook.of(names.get(i)).unit(squad, names.get(i));
+            members.computeIfAbsent(unit, u -> new java.util.ArrayList<>()).add(i);
+            String was = unitOf.put(names.get(i), unit);
+            if (!unit.equals(was == null ? squad : was)) {
+                LOG.info("[{} -> {}] now in {}", names.get(i), squad, unit);
+                // Off camp upkeep's ground work: its new unit gives it its work.
+                if (upkeeping.remove(names.get(i))) {
+                    route(names.get(i), null);
+                }
+            }
+        }
+        List<Unit> units = new java.util.ArrayList<>();
+        members.forEach((unit, at) -> {
+            if (at.isEmpty()) {
+                return;
+            }
+            Plan first = planBook.of(names.get(at.getFirst()));
+            Optional<io.github.jayessdeesea.minecraft.command.Objective> objective = Plan.detachment(unit) ? first.objective(intent) : Optional.empty();
+            objective.ifPresentOrElse(o -> detached.put(unit, o), () -> detached.remove(unit));
+            units.add(new Unit(unit, at.stream().map(soldiers::get).toList(), at.stream().map(statuses::get).toList(), objective,
+                    Plan.detachment(unit) ? first.current() : Optional.empty(), first.role() != io.github.jayessdeesea.minecraft.command.Role.RIFLEMAN));
+        });
+        // A detachment nobody's in any more is stood down, and what it held let go.
+        List<String> gone = squadStates.keySet().stream()
+                .filter(u -> Plan.detachment(u) && Plan.squadOf(u).equals(squad) && !members.containsKey(u)).toList();
+        for (String u : gone) {
+            LOG.info("[{}] {} stood down", squad, u);
+            squadStates.remove(u);
+            detached.remove(u);
+            baseFootprints.remove(u);
+            baseReports.remove(u);
+            nightBelow.remove(u);
+        }
+        return units;
+    }
+
+    /** Where a level's ground is dug from: this far above the height it's made level at. */
+    static final int LEVEL_ABOVE = 12;
+    /** And filled from: this far below. */
+    static final int LEVEL_BELOW = 4;
+
+    /**
+     * What's left of {@code level} for {@code soldier}: everything over its height dug first, then
+     * every hole under it filled - dirt fetched first by one carrying no blocks. Empty once the
+     * world shows it level. Never the cells of a hut, a workshop, the wall or the mine.
+     */
+    private Optional<io.github.jayessdeesea.minecraft.command.Order> levelWork(SoldierStatus soldier,
+                                                                              io.github.jayessdeesea.minecraft.command.Directive.Level level) {
+        java.util.Set<io.github.jayessdeesea.minecraft.command.Cell> except = groundExcept();
+        io.github.jayessdeesea.minecraft.command.Box dig = new io.github.jayessdeesea.minecraft.command.Box(level.minX(), level.y(), level.minZ(),
+                level.maxX(), level.y() + LEVEL_ABOVE, level.maxZ());
+        if (!io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toClear(world, dig, except).isEmpty()) {
+            return Optional.of(new io.github.jayessdeesea.minecraft.command.Order.Dig(dig, except));
+        }
+        io.github.jayessdeesea.minecraft.command.Box fill = new io.github.jayessdeesea.minecraft.command.Box(level.minX(), level.y() - LEVEL_BELOW,
+                level.minZ(), level.maxX(), level.y() - 1, level.maxZ());
+        if (io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toFill(world, fill, except).isEmpty()) {
+            return Optional.empty();
+        }
+        int blocks = soldier.condition().flatMap(c -> c.kit()).map(k -> k.stone() + k.dirt()).orElse(0);
+        if (blocks == 0) {
+            int r = io.github.jayessdeesea.minecraft.command.Directive.FETCH_RADIUS;
+            Position at = level.centre();
+            return Optional.of(new io.github.jayessdeesea.minecraft.command.Order.Gather(io.github.jayessdeesea.minecraft.command.Resource.SOIL,
+                    new io.github.jayessdeesea.minecraft.command.Box((int) at.x() - r, level.y() - 8, (int) at.z() - r,
+                            (int) at.x() + r, level.y() + 4, (int) at.z() + r), WALL_BLOCKS_LOAD));
+        }
+        return Optional.of(new io.github.jayessdeesea.minecraft.command.Order.Fill(fill, except));
+    }
+
+    /** The objective {@code unit} works to: a detachment's own, or its squad's from the general. */
+    private Optional<io.github.jayessdeesea.minecraft.command.Objective> objectiveOf(String unit) {
+        return Plan.detachment(unit) ? Optional.ofNullable(detached.get(unit)) : chainOfCommand.objective(unit);
+    }
+
+    /** {@code unit}'s objective, if its task is a {@code kind}. */
+    private Optional<io.github.jayessdeesea.minecraft.command.Objective> taskOf(String unit,
+                                                                               Class<? extends io.github.jayessdeesea.minecraft.command.Objective.Task> kind) {
+        return objectiveOf(unit).filter(o -> kind.isInstance(o.task()));
+    }
+
+    /** The unit {@code soldier} of {@code squad} was last put in. */
+    private String unitOf(String soldier, String squad) {
+        return unitOf.getOrDefault(soldier, squad);
     }
 
     /**
@@ -863,7 +1041,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // A MINE objective's height is the depth to reach: its workshop is at the stairs' head.
         Position at = state.stairs != null
                 ? new Position(state.stairs.head().x(), state.stairs.head().y(), state.stairs.head().z())
-                : chainOfCommand.objective(squad).map(io.github.jayessdeesea.minecraft.command.Objective::location)
+                : objectiveOf(squad).map(io.github.jayessdeesea.minecraft.command.Objective::location)
                 .orElse(statuses.getFirst().position());
         java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> claimed = new java.util.HashSet<>(treeClaims);
         claimed.addAll(hut);
@@ -959,7 +1137,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         boolean litCamp = campGround != null && !daylight
                 && io.github.jayessdeesea.minecraft.bot.supply.Lighting.dark(world, campGround, SECURE_RADIUS) <= NIGHT_UPKEEP_DARK;
         // Not a squad sent to its patrol base for the night: its place is inside.
-        boolean sheltering = !daylight && chainOfCommand.patrolBaseObjective(squad).isPresent();
+        boolean sheltering = !daylight && taskOf(squad, io.github.jayessdeesea.minecraft.command.Objective.Task.PatrolBase.class).isPresent();
         if (campGround == null || !daylight && !litCamp || contact || sheltering) {
             statuses.forEach(s -> {
                 if (upkeeping.remove(s.name())) {
@@ -1028,13 +1206,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      * a hut, a workshop, the wall or the mine.
      */
     private Map<String, io.github.jayessdeesea.minecraft.command.Order> groundwork(String squad, SquadState state, io.github.jayessdeesea.minecraft.bot.nav.BlockPos feet, List<SoldierStatus> hands) {
-        java.util.Set<io.github.jayessdeesea.minecraft.command.Cell> except = new java.util.HashSet<>();
-        campKeep().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
-        campMine().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
-        squadStates.values().stream().filter(s -> s.stairs != null).forEach(s -> {
-            s.stairs.walkway().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
-            s.stairs.landing().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
-        });
+        java.util.Set<io.github.jayessdeesea.minecraft.command.Cell> except = groundExcept();
         io.github.jayessdeesea.minecraft.command.Cell at = new io.github.jayessdeesea.minecraft.command.Cell(feet.x(), feet.y(), feet.z());
         io.github.jayessdeesea.minecraft.command.Box dig = io.github.jayessdeesea.minecraft.command.Groundwork.dig(at, WALL_RADIUS - 1);
         // Inside the wall line, as the dig is: the wall's own footing is the masons' (Perimeter.open).
@@ -1082,6 +1254,18 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
         });
         return orders;
+    }
+
+    /** What no ground work digs or fills: the camp's kept structures, its mine, and every squad's stairs. */
+    private java.util.Set<io.github.jayessdeesea.minecraft.command.Cell> groundExcept() {
+        java.util.Set<io.github.jayessdeesea.minecraft.command.Cell> except = new java.util.HashSet<>();
+        campKeep().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
+        campMine().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
+        squadStates.values().stream().filter(s -> s.stairs != null).forEach(s -> {
+            s.stairs.walkway().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
+            s.stairs.landing().forEach(c -> except.add(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z())));
+        });
+        return except;
     }
 
     /** The least box holding every one of {@code cells}, if there are any. */
@@ -1214,7 +1398,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         // Only SECURE's plan is counted: lighting the camp's upkeep or the stairs isn't, and live a
         // squad off upkeep read as done with SECURE's empty plan.
-        if (state.torchesLeft >= 0 && chainOfCommand.secureObjective(squad).isPresent()) {
+        if (state.torchesLeft >= 0 && taskOf(squad, io.github.jayessdeesea.minecraft.command.Objective.Task.Secure.class).isPresent()) {
             measured.put("light the ground", state.torchesLeft);
         }
         long now = clockwork.millis();
@@ -1459,7 +1643,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
 
     /** The name of the task {@code squad} holds, for the scorecard: "none" with no objective yet. */
     private String squadTask(String squad) {
-        return chainOfCommand.objective(squad).map(o -> OrderTrace.taskName(o.task())).orElse("none");
+        return objectiveOf(squad).map(o -> OrderTrace.taskName(o.task())).orElse("none");
     }
 
     /** The engineer's stair down for a stranded soldier, from where it stands. */
@@ -1560,7 +1744,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // Patrol base (docs/military-doctrine.md §14): each soldier to its place inside the hut's
         // outline; once all are in, they build its walls and roof around themselves.
         Optional<io.github.jayessdeesea.minecraft.command.Objective> base = squadInContact
-                ? Optional.empty() : chainOfCommand.patrolBaseObjective(squadName);
+                ? Optional.empty() : taskOf(squadName, io.github.jayessdeesea.minecraft.command.Objective.Task.PatrolBase.class);
         // A squad that has laid out its base stays on it: the general re-plans every few seconds and
         // nudges the objective a block or two, and an outline that moves keeps the soldiers walking.
         Position site = base.map(o -> o.location()).orElse(null);
@@ -1687,7 +1871,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         String opener = null;
         // A soldier shut in a room the squad has no record of - a base built before a restart, say -
         // leaves it the same way as one it remembers: the room is read from the world.
-        if (state.builtBase == null && chainOfCommand.objective(squadName).isPresent()) {
+        if (state.builtBase == null && objectiveOf(squadName).isPresent()) {
             statuses.stream().filter(st -> plan == null || !plan.inside(st.position()))
                     // Walled by what a squad builds with, not a tree: live, a soldier up a canopy was
                     // taken for shut in a hut, cut a doorway out of the leaves, and fell ten blocks.
@@ -1705,11 +1889,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         boolean stillCutting = false;
         if (plan != null && !newSite) {
             state.builtBase = plan;
-        } else if (state.builtBase != null && (newSite || chainOfCommand.patrolBaseObjective(squadName).isEmpty())) {
+        } else if (state.builtBase != null && (newSite || taskOf(squadName, io.github.jayessdeesea.minecraft.command.Objective.Task.PatrolBase.class).isEmpty())) {
             PatrolBase.Plan built = state.builtBase;
             // Toward where the general is sending the squad: the squad leader's own order can still
             // point inside the hut, since from in there it sees no ground it can reach.
-            List<Position> door = built.doorway(chainOfCommand.objective(squadName).orElseThrow().location(), this::walkable);
+            List<Position> door = built.doorway(objectiveOf(squadName).orElseThrow().location(), this::walkable);
             boolean open = door.stream().noneMatch(c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z()));
             Optional<SoldierStatus> inside = statuses.stream().filter(st -> built.inside(st.position())).findFirst();
             if (open || inside.isEmpty()) {
@@ -1735,10 +1919,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         state.baseCells.stream().filter(c -> !held.contains(c)).forEach(treeClaims::remove);
         treeClaims.addAll(held);
         state.baseCells = held;
-        boolean baseOrdered = chainOfCommand.patrolBaseObjective(squadName).isPresent();
+        boolean baseOrdered = taskOf(squadName, io.github.jayessdeesea.minecraft.command.Objective.Task.PatrolBase.class).isPresent();
         // The farm: the plot round the water nearest the general's objective, kept while the
         // objective stays put - a farm is tended for days, not re-sited each cycle.
-        io.github.jayessdeesea.minecraft.bot.farm.FarmPlan farm = chainOfCommand.farmObjective(squadName).map(o -> {
+        io.github.jayessdeesea.minecraft.bot.farm.FarmPlan farm = taskOf(squadName, io.github.jayessdeesea.minecraft.command.Objective.Task.Farm.class).map(o -> {
             io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(
                     o.location().x(), o.location().y(), o.location().z());
             if (state.farm != null && Math.hypot(state.farm.water().x() - at.x(), state.farm.water().z() - at.z()) <= FARM_SITE_RADIUS) {
@@ -1760,7 +1944,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         state.farm = farm;
         // The tree farm: laid out round the objective's ground once, and kept while the objective
         // stays put - what grows in it is the farm working, not a reason to lay it out again.
-        io.github.jayessdeesea.minecraft.bot.farm.TreeFarm trees = chainOfCommand.treeFarmObjective(squadName).map(o -> {
+        io.github.jayessdeesea.minecraft.bot.farm.TreeFarm trees = taskOf(squadName, io.github.jayessdeesea.minecraft.command.Objective.Task.TreeFarm.class).map(o -> {
             io.github.jayessdeesea.minecraft.bot.nav.BlockPos at = io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.groundAt(world,
                     io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(o.location().x(), o.location().y(), o.location().z()));
             if (state.trees != null && state.trees.centre().x() == at.x() && state.trees.centre().z() == at.z()) {
@@ -1778,7 +1962,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         state.trees = trees;
         // The wall: laid out once round the objective's ground, then filled in - laid out again
         // after a row, the ground would be the wall's top.
-        Optional<io.github.jayessdeesea.minecraft.command.Objective> fortify = chainOfCommand.fortifyObjective(squadName);
+        Optional<io.github.jayessdeesea.minecraft.command.Objective> fortify = taskOf(squadName, io.github.jayessdeesea.minecraft.command.Objective.Task.Fortify.class);
         if (fortify.isEmpty()) {
             state.wall = null;
             state.wallCentre = null;
@@ -1837,15 +2021,22 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         }
         // Fortifying starts with the ground: the engineer's dig and fill boxes round the camp,
         // handed out by the squad's drill as each soldier's concrete command (command.Tasking).
-        Map<String, io.github.jayessdeesea.minecraft.command.Order> ground = state.wallCentre == null || squadInContact ? Map.of()
-                : groundwork(squadName, state, state.wallCentre, statuses);
+        Map<String, io.github.jayessdeesea.minecraft.command.Order> ground = new HashMap<>(state.wallCentre == null || squadInContact ? Map.of()
+                : groundwork(squadName, state, state.wallCentre, statuses));
+        // A soldier told to level ground: its dig or fill, as the world shows what's left.
+        if (!squadInContact) {
+            statuses.forEach(s -> planBook.of(s.name()).current()
+                    .filter(d -> d instanceof io.github.jayessdeesea.minecraft.command.Directive.Level)
+                    .flatMap(d -> levelWork(s, (io.github.jayessdeesea.minecraft.command.Directive.Level) d))
+                    .ifPresent(work -> ground.put(s.name(), work)));
+        }
         if (state.wallCentre == null) {
             state.digLeft = -1;
             state.fillLeft = -1;
         }
         // Mining: the staircase at the objective's x and z, down to its y - kept while the objective
         // stays put, its head where the ground is when first sited.
-        io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs = chainOfCommand.mineObjective(squadName).map(o -> {
+        io.github.jayessdeesea.minecraft.bot.supply.Staircase stairs = taskOf(squadName, io.github.jayessdeesea.minecraft.command.Objective.Task.Mine.class).map(o -> {
             int x = (int) Math.floor(o.location().x());
             int z = (int) Math.floor(o.location().z());
             if (state.stairs != null && state.stairsFor != null && state.stairsFor[0] == x && state.stairsFor[1] == z) {
@@ -1915,7 +2106,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         // every torch put down, by anyone, changes what's left. Read once: the general's thread may
         // change the squad's task mid-cycle - live, a second read found SECURE gone and the squad
         // loop died on it.
-        Optional<io.github.jayessdeesea.minecraft.command.Objective> secureTask = chainOfCommand.secureObjective(squadName);
+        Optional<io.github.jayessdeesea.minecraft.command.Objective> secureTask = taskOf(squadName, io.github.jayessdeesea.minecraft.command.Objective.Task.Secure.class);
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> torchesLeft = secureTask.map(o -> {
             // Round the ground most of the camp stands on, as the wall and the foothold's measure are:
             // live, the ground found from the objective's height was a hut roof, and SECURE reported
@@ -1936,7 +2127,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             }
             state.torchesLeft = torchesLeft.size();
         }
-        List<Position> patrolRound = chainOfCommand.patrolObjective(squadName).map(o -> patrolRound(o.location())).orElse(List.of());
+        List<Position> patrolRound = taskOf(squadName, io.github.jayessdeesea.minecraft.command.Objective.Task.Patrol.class).map(o -> patrolRound(o.location())).orElse(List.of());
         int baseBlocks = !baseOrdered ? 0 : state.baseBlocksLeft.orElse(PatrolBase.hasty(new Position(0, 0, 0), statuses.size()).cells().size());
         int stoneShare = (baseBlocks + statuses.size() - 1) / statuses.size();
         for (int i = 0; i < statuses.size(); i++) {
@@ -1962,7 +2153,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             upgradeAllowed.put(soldierName, order.rearm() && !squadInContact && !baseOrdered);
             stoneSetAside.put(soldierName, stoneShare);
             Optional<io.github.jayessdeesea.minecraft.command.Objective> gather = squadInContact
-                    ? Optional.empty() : chainOfCommand.gatherObjective(squadName);
+                    ? Optional.empty() : taskOf(squadName, io.github.jayessdeesea.minecraft.command.Objective.Task.Gather.class);
             // Nothing left round the general's point: to where the squad saw some, while that order
             // stands - live, a squad sent to gather at a camp long since cleared stood reporting CANTCO.
             int nth = i;
@@ -2062,7 +2253,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             boolean night = chainOfCommand.time().map(io.github.jayessdeesea.minecraft.command.TimeOfDay::dark).orElse(false);
             if (!night && !squadInContact && building == null) {
                 huntAllowed.add(soldierName);
-                huntGrounds.put(soldierName, chainOfCommand.objective(squadName).map(io.github.jayessdeesea.minecraft.command.Objective::location)
+                huntGrounds.put(soldierName, objectiveOf(squadName).map(io.github.jayessdeesea.minecraft.command.Objective::location)
                         .orElse(statuses.get(i).position()));
             } else {
                 huntAllowed.remove(soldierName);
@@ -2343,7 +2534,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      */
     private Position seenFor(String squad, int soldier, io.github.jayessdeesea.minecraft.command.Resource resource, Position from) {
         java.util.function.ToDoubleFunction<Position> away = at -> Math.hypot(at.x() - from.x(), at.z() - from.z());
-        List<Position> seen = chainOfCommand.resourcesSeen(squad).stream().filter(site -> site.resource() == resource)
+        List<Position> seen = chainOfCommand.resourcesSeen(Plan.squadOf(squad)).stream().filter(site -> site.resource() == resource)
                 .map(io.github.jayessdeesea.minecraft.command.ResourceSite::location)
                 .sorted(java.util.Comparator.comparingDouble(away)).toList();
         if (seen.isEmpty()) {
@@ -2674,7 +2865,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     String cause = death.contains("[") ? death.substring(0, death.indexOf('[')) : death;
                     casualties.merge(cause, 1, Integer::sum);
                     afterActionReview.death(name, cause);
-                    afterActionReview.commands.casualty(squadTask(definition.squad()), Optional.ofNullable(activeSoldiers.get(name))
+                    afterActionReview.commands.casualty(squadTask(unitOf(name, definition.squad())), Optional.ofNullable(activeSoldiers.get(name))
                             .map(s -> s.status().order().getClass().getSimpleName()).orElse("none"));
                     LOG.warn("[Casualty] since the app started: {}", casualties);
                 },
@@ -3152,16 +3343,19 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             if (recorder.due()) {
                 // Hiding or sleeping: the squad in its patrol base, or down its mine for the night.
                 // Anything else still that long is worth a look.
-                Integer below = nightBelow.get(definition.squad());
-                boolean resting = chainOfCommand.patrolBaseObjective(definition.squad()).isPresent()
+                Integer below = nightBelow.get(unitOf(name, definition.squad()));
+                // Or holding where its squad leader sent it: waiting there is the order.
+                boolean resting = taskOf(unitOf(name, definition.squad()), io.github.jayessdeesea.minecraft.command.Objective.Task.PatrolBase.class).isPresent()
+                        || planBook.of(name).role() == io.github.jayessdeesea.minecraft.command.Role.RIFLEMAN
+                        && planBook.of(name).current().filter(d -> d instanceof io.github.jayessdeesea.minecraft.command.Directive.GoTo).isPresent()
                         || below != null && status.position().y() < below - MINE_BELOW;
-                afterActionReview.commands.sample(squadTask(definition.squad()), status.order().getClass().getSimpleName(), status.report());
+                afterActionReview.commands.sample(squadTask(unitOf(name, definition.squad())), status.order().getClass().getSimpleName(), status.report());
                 idleWatch.update(name, status.position(), clockwork.millis(), resting, () -> "report " + status.report()
                         + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free")
                         // What holds routines back with free hands: food first, and the work it was handed.
                         + (foodCalls ? ", food calls" : "") + (threatened ? ", threatened" : "")
                         + ", " + lights.size() + " cells to light with " + inventory.count(ItemClass.TORCH) + " torches"
-                        + ", squad's task " + chainOfCommand.objective(definition.squad())
+                        + ", squad's task " + objectiveOf(unitOf(name, definition.squad()))
                         .map(o -> OrderTrace.taskName(o.task()) + " at " + o.location()).orElse("none"))
                         .ifPresent(line -> {
                             LOG.warn("[Alert] {}", line);

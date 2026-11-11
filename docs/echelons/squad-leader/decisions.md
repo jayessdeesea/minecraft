@@ -20,9 +20,13 @@ then turn the decision into each soldier's order ([drills.md](drills.md)).
   ([military-doctrine.md § 7](../../military-doctrine.md#7-risk-acceptance)).
 - **Rearm:** whether soldiers may stop to make their kit.
 - **Intent**, in words, logged with the order.
+- **Task organisation:** changes to its soldiers' standing plans, usually none - `roleChanges`, a
+  soldier's role and site; `detached`, a soldier sent off on a job of his own: `GO_TO`, `FETCH`, `LEVEL`, or
+  `CANCEL` ([military-doctrine.md § 18](../../military-doctrine.md#18-task-organisation)).
 
-It doesn't decide the work. The task's routines start from the general's `Task`
-(docs/echelons/soldier/routines.md), whatever the squad leader orders.
+The work is its soldiers' roles': a rifleman's is the general's `Task`, any other role's that
+role's task at its site (docs/echelons/soldier/routines.md). It sees each soldier's plan at the end
+of his line.
 
 ## When it decides
 Every 20 seconds while the squad has an objective, at once on a new objective, and at once on a

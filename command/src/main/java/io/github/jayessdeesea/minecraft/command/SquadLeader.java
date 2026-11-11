@@ -23,6 +23,12 @@ public interface SquadLeader {
     void receiveTime(TimeOfDay time);
 
     /**
+     * Each of its soldiers' standing plans, as kept: what it last made each of them, and what each
+     * still has to do first (docs/military-doctrine.md § 18).
+     */
+    void receivePlans(java.util.Map<String, Plan> plans);
+
+    /**
      * The squad leader's own SITREP line upward - notably {@link Report.Cantco} when it judged the
      * objective impossible (docs/military-doctrine.md §3), so the general can re-task the squad.
      */

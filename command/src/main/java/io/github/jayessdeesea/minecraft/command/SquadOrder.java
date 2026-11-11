@@ -14,13 +14,23 @@ import java.util.Objects;
  * it for named soldiers - typically one stuck soldier freed at MEDIUM without the whole squad
  * taking falls (docs/military-doctrine.md §7). {@code rearm} lets soldiers stop to make themselves
  * better kit, by the equipment ladder, when no fight is near (§11).
- * {@link Formations#assign} turns this into each soldier's {@link Order}.
+ * {@code changes} are what it changes in its soldiers' standing {@link Plan}s: a role, a site, a
+ * directive (§18) - usually none. {@link Formations#assign} turns the rest into each soldier's
+ * {@link Order}.
  */
 public record SquadOrder(Position objective, Formation formation, Interval interval,
-                         double verticalTolerance, Risk risk, Map<String, Risk> soldierRisk, boolean rearm, String intent) {
+                         double verticalTolerance, Risk risk, Map<String, Risk> soldierRisk, boolean rearm, String intent,
+                         java.util.List<Plan.Change> changes) {
 
     public SquadOrder {
         soldierRisk = Map.copyOf(soldierRisk);
+        changes = java.util.List.copyOf(changes);
+    }
+
+    /** No soldier's plan changed. */
+    public SquadOrder(Position objective, Formation formation, Interval interval,
+                      double verticalTolerance, Risk risk, Map<String, Risk> soldierRisk, boolean rearm, String intent) {
+        this(objective, formation, interval, verticalTolerance, risk, soldierRisk, rearm, intent, java.util.List.of());
     }
 
     /** A squad-wide risk with no per-soldier overrides, and no stopping to rearm. */

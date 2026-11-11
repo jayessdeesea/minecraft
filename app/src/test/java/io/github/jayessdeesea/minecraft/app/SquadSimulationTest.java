@@ -48,10 +48,10 @@ class SquadSimulationTest {
         org.apache.logging.log4j.ThreadContext.remove("scenario");
     }
 
-    private static final int GROUND = 63;
+    static final int GROUND = 63;
 
     /** Flat: bedrock, stone, dirt, grass at y=63, and iron ore in a band round y=16. */
-    private static int flat(int x, int y, int z) {
+    static int flat(int x, int y, int z) {
         if (y <= -64) {
             return SimServer.BEDROCK;
         }
@@ -65,7 +65,7 @@ class SquadSimulationTest {
     }
 
     /** A general that gives every squad the same objective, every time it's asked. */
-    private static General scripted(Function<SquadStatus, Objective> objective) {
+    static General scripted(Function<SquadStatus, Objective> objective) {
         return new General() {
             @Override
             public void receiveMission(String mission) {
@@ -99,7 +99,7 @@ class SquadSimulationTest {
         String reply = String.format(Locale.ROOT, """
                 {"x": %.1f, "y": %.1f, "z": %.1f, "formation": "WEDGE", "interval": "NORMAL",
                  "verticalTolerance": 4, "risk": "LOW", "soldierRisks": [], "rearm": true,
-                 "intent": "work the objective", "cantco": ""}
+                 "intent": "work the objective", "cantco": "", "roleChanges": [], "detached": []}
                 """, at.x(), at.y(), at.z());
         return ChatClient.create((org.springframework.ai.chat.model.ChatModel) prompt ->
                 new ChatResponse(List.of(new Generation(new AssistantMessage(reply)))));
