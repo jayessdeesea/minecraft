@@ -55,6 +55,17 @@ class ChunkCacheTest {
     }
 
     @Test
+    void aChunkSentAgainReplacesWhatWasCached() {
+        ChunkCache cache = new ChunkCache();
+        cache.load(0, 0, List.of(filled(STONE)), "soldier-a"); // soldier-a respawns far off: never unloaded
+        cache.load(0, 0, List.of(filled(AIR)), "soldier-b");   // the block broken since, as sent now
+
+        assertFalse(cache.isSolid(0, -64, 0), "the chunk as the server sends it now");
+        cache.unload(0, 0, "soldier-b");
+        assertFalse(cache.isSolid(0, -64, 0), "still held by soldier-a, and still current");
+    }
+
+    @Test
     void unloadingAnUnknownOwnerOfAnUnloadedChunkIsANoOp() {
         ChunkCache cache = new ChunkCache();
 
