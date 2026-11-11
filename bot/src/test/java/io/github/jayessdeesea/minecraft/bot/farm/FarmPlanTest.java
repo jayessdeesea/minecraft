@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -95,7 +96,7 @@ class FarmPlanTest {
     @Test
     void groundThatWontTillOrIsCoveredIsLeftOutAndTooLittleIsNoFarm() {
         BlockPos pond = new BlockPos(0, GROUND, 0);
-        java.util.Set<BlockPos> stone = new java.util.HashSet<>();
+        Set<BlockPos> stone = new HashSet<>();
         for (int dx = -4; dx <= 4; dx++) {
             for (int dz = -4; dz <= 4; dz++) {
                 if (Math.abs(dx) > 1 || Math.abs(dz) > 1) {

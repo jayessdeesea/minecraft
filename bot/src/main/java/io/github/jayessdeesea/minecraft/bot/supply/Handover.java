@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -194,7 +195,7 @@ public final class Handover {
     }
 
     private String what() {
-        return item.name().toLowerCase(java.util.Locale.ROOT);
+        return item.name().toLowerCase(Locale.ROOT);
     }
 
     /** Throws the first slot of what's handed, as many as are still to give; confirmed by the server's count. */

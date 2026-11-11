@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
+import io.github.jayessdeesea.minecraft.bot.world.Workstation;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.BlockFace;
@@ -199,9 +200,9 @@ class BuilderTest {
             }
 
             @Override
-            public Optional<io.github.jayessdeesea.minecraft.bot.world.Workstation> workstation(int x, int y, int z) {
+            public Optional<Workstation> workstation(int x, int y, int z) {
                 return new BlockPos(x, y, z).equals(table)
-                        ? Optional.of(io.github.jayessdeesea.minecraft.bot.world.Workstation.CRAFTING_TABLE) : Optional.empty();
+                        ? Optional.of(Workstation.CRAFTING_TABLE) : Optional.empty();
             }
         };
 

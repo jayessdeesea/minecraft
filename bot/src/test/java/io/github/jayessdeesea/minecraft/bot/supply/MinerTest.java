@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.Goal;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.Hardness;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -16,7 +17,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -176,8 +179,8 @@ class MinerTest {
     }
 
     private static int pickaxe(int tier) {
-        return java.util.stream.IntStream.range(0, 4096)
-                .filter(id -> io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.miningTier(id).equals(java.util.OptionalInt.of(tier)))
+        return IntStream.range(0, 4096)
+                .filter(id -> ItemClassRegistry.miningTier(id).equals(OptionalInt.of(tier)))
                 .findFirst().orElseThrow();
     }
 

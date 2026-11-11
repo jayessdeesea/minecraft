@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -76,8 +77,8 @@ class LightingTest {
             }
 
             @Override
-            public java.util.Optional<String> leaves(int x, int y, int z) {
-                return y == GROUND - 1 ? java.util.Optional.of("oak") : java.util.Optional.empty();
+            public Optional<String> leaves(int x, int y, int z) {
+                return y == GROUND - 1 ? Optional.of("oak") : Optional.empty();
             }
 
             @Override
@@ -122,7 +123,7 @@ class LightingTest {
      */
     @Test
     void groundBesideCellsNoTorchMayGoInIsLitFromOthers() {
-        java.util.function.Predicate<BlockPos> offTheLine = c -> Math.max(Math.abs(c.x()), Math.abs(c.z())) != 8;
+        Predicate<BlockPos> offTheLine = c -> Math.max(Math.abs(c.x()), Math.abs(c.z())) != 8;
         List<BlockPos> plan = Lighting.plan(flat, CENTRE, 12, offTheLine);
 
         assertTrue(plan.stream().allMatch(offTheLine), "a torch on the line: " + plan);

@@ -1,6 +1,8 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
+import io.github.jayessdeesea.minecraft.bot.nav.Goal;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.script.Script;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
@@ -14,8 +16,11 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * One soldier building its squad's {@link Perimeter}: it takes the nearest open cell of the wall no
@@ -133,11 +138,11 @@ public final class Mason {
         // Any cell with a block to go against - the one under it, or for the lip the wall beside it -
         // so each column rises from its own ground: on a slope the wall's rows are at many heights.
         // The nearest with somewhere inside to stand: one without it waits, rather than holding up the rest.
-        Optional<java.util.Map.Entry<BlockPos, BlockPos>> next = open.stream()
+        Optional<Map.Entry<BlockPos, BlockPos>> next = open.stream()
                 .filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && Builder.support(world, c).isPresent())
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
                 .flatMap(cell -> inside(world, cell, centre, radius, soldier, reached(world)).filter(stand -> !claims.contains(stand))
-                        .map(stand -> java.util.Map.entry(cell, stand)).stream())
+                        .map(stand -> Map.entry(cell, stand)).stream())
                 .findFirst();
         if (next.isPresent()) {
             stalled = null;
@@ -154,9 +159,9 @@ public final class Mason {
                 && Builder.support(world, c).isPresent() && inside(world, c, centre, radius, soldier, this::standOpen).isEmpty()).toList();
         String why = open.size() + " wall cells open and none to build: " + claimed + " taken by squadmates, " + passed
                 + " passed over after a failure, " + unsupported.size() + " with nothing to go against"
-                + unsupported.stream().limit(3).map(BlockPos::toString).collect(java.util.stream.Collectors.joining(", ", " (", ")"))
+                + unsupported.stream().limit(3).map(BlockPos::toString).collect(Collectors.joining(", ", " (", ")"))
                 + ", " + noStand.size() + " with nowhere inside to stand"
-                + noStand.stream().limit(3).map(BlockPos::toString).collect(java.util.stream.Collectors.joining(", ", " (", ")"));
+                + noStand.stream().limit(3).map(BlockPos::toString).collect(Collectors.joining(", ", " (", ")"));
         if (!why.equals(said)) {
             LOG.warn("{} {}", name, why);
             said = why;
@@ -217,7 +222,7 @@ public final class Mason {
         soft.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && world.isSoil(c.x(), c.y(), c.z()))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
                 .flatMap(cell -> inside(world, cell, centre, radius, soldier, reached(world)).filter(stand -> !claims.contains(stand))
-                        .map(stand -> java.util.Map.entry(cell, stand)).stream())
+                        .map(stand -> Map.entry(cell, stand)).stream())
                 .findFirst().ifPresent(next -> startRepoint(world, next.getKey(), next.getValue()));
     }
 
@@ -272,7 +277,7 @@ public final class Mason {
      * where the soldier stands - or it's barred now, not after a walk at it. Live, the wall's last
      * dirt block had its stand in a pocket sealed in the hill, and every mason walked 400 ticks at it.
      */
-    private java.util.function.Predicate<BlockPos> reached(WorldView world) {
+    private Predicate<BlockPos> reached(WorldView world) {
         return stand -> {
             if (!standOpen(stand)) {
                 return false;
@@ -282,8 +287,8 @@ public final class Mason {
             // cutting steps with a pickaxe if it has one - a wall going up is crossed that way.
             int blocks = inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT);
             boolean pickaxe = inventory.count(ItemClass.PICKAXE) > 0;
-            if (Pathfinder.find(world, from, new io.github.jayessdeesea.minecraft.bot.nav.Goal(stand.x() + 0.5, stand.y(), stand.z() + 0.5,
-                    ON_PLACE, 0.5), STAND_ROUTE_BUDGET, io.github.jayessdeesea.minecraft.bot.nav.FallAllowance.NONE, blocks, pickaxe).reachesGoal()) {
+            if (Pathfinder.find(world, from, new Goal(stand.x() + 0.5, stand.y(), stand.z() + 0.5,
+                    ON_PLACE, 0.5), STAND_ROUTE_BUDGET, FallAllowance.NONE, blocks, pickaxe).reachesGoal()) {
                 return true;
             }
             standsFailed.failed(stand, ticks, "no route to " + stand);
@@ -298,7 +303,7 @@ public final class Mason {
 
     /** As {@link #inside(WorldView, BlockPos, BlockPos, int, Position)}, only among stands {@code allowed}. */
     static Optional<BlockPos> inside(WorldView world, BlockPos cell, BlockPos centre, int radius, Position soldier,
-                                     java.util.function.Predicate<BlockPos> allowed) {
+                                     Predicate<BlockPos> allowed) {
         boolean out = Math.max(Math.abs(soldier.x() - (centre.x() + 0.5)), Math.abs(soldier.z() - (centre.z() + 0.5))) > radius + 0.5;
         // Straight in or out from the cell first; then a column along the wall either side, still in
         // reach: live, a cell's column in and out were both built over, and the wall stood three
@@ -317,7 +322,7 @@ public final class Mason {
 
     /** A stand in the column {@code ring} out from {@code centre} toward {@code cell}, shifted {@code (sx, sz)} along the wall. */
     private static Optional<BlockPos> standIn(WorldView world, BlockPos cell, BlockPos centre, int ring, int sx, int sz,
-                                              java.util.function.Predicate<BlockPos> allowed) {
+                                              Predicate<BlockPos> allowed) {
         int x = centre.x() + Math.clamp(cell.x() - centre.x(), -ring, ring) + sx;
         int z = centre.z() + Math.clamp(cell.z() - centre.z(), -ring, ring) + sz;
         // Up to three above the cell, as well as below: where the wall steps down a slope and the

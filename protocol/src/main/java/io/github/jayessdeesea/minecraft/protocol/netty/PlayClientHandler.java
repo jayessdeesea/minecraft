@@ -1,28 +1,33 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.ChatMessage;
-import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
-import io.github.jayessdeesea.minecraft.protocol.InventoryUpdate;
-import io.github.jayessdeesea.minecraft.protocol.HealthUpdate;
 import io.github.jayessdeesea.minecraft.protocol.ChunkUnload;
 import io.github.jayessdeesea.minecraft.protocol.ChunkUpdate;
+import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
 import io.github.jayessdeesea.minecraft.protocol.EntityMove;
 import io.github.jayessdeesea.minecraft.protocol.EntityUpdate;
+import io.github.jayessdeesea.minecraft.protocol.HealthUpdate;
+import io.github.jayessdeesea.minecraft.protocol.InventoryUpdate;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
 import io.github.jayessdeesea.minecraft.protocol.PlayState;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
+import io.github.jayessdeesea.minecraft.protocol.TimeUpdate;
 import io.github.jayessdeesea.minecraft.protocol.packet.AcceptTeleportationPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.AddEntityPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.AcknowledgeFinishConfigurationPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.AddEntityPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.BlockUpdatePackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChunkBatchFinishedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChunkBatchReceivedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChunkDataPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.ForgetLevelChunkPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.EntityPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientInformationPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
+import io.github.jayessdeesea.minecraft.protocol.packet.DisguisedChatPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.EntityPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.FinishConfigurationPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ForgetLevelChunkPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.HandshakePacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.KeepAliveRequestPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.KeepAliveResponsePacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.KnownPacksPacket;
@@ -33,18 +38,14 @@ import io.github.jayessdeesea.minecraft.protocol.packet.LoginSuccessPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MoveEntityPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayerCombatKillPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerLoadedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RegistryDataPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.BlockUpdatePackets;
-import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
-import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
-import io.github.jayessdeesea.minecraft.protocol.packet.DisguisedChatPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetTimePacket;
-import io.github.jayessdeesea.minecraft.protocol.TimeUpdate;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.AttributeKey;
@@ -52,9 +53,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -217,7 +219,7 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
         } else if (packet instanceof SetHealthPacket health) {
             LOG.debug("Set Health received: health={} food={}", health.health(), health.food());
             listeners.onHealth().accept(new HealthUpdate(health.health(), health.food()));
-        } else if (packet instanceof io.github.jayessdeesea.minecraft.protocol.packet.PlayerCombatKillPacket death) {
+        } else if (packet instanceof PlayerCombatKillPacket death) {
             listeners.onDeath().accept(death.message());
         } else if (packet instanceof SetTimePacket time) {
             listeners.onTime().accept(new TimeUpdate(time.gameTime(), time.clocks()));
@@ -242,7 +244,7 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
         } else if (packet instanceof DisguisedChatPacket chat) {
             // Named, not identified: in offline mode the server derives a player's UUID from its name.
             listeners.onChat().accept(new ChatMessage(
-                    java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + chat.senderName()).getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                    UUID.nameUUIDFromBytes(("OfflinePlayer:" + chat.senderName()).getBytes(StandardCharsets.UTF_8)),
                     chat.message()));
         }
         // Everything else recognized-but-unhandled or unrecognized is already logged/cataloged by

@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -54,7 +56,7 @@ public record Readiness(Safety safety, int rating, String shortfall) {
         if (soldiers.isEmpty()) {
             return false;
         }
-        Position middle = soldiers.stream().map(SoldierStatus::position).sorted(java.util.Comparator.comparingDouble(Position::x))
+        Position middle = soldiers.stream().map(SoldierStatus::position).sorted(Comparator.comparingDouble(Position::x))
                 .toList().get(soldiers.size() / 2);
         return Math.hypot(middle.x() - camp.x(), middle.z() - camp.z()) <= AT_BASE;
     }
@@ -78,7 +80,7 @@ public record Readiness(Safety safety, int rating, String shortfall) {
         if (l.kitReported() == 0) {
             return "no soldier has reported his kit yet";
         }
-        List<String> short_ = new java.util.ArrayList<>();
+        List<String> short_ = new ArrayList<>();
         if (l.unarmed() > 0) {
             short_.add(String.format(Locale.ROOT, "%d of %d unarmed", l.unarmed(), l.kitReported()));
         }

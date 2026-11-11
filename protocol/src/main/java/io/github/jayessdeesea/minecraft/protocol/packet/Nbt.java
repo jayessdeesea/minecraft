@@ -2,6 +2,9 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 
 import io.netty.buffer.ByteBuf;
 
+import java.io.DataInputStream;
+import java.io.IOException;
+
 /**
  * NBT reader (binary format per the Minecraft Wiki's NBT page, confirmed against the real server
  * jar's {@code NbtIo.writeAnyTag}/{@code readAnyTag} - see {@link RegistryDataPacket}, this
@@ -129,8 +132,8 @@ final class Nbt {
     /** A string payload: an unsigned short length, then that many bytes of modified UTF-8. */
     private static String readString(ByteBuf in) {
         try {
-            return new java.io.DataInputStream(new io.netty.buffer.ByteBufInputStream(in)).readUTF();
-        } catch (java.io.IOException e) {
+            return new DataInputStream(new io.netty.buffer.ByteBufInputStream(in)).readUTF();
+        } catch (IOException e) {
             throw new IllegalStateException("malformed NBT string", e);
         }
     }

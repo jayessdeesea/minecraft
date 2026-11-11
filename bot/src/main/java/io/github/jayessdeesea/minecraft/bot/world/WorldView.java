@@ -3,6 +3,8 @@ package io.github.jayessdeesea.minecraft.bot.world;
 import io.github.jayessdeesea.minecraft.command.Position;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 /**
  * The narrow, read-only slice of world state a {@code DeterministicSoldier}'s tick depends on -
@@ -36,8 +38,8 @@ public interface WorldView {
     }
 
     /** The crafting table or furnace at (x, y, z), if there is one (it's also {@link #isSolid}). */
-    default java.util.Optional<Workstation> workstation(int x, int y, int z) {
-        return java.util.Optional.empty();
+    default Optional<Workstation> workstation(int x, int y, int z) {
+        return Optional.empty();
     }
 
     /**
@@ -64,23 +66,23 @@ public interface WorldView {
     }
 
     /** What digging the block takes, if it's one a soldier digs: rock, grit, soil, stone, ore. */
-    default java.util.Optional<Hardness> hardness(int x, int y, int z) {
-        return java.util.Optional.empty();
+    default Optional<Hardness> hardness(int x, int y, int z) {
+        return Optional.empty();
     }
 
     /** The tree whose leaves the block is ("spruce", "oak"), if it's leaves (it's also {@link #isSolid}). */
-    default java.util.Optional<String> leaves(int x, int y, int z) {
-        return java.util.Optional.empty();
+    default Optional<String> leaves(int x, int y, int z) {
+        return Optional.empty();
     }
 
     /** The tree the block's sapling grows into, if it's a sapling. */
-    default java.util.Optional<String> sapling(int x, int y, int z) {
-        return java.util.Optional.empty();
+    default Optional<String> sapling(int x, int y, int z) {
+        return Optional.empty();
     }
 
     /** What ore the block is - "copper", "iron", "diamond" - if it's ore. */
-    default java.util.Optional<String> oreOf(int x, int y, int z) {
-        return java.util.Optional.empty();
+    default Optional<String> oreOf(int x, int y, int z) {
+        return Optional.empty();
     }
 
     /** Whether the block is gravel, which drops flint one time in ten. */
@@ -114,8 +116,8 @@ public interface WorldView {
     }
 
     /** The wheat's growth stage, 0 to 7 (ripe), if the block is wheat. */
-    default java.util.OptionalInt wheatAge(int x, int y, int z) {
-        return java.util.OptionalInt.empty();
+    default OptionalInt wheatAge(int x, int y, int z) {
+        return OptionalInt.empty();
     }
 
     /** Whether the block is soil - dirt, grass, clay - that a soldier digs by hand (it's also {@link #isSolid}). */

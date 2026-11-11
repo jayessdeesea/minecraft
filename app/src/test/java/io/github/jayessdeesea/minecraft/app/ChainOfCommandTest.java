@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -15,6 +16,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,7 +35,7 @@ class ChainOfCommandTest {
 
     @Test
     void atNightASquadSealedInIsKeptInNotOrderedOut() {
-        chain.setGround((x, z, nearY) -> java.util.OptionalInt.of(64));
+        chain.setGround((x, z, nearY) -> OptionalInt.of(64));
         chain.onTime(TimeOfDay.of(18000, true));
         SquadStatus sealed = new SquadStatus("Alpha", new Report.InPosition(),
                 List.of(new SoldierStatus("Alice", new Position(0.5, 64, 0.5), new Order.Idle(), new Report.InPosition(), Optional.empty())),
@@ -53,9 +55,9 @@ class ChainOfCommandTest {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
                 new Roster("Alpha:Alice;Bravo:Bob"), true);
-        two.setGround((x, z, nearY) -> java.util.OptionalInt.of(64));
+        two.setGround((x, z, nearY) -> OptionalInt.of(64));
         two.onTime(TimeOfDay.of(18000, true));
-        two.onFoothold(new io.github.jayessdeesea.minecraft.command.Foothold(new Position(-48, 64, 44), List.of()));
+        two.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
 
         Objective alpha = two.sheltered(WALL, squad("Alpha", "Alice"));
         Objective bravo = two.sheltered(WALL, squad("Bravo", "Bob"));

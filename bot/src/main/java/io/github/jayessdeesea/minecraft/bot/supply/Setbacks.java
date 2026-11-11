@@ -1,7 +1,10 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * What a soldier failed at, target by target, and how long it leaves each alone: the first failure
@@ -70,9 +73,9 @@ public final class Setbacks<T> {
      * Why the routine needs help, once its last {@link #ESCALATE} tries in a row all failed: how
      * many, and the last one's target and reason.
      */
-    public synchronized java.util.Optional<String> stuck() {
-        return streak < ESCALATE ? java.util.Optional.empty()
-                : java.util.Optional.of(streak + " tries in a row failed, the last at " + lastTarget + ": " + lastWhy);
+    public synchronized Optional<String> stuck() {
+        return streak < ESCALATE ? Optional.empty()
+                : Optional.of(streak + " tries in a row failed, the last at " + lastTarget + ": " + lastWhy);
     }
 
     /** Whether {@code target} is still being left alone at tick {@code now}. */
@@ -82,8 +85,8 @@ public final class Setbacks<T> {
     }
 
     /** The targets still being left alone at tick {@code now}. */
-    public synchronized java.util.Set<T> barredNow(long now) {
-        java.util.Set<T> barred = new java.util.HashSet<>();
+    public synchronized Set<T> barredNow(long now) {
+        Set<T> barred = new HashSet<>();
         failed.forEach((target, entry) -> {
             if (entry[1] > now) {
                 barred.add(target);

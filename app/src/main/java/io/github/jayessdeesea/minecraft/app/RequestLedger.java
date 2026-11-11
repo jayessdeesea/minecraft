@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 
 /**
@@ -47,23 +48,23 @@ final class RequestLedger {
      * {@code key}'s request, from {@code from} to {@code to}, saying {@code what}, is open at
      * {@code now}: raised now, or still open since it was. Returns the line to log when it's new.
      */
-    synchronized java.util.Optional<String> raise(String key, Echelon to, String from, String what, long now) {
+    synchronized Optional<String> raise(String key, Echelon to, String from, String what, long now) {
         if (open.containsKey(key)) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         open.put(key, new Open(to, from, what, now, false));
-        return java.util.Optional.of(String.format(Locale.ROOT, "[Request] %s -> %s: %s", from, label(to), what));
+        return Optional.of(String.format(Locale.ROOT, "[Request] %s -> %s: %s", from, label(to), what));
     }
 
     /** {@code key}'s request answered at {@code now}: its order changed. Returns the line to log, if one was open. */
-    synchronized java.util.Optional<String> answer(String key, long now) {
+    synchronized Optional<String> answer(String key, long now) {
         Open request = open.remove(key);
         if (request == null) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         long took = now - request.raised();
         answered.computeIfAbsent(request.to(), e -> new ArrayList<>()).add(took);
-        return java.util.Optional.of(String.format(Locale.ROOT, "[Request] %s answered %s in %d s: %s", label(request.to()),
+        return Optional.of(String.format(Locale.ROOT, "[Request] %s answered %s in %d s: %s", label(request.to()),
                 request.from(), took / 1000, request.what()));
     }
 

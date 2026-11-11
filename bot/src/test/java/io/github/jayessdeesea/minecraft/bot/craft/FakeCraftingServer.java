@@ -5,19 +5,23 @@ import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
-import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.bot.world.Workstation;
+import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.protocol.BlockFace;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
 import io.github.jayessdeesea.minecraft.protocol.ItemSlot;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
@@ -42,7 +46,7 @@ final class FakeCraftingServer {
     private int held;
     final Map<BlockPos, Workstation> stations = new HashMap<>();
     /** Chests put down: solid, and opened by nothing here. */
-    final java.util.Set<BlockPos> chests = new java.util.HashSet<>();
+    final Set<BlockPos> chests = new HashSet<>();
     private final Map<BlockPos, int[][]> furnaces = new HashMap<>();
     private final Map<BlockPos, int[]> burning = new HashMap<>(); // fuel ticks left, smelt progress
     private int[][] tableGrid;
@@ -52,7 +56,7 @@ final class FakeCraftingServer {
     /** What the server did, for a test to count. */
     final List<String> log = new ArrayList<>();
     /** Containers that don't answer when used. */
-    final java.util.Set<Workstation> silent = java.util.EnumSet.noneOf(Workstation.class);
+    final Set<Workstation> silent = EnumSet.noneOf(Workstation.class);
     Consumer<ContainerUpdate> client = u -> { };
     /** Squadmates standing about: the server won't place a block into one. */
     final List<Position> bodies = new ArrayList<>();
@@ -107,7 +111,7 @@ final class FakeCraftingServer {
                     case "useBlock" -> use(new BlockPos((int) args[0], (int) args[1], (int) args[2]));
                     // A block placed against a face: into the cell beside it, as useBlock on the ground below that cell.
                     case "useBlockFace" -> {
-                        io.github.jayessdeesea.minecraft.protocol.BlockFace face = (io.github.jayessdeesea.minecraft.protocol.BlockFace) args[3];
+                        BlockFace face = (BlockFace) args[3];
                         use(new BlockPos((int) args[0] + face.dx, (int) args[1] + face.dy - 1, (int) args[2] + face.dz));
                     }
                     default -> throw new AssertionError("unexpected " + method.getName());

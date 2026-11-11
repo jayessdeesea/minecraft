@@ -27,12 +27,15 @@ final class Scoreboard {
     /**
      * One day's score: when, which day of its run, the earliest phase not met (0 with every phase
      * met), standards met of all, those open with how far along, deaths, the shares of soldier-time
-     * standing about (Idle, InPosition) and unable (CANTCO), and the soldiers hungry at dawn.
+     * standing about (Idle, InPosition) and unable (CANTCO), the soldiers hungry at dawn, and the
+     * walks from the camp's centre to its sites ({@code RouteEffort}).
      */
     record Score(long at, int day, int phase, int met, int standards, List<String> open, int deaths,
-                 int idlePercent, int cantcoPercent, int hungry, int soldiers) {
+                 int idlePercent, int cantcoPercent, int hungry, int soldiers, List<String> routes) {
         public Score {
             open = List.copyOf(open);
+            // Days scored before routes were walked have none.
+            routes = routes == null ? List.of() : List.copyOf(routes);
         }
 
         String line() {
@@ -76,6 +79,7 @@ final class Scoreboard {
             throw new UncheckedIOException("the scoreboard won't write to " + file, e);
         }
         return score.line() + before.map(b -> " - the day before: " + b.line()).orElse(" - the first day scored")
-                + (score.open().isEmpty() ? "" : "; earliest open: " + score.open().getFirst());
+                + (score.open().isEmpty() ? "" : "; earliest open: " + score.open().getFirst())
+                + (score.routes().isEmpty() ? "" : "; routes " + String.join("; ", score.routes()));
     }
 }

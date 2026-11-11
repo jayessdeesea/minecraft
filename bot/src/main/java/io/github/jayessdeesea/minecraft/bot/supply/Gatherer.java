@@ -10,7 +10,9 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 
 /**
@@ -45,7 +47,7 @@ public final class Gatherer {
 
     private Digger digger;
     /** Trees this soldier failed at (out of reach, or the log wouldn't break) - not tried again. */
-    private final Set<BlockPos> avoid = new java.util.HashSet<>();
+    private final Set<BlockPos> avoid = new HashSet<>();
     private int retry;
     private boolean reportedFull;
     private boolean exhausted;
@@ -77,7 +79,7 @@ public final class Gatherer {
      */
     public synchronized void tick(Position soldier, WorldView world, Optional<Resource> resource, Position around,
                                   boolean wanted) {
-        tick(soldier, world, resource, around, wanted, java.util.OptionalInt.empty());
+        tick(soldier, world, resource, around, wanted, OptionalInt.empty());
     }
 
     /**
@@ -85,7 +87,7 @@ public final class Gatherer {
      * when it's given - an {@code Order.Gather}'s - rather than the resource's usual load.
      */
     public synchronized void tick(Position soldier, WorldView world, Optional<Resource> resource, Position around,
-                                  boolean wanted, java.util.OptionalInt amount) {
+                                  boolean wanted, OptionalInt amount) {
         if (retry > 0) {
             retry--;
         }
@@ -167,7 +169,7 @@ public final class Gatherer {
     }
 
     private void next(WorldView world, Position around, Digger.Target target) {
-        Set<BlockPos> excluded = new java.util.HashSet<>(claims);
+        Set<BlockPos> excluded = new HashSet<>(claims);
         excluded.addAll(avoid);
         // Nearest first, then further out: none within reach of the objective is a reason to look
         // wider before asking for help - live, a camp long since cleared of trees had a wood a

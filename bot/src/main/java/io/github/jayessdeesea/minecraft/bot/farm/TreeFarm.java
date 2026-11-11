@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Where a squad plants trees round a point, so a camp that has cut down what grew near it has
@@ -29,7 +30,7 @@ public record TreeFarm(BlockPos centre, List<BlockPos> plot) {
     private static final int VERTICAL = 4;
 
     /** The tree farm round {@code centre}, out to {@code radius} blocks - empty if the ground has too few cells. */
-    public static java.util.Optional<TreeFarm> site(WorldView world, BlockPos centre, int radius) {
+    public static Optional<TreeFarm> site(WorldView world, BlockPos centre, int radius) {
         List<BlockPos> plot = new ArrayList<>();
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
@@ -46,7 +47,7 @@ public record TreeFarm(BlockPos centre, List<BlockPos> plot) {
             }
         }
         plot.sort(Comparator.comparingInt(c -> Math.abs(c.x() - centre.x()) + Math.abs(c.z() - centre.z())));
-        return plot.size() < MIN_CELLS ? java.util.Optional.empty() : java.util.Optional.of(new TreeFarm(centre, List.copyOf(plot)));
+        return plot.size() < MIN_CELLS ? Optional.empty() : Optional.of(new TreeFarm(centre, List.copyOf(plot)));
     }
 
     /**

@@ -958,9 +958,12 @@ server's cause, with who; and who raised an idle alarm by day (§ 3).
 The same dawn scores the day on the garrison's scoreboard (`app.Scoreboard`, `scoreboard.jsonl` in
 the state directory, one JSON line a day kept across restarts): the earliest phase not met, the
 standards met of all, the open ones earliest phase first, the deaths, the shares of soldier-time
-standing about (`Idle`, `InPosition`) and unable (`CANTCO`), and the soldiers hungry at dawn. The
-log's `[Scoreboard]` line sets it beside the day before and names the earliest open standard -
-the next thing to work on.
+standing about (`Idle`, `InPosition`) and unable (`CANTCO`), the soldiers hungry at dawn, and how
+hard the camp is to get about (`bot.nav.RouteEffort`): the walk on foot from its centre to the
+workshop, the farm and the mine head, against a straight walk over level ground - its share of
+the straight line, and the blocks climbed and dropped on the way, measured each foothold check
+and logged as they change (`[Routes]`). The log's `[Scoreboard]` line sets the day beside the day
+before and names the earliest open standard - the next thing to work on.
 
 It ends with the commands' scorecard (`app.CommandScorecard`). Each soldier is sampled once a
 second, and each kind of command is scored by how its soldiers spent their time: each task the

@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
@@ -8,14 +9,22 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * The whole chain of command - real general, real squad leaders, real soldiers - against the dev
@@ -77,7 +86,7 @@ class ChainScenarioLiveIT {
                 .filter(b -> b.allInside() && b.sealed()).isPresent());
     }
 
-    static final Map<String, Scenario> SCENARIOS = java.util.stream.Stream.of(
+    static final Map<String, Scenario> SCENARIOS = Stream.of(
             new Scenario("patrol-base-before-dark", BASE_KIT, List.of(),
                     // About six minutes of daylight left: the hut is 40 blocks a squad.
                     6000,
@@ -132,7 +141,7 @@ class ChainScenarioLiveIT {
             // Further up the ladder: enough ore for a shield and a chestplate each, and the logs to
             // burn for nine smelts. Met when every soldier wears armour and has its shield.
             new Scenario("rearm-to-chestplate", List.of("clear %s", "give %s cobblestone 16", "give %s oak_log 10", "give %s bread 4"),
-                    java.util.stream.IntStream.of(10, 12, 14).mapToObj(dz -> "fill %d %d %d %d %d %d iron_ore".formatted(
+                    IntStream.of(10, 12, 14).mapToObj(dz -> "fill %d %d %d %d %d %d iron_ore".formatted(
                             ARENA_X - ARENA_HALF, FLOOR_Y + 1, ARENA_Z + dz, ARENA_X + ARENA_HALF, FLOOR_Y + 1, ARENA_Z + dz)).toList(),
                     0,
                     "No fight is expected today. Both squads stay on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z
@@ -174,7 +183,7 @@ class ChainScenarioLiveIT {
                     "The camp is on the stone platform around x=" + ARENA_X + " z=" + ARENA_Z + ". Both squads wall in the camp's "
                             + "ground today, at x=" + ARENA_X + " z=" + ARENA_Z + ".",
                     () -> harness -> harness.roster().squads().stream()
-                            .anyMatch(squad -> harness.runner.wallLeft(squad.name()).equals(java.util.OptionalInt.of(0))) ? Verdict.PASS : Verdict.PENDING,
+                            .anyMatch(squad -> harness.runner.wallLeft(squad.name()).equals(OptionalInt.of(0))) ? Verdict.PASS : Verdict.PENDING,
                     Duration.ofMinutes(6)),
             // Skeletons on stone pillars six high, out of any sword's reach: only arrows bring them
             // down. Met when every skeleton is dead; the log says who loosed how often.
@@ -199,7 +208,7 @@ class ChainScenarioLiveIT {
                         };
                     },
                     Duration.ofMinutes(4)))
-            .collect(java.util.stream.Collectors.toMap(Scenario::name, scenario -> scenario));
+            .collect(Collectors.toMap(Scenario::name, scenario -> scenario));
 
     /** The terrace's west face, and its top: three blocks over the floor. */
     static final int TERRACE_X = ARENA_X + 10;
@@ -218,7 +227,7 @@ class ChainScenarioLiveIT {
                 () -> harness -> harness.roster().squads().stream().allMatch(squad -> harness.runner.position(squad.soldiers().getFirst())
                         .filter(p -> p.x() >= TERRACE_X && p.y() >= TERRACE_TOP - 1.5).isPresent())
                         && harness.roster().squads().stream().flatMap(squad -> squad.soldiers().stream())
-                        .allMatch(soldier -> harness.runner.report(soldier).filter(r -> r instanceof io.github.jayessdeesea.minecraft.command.Report.InPosition).isPresent())
+                        .allMatch(soldier -> harness.runner.report(soldier).filter(r -> r instanceof Report.InPosition).isPresent())
                         ? Verdict.PASS : Verdict.PENDING,
                 Duration.ofMinutes(5));
     }
@@ -267,7 +276,7 @@ class ChainScenarioLiveIT {
     /** The overworld's time of day now, from the console: "Timeline minecraft:day is at 1234 tick(s)". */
     private static long daytime() throws IOException, InterruptedException {
         String reply = console("time query minecraft:day");
-        java.util.regex.Matcher time = java.util.regex.Pattern.compile("is at (\\d+) tick").matcher(reply);
+        Matcher time = Pattern.compile("is at (\\d+) tick").matcher(reply);
         if (!time.find()) {
             throw new IllegalStateException("no time of day in the reply to 'time query minecraft:day': " + reply);
         }
@@ -407,9 +416,9 @@ class ChainScenarioLiveIT {
         Process process = new ProcessBuilder("docker", "compose", "exec", "-T", "minecraft", "sh", "-c", SEND_AND_READ_REPLY)
                 .directory(new File("..")).redirectErrorStream(true).start();
         try (var stdin = process.getOutputStream()) {
-            stdin.write((command + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            stdin.write((command + "\n").getBytes(StandardCharsets.UTF_8));
         }
-        String reply = new String(process.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).strip();
+        String reply = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).strip();
         if (!process.waitFor(30, TimeUnit.SECONDS) || process.exitValue() != 0) {
             throw new IllegalStateException("console '" + command + "' couldn't be sent: " + reply);
         }
@@ -422,7 +431,7 @@ class ChainScenarioLiveIT {
         return reply;
     }
 
-    private static void awaitUntil(Duration limit, String what, java.util.function.BooleanSupplier met) throws InterruptedException {
+    private static void awaitUntil(Duration limit, String what, BooleanSupplier met) throws InterruptedException {
         long deadline = System.nanoTime() + limit.toNanos();
         while (!met.getAsBoolean()) {
             if (System.nanoTime() > deadline) {

@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.bot.world.Workstation;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -80,7 +81,7 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_, 
         /** The batches each batch uses: what decides which visit it can be made on. */
         private final Map<Recipe, Set<Recipe>> uses = new LinkedHashMap<>();
         private final Map<ItemClass, Integer> short_ = new EnumMap<>(ItemClass.class);
-        private final Set<Workstation> missing = java.util.EnumSet.noneOf(Workstation.class);
+        private final Set<Workstation> missing = EnumSet.noneOf(Workstation.class);
 
         private final Stock carried;
 

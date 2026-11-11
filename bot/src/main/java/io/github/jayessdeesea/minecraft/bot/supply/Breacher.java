@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.script.Script;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
+import io.github.jayessdeesea.minecraft.bot.world.Hardness;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
@@ -118,11 +119,11 @@ public final class Breacher {
             // The server times the dig itself: finishing early is refused, so wait out its break time -
             // the block's own, from its hardness, where the world knows it. The deadline allows for a
             // dig by hand, whatever ends up in it.
-            Optional<io.github.jayessdeesea.minecraft.bot.world.Hardness> hardness = world.hardness(cell.x(), cell.y(), cell.z());
-            int deadline = hardness.map(h -> h.ticks(io.github.jayessdeesea.minecraft.bot.world.Hardness.HAND) + MARGIN_TICKS)
+            Optional<Hardness> hardness = world.hardness(cell.x(), cell.y(), cell.z());
+            int deadline = hardness.map(h -> h.ticks(Hardness.HAND) + MARGIN_TICKS)
                     .orElse(HAND_TICKS);
             steps.add(new Step("dig " + cell, () -> !solid(cell), () -> {
-                int held = pickaxeInHand() ? heldPickaxe() : io.github.jayessdeesea.minecraft.bot.world.Hardness.HAND;
+                int held = pickaxeInHand() ? heldPickaxe() : Hardness.HAND;
                 digTicks = hardness.map(h -> h.ticks(held) + MARGIN_TICKS)
                         .orElse(world.isSoil(cell.x(), cell.y(), cell.z()) ? SOIL_TICKS : pickaxeInHand() ? PICKAXE_TICKS : HAND_TICKS);
                 digStarted = ticks;
@@ -139,7 +140,7 @@ public final class Breacher {
 
     private int heldPickaxe() {
         return ItemClassRegistry.miningTier(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot()))
-                .orElse(io.github.jayessdeesea.minecraft.bot.world.Hardness.HAND);
+                .orElse(Hardness.HAND);
     }
 
     /** Solid, and to be broken: a workshop's table or furnace in a cut - the landing's recesses - is left standing. */

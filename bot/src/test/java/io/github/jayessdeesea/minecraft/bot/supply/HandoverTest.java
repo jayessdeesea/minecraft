@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.bot.supply;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
@@ -12,6 +13,7 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -44,7 +46,7 @@ class HandoverTest {
 
     private Inventory carrying(int... slotAndCount) {
         inventory = new Inventory();
-        int log = java.util.stream.IntStream.range(0, 4096)
+        int log = IntStream.range(0, 4096)
                 .filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(ItemClass.LOG))).findFirst().orElseThrow();
         for (int i = 0; i < slotAndCount.length; i += 2) {
             inventory.setSlot(slotAndCount[i], new int[]{log, slotAndCount[i + 1]});
@@ -75,7 +77,7 @@ class HandoverTest {
 
         tick(handover, far, toAlice(3));
         assertTrue(handover.active());
-        assertEquals(Optional.of(new Report.CrossLeveling("Alice", io.github.jayessdeesea.minecraft.command.CrossLevel.Item.LOGS, 3)), handover.report());
+        assertEquals(Optional.of(new Report.CrossLeveling("Alice", CrossLevel.Item.LOGS, 3)), handover.report());
         assertEquals(Optional.of(new Position(Handover.STAND_OFF, 64, 0)), handover.standAt());
 
         tick(handover, CLOSE, toAlice(3)); // within a throw

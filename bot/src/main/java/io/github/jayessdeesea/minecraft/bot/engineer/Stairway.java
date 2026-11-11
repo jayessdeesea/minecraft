@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -38,7 +39,7 @@ public final class Stairway {
      * further down than {@link #MAX_STEPS}.
      */
     public static Optional<List<BlockPos>> down(WorldView world, BlockPos feet) {
-        return java.util.Arrays.stream(HEADINGS)
+        return Arrays.stream(HEADINGS)
                 .map(h -> flight(world, feet, h[0], h[1]))
                 .flatMap(Optional::stream)
                 .min(Comparator.comparingInt(List::size));
@@ -107,7 +108,7 @@ public final class Stairway {
      * its squad had no stair down for (docs/military-doctrine.md § 7).
      */
     public static Optional<List<BlockPos>> up(WorldView world, BlockPos feet) {
-        return java.util.Arrays.stream(HEADINGS)
+        return Arrays.stream(HEADINGS)
                 .map(h -> flightUp(world, feet, h[0], h[1]))
                 .flatMap(Optional::stream)
                 .min(Comparator.comparingInt(List::size));

@@ -8,6 +8,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +37,7 @@ final class FakeChestServer {
     private int stateId = 1;
 
     FakeChestServer() {
-        java.util.Arrays.fill(chestItems, -1);
+        Arrays.fill(chestItems, -1);
     }
 
     void connect(Consumer<ContainerUpdate> client) {
@@ -52,7 +53,7 @@ final class FakeChestServer {
 
     final PlaySession session = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(),
             new Class<?>[]{PlaySession.class}, (proxy, method, args) -> {
-                log.add(method.getName() + (args == null ? "" : " " + java.util.Arrays.toString(args)));
+                log.add(method.getName() + (args == null ? "" : " " + Arrays.toString(args)));
                 if (silent) {
                     return null;
                 }

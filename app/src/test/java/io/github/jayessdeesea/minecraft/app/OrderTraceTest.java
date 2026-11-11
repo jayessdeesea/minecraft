@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import org.junit.jupiter.api.Test;
 
@@ -50,7 +51,7 @@ class OrderTraceTest {
 
         trace.decided(Map.of("Alpha", Optional.of(WALL)), 40_000);
         long late = 40_000 + OrderTrace.WORKING_ALARM_MILLIS + 1;
-        List<String> lines = trace.sitrep("Alpha", -1, doing(new Report.Gathering(io.github.jayessdeesea.minecraft.command.Resource.STONE)), late);
+        List<String> lines = trace.sitrep("Alpha", -1, doing(new Report.Gathering(Resource.STONE)), late);
         assertTrue(lines.stream().anyMatch(l -> l.startsWith("ALARM OP-2: Alpha's squad leader hasn't passed the order on")), lines.toString());
         assertTrue(lines.stream().anyMatch(l -> l.startsWith("ALARM OP-2: Alpha not yet at FORTIFY") && l.contains("Alice Gathering")),
                 lines.toString());

@@ -12,10 +12,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -79,14 +81,14 @@ final class PlanBook {
     }
 
     private synchronized void save() {
-        Map<String, Kept> kept = new java.util.TreeMap<>();
+        Map<String, Kept> kept = new TreeMap<>();
         plans.forEach((soldier, plan) -> kept.put(soldier, toKept(plan)));
         try {
             Files.createDirectories(directory);
             Path temporary = directory.resolve(FILE + ".tmp");
             JSON.writerWithDefaultPrettyPrinter().writeValue(temporary.toFile(), kept);
-            Files.move(temporary, directory.resolve(FILE), java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                    java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            Files.move(temporary, directory.resolve(FILE), StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             throw new UncheckedIOException("the soldiers' plans won't write to " + directory, e);
         }

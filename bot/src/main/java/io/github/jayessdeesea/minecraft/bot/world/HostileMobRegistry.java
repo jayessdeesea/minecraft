@@ -7,6 +7,9 @@ import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Which entity-type registry IDs are hostile - backed by a resource generated from the pinned
@@ -25,7 +28,7 @@ public final class HostileMobRegistry {
 
     private static final String RESOURCE_NAME = "hostile-entity-types-777.txt";
 
-    private static final java.util.Map<String, Integer> TYPE_IDS = new java.util.HashMap<>();
+    private static final Map<String, Integer> TYPE_IDS = new HashMap<>();
     private static final BitSet HOSTILE_TYPE_IDS = load();
     /** Hostiles to get away from rather than fight at arm's length: they explode. */
     private static final int CREEPER = typeIdOf("creeper");
@@ -44,7 +47,7 @@ public final class HostileMobRegistry {
 
     /** A hostile's registry name (without "minecraft:") by its protocol entity-type ID. */
     public static String nameOf(int typeId) {
-        return TYPE_IDS.entrySet().stream().filter(e -> e.getValue() == typeId).map(java.util.Map.Entry::getKey).findFirst()
+        return TYPE_IDS.entrySet().stream().filter(e -> e.getValue() == typeId).map(Map.Entry::getKey).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("not a listed hostile: type " + typeId));
     }
 
@@ -53,7 +56,7 @@ public final class HostileMobRegistry {
     }
 
     /** Hostiles that shoot: bows (the skeleton family) and crossbows (pillagers). */
-    private static final java.util.Set<Integer> SHOOTERS = java.util.Set.of(
+    private static final Set<Integer> SHOOTERS = Set.of(
             typeIdOf("skeleton"), typeIdOf("stray"), typeIdOf("bogged"), typeIdOf("pillager"));
 
     static boolean shoots(int typeId) {

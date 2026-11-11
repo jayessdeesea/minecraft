@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.bot.world;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -93,9 +94,9 @@ public final class ChunkCache {
     }
 
     /** The workstation at (x, y, z), if there is one. Empty for a block nobody has cached. */
-    public java.util.Optional<Workstation> workstation(int x, int y, int z) {
+    public Optional<Workstation> workstation(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
-        return stateId == UNKNOWN ? java.util.Optional.empty() : BlockClassRegistry.workstation(stateId);
+        return stateId == UNKNOWN ? Optional.empty() : BlockClassRegistry.workstation(stateId);
     }
 
     /** Whether the block is a log - unknown blocks aren't. */
@@ -122,23 +123,23 @@ public final class ChunkCache {
     }
 
     /** What digging the block takes, if it's one a soldier digs - unknown blocks aren't. */
-    public java.util.Optional<Hardness> hardness(int x, int y, int z) {
+    public Optional<Hardness> hardness(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
-        return stateId == UNKNOWN ? java.util.Optional.empty() : BlockClassRegistry.hardness(stateId);
+        return stateId == UNKNOWN ? Optional.empty() : BlockClassRegistry.hardness(stateId);
     }
 
     /** The tree whose leaves the block is - unknown blocks aren't any. */
-    public java.util.Optional<String> leaves(int x, int y, int z) {
+    public Optional<String> leaves(int x, int y, int z) {
         return BlockClassRegistry.leaves(rawStateIdAt(x, y, z));
     }
 
     /** The tree the block's sapling grows into - unknown blocks aren't any. */
-    public java.util.Optional<String> sapling(int x, int y, int z) {
+    public Optional<String> sapling(int x, int y, int z) {
         return BlockClassRegistry.sapling(rawStateIdAt(x, y, z));
     }
 
     /** What ore the block is - unknown blocks are none. */
-    public java.util.Optional<String> oreOf(int x, int y, int z) {
+    public Optional<String> oreOf(int x, int y, int z) {
         return BlockClassRegistry.oreOf(rawStateIdAt(x, y, z));
     }
 
@@ -174,7 +175,7 @@ public final class ChunkCache {
     }
 
     /** The wheat's growth stage, if the block is wheat. */
-    public java.util.OptionalInt wheatAge(int x, int y, int z) {
+    public OptionalInt wheatAge(int x, int y, int z) {
         return BlockClassRegistry.wheatAge(rawStateIdAt(x, y, z));
     }
 

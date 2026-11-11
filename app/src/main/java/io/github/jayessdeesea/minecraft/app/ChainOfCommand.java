@@ -1,13 +1,25 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
+import io.github.jayessdeesea.minecraft.command.Order;
+import io.github.jayessdeesea.minecraft.command.Plan;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Progress;
+import io.github.jayessdeesea.minecraft.command.Readiness;
+import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Resource;
+import io.github.jayessdeesea.minecraft.command.ResourceSite;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
+import io.github.jayessdeesea.minecraft.command.Stockpile;
+import io.github.jayessdeesea.minecraft.command.Subsistence;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
+import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.ai.SpringAiSquadLeader;
+import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.ai.chat.client.ChatClient;
@@ -17,14 +29,19 @@ import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * The LLM echelons' imperative shell: decides <em>when</em> the general and each squad leader
@@ -74,22 +91,22 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      * how its patrol base and its task stand.
      */
     public record Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain,
-                         Optional<Position> principalAt, Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources,
-                         boolean holdingBase, java.util.OptionalInt baseBlocksLeft,
-                         Optional<io.github.jayessdeesea.minecraft.command.Progress> progress,
-                         Optional<io.github.jayessdeesea.minecraft.command.Subsistence.Status> classOne) {
+                         Optional<Position> principalAt, Supplier<List<ResourceSite>> resources,
+                         boolean holdingBase, OptionalInt baseBlocksLeft,
+                         Optional<Progress> progress,
+                         Optional<Subsistence.Status> classOne) {
 
         /** A SITREP with no food measured. */
         public Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt,
-                      Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources, boolean holdingBase,
-                      java.util.OptionalInt baseBlocksLeft, Optional<io.github.jayessdeesea.minecraft.command.Progress> progress) {
+                      Supplier<List<ResourceSite>> resources, boolean holdingBase,
+                      OptionalInt baseBlocksLeft, Optional<Progress> progress) {
             this(squad, soldiers, terrain, principalAt, resources, holdingBase, baseBlocksLeft, progress, Optional.empty());
         }
 
         /** A SITREP with no task's progress measured. */
         public Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt,
-                      Supplier<List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resources, boolean holdingBase,
-                      java.util.OptionalInt baseBlocksLeft) {
+                      Supplier<List<ResourceSite>> resources, boolean holdingBase,
+                      OptionalInt baseBlocksLeft) {
             this(squad, soldiers, terrain, principalAt, resources, holdingBase, baseBlocksLeft, Optional.empty(), Optional.empty());
         }
     }
@@ -97,8 +114,8 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     private final General general;
     private final Map<String, SquadCommand> squads = new LinkedHashMap<>();
     /** What each squad last saw round it - the survey the general was last shown. */
-    private final Map<String, List<io.github.jayessdeesea.minecraft.command.ResourceSite>> resourcesSeen =
-            new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, List<ResourceSite>> resourcesSeen =
+            new ConcurrentHashMap<>();
     private final ExecutorService generalThread;
     /** The clock and threads everything here runs on: the real ones, or a simulation's. */
     private final Clockwork clockwork;
@@ -109,14 +126,14 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     private volatile long lastGeneralMillis = Long.MIN_VALUE / 2;
     private volatile Consumer<String> radio;
     /** The ground's height at an x and z, looked for near a height - the world's, as the soldiers see it. */
-    private volatile Ground ground = (x, z, nearY) -> java.util.OptionalInt.empty();
+    private volatile Ground ground = (x, z, nearY) -> OptionalInt.empty();
 
     /** Where a body stands at ({@code x}, {@code z}): the highest standing cell within reach of {@code nearY}, if the world shows one. */
     @FunctionalInterface
     public interface Ground {
-        java.util.OptionalInt heightAt(int x, int z, int nearY);
+        OptionalInt heightAt(int x, int z, int nearY);
     }
-    private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time;
+    private volatile TimeOfDay time;
 
     /**
      * The operator's standing rule, when set: no squad spends the night in the open. Set it where a
@@ -136,14 +153,14 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
 
     @Autowired
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient,
-                          io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts squadLeaderPrompts, Roster roster,
+                          SquadLeaderPrompts squadLeaderPrompts, Roster roster,
                           @org.springframework.beans.factory.annotation.Value("${minecraft.general.shelter-at-night}") boolean shelterAtNight) {
         this(general, squadLeaderClient, squadLeaderPrompts, roster, shelterAtNight, Clockwork.REAL);
     }
 
     /** As the app's, on {@code clockwork}'s time and threads. */
     ChainOfCommand(General general, ChatClient squadLeaderClient,
-                   io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts squadLeaderPrompts, Roster roster,
+                   SquadLeaderPrompts squadLeaderPrompts, Roster roster,
                    boolean shelterAtNight, Clockwork clockwork) {
         this.general = general;
         this.shelterAtNight = shelterAtNight;
@@ -174,8 +191,8 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      * would leave a squad in the open or take it out of the base it is sealed in - the patrol base it was already
      * ordered to build, or else one where the squad's point man stands. A guardrail, and a loud one: the general's own order is logged beside it.
      */
-    Objective sheltered(Objective objective, io.github.jayessdeesea.minecraft.command.SquadStatus squad) {
-        io.github.jayessdeesea.minecraft.command.TimeOfDay now = time;
+    Objective sheltered(Objective objective, SquadStatus squad) {
+        TimeOfDay now = time;
         if (!shelterAtNight || now == null || !(now.dark() || now.ticksUntilDark() <= SHELTER_LEAD_TICKS)
                 || squad.soldiers().isEmpty()) {
             return objective;
@@ -224,7 +241,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      * holds the camp - or empty for the first, or with no camp measured yet.
      */
     Optional<Objective> nightShift(String squad) {
-        io.github.jayessdeesea.minecraft.command.Foothold camp = foothold;
+        Foothold camp = foothold;
         if (camp == null || squads.isEmpty() || squads.keySet().iterator().next().equals(squad)) {
             return Optional.empty();
         }
@@ -239,7 +256,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      * middle height: the general guesses heights, and a guess copied from elsewhere in its prompt
      * lands an objective in the sky or underground. MINE keeps its own: that y is a depth.
      */
-    Objective grounded(Objective objective, List<io.github.jayessdeesea.minecraft.command.SoldierStatus> soldiers) {
+    Objective grounded(Objective objective, List<SoldierStatus> soldiers) {
         if (objective.mine() || soldiers.isEmpty()) {
             return objective;
         }
@@ -247,7 +264,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         // Near the squad's middle height, not its first soldier's: one stranded up a tower or down a
         // hole would take every objective there with it.
         double[] heights = soldiers.stream().mapToDouble(s -> s.position().y()).sorted().toArray();
-        java.util.OptionalInt height = ground.heightAt((int) Math.floor(at.x()), (int) Math.floor(at.z()),
+        OptionalInt height = ground.heightAt((int) Math.floor(at.x()), (int) Math.floor(at.z()),
                 (int) Math.floor(heights[heights.length / 2]));
         if (height.isEmpty() || height.getAsInt() == (int) Math.floor(at.y())) {
             return objective;
@@ -284,7 +301,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     }
 
     /** Operator orders being followed down the chain - each is dropped once carried out or superseded. */
-    private final List<OrderTrace> traces = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<OrderTrace> traces = new CopyOnWriteArrayList<>();
     private final AtomicInteger traceIds = new AtomicInteger();
 
     /** A trace for the operator's new order: the ones before it, not yet carried out, are superseded. */
@@ -335,9 +352,9 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     }
 
     /** The camp's progress through the lodgment's phases, measured - the general is told, and the log when it moves. */
-    public void onFoothold(io.github.jayessdeesea.minecraft.command.Foothold foothold) {
+    public void onFoothold(Foothold foothold) {
         String standing = foothold.standards().stream().map(s -> s.name() + (s.met() ? " met" : ": " + s.status()))
-                .collect(java.util.stream.Collectors.joining("; "));
+                .collect(Collectors.joining("; "));
         if (!standing.equals(lastFoothold)) {
             LOG.info("[Foothold] phase {}: {}", foothold.nextPhase().isPresent() ? foothold.nextPhase().getAsInt() : "all met", standing);
             lastFoothold = standing;
@@ -348,30 +365,30 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
 
     private volatile String lastFoothold = "";
     /** The home base's progress, last measured - a soldier's thread writes, the squads' read. */
-    private volatile io.github.jayessdeesea.minecraft.command.Foothold foothold;
+    private volatile Foothold foothold;
 
     /** The camp as last measured: empty before the first measure, or with no camp. */
-    public Optional<io.github.jayessdeesea.minecraft.command.Foothold> foothold() {
+    public Optional<Foothold> foothold() {
         return Optional.ofNullable(foothold);
     }
     /** Each squad's readiness as last logged, so only a change of it is. */
-    private final Map<String, io.github.jayessdeesea.minecraft.command.Readiness> readiness = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Readiness> readiness = new ConcurrentHashMap<>();
     /** A squad's readiness seen since the last logged, and in how many SITREPs running: a change is logged once it holds. */
-    private final Map<String, io.github.jayessdeesea.minecraft.command.Readiness> readinessSeen = new java.util.concurrent.ConcurrentHashMap<>();
-    private final Map<String, Integer> readinessHeld = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Readiness> readinessSeen = new ConcurrentHashMap<>();
+    private final Map<String, Integer> readinessHeld = new ConcurrentHashMap<>();
     /** SITREPs a new readiness holds before it's logged: soldiers ranging in and out of the camp flip it back and forth. */
     static final int READINESS_HOLDS = 3;
 
     /** Logs each squad's readiness where it changed: safety where it stands, and its C-rating. */
     private void logReadiness(List<Sitrep> sitreps) {
         for (Sitrep sitrep : sitreps) {
-            io.github.jayessdeesea.minecraft.command.Readiness now = io.github.jayessdeesea.minecraft.command.Readiness.of(
+            Readiness now = Readiness.of(
                     new SquadStatus(sitrep.squad(), squads.get(sitrep.squad()).report(), sitrep.soldiers(), List.of(), Optional.empty(),
                             sitrep.holdingBase()), Optional.ofNullable(foothold));
-            io.github.jayessdeesea.minecraft.command.Readiness was = readiness.get(sitrep.squad());
+            Readiness was = readiness.get(sitrep.squad());
             // A change of state, not of the counts behind it: hunger and health move every few seconds.
             boolean changed = was == null || now.safety() != was.safety() || now.rating() != was.rating();
-            io.github.jayessdeesea.minecraft.command.Readiness seen = readinessSeen.put(sitrep.squad(), now);
+            Readiness seen = readinessSeen.put(sitrep.squad(), now);
             boolean same = seen != null && seen.safety() == now.safety() && seen.rating() == now.rating();
             int held = same ? readinessHeld.merge(sitrep.squad(), 1, Integer::sum) : 1;
             if (!same) {
@@ -388,7 +405,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     /** Every request going up the chain, timed from raised to answered (docs/military-doctrine.md § 4). */
     private final RequestLedger requests = new RequestLedger();
     /** The order each soldier held when its CANTCO went up: a different one is the squad leader's answer. */
-    private final Map<String, io.github.jayessdeesea.minecraft.command.Order> cantcoOrders = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Order> cantcoOrders = new ConcurrentHashMap<>();
 
     /**
      * Requests raised and settled from this cycle's SITREPs: each soldier's CANTCO to its squad
@@ -398,15 +415,15 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         for (Sitrep sitrep : sitreps) {
             for (SoldierStatus soldier : sitrep.soldiers()) {
                 String key = "soldier:" + soldier.name();
-                if (soldier.report() instanceof io.github.jayessdeesea.minecraft.command.Report.Cantco(String reason)) {
-                    io.github.jayessdeesea.minecraft.command.Order held = cantcoOrders.putIfAbsent(soldier.name(), soldier.order());
+                if (soldier.report() instanceof Report.Cantco(String reason)) {
+                    Order held = cantcoOrders.putIfAbsent(soldier.name(), soldier.order());
                     if (held != null && answers(held, soldier.order())) {
                         requests.answer(key, now).ifPresent(LOG::info);
                         cantcoOrders.put(soldier.name(), soldier.order());
                     }
                     requests.raise(key, RequestLedger.Echelon.SQUAD_LEADER, soldier.name() + " of " + sitrep.squad(), "CANTCO: " + reason, now)
                             .ifPresent(LOG::info);
-                } else if (cantcoOrders.remove(soldier.name()) instanceof io.github.jayessdeesea.minecraft.command.Order held) {
+                } else if (cantcoOrders.remove(soldier.name()) instanceof Order held) {
                     if (!answers(held, soldier.order())) {
                         requests.settle(key);
                     } else {
@@ -415,8 +432,8 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                 }
             }
             String task = sitrep.squad() + ":task";
-            Optional<io.github.jayessdeesea.minecraft.command.Progress> finished = sitrep.progress()
-                    .filter(p -> p.state() != io.github.jayessdeesea.minecraft.command.Progress.State.UNDER_WAY);
+            Optional<Progress> finished = sitrep.progress()
+                    .filter(p -> p.state() != Progress.State.UNDER_WAY);
             if (finished.isPresent()) {
                 requests.raise(task, RequestLedger.Echelon.GENERAL, sitrep.squad(), "task " + finished.get().state() + ": " + finished.get().detail(), now)
                         .ifPresent(LOG::info);
@@ -424,8 +441,8 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                 requests.settle(task);
             }
             String food = sitrep.squad() + ":food";
-            Optional<io.github.jayessdeesea.minecraft.command.Subsistence.Status> red = sitrep.classOne()
-                    .filter(c -> c.rating() == io.github.jayessdeesea.minecraft.command.Subsistence.Rating.RED);
+            Optional<Subsistence.Status> red = sitrep.classOne()
+                    .filter(c -> c.rating() == Subsistence.Rating.RED);
             if (red.isPresent()) {
                 requests.raise(food, RequestLedger.Echelon.GENERAL, sitrep.squad(), red.get().line(), now).ifPresent(LOG::info);
             } else {
@@ -442,8 +459,8 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
      * Whether {@code now} answers a CANTCO raised under {@code held}: another kind of order, or a
      * place more than {@link #ANSWER_MOVE} away - not the cycle-to-cycle shuffle of a formation.
      */
-    static boolean answers(io.github.jayessdeesea.minecraft.command.Order held, io.github.jayessdeesea.minecraft.command.Order now) {
-        if (held instanceof io.github.jayessdeesea.minecraft.command.Order.MoveTo a && now instanceof io.github.jayessdeesea.minecraft.command.Order.MoveTo b) {
+    static boolean answers(Order held, Order now) {
+        if (held instanceof Order.MoveTo a && now instanceof Order.MoveTo b) {
             return Math.hypot(a.x() - b.x(), a.z() - b.z()) > ANSWER_MOVE || Math.abs(a.y() - b.y()) > ANSWER_MOVE;
         }
         return held.getClass() != now.getClass();
@@ -455,21 +472,21 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     }
 
     /** A soldier saw what the stockpile holds - the general is told, for its next decision. */
-    public void onStockpile(io.github.jayessdeesea.minecraft.command.Stockpile stockpile) {
+    public void onStockpile(Stockpile stockpile) {
         this.stockpile = stockpile;
         general.receiveStockpile(stockpile);
     }
 
-    private volatile io.github.jayessdeesea.minecraft.command.Stockpile stockpile;
+    private volatile Stockpile stockpile;
 
     /** What the stockpile held when a soldier last looked in it, if anyone has. */
-    public Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile() {
+    public Optional<Stockpile> stockpile() {
         return Optional.ofNullable(stockpile);
     }
 
     /** The server sent the time of day - the general plans around nightfall. Dusk and dawn are logged. */
-    public void onTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
-        io.github.jayessdeesea.minecraft.command.TimeOfDay last = this.time;
+    public void onTime(TimeOfDay time) {
+        TimeOfDay last = this.time;
         this.time = time;
         if (last == null || last.dark() != time.dark()) {
             LOG.info("[Clock] {} - tick {} of the day, the chain of command told", time.dark() ? "NIGHT" : "DAY", time.ticks());
@@ -492,12 +509,12 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     }
 
     /** Day or night as a decision was told it, for the log line that records the decision. */
-    static String phase(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
+    static String phase(TimeOfDay time) {
         return time == null ? "time unknown" : time.dark() ? "night" : "day";
     }
 
     /** The time of day the server last sent, if it has. */
-    public Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time() {
+    public Optional<TimeOfDay> time() {
         return Optional.ofNullable(time);
     }
 
@@ -509,7 +526,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     /** The objective's task, as the OPORD says it - nothing when there's none. */
     private static String task(Objective objective) {
         return objective.patrolBase() ? ", patrol base"
-                : objective.gather().map(r -> ", gather " + r.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
+                : objective.gather().map(r -> ", gather " + r.name().toLowerCase(Locale.ROOT)).orElse("");
     }
 
     /** The general's objective for {@code squad}, once it has one. */
@@ -538,11 +555,11 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     /** Whether any squad last saw trees round it. */
     public boolean woodSeen() {
         return resourcesSeen.values().stream().flatMap(List::stream)
-                .anyMatch(site -> site.resource() == io.github.jayessdeesea.minecraft.command.Resource.WOOD);
+                .anyMatch(site -> site.resource() == Resource.WOOD);
     }
 
     /** The trees, exposed stone and farmland {@code squad} last saw round it - none before its first survey. */
-    public List<io.github.jayessdeesea.minecraft.command.ResourceSite> resourcesSeen(String squad) {
+    public List<ResourceSite> resourcesSeen(String squad) {
         return resourcesSeen.getOrDefault(squad, List.of());
     }
 
@@ -563,8 +580,8 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     }
 
     /** {@code squad}'s soldiers' standing plans, as kept, and how each one's work order stands, for its squad leader's next look. */
-    public void receivePlans(String squad, java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> plans,
-                             java.util.Map<String, String> workOrders) {
+    public void receivePlans(String squad, Map<String, Plan> plans,
+                             Map<String, String> workOrders) {
         squads.get(squad).receivePlans(plans, workOrders);
     }
 
@@ -646,7 +663,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
                         LOG.info("[General -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
                         // The feedback not taken: the squad said its task is finished or stuck, and it was kept.
-                        statuses.get(i).progress().filter(p -> p.state() != io.github.jayessdeesea.minecraft.command.Progress.State.UNDER_WAY)
+                        statuses.get(i).progress().filter(p -> p.state() != Progress.State.UNDER_WAY)
                                 .ifPresent(p -> LOG.warn("[Feedback] the general kept {}'s task though it reported {}: {}", name, p.state(), p.detail()));
                         decided.put(name, Optional.empty());
                         continue;

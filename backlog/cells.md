@@ -49,6 +49,24 @@ adding cells outward.
 - No monster spawns inside the fence line through a night, measured over a multi-day garrison run.
 
 ## Notes
+- **Direction (operator, 2026-11-11):** getting about a camp is a measure of whether its
+  abstractions are right. Every base - foothold, outpost, main base - has a level floor at one
+  height, of stone, not dirt, and an ideal route round it with no jumping; within about 90% of
+  that is good, and it's iterated on continuously. A floor isn't left with potholes: it's
+  inspected like the wall, and a crater (a creeper's) is filled and paved again. Sizes: a
+  foothold minimal, while the squads arm and armour; an outpost one chunk, 16x16, fenced and gated
+  on the chunk's boundary with a light moat round it; the main base the same, 2x2 chunks.
+  Height: sea level, y=63, unless there's a practical reason not to - a mountain, a valley, a
+  village to keep. Measured so far: the walks from the camp's centre to its sites
+  (`RouteEffort`, docs/military-doctrine.md § 17). **Needs decision:** the foothold at
+  (-48, 44) stands on a hillside at about y=69 - its floor at its own height, or cut to y=63 (about
+  1,700 blocks over 17x17 before paving)?
+- **The floor's inspection keeps every way down open.** Filling and paving a cell's potholes never
+  fills a mine head or a stairwell in it: they're kept structures every dig and fill skips, taken
+  from the one list the ground work already uses (`SoldierRunner.groundExcept` - the camp's kept
+  structures, its kept mine, every staircase being cut, the columns round each mine head), not a
+  list of the inspection's own. Left: a mine away from the camp is kept on disk only while it's the
+  camp's - after a restart, another's cells aren't protected; a mine head in any cell has to be.
 - **Decided (operator):** the cells are the main base, at (0, 63, 0) within 100 blocks each way,
   flattened to sea level - built once the foothold at (-48, 44) has the shelter, food and tools
   to move that much ground (backlog/roadmap.md).

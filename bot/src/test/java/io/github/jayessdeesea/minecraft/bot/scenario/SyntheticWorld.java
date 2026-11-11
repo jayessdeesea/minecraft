@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -30,7 +31,7 @@ public final class SyntheticWorld implements WorldView {
 
     SyntheticWorld(int baseGround) {
         for (int[] column : ground) {
-            java.util.Arrays.fill(column, baseGround);
+            Arrays.fill(column, baseGround);
         }
     }
 

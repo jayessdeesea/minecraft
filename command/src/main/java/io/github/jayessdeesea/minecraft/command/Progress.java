@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -21,8 +22,8 @@ public record Progress(State state, String detail) {
     public enum State { UNDER_WAY, DONE, STALLED }
 
     public Progress {
-        java.util.Objects.requireNonNull(state, "state");
-        java.util.Objects.requireNonNull(detail, "detail");
+        Objects.requireNonNull(state, "state");
+        Objects.requireNonNull(detail, "detail");
     }
 
     /** Whether {@code report} shows a soldier at work, or on its way to it: anything but standing or refusing. */

@@ -7,8 +7,12 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.function.IntPredicate;
 
 /**
  * One hungry soldier with nothing to eat killing an animal for meat (docs/military-doctrine.md §11,
@@ -48,7 +52,7 @@ public final class Hunter {
     static final double VERTICAL_REACH = 8;
     /** Ticks an animal chased and given up on is left for others. */
     static final int GIVEN_UP_TICKS = 2400;
-    private final java.util.Map<Integer, Long> givenUp = new java.util.HashMap<>();
+    private final Map<Integer, Long> givenUp = new HashMap<>();
     private long ticks;
 
     private final String name;
@@ -64,7 +68,7 @@ public final class Hunter {
     }
 
     /** Whether there's game of the {@code kinds} wanted within {@link #radius} of {@code ground} to hunt. */
-    public static boolean gameInSight(WorldView world, Position ground, int food, java.util.function.IntPredicate kinds) {
+    public static boolean gameInSight(WorldView world, Position ground, int food, IntPredicate kinds) {
         return world.gameNear(ground, radius(food)).stream().anyMatch(e -> kinds.test(e.typeId()) && level(ground, e));
     }
 
@@ -100,7 +104,7 @@ public final class Hunter {
      * As {@link #tick(Position, WorldView, boolean, int)}, game of the {@code kinds} wanted (by
      * entity type) looked for within {@code radius} of {@code ground}, not round the soldier.
      */
-    public synchronized OptionalInt tick(Position soldier, Position ground, double radius, java.util.function.IntPredicate kinds,
+    public synchronized OptionalInt tick(Position soldier, Position ground, double radius, IntPredicate kinds,
                                          WorldView world, boolean wanted, int charge) {
         ticks++;
         if (chargeTicks > 0) {
@@ -118,7 +122,7 @@ public final class Hunter {
             givenUp.values().removeIf(until -> until <= ticks);
             Optional<TrackedEntity> nearest = world.gameNear(ground, radius).stream()
                     .filter(e -> kinds.test(e.typeId()) && level(ground, e) && !givenUp.containsKey(e.entityId()))
-                    .min(java.util.Comparator.comparingDouble(e -> distance(soldier, e.position())));
+                    .min(Comparator.comparingDouble(e -> distance(soldier, e.position())));
             if (nearest.isEmpty()) {
                 return OptionalInt.empty();
             }

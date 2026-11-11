@@ -2,6 +2,8 @@ package io.github.jayessdeesea.minecraft.protocol.packet;
 
 import io.netty.buffer.ByteBuf;
 
+import java.util.UUID;
+
 /**
  * Clientbound Play-state packet, officially "Add Entity" (protocol 777), 0x01 - ID and layout
  * confirmed with {@code javap} against the real server jar: index 1 in {@code GameProtocols}'
@@ -13,7 +15,7 @@ import io.netty.buffer.ByteBuf;
  * Vanilla brackets these in bundle-delimiter packets (0x00), but still sends each one as its own
  * frame, so no bundle handling is needed to decode them.
  */
-public record AddEntityPacket(int entityId, java.util.UUID uuid, int typeId, double x, double y, double z) implements Packet {
+public record AddEntityPacket(int entityId, UUID uuid, int typeId, double x, double y, double z) implements Packet {
 
     public static final int PACKET_ID = 0x01;
 
@@ -22,7 +24,7 @@ public record AddEntityPacket(int entityId, java.util.UUID uuid, int typeId, dou
 
     public static AddEntityPacket decode(ByteBuf in) {
         int entityId = ProtocolCodec.readVarInt(in);
-        java.util.UUID uuid = ProtocolCodec.readUuid(in);
+        UUID uuid = ProtocolCodec.readUuid(in);
         int typeId = ProtocolCodec.readVarInt(in);
         double x = in.readDouble();
         double y = in.readDouble();

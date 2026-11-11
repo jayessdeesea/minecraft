@@ -1,12 +1,14 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.List;
-import java.util.Set;
-import org.junit.jupiter.api.Test;
 
 class SetbacksTest {
 
@@ -44,11 +46,11 @@ class SetbacksTest {
     void threeFailuresInARowOnAnythingAskForHelp() {
         setbacks.failed("a", 0, "no route");
         setbacks.failed("b", 0, "no route");
-        assertEquals(java.util.Optional.empty(), setbacks.stuck(), "another way still to try");
+        assertEquals(Optional.empty(), setbacks.stuck(), "another way still to try");
 
         setbacks.failed("c", 0, "the chest's contents never came");
 
-        assertEquals(java.util.Optional.of("3 tries in a row failed, the last at c: the chest's contents never came"), setbacks.stuck());
+        assertEquals(Optional.of("3 tries in a row failed, the last at c: the chest's contents never came"), setbacks.stuck());
     }
 
     @Test
@@ -57,13 +59,13 @@ class SetbacksTest {
             setbacks.failed(t, 0, "no route");
         }
         setbacks.worked("d");
-        assertEquals(java.util.Optional.empty(), setbacks.stuck());
+        assertEquals(Optional.empty(), setbacks.stuck());
 
         for (String t : List.of("a", "b", "c")) {
             setbacks.failed(t, 0, "no route");
         }
         setbacks.noWork();
-        assertEquals(java.util.Optional.empty(), setbacks.stuck());
+        assertEquals(Optional.empty(), setbacks.stuck());
     }
 
     @Test

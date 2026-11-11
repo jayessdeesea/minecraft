@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.protocol.ItemSlot;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -126,7 +127,7 @@ final class ChestWindow {
                 size = (menuType + 1) * 9;
                 items = new int[size];
                 counts = new int[size];
-                java.util.Arrays.fill(items, -1);
+                Arrays.fill(items, -1);
                 return true;
             }
             case ContainerUpdate.Contents(int window, int state, var slots, boolean _) -> {

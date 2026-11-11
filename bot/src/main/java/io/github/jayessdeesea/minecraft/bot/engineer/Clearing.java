@@ -3,9 +3,12 @@ package io.github.jayessdeesea.minecraft.bot.engineer;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.Box;
+import io.github.jayessdeesea.minecraft.command.Cell;
 import io.github.jayessdeesea.minecraft.command.Position;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -46,8 +49,8 @@ public final class Clearing {
      * it or under a cell in {@code except}: it can't be dug from its top, and it's what that stands on.
      * Live, a soldier tried soil under a hut's wall every tick, its digger finding no open top.
      */
-    public static List<BlockPos> toClear(WorldView world, io.github.jayessdeesea.minecraft.command.Box box,
-                                         Set<io.github.jayessdeesea.minecraft.command.Cell> except) {
+    public static List<BlockPos> toClear(WorldView world, Box box,
+                                         Set<Cell> except) {
         List<BlockPos> cells = new ArrayList<>();
         for (int x = box.minX(); x <= box.maxX(); x++) {
             for (int z = box.minZ(); z <= box.maxZ(); z++) {
@@ -57,7 +60,7 @@ public final class Clearing {
                 boolean clearAbove = !world.isSolid(x, box.maxY() + 1, z);
                 for (int y = box.maxY(); y >= box.minY(); y--) {
                     boolean ground = !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty();
-                    boolean dug = !except.contains(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z)) && diggable(world, x, y, z)
+                    boolean dug = !except.contains(new Cell(x, y, z)) && diggable(world, x, y, z)
                             && (!ground || clearAbove);
                     if (dug) {
                         cells.add(new BlockPos(x, y, z));
@@ -66,7 +69,7 @@ public final class Clearing {
                 }
             }
         }
-        cells.sort(java.util.Comparator.comparingInt(c -> order(world, c)));
+        cells.sort(Comparator.comparingInt(c -> order(world, c)));
         return List.copyOf(cells);
     }
 
@@ -76,8 +79,8 @@ public final class Clearing {
      * flooded one capped over its water, and a cave underground is left alone. Never one in
      * {@code except}. Lowest first.
      */
-    public static List<BlockPos> toFill(WorldView world, io.github.jayessdeesea.minecraft.command.Box box,
-                                        Set<io.github.jayessdeesea.minecraft.command.Cell> except) {
+    public static List<BlockPos> toFill(WorldView world, Box box,
+                                        Set<Cell> except) {
         List<BlockPos> cells = new ArrayList<>();
         for (int x = box.minX(); x <= box.maxX(); x++) {
             for (int z = box.minZ(); z <= box.maxZ(); z++) {
@@ -88,7 +91,7 @@ public final class Clearing {
                         grounded = true;
                         break;
                     }
-                    if (except.contains(new io.github.jayessdeesea.minecraft.command.Cell(x, y, z))) {
+                    if (except.contains(new Cell(x, y, z))) {
                         column.clear(); // a kept cell is a floor of its own: nothing over it is a hollow
                         continue;
                     }
@@ -99,7 +102,7 @@ public final class Clearing {
                 }
             }
         }
-        cells.sort(java.util.Comparator.comparingInt(BlockPos::y));
+        cells.sort(Comparator.comparingInt(BlockPos::y));
         return List.copyOf(cells);
     }
 

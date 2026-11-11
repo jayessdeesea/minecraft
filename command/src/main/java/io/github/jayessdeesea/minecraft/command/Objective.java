@@ -1,5 +1,8 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.Objects;
+import java.util.Optional;
+
 /**
  * What a {@link General} hands a {@link SquadLeader} - OPORD-shaped but small
  * (docs/military-doctrine.md §5): the mission (what), where, and the commander's intent (why,
@@ -54,7 +57,7 @@ public record Objective(String mission, Position location, String intent, Task t
     }
 
     public Objective {
-        java.util.Objects.requireNonNull(task, "task");
+        Objects.requireNonNull(task, "task");
     }
 
     /** An objective with nothing to gather or build. */
@@ -63,22 +66,22 @@ public record Objective(String mission, Position location, String intent, Task t
     }
 
     /** An objective with nothing to build. */
-    public Objective(String mission, Position location, String intent, java.util.Optional<Resource> gather) {
+    public Objective(String mission, Position location, String intent, Optional<Resource> gather) {
         this(mission, location, intent, gather, false, false);
     }
 
     /** An objective that isn't a farm. */
-    public Objective(String mission, Position location, String intent, java.util.Optional<Resource> gather, boolean patrolBase) {
+    public Objective(String mission, Position location, String intent, Optional<Resource> gather, boolean patrolBase) {
         this(mission, location, intent, gather, patrolBase, false);
     }
 
     /** An objective from the flags of its task: at most one set. */
-    public Objective(String mission, Position location, String intent, java.util.Optional<Resource> gather,
+    public Objective(String mission, Position location, String intent, Optional<Resource> gather,
                      boolean patrolBase, boolean farm) {
         this(mission, location, intent, task(gather, patrolBase, farm));
     }
 
-    private static Task task(java.util.Optional<Resource> gather, boolean patrolBase, boolean farm) {
+    private static Task task(Optional<Resource> gather, boolean patrolBase, boolean farm) {
         if ((patrolBase ? 1 : 0) + (farm ? 1 : 0) + (gather.isPresent() ? 1 : 0) > 1) {
             throw new IllegalArgumentException("a squad has one task at a time: gather, patrol base or farm");
         }
@@ -86,8 +89,8 @@ public record Objective(String mission, Position location, String intent, Task t
     }
 
     /** What the squad gathers there, if that's its task. */
-    public java.util.Optional<Resource> gather() {
-        return task instanceof Task.Gather(Resource resource) ? java.util.Optional.of(resource) : java.util.Optional.empty();
+    public Optional<Resource> gather() {
+        return task instanceof Task.Gather(Resource resource) ? Optional.of(resource) : Optional.empty();
     }
 
     public boolean patrolBase() {

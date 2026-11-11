@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.command;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A coarse picture of the ground around a squad - what a leader would get from a map and a look
@@ -15,11 +16,11 @@ import java.util.List;
  * falls between the grid's samples, and the nearest of them isn't what's at the objective.
  */
 public record TerrainSurvey(int originX, int originZ, int spacing, int radius, List<Sample> samples,
-                            java.util.Optional<Sample> atObjective) {
+                            Optional<Sample> atObjective) {
 
     /** A survey with no objective to sample. */
     public TerrainSurvey(int originX, int originZ, int spacing, int radius, List<Sample> samples) {
-        this(originX, originZ, spacing, radius, samples, java.util.Optional.empty());
+        this(originX, originZ, spacing, radius, samples, Optional.empty());
     }
 
     public enum Ground {

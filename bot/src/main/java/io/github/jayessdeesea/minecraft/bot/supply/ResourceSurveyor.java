@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
+import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -61,10 +62,10 @@ public final class ResourceSurveyor {
         sites.addAll(cluster(stone, centre, Resource.STONE, MIN_OUTCROP));
         // Ground to farm: the best plot by water in sight, as many cells as it has to plant - placed
         // where a soldier stands on the plot by the water, not in the water, which no survey starts from.
-        io.github.jayessdeesea.minecraft.bot.farm.FarmPlan.site(world, centre, FARM_RADIUS, SURVEY_HEIGHT).ifPresent(farm -> {
+        FarmPlan.site(world, centre, FARM_RADIUS, SURVEY_HEIGHT).ifPresent(farm -> {
             BlockPos water = farm.water();
             BlockPos land = farm.plot().stream()
-                    .min(java.util.Comparator.comparingInt(c -> Math.abs(c.x() - water.x()) + Math.abs(c.z() - water.z()))).orElseThrow();
+                    .min(Comparator.comparingInt(c -> Math.abs(c.x() - water.x()) + Math.abs(c.z() - water.z()))).orElseThrow();
             sites.add(new ResourceSite(Resource.FARMLAND, new Position(land.x(), land.y() + 1, land.z()), farm.plot().size()));
         });
         return List.copyOf(sites);

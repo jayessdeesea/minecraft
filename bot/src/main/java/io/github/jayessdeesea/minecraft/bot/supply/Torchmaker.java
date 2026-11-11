@@ -4,13 +4,17 @@ import io.github.jayessdeesea.minecraft.bot.craft.CraftPlan;
 import io.github.jayessdeesea.minecraft.bot.craft.Crafter;
 import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import io.github.jayessdeesea.minecraft.bot.craft.Stock;
+import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
+import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
+import io.github.jayessdeesea.minecraft.bot.world.Workstation;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -36,7 +40,7 @@ public final class Torchmaker {
     private String failure;
 
     public Torchmaker(String name, PlaySession session, Inventory inventory,
-                      Map<io.github.jayessdeesea.minecraft.bot.nav.BlockPos, String> furnaces) {
+                      Map<BlockPos, String> furnaces) {
         this.name = name;
         this.crafter = new Crafter(name, session, inventory, furnaces);
         this.fitter = new Fitter(name, session, inventory, furnaces);
@@ -63,14 +67,14 @@ public final class Torchmaker {
 
     /** Whether it carries what torches take, made at a workshop: the logs for charcoal and sticks. */
     public static boolean canMake(Inventory inventory) {
-        CraftPlan plan = CraftPlan.of(WANTED, Stock.of(inventory), java.util.EnumSet.allOf(io.github.jayessdeesea.minecraft.bot.world.Workstation.class));
+        CraftPlan plan = CraftPlan.of(WANTED, Stock.of(inventory), EnumSet.allOf(Workstation.class));
         return plan.feasible() && !plan.nothingToDo();
     }
 
     /** What {@code inventory} is short of to make {@code torches} at a workshop - empty when it has the makings. */
-    public static Map<io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass, Integer> shortOf(Inventory inventory, int torches) {
+    public static Map<ItemClassRegistry.ItemClass, Integer> shortOf(Inventory inventory, int torches) {
         CraftPlan plan = CraftPlan.of(Map.of(Recipe.TORCHES, torches), Stock.of(inventory),
-                java.util.EnumSet.allOf(io.github.jayessdeesea.minecraft.bot.world.Workstation.class));
+                EnumSet.allOf(Workstation.class));
         return plan.feasible() ? Map.of() : plan.short_();
     }
 

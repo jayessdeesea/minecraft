@@ -3,6 +3,8 @@ package io.github.jayessdeesea.minecraft.bot.world;
 import io.github.jayessdeesea.minecraft.bot.world.BlockClassRegistry.BlockClass;
 import org.junit.jupiter.api.Test;
 
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,8 +25,8 @@ class BlockClassRegistryTest {
         assertEquals(BlockClass.TALL, BlockClassRegistry.classOf(10382));     // oak_fence_gate, closed
         assertEquals(BlockClass.PASSABLE, BlockClassRegistry.classOf(10380)); // oak_fence_gate, open
         assertEquals(BlockClass.LEAVES, BlockClassRegistry.classOf(268));     // oak_leaves, dry - solid, broken for saplings
-        assertEquals(java.util.Optional.of("oak"), BlockClassRegistry.leaves(268));
-        assertEquals(java.util.Optional.of("spruce"), BlockClassRegistry.sapling(32)); // spruce_sapling
+        assertEquals(Optional.of("oak"), BlockClassRegistry.leaves(268));
+        assertEquals(Optional.of("spruce"), BlockClassRegistry.sapling(32)); // spruce_sapling
         assertEquals(BlockClass.LOG, BlockClassRegistry.classOf(140));        // oak_log, upright
     }
 

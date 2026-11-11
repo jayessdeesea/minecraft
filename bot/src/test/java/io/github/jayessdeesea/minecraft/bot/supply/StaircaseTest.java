@@ -1,8 +1,12 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
+import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.Position;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -14,8 +18,8 @@ class StaircaseTest {
     private final Staircase stairs = new Staircase(new BlockPos(0, 64, 0), 40);
 
     /** Ground to y=63, with {@code open} cleared out of it. */
-    private static io.github.jayessdeesea.minecraft.bot.world.WorldView ground(Set<BlockPos> open) {
-        return new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+    private static WorldView ground(Set<BlockPos> open) {
+        return new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
                 return y < 64 && !open.contains(new BlockPos(x, y, z));
@@ -27,7 +31,7 @@ class StaircaseTest {
             }
 
             @Override
-            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
                 return List.of();
             }
         };
@@ -35,7 +39,7 @@ class StaircaseTest {
 
     @Test
     void aCaveAtTheLandingIsNoLandingTillTheStepsReachIt() {
-        Set<BlockPos> open = new java.util.HashSet<>();
+        Set<BlockPos> open = new HashSet<>();
         for (int k = 0; k < 8; k++) {
             open.addAll(stairs.cells(k)); // a third of the way down
         }

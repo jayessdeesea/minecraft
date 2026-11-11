@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 /**
  * A file that says a live experiment is running on this machine: the scenario harness holds it for
@@ -26,7 +27,7 @@ final class ExperimentLock implements AutoCloseable {
             // Written aside and moved into place, so a reader never sees it half-written.
             Path written = Files.writeString(Files.createTempFile(PATH.getParent(), "minecraft-experiment", ".tmp"),
                     Long.toString(ProcessHandle.current().pid()));
-            Files.move(written, PATH, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            Files.move(written, PATH, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             throw new UncheckedIOException("can't take the experiment lock at " + PATH, e);
         }

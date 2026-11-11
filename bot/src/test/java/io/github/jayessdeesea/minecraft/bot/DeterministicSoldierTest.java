@@ -4,7 +4,9 @@ import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
 import io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
+import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -12,8 +14,11 @@ import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.Risk;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -108,13 +113,13 @@ class DeterministicSoldierTest {
     }
 
     /** Carrying rations: food spent sprinting can be made up. */
-    private static final io.github.jayessdeesea.minecraft.command.Kit RATIONED =
-            new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.empty(), 0, 0, 0, 0, 0, 4);
+    private static final Kit RATIONED =
+            new Kit(Optional.empty(), 0, 0, 0, 0, 0, 4);
 
     @Test
     void aSoldierWithoutRationsWalksEvenFar() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.reportKit(new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.empty(), 0, 0, 0, 0, 0, 0));
+        alice.reportKit(new Kit(Optional.empty(), 0, 0, 0, 0, 0, 0));
         alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
         alice.tick(terrain(false));
         alice.tick(terrain(false));
@@ -125,7 +130,7 @@ class DeterministicSoldierTest {
     @Test
     void anArrowFromOutOfSightRaisesTheShieldFacingItAndItDropsOnceItsPast() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.reportKit(new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.of("stone_sword"), 0, 0, 0, 0, 0, 0, true));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, 0, 0, true));
         alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
         boolean[] arrow = {true};
         WorldView shotAt = new WorldView() {
@@ -166,7 +171,7 @@ class DeterministicSoldierTest {
     @Test
     void aSoldierWithoutAShieldDoesntRaiseOne() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.reportKit(new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.of("stone_sword"), 0, 0));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
         alice.tick(new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
@@ -232,7 +237,7 @@ class DeterministicSoldierTest {
     @Test
     void aSoldierWithABowStandsAndShootsAtAHostileOutOfReachLoosingAtFullDraw() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.reportKit(new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.of("stone_sword"), 16, 0, 0, 0, 0, 0,
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 16, 0, 0, 0, 0, 0,
                 false, false, 0, true));
         WorldView zombie = withHostileAt(new Position(7.5, GROUND, 0.5), false);
 
@@ -272,7 +277,7 @@ class DeterministicSoldierTest {
     @Test
     void aSwordWaitsWhileASquadmateStandsInItsSweep() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
-        alice.reportKit(new Kit(java.util.Optional.of("stone_sword"), 0, 0));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
         Position zombie = new Position(3, 64, 0);
         WorldView bobBeside = new WorldView() {
             @Override
@@ -304,7 +309,7 @@ class DeterministicSoldierTest {
     @Test
     void aSquadmateStandingWhereTheSwordsmanStandsIsStillInItsSweep() {
         DeterministicSoldier eli = new DeterministicSoldier("Eli", new Position(0, 64, 0));
-        eli.reportKit(new Kit(java.util.Optional.of("wooden_sword"), 0, 0));
+        eli.reportKit(new Kit(Optional.of("wooden_sword"), 0, 0));
         eli.entityId(7);
         Position zombie = new Position(1.2, 64, 0);
         WorldView halInHisBoots = new WorldView() {
@@ -497,7 +502,7 @@ class DeterministicSoldierTest {
 
         int attacks = 0;
         // Bare-handed: a fist recharges in 5 ticks.
-        for (int i = 0; i < io.github.jayessdeesea.minecraft.bot.world.WeaponStats.HAND.ticksToCharge() * 3; i++) {
+        for (int i = 0; i < WeaponStats.HAND.ticksToCharge() * 3; i++) {
             if (alice.tick(chaser).isPresent()) {
                 attacks++;
             }
@@ -737,7 +742,7 @@ class DeterministicSoldierTest {
         alice.reportHealth(0, 15); // killed
         alice.reportHealth(20, 20);
 
-        assertEquals(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 1, java.util.Optional.empty()), alice.status().condition().orElseThrow());
+        assertEquals(new Condition(20, 20, 1, Optional.empty()), alice.status().condition().orElseThrow());
     }
 
     @Test
@@ -890,10 +895,10 @@ class DeterministicSoldierTest {
     @Test
     void withCobblestoneItPillarsUpAWallTooHighToStepUp() {
         // A wall three blocks high from x=3 east, its top at y=67.
-        java.util.Set<BlockPos> placed = new java.util.HashSet<>();
+        Set<BlockPos> placed = new HashSet<>();
         WorldView cliff = blocks((x, y, z) -> y < GROUND || x >= 3 && y < GROUND + 3 || placed.contains(new BlockPos(x, y, z)));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.reportKit(new Kit(java.util.Optional.of("wooden_sword"), 0, 0, 0, 0, 16));
+        alice.reportKit(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 16));
         alice.receiveOrder(new Order.MoveTo(5.5, GROUND + 3, 0.5, 0.5, 0.5, Risk.LOW));
 
         for (int tick = 0; tick < 400; tick++) {
@@ -903,16 +908,16 @@ class DeterministicSoldierTest {
 
         assertEquals(new Report.InPosition(), alice.status().report(), "on top: " + alice.status().position());
         // Two blocks up beside the wall, then an ordinary step up onto its top.
-        assertEquals(java.util.Set.of(new BlockPos(2, GROUND, 0), new BlockPos(2, GROUND + 1, 0)), placed);
+        assertEquals(Set.of(new BlockPos(2, GROUND, 0), new BlockPos(2, GROUND + 1, 0)), placed);
     }
 
     @Test
     void withDirtItBuildsItsWayDownASheerDropRatherThanFall() {
         // On a tower's top at y=74, ten blocks over flat ground; the order is to the ground below.
-        java.util.Set<BlockPos> placed = new java.util.HashSet<>();
+        Set<BlockPos> placed = new HashSet<>();
         WorldView tower = blocks((x, y, z) -> y < GROUND || x <= 0 && y < GROUND + 10 || placed.contains(new BlockPos(x, y, z)));
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(-0.5, GROUND + 10, 0.5));
-        alice.reportKit(new Kit(java.util.Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, false, 32, false));
+        alice.reportKit(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, false, 32, false));
         alice.reportHealth(20, 20);
         alice.receiveOrder(new Order.MoveTo(8.5, GROUND, 0.5, 1, 0.5, Risk.HIGH));
 
@@ -937,7 +942,7 @@ class DeterministicSoldierTest {
     void withoutBlocksAWallTooHighToStepUpHasNoRoute() {
         WorldView cliff = blocks((x, y, z) -> y < GROUND || x >= 3 && y < GROUND + 3);
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.reportKit(new Kit(java.util.Optional.of("wooden_sword"), 0, 0));
+        alice.reportKit(new Kit(Optional.of("wooden_sword"), 0, 0));
         alice.receiveOrder(new Order.MoveTo(5.5, GROUND + 3, 0.5, 0.5, 0.5, Risk.LOW));
 
         for (int tick = 0; tick < 400; tick++) {

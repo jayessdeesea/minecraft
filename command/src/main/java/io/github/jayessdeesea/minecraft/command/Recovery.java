@@ -1,10 +1,14 @@
 package io.github.jayessdeesea.minecraft.command;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -45,9 +49,9 @@ public final class Recovery {
     /** Each stranded soldier being recovered, by name, in the order they were found. */
     private final Map<String, Episode> recovering = new LinkedHashMap<>();
     /** How many reports in a row each soldier has been stranded for. */
-    private final Map<String, Integer> strandedFor = new java.util.HashMap<>();
+    private final Map<String, Integer> strandedFor = new HashMap<>();
     /** This cycle's escapes: each stranded soldier nobody can fetch, sent down to its squad itself. */
-    private final Map<String, Order.MoveTo> escaping = new java.util.HashMap<>();
+    private final Map<String, Order.MoveTo> escaping = new HashMap<>();
     /**
      * Reports in a row a soldier must be stranded before it's fetched: a route that fails once, on a
      * hop across the camp, isn't a soldier stuck. Live, with no route outranking its routine's
@@ -138,7 +142,7 @@ public final class Recovery {
                 // from the ground - 1 health of 20 - and the squad's LOW risk took no fall at all.
                 Optional<SoldierStatus> mate = reported.stream()
                         .filter(m -> !recovering.containsKey(m.name()) && !(m.report() instanceof Report.LinkingUp))
-                        .min(java.util.Comparator.comparingDouble(m -> Cohesion.distance(m.position(), episode.at)));
+                        .min(Comparator.comparingDouble(m -> Cohesion.distance(m.position(), episode.at)));
                 if (mate.isPresent()) {
                     Position to = mate.get().position();
                     Order.MoveTo down = new Order.MoveTo(to.x(), to.y(), to.z(), ESCAPE_TOLERANCE, ESCAPE_TOLERANCE, Risk.MEDIUM);
@@ -199,8 +203,8 @@ public final class Recovery {
             hi[1] = Math.max(hi[1], c.y());
             hi[2] = Math.max(hi[2], c.z());
         }
-        java.util.Set<Cell> in = java.util.Set.copyOf(cells);
-        java.util.Set<Cell> except = new java.util.HashSet<>();
+        Set<Cell> in = Set.copyOf(cells);
+        Set<Cell> except = new HashSet<>();
         for (int x = lo[0]; x <= hi[0]; x++) {
             for (int y = lo[1]; y <= hi[1]; y++) {
                 for (int z = lo[2]; z <= hi[2]; z++) {
@@ -211,7 +215,7 @@ public final class Recovery {
                 }
             }
         }
-        return new Order.Dig(new Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]), java.util.Set.copyOf(except));
+        return new Order.Dig(new Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]), Set.copyOf(except));
     }
 
     /** Whether {@code fetcher} can go on fetching: still in the squad, and neither stranded nor rejoining itself. */

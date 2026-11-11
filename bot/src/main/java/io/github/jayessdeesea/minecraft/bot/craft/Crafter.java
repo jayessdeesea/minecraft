@@ -10,8 +10,8 @@ import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
-import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.bot.world.Workstation;
+import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
 import io.github.jayessdeesea.minecraft.protocol.ItemSlot;
@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 
 /**
@@ -446,7 +447,7 @@ public final class Crafter {
      * emptied is the step done, whatever was in it: live, a squadmate's copper was there, came out
      * into the soldier's inventory, and waiting for charcoal it gave up.
      */
-    private Expect takeOut(ItemClass makes, java.util.function.IntConsumer onTaken) {
+    private Expect takeOut(ItemClass makes, IntConsumer onTaken) {
         int before = inventory.count(makes);
         BlockPos at = furnaceAt;
         session.quickMove(windowId, 0, FURNACE_OUT);

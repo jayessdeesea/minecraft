@@ -1,5 +1,8 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.List;
+import java.util.Set;
+
 /**
  * A goal handed down to a {@link Soldier} - what to achieve, not how. "How" (which direction to
  * step this tick, whether the next block is solid) is re-derived every tick by the soldier's own
@@ -37,9 +40,9 @@ public sealed interface Order {
      * The soldier chooses where to stand for each; a cell it can't reach or that won't take a block
      * is skipped and reported.
      */
-    record Place(java.util.List<Cell> cells) implements Order {
+    record Place(List<Cell> cells) implements Order {
         public Place {
-            cells = java.util.List.copyOf(cells);
+            cells = List.copyOf(cells);
         }
     }
 
@@ -50,9 +53,9 @@ public sealed interface Order {
      * and reported. One call for a whole region, as a squad leader gives it: "dig x=0..31,
      * y=64..88, z=0..31" - the soldier works out the cells.
      */
-    record Dig(Box box, java.util.Set<Cell> except) implements Order {
+    record Dig(Box box, Set<Cell> except) implements Order {
         public Dig {
-            except = java.util.Set.copyOf(except);
+            except = Set.copyOf(except);
         }
     }
 
@@ -61,9 +64,9 @@ public sealed interface Order {
      * - air or water - but the cells in {@code except}, lowest first: fill a pit, cap a flooded
      * shaft, make a floor. A cell it can't reach is left and reported.
      */
-    record Fill(Box box, java.util.Set<Cell> except) implements Order {
+    record Fill(Box box, Set<Cell> except) implements Order {
         public Fill {
-            except = java.util.Set.copyOf(except);
+            except = Set.copyOf(except);
         }
     }
 

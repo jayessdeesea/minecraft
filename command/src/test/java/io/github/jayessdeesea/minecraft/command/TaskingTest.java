@@ -1,13 +1,15 @@
 package io.github.jayessdeesea.minecraft.command;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.junit.jupiter.api.Test;
+import java.util.stream.IntStream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TaskingTest {
 
@@ -55,6 +57,6 @@ class TaskingTest {
 
     @Test
     void eachSoldiersBorrowPitIsOnItsOwnSide() {
-        assertEquals(4, java.util.stream.IntStream.range(0, 4).mapToObj(i -> Groundwork.borrowPit(FEET, 8, i)).distinct().count());
+        assertEquals(4, IntStream.range(0, 4).mapToObj(i -> Groundwork.borrowPit(FEET, 8, i)).distinct().count());
     }
 }

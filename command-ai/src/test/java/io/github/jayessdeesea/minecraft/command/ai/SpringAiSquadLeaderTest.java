@@ -1,7 +1,9 @@
 package io.github.jayessdeesea.minecraft.command.ai;
 
+import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.Formation;
 import io.github.jayessdeesea.minecraft.command.Interval;
+import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -10,12 +12,14 @@ import io.github.jayessdeesea.minecraft.command.Risk;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
+import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.prompt.Prompt;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -32,11 +36,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SpringAiSquadLeaderTest {
 
     private static final SoldierStatus ALICE =
-            new SoldierStatus("Alice", new Position(1, 64, 2), new Order.Idle(), new Report.Cantco("no route out of the pit"), java.util.Optional.empty());
+            new SoldierStatus("Alice", new Position(1, 64, 2), new Order.Idle(), new Report.Cantco("no route out of the pit"), Optional.empty());
     private static final SoldierStatus BOB =
             new SoldierStatus("Bob", new Position(3, 64, 4), new Order.Idle(), new Report.Moving(),
-                    java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(6, 12, 1, java.util.Optional.of(
-                            new io.github.jayessdeesea.minecraft.command.Kit(java.util.Optional.of("iron_sword"), 12, 2)))));
+                    Optional.of(new Condition(6, 12, 1, Optional.of(
+                            new Kit(Optional.of("iron_sword"), 12, 2)))));
     private static final Objective HILL =
             new Objective("seize the hill", new Position(10, 70, -40), "observe the valley to the north");
 
@@ -75,7 +79,7 @@ class SpringAiSquadLeaderTest {
     @Test
     void buildContextSaysHowLongUntilDark() {
         String prompt = SpringAiSquadLeader.buildContext(Prompts.SQUAD_LEADER, "Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN,
-                java.util.Optional.of(io.github.jayessdeesea.minecraft.command.TimeOfDay.of(1000, true))).prompt();
+                Optional.of(TimeOfDay.of(1000, true))).prompt();
 
         assertTrue(prompt.startsWith("<time>\nDay. Dark - monsters spawn anywhere unlit - in about 10 minutes.\n</time>"), prompt);
         assertTrue(!SpringAiSquadLeader.buildContext(Prompts.SQUAD_LEADER, "Alpha", HILL, null, List.of(ALICE, BOB), TERRAIN).prompt().contains("<time>"));
@@ -137,7 +141,7 @@ class SpringAiSquadLeaderTest {
         TerrainSurvey survey = new TerrainSurvey(0, 0, 8, 8, List.of(
                 new TerrainSurvey.Sample(0, 0, TerrainSurvey.Ground.LAND, 151, true),
                 new TerrainSurvey.Sample(8, 0, TerrainSurvey.Ground.LAND, 151, true)),
-                java.util.Optional.of(new TerrainSurvey.Sample(4, 0, TerrainSurvey.Ground.LAND, 154, true)));
+                Optional.of(new TerrainSurvey.Sample(4, 0, TerrainSurvey.Ground.LAND, 154, true)));
 
         String ground = SpringAiSquadLeader.describeObjectiveGround(survey, new Position(4, 154, 0));
         assertTrue(ground.contains("The objective is on reachable land at height 154."), ground);
@@ -160,7 +164,7 @@ class SpringAiSquadLeaderTest {
         SquadOrder order = leader.decide(List.of(ALICE, BOB), TERRAIN).orElseThrow();
 
         assertEquals(new SquadOrder(new Position(12, 71, -38), Formation.FILE, Interval.TIGHT, 3, Risk.MEDIUM,
-                java.util.Map.of("Bob", Risk.HIGH), true, "take the hilltop through the trees"), order);
+                Map.of("Bob", Risk.HIGH), true, "take the hilltop through the trees"), order);
         assertEquals(new Report.Moving(), leader.report());
         assertEquals(MessageType.SYSTEM, sent.get().getInstructions().getFirst().getMessageType(), "role goes in the system prompt");
     }
@@ -195,7 +199,7 @@ class SpringAiSquadLeaderTest {
         assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(withSoldierRisks(hold,
                 List.of(new SquadOrderReply.SoldierRisk("Bob", Risk.MEDIUM), new SquadOrderReply.SoldierRisk("Bob", Risk.HIGH))), SQUAD));
         assertThrows(IllegalStateException.class, () -> SpringAiSquadLeader.toSquadOrder(withSoldierRisks(hold, null), SQUAD));
-        assertEquals(java.util.Map.of("Bob", Risk.MEDIUM), SpringAiSquadLeader.toSquadOrder(withSoldierRisks(hold,
+        assertEquals(Map.of("Bob", Risk.MEDIUM), SpringAiSquadLeader.toSquadOrder(withSoldierRisks(hold,
                 List.of(new SquadOrderReply.SoldierRisk("Bob", Risk.MEDIUM))), SQUAD).soldierRisk());
     }
 

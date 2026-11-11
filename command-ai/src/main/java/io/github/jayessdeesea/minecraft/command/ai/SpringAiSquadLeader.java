@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.command.ai;
 
 import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.Condition;
+import io.github.jayessdeesea.minecraft.command.Directive;
 import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Plan;
@@ -12,17 +13,22 @@ import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
+import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.ai.chat.client.ChatClient;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A {@link SquadLeader} whose decisions come from an LLM, per docs/architecture.md's \"Behavior modeling\"
@@ -52,7 +58,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
     private volatile Objective objective;
     private volatile SquadOrder lastOrder;
     private volatile Report report = new Report.Idle();
-    private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time; // a connection's thread writes
+    private volatile TimeOfDay time; // a connection's thread writes
     private volatile Map<String, Plan> plans = Map.of(); // the squad loop's thread writes
     private volatile Map<String, String> workOrders = Map.of(); // the squad loop's thread writes
 
@@ -73,7 +79,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
     }
 
     @Override
-    public void receiveTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
+    public void receiveTime(TimeOfDay time) {
         this.time = time;
     }
 
@@ -113,14 +119,14 @@ public final class SpringAiSquadLeader implements SquadLeader {
 
     static PromptContext buildContext(SquadLeaderPrompts prompts, String squadName, Objective objective, SquadOrder lastOrder,
                                       List<SoldierStatus> soldierStatuses, TerrainSurvey terrain,
-                                      Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time) {
+                                      Optional<TimeOfDay> time) {
         return buildContext(prompts, squadName, objective, lastOrder, soldierStatuses, terrain, time, Map.of(), Map.of());
     }
 
     /** The situation, as {@code prompts}' user template's parameters: a soldier with no plan kept is a rifleman. */
     static PromptContext buildContext(SquadLeaderPrompts prompts, String squadName, Objective objective, SquadOrder lastOrder,
                                       List<SoldierStatus> soldierStatuses, TerrainSurvey terrain,
-                                      Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time, Map<String, Plan> plans,
+                                      Optional<TimeOfDay> time, Map<String, Plan> plans,
                                       Map<String, String> workOrders) {
         StringBuilder squad = new StringBuilder();
         for (int i = 0; i < soldierStatuses.size(); i++) {
@@ -201,8 +207,8 @@ public final class SpringAiSquadLeader implements SquadLeader {
         if (reply.roleChanges() == null || reply.detached() == null) {
             throw new IllegalStateException("missing roleChanges or detached (empty when nobody's plan changes): " + reply);
         }
-        List<Plan.Change> changes = new java.util.ArrayList<>();
-        java.util.Set<String> roled = new java.util.HashSet<>();
+        List<Plan.Change> changes = new ArrayList<>();
+        Set<String> roled = new HashSet<>();
         for (SquadOrderReply.RoleChange r : reply.roleChanges()) {
             if (r == null || r.role() == null || !squad.contains(r.soldier())) {
                 throw new IllegalStateException("a role names nobody in the squad " + squad + ": " + reply);
@@ -212,7 +218,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             }
             changes.add(Plan.Change.role(r.soldier(), r.role(), new Position(r.x(), r.y(), r.z())));
         }
-        java.util.Set<String> ordered = new java.util.HashSet<>();
+        Set<String> ordered = new HashSet<>();
         for (SquadOrderReply.SoldierOrder o : reply.detached()) {
             if (o == null || o.order() == null || !squad.contains(o.soldier())) {
                 throw new IllegalStateException("an order names nobody in the squad " + squad + ": " + reply);
@@ -221,15 +227,15 @@ public final class SpringAiSquadLeader implements SquadLeader {
                 throw new IllegalStateException("two orders for " + o.soldier() + ": " + reply);
             }
             Position at = new Position(o.x(), o.y(), o.z());
-            List<io.github.jayessdeesea.minecraft.command.Directive> directives = switch (o.order()) {
-                case GO_TO -> List.of(new io.github.jayessdeesea.minecraft.command.Directive.GoTo(at));
+            List<Directive> directives = switch (o.order()) {
+                case GO_TO -> List.of(new Directive.GoTo(at));
                 case FETCH -> {
                     if (o.resource() == null) {
                         throw new IllegalStateException("a FETCH with no resource: " + reply);
                     }
-                    yield List.of(new io.github.jayessdeesea.minecraft.command.Directive.Fetch(o.resource(), o.amount(), at));
+                    yield List.of(new Directive.Fetch(o.resource(), o.amount(), at));
                 }
-                case LEVEL -> List.of(new io.github.jayessdeesea.minecraft.command.Directive.Level(
+                case LEVEL -> List.of(new Directive.Level(
                         (int) Math.floor(Math.min(o.x(), o.x2())), (int) Math.floor(Math.min(o.z(), o.z2())),
                         (int) Math.floor(Math.max(o.x(), o.x2())), (int) Math.floor(Math.max(o.z(), o.z2())), (int) Math.floor(o.y())));
                 case CANCEL -> List.of();
@@ -276,7 +282,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
      */
     static String describeObjectiveGround(TerrainSurvey terrain, Position objective) {
         // The objective's own column, when it was sampled, before any grid sample near it.
-        List<TerrainSurvey.Sample> all = java.util.stream.Stream.concat(terrain.atObjective().stream(), terrain.samples().stream()).toList();
+        List<TerrainSurvey.Sample> all = Stream.concat(terrain.atObjective().stream(), terrain.samples().stream()).toList();
         List<TerrainSurvey.Sample> reachable = all.stream()
                 .filter(s -> s.ground() == TerrainSurvey.Ground.LAND && s.reachable()).toList();
         TerrainSurvey.Sample nearest = all.stream()
@@ -373,7 +379,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
             case Report.Building(int placed, int cells) -> "Building (a structure laid out for it, " + placed + " of " + cells + " blocks in)";
             case Report.Mining(int step, int steps) -> "Mining (cutting the staircase down, step " + step + " of " + steps + ")";
             case Report.CrossLeveling(String to, var item, int count) -> "CrossLeveling (handing " + count + " "
-                    + item.name().toLowerCase(java.util.Locale.ROOT) + " to " + to + ")";
+                    + item.name().toLowerCase(Locale.ROOT) + " to " + to + ")";
             case Report.Cantco(String reason) -> "Cantco: " + reason;
         };
     }

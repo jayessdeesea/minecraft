@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * Where torches go so no monster spawns on the ground round a point (docs/military-doctrine.md §14):
@@ -49,7 +50,7 @@ public final class Lighting {
      * a wall's line, say. A cell a torch can't go in is lit from one beside it: ruled out after the
      * plan, its neighbours were counted lit by a torch never put down, and stayed dark.
      */
-    public static List<BlockPos> plan(WorldView world, BlockPos centre, int radius, java.util.function.Predicate<BlockPos> allowed) {
+    public static List<BlockPos> plan(WorldView world, BlockPos centre, int radius, Predicate<BlockPos> allowed) {
         List<BlockPos> ground = Pathfinder.reachable(world, centre, radius, FLOOD_BUDGET).stream()
                 .filter(c -> spawnGround(world, c) && ground(centre, c))
                 .sorted(Comparator.comparingInt((BlockPos c) -> Math.abs(c.x() - centre.x()) + Math.abs(c.z() - centre.z()))

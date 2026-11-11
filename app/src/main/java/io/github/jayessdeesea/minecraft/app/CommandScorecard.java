@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Report;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -69,7 +70,7 @@ final class CommandScorecard {
 
     /** The review's commands section since the last, as lines; the tally starts again. */
     synchronized List<String> review() {
-        List<String> lines = new java.util.ArrayList<>();
+        List<String> lines = new ArrayList<>();
         lines.add("commands, by soldier-minutes and what the soldiers reported:");
         tasks.forEach((kind, tally) -> lines.addAll(lines("task " + kind, tally)));
         orders.forEach((kind, tally) -> lines.addAll(lines("order " + kind, tally)));
@@ -79,7 +80,7 @@ final class CommandScorecard {
     }
 
     private static List<String> lines(String what, Tally tally) {
-        List<String> lines = new java.util.ArrayList<>();
+        List<String> lines = new ArrayList<>();
         String shares = tally.byReport.entrySet().stream()
                 .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
                 .map(e -> e.getKey() + " " + Math.round(100.0 * e.getValue() / tally.seconds) + "%")

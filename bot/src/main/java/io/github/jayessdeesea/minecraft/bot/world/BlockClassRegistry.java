@@ -7,6 +7,13 @@ import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.Set;
 
 /**
  * How each global block-state ID affects movement - backed by a resource generated (not hand-typed)
@@ -51,44 +58,44 @@ final class BlockClassRegistry {
     private static final String RESOURCE_NAME = "block-classes-777.txt";
 
     /** Block states that are torches - the light a patrol base is lit by. Filled while loading. */
-    private static final java.util.BitSet TORCHES = new java.util.BitSet();
+    private static final BitSet TORCHES = new BitSet();
     /** Block states that are chests, dry or waterlogged - a stockpile is opened at one. Filled while loading. */
-    private static final java.util.BitSet CHESTS = new java.util.BitSet();
+    private static final BitSet CHESTS = new BitSet();
     /** Water source blocks (level 0): what a farm is tilled beside. Filled while loading. */
-    private static final java.util.BitSet WATER_SOURCES = new java.util.BitSet();
+    private static final BitSet WATER_SOURCES = new BitSet();
     /**
      * Water, source or flowing, and the plants that grow only in it - seagrass and kelp, which stand
      * in water a swimmer passes through: swum through at the surface. Filled while loading.
      */
-    private static final java.util.BitSet WATER = new java.util.BitSet();
+    private static final BitSet WATER = new BitSet();
     /** Ore of any kind: coal, iron, copper, gold, redstone, lapis, emerald, diamond, either stone. Filled while loading. */
-    private static final java.util.BitSet ORES = new java.util.BitSet();
+    private static final BitSet ORES = new BitSet();
     /** Gravel, which drops flint one time in ten. Filled while loading. */
-    private static final java.util.BitSet GRAVEL = new java.util.BitSet();
+    private static final BitSet GRAVEL = new BitSet();
     /** Each ore state's metal or mineral - "copper", "iron", "diamond". Filled while loading. */
-    private static final java.util.Map<Integer, String> ORE_KINDS = new java.util.HashMap<>();
+    private static final Map<Integer, String> ORE_KINDS = new HashMap<>();
     /** Each leaves or sapling state's tree - "spruce", "oak". Filled while loading. */
-    private static final java.util.Map<Integer, String> TREES = new java.util.HashMap<>();
+    private static final Map<Integer, String> TREES = new HashMap<>();
     /** Sapling states. Filled while loading. */
-    private static final java.util.BitSet SAPLINGS = new java.util.BitSet();
-    private static final java.util.Set<String> SWUM = java.util.Set.of("water", "seagrass", "tall_seagrass", "kelp", "kelp_plant");
+    private static final BitSet SAPLINGS = new BitSet();
+    private static final Set<String> SWUM = Set.of("water", "seagrass", "tall_seagrass", "kelp", "kelp_plant");
     /** What a hoe tills into farmland: dirt, grass and dirt paths (coarse and rooted dirt till to dirt first). */
-    private static final java.util.BitSet TILLABLE = new java.util.BitSet();
+    private static final BitSet TILLABLE = new BitSet();
     /** Short and tall grass: broken for wheat seeds. Filled while loading. */
-    private static final java.util.BitSet GRASS_PLANTS = new java.util.BitSet();
+    private static final BitSet GRASS_PLANTS = new BitSet();
     /** Each wheat state's growth stage, 0 to {@link #RIPE}. Filled while loading. */
-    private static final java.util.Map<Integer, Integer> WHEAT_AGES = new java.util.HashMap<>();
+    private static final Map<Integer, Integer> WHEAT_AGES = new HashMap<>();
     /** Wheat's last growth stage: ripe, and broken for wheat and seeds. */
     static final int RIPE = 7;
     /** What digging each {@link BlockClass#ROCK} or {@link BlockClass#GRIT} state takes. Filled while loading. */
-    private static final java.util.Map<Integer, Hardness> HARDNESS = new java.util.HashMap<>();
+    private static final Map<Integer, Hardness> HARDNESS = new HashMap<>();
     /** Which workstation each {@link BlockClass#WORKSTATION} state is. Filled while loading. */
-    private static final java.util.Map<Integer, Workstation> WORKSTATIONS = new java.util.HashMap<>();
+    private static final Map<Integer, Workstation> WORKSTATIONS = new HashMap<>();
     private static final BlockClass[] CLASSES = load();
 
     /** The workstation {@code stateId} is, if it's one. */
-    static java.util.Optional<Workstation> workstation(int stateId) {
-        return java.util.Optional.ofNullable(WORKSTATIONS.get(stateId));
+    static Optional<Workstation> workstation(int stateId) {
+        return Optional.ofNullable(WORKSTATIONS.get(stateId));
     }
 
     /** Whether {@code stateId} is a torch, standing or on a wall. */
@@ -110,18 +117,18 @@ final class BlockClassRegistry {
     }
 
     /** The tree {@code stateId}'s leaves belong to - empty if it isn't leaves. */
-    static java.util.Optional<String> leaves(int stateId) {
-        return classOf(stateId) == BlockClass.LEAVES ? java.util.Optional.ofNullable(TREES.get(stateId)) : java.util.Optional.empty();
+    static Optional<String> leaves(int stateId) {
+        return classOf(stateId) == BlockClass.LEAVES ? Optional.ofNullable(TREES.get(stateId)) : Optional.empty();
     }
 
     /** The tree {@code stateId}'s sapling grows into - empty if it isn't a sapling. */
-    static java.util.Optional<String> sapling(int stateId) {
-        return stateId >= 0 && SAPLINGS.get(stateId) ? java.util.Optional.ofNullable(TREES.get(stateId)) : java.util.Optional.empty();
+    static Optional<String> sapling(int stateId) {
+        return stateId >= 0 && SAPLINGS.get(stateId) ? Optional.ofNullable(TREES.get(stateId)) : Optional.empty();
     }
 
     /** What ore {@code stateId} is - "copper", "iron" - or empty if it isn't ore. */
-    static java.util.Optional<String> oreOf(int stateId) {
-        return java.util.Optional.ofNullable(ORE_KINDS.get(stateId));
+    static Optional<String> oreOf(int stateId) {
+        return Optional.ofNullable(ORE_KINDS.get(stateId));
     }
 
     static boolean isGravel(int stateId) {
@@ -144,20 +151,20 @@ final class BlockClassRegistry {
      * What digging {@code stateId} takes, for the blocks a soldier digs: rock and grit as generated,
      * plain stone, iron ore and soil as vanilla has them. Empty for anything else.
      */
-    static java.util.Optional<Hardness> hardness(int stateId) {
+    static Optional<Hardness> hardness(int stateId) {
         return switch (classOf(stateId)) {
-            case STONE -> java.util.Optional.of(new Hardness(1.5, 0));
-            case IRON_ORE -> java.util.Optional.of(new Hardness(3.0, 1));
-            case SOIL -> java.util.Optional.of(new Hardness(0.65, Hardness.HAND));
-            case ROCK, GRIT -> java.util.Optional.of(HARDNESS.get(stateId));
-            default -> java.util.Optional.empty();
+            case STONE -> Optional.of(new Hardness(1.5, 0));
+            case IRON_ORE -> Optional.of(new Hardness(3.0, 1));
+            case SOIL -> Optional.of(new Hardness(0.65, Hardness.HAND));
+            case ROCK, GRIT -> Optional.of(HARDNESS.get(stateId));
+            default -> Optional.empty();
         };
     }
 
     /** {@code stateId}'s growth stage if it's wheat. */
-    static java.util.OptionalInt wheatAge(int stateId) {
+    static OptionalInt wheatAge(int stateId) {
         Integer age = WHEAT_AGES.get(stateId);
-        return age == null ? java.util.OptionalInt.empty() : java.util.OptionalInt.of(age);
+        return age == null ? OptionalInt.empty() : OptionalInt.of(age);
     }
 
     private BlockClassRegistry() {
@@ -211,7 +218,7 @@ final class BlockClassRegistry {
                     if (fields.length > 3 && fields[2].equals("water") && fields[3].equals("level=0")) {
                         WATER_SOURCES.set(stateId);
                     }
-                    if (fields.length > 2 && java.util.Set.of("dirt", "grass_block", "dirt_path").contains(fields[2])) {
+                    if (fields.length > 2 && Set.of("dirt", "grass_block", "dirt_path").contains(fields[2])) {
                         TILLABLE.set(stateId);
                     }
                     if (fields.length > 2 && (fields[2].equals("short_grass") || fields[2].equals("tall_grass"))) {
@@ -240,7 +247,7 @@ final class BlockClassRegistry {
                             yield BlockClass.GRIT;
                         }
                         case "W" -> {
-                            WORKSTATIONS.put(stateId, Workstation.valueOf(fields[2].toUpperCase(java.util.Locale.ROOT)));
+                            WORKSTATIONS.put(stateId, Workstation.valueOf(fields[2].toUpperCase(Locale.ROOT)));
                             yield BlockClass.WORKSTATION;
                         }
                         default -> throw new IllegalStateException("Unknown block class '" + fields[1] + "' in " + RESOURCE_NAME + ": " + line);

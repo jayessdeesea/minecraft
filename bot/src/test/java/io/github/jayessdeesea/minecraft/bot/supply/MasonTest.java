@@ -1,12 +1,16 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
+import io.github.jayessdeesea.minecraft.bot.nav.Goal;
+import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.protocol.BlockFace;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.junit.jupiter.api.Test;
 
@@ -81,7 +85,7 @@ class MasonTest {
             new Class<?>[]{PlaySession.class}, (proxy, method, args) -> {
                 switch (method.getName()) {
                     case "useBlockFace" -> {
-                        io.github.jayessdeesea.minecraft.protocol.BlockFace face = (io.github.jayessdeesea.minecraft.protocol.BlockFace) args[3];
+                        BlockFace face = (BlockFace) args[3];
                         BlockPos cell = new BlockPos((int) args[0] + face.dx, (int) args[1] + face.dy, (int) args[2] + face.dz);
                         if (!torches.contains(cell)) {
                             answers.add(() -> placed.add(cell));
@@ -177,9 +181,9 @@ class MasonTest {
 
         Position stand = mason.standAt().orElseThrow();
         assertTrue(!BlockPos.containing(stand.x(), stand.y(), stand.z()).equals(pocket), "not the sealed " + pocket);
-        assertTrue(io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.find(hill, new BlockPos(0, GROUND, -3),
-                new io.github.jayessdeesea.minecraft.bot.nav.Goal(stand.x(), stand.y(), stand.z(), 0.3, 0.5), 20_000,
-                io.github.jayessdeesea.minecraft.bot.nav.FallAllowance.NONE, 64).reachesGoal(), "a stand a route reaches: " + stand
+        assertTrue(Pathfinder.find(hill, new BlockPos(0, GROUND, -3),
+                new Goal(stand.x(), stand.y(), stand.z(), 0.3, 0.5), 20_000,
+                FallAllowance.NONE, 64).reachesGoal(), "a stand a route reaches: " + stand
                 + " (open ground outside: " + outside + ")");
     }
 
@@ -228,7 +232,7 @@ class MasonTest {
                             });
                         }
                         case "useBlockFace" -> {
-                            io.github.jayessdeesea.minecraft.protocol.BlockFace face = (io.github.jayessdeesea.minecraft.protocol.BlockFace) args[3];
+                            BlockFace face = (BlockFace) args[3];
                             BlockPos cell = new BlockPos((int) args[0] + face.dx, (int) args[1] + face.dy, (int) args[2] + face.dz);
                             answers.add(() -> {
                                 placed.add(cell);

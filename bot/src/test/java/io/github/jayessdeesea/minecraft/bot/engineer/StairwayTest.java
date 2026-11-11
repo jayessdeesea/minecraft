@@ -10,8 +10,10 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -54,7 +56,7 @@ class StairwayTest {
         assertEquals(31, stair.size());
         Set<BlockPos> in = new HashSet<>();
         for (BlockPos cell : stair) {
-            boolean against = ground(cell.x(), cell.y() - 1, cell.z()) || java.util.stream.Stream.of(
+            boolean against = ground(cell.x(), cell.y() - 1, cell.z()) || Stream.of(
                     cell.offset(1, 0, 0), cell.offset(-1, 0, 0), cell.offset(0, 1, 0), cell.offset(0, -1, 0),
                     cell.offset(0, 0, 1), cell.offset(0, 0, -1)).anyMatch(n -> in.contains(n) || ground(n.x(), n.y(), n.z()));
             assertTrue(against, cell + " has nothing to go against");
@@ -113,7 +115,7 @@ class StairwayTest {
     void noStairUpIsLaidThroughCobblestone() {
         WorldView world = soil(StairwayTest::pocket, c -> c.y() >= 60);
 
-        assertEquals(java.util.Optional.empty(), Stairway.up(world, new BlockPos(0, 60, 0)));
+        assertEquals(Optional.empty(), Stairway.up(world, new BlockPos(0, 60, 0)));
     }
 
     @Test

@@ -2,23 +2,25 @@ package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.craft.CraftPlan;
 import io.github.jayessdeesea.minecraft.bot.craft.Crafter;
+import io.github.jayessdeesea.minecraft.bot.craft.Ladder;
 import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import io.github.jayessdeesea.minecraft.bot.craft.Stock;
+import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
-import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.bot.world.Workstation;
+import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
-import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.EnumMap;
-import java.util.List;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -26,7 +28,7 @@ import java.util.stream.Collectors;
 
 /**
  * A soldier making its own kit (docs/military-doctrine.md §11, §12): the weapon, tools and armour
- * it's asked for - by the equipment ladder ({@link io.github.jayessdeesea.minecraft.bot.craft.Ladder})
+ * it's asked for - by the equipment ladder ({@link Ladder})
  * or by an order that needs a pickaxe - several at one opening of the table when it's asked for
  * several. It digs what the plan is short of and it can dig itself - logs by hand, cobblestone
  * and iron ore with a good enough pickaxe - then a {@link Crafter} makes the rest, and whatever
@@ -130,7 +132,7 @@ public final class Armourer {
      * away: what it needn't make again.
      */
     public synchronized Set<Workstation> stationsNear(WorldView world, Position soldier) {
-        Set<Workstation> near = java.util.EnumSet.noneOf(Workstation.class);
+        Set<Workstation> near = EnumSet.noneOf(Workstation.class);
         for (Workstation station : Workstation.values()) {
             crafter.nearestUsable(world, soldier, station, Digger.SEARCH_RADIUS).ifPresent(at -> near.add(station));
         }

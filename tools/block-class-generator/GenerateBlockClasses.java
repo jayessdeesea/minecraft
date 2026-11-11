@@ -6,10 +6,12 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.zip.ZipFile;
 
 /**
@@ -129,7 +131,7 @@ public class GenerateBlockClasses {
         Map<Integer, String> classes = new TreeMap<>(); // stateId -> "<class> <blockName>"
         Map<Character, Integer> counts = new TreeMap<>();
         int totalStates = 0;
-        java.util.Set<String> leftSolid = new java.util.TreeSet<>();
+        Set<String> leftSolid = new TreeSet<>();
 
         Iterator<Map.Entry<String, JsonNode>> blocks = root.fields();
         while (blocks.hasNext()) {
@@ -194,7 +196,7 @@ public class GenerateBlockClasses {
         if (entry == null) {
             throw new IllegalStateException("no block tag " + name + " in the jar");
         }
-        Set<String> blocks = new java.util.HashSet<>();
+        Set<String> blocks = new HashSet<>();
         try (var in = jar.getInputStream(entry)) {
             for (JsonNode value : new ObjectMapper().readTree(in).get("values")) {
                 if (!value.asText().startsWith("#")) {

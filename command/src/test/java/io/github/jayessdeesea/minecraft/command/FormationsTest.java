@@ -2,7 +2,10 @@ package io.github.jayessdeesea.minecraft.command;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,8 +17,8 @@ class FormationsTest {
     private static final Position NORTH = new Position(0, 64, -50);
 
     private static List<SoldierStatus> squadAt(Position... positions) {
-        return java.util.Arrays.stream(positions)
-                .map(p -> new SoldierStatus("S", p, new Order.Idle(), new Report.Idle(), java.util.Optional.empty()))
+        return Arrays.stream(positions)
+                .map(p -> new SoldierStatus("S", p, new Order.Idle(), new Report.Idle(), Optional.empty()))
                 .toList();
     }
 
@@ -87,12 +90,12 @@ class FormationsTest {
     @Test
     void aSoldierWithHisOwnRiskGetsItAndTheRestKeepTheSquads() {
         List<SoldierStatus> squad = List.of(
-                new SoldierStatus("Alice", POINT, new Order.Idle(), new Report.Moving(), java.util.Optional.empty()),
-                new SoldierStatus("Bob", POINT, new Order.Idle(), new Report.Moving(), java.util.Optional.empty()),
-                new SoldierStatus("Carol", POINT, new Order.Idle(), new Report.Cantco("on a ledge"), java.util.Optional.empty()));
+                new SoldierStatus("Alice", POINT, new Order.Idle(), new Report.Moving(), Optional.empty()),
+                new SoldierStatus("Bob", POINT, new Order.Idle(), new Report.Moving(), Optional.empty()),
+                new SoldierStatus("Carol", POINT, new Order.Idle(), new Report.Cantco("on a ledge"), Optional.empty()));
 
         List<Order> orders = Formations.assign(new SquadOrder(NORTH, Formation.WEDGE, Interval.NORMAL, 2, Risk.LOW,
-                java.util.Map.of("Carol", Risk.MEDIUM), "free Carol"), squad);
+                Map.of("Carol", Risk.MEDIUM), "free Carol"), squad);
 
         assertEquals(List.of(Risk.LOW, Risk.LOW, Risk.MEDIUM), orders.stream().map(o -> ((Order.MoveTo) o).risk()).toList());
     }

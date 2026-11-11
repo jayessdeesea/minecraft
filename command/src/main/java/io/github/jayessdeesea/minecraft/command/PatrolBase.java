@@ -1,8 +1,18 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 /**
  * The hasty patrol base (docs/military-doctrine.md §14): a hut just big enough for the squad, walls
@@ -78,10 +88,10 @@ public final class PatrolBase {
             double minZ = floor.stream().mapToDouble(Position::z).min().orElseThrow();
             double maxZ = floor.stream().mapToDouble(Position::z).max().orElseThrow();
             double y = floor.getFirst().y();
-            java.util.Set<Position> seen = new java.util.HashSet<>();
-            java.util.Set<Position> breaches = new java.util.TreeSet<>(
-                    java.util.Comparator.comparingDouble(Position::y).thenComparingDouble(Position::x).thenComparingDouble(Position::z));
-            java.util.ArrayDeque<Position> frontier = new java.util.ArrayDeque<>();
+            Set<Position> seen = new HashSet<>();
+            Set<Position> breaches = new TreeSet<>(
+                    Comparator.comparingDouble(Position::y).thenComparingDouble(Position::x).thenComparingDouble(Position::z));
+            ArrayDeque<Position> frontier = new ArrayDeque<>();
             for (Position cell : floor) {
                 for (double level : new double[]{y, y + 1}) {
                     Position inside = new Position(cell.x(), level, cell.z());
@@ -118,8 +128,8 @@ public final class PatrolBase {
          * through cells that aren't {@code solid}, losing one per block.
          */
         public List<Position> unlit(Predicate<Position> solid, List<Position> torches) {
-            java.util.Map<Position, Integer> light = new java.util.HashMap<>();
-            java.util.ArrayDeque<Position> frontier = new java.util.ArrayDeque<>();
+            Map<Position, Integer> light = new HashMap<>();
+            ArrayDeque<Position> frontier = new ArrayDeque<>();
             for (Position torch : torches) {
                 light.put(torch, TORCH_LIGHT);
                 frontier.add(torch);
@@ -176,21 +186,21 @@ public final class PatrolBase {
      * needn't be one the squad built. Nothing to build: {@code cells} is empty. A cell nobody knows
      * reads as open to {@code solid}, so ground not loaded yet never shuts anyone in.
      */
-    public static java.util.Optional<Plan> enclosing(Position soldier, Predicate<Position> solid) {
+    public static Optional<Plan> enclosing(Position soldier, Predicate<Position> solid) {
         Position feet = new Position(Math.floor(soldier.x()), Math.floor(soldier.y()), Math.floor(soldier.z()));
         Predicate<Position> fits = cell -> !solid.test(cell) && !solid.test(new Position(cell.x(), cell.y() + 1, cell.z()));
         if (!fits.test(feet)) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         // Everywhere a body gets from here - a step down into a hole, a step up with headroom, a fall
         // - is the room; a room that grows past a hut's size is a way out. Live, a hut with a pit in
         // its floor, read as a way down and out, was never found, and three soldiers stood shut in it.
-        java.util.Set<Position> room = new java.util.LinkedHashSet<>(List.of(feet));
-        java.util.ArrayDeque<Position> frontier = new java.util.ArrayDeque<>(room);
+        Set<Position> room = new LinkedHashSet<>(List.of(feet));
+        ArrayDeque<Position> frontier = new ArrayDeque<>(room);
         boolean drops = false;
         while (!frontier.isEmpty()) {
             Position cell = frontier.poll();
-            java.util.List<Position> moves = new java.util.ArrayList<>();
+            List<Position> moves = new ArrayList<>();
             Position below = new Position(cell.x(), cell.y() - 1, cell.z());
             if (!solid.test(below)) {
                 moves.add(below); // it falls
@@ -209,7 +219,7 @@ public final class PatrolBase {
             for (Position next : moves) {
                 if (room.add(next)) {
                     if (room.size() > MAX_ROOM_CELLS) {
-                        return java.util.Optional.empty();
+                        return Optional.empty();
                     }
                     frontier.add(next);
                 }
@@ -218,16 +228,16 @@ public final class PatrolBase {
         // A drop in it is the room's only under a roof: in the open - a trench by a wall on a slope,
         // dug by the ground work - a soldier pillars out, and in the squad simulation one was taken
         // for shut in 86 times. A hut has a roof.
-        if (drops && room.stream().anyMatch(cell -> java.util.stream.IntStream.rangeClosed(2, ROOF_WITHIN)
+        if (drops && room.stream().anyMatch(cell -> IntStream.rangeClosed(2, ROOF_WITHIN)
                 .noneMatch(up -> solid.test(new Position(cell.x(), cell.y() + up, cell.z()))))) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         // Where a body stands, not falls through.
         room.removeIf(cell -> !solid.test(new Position(cell.x(), cell.y() - 1, cell.z())));
         List<Position> floor = room.stream()
-                .sorted(java.util.Comparator.comparingDouble(Position::z).thenComparingDouble(Position::x)).toList();
+                .sorted(Comparator.comparingDouble(Position::z).thenComparingDouble(Position::x)).toList();
         List<Position> stands = floor.stream().map(cell -> new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5)).toList();
-        return java.util.Optional.of(new Plan(stands, floor, List.of()));
+        return Optional.of(new Plan(stands, floor, List.of()));
     }
 
     /** The hut for {@code soldiers} soldiers with its floor at {@code location}. */

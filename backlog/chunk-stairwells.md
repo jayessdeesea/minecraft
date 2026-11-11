@@ -27,6 +27,9 @@ knows where its stairwell is or would be.
   find another way down - a staircase beside it, or the cave itself - and cut or build the
   stairwell's missing stretch in its own column from below or from the side, so the shape stays
   whole. Lava is never dug into; it's walled off or the stretch is left, and reported.
+- **A kept structure:** the stairwell's column, every height of it, is one every dig, fill and
+  pave skips, kept on disk wherever it is - not only the camp's (backlog/cells.md, the floor's
+  inspection).
 - A squad-simulation scenario for each: a clear column, a cave across it, lava beside it, a
   stairwell already part-cut.
 

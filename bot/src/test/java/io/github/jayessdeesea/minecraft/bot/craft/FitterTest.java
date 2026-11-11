@@ -1,14 +1,16 @@
 package io.github.jayessdeesea.minecraft.bot.craft;
 
-import io.github.jayessdeesea.minecraft.bot.supply.Fitter;
 import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.supply.Fitter;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.Workstation;
 import io.github.jayessdeesea.minecraft.command.Position;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,10 +21,10 @@ class FitterTest {
 
     private static final Position SOLDIER = new Position(0.5, 64, 0.5);
     private static final Workshop WORKSHOP = new Workshop(new BlockPos(0, 64, 0), new BlockPos(1, 64, 0), new BlockPos(0, 64, 1),
-            java.util.Optional.of(new BlockPos(2, 64, 0)));
+            Optional.of(new BlockPos(2, 64, 0)));
 
     private final FakeCraftingServer server = new FakeCraftingServer();
-    private final Fitter fitter = new Fitter("Dana", server.session, server.inventory, new java.util.HashMap<>());
+    private final Fitter fitter = new Fitter("Dana", server.session, server.inventory, new HashMap<>());
 
     FitterTest() {
         server.client = fitter::onContainer;
@@ -45,7 +47,7 @@ class FitterTest {
 
         assertTrue(fit(Set.of(Workstation.CRAFTING_TABLE), 400), "fitted in time");
 
-        assertEquals(java.util.Optional.empty(), fitter.failure());
+        assertEquals(Optional.empty(), fitter.failure());
         assertEquals(Workstation.CRAFTING_TABLE, server.stations.get(WORKSHOP.table()));
         assertEquals(1, server.stations.size(), "nothing else put down");
     }
@@ -56,7 +58,7 @@ class FitterTest {
 
         assertTrue(fit(Set.of(Workstation.FURNACE), 800), "fitted in time");
 
-        assertEquals(java.util.Optional.empty(), fitter.failure());
+        assertEquals(Optional.empty(), fitter.failure());
         assertEquals(Workstation.CRAFTING_TABLE, server.stations.get(WORKSHOP.table()));
         assertEquals(Workstation.FURNACE, server.stations.get(WORKSHOP.furnace()));
     }
@@ -71,7 +73,7 @@ class FitterTest {
             done = !fitter.tickChest(SOLDIER, server.world, WORKSHOP, false);
         }
 
-        assertEquals(java.util.Optional.empty(), fitter.failure());
+        assertEquals(Optional.empty(), fitter.failure());
         assertEquals(Workstation.CRAFTING_TABLE, server.stations.get(WORKSHOP.table()), "the table first");
         assertTrue(server.chests.contains(new BlockPos(2, 64, 0)), "then the chest, in its cell");
     }

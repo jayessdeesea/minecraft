@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -45,7 +47,7 @@ class InventoryTest {
     @Test
     void theSpareGivenAwayIsTheWorstWeaponNotTheBest() {
         Inventory inventory = new Inventory();
-        int woodenSword = java.util.stream.IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of("wooden_sword")))
+        int woodenSword = IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of("wooden_sword")))
                 .findFirst().orElseThrow();
         inventory.setSlot(36, new int[]{IRON_SWORD, 1});
         assertEquals(-1, inventory.spareWeaponSlot(), "one weapon is none to spare");
@@ -58,8 +60,8 @@ class InventoryTest {
     @Test
     void featherFallingAndProtectionOnWornArmourProtectFromFalls() {
         Inventory inventory = new Inventory();
-        inventory.setSlot(8, new int[]{IRON_HELMET, 1}, java.util.Map.of("minecraft:feather_falling", 4, "minecraft:protection", 2));
-        inventory.setSlot(20, new int[]{IRON_HELMET, 1}, java.util.Map.of("minecraft:protection", 4)); // carried: doesn't count
+        inventory.setSlot(8, new int[]{IRON_HELMET, 1}, Map.of("minecraft:feather_falling", 4, "minecraft:protection", 2));
+        inventory.setSlot(20, new int[]{IRON_HELMET, 1}, Map.of("minecraft:protection", 4)); // carried: doesn't count
 
         Kit kit = inventory.kit();
 

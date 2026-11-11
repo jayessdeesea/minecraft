@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -15,7 +17,7 @@ class RecoveryTest {
     }
 
     private static final Report STUCK = new Report.Cantco("no route from (7, 81, 0) to within 2 of (0, 64, 0)");
-    private static final java.util.function.Function<SoldierStatus, Optional<List<Cell>>> NO_STAIR = s -> Optional.empty();
+    private static final Function<SoldierStatus, Optional<List<Cell>>> NO_STAIR = s -> Optional.empty();
     private static final List<Order> IDLE = List.of(new Order.Idle(), new Order.Idle(), new Order.Idle());
 
     @Test
@@ -101,7 +103,7 @@ class RecoveryTest {
 
         Order.Dig dig = (Order.Dig) orders.get(1);
         assertEquals(new Box(0, 61, 0, 2, 63, 0), dig.box());
-        assertEquals(java.util.Set.of(new Cell(0, 61, 0), new Cell(0, 63, 0), new Cell(2, 61, 0), new Cell(2, 63, 0)), dig.except(),
+        assertEquals(Set.of(new Cell(0, 61, 0), new Cell(0, 63, 0), new Cell(2, 61, 0), new Cell(2, 63, 0)), dig.except(),
                 "every cell of the box but the stair's kept");
     }
 
@@ -158,7 +160,7 @@ class RecoveryTest {
         Recovery recovery = new Recovery();
         List<Cell> stair = List.of(new Cell(5, 64, 0));
         int[] laidOut = {0};
-        java.util.function.Function<SoldierStatus, Optional<List<Cell>>> engineer = s -> {
+        Function<SoldierStatus, Optional<List<Cell>>> engineer = s -> {
             laidOut[0]++;
             return Optional.of(stair);
         };

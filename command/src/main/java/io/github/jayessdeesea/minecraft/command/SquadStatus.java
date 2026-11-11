@@ -1,6 +1,8 @@
 package io.github.jayessdeesea.minecraft.command;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 /**
  * What a squad reports upward to a {@link General} - the input a {@code General}'s decision core
@@ -18,8 +20,8 @@ import java.util.List;
  * request for food ({@link Subsistence}).
  */
 public record SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers, List<ResourceSite> resources,
-                          java.util.Optional<Objective> standing, boolean holdingBase, java.util.OptionalInt baseBlocksLeft,
-                          java.util.Optional<Progress> progress, java.util.Optional<Subsistence.Status> classOne) {
+                          Optional<Objective> standing, boolean holdingBase, OptionalInt baseBlocksLeft,
+                          Optional<Progress> progress, Optional<Subsistence.Status> classOne) {
 
     public SquadStatus {
         resources = List.copyOf(resources);
@@ -30,27 +32,27 @@ public record SquadStatus(String squadName, Report report, List<SoldierStatus> s
 
     /** A squad whose task's progress isn't measured. */
     public SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers, List<ResourceSite> resources,
-                       java.util.Optional<Objective> standing, boolean holdingBase, java.util.OptionalInt baseBlocksLeft) {
-        this(squadName, report, soldiers, resources, standing, holdingBase, baseBlocksLeft, java.util.Optional.empty());
+                       Optional<Objective> standing, boolean holdingBase, OptionalInt baseBlocksLeft) {
+        this(squadName, report, soldiers, resources, standing, holdingBase, baseBlocksLeft, Optional.empty());
     }
 
     /** A squad whose food isn't measured. */
     public SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers, List<ResourceSite> resources,
-                       java.util.Optional<Objective> standing, boolean holdingBase, java.util.OptionalInt baseBlocksLeft,
-                       java.util.Optional<Progress> progress) {
-        this(squadName, report, soldiers, resources, standing, holdingBase, baseBlocksLeft, progress, java.util.Optional.empty());
+                       Optional<Objective> standing, boolean holdingBase, OptionalInt baseBlocksLeft,
+                       Optional<Progress> progress) {
+        this(squadName, report, soldiers, resources, standing, holdingBase, baseBlocksLeft, progress, Optional.empty());
     }
 
     /** A squad holding a finished base, or with none laid out. */
     public SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers, List<ResourceSite> resources,
-                       java.util.Optional<Objective> standing, boolean holdingBase) {
+                       Optional<Objective> standing, boolean holdingBase) {
         this(squadName, report, soldiers, resources, standing, holdingBase,
-                holdingBase ? java.util.OptionalInt.of(0) : java.util.OptionalInt.empty());
+                holdingBase ? OptionalInt.of(0) : OptionalInt.empty());
     }
 
     /** A squad with no standing order. */
     public SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers, List<ResourceSite> resources) {
-        this(squadName, report, soldiers, resources, java.util.Optional.empty(), false);
+        this(squadName, report, soldiers, resources, Optional.empty(), false);
     }
 
     /** A squad with no standing order that has seen nothing to gather. */

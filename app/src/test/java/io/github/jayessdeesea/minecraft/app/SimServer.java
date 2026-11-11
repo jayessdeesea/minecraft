@@ -4,27 +4,35 @@ import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.protocol.BlockChange;
+import io.github.jayessdeesea.minecraft.protocol.BlockFace;
+import io.github.jayessdeesea.minecraft.protocol.ChunkUpdate;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
 import io.github.jayessdeesea.minecraft.protocol.EntityMove;
 import io.github.jayessdeesea.minecraft.protocol.EntityUpdate;
-import io.github.jayessdeesea.minecraft.protocol.BlockFace;
-import io.github.jayessdeesea.minecraft.protocol.ChunkUpdate;
 import io.github.jayessdeesea.minecraft.protocol.HealthUpdate;
 import io.github.jayessdeesea.minecraft.protocol.InventoryUpdate;
 import io.github.jayessdeesea.minecraft.protocol.ItemSlot;
-import io.github.jayessdeesea.minecraft.protocol.PlayState;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
+import io.github.jayessdeesea.minecraft.protocol.PlayState;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import io.github.jayessdeesea.minecraft.protocol.TimeUpdate;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.IntStream;
 
 /**
  * The server's side of a squad simulation: one world, and a {@link PlaySession} per soldier that
@@ -92,7 +100,7 @@ final class SimServer {
         this.clock = clock;
         this.ground = ground;
         this.dayTicks = dayTicks;
-        clock.scheduler("server").scheduleAtFixedRate(this::tick, 50, 50, java.util.concurrent.TimeUnit.MILLISECONDS);
+        clock.scheduler("server").scheduleAtFixedRate(this::tick, 50, 50, TimeUnit.MILLISECONDS);
     }
 
     int block(int x, int y, int z) {
@@ -118,7 +126,7 @@ final class SimServer {
         int id = nextEntity++;
         zombies.put(id, new double[]{x, y, z, 20, 0});
         players.values().forEach(p -> p.listeners.onEntitySpawn()
-                .accept(new EntityUpdate(id, java.util.UUID.randomUUID(), ZOMBIE_TYPE, x, y, z)));
+                .accept(new EntityUpdate(id, UUID.randomUUID(), ZOMBIE_TYPE, x, y, z)));
         log.add("a zombie spawned at " + x + "," + y + "," + z);
         return id;
     }
@@ -135,7 +143,7 @@ final class SimServer {
         for (Map.Entry<Integer, double[]> e : List.copyOf(zombies.entrySet())) {
             double[] z = e.getValue();
             Player target = players.values().stream().filter(p -> p.health > 0)
-                    .min(java.util.Comparator.comparingDouble(p -> Math.hypot(p.position.x() - z[0], p.position.z() - z[2])))
+                    .min(Comparator.comparingDouble(p -> Math.hypot(p.position.x() - z[0], p.position.z() - z[2])))
                     .orElse(null);
             if (target == null) {
                 continue;
@@ -218,14 +226,14 @@ final class SimServer {
     }
 
     /** As {@link #connector(PlayerPosition, List)}, each soldier's spawn and kit its own. */
-    SoldierRunner.Connector connector(java.util.function.Function<String, PlayerPosition> spawns,
-                                      java.util.function.Function<String, List<int[]>> kits) {
+    SoldierRunner.Connector connector(Function<String, PlayerPosition> spawns,
+                                      Function<String, List<int[]>> kits) {
         return (name, listeners) -> {
             Player player = new Player(name, listeners, spawns.apply(name));
             players.put(name, player);
             kits.apply(name).forEach(k -> player.slots[k[0]] = new int[]{k[1], k[2]});
             // As the server sends them: registries, the world, where it stands, its kit, its health.
-            clock.scheduler(name + "-join").schedule(player::join, 50, java.util.concurrent.TimeUnit.MILLISECONDS);
+            clock.scheduler(name + "-join").schedule(player::join, 50, TimeUnit.MILLISECONDS);
             return CompletableFuture.completedFuture(player);
         };
     }
@@ -320,17 +328,17 @@ final class SimServer {
     }
 
     static int itemOf(ItemClass itemClass) {
-        return java.util.stream.IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(itemClass)))
+        return IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(itemClass)))
                 .findFirst().orElseThrow();
     }
 
     static int itemNamedOrMinus(String name) {
-        return java.util.stream.IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of(name)))
+        return IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of(name)))
                 .findFirst().orElse(-1);
     }
 
     private static int itemNamed(String name) {
-        return java.util.stream.IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of(name)))
+        return IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of(name)))
                 .findFirst().orElseThrow();
     }
 
@@ -380,7 +388,7 @@ final class SimServer {
         PlayerPosition position;
         final PlayerPosition spawn;
         /** Uses each pickaxe carried has had, by its stack: a swap moves the stack, and its wear with it. */
-        final Map<int[], Integer> worn = new java.util.IdentityHashMap<>();
+        final Map<int[], Integer> worn = new IdentityHashMap<>();
         float health = 20;
         final int[][] slots = new int[46][];
         int held;
@@ -526,7 +534,7 @@ final class SimServer {
         @Override
         public void respawn() {
             // Kit dropped where it died - not modelled as items on the ground: it's gone.
-            java.util.Arrays.fill(slots, null);
+            Arrays.fill(slots, null);
             health = 20;
             position = spawn;
             sendInventory();
@@ -795,7 +803,7 @@ final class SimServer {
             } else if (window == 0) {
                 // Armour shift-clicked on: into the slot it fits, if that's empty.
                 int[] s = slots[slot];
-                java.util.OptionalInt fits = s == null ? java.util.OptionalInt.empty() : ItemClassRegistry.armourSlot(s[0]);
+                OptionalInt fits = s == null ? OptionalInt.empty() : ItemClassRegistry.armourSlot(s[0]);
                 if (fits.isEmpty()) {
                     throw new UnsupportedOperationException("simulated: shift-click of " + (s == null ? "nothing" : s[0]) + " in slot " + slot);
                 }
@@ -858,7 +866,7 @@ final class SimServer {
             // Thrown toward a squadmate, it's picked up by the nearest one within a throw's reach.
             players.values().stream().filter(p -> p != this)
                     .filter(p -> Math.hypot(p.position.x() - position.x(), p.position.z() - position.z()) <= THROW_REACH)
-                    .min(java.util.Comparator.comparingDouble(p -> Math.hypot(p.position.x() - position.x(), p.position.z() - position.z())))
+                    .min(Comparator.comparingDouble(p -> Math.hypot(p.position.x() - position.x(), p.position.z() - position.z())))
                     .ifPresentOrElse(p -> {
                         p.give(item);
                         log.add(name + " threw " + item + " to " + p.name);

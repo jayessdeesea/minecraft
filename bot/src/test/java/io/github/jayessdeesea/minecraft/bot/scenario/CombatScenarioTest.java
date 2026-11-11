@@ -1,17 +1,16 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
-import io.github.jayessdeesea.minecraft.command.Kit;
-import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
 import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
+import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.ReactToContact;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.Risk;
-import org.junit.jupiter.api.Test;
-
-import io.github.jayessdeesea.minecraft.command.ReactToContact;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -19,6 +18,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.Random;
 
@@ -297,7 +297,7 @@ class CombatScenarioTest {
             attack.ifPresent(id -> battle.strike(id, now, DeterministicSoldier.ATTACK_REACH, blow));
             shieldUp = soldier.shieldRaised() ? shieldUp + 1 : 0;
             double damage = armour.absorb(battle.step(now, shieldUp > Battle.SHIELD_DELAY_TICKS
-                    ? java.util.OptionalDouble.of(soldier.yaw()) : java.util.OptionalDouble.empty()));
+                    ? OptionalDouble.of(soldier.yaw()) : OptionalDouble.empty()));
             double healed = tick % REGEN_TICKS == 0 && health < 20 ? 1 : 0;
             if (damage > 0 || healed > 0) {
                 health = Math.min(20, health - damage + healed);

@@ -1,8 +1,6 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.BlockFace;
-import io.github.jayessdeesea.minecraft.protocol.packet.PlayerCommandPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.UseItemPacket;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlayState;
 import io.github.jayessdeesea.minecraft.protocol.packet.AttackPacket;
@@ -11,10 +9,14 @@ import io.github.jayessdeesea.minecraft.protocol.packet.ChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientCommandPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientTickEndPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
-import io.github.jayessdeesea.minecraft.protocol.packet.PunchPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MovePlayerPosRotPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerActionPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayerCommandPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PunchPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.UseItemPacket;
 import io.netty.channel.Channel;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The only {@link PlaySession} implementation - package-private because holding a {@link Channel}
@@ -26,7 +28,7 @@ final class NettyPlaySession implements PlaySession {
     private final Channel channel;
     private final PlayState playState;
     /** Block-interaction sequence; the server acknowledges each. */
-    private final java.util.concurrent.atomic.AtomicInteger sequence = new java.util.concurrent.atomic.AtomicInteger();
+    private final AtomicInteger sequence = new AtomicInteger();
 
     NettyPlaySession(Channel channel, PlayState playState) {
         this.channel = channel;

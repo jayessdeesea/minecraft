@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.bot.supply.Staircase;
 import io.github.jayessdeesea.minecraft.bot.world.Workstation;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -55,7 +56,7 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
     public static Optional<Workshop> hasty(WorldView world, BlockPos ground, Set<BlockPos> claimed) {
         Comparator<BlockPos> nearest = Comparator.comparingInt(c -> Math.abs(c.x() - ground.x()) + Math.abs(c.z() - ground.z())
                 + 2 * Math.abs(c.y() - ground.y()));
-        List<BlockPos> around = new java.util.ArrayList<>();
+        List<BlockPos> around = new ArrayList<>();
         for (int dx = -SEARCH; dx <= SEARCH; dx++) {
             for (int dz = -SEARCH; dz <= SEARCH; dz++) {
                 for (int dy = -3; dy <= 3; dy++) {

@@ -3,8 +3,12 @@ package io.github.jayessdeesea.minecraft.bot.world;
 import io.github.jayessdeesea.minecraft.command.Kit;
 
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.stream.Collectors;
 
 /**
  * One soldier's own inventory window, kept current from the server's updates, reduced to the
@@ -29,22 +33,22 @@ public final class Inventory {
     private final int[] itemIds = new int[SLOTS];
     private final int[] counts = new int[SLOTS];
     @SuppressWarnings("unchecked")
-    private final java.util.Map<String, Integer>[] enchantments = new java.util.Map[SLOTS];
+    private final Map<String, Integer>[] enchantments = new Map[SLOTS];
     private int heldHotbarSlot;
 
     public Inventory() {
         Arrays.fill(itemIds, -1);
-        Arrays.fill(enchantments, java.util.Map.of());
+        Arrays.fill(enchantments, Map.of());
     }
 
     /**
      * One slot with its enchantments by name ("feather_falling" -> 4); {@code item} is {itemId,
      * count}, or null for empty.
      */
-    public synchronized Kit setSlot(int slot, int[] item, java.util.Map<String, Integer> enchanted) {
+    public synchronized Kit setSlot(int slot, int[] item, Map<String, Integer> enchanted) {
         setSlot(slot, item);
         if (slot >= 0 && slot < SLOTS) {
-            enchantments[slot] = item == null ? java.util.Map.of() : java.util.Map.copyOf(enchanted);
+            enchantments[slot] = item == null ? Map.of() : Map.copyOf(enchanted);
         }
         return kit();
     }
@@ -81,7 +85,7 @@ public final class Inventory {
     /** The first main-inventory or hotbar slot (9-44) holding an item of {@code itemClass}, or -1. */
     public synchronized int slotOf(ItemClassRegistry.ItemClass itemClass) {
         for (int slot = MAIN_FIRST; slot <= HOTBAR_LAST; slot++) {
-            if (ItemClassRegistry.classOf(itemIds[slot]).equals(java.util.Optional.of(itemClass))) {
+            if (ItemClassRegistry.classOf(itemIds[slot]).equals(Optional.of(itemClass))) {
                 return slot;
             }
         }
@@ -107,7 +111,7 @@ public final class Inventory {
         int best = -1;
         int worst = -1;
         for (int slot = MAIN_FIRST; slot <= HOTBAR_LAST; slot++) {
-            java.util.OptionalInt rank = ItemClassRegistry.meleeRank(itemIds[slot]);
+            OptionalInt rank = ItemClassRegistry.meleeRank(itemIds[slot]);
             if (rank.isEmpty()) {
                 continue;
             }
@@ -116,7 +120,7 @@ public final class Inventory {
             }
         }
         for (int slot = MAIN_FIRST; slot <= HOTBAR_LAST; slot++) {
-            java.util.OptionalInt rank = ItemClassRegistry.meleeRank(itemIds[slot]);
+            OptionalInt rank = ItemClassRegistry.meleeRank(itemIds[slot]);
             if (rank.isPresent() && slot != best
                     && (worst < 0 || rank.getAsInt() < ItemClassRegistry.meleeRank(itemIds[worst]).getAsInt())) {
                 worst = slot;
@@ -129,7 +133,7 @@ public final class Inventory {
     public synchronized int count(ItemClassRegistry.ItemClass itemClass) {
         int total = 0;
         for (int slot = MAIN_FIRST; slot <= HOTBAR_LAST; slot++) {
-            if (ItemClassRegistry.classOf(itemIds[slot]).equals(java.util.Optional.of(itemClass))) {
+            if (ItemClassRegistry.classOf(itemIds[slot]).equals(Optional.of(itemClass))) {
                 total += counts[slot];
             }
         }
@@ -138,13 +142,13 @@ public final class Inventory {
 
     /** What's carried, by counted class - "LOG x2, PLANKS x4" - for logs explaining a failure. */
     public synchronized String summary() {
-        java.util.Map<ItemClassRegistry.ItemClass, Integer> totals = new java.util.EnumMap<>(ItemClassRegistry.ItemClass.class);
+        Map<ItemClassRegistry.ItemClass, Integer> totals = new EnumMap<>(ItemClassRegistry.ItemClass.class);
         for (int slot = 0; slot < SLOTS; slot++) {
             int s = slot;
             ItemClassRegistry.classOf(itemIds[slot]).ifPresent(c -> totals.merge(c, counts[s], Integer::sum));
         }
         return totals.isEmpty() ? "nothing counted" : totals.entrySet().stream()
-                .map(e -> e.getKey() + " x" + e.getValue()).collect(java.util.stream.Collectors.joining(", "));
+                .map(e -> e.getKey() + " x" + e.getValue()).collect(Collectors.joining(", "));
     }
 
     /** The item ID in {@code slot}, or -1 if it's empty. */
@@ -169,7 +173,7 @@ public final class Inventory {
     private void set(int slot, int[] item) {
         itemIds[slot] = item == null ? -1 : item[0];
         counts[slot] = item == null ? 0 : item[1];
-        enchantments[slot] = java.util.Map.of();
+        enchantments[slot] = Map.of();
     }
 
     /** The first slot holding the item named {@code name} ("bow"), or -1. */

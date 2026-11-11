@@ -122,6 +122,13 @@ use a third-party library where the JDK has none (Jackson for JSON). The `<tags>
 prompts aren't one: they're labels in a template, not a document anything parses. Our own line-oriented resource files
 (`block-classes-777.txt`) aren't a standard format and stay as they are.
 
+## Names are imported
+
+A class is imported at the top of the file and used by its simple name - never written out with its
+package in the code. Imports go in three sorted groups: other packages, then `java.*`, then static
+imports. Where two classes would share a simple name in one file, one of them gets a more
+descriptive name rather than a qualified one.
+
 ## Docs
 
 **`docs/` describes the system as it is; `backlog/` holds what will or might happen.** A doc

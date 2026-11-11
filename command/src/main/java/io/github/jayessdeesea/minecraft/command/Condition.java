@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.Optional;
+
 /**
  * A soldier's own condition, as doctrine's LACE report carries it upward after contact
  * (docs/military-doctrine.md §4), mapped onto Minecraft: <b>L</b>iquids is food, <b>C</b>asualties
@@ -11,7 +13,7 @@ package io.github.jayessdeesea.minecraft.command;
  * @param deaths deaths since this soldier's connection joined
  * @param kit    weapon, arrows and armour, once known
  */
-public record Condition(double health, int food, int deaths, java.util.Optional<Kit> kit) {
+public record Condition(double health, int food, int deaths, Optional<Kit> kit) {
 
     public static final double MAX_HEALTH = 20;
     public static final int MAX_FOOD = 20;

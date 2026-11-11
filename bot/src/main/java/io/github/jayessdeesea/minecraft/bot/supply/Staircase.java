@@ -4,8 +4,11 @@ import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * A spiral staircase cut down into the ground (docs/military-doctrine.md §16): one block down a step,
@@ -74,7 +77,7 @@ public record Staircase(BlockPos head, int bottom) {
      * walks through and stops none.
      */
     public List<BlockPos> lights() {
-        List<BlockPos> lights = new java.util.ArrayList<>();
+        List<BlockPos> lights = new ArrayList<>();
         for (int k = RING.length / 2; k < steps(); k += RING.length) {
             lights.add(step(k));
         }
@@ -137,20 +140,20 @@ public record Staircase(BlockPos head, int bottom) {
      * Every cell a body walks through on the stairs and tunnels - the landing's recesses aside: kept
      * clear of tables, furnaces and other diggers.
      */
-    public java.util.Set<BlockPos> walkway() {
-        java.util.Set<BlockPos> recesses = new java.util.HashSet<>();
+    public Set<BlockPos> walkway() {
+        Set<BlockPos> recesses = new HashSet<>();
         landing().forEach(r -> {
             recesses.add(r);
             recesses.add(r.offset(0, 1, 0));
         });
-        java.util.Set<BlockPos> cells = new java.util.HashSet<>();
+        Set<BlockPos> cells = new HashSet<>();
         cuts().forEach(c -> c.cells().stream().filter(cell -> !recesses.contains(cell)).forEach(cells::add));
         return cells;
     }
 
     /** Every cut, in order: the steps down, the main tunnel, then the branches nearest the shaft first. */
     public List<Cut> cuts() {
-        List<Cut> cuts = new java.util.ArrayList<>();
+        List<Cut> cuts = new ArrayList<>();
         for (int k = 0; k < steps(); k++) {
             cuts.add(new Cut(above(k), cells(k), -1));
         }
@@ -159,7 +162,7 @@ public record Staircase(BlockPos head, int bottom) {
         // Out from the shaft along an axis it's already off centre on: never back through the 3x3.
         int dx = d[0] != 0 ? d[0] : 0;
         int dz = d[0] != 0 ? 0 : d[1];
-        List<BlockPos> main = new java.util.ArrayList<>();
+        List<BlockPos> main = new ArrayList<>();
         for (int i = 1; i <= MAIN_TUNNEL; i++) {
             BlockPos feet = last.offset(dx * i, 0, dz * i);
             cuts.add(new Cut(i == 1 ? last : main.getLast(), List.of(feet.offset(0, 1, 0), feet), 0));

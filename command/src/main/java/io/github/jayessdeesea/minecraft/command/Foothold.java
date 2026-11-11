@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.command;
 
 import java.util.List;
+import java.util.OptionalInt;
 
 /**
  * Where a camp stands in building a lodgment, the way an airborne force builds one after the drop
@@ -26,7 +27,7 @@ public record Foothold(Position camp, List<Standard> standards) {
     }
 
     /** The earliest phase with a standard not met, or empty when all are. */
-    public java.util.OptionalInt nextPhase() {
+    public OptionalInt nextPhase() {
         return standards.stream().filter(s -> !s.met()).mapToInt(Standard::phase).min();
     }
 }

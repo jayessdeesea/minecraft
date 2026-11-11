@@ -6,7 +6,13 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * The wall round a camp (docs/military-doctrine.md §15): a square ring {@code radius} blocks out
@@ -76,10 +82,10 @@ public final class Perimeter {
      * from the wall's top - alone in its column.
      */
     public static List<BlockPos> open(WorldView world, List<BlockPos> layout) {
-        java.util.Set<BlockPos> wall = new java.util.HashSet<>(layout);
-        java.util.Map<List<Integer>, Long> perColumn = layout.stream()
-                .collect(java.util.stream.Collectors.groupingBy(c -> List.of(c.x(), c.z()), java.util.stream.Collectors.counting()));
-        java.util.LinkedHashSet<BlockPos> open = new java.util.LinkedHashSet<>();
+        Set<BlockPos> wall = new HashSet<>(layout);
+        Map<List<Integer>, Long> perColumn = layout.stream()
+                .collect(Collectors.groupingBy(c -> List.of(c.x(), c.z()), Collectors.counting()));
+        LinkedHashSet<BlockPos> open = new LinkedHashSet<>();
         for (BlockPos cell : layout) {
             if (world.isSolid(cell.x(), cell.y(), cell.z())) {
                 continue;
@@ -98,13 +104,13 @@ public final class Perimeter {
     }
 
     /** Where the wall stands in column ({@code x}, {@code z}): the highest standing cell near {@code nearY}, not in water. */
-    static java.util.Optional<BlockPos> ground(WorldView world, int x, int z, int nearY) {
+    static Optional<BlockPos> ground(WorldView world, int x, int z, int nearY) {
         for (int y = nearY + VERTICAL; y >= nearY - VERTICAL; y--) {
             BlockPos cell = new BlockPos(x, y, z);
             if (Pathfinder.standable(world, cell)) {
-                return java.util.Optional.of(cell);
+                return Optional.of(cell);
             }
         }
-        return java.util.Optional.empty();
+        return Optional.empty();
     }
 }

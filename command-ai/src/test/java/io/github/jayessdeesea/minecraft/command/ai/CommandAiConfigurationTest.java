@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.model.ChatModel;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CommandAiConfigurationTest {
 
     private static final ChatModel LOCAL = FakeChatModels.THROWING;
-    private static final ChatModel FRONTIER = FakeChatModels.replying("{}", new java.util.concurrent.atomic.AtomicReference<>());
+    private static final ChatModel FRONTIER = FakeChatModels.replying("{}", new AtomicReference<>());
 
     @Test
     void eachEchelonGetsTheProviderItNames() {

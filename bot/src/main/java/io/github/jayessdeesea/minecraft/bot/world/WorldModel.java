@@ -3,6 +3,8 @@ package io.github.jayessdeesea.minecraft.bot.world;
 import io.github.jayessdeesea.minecraft.command.Position;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 /**
  * The real {@link WorldView}: terrain from a shared {@link ChunkCache}, threats from a shared
@@ -34,7 +36,7 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
-    public java.util.Optional<Workstation> workstation(int x, int y, int z) {
+    public Optional<Workstation> workstation(int x, int y, int z) {
         return chunks.workstation(x, y, z);
     }
 
@@ -59,22 +61,22 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
-    public java.util.Optional<Hardness> hardness(int x, int y, int z) {
+    public Optional<Hardness> hardness(int x, int y, int z) {
         return chunks.hardness(x, y, z);
     }
 
     @Override
-    public java.util.Optional<String> leaves(int x, int y, int z) {
+    public Optional<String> leaves(int x, int y, int z) {
         return chunks.leaves(x, y, z);
     }
 
     @Override
-    public java.util.Optional<String> sapling(int x, int y, int z) {
+    public Optional<String> sapling(int x, int y, int z) {
         return chunks.sapling(x, y, z);
     }
 
     @Override
-    public java.util.Optional<String> oreOf(int x, int y, int z) {
+    public Optional<String> oreOf(int x, int y, int z) {
         return chunks.oreOf(x, y, z);
     }
 
@@ -109,7 +111,7 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
-    public java.util.OptionalInt wheatAge(int x, int y, int z) {
+    public OptionalInt wheatAge(int x, int y, int z) {
         return chunks.wheatAge(x, y, z);
     }
 

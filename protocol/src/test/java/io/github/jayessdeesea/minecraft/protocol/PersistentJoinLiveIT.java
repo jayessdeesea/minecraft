@@ -4,12 +4,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -184,7 +186,7 @@ class PersistentJoinLiveIT {
         Thread.sleep(1_000);
 
         speaker.sendChat("!mission hold the ridge");
-        java.util.UUID speakerUuid = java.util.UUID.nameUUIDFromBytes("OfflinePlayer:ChatSpeakerBot".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        UUID speakerUuid = UUID.nameUUIDFromBytes("OfflinePlayer:ChatSpeakerBot".getBytes(StandardCharsets.UTF_8));
         for (int i = 0; i < 50 && heard.stream().noneMatch(m -> m.sender().equals(speakerUuid)); i++) {
             Thread.sleep(100);
         }
@@ -207,7 +209,7 @@ class PersistentJoinLiveIT {
         Thread.sleep(1_000);
 
         speaker.sendChatCommand("msg ChatListenerBot !escort");
-        java.util.UUID speakerUuid = java.util.UUID.nameUUIDFromBytes("OfflinePlayer:ChatSpeakerBot".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        UUID speakerUuid = UUID.nameUUIDFromBytes("OfflinePlayer:ChatSpeakerBot".getBytes(StandardCharsets.UTF_8));
         for (int i = 0; i < 50 && heard.stream().noneMatch(m -> m.sender().equals(speakerUuid)); i++) {
             Thread.sleep(100);
         }

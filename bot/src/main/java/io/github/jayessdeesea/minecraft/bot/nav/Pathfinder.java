@@ -2,13 +2,16 @@ package io.github.jayessdeesea.minecraft.bot.nav;
 
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Set;
 
 /**
  * Short-range A* over block cells, run on a soldier's tick thread - so it's bounded by an
@@ -121,7 +124,7 @@ public final class Pathfinder {
      */
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
                               boolean pickaxe, boolean build) {
-        return find(world, start, goal, maxExpanded, falls, blocks, pickaxe, build, java.util.Set.of());
+        return find(world, start, goal, maxExpanded, falls, blocks, pickaxe, build, Set.of());
     }
 
     /**
@@ -133,7 +136,7 @@ public final class Pathfinder {
 
     /** As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance, int, boolean, boolean)}, a step into {@code avoid} costing {@link #AVOID_COST} more. */
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
-                              boolean pickaxe, boolean build, java.util.Set<BlockPos> avoid) {
+                              boolean pickaxe, boolean build, Set<BlockPos> avoid) {
         if (goal.contains(start)) {
             return new Result(List.of(), true);
         }
@@ -189,7 +192,7 @@ public final class Pathfinder {
      * {@code maxExpanded} cells. A breadth-first flood fill - one call answers "can the point man
      * get there?" for a whole area at once.
      */
-    public static java.util.Set<BlockPos> reachable(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded) {
+    public static Set<BlockPos> reachable(WorldView world, BlockPos start, int maxHorizontalDistance, int maxExpanded) {
         return climbs(world, start, maxHorizontalDistance, maxExpanded, 0).keySet();
     }
 
@@ -213,8 +216,8 @@ public final class Pathfinder {
         }
         // 0-1 breadth-first: a walk costs no blocks and goes to the front, a pillar step one and
         // goes to the back, so each cell is settled at the fewest blocks.
-        java.util.ArrayDeque<BlockPos> frontier = new java.util.ArrayDeque<>();
-        java.util.Set<BlockPos> settled = new java.util.HashSet<>();
+        ArrayDeque<BlockPos> frontier = new ArrayDeque<>();
+        Set<BlockPos> settled = new HashSet<>();
         fewest.put(start, 0);
         frontier.add(start);
         while (!frontier.isEmpty() && settled.size() < maxExpanded) {

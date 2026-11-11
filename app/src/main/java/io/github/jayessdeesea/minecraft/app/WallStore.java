@@ -8,8 +8,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * A camp wall's layout, kept on disk so it outlives a restart (docs/military-doctrine.md § 15). A
@@ -58,7 +60,7 @@ final class WallStore {
             return List.of();
         }
         String prefix = kind + "_";
-        try (java.util.stream.Stream<Path> files = Files.list(directory)) {
+        try (Stream<Path> files = Files.list(directory)) {
             return files.map(f -> f.getFileName().toString())
                     .filter(n -> n.startsWith(prefix) && n.endsWith(".json"))
                     .map(n -> n.substring(prefix.length(), n.length() - ".json".length()))
@@ -78,7 +80,7 @@ final class WallStore {
             // Written whole or not at all: a write cut short left an empty layout, which won't read.
             Path temporary = directory.resolve(file(key).getFileName() + ".tmp");
             JSON.writeValue(temporary.toFile(), layout.stream().map(c -> new int[]{c.x(), c.y(), c.z()}).toList());
-            Files.move(temporary, file(key), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            Files.move(temporary, file(key), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             throw new UncheckedIOException("the " + kind + " layout for " + key + " won't write to " + directory, e);
         }

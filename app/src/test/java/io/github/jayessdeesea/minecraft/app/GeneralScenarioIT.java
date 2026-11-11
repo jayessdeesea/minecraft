@@ -1,15 +1,19 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Condition;
+import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Readiness;
 import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Resource;
+import io.github.jayessdeesea.minecraft.command.ResourceSite;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
+import io.github.jayessdeesea.minecraft.command.ai.GeneralPrompts;
 import io.github.jayessdeesea.minecraft.command.ai.SpringAiGeneral;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -22,7 +26,9 @@ import org.springframework.core.io.ClassPathResource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.function.BiFunction;
 
 /**
@@ -49,46 +55,46 @@ class GeneralScenarioIT {
             "No monster spawns inside the camp", new Objective.Task.Secure());
 
     /** The camp's progress, for the situations that have a camp to build up. */
-    private static final java.util.Map<String, io.github.jayessdeesea.minecraft.command.Foothold> FOOTHOLDS = java.util.Map.of(
-            "lit-without-wood", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(1, "shelter", true, "both squads have a base", "PATROL_BASE"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
+    private static final Map<String, Foothold> FOOTHOLDS = Map.of(
+            "lit-without-wood", new Foothold(new Position(3000, 151, 3000), List.of(
+                    new Foothold.Standard(1, "shelter", true, "both squads have a base", "PATROL_BASE"),
+                    new Foothold.Standard(2, "the camp's ground lit", false,
                             "120 walkable cells within 12 blocks still dark; no logs to make torches from and no trees in sight - grow them first",
                             "TREE_FARM"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
-            "exposed-far-out", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(1, "shelter", true, "both squads have a base", "PATROL_BASE"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
+                    new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
+            "exposed-far-out", new Foothold(new Position(3000, 151, 3000), List.of(
+                    new Foothold.Standard(1, "shelter", true, "both squads have a base", "PATROL_BASE"),
+                    new Foothold.Standard(2, "the camp's ground lit", false,
                             "120 walkable cells within 12 blocks still dark", "SECURE"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
-            "securing-short-of-makings", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
+                    new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
+            "securing-short-of-makings", new Foothold(new Position(3000, 151, 3000), List.of(
+                    new Foothold.Standard(2, "the camp's ground lit", false,
                             "288 walkable cells within 12 blocks still dark", "SECURE"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
-            "morning-wall-open", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false,
+                    new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
+            "morning-wall-open", new Foothold(new Position(3000, 151, 3000), List.of(
+                    new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
+                    new Foothold.Standard(2, "the camp walled in", false,
                             "57 of 170 wall blocks still to place", "FORTIFY"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "food", true, "", "FARM"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))),
-            "starving-airhead", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false,
+                    new Foothold.Standard(3, "food", true, "", "FARM"),
+                    new Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))),
+            "starving-airhead", new Foothold(new Position(3000, 151, 3000), List.of(
+                    new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
+                    new Foothold.Standard(2, "the camp walled in", false,
                             "161 of 170 wall blocks still to place", "FORTIFY"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "food", false,
+                    new Foothold.Standard(2, "food", false,
                             "0 of 55 cells of the camp's farm ground, by the water at x=3010 z=2990, growing wheat; "
                                     + "8 of 8 soldiers hungry with nothing to eat", "FARM"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))),
-            "foothold-airhead", new io.github.jayessdeesea.minecraft.command.Foothold(new Position(3000, 151, 3000), List.of(
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp's ground lit", false,
+                    new Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))),
+            "foothold-airhead", new Foothold(new Position(3000, 151, 3000), List.of(
+                    new Foothold.Standard(2, "the camp's ground lit", false,
                             "31 walkable cells within 12 blocks still dark", "SECURE"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "food", false,
+                    new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"),
+                    new Foothold.Standard(3, "food", false,
                             "no ground to farm by water near the camp; 0 of 8 soldiers hungry with nothing to eat", "FARM"),
-                    new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))));
+                    new Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))));
 
     private static final Objective GATHER_WOOD = new Objective("Gather logs from the trees below the platform",
-            new Position(3007, 130, 2990), "Logs for tools and building", Optional.of(io.github.jayessdeesea.minecraft.command.Resource.WOOD));
+            new Position(3007, 130, 2990), "Logs for tools and building", Optional.of(Resource.WOOD));
 
     /**
      * One policy question: the mission, the time, each squad's state, and what a right answer is,
@@ -268,7 +274,7 @@ class GeneralScenarioIT {
                 .options(OllamaChatOptions.builder().model(model).temperature(0.3).disableThinking().build())
                 .build();
         ChatClient client = ChatClient.builder(ollama).build();
-        io.github.jayessdeesea.minecraft.command.ai.GeneralPrompts prompts = io.github.jayessdeesea.minecraft.command.ai.GeneralPrompts.read(
+        GeneralPrompts prompts = GeneralPrompts.read(
                 new ClassPathResource("prompts/general-system-prompt.md"), new ClassPathResource("prompts/general-user-prompt.md"),
                 new ClassPathResource("prompts/general-squad-prompt.md"));
 
@@ -349,7 +355,7 @@ class GeneralScenarioIT {
     /** The same squad, seeing a stand of trees below the platform. */
     private static SquadStatus withTrees(SquadStatus squad) {
         return new SquadStatus(squad.squadName(), squad.report(), squad.soldiers(),
-                List.of(new io.github.jayessdeesea.minecraft.command.ResourceSite(io.github.jayessdeesea.minecraft.command.Resource.WOOD,
+                List.of(new ResourceSite(Resource.WOOD,
                         new Position(3005, 130, 3012), 36)),
                 squad.standing(), squad.holdingBase(), squad.baseBlocksLeft());
     }
@@ -358,8 +364,8 @@ class GeneralScenarioIT {
     /** A squad lighting the camp, its soldiers out of torches and gone for the cobblestone for a furnace, stone seen off the platform. */
     private static SquadStatus shortOfMakings(String name, int x) {
         return new SquadStatus(name, new Report.Moving(), soldiers(name, x,
-                new Report.Gathering(io.github.jayessdeesea.minecraft.command.Resource.STONE), 0),
-                List.of(new io.github.jayessdeesea.minecraft.command.ResourceSite(io.github.jayessdeesea.minecraft.command.Resource.STONE,
+                new Report.Gathering(Resource.STONE), 0),
+                List.of(new ResourceSite(Resource.STONE,
                         new Position(3030, 140, 2990), 40)), Optional.of(SECURE_CAMP), false);
     }
 
@@ -370,7 +376,7 @@ class GeneralScenarioIT {
     /** A squad of four inside the outline of its base, its walls half up, the blocks for the rest in hand. */
     private static SquadStatus building(String name, Objective base, int x) {
         return new SquadStatus(name, new Report.Moving(), soldiers(name, x, new Report.Fortifying(), 8),
-                List.of(), Optional.of(base), false, java.util.OptionalInt.of(20));
+                List.of(), Optional.of(base), false, OptionalInt.of(20));
     }
 
     private static List<SoldierStatus> soldiers(String squad, int x, Report report, int stone) {

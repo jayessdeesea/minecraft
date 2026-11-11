@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.Locale;
+
 /**
  * One thing a squad leader tells one soldier to do, ahead of its role: done once, then the soldier
  * goes back to its role. Each says when it's done from the soldier's state or the world, never
@@ -122,6 +124,6 @@ public sealed interface Directive {
     }
 
     private static String at(Position p) {
-        return String.format(java.util.Locale.ROOT, "(%.0f, %.0f, %.0f)", p.x(), p.y(), p.z());
+        return String.format(Locale.ROOT, "(%.0f, %.0f, %.0f)", p.x(), p.y(), p.z());
     }
 }

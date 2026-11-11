@@ -14,9 +14,11 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 
+import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.GROUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -35,7 +37,7 @@ class TaskOrganisationSimulationTest {
 
     @org.junit.jupiter.api.BeforeEach
     void nameTheScenario(org.junit.jupiter.api.TestInfo test) {
-        org.apache.logging.log4j.ThreadContext.put("scenario", test.getTestMethod().map(java.lang.reflect.Method::getName).orElse("unnamed"));
+        org.apache.logging.log4j.ThreadContext.put("scenario", test.getTestMethod().map(Method::getName).orElse("unnamed"));
     }
 
     @org.junit.jupiter.api.AfterEach
@@ -106,7 +108,7 @@ class TaskOrganisationSimulationTest {
         assertEquals(0, server.count("Bob", SimServer.ITEM_COBBLESTONE), "the rifleman cut nothing");
         assertTrue(fromCamp(server, "Bob") <= 8 && server.position("Bob").y() > GROUND - 1,
                 "the rifleman holds the camp with the squad: " + server.position("Bob"));
-        assertEquals(new Plan(Role.MINER, java.util.Optional.of(new Position(8, 40, 8)), List.of()), new PlanBook(state).of("Alice"));
+        assertEquals(new Plan(Role.MINER, Optional.of(new Position(8, 40, 8)), List.of()), new PlanBook(state).of("Alice"));
     }
 
     /**

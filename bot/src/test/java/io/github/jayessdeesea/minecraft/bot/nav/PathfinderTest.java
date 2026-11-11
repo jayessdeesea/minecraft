@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -466,7 +467,7 @@ class PathfinderTest {
         assertTrue(straight.path().contains(blockedStep), "the straight way: " + straight.path());
 
         Pathfinder.Result round = Pathfinder.find(flat, START, exactly(4, GROUND, 0), 2000, FallAllowance.NONE, 0, false, false,
-                java.util.Set.of(blockedStep));
+                Set.of(blockedStep));
 
         assertTrue(round.reachesGoal());
         assertFalse(round.path().contains(blockedStep), "round it: " + round.path());

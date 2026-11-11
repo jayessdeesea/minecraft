@@ -1,13 +1,18 @@
 package io.github.jayessdeesea.minecraft.command.ai;
 
+import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Logstat;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.PatrolBase;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Resource;
+import io.github.jayessdeesea.minecraft.command.ResourceSite;
 import io.github.jayessdeesea.minecraft.command.Resupply;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
+import io.github.jayessdeesea.minecraft.command.Stockpile;
+import io.github.jayessdeesea.minecraft.command.Subsistence;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,11 +22,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
  * The {@link General}: same {@link #buildContext} (pure) -&gt; {@link #callModel} (impure) -&gt;
@@ -40,12 +48,12 @@ public final class SpringAiGeneral implements General {
     private final GeneralPrompts prompts;
     private volatile String mission; // written by the operator's thread, read by the general's
     private final Optional<Position> supplyPoint;
-    private volatile io.github.jayessdeesea.minecraft.command.Stockpile stockpile; // a soldier's thread writes, the general's reads
+    private volatile Stockpile stockpile; // a soldier's thread writes, the general's reads
     private volatile TimeOfDay time; // a connection's thread writes, the general's reads
     /** The operator's last few remarks, oldest first - a connection's thread writes, the general's reads. */
-    private final java.util.Deque<String> remarks = new java.util.concurrent.ConcurrentLinkedDeque<>();
+    private final Deque<String> remarks = new ConcurrentLinkedDeque<>();
     /** The camp's progress through the lodgment's phases - a soldier's thread writes, the general's reads. */
-    private volatile io.github.jayessdeesea.minecraft.command.Foothold foothold;
+    private volatile Foothold foothold;
     /** Daylight left, in ticks, above which a squad still in its patrol base is told the night is over: two minutes. */
     static final long MORNING_AT_LEAST = 2400;
     /** How many of the operator's remarks the general keeps in view. */
@@ -61,12 +69,12 @@ public final class SpringAiGeneral implements General {
     }
 
     @Override
-    public void receiveStockpile(io.github.jayessdeesea.minecraft.command.Stockpile stockpile) {
+    public void receiveStockpile(Stockpile stockpile) {
         this.stockpile = stockpile;
     }
 
     @Override
-    public void receiveFoothold(io.github.jayessdeesea.minecraft.command.Foothold foothold) {
+    public void receiveFoothold(Foothold foothold) {
         this.foothold = foothold;
     }
 
@@ -111,11 +119,11 @@ public final class SpringAiGeneral implements General {
     }
 
     /** The foothold's phases and standards, the earliest unmet phase named: the lookup done for the model. */
-    static String describe(io.github.jayessdeesea.minecraft.command.Foothold foothold) {
+    static String describe(Foothold foothold) {
         String[] phases = {"", "shelter", "airhead", "buildup", "equipment"};
         StringBuilder out = new StringBuilder("The camp at ").append(SpringAiSquadLeader.describe(foothold.camp()))
                 .append(", built up phase by phase:\n");
-        for (io.github.jayessdeesea.minecraft.command.Foothold.Standard s : foothold.standards()) {
+        for (Foothold.Standard s : foothold.standards()) {
             out.append(String.format(Locale.ROOT, "- Phase %d, %s: %s - %s: %s%s\n", s.phase(), phases[s.phase()], s.name(),
                     s.met() ? "met" : "NOT MET", s.status(), s.met() ? "" : " (task " + s.task() + ")"));
         }
@@ -144,12 +152,12 @@ public final class SpringAiGeneral implements General {
     }
 
     static PromptContext buildContext(GeneralPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
-                                      Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile, List<SquadStatus> squadStatuses) {
+                                      Optional<Stockpile> stockpile, List<SquadStatus> squadStatuses) {
         return buildContext(prompts, mission, time, supplyPoint, stockpile, List.of(), squadStatuses);
     }
 
     static PromptContext buildContext(GeneralPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
-                                      Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile, List<String> remarks,
+                                      Optional<Stockpile> stockpile, List<String> remarks,
                                       List<SquadStatus> squadStatuses) {
         return buildContext(prompts, mission, time, supplyPoint, stockpile, remarks, Optional.empty(), squadStatuses);
     }
@@ -160,8 +168,8 @@ public final class SpringAiGeneral implements General {
      * section filled in from the squad template.
      */
     static PromptContext buildContext(GeneralPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
-                                      Optional<io.github.jayessdeesea.minecraft.command.Stockpile> stockpile, List<String> remarks,
-                                      Optional<io.github.jayessdeesea.minecraft.command.Foothold> foothold, List<SquadStatus> squadStatuses) {
+                                      Optional<Stockpile> stockpile, List<String> remarks,
+                                      Optional<Foothold> foothold, List<SquadStatus> squadStatuses) {
         StringBuilder squads = new StringBuilder();
         for (SquadStatus squad : squadStatuses) {
             StringBuilder soldiers = new StringBuilder();
@@ -173,7 +181,7 @@ public final class SpringAiGeneral implements General {
                     "name", squad.squadName(),
                     "standing", describeStanding(squad),
                     // A request first, where a small model reads it: in the LOGSTAT's middle it went unanswered.
-                    "request", squad.classOne().filter(c -> c.rating() == io.github.jayessdeesea.minecraft.command.Subsistence.Rating.RED)
+                    "request", squad.classOne().filter(c -> c.rating() == Subsistence.Rating.RED)
                             .<Object>map(c -> c.line() + " Answer it with \"task\": \"FARM\" at ground to farm by water.").orElse(false),
                     // Said where the squad is listed, not left to be put together from <time> and its state.
                     "night", time.filter(TimeOfDay::dark).isPresent() && !squad.holdingBase(),
@@ -183,7 +191,7 @@ public final class SpringAiGeneral implements General {
                     "report", SpringAiSquadLeader.describe(squad.report()),
                     "soldiers", soldiers.toString(),
                     "logstat", describe(Logstat.of(squad.soldiers()), squad.baseBlocksLeft())
-                            + squad.classOne().filter(c -> c.rating() != io.github.jayessdeesea.minecraft.command.Subsistence.Rating.RED)
+                            + squad.classOne().filter(c -> c.rating() != Subsistence.Rating.RED)
                             .map(c -> " " + c.line()).orElse(""),
                     "resources", describeResources(squad, time.filter(TimeOfDay::dark).isEmpty())))).append('\n');
         }
@@ -254,7 +262,7 @@ public final class SpringAiGeneral implements General {
         }
         Position from = squad.soldiers().isEmpty() ? null : squad.soldiers().getFirst().position();
         StringBuilder line = new StringBuilder("Resources seen:");
-        for (io.github.jayessdeesea.minecraft.command.ResourceSite site : squad.resources()) {
+        for (ResourceSite site : squad.resources()) {
             line.append(' ').append(site.amount()).append(' ').append(switch (site.resource()) {
                         case WOOD -> "logs";
                         case STONE -> "exposed stone";
@@ -271,7 +279,7 @@ public final class SpringAiGeneral implements General {
             line.append(';');
         }
         line.setCharAt(line.length() - 1, '.');
-        if (squad.resources().stream().noneMatch(site -> site.resource() == io.github.jayessdeesea.minecraft.command.Resource.WOOD)) {
+        if (squad.resources().stream().noneMatch(site -> site.resource() == Resource.WOOD)) {
             line.append(" No trees in sight.").append(noTrees);
         }
         return line.toString();
@@ -300,7 +308,7 @@ public final class SpringAiGeneral implements General {
 
     /** The LOGSTAT line of a squad with no patrol base laid out. */
     static String describe(Logstat l) {
-        return describe(l, java.util.OptionalInt.empty());
+        return describe(l, OptionalInt.empty());
     }
 
     /**
@@ -308,7 +316,7 @@ public final class SpringAiGeneral implements General {
      * against the patrol base it has still to build: all of one with none laid out, what's left of
      * one under way, nothing once one is built - its blocks went into the walls.
      */
-    static String describe(Logstat l, java.util.OptionalInt baseBlocksLeft) {
+    static String describe(Logstat l, OptionalInt baseBlocksLeft) {
         if (l.reporting() == 0) {
             return "LOGSTAT: no soldier has reported his condition yet.";
         }
@@ -397,8 +405,8 @@ public final class SpringAiGeneral implements General {
             objectives.add(new Objective(objective.mission(), new Position(objective.x(), objective.y(), objective.z()),
                     objective.intent(), switch (objective.task()) {
                         case NONE -> new Objective.Task.None();
-                        case WOOD -> new Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.WOOD);
-                        case STONE -> new Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.STONE);
+                        case WOOD -> new Objective.Task.Gather(Resource.WOOD);
+                        case STONE -> new Objective.Task.Gather(Resource.STONE);
                         case PATROL_BASE -> new Objective.Task.PatrolBase();
                         case FARM -> new Objective.Task.Farm();
                         case TREE_FARM -> new Objective.Task.TreeFarm();

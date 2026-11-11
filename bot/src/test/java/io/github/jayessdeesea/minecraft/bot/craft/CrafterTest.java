@@ -8,7 +8,10 @@ import io.github.jayessdeesea.minecraft.bot.world.Workstation;
 import io.github.jayessdeesea.minecraft.command.Position;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.IntPredicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,7 +23,7 @@ class CrafterTest {
     private static final Position SOLDIER = new Position(0.5, 64, 0.5);
 
     private final FakeCraftingServer server = new FakeCraftingServer();
-    private final Crafter crafter = new Crafter("Dana", server.session, server.inventory, new java.util.HashMap<>());
+    private final Crafter crafter = new Crafter("Dana", server.session, server.inventory, new HashMap<>());
     private int tick;
 
     CrafterTest() {
@@ -103,7 +106,7 @@ class CrafterTest {
 
     @Test
     void aFurnaceASquadmateHoldsIsLeftAloneAndItsOwnIsFreedOnceEmptied() {
-        Map<BlockPos, String> claims = new java.util.HashMap<>();
+        Map<BlockPos, String> claims = new HashMap<>();
         BlockPos theirs = new BlockPos(2, 64, 0);
         claims.put(theirs, "Eli");
         server.stations.put(theirs, Workstation.FURNACE);
@@ -131,7 +134,7 @@ class CrafterTest {
 
         assertEquals(Outcome.IDLE, outcome);
         assertEquals(0, server.logged("placed"));
-        assertEquals(java.util.Set.of(Workstation.CRAFTING_TABLE),
+        assertEquals(Set.of(Workstation.CRAFTING_TABLE),
                 crafter.plan(Map.of(Recipe.WOODEN_PICKAXE, 1), server.world, SOLDIER).missing(), "the workshop's to provide");
     }
 
@@ -152,7 +155,7 @@ class CrafterTest {
         assertEquals(Outcome.MADE, outcome, crafter.failure().orElse(""));
         assertEquals(8, server.count(ItemClass.TORCH));
         assertEquals(2, server.logged("opened FURNACE"));
-        assertEquals(java.util.Optional.empty(), crafter.failure(), "an interruption isn't a failure");
+        assertEquals(Optional.empty(), crafter.failure(), "an interruption isn't a failure");
     }
 
     @Test

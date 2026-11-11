@@ -5,8 +5,11 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Where a squad's wheat farm goes, and which cells it's planted in: the ground round one water
@@ -49,7 +52,7 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot) {
      * ground alone lay where no farmer could reach it, and it was kept.
      */
     public static Optional<FarmPlan> site(WorldView world, BlockPos around, int radius, int vertical,
-                                          java.util.function.Predicate<BlockPos> walkable) {
+                                          Predicate<BlockPos> walkable) {
         FarmPlan best = null;
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -radius; dx <= radius; dx++) {
@@ -82,10 +85,10 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot) {
      * water's plot is 80 cells at best, and by a pond's edge about half that: live, a camp's farm
      * of 44 cells fed eight soldiers a few loaves an hour, and they went hungry.
      */
-    public static FarmPlan grown(WorldView world, FarmPlan farm, int want, int vertical, java.util.function.Predicate<BlockPos> walkable) {
-        java.util.LinkedHashSet<BlockPos> plot = new java.util.LinkedHashSet<>(farm.plot());
+    public static FarmPlan grown(WorldView world, FarmPlan farm, int want, int vertical, Predicate<BlockPos> walkable) {
+        LinkedHashSet<BlockPos> plot = new LinkedHashSet<>(farm.plot());
         while (plot.size() < want) {
-            java.util.Set<BlockPos> taken = java.util.Set.copyOf(plot);
+            Set<BlockPos> taken = Set.copyOf(plot);
             Optional<FarmPlan> next = site(world, farm.water(), GROWN_RADIUS, vertical,
                     stand -> walkable.test(stand) && !taken.contains(stand.offset(0, -1, 0)));
             if (next.isEmpty()) {

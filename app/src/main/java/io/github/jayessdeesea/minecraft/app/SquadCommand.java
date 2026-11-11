@@ -2,16 +2,19 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.Objective;
+import io.github.jayessdeesea.minecraft.command.Plan;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
+import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -43,7 +46,7 @@ final class SquadCommand {
     final String name;
     private final SquadLeader squadLeader;
     /** The time of day last sent - a connection's thread writes, for the log of each decision. */
-    private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time;
+    private volatile TimeOfDay time;
     private final Consumer<String> radio;
     private final ExecutorService thread;
     private final AtomicBoolean busy = new AtomicBoolean();
@@ -68,13 +71,13 @@ final class SquadCommand {
     private volatile String escortEnded;
 
     /** The server sent the time of day - the squad leader plans around nightfall too. */
-    void receiveTime(io.github.jayessdeesea.minecraft.command.TimeOfDay time) {
+    void receiveTime(TimeOfDay time) {
         this.time = time;
         squadLeader.receiveTime(time);
     }
 
     /** Its soldiers' standing plans, as kept - the squad loop's thread sends them, for the squad leader's next look. */
-    void receivePlans(java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> plans, java.util.Map<String, String> workOrders) {
+    void receivePlans(Map<String, Plan> plans, Map<String, String> workOrders) {
         squadLeader.receivePlans(plans, workOrders);
     }
 
@@ -319,7 +322,7 @@ final class SquadCommand {
 
     /** ", Carol at MEDIUM risk" for each per-soldier override, in name order; empty if none. */
     private static String soldierRisk(SquadOrder order) {
-        return order.soldierRisk().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
+        return order.soldierRisk().entrySet().stream().sorted(Map.Entry.comparingByKey())
                 .map(e -> ", " + e.getKey() + " at " + e.getValue() + " risk").collect(Collectors.joining());
     }
 

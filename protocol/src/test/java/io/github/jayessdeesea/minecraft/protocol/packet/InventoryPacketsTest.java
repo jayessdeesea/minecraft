@@ -6,7 +6,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -86,7 +88,7 @@ class InventoryPacketsTest {
 
         InventoryUpdate.Slot slot = (InventoryUpdate.Slot) InventoryPackets.decodeSetSlot(in).update();
 
-        assertEquals(java.util.Map.of(9, 4, 21, 1), slot.item().orElseThrow().enchantments());
+        assertEquals(Map.of(9, 4, 21, 1), slot.item().orElseThrow().enchantments());
         assertEquals(0, in.readableBytes());
     }
 
@@ -104,7 +106,7 @@ class InventoryPacketsTest {
         ProtocolCodec.writeVarInt(in, 9);  // item_name: a string tag
         in.writeByte(8);
         in.writeShort(6);
-        in.writeBytes("Banner".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        in.writeBytes("Banner".getBytes(StandardCharsets.US_ASCII));
         ProtocolCodec.writeVarInt(in, 11); // lore: one line, an empty compound
         ProtocolCodec.writeVarInt(in, 1);
         in.writeByte(10);

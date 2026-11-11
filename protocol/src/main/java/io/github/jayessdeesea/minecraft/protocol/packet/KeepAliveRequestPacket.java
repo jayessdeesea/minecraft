@@ -9,7 +9,7 @@ import io.netty.buffer.ByteBuf;
  * an 8-byte payload appearing in isolation ~15 seconds after Play began (well after the initial
  * burst of registry/world-init packets at Play's start), matching vanilla's known Keep Alive
  * cadence. The payload's numeric meaning doesn't matter to us - like {@link
- * io.github.jayessdeesea.minecraft.protocol.packet.PingPongPacket}'s Status-state cousin, we only
+ * PingPongPacket}'s Status-state cousin, we only
  * ever need to copy it, never interpret it.
  */
 public record KeepAliveRequestPacket(long id) implements Packet {

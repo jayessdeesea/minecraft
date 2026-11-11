@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.command;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,11 +15,11 @@ class LinkUpTest {
 
     private static SoldierStatus soldier(String name, double x, double z, Report report, int deaths) {
         return new SoldierStatus(name, new Position(x, 64, z), new Order.Idle(), report,
-                Optional.of(new Condition(20, 20, deaths, java.util.Optional.empty())));
+                Optional.of(new Condition(20, 20, deaths, Optional.empty())));
     }
 
     private static List<Order> slots(int n) {
-        return java.util.Collections.nCopies(n, SLOT);
+        return Collections.nCopies(n, SLOT);
     }
 
     @Test

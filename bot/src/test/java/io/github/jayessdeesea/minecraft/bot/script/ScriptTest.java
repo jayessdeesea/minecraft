@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -82,8 +84,8 @@ class ScriptTest {
     @Test
     void aGuardThatStopsHoldingInterruptsWithoutFaultAndARerunResumes() {
         AtomicBoolean clear = new AtomicBoolean(true);
-        java.util.concurrent.atomic.AtomicInteger planks = new java.util.concurrent.atomic.AtomicInteger();
-        java.util.function.Supplier<Script> script = () -> new Script("Alice", List.of(
+        AtomicInteger planks = new AtomicInteger();
+        Supplier<Script> script = () -> new Script("Alice", List.of(
                 new Script.Step("planks", () -> planks.get() > 0, () -> done.add("planks"),
                         new Script.Expect("planks", () -> {
                             planks.set(4);
@@ -108,8 +110,8 @@ class ScriptTest {
 
     @Test
     void aRepeatStepGoesRoundUntilItsGoalHoldsEachRoundConfirmed() {
-        java.util.concurrent.atomic.AtomicInteger torches = new java.util.concurrent.atomic.AtomicInteger();
-        java.util.concurrent.atomic.AtomicInteger before = new java.util.concurrent.atomic.AtomicInteger();
+        AtomicInteger torches = new AtomicInteger();
+        AtomicInteger before = new AtomicInteger();
         Script script = new Script("Alice", List.of(Script.Step.until("craft 12 torches", () -> torches.get() >= 12, () -> {
             before.set(torches.get());
             done.add("craft");

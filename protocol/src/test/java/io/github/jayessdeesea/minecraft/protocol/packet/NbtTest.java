@@ -4,6 +4,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -33,13 +35,13 @@ class NbtTest {
 
     private static void name(ByteBuf buf, int type, String name) {
         buf.writeByte(type);
-        byte[] bytes = name.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] bytes = name.getBytes(StandardCharsets.UTF_8);
         buf.writeShort(bytes.length);
         buf.writeBytes(bytes);
     }
 
     private static void string(ByteBuf buf, String value) {
-        byte[] bytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
         buf.writeShort(bytes.length);
         buf.writeBytes(bytes);
     }

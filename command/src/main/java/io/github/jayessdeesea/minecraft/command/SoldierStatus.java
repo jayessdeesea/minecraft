@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.Optional;
+
 /**
  * What a {@link Soldier} reports upward - the input a {@code SquadLeader}'s decision core builds
  * its LLM prompt context from (docs/architecture.md's \"Behavior modeling\" section), kept to plain,
@@ -8,5 +10,5 @@ package io.github.jayessdeesea.minecraft.command;
  * {@link Condition} (LACE), empty until the server has first reported it.
  */
 public record SoldierStatus(String name, Position position, Order order, Report report,
-                            java.util.Optional<Condition> condition) {
+                            Optional<Condition> condition) {
 }

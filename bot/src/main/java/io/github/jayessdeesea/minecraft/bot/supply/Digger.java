@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
+import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.script.Script;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
@@ -401,7 +402,7 @@ final class Digger {
     }
 
     static boolean letsInWater(WorldView world, BlockPos block) {
-        return io.github.jayessdeesea.minecraft.bot.engineer.Clearing.letsInWater(world, block);
+        return Clearing.letsInWater(world, block);
     }
 
     static boolean standable(WorldView world, BlockPos cell) {

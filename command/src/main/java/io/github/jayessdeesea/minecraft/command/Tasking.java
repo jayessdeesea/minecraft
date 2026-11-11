@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.command;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -32,8 +33,8 @@ public final class Tasking {
      * {@code fill} the boxes with work left in them (empty when there's none), {@code except} the
      * cells neither touches, {@code gathering} those sent for dirt last cycle.
      */
-    public static Map<String, Order> allocate(List<Hand> hands, Cell feet, int radius, java.util.Optional<Box> dig,
-                                              java.util.Optional<Box> fill, Set<Cell> except, Set<String> gathering) {
+    public static Map<String, Order> allocate(List<Hand> hands, Cell feet, int radius, Optional<Box> dig,
+                                              Optional<Box> fill, Set<Cell> except, Set<String> gathering) {
         Map<String, Order> orders = new LinkedHashMap<>();
         if (hands.isEmpty()) {
             return orders;

@@ -7,14 +7,20 @@ import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
 import io.github.jayessdeesea.minecraft.bot.scenario.Scenario;
 import io.github.jayessdeesea.minecraft.bot.scenario.SyntheticWorld;
 import io.github.jayessdeesea.minecraft.bot.scenario.Terrain;
+import io.github.jayessdeesea.minecraft.command.Condition;
+import io.github.jayessdeesea.minecraft.command.Directive;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
+import io.github.jayessdeesea.minecraft.command.Plan;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Resource;
+import io.github.jayessdeesea.minecraft.command.Role;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
 import io.github.jayessdeesea.minecraft.command.ai.SpringAiSquadLeader;
+import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -28,9 +34,13 @@ import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.core.io.ClassPathResource;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 /**
  * Squad-leader evaluation: the real {@link SpringAiSquadLeader}, with the real system prompt,
@@ -53,8 +63,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 class SquadLeaderScenarioIT {
 
     private static final double PROGRESS_SLACK = 4;
-    private static final java.util.Optional<io.github.jayessdeesea.minecraft.command.Condition> HEALTHY =
-            java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 0, java.util.Optional.empty()));
+    private static final Optional<Condition> HEALTHY =
+            Optional.of(new Condition(20, 20, 0, Optional.empty()));
     private static final int ORACLE_BUDGET = 500_000;
 
     /**
@@ -154,7 +164,7 @@ class SquadLeaderScenarioIT {
                         new Order.Idle(), new Report.Cantco("can't make 1 wooden pickaxe: no table or furnace to use within 16 blocks, and not the makings of one"),
                         HEALTHY),
                 new SoldierStatus("Carol", new Position(start.x() + 2.5, world.ground(start.x() + 2, start.z() + 2) + 1, start.z() + 2.5),
-                        new Order.Idle(), settled, java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(1, 0, 0, java.util.Optional.empty()))))
+                        new Order.Idle(), settled, Optional.of(new Condition(1, 0, 0, Optional.empty()))))
                 : List.of(
                 new SoldierStatus("Alice", pointMan, new Order.Idle(), settled, HEALTHY),
                 soldierNear("Bob", world, start.x() - 2, start.z() + 2, settled),
@@ -163,7 +173,7 @@ class SquadLeaderScenarioIT {
                                 + "a route with falls costing 7 of my 20 health exists (MEDIUM risk)"), HEALTHY)
                         : stranded ? new SoldierStatus("Carol", new Position(start.x() + 6.5, start.y() + 4, start.z() + 4.5),
                         new Order.Idle(), new Report.Recovering(),
-                        java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(8, 0, 0, java.util.Optional.empty())))
+                        Optional.of(new Condition(8, 0, 0, Optional.empty())))
                         : soldierNear("Carol", world, start.x() + 2, start.z() + 2, settled));
         TerrainSurvey terrain = TerrainSurveyor.survey(world, pointMan);
 
@@ -173,7 +183,7 @@ class SquadLeaderScenarioIT {
                  "roleChanges": [], "detached": []}""",
                 start.x(), start.y(), start.z());
         ChatClient client = ChatClient.builder(variant == Variant.RETASKED ? answeringFirst(standing, model) : model).build();
-        SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha", client, io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts.read(
+        SpringAiSquadLeader leader = new SpringAiSquadLeader("Alpha", client, SquadLeaderPrompts.read(
                 new ClassPathResource("prompts/squad-leader-system-prompt.md"), new ClassPathResource("prompts/squad-leader-user-prompt.md")));
         if (variant == Variant.RETASKED) {
             leader.receiveObjective(new Objective("Establish an observation post", pointMan, "watch for hostiles"));
@@ -188,16 +198,16 @@ class SquadLeaderScenarioIT {
                     post.x(), post.y(), post.z());
             default -> "Move the squad to the objective";
         };
-        io.github.jayessdeesea.minecraft.command.Plan carolMining = new io.github.jayessdeesea.minecraft.command.Plan(
-                io.github.jayessdeesea.minecraft.command.Role.MINER, java.util.Optional.of(mine), List.of());
+        Plan carolMining = new Plan(
+                Role.MINER, Optional.of(mine), List.of());
         if (variant == Variant.KEPT) {
-            leader.receivePlans(java.util.Map.of("Carol", carolMining), java.util.Map.of());
+            leader.receivePlans(Map.of("Carol", carolMining), Map.of());
         }
         // TIMEDOUT: Bob's fetch timed out - nothing to fetch there - and nothing new is asked: don't give it him again.
-        io.github.jayessdeesea.minecraft.command.Directive fetch = new io.github.jayessdeesea.minecraft.command.Directive.Fetch(
-                io.github.jayessdeesea.minecraft.command.Resource.WOOD, 8, new Position(start.x() + 10, start.y(), start.z()));
+        Directive fetch = new Directive.Fetch(
+                Resource.WOOD, 8, new Position(start.x() + 10, start.y(), start.z()));
         if (variant == Variant.TIMEDOUT) {
-            leader.receivePlans(java.util.Map.of(), java.util.Map.of("Bob", "his last order, " + fetch.describe()
+            leader.receivePlans(Map.of(), Map.of("Bob", "his last order, " + fetch.describe()
                     + ", timed out 20 s ago: no progress in 120 s, 8 left"));
         }
         leader.receiveObjective(new Objective(mission, new Position(objective.x(), objective.y(), objective.z()), "secure the objective"));
@@ -226,21 +236,21 @@ class SquadLeaderScenarioIT {
             failures.add(String.format(Locale.ROOT, "no progress (%.0f, %.0f)", target.x(), target.z()));
         }
         // What the order changes: one restating a plan as it stands changes nothing, and the runner makes nothing of it.
-        java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> before = new java.util.HashMap<>();
+        Map<String, Plan> before = new HashMap<>();
         squad.forEach(s -> before.put(s.name(), variant == Variant.KEPT && s.name().equals("Carol")
-                ? carolMining : io.github.jayessdeesea.minecraft.command.Plan.RIFLEMAN));
-        java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> after = new java.util.HashMap<>(before);
+                ? carolMining : Plan.RIFLEMAN));
+        Map<String, Plan> after = new HashMap<>(before);
         order.changes().forEach(c -> after.computeIfPresent(c.soldier(), (n, p) -> p.with(c)));
-        List<io.github.jayessdeesea.minecraft.command.Plan.Change> changes = order.changes().stream()
+        List<Plan.Change> changes = order.changes().stream()
                 .filter(c -> !after.get(c.soldier()).equals(before.get(c.soldier()))).toList();
         switch (variant) {
             case MINER -> {
-                List<io.github.jayessdeesea.minecraft.command.Plan.Change> miners = changes.stream()
-                        .filter(c -> c.role().filter(r -> r == io.github.jayessdeesea.minecraft.command.Role.MINER).isPresent()).toList();
+                List<Plan.Change> miners = changes.stream()
+                        .filter(c -> c.role().filter(r -> r == Role.MINER).isPresent()).toList();
                 // A miner may be sent to its site first: it goes on to mine once there.
                 boolean onlyTheMiner = changes.stream().allMatch(c -> c.soldier().equals(miners.isEmpty() ? "" : miners.getFirst().soldier())
                         && (c.role().isPresent() || c.directives().filter(d -> d.stream().allMatch(x -> x instanceof
-                        io.github.jayessdeesea.minecraft.command.Directive.GoTo(Position at) && Math.hypot(at.x() - mine.x(), at.z() - mine.z()) <= 2)).isPresent()));
+                        Directive.GoTo(Position at) && Math.hypot(at.x() - mine.x(), at.z() - mine.z()) <= 2)).isPresent()));
                 if (miners.size() != 1 || miners.getFirst().site().filter(s -> Math.hypot(s.x() - mine.x(), s.z() - mine.z()) <= 2
                         && Math.abs(s.y() - mine.y()) <= 2).isEmpty() || !onlyTheMiner) {
                     failures.add("not one MINER at " + mine + ": " + changes);
@@ -248,7 +258,7 @@ class SquadLeaderScenarioIT {
             }
             case POST -> {
                 boolean posted = changes.stream().anyMatch(c -> c.soldier().equals("Bob") && c.directives().filter(d -> d.size() == 1
-                        && d.getFirst() instanceof io.github.jayessdeesea.minecraft.command.Directive.GoTo(Position at)
+                        && d.getFirst() instanceof Directive.GoTo(Position at)
                         && Math.hypot(at.x() - post.x(), at.z() - post.z()) <= 2).isPresent());
                 if (!posted || changes.stream().anyMatch(c -> !c.soldier().equals("Bob"))) {
                     failures.add("Bob not posted alone at " + post + ": " + changes);
@@ -276,7 +286,7 @@ class SquadLeaderScenarioIT {
             failures.add("false CANTCO: " + reason);
         }
         return new Outcome(scenario, variant, millis, order.risk().name()
-                + order.soldierRisk().entrySet().stream().map(e -> " " + e.getKey() + "=" + e.getValue()).sorted().collect(java.util.stream.Collectors.joining()), failures);
+                + order.soldierRisk().entrySet().stream().map(e -> " " + e.getKey() + "=" + e.getValue()).sorted().collect(Collectors.joining()), failures);
     }
 
     private static SoldierStatus soldierNear(String name, SyntheticWorld world, int x, int z, Report report) {

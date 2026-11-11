@@ -1,15 +1,22 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.world.Hardness;
+import io.github.jayessdeesea.minecraft.bot.world.Inventory;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
-import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * One soldier cutting its squad's {@link Staircase} down: from the step above the first not yet
@@ -53,7 +60,7 @@ public final class Miner {
     private final String name;
     private final Inventory inventory;
     private final Breacher breacher;
-    private final java.util.Set<BlockPos> leftOre = new java.util.HashSet<>();
+    private final Set<BlockPos> leftOre = new HashSet<>();
     private BlockPos ore;
     private int oreTicks;
     private Position standAt;
@@ -71,15 +78,15 @@ public final class Miner {
     }
 
     /** The first step of {@code stairs} not yet cut, or empty when all are. */
-    public static java.util.OptionalInt firstUncut(WorldView world, Staircase stairs) {
-        return firstUncut(world, stairs.cuts(), java.util.Set.of());
+    public static OptionalInt firstUncut(WorldView world, Staircase stairs) {
+        return firstUncut(world, stairs.cuts(), Set.of());
     }
 
     /**
      * The first of {@code cuts} still to cut, skipping any in a {@code blocked} tunnel and any whose
      * standing cell isn't open yet - a branch off a stretch of main tunnel that was given up.
      */
-    static java.util.OptionalInt firstUncut(WorldView world, List<Staircase.Cut> cuts, java.util.Set<Integer> blocked) {
+    static OptionalInt firstUncut(WorldView world, List<Staircase.Cut> cuts, Set<Integer> blocked) {
         for (int k = 0; k < cuts.size(); k++) {
             Staircase.Cut cut = cuts.get(k);
             if (blocked.contains(cut.tunnel()) || cut.cells().stream().noneMatch(c -> world.isSolid(c.x(), c.y(), c.z()) && world.workstation(c.x(), c.y(), c.z()).isEmpty())) {
@@ -89,18 +96,18 @@ public final class Miner {
             if (cut.tunnel() >= 0 && (world.isSolid(stand.x(), stand.y(), stand.z()) || world.isSolid(stand.x(), stand.y() + 1, stand.z()))) {
                 continue;
             }
-            return java.util.OptionalInt.of(k);
+            return OptionalInt.of(k);
         }
-        return java.util.OptionalInt.empty();
+        return OptionalInt.empty();
     }
 
     /** Tunnels given up for water, lava or a cave beside them. */
-    private final java.util.Set<Integer> blocked = new java.util.HashSet<>();
+    private final Set<Integer> blocked = new HashSet<>();
 
     /** Each tick: cuts {@code stairs} while {@code free}; anything else stops the dig under way. */
     public synchronized Progress tick(Position soldier, WorldView world, Staircase stairs, boolean free) {
         List<Staircase.Cut> cuts = stairs.cuts();
-        java.util.OptionalInt next;
+        OptionalInt next;
         Staircase.Cut cut;
         while (true) {
             next = firstUncut(world, cuts, blocked);
@@ -164,9 +171,9 @@ public final class Miner {
      */
     Optional<BlockPos> oreInSight(WorldView world, Staircase stairs, BlockPos from, Staircase.Cut cut) {
         int tier = bestPickaxe();
-        java.util.Set<BlockPos> floors = stairs.cuts().stream().filter(c -> c.tunnel() >= 0)
-                .map(c -> c.feet().offset(0, -1, 0)).collect(java.util.stream.Collectors.toSet());
-        List<BlockPos> near = new java.util.ArrayList<>(List.of(from, from.offset(0, 1, 0)));
+        Set<BlockPos> floors = stairs.cuts().stream().filter(c -> c.tunnel() >= 0)
+                .map(c -> c.feet().offset(0, -1, 0)).collect(Collectors.toSet());
+        List<BlockPos> near = new ArrayList<>(List.of(from, from.offset(0, 1, 0)));
         near.addAll(cut.cells());
         for (BlockPos cell : near) {
             for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
@@ -191,11 +198,11 @@ public final class Miner {
         return false;
     }
 
-    /** The best pickaxe's mining tier carried, or {@link io.github.jayessdeesea.minecraft.bot.world.Hardness#HAND} with none. */
+    /** The best pickaxe's mining tier carried, or {@link Hardness#HAND} with none. */
     private int bestPickaxe() {
-        int best = io.github.jayessdeesea.minecraft.bot.world.Hardness.HAND;
+        int best = Hardness.HAND;
         for (int slot = 0; slot < Inventory.SLOTS; slot++) {
-            java.util.OptionalInt tier = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.miningTier(inventory.itemAt(slot));
+            OptionalInt tier = ItemClassRegistry.miningTier(inventory.itemAt(slot));
             if (tier.isPresent()) {
                 best = Math.max(best, tier.getAsInt());
             }

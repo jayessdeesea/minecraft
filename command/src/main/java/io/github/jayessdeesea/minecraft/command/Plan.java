@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.command;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -90,7 +91,7 @@ public record Plan(Role role, Optional<Position> site, List<Directive> directive
         if (current().isPresent()) {
             return squad + "/" + soldier;
         }
-        return role == Role.RIFLEMAN ? squad : squad + "/" + role.name().toLowerCase(java.util.Locale.ROOT);
+        return role == Role.RIFLEMAN ? squad : squad + "/" + role.name().toLowerCase(Locale.ROOT);
     }
 
     /** Whether {@code unit} is a squad's detachment rather than its main body. */
@@ -116,14 +117,14 @@ public record Plan(Role role, Optional<Position> site, List<Directive> directive
                     ? new Objective.Task.Gather(fetch.resource()) : new Objective.Task.None();
             return Optional.of(new Objective(directive.get().describe(), directive.get().where(), intent, task));
         }
-        return role.task().map(task -> new Objective(role.name().toLowerCase(java.util.Locale.ROOT) + " at the site", site.orElseThrow(),
+        return role.task().map(task -> new Objective(role.name().toLowerCase(Locale.ROOT) + " at the site", site.orElseThrow(),
                 intent, task));
     }
 
     /** In words, for the squad leader's view. */
     public String describe() {
         String what = role == Role.RIFLEMAN ? "RIFLEMAN (with the squad)"
-                : role + " at " + String.format(java.util.Locale.ROOT, "(%.0f, %.0f, %.0f)", site.get().x(), site.get().y(), site.get().z());
+                : role + " at " + String.format(Locale.ROOT, "(%.0f, %.0f, %.0f)", site.get().x(), site.get().y(), site.get().z());
         return directives.isEmpty() ? what
                 : what + "; first: " + String.join(", then ", directives.stream().map(Directive::describe).toList());
     }

@@ -8,7 +8,9 @@ import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -178,7 +180,7 @@ final class SimClock implements Clockwork {
         }
 
         @Override
-        public <T> List<java.util.concurrent.Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) {
+        public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) {
             throw new UnsupportedOperationException("simulated: invokeAll");
         }
 
@@ -188,7 +190,7 @@ final class SimClock implements Clockwork {
         }
 
         @Override
-        protected <T> java.util.concurrent.RunnableFuture<T> newTaskFor(Callable<T> callable) {
+        protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
             return new FutureTask<>(callable);
         }
     }

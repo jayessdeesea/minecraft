@@ -1,11 +1,18 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.supply.Perimeter;
+import io.github.jayessdeesea.minecraft.bot.supply.Staircase;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
+import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
+import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import io.github.jayessdeesea.minecraft.command.Stockpile;
+import io.github.jayessdeesea.minecraft.command.TaskRegister;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
@@ -16,10 +23,26 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -40,7 +63,7 @@ class SquadSimulationTest {
      */
     @org.junit.jupiter.api.BeforeEach
     void nameTheScenario(org.junit.jupiter.api.TestInfo test) {
-        org.apache.logging.log4j.ThreadContext.put("scenario", test.getTestMethod().map(java.lang.reflect.Method::getName).orElse("unnamed"));
+        org.apache.logging.log4j.ThreadContext.put("scenario", test.getTestMethod().map(Method::getName).orElse("unnamed"));
     }
 
     @org.junit.jupiter.api.AfterEach
@@ -185,8 +208,8 @@ class SquadSimulationTest {
                 new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                 new int[]{37, SimServer.ITEM_BREAD, 16},
                 new int[]{38, SimServer.ITEM_WOODEN_SWORD, 1},
-                new int[]{9, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.CRAFTING_TABLE), 1},
-                new int[]{10, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.STICK), 8}), 12);
+                new int[]{9, SimServer.itemOf(ItemClassRegistry.ItemClass.CRAFTING_TABLE), 1},
+                new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.STICK), 8}), 12);
         assertTrue(server.log.stream().filter(l -> l.endsWith("'s pickaxe broke")).count() >= 4,
                 "every pickaxe wore out: " + server.log.stream().filter(l -> l.endsWith("'s pickaxe broke")).toList());
         assertMinedToTheIron(server);
@@ -242,13 +265,13 @@ class SquadSimulationTest {
         SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{9, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.WHEAT), 4},
+                        new int[]{9, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 4},
                         new int[]{10, SimServer.ITEM_OAK_LOG, 2})));
         runner.run();
 
         clock.advance(3 * 60_000);
 
-        assertEquals(1, server.count("Alice", io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FOOD),
+        assertEquals(1, server.count("Alice", ItemClassRegistry.ItemClass.FOOD),
                 "a loaf baked; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
@@ -270,13 +293,13 @@ class SquadSimulationTest {
         SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{9, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.WHEAT), 9},
+                        new int[]{9, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 9},
                         new int[]{10, SimServer.ITEM_OAK_LOG, 2})));
         runner.run();
 
         clock.advance(3 * 60_000);
 
-        io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass food = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FOOD;
+        ItemClassRegistry.ItemClass food = ItemClassRegistry.ItemClass.FOOD;
         int bread = server.count("Alice", food) + server.count("Bob", food);
         assertTrue(bread >= 6, "bread baked from the wheat carried: " + bread + "; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
@@ -303,7 +326,7 @@ class SquadSimulationTest {
                         new int[]{37, SimServer.ITEM_BREAD, 16})));
         runner.run();
 
-        java.util.Map<String, java.util.Set<String>> sides = new java.util.HashMap<>();
+        Map<String, Set<String>> sides = new HashMap<>();
         for (int second = 0; second < 240; second++) {
             clock.advance(1000);
             for (String name : List.of("Alice", "Bob")) {
@@ -312,11 +335,11 @@ class SquadSimulationTest {
                 double near = SoldierRunner.PATROL_RADIUS - 2.5;
                 String side = at.z() < 0.5 - near ? "N" : at.z() > 0.5 + near ? "S" : at.x() < 0.5 - near ? "W" : at.x() > 0.5 + near ? "E" : null;
                 if (side != null) {
-                    sides.computeIfAbsent(name, n -> new java.util.TreeSet<>()).add(side);
+                    sides.computeIfAbsent(name, n -> new TreeSet<>()).add(side);
                 }
             }
         }
-        assertEquals(java.util.Map.of("Alice", java.util.Set.of("E", "N", "S", "W"), "Bob", java.util.Set.of("E", "N", "S", "W")), sides,
+        assertEquals(Map.of("Alice", Set.of("E", "N", "S", "W"), "Bob", Set.of("E", "N", "S", "W")), sides,
                 "each soldier round all four sides");
     }
 
@@ -345,7 +368,7 @@ class SquadSimulationTest {
 
         clock.advance(3 * 60_000);
 
-        int stored = server.chests.values().stream().flatMap(java.util.Arrays::stream)
+        int stored = server.chests.values().stream().flatMap(Arrays::stream)
                 .filter(st -> st != null && st[0] == SimServer.ITEM_COBBLESTONE).mapToInt(st -> st[1]).sum();
         assertEquals(1, server.chests.size(), "one chest, the camp's");
         assertEquals(80, stored, "both loads in it; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
@@ -395,16 +418,16 @@ class SquadSimulationTest {
      */
     @Test
     void theCampsMineIsLeftOpenByAnIdleSquadKeepingTheCamp() {
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> shaft = new java.util.ArrayList<>();
+        List<BlockPos> shaft = new ArrayList<>();
         for (int x = 3; x <= 5; x++) {
             for (int z = 3; z <= 5; z++) {
                 for (int y = GROUND - 5; y <= GROUND; y++) {
-                    shaft.add(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
+                    shaft.add(new BlockPos(x, y, z));
                 }
             }
         }
-        io.github.jayessdeesea.minecraft.bot.supply.Staircase kept = new io.github.jayessdeesea.minecraft.bot.supply.Staircase(
-                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(4, GROUND + 1, 4), GROUND - 5);
+        Staircase kept = new Staircase(
+                new BlockPos(4, GROUND + 1, 4), GROUND - 5);
         new WallStore(state, "stairs").save("0,0", List.of(kept.head(), kept.step(kept.steps() - 1)));
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::pitInCamp, 1000);
@@ -428,8 +451,8 @@ class SquadSimulationTest {
     }
 
     /** The camp's mine as kept on disk in {@link #aRestartCutsTheCampsKeptStaircaseOnDown}: from (4, 64, 4) down to y=16. */
-    private static final io.github.jayessdeesea.minecraft.bot.supply.Staircase KEPT = new io.github.jayessdeesea.minecraft.bot.supply.Staircase(
-            new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(4, GROUND + 1, 4), 16);
+    private static final Staircase KEPT = new Staircase(
+            new BlockPos(4, GROUND + 1, 4), 16);
 
     /**
      * Flat, with {@link #KEPT}'s first six steps cut, and a block of dirt dropped on its head - as
@@ -440,7 +463,7 @@ class SquadSimulationTest {
             return SimServer.DIRT;
         }
         for (int k = 0; k < 6; k++) {
-            if (KEPT.cells(k).contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z))) {
+            if (KEPT.cells(k).contains(new BlockPos(x, y, z))) {
                 return SimServer.AIR;
             }
         }
@@ -472,7 +495,7 @@ class SquadSimulationTest {
         clock.advance(10 * 60_000);
 
         for (int k = 6; k < 16; k++) {
-            for (io.github.jayessdeesea.minecraft.bot.nav.BlockPos c : KEPT.cells(k)) {
+            for (BlockPos c : KEPT.cells(k)) {
                 assertEquals(SimServer.AIR, server.block(c.x(), c.y(), c.z()), "step " + (k + 1) + " of the kept staircase at " + c
                         + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
             }
@@ -504,16 +527,16 @@ class SquadSimulationTest {
 
         clock.advance(60_000);
 
-        assertEquals(java.util.Optional.of(List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1))), new WallStore(state, "stairs").load("0,0"),
+        assertEquals(Optional.of(List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1))), new WallStore(state, "stairs").load("0,0"),
                 "the camp's staircase still the one kept");
     }
 
     /** Every cell of {@link #KEPT}'s cuts - stairs, landing, tunnels - as air: a mine cut to the bottom. */
-    private static final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> KEPT_CUT = KEPT.cuts().stream()
-            .flatMap(c -> c.cells().stream()).collect(java.util.stream.Collectors.toUnmodifiableSet());
+    private static final Set<BlockPos> KEPT_CUT = KEPT.cuts().stream()
+            .flatMap(c -> c.cells().stream()).collect(Collectors.toUnmodifiableSet());
 
     private static int keptStairsAllCut(int x, int y, int z) {
-        return KEPT_CUT.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z)) ? SimServer.AIR : flat(x, y, z);
+        return KEPT_CUT.contains(new BlockPos(x, y, z)) ? SimServer.AIR : flat(x, y, z);
     }
 
     /**
@@ -546,10 +569,10 @@ class SquadSimulationTest {
         // Waiting the night out down the mine is hiding, not a soldier stuck: no alert for it.
         List<String> alerts;
         try {
-            alerts = java.nio.file.Files.readAllLines(Path.of("target/sim/byNightASquadWithItsMineCutWaitsAtTheLanding.log")).stream()
+            alerts = Files.readAllLines(Path.of("target/sim/byNightASquadWithItsMineCutWaitsAtTheLanding.log")).stream()
                     .filter(l -> l.contains("[Alert]") && l.contains("stationary")).toList();
-        } catch (java.io.IOException e) {
-            throw new java.io.UncheckedIOException(e);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
         assertEquals(List.of(), alerts);
     }
@@ -581,8 +604,8 @@ class SquadSimulationTest {
 
         clock.advance(60_000);
 
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> farm = new WallStore(state, "farm").load("0,0").orElseThrow();
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> plot = farm.subList(1, farm.size());
+        List<BlockPos> farm = new WallStore(state, "farm").load("0,0").orElseThrow();
+        List<BlockPos> plot = farm.subList(1, farm.size());
         assertTrue(plot.stream().anyMatch(c -> c.x() < 19) && plot.stream().anyMatch(c -> c.x() > 19),
                 "round both ponds: " + plot.size() + " cells, x " + plot.stream().mapToInt(c -> c.x()).summaryStatistics());
         assertTrue(plot.size() > 80, "more than one water's plot: " + plot.size());
@@ -611,14 +634,14 @@ class SquadSimulationTest {
                 .run();
         clock.advance(2 * 60_000);
 
-        io.github.jayessdeesea.minecraft.command.Foothold.Standard mined = chain.foothold().orElseThrow().standards().stream()
+        Foothold.Standard mined = chain.foothold().orElseThrow().standards().stream()
                 .filter(s -> s.name().equals("stone and iron")).findFirst().orElseThrow();
         assertTrue(mined.met(), "the camp's mine: " + mined.status());
     }
 
     /** As {@link #keptStairsAllCut}, with the landing's stand's floor gone: ore taken from under it. */
     private static int keptStairsCutLandingHoled(int x, int y, int z) {
-        io.github.jayessdeesea.minecraft.bot.nav.BlockPos stand = KEPT.landingStand();
+        BlockPos stand = KEPT.landingStand();
         return x == stand.x() && y == stand.y() - 1 && z == stand.z() ? SimServer.AIR : keptStairsAllCut(x, y, z);
     }
 
@@ -648,10 +671,10 @@ class SquadSimulationTest {
 
         List<String> stranded;
         try {
-            stranded = java.nio.file.Files.readAllLines(Path.of("target/sim/byNightTheCutterWaitsAtALandingWhoseStandLostItsFloor.log")).stream()
+            stranded = Files.readAllLines(Path.of("target/sim/byNightTheCutterWaitsAtALandingWhoseStandLostItsFloor.log")).stream()
                     .filter(l -> l.contains("RECOVERY") && l.contains("is stranded")).toList();
-        } catch (java.io.IOException e) {
-            throw new java.io.UncheckedIOException(e);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
         assertEquals(List.of(), stranded);
         for (String name : List.of("Alice", "Bob")) {
@@ -664,8 +687,8 @@ class SquadSimulationTest {
      * base's plan let go - it went on building the base at the stairs' head, reporting Fortifying.
      */
     @Test
-    void aSquadSentFromItsPatrolBaseToTheMineStopsBuildingTheBase() throws java.io.IOException {
-        java.util.concurrent.atomic.AtomicBoolean mine = new java.util.concurrent.atomic.AtomicBoolean();
+    void aSquadSentFromItsPatrolBaseToTheMineStopsBuildingTheBase() throws IOException {
+        AtomicBoolean mine = new AtomicBoolean();
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
@@ -686,10 +709,10 @@ class SquadSimulationTest {
 
         clock.advance(20_000); // the base laid out and begun
         Path log = Path.of("target/sim/aSquadSentFromItsPatrolBaseToTheMineStopsBuildingTheBase.log");
-        assertTrue(java.nio.file.Files.readAllLines(log).stream().anyMatch(l -> l.contains("Fortifying")), "the base begun");
+        assertTrue(Files.readAllLines(log).stream().anyMatch(l -> l.contains("Fortifying")), "the base begun");
         mine.set(true);
         clock.advance(6 * 60_000); // the general's next call, and the squad on its way
-        List<String> lines = java.nio.file.Files.readAllLines(log);
+        List<String> lines = Files.readAllLines(log);
         List<String> last = lines.subList(Math.max(0, lines.size() - 40), lines.size()).stream()
                 .filter(l -> l.contains("Fortifying")).toList();
         assertEquals(List.of(), last, "still building the base");
@@ -719,7 +742,7 @@ class SquadSimulationTest {
 
         clock.advance(60_000);
 
-        assertEquals(1, server.count("Hal", io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FOOD),
+        assertEquals(1, server.count("Hal", ItemClassRegistry.ItemClass.FOOD),
                 "Fran's ration handed to Hal; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
@@ -833,7 +856,7 @@ class SquadSimulationTest {
 
         // Level with the ground, nothing open to the sky: a step a soldier built to climb out can
         // seal a pocket under it, underground and harmless.
-        List<String> open = new java.util.ArrayList<>();
+        List<String> open = new ArrayList<>();
         for (int x = 3; x <= 5; x++) {
             for (int z = 3; z <= 5; z++) {
                 if (server.block(x, GROUND, z) == SimServer.AIR) {
@@ -922,7 +945,7 @@ class SquadSimulationTest {
         assertEquals(0, mound, "blocks of the mound left");
         List<String> review = chain.requestReview();
         String toSquadLeader = review.stream().filter(l -> l.startsWith("  squad leader:")).findFirst().orElseThrow(() -> new AssertionError("no requests to the squad leader: " + review));
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+) answered.*?(\\d+) settled").matcher(toSquadLeader);
+        Matcher m = Pattern.compile("(\\d+) answered.*?(\\d+) settled").matcher(toSquadLeader);
         assertTrue(m.find(), toSquadLeader);
         int raised = Integer.parseInt(m.group(1)) + Integer.parseInt(m.group(2));
         assertTrue(raised <= 6, "requests to the squad leader in 4 minutes: " + review);
@@ -966,8 +989,8 @@ class SquadSimulationTest {
     }
 
     /** The camp's wall, as laid out round the camp's ground on flat ground: two high, eight out. */
-    private static final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> CAMP_WALL = java.util.Set.copyOf(
-            io.github.jayessdeesea.minecraft.bot.supply.Perimeter.layout(new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+    private static final Set<BlockPos> CAMP_WALL = Set.copyOf(
+            Perimeter.layout(new WorldView() {
                 @Override
                 public boolean isSolid(int x, int y, int z) {
                     return y <= GROUND;
@@ -979,15 +1002,15 @@ class SquadSimulationTest {
                 }
 
                 @Override
-                public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(
-                        io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                public List<TrackedEntity> nearbyHostiles(
+                        Position center, double radius) {
                     return List.of();
                 }
-            }, new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(0, GROUND + 1, 0), SoldierRunner.WALL_RADIUS));
+            }, new BlockPos(0, GROUND + 1, 0), SoldierRunner.WALL_RADIUS));
 
     /** Flat, the camp's wall standing round it in cobblestone. */
     private static int walledCamp(int x, int y, int z) {
-        return CAMP_WALL.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z)) ? SimServer.COBBLESTONE : flat(x, y, z);
+        return CAMP_WALL.contains(new BlockPos(x, y, z)) ? SimServer.COBBLESTONE : flat(x, y, z);
     }
 
     /**
@@ -1015,7 +1038,7 @@ class SquadSimulationTest {
                 .run();
         clock.advance(2 * 60_000);
 
-        io.github.jayessdeesea.minecraft.command.Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
+        Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
                 .filter(s -> s.name().equals("the camp walled in")).findFirst().orElseThrow();
         assertTrue(walled.met(), "the camp's wall: " + walled.status());
     }
@@ -1046,7 +1069,7 @@ class SquadSimulationTest {
 
         clock.advance(30 * 60_000);
 
-        io.github.jayessdeesea.minecraft.command.Foothold.Standard lit = chain.foothold().orElseThrow().standards().stream()
+        Foothold.Standard lit = chain.foothold().orElseThrow().standards().stream()
                 .filter(s -> s.name().equals("the camp's ground lit")).findFirst().orElseThrow();
         assertTrue(lit.met(), "the camp's ground: " + lit.status() + "; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 8), server.log.size()));
@@ -1178,7 +1201,7 @@ class SquadSimulationTest {
      * sky. Live, an unarmed soldier at 4 health digging the camp by night was killed by one.
      */
     @Test
-    void byNightOneAtLowHealthDoesntKeepTheCamp() throws java.io.IOException {
+    void byNightOneAtLowHealthDoesntKeepTheCamp() throws IOException {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::moundInALitCamp, 14_000); // an hour after dusk
         Roster roster = new Roster("Alpha:Alice,Bob");
@@ -1194,12 +1217,12 @@ class SquadSimulationTest {
         runner.run();
         clock.advance(5_000); // joined, and the camp's work handed out
         Path log = Path.of("target/sim/byNightOneAtLowHealthDoesntKeepTheCamp.log");
-        int before = java.nio.file.Files.readAllLines(log).size();
+        int before = Files.readAllLines(log).size();
         server.starve("Bob", 4);
 
         clock.advance(2 * 60_000);
 
-        List<String> after = java.nio.file.Files.readAllLines(log);
+        List<String> after = Files.readAllLines(log);
         after = after.subList(before, after.size());
         assertTrue(after.stream().anyMatch(l -> l.contains("Bob taken off dig the camp's ground")), "Bob, at 4 health, taken off the camp's work");
         assertTrue(after.stream().noneMatch(l -> l.contains("Bob has nothing else to do - keeps the camp")), "and not given it again");
@@ -1266,10 +1289,10 @@ class SquadSimulationTest {
      */
     @Test
     void aHungrySquadKeepsTheCampsFarmAfterARestart() {
-        new WallStore(state, "farm").save("0,0", List.of(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(7, GROUND, 7),
-                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(5, GROUND, 6), new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(5, GROUND, 7),
-                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(5, GROUND, 8), new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(6, GROUND, 5),
-                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(7, GROUND, 5), new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(8, GROUND, 5)));
+        new WallStore(state, "farm").save("0,0", List.of(new BlockPos(7, GROUND, 7),
+                new BlockPos(5, GROUND, 6), new BlockPos(5, GROUND, 7),
+                new BlockPos(5, GROUND, 8), new BlockPos(6, GROUND, 5),
+                new BlockPos(7, GROUND, 5), new BlockPos(8, GROUND, 5)));
         hungrySquadFarms(SquadSimulationTest::pondByCamp);
     }
 
@@ -1285,15 +1308,15 @@ class SquadSimulationTest {
         SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{37, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.HOE), 1},
-                        new int[]{9, SimServer.itemOf(io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.SEEDS), 12},
+                        new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
+                        new int[]{9, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 12},
                         new int[]{10, SimServer.ITEM_OAK_LOG, 4})));
         runner.run();
 
         clock.advance(8 * 60_000);
 
-        io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass wheat = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.WHEAT;
-        io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass food = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass.FOOD;
+        ItemClassRegistry.ItemClass wheat = ItemClassRegistry.ItemClass.WHEAT;
+        ItemClassRegistry.ItemClass food = ItemClassRegistry.ItemClass.FOOD;
         int harvested = server.count("Alice", wheat) + server.count("Bob", wheat) + server.count("Alice", food) + server.count("Bob", food);
         assertTrue(harvested > 0, "wheat harvested, or baked; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
@@ -1329,7 +1352,7 @@ class SquadSimulationTest {
                         new int[]{11, SimServer.ITEM_COBBLESTONE, 64})));
         // The wall as it was laid out, on the flat ground, before it was built of dirt - as the
         // garrison keeps it on disk; laid out over the dirt, it would stand on top of it.
-        io.github.jayessdeesea.minecraft.bot.world.WorldView ground = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+        WorldView ground = new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
                 return flat(x, y, z) != SimServer.AIR;
@@ -1341,12 +1364,12 @@ class SquadSimulationTest {
             }
 
             @Override
-            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(Position center, double radius) {
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
                 return List.of();
             }
         };
-        List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> layout = io.github.jayessdeesea.minecraft.bot.supply.Perimeter.layout(ground,
-                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(0, GROUND + 1, 0), 8);
+        List<BlockPos> layout = Perimeter.layout(ground,
+                new BlockPos(0, GROUND + 1, 0), 8);
         new WallStore(state).save("0,0", layout);
         runner.run();
 
@@ -1385,7 +1408,7 @@ class SquadSimulationTest {
 
         clock.advance(4 * 60_000);
 
-        List<io.github.jayessdeesea.minecraft.command.TaskRegister.Tasking> open = runner.taskings("Alpha");
+        List<TaskRegister.Tasking> open = runner.taskings("Alpha");
         assertTrue(open.stream().noneMatch(t -> t.task().equals("dig the camp's ground")), "taken off it: " + open);
         assertTrue(open.stream().anyMatch(t -> t.task().equals("wall the camp")), "on to the wall: " + open);
         List<String> review = runner.taskingReview("Alpha");
@@ -1436,7 +1459,7 @@ class SquadSimulationTest {
         // Closed - of dirt, with no stone to hand, so the standard itself waits on stone.
         Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
                 .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
-        assertEquals(java.util.OptionalInt.of(0), runner.wallLeft("Alpha"), walled.status());
+        assertEquals(OptionalInt.of(0), runner.wallLeft("Alpha"), walled.status());
     }
 
     /**
@@ -1462,7 +1485,7 @@ class SquadSimulationTest {
 
         clock.advance(25 * 60_000);
 
-        assertEquals(java.util.OptionalInt.of(0), runner.levellingLeft("Alpha"), "high ground and hollows left inside the wall");
+        assertEquals(OptionalInt.of(0), runner.levellingLeft("Alpha"), "high ground and hollows left inside the wall");
     }
 
     /**

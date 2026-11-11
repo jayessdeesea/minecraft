@@ -86,7 +86,7 @@ public final class TaskRegister {
 
     private static Tasking done(Tasking t, long now, List<String> findings) {
         findings.add("[Register] " + t.who() + " done: " + t.task() + ", in " + (now - t.given()) / 1000 + " s");
-        return new Tasking(t.who(), t.task(), t.given(), State.DONE, t.report(), java.util.OptionalInt.of(0), now);
+        return new Tasking(t.who(), t.task(), t.given(), State.DONE, t.report(), OptionalInt.of(0), now);
     }
 
     private static Tasking next(Tasking t, Assignment a, long now, List<String> findings) {

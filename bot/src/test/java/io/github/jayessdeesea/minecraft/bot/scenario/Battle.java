@@ -1,14 +1,17 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
-import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
 import io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
+import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.OptionalDouble;
+import java.util.Random;
 
 /**
  * A {@link SyntheticWorld} with simulated hostiles in it. Terrain comes from the world; the
@@ -104,12 +107,12 @@ public final class Battle implements WorldView {
     }
 
     private final SyntheticWorld world;
-    private final java.util.Random random;
+    private final Random random;
     private final List<Hostile> hostiles = new ArrayList<>();
 
     public Battle(SyntheticWorld world, long seed) {
         this.world = world;
-        this.random = new java.util.Random(seed);
+        this.random = new Random(seed);
     }
 
     public Hostile spawn(Archetype archetype, double x, double z) {
@@ -162,7 +165,7 @@ public final class Battle implements WorldView {
      * been up {@link #SHIELD_DELAY_TICKS} or more, facing that yaw: an arrow from within 90 degrees
      * of where it faces is stopped.
      */
-    public double step(Position soldier, java.util.OptionalDouble shieldFacing) {
+    public double step(Position soldier, OptionalDouble shieldFacing) {
         if (shieldFacing.isPresent()) {
             double yaw = Math.toRadians(shieldFacing.getAsDouble());
             double lookX = -Math.sin(yaw);
@@ -189,7 +192,7 @@ public final class Battle implements WorldView {
                 near.add(at);
             }
         }
-        near.sort(java.util.Comparator.comparingDouble(p -> horizontal(p, center)));
+        near.sort(Comparator.comparingDouble(p -> horizontal(p, center)));
         return near;
     }
 
@@ -350,7 +353,7 @@ public final class Battle implements WorldView {
     @Override
     public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
         return hostiles.stream().filter(Hostile::alive)
-                .map(h -> new TrackedEntity(h.id, HostileMobRegistry.typeIdOf(h.archetype.name().toLowerCase(java.util.Locale.ROOT)), positionOf(h)))
+                .map(h -> new TrackedEntity(h.id, HostileMobRegistry.typeIdOf(h.archetype.name().toLowerCase(Locale.ROOT)), positionOf(h)))
                 .filter(e -> distance3(e.position(), center) <= radius)
                 .sorted(Comparator.comparingDouble(e -> distance3(e.position(), center)))
                 .toList();

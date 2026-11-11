@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -43,7 +44,7 @@ class FlightRecorderTest {
     @Test
     void aSampleIsDueEveryFewTicks() {
         FlightRecorder recorder = new FlightRecorder();
-        long due = java.util.stream.IntStream.range(0, 20).filter(i -> recorder.due()).count();
+        long due = IntStream.range(0, 20).filter(i -> recorder.due()).count();
         assertEquals(20 / FlightRecorder.EVERY_TICKS, due);
     }
 }

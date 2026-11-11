@@ -8,6 +8,7 @@ import io.github.jayessdeesea.minecraft.command.TerrainSurvey.Ground;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -99,8 +100,8 @@ class TerrainSurveyorTest {
             }
 
             @Override
-            public java.util.List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(Position center, double radius) {
-                return java.util.List.of();
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
             }
         };
         TerrainSurvey survey = TerrainSurveyor.survey(terrace, new Position(0.5, GROUND, 0.5));
@@ -109,7 +110,7 @@ class TerrainSurveyorTest {
         assertTrue(at(survey, 16, 0).reachable(), "a step cut into the face, then onto the top");
 
         TerrainSurvey.Sample objective = TerrainSurveyor.survey(terrace, new Position(0.5, GROUND, 0.5), 0, false,
-                java.util.Optional.of(new Position(12.5, GROUND + 3, 3.5))).atObjective().orElseThrow();
+                Optional.of(new Position(12.5, GROUND + 3, 3.5))).atObjective().orElseThrow();
         assertEquals(new TerrainSurvey.Sample(12, 3, TerrainSurvey.Ground.LAND, GROUND + 3, true), objective,
                 "the objective's own column, off the grid");
     }

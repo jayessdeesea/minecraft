@@ -16,10 +16,17 @@ import io.github.jayessdeesea.minecraft.command.Risk;
 import io.github.jayessdeesea.minecraft.command.Soldier;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.OptionalInt;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 /**
  * The {@code bot} module's implementation of {@link Soldier}: a deterministic, non-LLM per-tick
@@ -120,8 +127,8 @@ public final class DeterministicSoldier implements Soldier {
      * blocks higher - the flatter of the two arcs, found by flying the arrow as the server does.
      * Empty when no arc reaches that far.
      */
-    static java.util.OptionalDouble aimPitch(double across, double up) {
-        java.util.OptionalDouble best = java.util.OptionalDouble.empty();
+    static OptionalDouble aimPitch(double across, double up) {
+        OptionalDouble best = OptionalDouble.empty();
         double bestMiss = 0.5; // hit within half a block, or not at all
         for (double elevation = -60; elevation <= 45; elevation += 0.25) {
             double theta = Math.toRadians(elevation);
@@ -140,7 +147,7 @@ public final class DeterministicSoldier implements Soldier {
             }
             if (x >= across && Math.abs(y - up) < bestMiss) {
                 bestMiss = Math.abs(y - up);
-                best = java.util.OptionalDouble.of(-elevation);
+                best = OptionalDouble.of(-elevation);
                 if (bestMiss < 0.05) {
                     break; // the flat arc, close enough: a steeper one only flies longer
                 }
@@ -160,7 +167,7 @@ public final class DeterministicSoldier implements Soldier {
         double dx = target.x() - position.x();
         double dz = target.z() - position.z();
         double up = target.y() + TARGET_HEIGHT - (position.y() + EYE_HEIGHT);
-        java.util.OptionalDouble aim = aimPitch(Math.hypot(dx, dz), up);
+        OptionalDouble aim = aimPitch(Math.hypot(dx, dz), up);
         if (aim.isEmpty()) {
             return false;
         }
@@ -242,7 +249,7 @@ public final class DeterministicSoldier implements Soldier {
     private double lastReportedHealth = -1;
     private int deaths;
     // Set by the connection's thread on a hit, consumed by the tick loop.
-    private final java.util.concurrent.atomic.AtomicBoolean hurt = new java.util.concurrent.atomic.AtomicBoolean();
+    private final AtomicBoolean hurt = new AtomicBoolean();
     private int underFireTicks; // tick-loop only
 
     public DeterministicSoldier(String name, Position startingPosition) {
@@ -276,7 +283,7 @@ public final class DeterministicSoldier implements Soldier {
             hurt.set(true);
         }
         lastReportedHealth = health;
-        condition = new Condition(health, food, deaths, java.util.Optional.empty());
+        condition = new Condition(health, food, deaths, Optional.empty());
     }
 
     /**
@@ -331,8 +338,8 @@ public final class DeterministicSoldier implements Soldier {
         // torches it couldn't make, and one boxed in a pocket reported digging, and nobody came for either.
         boolean noRoute = report instanceof Report.Cantco(String why) && why.startsWith("no route from");
         Report now = busy != null && !(report instanceof Report.InContact) && !noRoute ? busy : report;
-        return new SoldierStatus(name, position, order, now, java.util.Optional.ofNullable(condition)
-                .map(c -> new Condition(c.health(), c.food(), c.deaths(), java.util.Optional.ofNullable(carried))));
+        return new SoldierStatus(name, position, order, now, Optional.ofNullable(condition)
+                .map(c -> new Condition(c.health(), c.food(), c.deaths(), Optional.ofNullable(carried))));
     }
 
     /**
@@ -412,7 +419,7 @@ public final class DeterministicSoldier implements Soldier {
         // spot is taken for it: live, one stood a tenth of a block from the soldier swinging, at a
         // third of a heart, and the sweep killed it.
         int self = entityId;
-        java.util.stream.Stream<Position> others = self >= 0 ? world.playersNear(target, SWEEP_REACH + 1, self).stream()
+        Stream<Position> others = self >= 0 ? world.playersNear(target, SWEEP_REACH + 1, self).stream()
                 : world.playersNear(target, SWEEP_REACH + 1).stream()
                 .filter(p -> Math.hypot(p.x() - position.x(), p.z() - position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - position.y()) > 1);
         return others.anyMatch(p -> Math.hypot(p.x() - target.x(), p.z() - target.z()) <= SWEEP_REACH && Math.abs(p.y() - target.y()) <= 1.5);
@@ -683,7 +690,7 @@ public final class DeterministicSoldier implements Soldier {
     /** How long a cell it got stuck short of is routed round: long enough for a squadmate in the way to move on. */
     private static final int AVOID_TICKS = 200;
     /** Cells it got stuck short of, and the tick each is tried again from: plans route round them meanwhile. */
-    private final java.util.Map<BlockPos, Integer> avoided = new java.util.HashMap<>();
+    private final Map<BlockPos, Integer> avoided = new HashMap<>();
     private static final org.apache.logging.log4j.Logger LOG = org.apache.logging.log4j.LogManager.getLogger(DeterministicSoldier.class);
     private int navTicks;
     /** Cell visits per plan - bounds the planning cost per tick (see {@link Pathfinder}). */
@@ -779,7 +786,7 @@ public final class DeterministicSoldier implements Soldier {
                     LOG.info("{} stuck short of {} - tries another way round it for a while", name, failed);
                 }
             }
-            java.util.Set<BlockPos> avoid = java.util.Set.copyOf(avoided.keySet());
+            Set<BlockPos> avoid = Set.copyOf(avoided.keySet());
             // A fall is the exception, never the plan: first a route with none - walked, then with
             // steps built from what it carries - and only with no such route one the order's risk allows.
             BlockPos start = standingCell(world, position);
@@ -874,7 +881,7 @@ public final class DeterministicSoldier implements Soldier {
         if (next.y() != here.y() + 1 || Math.abs(next.x() - here.x()) + Math.abs(next.z() - here.z()) != 1) {
             return List.of();
         }
-        List<BlockPos> solid = java.util.stream.Stream.of(next, next.offset(0, 1, 0), here.offset(0, 2, 0))
+        List<BlockPos> solid = Stream.of(next, next.offset(0, 1, 0), here.offset(0, 2, 0))
                 .filter(c -> world.isSolid(c.x(), c.y(), c.z())).toList();
         // Only soil, and stone with a pickaxe, is ever dug: anything else put there since the plan - a
         // wall, say - is left be, and the soldier re-plans round it once it's stuck.
@@ -988,7 +995,7 @@ public final class DeterministicSoldier implements Soldier {
             lastPartialPlanFrom = position;
         }
         report = failedPlans >= CANTCO_AFTER_FAILED_PLANS
-                ? new Report.Cantco(String.format(java.util.Locale.ROOT,
+                ? new Report.Cantco(String.format(Locale.ROOT,
                         "no route from (%.0f, %.0f, %.0f) to within %.0f of (%.0f, %.0f, %.0f)",
                         position.x(), position.y(), position.z(), goal.horizontalTolerance(), goal.x(), goal.y(), goal.z())
                         + priceOfARiskierRoute(world, plan))
@@ -1020,7 +1027,7 @@ public final class DeterministicSoldier implements Soldier {
         int damage = (int) Math.ceil(Pathfinder.fallDamage(start, route.path()) * factor);
         double left = known.health() - damage;
         Risk needed = left >= Risk.MEDIUM.minHealthAfter() ? Risk.MEDIUM : left >= Risk.HIGH.minHealthAfter() ? Risk.HIGH : null;
-        return String.format(java.util.Locale.ROOT, "; a route with falls costing %d of my %.0f health exists%s", damage,
+        return String.format(Locale.ROOT, "; a route with falls costing %d of my %.0f health exists%s", damage,
                 known.health(), needed == null ? ", too costly even at HIGH risk" : " (" + needed + " risk)");
     }
 

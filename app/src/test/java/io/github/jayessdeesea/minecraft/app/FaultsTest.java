@@ -1,12 +1,14 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.Test;
 
 class FaultsTest {
 
@@ -18,7 +20,7 @@ class FaultsTest {
         AtomicInteger runs = new AtomicInteger();
         Runnable task = faults.guard("the squad loop", () -> {
             if (runs.incrementAndGet() == 1) {
-                throw new java.util.NoSuchElementException("No value present");
+                throw new NoSuchElementException("No value present");
             }
         });
 

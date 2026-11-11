@@ -1,18 +1,35 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
+import io.github.jayessdeesea.minecraft.bot.nav.Goal;
+import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
+import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
+import io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor;
 import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
 import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.WorldModel;
+import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Risk;
+import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
 import io.github.jayessdeesea.minecraft.protocol.MinecraftClient;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The dev server's real ground, as one connection sees it. A spectator joins above a point, loads
@@ -34,7 +51,7 @@ class WorldProbeLiveIT {
         WorldModel world = new WorldModel(chunks, new EntityTracker());
         // As any player - a soldier's own name joins where it last stood, seeing what it sees.
         String name = System.getProperty("probe.name", "Surveyor");
-        java.util.concurrent.atomic.AtomicReference<Position> joinedAt = new java.util.concurrent.atomic.AtomicReference<>();
+        AtomicReference<Position> joinedAt = new AtomicReference<>();
         PlaySession session = MinecraftClient.join("localhost", 25565, name, new PlaySessionListeners(
                 update -> chunks.load(update.chunkX(), update.chunkZ(), update.sectionBlockStates(), name),
                 unload -> chunks.unload(unload.chunkX(), unload.chunkZ(), name),
@@ -69,8 +86,8 @@ class WorldProbeLiveIT {
                     }
                 }
             }
-            java.util.List<FarmPlan> candidates = new java.util.ArrayList<>();
-            java.util.Map<Integer, Integer> byHeight = new java.util.TreeMap<>();
+            List<FarmPlan> candidates = new ArrayList<>();
+            Map<Integer, Integer> byHeight = new TreeMap<>();
             for (int dx = -radius; dx <= radius; dx++) {
                 for (int dz = -radius; dz <= radius; dz++) {
                     for (int y = ground - 30; y <= ground + 30; y++) {
@@ -83,7 +100,7 @@ class WorldProbeLiveIT {
                 }
             }
             System.out.println("Water sources by height: " + byHeight);
-            candidates.stream().sorted(java.util.Comparator.comparingInt((FarmPlan c) -> -c.plot().size())).limit(5)
+            candidates.stream().sorted(Comparator.comparingInt((FarmPlan c) -> -c.plot().size())).limit(5)
                     .forEach(c -> System.out.printf("  candidate: water at %s, %d cells, %d blocks from the point%n", c.water(), c.plot().size(),
                             Math.round(Math.hypot(c.water().x() - x, c.water().z() - z))));
             Optional<FarmPlan> plan = FarmPlan.site(world, new BlockPos(x, ground, z), radius);
@@ -97,10 +114,10 @@ class WorldProbeLiveIT {
             if (Boolean.getBoolean("camp.survey")) {
                 record Site(int x, int z, int height, int level, int water) {
                 }
-                java.util.List<Site> sites = new java.util.ArrayList<>();
+                List<Site> sites = new ArrayList<>();
                 for (int cx = x - 48; cx <= x + 48; cx += 4) {
                     for (int cz = z - 48; cz <= z + 48; cz += 4) {
-                        java.util.List<Integer> heights = new java.util.ArrayList<>();
+                        List<Integer> heights = new ArrayList<>();
                         int water = 0;
                         for (int dx = -8; dx <= 8; dx++) {
                             for (int dz = -8; dz <= 8; dz++) {
@@ -120,20 +137,20 @@ class WorldProbeLiveIT {
                         if (heights.size() < 200) {
                             continue;
                         }
-                        java.util.Collections.sort(heights);
+                        Collections.sort(heights);
                         int typical = heights.get(heights.size() / 2);
                         int level = (int) heights.stream().filter(h -> Math.abs(h - typical) <= 1).count();
                         sites.add(new Site(cx, cz, typical, level, water));
                     }
                 }
                 sites.stream().filter(site -> site.height() <= Integer.getInteger("camp.maxY", 72))
-                        .sorted(java.util.Comparator.comparingInt(Site::level).reversed()).limit(8)
+                        .sorted(Comparator.comparingInt(Site::level).reversed()).limit(8)
                         .forEach(site -> System.out.printf("Camp site x=%d z=%d: ground y=%d, %d of 289 columns level, %d water, %.0f from x=%d z=%d%n",
                                 site.x(), site.z(), site.height(), site.level(), site.water(), Math.hypot(site.x() - x, site.z() - z), x, z));
             }
             String column = System.getProperty("column");
             if (column != null) {
-                int[] c = java.util.Arrays.stream(column.split(",")).mapToInt(Integer::parseInt).toArray();
+                int[] c = Arrays.stream(column.split(",")).mapToInt(Integer::parseInt).toArray();
                 StringBuilder line = new StringBuilder("Column " + c[0] + "," + c[1] + " from y=" + c[2] + " up: ");
                 for (int y = c[2]; y <= c[3]; y++) {
                     line.append(world.isWater(c[0], y, c[1]) ? '~' : world.isSolid(c[0], y, c[1]) ? '#' : '.');
@@ -142,10 +159,10 @@ class WorldProbeLiveIT {
             }
             String resourcesAt = System.getProperty("resources.at");
             if (resourcesAt != null) {
-                double[] p = java.util.Arrays.stream(resourcesAt.split(",")).mapToDouble(Double::parseDouble).toArray();
+                double[] p = Arrays.stream(resourcesAt.split(",")).mapToDouble(Double::parseDouble).toArray();
                 Position from = new Position(p[0], p[1], p[2]);
                 System.out.println("Resources seen from " + from + ": "
-                        + io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor.survey(world, from));
+                        + ResourceSurveyor.survey(world, from));
                 int logs = 0, below = 0, above = 0;
                 for (int dx = -64; dx <= 64; dx++) {
                     for (int dz = -64; dz <= 64; dz++) {
@@ -163,12 +180,12 @@ class WorldProbeLiveIT {
             }
             String route = System.getProperty("route");
             if (route != null) {
-                int[] r = java.util.Arrays.stream(route.split(",")).mapToInt(Integer::parseInt).toArray();
+                int[] r = Arrays.stream(route.split(",")).mapToInt(Integer::parseInt).toArray();
                 BlockPos from = new BlockPos(r[0], r[1], r[2]);
-                var goal = new io.github.jayessdeesea.minecraft.bot.nav.Goal(r[3] + 0.5, r[4], r[5] + 0.5, 2, 1);
-                for (var falls : java.util.List.of(io.github.jayessdeesea.minecraft.bot.nav.FallAllowance.NONE,
-                        new io.github.jayessdeesea.minecraft.bot.nav.FallAllowance(19, 1, 1))) {
-                    var result = io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.find(world, from, goal, 4000, falls);
+                var goal = new Goal(r[3] + 0.5, r[4], r[5] + 0.5, 2, 1);
+                for (var falls : List.of(FallAllowance.NONE,
+                        new FallAllowance(19, 1, 1))) {
+                    var result = Pathfinder.find(world, from, goal, 4000, falls);
                     System.out.printf("Route %s -> %s with %s: reaches=%b %s%n", from, goal, falls, result.reachesGoal(), result.path());
                 }
                 // The blocks at the start, by height: S solid, W water, H another hazard, . open.
@@ -186,13 +203,13 @@ class WorldProbeLiveIT {
                 // A soldier ticked against this world from there, as the tick loop would.
                 double vertical = Double.parseDouble(System.getProperty("route.vertical", "1"));
                 Position join = joinedAt.get();
-                double[] start = java.util.Arrays.stream(System.getProperty("route.start", join != null && System.getProperty("probe.name") != null
+                double[] start = Arrays.stream(System.getProperty("route.start", join != null && System.getProperty("probe.name") != null
                         ? join.x() + "," + join.y() + "," + join.z() : (r[0] + 0.5) + "," + r[1] + "," + (r[2] + 0.5))
                         .split(",")).mapToDouble(Double::parseDouble).toArray();
-                System.out.println("Joined at " + join + ", simulating from " + java.util.Arrays.toString(start));
-                var soldier = new io.github.jayessdeesea.minecraft.bot.DeterministicSoldier("Sim", new Position(start[0], start[1], start[2]));
-                soldier.receiveOrder(new io.github.jayessdeesea.minecraft.command.Order.MoveTo(r[3], r[4], r[5], 2, vertical,
-                        io.github.jayessdeesea.minecraft.command.Risk.LOW));
+                System.out.println("Joined at " + join + ", simulating from " + Arrays.toString(start));
+                var soldier = new DeterministicSoldier("Sim", new Position(start[0], start[1], start[2]));
+                soldier.receiveOrder(new Order.MoveTo(r[3], r[4], r[5], 2, vertical,
+                        Risk.LOW));
                 for (int tick = 0; tick < 400; tick++) {
                     soldier.tick(world);
                     if (tick % 20 == 0) {
@@ -209,7 +226,7 @@ class WorldProbeLiveIT {
                                 cell = String.format("%2d~", y);
                                 break;
                             }
-                            if (io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.standable(world, new BlockPos(cx, y, cz))) {
+                            if (Pathfinder.standable(world, new BlockPos(cx, y, cz))) {
                                 cell = String.format("%3d", y);
                                 break;
                             }
@@ -223,8 +240,8 @@ class WorldProbeLiveIT {
             if (at != null) {
                 String[] xyz = at.split(",");
                 Position pointMan = new Position(Double.parseDouble(xyz[0]), Double.parseDouble(xyz[1]), Double.parseDouble(xyz[2]));
-                io.github.jayessdeesea.minecraft.command.TerrainSurvey survey = io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.survey(world, pointMan);
-                long reachable = survey.samples().stream().filter(io.github.jayessdeesea.minecraft.command.TerrainSurvey.Sample::reachable).count();
+                TerrainSurvey survey = TerrainSurveyor.survey(world, pointMan);
+                long reachable = survey.samples().stream().filter(TerrainSurvey.Sample::reachable).count();
                 BlockPos feet = BlockPos.containing(pointMan.x(), pointMan.y(), pointMan.z());
                 System.out.printf("Terrain survey from %s: %d/%d reachable; feet %s solid=%b hazard=%b, below solid=%b, head solid=%b%n", pointMan, reachable,
                         survey.samples().size(), feet, world.isSolid(feet.x(), feet.y(), feet.z()), world.isHazard(feet.x(), feet.y(), feet.z()),

@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -20,17 +21,17 @@ import java.util.Objects;
  */
 public record SquadOrder(Position objective, Formation formation, Interval interval,
                          double verticalTolerance, Risk risk, Map<String, Risk> soldierRisk, boolean rearm, String intent,
-                         java.util.List<Plan.Change> changes) {
+                         List<Plan.Change> changes) {
 
     public SquadOrder {
         soldierRisk = Map.copyOf(soldierRisk);
-        changes = java.util.List.copyOf(changes);
+        changes = List.copyOf(changes);
     }
 
     /** No soldier's plan changed. */
     public SquadOrder(Position objective, Formation formation, Interval interval,
                       double verticalTolerance, Risk risk, Map<String, Risk> soldierRisk, boolean rearm, String intent) {
-        this(objective, formation, interval, verticalTolerance, risk, soldierRisk, rearm, intent, java.util.List.of());
+        this(objective, formation, interval, verticalTolerance, risk, soldierRisk, rearm, intent, List.of());
     }
 
     /** A squad-wide risk with no per-soldier overrides, and no stopping to rearm. */

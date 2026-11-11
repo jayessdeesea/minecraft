@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 /**
  * Soldiers stuck in place (docs/military-doctrine.md § 3): one that hasn't moved
@@ -31,7 +32,7 @@ final class IdleWatch {
      * hiding or sleeping. {@code doing} describes what it's at, for the alert. A line when the alert
      * goes off, or when a soldier alerted moves on.
      */
-    synchronized Optional<String> update(String soldier, Position position, long now, boolean resting, java.util.function.Supplier<String> doing) {
+    synchronized Optional<String> update(String soldier, Position position, long now, boolean resting, Supplier<String> doing) {
         Spell spell = spells.get(soldier);
         if (resting) {
             spells.remove(soldier);

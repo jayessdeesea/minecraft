@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -52,6 +53,6 @@ class WallStoreTest {
     void aLayoutThatWontReadIsAFault() throws Exception {
         Files.writeString(directory.resolve("wall_-48_44.json"), "not json");
 
-        assertThrows(java.io.UncheckedIOException.class, () -> new WallStore(directory).load("-48,44"));
+        assertThrows(UncheckedIOException.class, () -> new WallStore(directory).load("-48,44"));
     }
 }

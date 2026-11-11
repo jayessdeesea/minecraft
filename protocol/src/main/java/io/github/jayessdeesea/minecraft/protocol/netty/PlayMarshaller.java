@@ -1,21 +1,22 @@
 package io.github.jayessdeesea.minecraft.protocol.netty;
 
 import io.github.jayessdeesea.minecraft.protocol.packet.AddEntityPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.BlockUpdatePackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChunkBatchFinishedPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ChunkDataPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.ForgetLevelChunkPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
+import io.github.jayessdeesea.minecraft.protocol.packet.DisguisedChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.EntityPositionPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.ForgetLevelChunkPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.KeepAliveRequestPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.MoveEntityPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.Packet;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayLoginPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayerCombatKillPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.PlayerPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.RemoveEntitiesPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.BlockUpdatePackets;
-import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
-import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
-import io.github.jayessdeesea.minecraft.protocol.packet.DisguisedChatPacket;
-import io.github.jayessdeesea.minecraft.protocol.packet.PlayerChatPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetHealthPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.SetTimePacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.UnknownPacket;
@@ -43,8 +44,8 @@ public final class PlayMarshaller implements PacketMarshaller {
             case SetTimePacket.PACKET_ID -> SetTimePacket.decode(data);
             case PlayerChatPacket.PACKET_ID -> PlayerChatPacket.decode(data);
             case DisguisedChatPacket.PACKET_ID -> DisguisedChatPacket.decode(data);
-            case io.github.jayessdeesea.minecraft.protocol.packet.PlayerCombatKillPacket.PACKET_ID ->
-                    io.github.jayessdeesea.minecraft.protocol.packet.PlayerCombatKillPacket.decode(data);
+            case PlayerCombatKillPacket.PACKET_ID ->
+                    PlayerCombatKillPacket.decode(data);
             case ChunkBatchFinishedPacket.PACKET_ID -> ChunkBatchFinishedPacket.decode(data);
             case ForgetLevelChunkPacket.PACKET_ID -> ForgetLevelChunkPacket.decode(data);
             case MoveEntityPacket.POS_PACKET_ID -> MoveEntityPacket.decodePos(data);
