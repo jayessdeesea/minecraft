@@ -3,7 +3,9 @@
 A routine is an expect script (`bot.script.Script`): it acts, then waits for the server's
 answer, never for time (docs/architecture.md, behaviour modelling). One routine has the soldier's hands at a
 time, by the priority below (`bot.Hands`). A routine under way keeps them until it's done, fails or
-its guard stops it. Nothing preempts. Fighting isn't a routine: contact takes over the soldier's
+its guard stops it. Nothing preempts. A mason whose hands are taken a moment - a hostile near, a
+meal - holds its job's place for up to 10 seconds and goes on from it, rather than starting the
+cell again (`bot.supply.Mason`). Fighting isn't a routine: contact takes over the soldier's
 movement whatever routine holds its hands.
 
 The runner (`app.SoldierRunner`) starts each routine from the squad's `Objective.Task` and the

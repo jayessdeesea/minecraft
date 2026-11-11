@@ -128,6 +128,77 @@ class MasonTest {
     }
 
     /**
+     * As live: a soldier with a hostile hovering at the edge of reach is free one tick and not the
+     * next, and its repointing started again at every free tick - 342 times for one cell - so the
+     * dirt's break time never ran out. Taken for a moment, the job holds its place and goes on.
+     */
+    @Test
+    void aRepointPausedAMomentAtATimeIsStillFinished() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.COBBLESTONE), 64});
+        List<BlockPos> layout = Perimeter.layout(flat, CENTRE, 3);
+        placed.addAll(layout);
+        BlockPos dirt = layout.getFirst();
+        Set<BlockPos> soil = new HashSet<>(Set.of(dirt));
+        Set<BlockPos> stone = new HashSet<>();
+        WorldView walled = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return flat.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return soil.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        PlaySession digging = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(),
+                new Class<?>[]{PlaySession.class}, (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "finishDigging" -> {
+                            BlockPos cell = new BlockPos((int) args[0], (int) args[1], (int) args[2]);
+                            answers.add(() -> {
+                                placed.remove(cell);
+                                soil.remove(cell);
+                            });
+                        }
+                        case "useBlockFace" -> {
+                            io.github.jayessdeesea.minecraft.protocol.BlockFace face = (io.github.jayessdeesea.minecraft.protocol.BlockFace) args[3];
+                            BlockPos cell = new BlockPos((int) args[0] + face.dx, (int) args[1] + face.dy, (int) args[2] + face.dz);
+                            answers.add(() -> {
+                                placed.add(cell);
+                                stone.add(cell);
+                            });
+                        }
+                        case "swapWithHotbar", "selectHotbarSlot", "startDigging" -> {
+                        }
+                        default -> throw new AssertionError("unexpected " + method.getName());
+                    }
+                    return null;
+                });
+        Mason mason = new Mason("Alice", inventory, new Footing(digging, inventory), new HashSet<>());
+        Position soldier = new Position(0.5, GROUND, 0.5);
+
+        for (int tick = 0; tick < 2000 && !stone.contains(dirt); tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            mason.repoint(soldier, walled, CENTRE, 3, List.of(dirt), tick % 2 == 0);
+            soldier = mason.standAt().orElse(soldier);
+        }
+
+        assertTrue(stone.contains(dirt), "the dirt replaced with stone; " + mason.failure().orElse("no failure"));
+    }
+
+    /**
      * As live: the masons' dirt pit dug under the wall's east side and the ground inside it, and 39
      * cells had nothing to go against or nowhere to stand. The footing goes in from the pit's floor,
      * built from outside.

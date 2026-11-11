@@ -106,10 +106,14 @@ public final class Mason {
         if (open.isEmpty()) {
             passedOver.noWork();
         }
-        if (!free || open.isEmpty()) {
+        if (open.isEmpty() || !free && !paused()) {
             stop();
             return;
         }
+        if (!free) {
+            return;
+        }
+        pausedTicks = 0;
         if (job != null) {
             switch (job.tick()) {
                 case Script.Status.Running _ -> {
@@ -184,10 +188,14 @@ public final class Mason {
         if (soft.isEmpty()) {
             passedOver.noWork();
         }
-        if (!free || soft.isEmpty()) {
+        if (soft.isEmpty() || !free && !paused()) {
             stop();
             return;
         }
+        if (!free) {
+            return;
+        }
+        pausedTicks = 0;
         if (job != null) {
             switch (job.tick()) {
                 case Script.Status.Running _ -> {
@@ -351,6 +359,20 @@ public final class Mason {
             claims.remove(claimedStand);
             claimedStand = null;
         }
+    }
+
+    /** How long a job holds its place while the soldier's hands are taken - a hostile near, a meal. */
+    static final int PAUSE_TICKS = 200;
+
+    private int pausedTicks;
+
+    /**
+     * Whether a job under way holds its place this tick, its hands taken: for a while, not for good.
+     * Dropped at once, live, a mason with a hostile hovering at the edge of reach started one cell
+     * again at every free tick, 342 times, and the dirt's break time never ran out.
+     */
+    private boolean paused() {
+        return job != null && ++pausedTicks <= PAUSE_TICKS;
     }
 
     public synchronized void stop() {
