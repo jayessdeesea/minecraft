@@ -479,6 +479,35 @@ class SquadSimulationTest {
         }
     }
 
+    /**
+     * A mine ordered anywhere near the camp is the camp's: live, the general moved its order to the
+     * camp's centre, 13 blocks from the mine already cut, and a new staircase was started inside the
+     * wall and kept in the cut one's place.
+     */
+    @Test
+    void aMineOrderedElsewhereNearTheCampIsTheCampsKeptStaircase() {
+        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsCut, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        // 16 blocks from the kept head each way - beyond where a staircase is sited round a point.
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut a mine shaft near the camp", new Position(-12, 16, -12),
+                "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(60_000);
+
+        assertEquals(java.util.Optional.of(List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1))), new WallStore(state, "stairs").load("0,0"),
+                "the camp's staircase still the one kept");
+    }
+
     /** Every cell of {@link #KEPT}'s cuts - stairs, landing, tunnels - as air: a mine cut to the bottom. */
     private static final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> KEPT_CUT = KEPT.cuts().stream()
             .flatMap(c -> c.cells().stream()).collect(java.util.stream.Collectors.toUnmodifiableSet());

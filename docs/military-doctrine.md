@@ -838,7 +838,9 @@ water, lava or open cave.
 
 The camp's staircase is kept on disk, as the wall and the farm are (its head and last step,
 `app.WallStore` kind `stairs`), and after a restart it's cut on down where it was sited rather
-than sited again. Sited afresh each time, the ground over a part-cut shaft reads differently -
+than sited again - as it is for any mine ordered within 24 blocks of the camp, the general's
+point being a guess: live, it moved the order to the camp's centre, and a new staircase started
+inside the wall was kept in place of the one cut to the bottom. Sited afresh each time, the ground over a part-cut shaft reads differently -
 a block dropped on the head, a soldier standing down the shaft - and each new staircase is
 started across the old ones, until no clear one is left near the head.
 

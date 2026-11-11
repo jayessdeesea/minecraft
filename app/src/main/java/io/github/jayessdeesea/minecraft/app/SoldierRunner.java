@@ -1305,6 +1305,14 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
      * What levelling the camp never digs: its wall, every squad's hut, and the ground under each
      * workshop's stand and fixtures - a workshop on a rise stays standing.
      */
+    /** How far from the camp's centre a mine is the camp's. */
+    static final int CAMP_MINE_RANGE = 24;
+
+    /** Whether ({@code x}, {@code z}) is near enough the camp for a mine there to be the camp's. */
+    private boolean nearCamp(int x, int z) {
+        return camp != null && Math.hypot(x - camp[0], z - camp[1]) <= CAMP_MINE_RANGE;
+    }
+
     /** The camp's mine, as kept on disk: empty for no camp, or no mine sited. */
     private Optional<io.github.jayessdeesea.minecraft.bot.supply.Staircase> campStairs() {
         if (campStairs == null) {
@@ -1849,8 +1857,12 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             // second, 747 times, beside a flooded shaft.
             // The camp's mine, kept from before a restart, is cut on down wherever it was sited.
             int depth = (int) Math.floor(o.location().y());
+            // Any mine ordered near the camp is the camp's: the general's point is a guess - live, it
+            // moved the order to the camp's centre, 13 blocks from the mine cut to the bottom, and a
+            // new staircase was started inside the wall and kept in its place.
             Optional<io.github.jayessdeesea.minecraft.bot.supply.Staircase> kept = campStairs().filter(k ->
-                    Math.max(Math.abs(k.head().x() - x), Math.abs(k.head().z() - z)) <= io.github.jayessdeesea.minecraft.bot.supply.Staircase.SITE_RADIUS
+                    (Math.max(Math.abs(k.head().x() - x), Math.abs(k.head().z() - z)) <= io.github.jayessdeesea.minecraft.bot.supply.Staircase.SITE_RADIUS
+                            || nearCamp(x, z))
                             && k.bottom() == Math.max(io.github.jayessdeesea.minecraft.bot.supply.Staircase.DEEPEST, Math.min(depth, k.head().y() - 1)));
             if (kept.isPresent()) {
                 LOG.info("[{}] MINE: the camp's staircase, kept on disk: down from {} to y={}", squadName, kept.get().head(), kept.get().bottom());
@@ -1888,7 +1900,7 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         if (stairs == null) {
             nightBelow.remove(squadName);
         }
-        if (stairs != null && camp != null && !campStairs().equals(Optional.of(stairs))) {
+        if (stairs != null && camp != null && nearCamp(stairs.head().x(), stairs.head().z()) && !campStairs().equals(Optional.of(stairs))) {
             mineStore.save(camp[0] + "," + camp[1], List.of(stairs.head(), stairs.step(stairs.steps() - 1)));
             campStairs = Optional.of(stairs);
         }
