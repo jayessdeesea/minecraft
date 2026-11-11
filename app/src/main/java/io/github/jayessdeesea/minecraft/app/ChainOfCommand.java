@@ -206,8 +206,16 @@ public class ChainOfCommand implements DisposableBean {
         if (nightShift.isPresent() && objective.equals(nightShift.get())) {
             return objective;
         }
+        // Near the camp, the night's base is in it, behind its wall and in its light - not where the
+        // point man stands: live, a squad on the wall's last block at dusk built its hut five blocks
+        // down outside the wall, and skeletons killed all four as they built it.
+        Position at = squad.soldiers().getFirst().position();
+        Optional<Position> camp = Optional.ofNullable(foothold).map(Foothold::camp)
+                .filter(c -> Math.hypot(c.x() - at.x(), c.z() - at.z()) <= CAMP_SHELTER_RANGE);
         // A squad already sealed in is the one most to keep there: an order out of it is no exception.
-        if (nightShift.isEmpty() && objective.patrolBase()) {
+        // Nor a base the general orders, unless it's outside the camp a squad not yet sealed in is near.
+        if (nightShift.isEmpty() && objective.patrolBase() && (squad.holdingBase() || camp.isEmpty()
+                || Math.hypot(objective.location().x() - camp.get().x(), objective.location().z() - camp.get().z()) <= CAMP_WALL_RADIUS)) {
             return objective;
         }
         if (nightShift.isPresent()) {
@@ -223,14 +231,21 @@ public class ChainOfCommand implements DisposableBean {
                     squad.squadName(), objective.mission(), objective.task());
             return standing.get();
         }
-        Position at = squad.soldiers().getFirst().position();
-        Objective shelter = grounded(new Objective("Build a patrol base where you stand and spend the night in it",
-                new Position(Math.floor(at.x()), at.y(), Math.floor(at.z())), "Squad safe from monsters until dawn",
-                new Objective.Task.PatrolBase()), squad.soldiers());
+        Objective shelter = grounded(camp.map(c -> new Objective("Build a patrol base in the camp and spend the night in it",
+                        new Position(Math.floor(c.x()), c.y(), Math.floor(c.z())), "Squad safe from monsters until dawn, behind the camp's wall",
+                        new Objective.Task.PatrolBase()))
+                .orElse(new Objective("Build a patrol base where you stand and spend the night in it",
+                        new Position(Math.floor(at.x()), at.y(), Math.floor(at.z())), "Squad safe from monsters until dawn",
+                        new Objective.Task.PatrolBase())), squad.soldiers());
         LOG.warn("[General -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule shelters it instead, at {}",
                 squad.squadName(), objective.mission(), objective.task(), at(shelter.location()));
         return shelter;
     }
+
+    /** How near the camp a squad at dusk shelters in it, rather than where it stands. */
+    static final double CAMP_SHELTER_RANGE = 48;
+    /** How far out from the camp's centre its wall stands: a base within it is in the camp. */
+    static final double CAMP_WALL_RADIUS = 8;
 
     /** Where the camp's mine is cut, from the camp's centre: inside its wall, clear of the huts. */
     static final int MINE_HEAD_DX = 4;
