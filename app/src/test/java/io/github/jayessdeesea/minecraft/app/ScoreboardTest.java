@@ -21,7 +21,7 @@ class ScoreboardTest {
     Path state;
 
     private static Scoreboard.Score day(int day, int met, int deaths) {
-        return new Scoreboard.Score(day * 1000L, day, 2, met, 7, List.of("phase 2 every soldier armed - 2 of 8"), deaths, 10, 5, 1, 8, List.of());
+        return new Scoreboard.Score(day * 1000L, day, 2, met, 7, List.of("phase 2 every soldier armed - 2 of 8"), deaths, 10, 5, 1, 8, List.of(), 3);
     }
 
     @Test
@@ -30,6 +30,7 @@ class ScoreboardTest {
         assertTrue(first.contains("the first day scored"), first);
         String second = new Scoreboard(state).add(day(2, 5, 0));
         assertTrue(second.startsWith("phase 2: 5/7 standards met, 0 dead"), second);
+        assertTrue(second.contains("3 tasks churned"), second);
         assertTrue(second.contains("the day before: phase 2: 4/7 standards met, 2 dead"), second);
         assertTrue(second.endsWith("earliest open: phase 2 every soldier armed - 2 of 8"), second);
         assertEquals(List.of(day(1, 4, 2), day(2, 5, 0)), new Scoreboard(state).days());
@@ -57,8 +58,8 @@ class ScoreboardTest {
         AfterActionReview aar = new AfterActionReview();
         aar.time(true, Optional.of(camp));
         aar.death("Bob", "death.attack.arrow");
-        Scoreboard.Score score = aar.time(false, Optional.of(camp), 3, 8, 42, List.of("to the farm: 80%")).orElseThrow().score();
+        Scoreboard.Score score = aar.time(false, Optional.of(camp), 3, 8, 42, List.of("to the farm: 80%"), 5).orElseThrow().score();
         assertEquals(new Scoreboard.Score(42, 1, 1, 1, 3, List.of("phase 1 the camp's ground lit - 8 dark",
-                "phase 2 every soldier armed - 2 of 8"), 1, 0, 0, 3, 8, List.of("to the farm: 80%")), score);
+                "phase 2 every soldier armed - 2 of 8"), 1, 0, 0, 3, 8, List.of("to the farm: 80%"), 5), score);
     }
 }

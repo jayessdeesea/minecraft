@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.protocol.packet;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -132,7 +133,7 @@ final class Nbt {
     /** A string payload: an unsigned short length, then that many bytes of modified UTF-8. */
     private static String readString(ByteBuf in) {
         try {
-            return new DataInputStream(new io.netty.buffer.ByteBufInputStream(in)).readUTF();
+            return new DataInputStream(new ByteBufInputStream(in)).readUTF();
         } catch (IOException e) {
             throw new IllegalStateException("malformed NBT string", e);
         }

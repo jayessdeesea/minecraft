@@ -4,11 +4,12 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Reacts to the {@link io.netty.handler.timeout.IdleStateHandler} registered immediately ahead of
+ * Reacts to the {@link IdleStateHandler} registered immediately ahead of
  * it in the pipeline (docs/protocol-pipeline.md): if no inbound frame has arrived within the
  * configured reader-idle window, the connection is presumed dead - a socket that's still
  * technically open but has stopped actually talking to us (server hung, network partition) - and

@@ -39,9 +39,9 @@ final class AfterActionReview {
     record Dawn(String review, Scoreboard.Score score) {
     }
 
-    /** As {@link #time(boolean, Optional, int, int, long, List)}, with nobody counted hungry and no routes walked. */
+    /** As {@link #time(boolean, Optional, int, int, long, List, int)}, with nothing counted. */
     synchronized Optional<Dawn> time(boolean dark, Optional<Foothold> foothold) {
-        return time(dark, foothold, 0, 0, 0, List.of());
+        return time(dark, foothold, 0, 0, 0, List.of(), 0);
     }
 
     /**
@@ -49,7 +49,8 @@ final class AfterActionReview {
      * night before, with the camp as {@code foothold} measures it and {@code hungry} of
      * {@code soldiers} short of food, and its score. The tally starts again.
      */
-    synchronized Optional<Dawn> time(boolean dark, Optional<Foothold> foothold, int hungry, int soldiers, long now, List<String> routes) {
+    synchronized Optional<Dawn> time(boolean dark, Optional<Foothold> foothold, int hungry, int soldiers, long now, List<String> routes,
+                                     int churned) {
         boolean dawn = wasDark && !dark;
         wasDark = dark;
         if (!dawn) {
@@ -70,7 +71,7 @@ final class AfterActionReview {
                 (int) standards.stream().filter(Foothold.Standard::met).count(), standards.size(),
                 standards.stream().filter(s -> !s.met()).sorted(Comparator.comparingInt(Foothold.Standard::phase))
                         .map(s -> "phase " + s.phase() + " " + s.name() + " - " + s.status()).toList(),
-                dead, shares[0], shares[1], hungry, soldiers, routes);
+                dead, shares[0], shares[1], hungry, soldiers, routes, churned);
         review.append("\n  casualties: ").append(dead == 0 ? "none" : dead);
         deaths.forEach((cause, who) -> review.append("\n    ").append(cause).append(": ").append(String.join(", ", who)));
         review.append("\n  idle by day: ").append(idle.isEmpty() ? "none" : idle.toString());

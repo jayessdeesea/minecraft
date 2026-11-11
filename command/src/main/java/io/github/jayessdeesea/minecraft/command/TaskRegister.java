@@ -22,6 +22,12 @@ public final class TaskRegister {
 
     /** How long a member may report working with nothing left falling before it's checked out. */
     public static final long VERIFY_MILLIS = 120_000;
+    /**
+     * A tasking ended unfinished sooner than this is churn: the member taken off before it could
+     * get anywhere. Live, 281 in half an hour, every one within this - a soldier's own walk moved it
+     * between two jobs, and it finished neither.
+     */
+    public static final long CHURN_MILLIS = 30_000;
 
     public enum State { UNDER_WAY, STALLED, CANTCO, DONE }
 
@@ -39,6 +45,15 @@ public final class TaskRegister {
     }
 
     private final Map<String, Tasking> open = new LinkedHashMap<>();
+    /** Taskings ended unfinished within {@link #CHURN_MILLIS} since last taken. */
+    private int churned;
+
+    /** How many taskings ended unfinished within {@link #CHURN_MILLIS} since last asked; the count starts again. */
+    public int takeChurned() {
+        int taken = churned;
+        churned = 0;
+        return taken;
+    }
     /** Taskings ended since the last review: how each ended, by task. */
     private final Map<String, int[]> ended = new LinkedHashMap<>();
 
@@ -63,6 +78,9 @@ public final class TaskRegister {
                         ? done(ending, now, findings) : ending;
                 end(left_, left_.state() == State.DONE ? 0 : 1);
                 if (left_.state() != State.DONE) {
+                    if (now - left_.given() < CHURN_MILLIS) {
+                        churned++;
+                    }
                     findings.add("[Register] " + left_.who() + " taken off " + left_.task() + " unfinished, after "
                             + (now - left_.given()) / 1000 + " s (" + left_.state() + ")");
                 }

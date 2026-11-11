@@ -7,12 +7,18 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Role;
 import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
+import org.apache.logging.log4j.ThreadContext;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.core.io.ClassPathResource;
 
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -35,14 +41,14 @@ class TaskOrganisationSimulationTest {
     @TempDir
     Path state;
 
-    @org.junit.jupiter.api.BeforeEach
-    void nameTheScenario(org.junit.jupiter.api.TestInfo test) {
-        org.apache.logging.log4j.ThreadContext.put("scenario", test.getTestMethod().map(Method::getName).orElse("unnamed"));
+    @BeforeEach
+    void nameTheScenario(TestInfo test) {
+        ThreadContext.put("scenario", test.getTestMethod().map(Method::getName).orElse("unnamed"));
     }
 
-    @org.junit.jupiter.api.AfterEach
+    @AfterEach
     void endTheScenario() {
-        org.apache.logging.log4j.ThreadContext.remove("scenario");
+        ThreadContext.remove("scenario");
     }
 
     private static final Position CAMP = new Position(0.5, GROUND + 1, 0.5);
@@ -54,7 +60,7 @@ class TaskOrganisationSimulationTest {
                  "verticalTolerance": 4, "risk": "LOW", "soldierRisks": [], "rearm": false,
                  "intent": "hold the camp", "cantco": "", "roleChanges": %s, "detached": %s}
                 """, CAMP.x(), CAMP.y(), CAMP.z(), roles, orders);
-        return ChatClient.create((org.springframework.ai.chat.model.ChatModel) prompt ->
+        return ChatClient.create((ChatModel) prompt ->
                 new ChatResponse(List.of(new Generation(new AssistantMessage(reply)))));
     }
 
@@ -64,8 +70,8 @@ class TaskOrganisationSimulationTest {
         Roster roster = new Roster("Alpha:Alice,Bob");
         ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
                 "A foothold", new Objective.Task.None())), squadLeader(roles, orders),
-                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
@@ -206,8 +212,8 @@ class TaskOrganisationSimulationTest {
         Roster roster = new Roster("Alpha:Alice,Bob");
         ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
                 "A foothold", new Objective.Task.None())), squadLeader("[]", "[]"),
-                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},

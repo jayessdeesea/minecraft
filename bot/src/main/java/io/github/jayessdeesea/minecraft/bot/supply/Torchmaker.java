@@ -13,6 +13,8 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.EnumSet;
 import java.util.Map;
@@ -121,7 +123,7 @@ public final class Torchmaker {
         }
     }
 
-    private static final org.apache.logging.log4j.Logger LOG = org.apache.logging.log4j.LogManager.getLogger(Torchmaker.class);
+    private static final Logger LOG = LogManager.getLogger(Torchmaker.class);
 
     public void onContainer(ContainerUpdate update) {
         crafter.onContainer(update);

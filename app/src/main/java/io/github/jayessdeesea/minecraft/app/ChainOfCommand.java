@@ -23,8 +23,10 @@ import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -69,7 +71,7 @@ import java.util.stream.Collectors;
  * decision tries again.
  */
 @Component
-public class ChainOfCommand implements org.springframework.beans.factory.DisposableBean {
+public class ChainOfCommand implements DisposableBean {
 
     private static final Logger LOG = LogManager.getLogger(ChainOfCommand.class);
 
@@ -154,7 +156,7 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
     @Autowired
     public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient,
                           SquadLeaderPrompts squadLeaderPrompts, Roster roster,
-                          @org.springframework.beans.factory.annotation.Value("${minecraft.general.shelter-at-night}") boolean shelterAtNight) {
+                          @Value("${minecraft.general.shelter-at-night}") boolean shelterAtNight) {
         this(general, squadLeaderClient, squadLeaderPrompts, roster, shelterAtNight, Clockwork.REAL);
     }
 

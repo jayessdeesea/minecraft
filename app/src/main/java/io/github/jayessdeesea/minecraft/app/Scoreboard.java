@@ -27,11 +27,13 @@ final class Scoreboard {
     /**
      * One day's score: when, which day of its run, the earliest phase not met (0 with every phase
      * met), standards met of all, those open with how far along, deaths, the shares of soldier-time
-     * standing about (Idle, InPosition) and unable (CANTCO), the soldiers hungry at dawn, and the
-     * walks from the camp's centre to its sites ({@code RouteEffort}).
+     * standing about (Idle, InPosition) and unable (CANTCO), the soldiers hungry at dawn, the
+     * walks from the camp's centre to its sites ({@code RouteEffort}), and the taskings ended
+     * unfinished within half a minute ({@code TaskRegister.CHURN_MILLIS}) - work given and taken
+     * back before it could get anywhere.
      */
     record Score(long at, int day, int phase, int met, int standards, List<String> open, int deaths,
-                 int idlePercent, int cantcoPercent, int hungry, int soldiers, List<String> routes) {
+                 int idlePercent, int cantcoPercent, int hungry, int soldiers, List<String> routes, int churned) {
         public Score {
             open = List.copyOf(open);
             // Days scored before routes were walked have none.
@@ -39,8 +41,8 @@ final class Scoreboard {
         }
 
         String line() {
-            return String.format(Locale.ROOT, "phase %s: %d/%d standards met, %d dead, idle %d%%, CANTCO %d%%, %d/%d hungry",
-                    phase == 0 ? "all" : phase, met, standards, deaths, idlePercent, cantcoPercent, hungry, soldiers);
+            return String.format(Locale.ROOT, "phase %s: %d/%d standards met, %d dead, idle %d%%, CANTCO %d%%, %d/%d hungry, %d tasks churned",
+                    phase == 0 ? "all" : phase, met, standards, deaths, idlePercent, cantcoPercent, hungry, soldiers, churned);
         }
     }
 

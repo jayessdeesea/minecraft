@@ -27,6 +27,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaApi;
@@ -135,12 +136,12 @@ class SquadLeaderScenarioIT {
             }
 
             @Override
-            public org.springframework.ai.chat.prompt.ChatOptions getDefaultOptions() {
+            public ChatOptions getDefaultOptions() {
                 return model.getDefaultOptions();
             }
 
             @Override
-            public org.springframework.ai.chat.prompt.ChatOptions getOptions() {
+            public ChatOptions getOptions() {
                 return model.getOptions();
             }
         };

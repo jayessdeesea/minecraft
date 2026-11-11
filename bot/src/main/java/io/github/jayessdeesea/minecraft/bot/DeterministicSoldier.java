@@ -15,6 +15,8 @@ import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.Risk;
 import io.github.jayessdeesea.minecraft.command.Soldier;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
 import java.util.List;
@@ -691,7 +693,7 @@ public final class DeterministicSoldier implements Soldier {
     private static final int AVOID_TICKS = 200;
     /** Cells it got stuck short of, and the tick each is tried again from: plans route round them meanwhile. */
     private final Map<BlockPos, Integer> avoided = new HashMap<>();
-    private static final org.apache.logging.log4j.Logger LOG = org.apache.logging.log4j.LogManager.getLogger(DeterministicSoldier.class);
+    private static final Logger LOG = LogManager.getLogger(DeterministicSoldier.class);
     private int navTicks;
     /** Cell visits per plan - bounds the planning cost per tick (see {@link Pathfinder}). */
     private static final int PLAN_BUDGET = 4000;

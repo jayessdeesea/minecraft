@@ -1,12 +1,13 @@
 package io.github.jayessdeesea.minecraft.command;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
-import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TaskRegisterTest {
 
@@ -23,6 +24,17 @@ class TaskRegisterTest {
         assertEquals(List.of("[Register] Alice done: wall the camp, in 60 s"), register.update(60_000, Map.of("Alice", wall(0))));
 
         assertEquals(List.of("    open: Alice: wall the camp DONE for 60 s, reports Fortifying[], 0 left"), register.review(60_000));
+    }
+
+    @Test
+    void aTaskingTakenOffBeforeItCouldGetAnywhereIsChurn() {
+        TaskRegister.Assignment farm = new TaskRegister.Assignment("keep the farm", new Report.Farming(), OptionalInt.empty());
+        register.update(0, Map.of("Dana", wall(50)));
+        register.update(5_000, Map.of("Dana", farm));             // off the wall after 5 s: churn
+        register.update(10_000, Map.of("Dana", wall(50)));        // off the farm after 5 s: churn
+        register.update(10_000 + TaskRegister.CHURN_MILLIS, Map.of("Dana", farm)); // a fair go at the wall: not
+        assertEquals(2, register.takeChurned());
+        assertEquals(0, register.takeChurned(), "counted afresh");
     }
 
     @Test

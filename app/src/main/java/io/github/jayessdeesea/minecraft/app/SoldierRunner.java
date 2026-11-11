@@ -97,6 +97,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import io.github.jayessdeesea.minecraft.protocol.TimeUpdate;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -167,7 +168,7 @@ import java.util.stream.Stream;
  * silently-dead connection," not a full resume/backoff policy.
  */
 @Component
-public class SoldierRunner implements CommandLineRunner, org.springframework.beans.factory.DisposableBean {
+public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     private static final Logger LOG = LogManager.getLogger(SoldierRunner.class);
 
@@ -871,7 +872,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     List<SoldierStatus> all = activeSoldiers.values().stream().map(DeterministicSoldier::status).toList();
                     int hungry = (int) all.stream().filter(s -> s.condition().map(SoldierRunner::wantsFood).orElse(false)).count();
                     return afterActionReview.time(t.dark(), chainOfCommand.foothold(), hungry, all.size(), clockwork.millis(),
-                            routes.stream().map(RouteEffort::line).toList());
+                            routes.stream().map(RouteEffort::line).toList(),
+                            squadStates.values().stream().mapToInt(st -> st.register.takeChurned()).sum());
                 })
                 .ifPresent(dawn -> {
                     LOG.info("[AAR] {}\n  {}\n  {}\n  {}", dawn.review(), String.join("\n  ", chainOfCommand.requestReview()),
@@ -2457,10 +2459,15 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             } else {
                 lighting.remove(soldierName);
             }
-            // Upkeep: a soldier at the camp with torches in its pack puts one down wherever the camp's
-            // ground has gone dark, by day, whatever its task.
+            // Upkeep: a soldier at the camp with torches in its pack and nothing else to do puts one
+            // down wherever the camp's ground has gone dark, by day. Not one with other work: live, a
+            // farmer carrying torches was handed the camp's last dark cell each time it came within 24
+            // blocks of the camp and its farm again as it walked out, and finished neither - 281
+            // taskings in half an hour ended unfinished within 30 s.
             boolean daylight = !chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
-            if (!lighting.containsKey(soldierName) && !campDark.isEmpty() && !squadInContact && daylight
+            boolean otherWork = farming.containsKey(soldierName) || walling.containsKey(soldierName)
+                    || repointing.containsKey(soldierName) || planting.containsKey(soldierName) || gathering.containsKey(soldierName);
+            if (!lighting.containsKey(soldierName) && !otherWork && !campDark.isEmpty() && !squadInContact && daylight
                     && torchesCarried.getOrDefault(soldierName, 0) > 0 && campGround != null
                     && Math.hypot(statuses.get(i).position().x() - campGround.x(), statuses.get(i).position().z() - campGround.z()) <= SECURE_RADIUS * 2) {
                 lighting.put(soldierName, campDark);

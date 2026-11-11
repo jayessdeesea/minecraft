@@ -12,6 +12,7 @@ import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatModel;
 
 import java.lang.reflect.Proxy;
 import java.util.List;
@@ -25,7 +26,7 @@ class ChainOfCommandTest {
 
     private final ChainOfCommand chain = new ChainOfCommand(
             (General) Proxy.newProxyInstance(General.class.getClassLoader(), new Class<?>[]{General.class}, (proxy, method, args) -> null),
-            ChatClient.create((org.springframework.ai.chat.model.ChatModel) prompt -> {
+            ChatClient.create((ChatModel) prompt -> {
                 throw new AssertionError("no model call expected");
             }), new SquadLeaderPrompts("", ""),
             new Roster("Alpha:Alice"), true);
@@ -51,7 +52,7 @@ class ChainOfCommandTest {
     void atNightTheFirstSquadHoldsTheCampAndTheRestGoDownItsMine() {
         ChainOfCommand two = new ChainOfCommand(
                 (General) Proxy.newProxyInstance(General.class.getClassLoader(), new Class<?>[]{General.class}, (proxy, method, args) -> null),
-                ChatClient.create((org.springframework.ai.chat.model.ChatModel) prompt -> {
+                ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
                 new Roster("Alpha:Alice;Bravo:Bob"), true);

@@ -713,7 +713,8 @@ that radius tile the ground exactly, then on any cell the lattice left dark. Tor
 standing count, so the plan shrinks as torches go down and a secured place needs nothing more.
 The plan is worked out again every cycle, so a torch that's gone - washed away, broken, dug out -
 is planned again. And the camp is kept lit whatever the task: by day, a soldier within 24 blocks of
-the camp with torches in its pack puts one down wherever the camp's ground has gone dark.
+the camp with torches in its pack and no other work - not farming, walling, planting or gathering -
+puts one down wherever the camp's ground has gone dark.
 Farmland and leaves are left bare: a torch won't stand on either, and nothing spawns on leaves. Light is worked out from where torches stand, not read from the server's
 light data.
 
@@ -962,7 +963,9 @@ standing about (`Idle`, `InPosition`) and unable (`CANTCO`), the soldiers hungry
 hard the camp is to get about (`bot.nav.RouteEffort`): the walk on foot from its centre to the
 workshop, the farm and the mine head, against a straight walk over level ground - its share of
 the straight line, and the blocks climbed and dropped on the way, measured each foothold check
-and logged as they change (`[Routes]`). The log's `[Scoreboard]` line sets the day beside the day
+and logged as they change (`[Routes]`); and the work churned - taskings ended unfinished within 30
+seconds of being given (`TaskRegister.CHURN_MILLIS`), work taken back before it could get anywhere.
+The log's `[Scoreboard]` line sets the day beside the day
 before and names the earliest open standard - the next thing to work on.
 
 It ends with the commands' scorecard (`app.CommandScorecard`). Each soldier is sampled once a
