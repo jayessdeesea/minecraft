@@ -125,6 +125,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         java.util.Set<String> linkingUp = java.util.Set.of();
         /** The squad leader's order whose plan changes were last made - each order's are made once. */
         SquadOrder planned;
+        /** Its soldiers' work orders, followed until done or timed out. */
+        final io.github.jayessdeesea.minecraft.command.WorkOrders workOrders = new io.github.jayessdeesea.minecraft.command.WorkOrders();
         String haltedFor;
         boolean fortifying;
         boolean allInside;
@@ -890,7 +892,18 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         List<String> names = statuses.stream().map(SoldierStatus::name).toList();
         if (order.isPresent() && order.get() != main.planned) {
             main.planned = order.get();
-            for (Plan.Change change : order.get().changes()) {
+            for (Plan.Change given : order.get().changes()) {
+                // An order lately timed out for this soldier, given again: refused while its squad leader is shown why.
+                java.util.Optional<io.github.jayessdeesea.minecraft.command.Directive> refused = given.directives()
+                        .flatMap(ds -> ds.stream().filter(d -> main.workOrders.barred(given.soldier(), d, clockwork.millis())).findFirst());
+                if (refused.isPresent()) {
+                    LOG.warn("[{} -> {}] REFUSED: {} - it timed out lately", given.soldier(), squad, refused.get().describe());
+                    if (given.role().isEmpty()) {
+                        continue;
+                    }
+                }
+                Plan.Change change = refused.isEmpty() ? given
+                        : new Plan.Change(given.soldier(), given.role(), given.site(), java.util.Optional.empty());
                 Plan after = planBook.of(change.soldier()).with(change);
                 if (planBook.put(change.soldier(), after)) {
                     LOG.info("[{} -> {}] TASKED: {}", squad, change.soldier(), after.describe());
@@ -917,7 +930,27 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 planBook.put(s.name(), plan);
             }
         }
-        chainOfCommand.receivePlans(squad, planBook.of(names));
+        // Work orders followed: one that's stalled, or run past its allowance, is taken off the soldier's plan.
+        long now = clockwork.millis();
+        Map<String, io.github.jayessdeesea.minecraft.command.Directive> current = new HashMap<>();
+        Map<String, Integer> left = new HashMap<>();
+        java.util.Set<String> fighting = new java.util.HashSet<>();
+        for (SoldierStatus s : statuses) {
+            planBook.of(s.name()).current().ifPresent(d -> {
+                current.put(s.name(), d);
+                left.put(s.name(), d instanceof io.github.jayessdeesea.minecraft.command.Directive.Level level ? levelLeft(level) : d.leftFor(s));
+            });
+            if (s.report() instanceof Report.InContact) {
+                fighting.add(s.name());
+            }
+        }
+        for (io.github.jayessdeesea.minecraft.command.WorkOrders.TimedOut t : main.workOrders.update(now, current, left, fighting)) {
+            LOG.warn("[{} -> {}] TIMED OUT: {} - {}", t.soldier(), squad, t.directive().describe(), t.why());
+            planBook.put(t.soldier(), planBook.of(t.soldier()).done());
+        }
+        Map<String, String> standing = new HashMap<>();
+        names.forEach(n -> main.workOrders.standing(n, now).ifPresent(w -> standing.put(n, w)));
+        chainOfCommand.receivePlans(squad, planBook.of(names), standing);
         String intent = order.map(SquadOrder::intent).orElse("");
         Map<String, List<Integer>> members = new java.util.LinkedHashMap<>();
         members.put(squad, new java.util.ArrayList<>());
@@ -990,6 +1023,15 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                             (int) at.x() + r, level.y() + 4, (int) at.z() + r), WALL_BLOCKS_LOAD));
         }
         return Optional.of(new io.github.jayessdeesea.minecraft.command.Order.Fill(fill, except));
+    }
+
+    /** How many cells of {@code level} are still to dig or fill, as the world shows. */
+    private int levelLeft(io.github.jayessdeesea.minecraft.command.Directive.Level level) {
+        java.util.Set<io.github.jayessdeesea.minecraft.command.Cell> except = groundExcept();
+        return io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toClear(world, new io.github.jayessdeesea.minecraft.command.Box(level.minX(),
+                        level.y(), level.minZ(), level.maxX(), level.y() + LEVEL_ABOVE, level.maxZ()), except).size()
+                + io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toFill(world, new io.github.jayessdeesea.minecraft.command.Box(level.minX(),
+                        level.y() - LEVEL_BELOW, level.minZ(), level.maxX(), level.y() - 1, level.maxZ()), except).size();
     }
 
     /** The objective {@code unit} works to: a detachment's own, or its squad's from the general. */

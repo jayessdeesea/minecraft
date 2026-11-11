@@ -54,6 +54,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
     private volatile Report report = new Report.Idle();
     private volatile io.github.jayessdeesea.minecraft.command.TimeOfDay time; // a connection's thread writes
     private volatile Map<String, Plan> plans = Map.of(); // the squad loop's thread writes
+    private volatile Map<String, String> workOrders = Map.of(); // the squad loop's thread writes
 
     public SpringAiSquadLeader(String name, ChatClient chatClient, SquadLeaderPrompts prompts) {
         this.name = name;
@@ -77,8 +78,9 @@ public final class SpringAiSquadLeader implements SquadLeader {
     }
 
     @Override
-    public void receivePlans(Map<String, Plan> plans) {
+    public void receivePlans(Map<String, Plan> plans, Map<String, String> workOrders) {
         this.plans = Map.copyOf(plans);
+        this.workOrders = Map.copyOf(workOrders);
     }
 
     @Override
@@ -97,7 +99,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
         if (current == null) {
             return Optional.empty();
         }
-        SquadOrderReply reply = callModel(buildContext(prompts, name, current, lastOrder, soldierStatuses, terrain, Optional.ofNullable(time), plans));
+        SquadOrderReply reply = callModel(buildContext(prompts, name, current, lastOrder, soldierStatuses, terrain, Optional.ofNullable(time), plans, workOrders));
         SquadOrder order = toSquadOrder(reply, soldierStatuses.stream().map(SoldierStatus::name).toList());
         lastOrder = order;
         report = reply.cantco() == null || reply.cantco().isBlank() ? new Report.Moving() : new Report.Cantco(reply.cantco());
@@ -112,13 +114,14 @@ public final class SpringAiSquadLeader implements SquadLeader {
     static PromptContext buildContext(SquadLeaderPrompts prompts, String squadName, Objective objective, SquadOrder lastOrder,
                                       List<SoldierStatus> soldierStatuses, TerrainSurvey terrain,
                                       Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time) {
-        return buildContext(prompts, squadName, objective, lastOrder, soldierStatuses, terrain, time, Map.of());
+        return buildContext(prompts, squadName, objective, lastOrder, soldierStatuses, terrain, time, Map.of(), Map.of());
     }
 
     /** The situation, as {@code prompts}' user template's parameters: a soldier with no plan kept is a rifleman. */
     static PromptContext buildContext(SquadLeaderPrompts prompts, String squadName, Objective objective, SquadOrder lastOrder,
                                       List<SoldierStatus> soldierStatuses, TerrainSurvey terrain,
-                                      Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time, Map<String, Plan> plans) {
+                                      Optional<io.github.jayessdeesea.minecraft.command.TimeOfDay> time, Map<String, Plan> plans,
+                                      Map<String, String> workOrders) {
         StringBuilder squad = new StringBuilder();
         for (int i = 0; i < soldierStatuses.size(); i++) {
             SoldierStatus soldier = soldierStatuses.get(i);
@@ -128,7 +131,8 @@ public final class SpringAiSquadLeader implements SquadLeader {
                             Cohesion.distance(soldierStatuses.getFirst().position(), soldier.position())))
                     .append(": ").append(describe(soldier.report()))
                     .append("; ").append(describe(soldier.condition()))
-                    .append("; role ").append(plans.getOrDefault(soldier.name(), Plan.RIFLEMAN).describe()).append('\n');
+                    .append("; role ").append(plans.getOrDefault(soldier.name(), Plan.RIFLEMAN).describe())
+                    .append(Optional.ofNullable(workOrders.get(soldier.name())).map(w -> " (" + w + ")").orElse("")).append('\n');
         }
         Map<String, Object> params = new HashMap<>();
         params.put("time", time.<Object>map(SpringAiGeneral::describe).orElse(false));

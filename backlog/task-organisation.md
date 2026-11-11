@@ -22,11 +22,10 @@ squad leader decides:
 
 ## Done when
 Each a squad-simulation scenario, then seen live:
-- **Work orders, tracked.** Every directive is a work order the squad leader's drills track:
-  ISSUED, UNDER_WAY (the world shows progress), DONE, CANTCO, TIMED_OUT. It times out when the
-  world shows no progress for a while, or past a deadline from its estimated cost; the soldier goes
-  back to its role, the squad leader sees TIMED_OUT and why, and the same order to the same soldier
-  backs off longer each time. `TaskRegister`'s STALLED and its setbacks are the start of it.
+- **Work orders: the rest.** Directives are followed and timed out (docs/military-doctrine.md
+  § 18). Left: a soldier's own CANTCO on a directive ends it at once rather than waiting out the
+  stall; a refusal that grows longer each time the same order times out again; the role's work
+  followed the same way, `TaskRegister`'s STALLED shown to the squad leader.
 - **Liveness: time back to the requester.** Every queue - model calls waiting, a soldier's
   request unanswered, a work order ISSUED and not UNDER_WAY - has an age alarm (`[Alert]`, as a
   soldier stuck a minute has), and each dawn's AAR says the slowest answer of each kind. A request

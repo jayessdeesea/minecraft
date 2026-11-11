@@ -562,9 +562,10 @@ public class ChainOfCommand implements org.springframework.beans.factory.Disposa
         return squads.get(squad).gatherObjective();
     }
 
-    /** {@code squad}'s soldiers' standing plans, as kept, for its squad leader's next look. */
-    public void receivePlans(String squad, java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> plans) {
-        squads.get(squad).receivePlans(plans);
+    /** {@code squad}'s soldiers' standing plans, as kept, and how each one's work order stands, for its squad leader's next look. */
+    public void receivePlans(String squad, java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> plans,
+                             java.util.Map<String, String> workOrders) {
+        squads.get(squad).receivePlans(plans, workOrders);
     }
 
     /** {@code squad}'s standing order, if its squad leader has issued one. */

@@ -73,7 +73,7 @@ class SquadLeaderScenarioIT {
      * at a point - his GO_TO there; KEPT, Carol already the squad's miner and nothing asked - her role
      * left as it is. In every other variant, no plan changes at all.
      */
-    private enum Variant { PLAIN, STUCK, RETASKED, STRANDED, STRUGGLING, MINER, POST, KEPT }
+    private enum Variant { PLAIN, STUCK, RETASKED, STRANDED, STRUGGLING, MINER, POST, KEPT, TIMEDOUT }
 
     private record Outcome(Scenario scenario, Variant variant, long millis, String risk, List<String> failures) {
         String name() {
@@ -191,7 +191,14 @@ class SquadLeaderScenarioIT {
         io.github.jayessdeesea.minecraft.command.Plan carolMining = new io.github.jayessdeesea.minecraft.command.Plan(
                 io.github.jayessdeesea.minecraft.command.Role.MINER, java.util.Optional.of(mine), List.of());
         if (variant == Variant.KEPT) {
-            leader.receivePlans(java.util.Map.of("Carol", carolMining));
+            leader.receivePlans(java.util.Map.of("Carol", carolMining), java.util.Map.of());
+        }
+        // TIMEDOUT: Bob's fetch timed out - nothing to fetch there - and nothing new is asked: don't give it him again.
+        io.github.jayessdeesea.minecraft.command.Directive fetch = new io.github.jayessdeesea.minecraft.command.Directive.Fetch(
+                io.github.jayessdeesea.minecraft.command.Resource.WOOD, 8, new Position(start.x() + 10, start.y(), start.z()));
+        if (variant == Variant.TIMEDOUT) {
+            leader.receivePlans(java.util.Map.of(), java.util.Map.of("Bob", "his last order, " + fetch.describe()
+                    + ", timed out 20 s ago: no progress in 120 s, 8 left"));
         }
         leader.receiveObjective(new Objective(mission, new Position(objective.x(), objective.y(), objective.z()), "secure the objective"));
         long t0 = System.nanoTime();
@@ -250,6 +257,11 @@ class SquadLeaderScenarioIT {
             case KEPT -> {
                 if (changes.stream().anyMatch(c -> !c.soldier().equals("Carol") || !carolMining.with(c).equals(carolMining))) {
                     failures.add("the standing miner's role changed, unasked: " + changes);
+                }
+            }
+            case TIMEDOUT -> {
+                if (changes.stream().anyMatch(c -> c.directives().filter(d -> d.contains(fetch)).isPresent())) {
+                    failures.add("the timed-out fetch given again: " + changes);
                 }
             }
             default -> {

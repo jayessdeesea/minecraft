@@ -988,6 +988,15 @@ What a soldier does for itself sits under every plan, unordered: it eats, fights
 back to its work after, finds its own route, gets out of water and pits
 (docs/echelons/soldier/routines.md). The plan is the work.
 
+Each directive is a **work order** the squad follows (`command.WorkOrders`): what's left of it
+is measured from the world each cycle - blocks still to go, items still to carry, cells still to
+dig or fill. One whose measure hasn't fallen in 2 minutes, or that has run past its allowance (a
+minute, and 2 s a block, 20 s an item, 4 s a cell it started with), is timed out: taken off the
+soldier's plan, logged `TIMED OUT` with why, and shown to the squad leader for 5 minutes, during
+which the same order to the same soldier is refused (`REFUSED`). Contact pauses both clocks; a
+rifleman holding the point it was sent to is never timed out. The squad leader's view shows each
+soldier's work order under way - for how long, how much left - or the one lately timed out.
+
 The squad leader sets plans in its reply: `roleChanges` to change a soldier's role and site, `detached` to
 replace what it does first (GO_TO, FETCH, LEVEL, CANCEL) - both usually empty, since what's set
 stays set. Each order's changes are made once. It sees each soldier's plan at the end of his line.

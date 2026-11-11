@@ -74,8 +74,8 @@ final class SquadCommand {
     }
 
     /** Its soldiers' standing plans, as kept - the squad loop's thread sends them, for the squad leader's next look. */
-    void receivePlans(java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> plans) {
-        squadLeader.receivePlans(plans);
+    void receivePlans(java.util.Map<String, io.github.jayessdeesea.minecraft.command.Plan> plans, java.util.Map<String, String> workOrders) {
+        squadLeader.receivePlans(plans, workOrders);
     }
 
     private final ModelCalls modelCalls;

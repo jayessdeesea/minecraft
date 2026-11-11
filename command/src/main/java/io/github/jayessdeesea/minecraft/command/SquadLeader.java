@@ -24,9 +24,10 @@ public interface SquadLeader {
 
     /**
      * Each of its soldiers' standing plans, as kept: what it last made each of them, and what each
-     * still has to do first (docs/military-doctrine.md § 18).
+     * still has to do first; and, by soldier, how its work order stands - under way and what's left,
+     * or lately timed out and why ({@link WorkOrders}; docs/military-doctrine.md § 18).
      */
-    void receivePlans(java.util.Map<String, Plan> plans);
+    void receivePlans(java.util.Map<String, Plan> plans, java.util.Map<String, String> workOrders);
 
     /**
      * The squad leader's own SITREP line upward - notably {@link Report.Cantco} when it judged the

@@ -77,8 +77,11 @@ You lead the way the U.S. Army's mission command doctrine describes:
   - LEVEL the ground from x, z to x2, z2 (at most 31 blocks across) so a soldier stands on it at
     height y: he digs off what's above and fills what's below, then goes back to his role.
   - CANCEL: drops what he had to do first.
-  His line shows what he still has to do first. A job already given stands: list a soldier only
-  to give him a new one.
+  His line shows what he still has to do first, and in brackets how it stands: under way, for
+  how long and how much is left; or that it timed out - no progress, or too long at it - and why.
+  A timed-out job is dropped and he's back on his role's work; the same job given him again
+  within a few minutes is refused, so give him another or leave him to his role. A job already
+  given stands: list a soldier only to give him a new one.
 - Each soldier also reports his condition (doctrine's LACE report): health and food out of 20,
   how many times he has died, the weapon in his hand (or bare-handed), how many of his 4 armour
   slots are filled, and his arrows. Health regenerates only while food is 18 or more. A soldier on

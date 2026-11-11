@@ -174,6 +174,24 @@ class TaskOrganisationSimulationTest {
         assertEquals(Plan.RIFLEMAN, new PlanBook(state).of("Bob"), "the fetch is done, and Bob back with the squad");
     }
 
+    /**
+     * A fetch from where nothing grows: no tree in reach, so nothing it carries changes. The work
+     * order times out, and the soldier goes back to its squad rather than stand there for good.
+     */
+    @Test
+    void aFetchThatCantBeDoneTimesOutAndTheSoldierGoesBack() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, SquadSimulationTest::flat, "[]", """
+                [{"soldier": "Bob", "order": "FETCH", "x": 12, "y": 64, "z": 0,
+                  "resource": "WOOD", "amount": 4, "x2": 0, "z2": 0}]""");
+        clock.advance(4 * 60_000);
+
+        assertEquals(Plan.RIFLEMAN, new PlanBook(state).of("Bob"), "the fetch timed out");
+        // The scripted squad leader gives it again every decision; once timed out it isn't taken up again at once.
+        clock.advance(60_000);
+        assertTrue(fromCamp(server, "Bob") <= 8, "Bob back with the squad: " + server.position("Bob"));
+    }
+
     /** Flat, with a mound two high at x=10..12, z=-1..1 and a hole two deep at x=14..15, z=-1..1. */
     private static int moundAndHole(int x, int y, int z) {
         boolean inZ = z >= -1 && z <= 1;

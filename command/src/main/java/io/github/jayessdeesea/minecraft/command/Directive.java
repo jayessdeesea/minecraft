@@ -75,12 +75,30 @@ public sealed interface Directive {
     default boolean doneBy(SoldierStatus soldier) {
         return switch (this) {
             case GoTo _ -> false;
-            case Fetch(Resource resource, int amount, Position near) -> soldier.condition().flatMap(Condition::kit).map(k -> switch (resource) {
-                case WOOD -> k.logs();
-                case STONE -> k.stone();
-                default -> k.dirt();
-            }).orElse(0) >= amount;
+            case Fetch(Resource resource, int amount, Position near) -> carried(soldier, resource) >= amount;
             case Level _ -> false;
+        };
+    }
+
+    /** How much of {@code resource} - logs, cobblestone, dirt - {@code soldier} carries. */
+    static int carried(SoldierStatus soldier, Resource resource) {
+        return soldier.condition().flatMap(Condition::kit).map(k -> switch (resource) {
+            case WOOD -> k.logs();
+            case STONE -> k.stone();
+            default -> k.dirt();
+        }).orElse(0);
+    }
+
+    /**
+     * What's left of it for {@code soldier}, as its own state shows: blocks still to go, items still
+     * to carry - and 0 for a {@link Level}, which the world measures.
+     */
+    default int leftFor(SoldierStatus soldier) {
+        return switch (this) {
+            case GoTo(Position at) -> (int) Math.max(0, Math.ceil(Math.hypot(soldier.position().x() - at.x(),
+                    soldier.position().z() - at.z()) - GO_TO_TOLERANCE));
+            case Fetch(Resource resource, int amount, Position near) -> Math.max(0, amount - carried(soldier, resource));
+            case Level _ -> 0;
         };
     }
 
