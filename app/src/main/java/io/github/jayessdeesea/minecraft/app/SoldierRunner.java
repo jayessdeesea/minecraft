@@ -2558,8 +2558,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // blocks of the camp and its farm again as it walked out, and finished neither - 281
             // taskings in half an hour ended unfinished within 30 s.
             boolean daylight = !chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
+            // A gather that's found nothing isn't work, as for the camp's upkeep: live, two soldiers
+            // stood a day in a dark camp with 7 and 13 torches, each on a wood gather with none left.
+            boolean gatherWorking = gathering.containsKey(soldierName)
+                    && now - gatherFoundNothing.getOrDefault(soldierName, Long.MIN_VALUE / 2) > FOUND_NOTHING_MILLIS;
             boolean otherWork = farming.containsKey(soldierName) || walling.containsKey(soldierName)
-                    || repointing.containsKey(soldierName) || planting.containsKey(soldierName) || gathering.containsKey(soldierName);
+                    || repointing.containsKey(soldierName) || planting.containsKey(soldierName) || gatherWorking;
             if (!lighting.containsKey(soldierName) && !otherWork && !campDark.isEmpty() && !squadInContact && daylight
                     && torchesCarried.getOrDefault(soldierName, 0) > 0 && campGround != null
                     && Math.hypot(statuses.get(i).position().x() - campGround.x(), statuses.get(i).position().z() - campGround.z()) <= SECURE_RADIUS * 2

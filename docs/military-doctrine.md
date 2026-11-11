@@ -714,8 +714,8 @@ that radius tile the ground exactly, then on any cell the lattice left dark. Tor
 standing count, so the plan shrinks as torches go down and a secured place needs nothing more.
 The plan is worked out again every cycle, so a torch that's gone - washed away, broken, dug out -
 is planned again. And the camp is kept lit whatever the task: by day, a soldier within 24 blocks of
-the camp with torches in its pack and no other work - not farming, walling, planting or gathering -
-puts one down wherever the camp's ground has gone dark.
+the camp with torches in its pack and no other work - not farming, walling, planting or gathering
+(a gather that's found nothing isn't work) - puts one down wherever the camp's ground has gone dark.
 Farmland and leaves are left bare: a torch won't stand on either, and nothing spawns on leaves. Light is worked out from where torches stand, not read from the server's
 light data.
 

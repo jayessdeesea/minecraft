@@ -10,6 +10,7 @@ import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import io.github.jayessdeesea.minecraft.command.Stockpile;
 import io.github.jayessdeesea.minecraft.command.TaskRegister;
@@ -1182,6 +1183,35 @@ class SquadSimulationTest {
                 .filter(s -> s.name().equals("the camp's ground lit")).findFirst().orElseThrow();
         assertTrue(lit.met(), "the camp's ground: " + lit.status() + "; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 8), server.log.size()));
+    }
+
+    /**
+     * A squad sent for wood where there's none to find, carrying torches, keeps the camp's light:
+     * its gather found nothing, and that's no work. Live, two soldiers stood a day in a dark camp
+     * with 7 and 13 torches, each "on" a wood gather with nothing left to gather.
+     */
+    @Test
+    void aSquadWithNoWoodToFindLightsTheCampWithTheTorchesItCarries() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Gather wood", camp, "Logs for the camp",
+                new Objective.Task.Gather(Resource.WOOD))), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_TORCH, 32})));
+        runner.run();
+
+        clock.advance(30 * 60_000);
+
+        Foothold.Standard lit = chain.foothold().orElseThrow().standards().stream()
+                .filter(st -> st.name().equals("the camp's ground lit")).findFirst().orElseThrow();
+        assertTrue(lit.met(), "the camp's ground: " + lit.status());
     }
 
     /**
