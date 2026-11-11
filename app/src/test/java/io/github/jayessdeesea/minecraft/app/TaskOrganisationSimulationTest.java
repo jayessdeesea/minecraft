@@ -192,6 +192,36 @@ class TaskOrganisationSimulationTest {
         assertTrue(fromCamp(server, "Bob") <= 8, "Bob back with the squad: " + server.position("Bob"));
     }
 
+    /**
+     * A soldier's basic load is its own: with a wooden sword and the makings of a stone one - two
+     * cobblestone and a stick - it makes the stone sword, though its squad leader hasn't said
+     * "rearm". Live, 2 of 8 carried a stone sword or better for days, every upgrade waiting on it.
+     */
+    @Test
+    void aSoldierMakesItsStoneSwordWithoutBeingToldTo() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
+                "A foothold", new Objective.Task.None())), squadLeader("[]", "[]"),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_COBBLESTONE, 4},
+                        new int[]{11, SimServer.ITEM_OAK_LOG, 4})))
+                .run();
+        clock.advance(5 * 60_000);
+
+        int stoneSword = SimServer.itemNamedOrMinus("stone_sword");
+        for (String soldier : List.of("Alice", "Bob")) {
+            assertTrue(server.count(soldier, stoneSword) > 0,
+                    soldier + " has no stone sword; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+        }
+    }
+
     /** Flat, with a mound two high at x=10..12, z=-1..1 and a hole two deep at x=14..15, z=-1..1. */
     private static int moundAndHole(int x, int y, int z) {
         boolean inZ = z >= -1 && z <= 1;

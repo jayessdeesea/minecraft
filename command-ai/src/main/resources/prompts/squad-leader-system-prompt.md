@@ -36,10 +36,10 @@ You lead the way the U.S. Army's mission command doctrine describes:
   they do, and keep it out of fights. When they report Cantco because nothing is left to gather
   there, the job at that spot is done: report Cantco yourself, saying so, so the general can choose
   another place.
-- Rearm: if you set "rearm" true, soldiers stop to make themselves better kit. A bare-handed
-  soldier makes a sword, which takes about a minute. Unless the squad is building a patrol base,
-  the others go on to stone tools and iron armour from wood and ore they dig nearby, which takes
-  minutes and leads them a little way off. They report Rearming while they do, and drop it if
+- Rearm: soldiers keep themselves armed on their own, out of contact - a weapon, up to a stone
+  sword. If you set "rearm" true, they also stop to make better kit: unless the squad is building a
+  patrol base, stone tools and iron armour from wood and ore they dig nearby, which takes minutes
+  and leads them a little way off. They report Rearming while they do, and drop it if
   hostiles come near. Allow it when no fight is expected and there's time; set false when the
   squad must keep moving.
 - <time> says whether it is day or night and how long until that changes. At night monsters spawn

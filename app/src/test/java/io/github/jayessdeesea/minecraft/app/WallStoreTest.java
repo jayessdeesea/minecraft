@@ -27,6 +27,17 @@ class WallStoreTest {
     }
 
     @Test
+    void everyLayoutKeptIsListedByItsKeyNegativesAndAll() {
+        new WallStore(directory).save("-48,44", List.of(new BlockPos(-56, 67, 36)));
+        new WallStore(directory).save("3,-7", List.of(new BlockPos(0, 64, 0)));
+        new WallStore(directory, "farm").save("-60,70", List.of(new BlockPos(-60, 62, 70)));
+
+        assertEquals(List.of("-48,44", "3,-7"), new WallStore(directory).keys());
+        assertEquals(List.of("-60,70"), new WallStore(directory, "farm").keys());
+        assertEquals(List.of(), new WallStore(directory.resolve("none")).keys());
+    }
+
+    @Test
     void theCampsFarmIsKeptApartFromItsWall() {
         List<BlockPos> wall = List.of(new BlockPos(-56, 67, 36));
         List<BlockPos> farm = List.of(new BlockPos(-32, 62, 28), new BlockPos(-33, 62, 28));

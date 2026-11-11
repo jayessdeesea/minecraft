@@ -18,7 +18,7 @@ then turn the decision into each soldier's order ([drills.md](drills.md)).
 - **Vertical tolerance:** how far from the point's height the squad may end up.
 - **Risk:** the squad's, and per soldier (`soldierRisk`)
   ([military-doctrine.md § 7](../../military-doctrine.md#7-risk-acceptance)).
-- **Rearm:** whether soldiers may stop to make their kit.
+- **Rearm:** whether soldiers may stop to make kit past their basic load, a stone sword, which they keep on their own.
 - **Intent**, in words, logged with the order.
 - **Task organisation:** changes to its soldiers' standing plans, usually none - `roleChanges`, a
   soldier's role and site; `detached`, a soldier sent off on a job of his own: `GO_TO`, `FETCH`, `LEVEL`, or

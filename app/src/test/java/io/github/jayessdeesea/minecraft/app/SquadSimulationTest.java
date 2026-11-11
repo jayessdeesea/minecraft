@@ -937,6 +937,59 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
     }
 
+    /** The camp's wall, as laid out round the camp's ground on flat ground: two high, eight out. */
+    private static final java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> CAMP_WALL = java.util.Set.copyOf(
+            io.github.jayessdeesea.minecraft.bot.supply.Perimeter.layout(new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+                @Override
+                public boolean isSolid(int x, int y, int z) {
+                    return y <= GROUND;
+                }
+
+                @Override
+                public boolean isHazard(int x, int y, int z) {
+                    return false;
+                }
+
+                @Override
+                public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(
+                        io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                    return List.of();
+                }
+            }, new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(0, GROUND + 1, 0), SoldierRunner.WALL_RADIUS));
+
+    /** Flat, the camp's wall standing round it in cobblestone. */
+    private static int walledCamp(int x, int y, int z) {
+        return CAMP_WALL.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z)) ? SimServer.COBBLESTONE : flat(x, y, z);
+    }
+
+    /**
+     * A camp walled in before a restart, and no squad told to FORTIFY after it: the camp's wall still
+     * stands, and the standard says so. Live, after a restart it read "not begun" - the layout is
+     * kept on disk, but the measure read only the walls a squad had been ordered to that run.
+     */
+    @Test
+    void aWallBuiltBeforeARestartStillCountsAfterIt() {
+        new WallStore(state).save("0,0", List.copyOf(CAMP_WALL));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::walledCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})))
+                .run();
+        clock.advance(2 * 60_000);
+
+        io.github.jayessdeesea.minecraft.command.Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
+                .filter(s -> s.name().equals("the camp walled in")).findFirst().orElseThrow();
+        assertTrue(walled.met(), "the camp's wall: " + walled.status());
+    }
+
     /**
      * SECURE ordered at the camp, the general's point a few blocks off its centre and above its
      * ground, as live: the squad lights the camp's ground, and the camp's standard is met. Live,

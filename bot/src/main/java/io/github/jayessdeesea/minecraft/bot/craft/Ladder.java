@@ -97,6 +97,9 @@ public final class Ladder {
     /** How many rungs there are. */
     public static final int RUNGS = LADDER.size();
 
+    /** The last rung of a soldier's basic load, its own to keep: a stone sword. */
+    public static final int BASIC_LOAD = 1;
+
     /** Which rung {@code recipe} is made for, counted from 0 - the first that offers it. */
     public static int rungOf(Recipe recipe) {
         for (int i = 0; i < LADDER.size(); i++) {

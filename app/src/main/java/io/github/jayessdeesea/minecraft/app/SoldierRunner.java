@@ -441,6 +441,11 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 dark + " walkable cells within " + SECURE_RADIUS + " blocks still dark"
                         + (noWood ? "; no logs to make torches from and no trees in sight - grow them first" : ""),
                 noWood ? "TREE_FARM" : "SECURE"));
+        // The camp's wall as kept on disk, whether or not a squad is ordered to it this run: live,
+        // after a restart with no FORTIFY order, a closed wall read "not begun".
+        wallStore.keys().stream().filter(k -> Math.hypot(Integer.parseInt(k.split(",")[0]) - camp[0],
+                        Integer.parseInt(k.split(",")[1]) - camp[1]) <= WALL_RADIUS)
+                .forEach(k -> walls.computeIfAbsent(k, key -> wallStore.load(key).orElseThrow()));
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walls.entrySet().stream()
                 .filter(e -> Math.hypot(Integer.parseInt(e.getKey().split(",")[0]) - camp[0], Integer.parseInt(e.getKey().split(",")[1]) - camp[1])
                         <= WALL_RADIUS).map(Map.Entry::getValue).findFirst().orElse(null);
@@ -2208,7 +2213,10 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                     .ifPresentOrElse(w -> workshops.put(soldierName, w), () -> workshops.remove(soldierName));
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
                     .ifPresentOrElse(t -> deliveries.put(soldierName, t), () -> deliveries.remove(soldierName));
-            rearmAllowed.put(soldierName, order.rearm() && !squadInContact);
+            // The basic load - a weapon up to a stone sword - is the soldier's own to keep, out of
+            // contact; beyond it, the squad leader's leave. Live, 2 of 8 carried a stone sword or
+            // better for days, every rung waiting on "rearm".
+            rearmAllowed.put(soldierName, !squadInContact);
             upgradeAllowed.put(soldierName, order.rearm() && !squadInContact && !baseOrdered);
             stoneSetAside.put(soldierName, stoneShare);
             Optional<io.github.jayessdeesea.minecraft.command.Objective> gather = squadInContact
@@ -3601,7 +3609,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         java.util.Set<Workstation> inReach = armourers.get(name).stationsNear(world, at);
         java.util.function.Predicate<ItemClass> canDig = material ->
                 setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims);
-        Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig, upgradeAllowed.getOrDefault(name, false) ? highest : 0);
+        Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig,
+                upgradeAllowed.getOrDefault(name, false) ? highest : Math.min(highest, Ladder.BASIC_LOAD));
         next.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));
         return next;
     }

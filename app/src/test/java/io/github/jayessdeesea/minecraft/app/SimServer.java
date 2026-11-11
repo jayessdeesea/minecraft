@@ -324,7 +324,7 @@ final class SimServer {
                 .findFirst().orElseThrow();
     }
 
-    private static int itemNamedOrMinus(String name) {
+    static int itemNamedOrMinus(String name) {
         return java.util.stream.IntStream.range(0, 4096).filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of(name)))
                 .findFirst().orElse(-1);
     }

@@ -19,7 +19,7 @@ squad's state, recomputed every squad cycle.
 | 4 | `RATIONS` (`Rations`) | Eats. | Hungry, with food carried. |
 | 5 | `SEALER` (`Builder`) | Puts blocks in the water round it, sources first, to stop the flow and climb out. | Stuck in water. |
 | 6 | `HUNTER` (`Hunter`) | Kills an animal for meat. | Hungry by day with nothing to eat ([§ 4](../../military-doctrine.md#4-reports-upward)). |
-| 7 | `ARMOURER` (`Armourer`, `Crafter`) | Makes the next rung of the equipment ladder. | The squad leader's `rearm`, out of contact ([§ 11](../../military-doctrine.md#11-pre-combat-checks)). |
+| 7 | `ARMOURER` (`Armourer`, `Crafter`) | Makes the next rung of the equipment ladder. | Out of contact: up to a stone sword on its own, past it with the squad leader's `rearm` ([§ 11](../../military-doctrine.md#11-pre-combat-checks)). |
 | 8 | `BUILDER` (`Builder`) | Walls and roofs a patrol base round the squad. | `PATROL_BASE`, all the squad inside the outline ([§ 14](../../military-doctrine.md#14-patrol-base)). |
 | 9 | `PLACING` (`Builder`) | Fills a structure the engineer laid out, cell by cell, standing where each needs. | `Order.Place` ([orders](orders.md)). |
 | 10 | `DEPOSITOR` (`Depositor`) | Takes a full load to the stockpile chest. | A full load of logs or cobblestone. |

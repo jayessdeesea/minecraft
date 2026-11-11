@@ -473,8 +473,10 @@ cobblestone at the table - and places it into its cell. A fixture counts as stan
 another block there - a wall's cobblestone - isn't the chest. With no workshop sited, the soldier says so
 rather than putting a table down where it stands.
 
-The squad leader decides whether there's time: its order's `rearm` lets soldiers make a weapon.
-Climbing past it waits until the squad isn't ordered to a patrol base, since shelter comes first
+A soldier's basic load is its own to keep: out of contact, it makes a weapon and climbs to a stone
+sword (`Ladder.BASIC_LOAD`) unordered. The squad leader decides whether there's time for more: its
+order's `rearm` lets soldiers climb past the basic load. Climbing past it also waits until the
+squad isn't ordered to a patrol base, since shelter comes first
 and digging iron isn't building it. Each soldier also keeps back its share of the cobblestone its
 squad's base still needs, so a stone sword never costs a wall. A soldier at it reports `Rearming`,
 and the squad doesn't halt for it.
@@ -735,7 +737,8 @@ it first, and shared, and it's kept by the objective's x and z, not by the groun
 that ground moves as the pits are dug and the wall goes up, and laid out again it would lose what's
 built. So the
 layout is kept on disk too (`app.WallStore`, under `minecraft.state-dir`), and a restarted garrison
-builds the wall it laid out before rather than a second one on top of it. Its
+builds the wall it laid out before rather than a second one on top of it. The foothold's walled
+standard (§ 17) reads it from there too, whether or not a squad is ordered to FORTIFY that run. Its
 cells join the ones every dig skips, so nobody quarries it, and so does the camp's ground inside
 it, solid when the wall is laid out: a dig takes the nearest dirt first, and a pit outside the wall
 would otherwise eat in under it. Where the ground under a wall cell has gone anyway, the cells

@@ -52,6 +52,25 @@ final class WallStore {
         }
     }
 
+    /** The key ("x,z") of every layout of this kind kept. */
+    List<String> keys() {
+        if (!Files.isDirectory(directory)) {
+            return List.of();
+        }
+        String prefix = kind + "_";
+        try (java.util.stream.Stream<Path> files = Files.list(directory)) {
+            return files.map(f -> f.getFileName().toString())
+                    .filter(n -> n.startsWith(prefix) && n.endsWith(".json"))
+                    .map(n -> n.substring(prefix.length(), n.length() - ".json".length()))
+                    // "x_z", either negative: the separator is the underscore after the first number.
+                    .map(k -> k.replaceFirst("^(-?\\d+)_(-?\\d+)$", "$1,$2"))
+                    .filter(k -> k.matches("-?\\d+,-?\\d+"))
+                    .sorted().toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException("the " + kind + " layouts in " + directory + " won't list", e);
+        }
+    }
+
     /** Keeps {@code layout} for the wall round column {@code key}. */
     void save(String key, List<BlockPos> layout) {
         try {
