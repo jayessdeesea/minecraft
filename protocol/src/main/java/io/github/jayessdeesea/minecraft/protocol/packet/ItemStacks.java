@@ -21,7 +21,7 @@ import java.util.Optional;
  * {@code UnknownPacket}), so the caller keeps what it decoded and drops the rest, and the type is
  * logged loudly so the gap gets closed. Known: the plain-number components a soldier's gear
  * carries, enchantments, names and lore, and what a pillager captain drops - its banner's
- * tooltip display and its bottle's amplifier (codecs confirmed in the server jar).
+ * rarity, patterns and tooltip display, and its bottle's amplifier (codecs confirmed in the server jar).
  */
 final class ItemStacks {
 
@@ -48,6 +48,16 @@ final class ItemStacks {
     private static final int TOOLTIP_DISPLAY = 18;
     // OminousBottleAmplifier.STREAM_CODEC: a VarInt. A captain's ominous bottle.
     private static final int OMINOUS_BOTTLE_AMPLIFIER = 65;
+    // Rarity.STREAM_CODEC: an ID map, a VarInt. A captain's banner is uncommon.
+    private static final int RARITY = 12;
+    // BannerPatternLayers.STREAM_CODEC: a VarInt-counted list of layers, each a pattern - a registry
+    // holder: VarInt 0 then the pattern inline (asset ID and translation key, both strings), else
+    // its registry ID plus one - then its DyeColor, an ID map, a VarInt. A captain's banner.
+    private static final int BANNER_PATTERNS = 74;
+    // DyeColor.STREAM_CODEC, a VarInt: a shield's or banner's base colour.
+    private static final int BASE_COLOR = 75;
+    /** More than any banner has: the loom allows six layers, commands a few more. */
+    private static final int MAX_BANNER_LAYERS = 64;
     /** More than any item carries: there are well under 64 enchantments. */
     private static final int MAX_ENCHANTMENTS = 64;
 
@@ -81,7 +91,17 @@ final class ItemStacks {
             int type = ProtocolCodec.readVarInt(in);
             switch (type) {
                 case DAMAGE -> damage = ProtocolCodec.readVarInt(in);
-                case MAX_DAMAGE, REPAIR_COST, OMINOUS_BOTTLE_AMPLIFIER -> ProtocolCodec.readVarInt(in);
+                case MAX_DAMAGE, REPAIR_COST, OMINOUS_BOTTLE_AMPLIFIER, RARITY, BASE_COLOR -> ProtocolCodec.readVarInt(in);
+                case BANNER_PATTERNS -> {
+                    int layers = ProtocolCodec.readVarIntCount(in, MAX_BANNER_LAYERS);
+                    for (int layer = 0; layer < layers; layer++) {
+                        if (ProtocolCodec.readVarInt(in) == 0) {
+                            ProtocolCodec.readString(in);
+                            ProtocolCodec.readString(in);
+                        }
+                        ProtocolCodec.readVarInt(in);
+                    }
+                }
                 case TOOLTIP_DISPLAY -> {
                     in.readBoolean();
                     int hidden = ProtocolCodec.readVarIntCount(in, MAX_COMPONENTS);

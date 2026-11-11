@@ -120,8 +120,8 @@ class InventoryPacketsTest {
     }
 
     /**
-     * Live: a pillager captain's banner carries what its tooltip hides, and its ominous bottle its
-     * amplifier. Each dropped the rest of the inventory, and a soldier's planks to sticks went unseen.
+     * Live: a pillager captain's banner carries its rarity, its patterns and what its tooltip
+     * hides, and its ominous bottle its amplifier. Each dropped the rest of the inventory, and a soldier's planks to sticks went unseen.
      */
     @Test
     void aCaptainsBannerAndBottleAreReadPast() {
@@ -131,8 +131,18 @@ class InventoryPacketsTest {
         ProtocolCodec.writeVarInt(in, 3);  // three slots: the banner, the bottle, then arrows
         ProtocolCodec.writeVarInt(in, 1);
         ProtocolCodec.writeVarInt(in, 1417); // white_banner
-        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 3);
         ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 12); // rarity: uncommon
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 74); // banner_patterns: one from the registry, one inline
+        ProtocolCodec.writeVarInt(in, 2);
+        ProtocolCodec.writeVarInt(in, 5);
+        ProtocolCodec.writeVarInt(in, 9);
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeString(in, "minecraft:rhombus");
+        ProtocolCodec.writeString(in, "block.minecraft.banner.rhombus");
+        ProtocolCodec.writeVarInt(in, 15);
         ProtocolCodec.writeVarInt(in, 18); // tooltip_display: shown, two components hidden
         in.writeBoolean(false);
         ProtocolCodec.writeVarInt(in, 2);
