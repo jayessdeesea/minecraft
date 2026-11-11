@@ -148,6 +148,23 @@ class PatrolBaseTest {
 
         assertEquals(fromTheFloor.floor(), fromThePit.floor(), "one room, from wherever in it");
         assertTrue(fromTheFloor.floor().contains(pit), "the pit is the room's: " + fromTheFloor.floor());
+        // Its way out is cut through the wall, not the air over the pit - live, a room dug into a
+        // hill, the pit mid-row: the cell over it, with the room's floor beyond, was taken for a
+        // doorway already open, and nobody cut one.
+        java.util.Set<Position> air = new HashSet<>();
+        for (int x = 0; x <= 2; x++) {
+            air.add(new Position(x, 64, 0));
+            air.add(new Position(x, 65, 0));
+        }
+        air.add(new Position(1, 63, 0));
+        java.util.function.Predicate<Position> dug = cell -> cell.y() < 70 && !air.contains(cell);
+        PatrolBase.Plan corridor = PatrolBase.enclosing(new Position(0.5, 64, 0.5), dug).orElseThrow();
+        java.util.function.Predicate<Position> walkable = c -> !dug.test(c) && !dug.test(new Position(c.x(), c.y() + 1, c.z()))
+                && dug.test(new Position(c.x(), c.y() - 1, c.z()));
+        for (Position toward : List.of(new Position(50, 64, 0.5), new Position(-50, 64, 0.5), new Position(1.5, 64, 50), new Position(1.5, 64, -50))) {
+            List<Position> door = corridor.doorway(toward, walkable);
+            assertTrue(door.stream().allMatch(dug), "a doorway toward " + toward + " through the wall: " + door);
+        }
         // And a pit that's a way out - a shaft down to open ground below - still isn't shut in.
         java.util.function.Predicate<Position> shaft = cell -> (cell.y() < 64 && !(cell.x() == 1 && cell.z() == 1 && cell.y() >= 50)
                 && !(cell.y() >= 50 && cell.y() <= 51 && Math.abs(cell.x()) < 10 && Math.abs(cell.z()) < 10)) || built.contains(cell);

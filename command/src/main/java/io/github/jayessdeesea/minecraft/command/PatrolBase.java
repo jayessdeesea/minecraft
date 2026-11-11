@@ -36,7 +36,11 @@ public final class PatrolBase {
             for (Position cell : floor) {
                 for (int[] side : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
                     Position wall = new Position(cell.x() + side[0], cell.y(), cell.z() + side[1]);
-                    if (floor.contains(wall)) {
+                    // Over or under the room's own floor isn't a wall: the air over a pit in it, or the
+                    // block a floor cell stands on. Live, the air over a pit was taken for a doorway
+                    // already open, and nobody cut one.
+                    if (floor.contains(wall) || floor.contains(new Position(wall.x(), wall.y() - 1, wall.z()))
+                            || floor.contains(new Position(wall.x(), wall.y() + 1, wall.z()))) {
                         continue;
                     }
                     Position outside = new Position(wall.x() + side[0], wall.y(), wall.z() + side[1]);
@@ -158,6 +162,8 @@ public final class PatrolBase {
 
     /** The most floor a room can have and still be one a soldier is shut in: a 3x3 hut is 9. */
     static final int MAX_ROOM_CELLS = 16;
+    /** How high over a room's cell its roof is looked for, a room with a drop in it needing one. */
+    static final int ROOF_WITHIN = 3;
 
     /**
      * The room {@code soldier} is shut in, if it is: the cells at its feet a flood fill from where it
@@ -181,12 +187,14 @@ public final class PatrolBase {
         // its floor, read as a way down and out, was never found, and three soldiers stood shut in it.
         java.util.Set<Position> room = new java.util.LinkedHashSet<>(List.of(feet));
         java.util.ArrayDeque<Position> frontier = new java.util.ArrayDeque<>(room);
+        boolean drops = false;
         while (!frontier.isEmpty()) {
             Position cell = frontier.poll();
             java.util.List<Position> moves = new java.util.ArrayList<>();
             Position below = new Position(cell.x(), cell.y() - 1, cell.z());
             if (!solid.test(below)) {
                 moves.add(below); // it falls
+                drops = true;
             } else {
                 for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
                     Position next = new Position(cell.x() + d[0], cell.y(), cell.z() + d[1]);
@@ -206,6 +214,13 @@ public final class PatrolBase {
                     frontier.add(next);
                 }
             }
+        }
+        // A drop in it is the room's only under a roof: in the open - a trench by a wall on a slope,
+        // dug by the ground work - a soldier pillars out, and in the squad simulation one was taken
+        // for shut in 86 times. A hut has a roof.
+        if (drops && room.stream().anyMatch(cell -> java.util.stream.IntStream.rangeClosed(2, ROOF_WITHIN)
+                .noneMatch(up -> solid.test(new Position(cell.x(), cell.y() + up, cell.z()))))) {
+            return java.util.Optional.empty();
         }
         // Where a body stands, not falls through.
         room.removeIf(cell -> !solid.test(new Position(cell.x(), cell.y() - 1, cell.z())));
