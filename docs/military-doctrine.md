@@ -157,7 +157,10 @@ carries a **basic load** of 6 rations, and is short below 2:
    (`app.WallStore`), since sited again after a restart it moved to another pond. Once a run it's
    grown toward 96 cells with the plots round the waters within 16 blocks of its own
    (`FarmPlan.grown`): one water's plot is 80 cells at best and about half that by a pond, and
-   eight working soldiers eat about a loaf and a half a minute.
+   eight working soldiers eat about a loaf and a half a minute. No plot is tilled within 2 blocks
+   of higher ground a soldier could come down from (`FarmPlan.LANDING`): landing on farmland from a
+   drop tramples it to dirt, and stepping off a one-block ledge at a walk lands up to two blocks
+   on. Live, half a farm in a hollow stood bare, trampled as fast as it was tilled.
 3. **The squad asks.** A soldier still short with none of those means - no wheat, no game in sight,
    nobody sharing, and no wheat growing in the camp's farm, whose bread is on the way - makes the
    squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
@@ -738,7 +741,9 @@ that ground moves as the pits are dug and the wall goes up, and laid out again i
 built. So the
 layout is kept on disk too (`app.WallStore`, under `minecraft.state-dir`), and a restarted garrison
 builds the wall it laid out before rather than a second one on top of it. The foothold's walled
-standard (§ 17) reads it from there too, whether or not a squad is ordered to FORTIFY that run. Its
+standard (§ 17) reads it from there too, whether or not a squad is ordered to FORTIFY that run -
+of the layouts kept round the camp, one for each place FORTIFY was ordered, the one the world shows
+most built. Each layout is written whole or not at all. Its
 cells join the ones every dig skips, so nobody quarries it, and so does the camp's ground inside
 it, solid when the wall is laid out: a dig takes the nearest dirt first, and a pit outside the wall
 would otherwise eat in under it. Where the ground under a wall cell has gone anyway, the cells
@@ -879,6 +884,10 @@ one makes a stone pickaxe from the cobblestone it carries, or a wooden one from 
 fewer than three. The stairs and tunnels are claimed (`Staircase.walkway`):
 no table or furnace is put down in them, and no other soldier digs them. The cutter's hands are
 free between blocks, so a routine ranked above mining - making its kit - gets its turn.
+
+The foothold's stone-and-iron standard (§ 17) reads the camp's kept staircase from the world -
+the steps from the top that stand open (`Staircase.stepsCut`) - as well as a cutter at work, so a
+mine cut before a restart counts after it.
 
 The camp's mine is the night shift's work (docs/echelons/general/operator-rules.md). Once the
 stairs reach the iron, their tunnels are the mining. The stairs' state is the world's, so a run stopped by a fight or a restart picks up

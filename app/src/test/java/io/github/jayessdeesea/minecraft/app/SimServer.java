@@ -503,7 +503,21 @@ final class SimServer {
         @Override
         public void reportPosition(double x, double y, double z, float yaw, float pitch, boolean onGround) {
             position = new PlayerPosition(x, y, z);
+            // Trampling, as vanilla's farmland: landing on it from more than half a block turns it to
+            // dirt (vanilla: a chance of the fall less half a block; here always).
+            peakY = Math.max(peakY, y);
+            if (onGround) {
+                int bx = (int) Math.floor(x), by = (int) Math.floor(y - 0.01), bz = (int) Math.floor(z);
+                if (peakY - y > 0.5 && block(bx, by, bz) == FARMLAND) {
+                    set(bx, by, bz, DIRT);
+                    log.add(name + " trampled the farmland at " + bx + "," + by + "," + bz + " falling from " + peakY + " to " + y);
+                }
+                peakY = y;
+            }
         }
+
+        /** The highest it has been since it last stood on the ground. */
+        private double peakY = Double.NEGATIVE_INFINITY;
 
         @Override
         public void endTick() {

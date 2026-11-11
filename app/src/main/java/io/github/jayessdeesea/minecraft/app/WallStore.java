@@ -75,7 +75,10 @@ final class WallStore {
     void save(String key, List<BlockPos> layout) {
         try {
             Files.createDirectories(directory);
-            JSON.writeValue(file(key).toFile(), layout.stream().map(c -> new int[]{c.x(), c.y(), c.z()}).toList());
+            // Written whole or not at all: a write cut short left an empty layout, which won't read.
+            Path temporary = directory.resolve(file(key).getFileName() + ".tmp");
+            JSON.writeValue(temporary.toFile(), layout.stream().map(c -> new int[]{c.x(), c.y(), c.z()}).toList());
+            Files.move(temporary, file(key), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             throw new UncheckedIOException("the " + kind + " layout for " + key + " won't write to " + directory, e);
         }

@@ -446,9 +446,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
         wallStore.keys().stream().filter(k -> Math.hypot(Integer.parseInt(k.split(",")[0]) - camp[0],
                         Integer.parseInt(k.split(",")[1]) - camp[1]) <= WALL_RADIUS)
                 .forEach(k -> walls.computeIfAbsent(k, key -> wallStore.load(key).orElseThrow()));
+        // The one the world shows most built, of the layouts round the camp: one was laid out for each
+        // place FORTIFY was ever ordered near it.
         List<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> wall = walls.entrySet().stream()
                 .filter(e -> Math.hypot(Integer.parseInt(e.getKey().split(",")[0]) - camp[0], Integer.parseInt(e.getKey().split(",")[1]) - camp[1])
-                        <= WALL_RADIUS).map(Map.Entry::getValue).findFirst().orElse(null);
+                        <= WALL_RADIUS).map(Map.Entry::getValue)
+                .min(java.util.Comparator.comparingInt(w -> io.github.jayessdeesea.minecraft.bot.supply.Perimeter.open(world, w).size()))
+                .orElse(null);
         int wallLeft = wall == null ? -1 : io.github.jayessdeesea.minecraft.bot.supply.Perimeter.open(world, wall).size();
         // Of stone: an enderman picks a dirt block out of a wall and opens a hole (backlog/building-guide.md).
         long wallSoft = wall == null ? 0 : wall.stream().filter(c -> world.isSoil(c.x(), c.y(), c.z())).count();
@@ -512,8 +516,13 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
                 .orElse(0L);
         standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "wood that grows back", trees >= TREES_GROWING,
                 trees + " saplings or trees planted by the camp", "TREE_FARM"));
-        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "stone and iron", stairsDone.get(),
-                stairsCut.get() == 0 ? "no mine yet" : stairsDone.get() ? "a mine cut down to the iron" : "a mine " + stairsCut.get() + " steps down",
+        // The camp's mine as the world shows it, as well as a cutter at work this run: live, after a
+        // restart with no MINE order, a mine cut to the bottom read "no mine yet".
+        Optional<io.github.jayessdeesea.minecraft.bot.supply.Staircase> campMine = campStairs();
+        int cutNow = Math.max(stairsCut.get(), campMine.map(s -> s.stepsCut(world)).orElse(0));
+        boolean mined = stairsDone.get() || campMine.map(s -> s.stepsCut(world) == s.steps()).orElse(false);
+        standards.add(new io.github.jayessdeesea.minecraft.command.Foothold.Standard(3, "stone and iron", mined,
+                cutNow == 0 ? "no mine yet" : mined ? "a mine cut down to the iron" : "a mine " + cutNow + " steps down",
                 "MINE"));
         int stoneSword = io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.meleeRank("stone_sword");
         long armed = everyone.stream().filter(s -> s.condition().flatMap(c -> c.kit()).flatMap(k -> k.weapon())
@@ -782,7 +791,8 @@ public class SoldierRunner implements CommandLineRunner, org.springframework.bea
             return;
         }
         if (camp != null && footholdTicks++ % FOOTHOLD_EVERY == 0) {
-            measureFoothold().ifPresent(chainOfCommand::onFoothold);
+            // Its own request: a measure that fails costs the measure, not the squads' orders.
+            faults.run("the foothold's measure", () -> measureFoothold().ifPresent(chainOfCommand::onFoothold));
         }
         chainOfCommand.time().flatMap(t -> {
                     List<SoldierStatus> all = activeSoldiers.values().stream().map(DeterministicSoldier::status).toList();

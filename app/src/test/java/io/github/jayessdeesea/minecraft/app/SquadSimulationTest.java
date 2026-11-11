@@ -588,6 +588,34 @@ class SquadSimulationTest {
         assertTrue(plot.size() > 80, "more than one water's plot: " + plot.size());
     }
 
+    /**
+     * The camp's mine cut to the bottom before a restart, and no squad told to MINE after it: the
+     * standard still says the mine is there. Live, after a restart it read "no mine yet" - only a
+     * cutter at work that run counted the steps.
+     */
+    @Test
+    void aMineCutBeforeARestartStillCountsAfterIt() {
+        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsAllCut, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})))
+                .run();
+        clock.advance(2 * 60_000);
+
+        io.github.jayessdeesea.minecraft.command.Foothold.Standard mined = chain.foothold().orElseThrow().standards().stream()
+                .filter(s -> s.name().equals("stone and iron")).findFirst().orElseThrow();
+        assertTrue(mined.met(), "the camp's mine: " + mined.status());
+    }
+
     /** As {@link #keptStairsAllCut}, with the landing's stand's floor gone: ore taken from under it. */
     private static int keptStairsCutLandingHoled(int x, int y, int z) {
         io.github.jayessdeesea.minecraft.bot.nav.BlockPos stand = KEPT.landingStand();
@@ -970,6 +998,8 @@ class SquadSimulationTest {
     @Test
     void aWallBuiltBeforeARestartStillCountsAfterIt() {
         new WallStore(state).save("0,0", List.copyOf(CAMP_WALL));
+        // And a layout from another FORTIFY order near the camp, never built: the camp's wall is the built one.
+        new WallStore(state).save("2,2", CAMP_WALL.stream().map(c -> c.offset(2, 0, 2)).toList());
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::walledCamp, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
@@ -1220,6 +1250,32 @@ class SquadSimulationTest {
         return x >= 6 && x <= 8 && z >= 6 && z <= 8 && y == GROUND ? SimServer.WATER : flat(x, y, z);
     }
 
+    /** A pond off the camp, it and the ground round it a block lower than the camp's: a hollow. */
+    private static int pondInAHollow(int x, int y, int z) {
+        // Clear of the camp's ground work, which would fill it as a pit: the live farm lay 30 blocks out.
+        boolean hollow = x >= 11 && x <= 21 && z >= 11 && z <= 21;
+        if (!hollow) {
+            return flat(x, y, z);
+        }
+        if (y >= GROUND) {
+            return SimServer.AIR;
+        }
+        if (y == GROUND - 1) {
+            return x >= 15 && x <= 17 && z >= 15 && z <= 17 ? SimServer.WATER : SimServer.GRASS;
+        }
+        return flat(x, y, z);
+    }
+
+    /**
+     * As live: the camp's farm by water lower than the camp, so the farmers come down onto it. Half
+     * the live farm stood bare, its farmland trampled to dirt as fast as it was tilled: a farmer
+     * stood on each cell to work it, and landed on it coming down. Nobody lands on the farmland.
+     */
+    @Test
+    void aSquadFarmingInAHollowDoesntTrampleIt() {
+        hungrySquadFarms(SquadSimulationTest::pondInAHollow);
+    }
+
     /**
      * Field feeding: a squad with no food and nothing to hunt, under another task, keeps the camp's
      * farm - tills, sows, harvests the wheat as it ripens and bakes it - without a FARM order. Live,
@@ -1227,7 +1283,7 @@ class SquadSimulationTest {
      */
     @Test
     void aHungrySquadKeepsTheCampsFarmWithoutBeingOrderedTo() {
-        hungrySquadFarms();
+        hungrySquadFarms(SquadSimulationTest::pondByCamp);
     }
 
     /**
@@ -1240,12 +1296,12 @@ class SquadSimulationTest {
                 new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(5, GROUND, 6), new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(5, GROUND, 7),
                 new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(5, GROUND, 8), new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(6, GROUND, 5),
                 new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(7, GROUND, 5), new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(8, GROUND, 5)));
-        hungrySquadFarms();
+        hungrySquadFarms(SquadSimulationTest::pondByCamp);
     }
 
-    private void hungrySquadFarms() {
+    private void hungrySquadFarms(SimServer.Terrain ground) {
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::pondByCamp, 1000);
+        SimServer server = new SimServer(clock, ground, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0, GROUND + 1, 0);
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
@@ -1267,6 +1323,10 @@ class SquadSimulationTest {
         int harvested = server.count("Alice", wheat) + server.count("Bob", wheat) + server.count("Alice", food) + server.count("Bob", food);
         assertTrue(harvested > 0, "wheat harvested, or baked; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+        // Nobody lands on the farmland: live, half the camp's farm stood bare, trampled to dirt as
+        // fast as it was tilled - a farmer stood on each cell to work it.
+        List<String> trampled = server.log.stream().filter(l -> l.contains("trampled")).toList();
+        assertEquals(List.of(), trampled, "farmland trampled");
     }
 
     /** Flat, ringed 8 blocks out by a dirt wall two high: closed, but an enderman's to open. */

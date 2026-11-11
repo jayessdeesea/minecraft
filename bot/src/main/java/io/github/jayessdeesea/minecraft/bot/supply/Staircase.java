@@ -101,6 +101,21 @@ public record Staircase(BlockPos head, int bottom) {
     static final int BRANCH_LIGHT = 4;
 
     /**
+     * How many steps from the top the world shows cut: each one's cells open, or holding a table or
+     * furnace. A cell nobody has loaded reads solid, so this never counts a step it can't see.
+     */
+    public int stepsCut(WorldView world) {
+        for (int k = 0; k < steps(); k++) {
+            for (BlockPos cell : cells(k)) {
+                if (world.isSolid(cell.x(), cell.y(), cell.z()) && world.workstation(cell.x(), cell.y(), cell.z()).isEmpty()) {
+                    return k;
+                }
+            }
+        }
+        return steps();
+    }
+
+    /**
      * Whether the landing is cut: every step down to it open, and both recesses open or holding the
      * mine base's table and furnace. Live, a cave at the landing's depth left its recesses open
      * while the stairs were a third of the way down, and a soldier set off for a workshop it had
