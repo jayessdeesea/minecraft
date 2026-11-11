@@ -34,6 +34,20 @@ class LinkUpTest {
         assertEquals(slots(2), linkUp.orders(formed, slots(2)));
     }
 
+    /**
+     * A one-man unit's soldier, respawned, has nobody to link up with: it keeps its own order. Live,
+     * a farmer alone in its detachment died, and its orders failed every tick until it rejoined.
+     */
+    @Test
+    void aLoneReplacementKeepsItsOwnOrder() {
+        LinkUp linkUp = new LinkUp();
+        linkUp.reconstitute(List.of(soldier("Eli", 100, 100, new Report.Moving(), 0)));
+
+        List<SoldierStatus> formed = linkUp.reconstitute(List.of(soldier("Eli", 0, 0, new Report.Idle(), 1)));
+
+        assertEquals(slots(1), linkUp.orders(formed, slots(1)));
+    }
+
     @Test
     void aDeadPointManGoesToTheRearAndTheNextSoldierTakesPoint() {
         LinkUp linkUp = new LinkUp();

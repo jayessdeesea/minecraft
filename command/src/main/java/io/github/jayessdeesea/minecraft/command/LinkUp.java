@@ -87,7 +87,8 @@ public final class LinkUp {
         List<Order> orders = new ArrayList<>(formationOrders);
         for (int i = 0; i < reconstituted.size(); i++) {
             SoldierStatus soldier = reconstituted.get(i);
-            if (soldier.report() instanceof Report.LinkingUp) {
+            // Nobody formed to close on - a one-man unit's soldier, respawned - it keeps its own order.
+            if (soldier.report() instanceof Report.LinkingUp && !formed.isEmpty()) {
                 Position target = inContact && rallyPoint != null ? rallyPoint : nearest(linkUpCandidates(formed), soldier.position()).position();
                 // A replacement rejoining is never worth more of its health than the squad's own order.
                 Risk risk = formationOrders.get(i) instanceof Order.MoveTo slot ? slot.risk() : Risk.LOW;
