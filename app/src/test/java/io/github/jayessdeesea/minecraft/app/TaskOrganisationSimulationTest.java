@@ -141,6 +141,28 @@ class TaskOrganisationSimulationTest {
         assertTrue(cutBelow(server) >= 20, "the miner cut its stairs down: " + cutBelow(server) + " cells cut below y=53");
     }
 
+    /** Flat, with a pool of water at the ground eight blocks south and one east of (8, 8). */
+    private static int poolSouth(int x, int y, int z) {
+        return x == 9 && z == 16 && y == GROUND ? SimServer.WATER : SquadSimulationTest.flat(x, y, z);
+    }
+
+    /**
+     * A farm is kept for its site while the site stays put: live, the farm's water lay just over 8
+     * blocks from its farmer's site, and it was sited afresh every cycle, found or not by where a
+     * soldier stood - and the farmer, farmless half the time, reported it couldn't farm there.
+     */
+    @Test
+    void aFarmIsKeptForItsSite() throws IOException {
+        SimClock clock = new SimClock();
+        run(clock, TaskOrganisationSimulationTest::poolSouth, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 8, "y": %d, "z": 8}]""".formatted(GROUND + 1), "[]");
+        clock.advance(2 * 60_000);
+
+        List<String> log = Files.readAllLines(Path.of("target/sim/aFarmIsKeptForItsSite.log"));
+        assertEquals(1, log.stream().filter(l -> l.contains("FARM by the water")).count(), "sited once");
+        assertEquals(0, log.stream().filter(l -> l.contains("no ground to farm")).count(), "and kept");
+    }
+
     /**
      * A farmer sited where there's no ground to farm by water says so, so its squad leader can site
      * it again: live, one stood a day at its site reporting it was in position.

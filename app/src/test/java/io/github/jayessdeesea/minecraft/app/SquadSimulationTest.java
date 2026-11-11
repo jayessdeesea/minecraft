@@ -36,6 +36,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -1109,6 +1110,45 @@ class SquadSimulationTest {
 
         Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
                 .filter(s -> s.name().equals("the camp walled in")).findFirst().orElseThrow();
+        assertTrue(walled.met(), "the camp's wall: " + walled.status());
+    }
+
+    /** One block of the camp's wall, its first by layout order, of dirt. */
+    private static final BlockPos DIRT_IN_WALL = CAMP_WALL.stream().min(Comparator.comparingInt(BlockPos::x)
+            .thenComparingInt(BlockPos::z).thenComparingInt(BlockPos::y)).orElseThrow();
+
+    /** As {@link #walledCamp}, one block of the wall dirt. */
+    private static int walledCampOneDirt(int x, int y, int z) {
+        return DIRT_IN_WALL.equals(new BlockPos(x, y, z)) ? SimServer.DIRT : walledCamp(x, y, z);
+    }
+
+    /**
+     * FORTIFY ordered a little off the camp's centre: the squad finishes the camp's own wall, the
+     * one its standard measures, not a new one round the general's point. Live, the masons
+     * repointed a wall with 23 dirt blocks while the camp's, with 1, stayed open for days.
+     */
+    @Test
+    void aSquadSentToWallTheCampFinishesTheCampsOwnWall() {
+        new WallStore(state).save("0,0", List.copyOf(CAMP_WALL));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::walledCampOneDirt, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position point = new Position(2.5, GROUND + 1, 2.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Wall the camp in", point, "Nothing walks in",
+                new Objective.Task.Fortify())), squadLeader(point),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, SimServer.ITEM_COBBLESTONE, 64})))
+                .run();
+        clock.advance(5 * 60_000);
+
+        Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
+                .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
         assertTrue(walled.met(), "the camp's wall: " + walled.status());
     }
 

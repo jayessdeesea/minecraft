@@ -744,7 +744,8 @@ layout is kept on disk too (`app.WallStore`, under `minecraft.state-dir`), and a
 builds the wall it laid out before rather than a second one on top of it. The foothold's walled
 standard (§ 17) reads it from there too, whether or not a squad is ordered to FORTIFY that run -
 of the layouts kept round the camp, one for each place FORTIFY was ordered, the one the world shows
-most built. Each layout is written whole or not at all. Its
+most built, then most of stone. And FORTIFY ordered near the camp works that same layout, so the
+standard and the work are one wall. Each layout is written whole or not at all. Its
 cells join the ones every dig skips, so nobody quarries it, and so does the camp's ground inside
 it, solid when the wall is laid out: a dig takes the nearest dirt first, and a pit outside the wall
 would otherwise eat in under it. Where the ground under a wall cell has gone anyway, the cells

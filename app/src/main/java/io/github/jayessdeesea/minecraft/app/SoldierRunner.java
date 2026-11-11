@@ -268,6 +268,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         TreeFarm trees;
         /** The squad's farm, while it has one. */
         FarmPlan farm;
+        /** The point the farm was sited for: kept while it's ordered there. */
+        BlockPos farmFor;
         /** Blocks of the laid-out base still to place, at the last check - empty with none laid out. */
         OptionalInt baseBlocksLeft = OptionalInt.empty();
         /** When a soldier of the squad last worked at its task, or the task was given: what a stall is measured from. */
@@ -527,11 +529,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .forEach(k -> walls.computeIfAbsent(k, key -> wallStore.load(key).orElseThrow()));
         // The one the world shows most built, of the layouts round the camp: one was laid out for each
         // place FORTIFY was ever ordered near it.
-        List<BlockPos> wall = walls.entrySet().stream()
+        // Of two as built, the more of stone: and that's the one the squads finish, so the standard
+        // and the work are one wall. Live, two closed layouts round the camp were counted by turns,
+        // and the masons repointed the one with 23 dirt blocks while the camp's read 1.
+        Optional<Map.Entry<String, List<BlockPos>>> best = walls.entrySet().stream()
                 .filter(e -> Math.hypot(Integer.parseInt(e.getKey().split(",")[0]) - camp[0], Integer.parseInt(e.getKey().split(",")[1]) - camp[1])
-                        <= WALL_RADIUS).map(Map.Entry::getValue)
-                .min(Comparator.comparingInt(w -> Perimeter.open(world, w).size()))
-                .orElse(null);
+                        <= WALL_RADIUS)
+                .min(Comparator.<Map.Entry<String, List<BlockPos>>>comparingInt(e -> Perimeter.open(world, e.getValue()).size())
+                        .thenComparingLong(e -> e.getValue().stream().filter(c -> world.isSoil(c.x(), c.y(), c.z())).count())
+                        .thenComparing(Map.Entry::getKey));
+        campWallKey = best.map(Map.Entry::getKey).orElse(null);
+        List<BlockPos> wall = best.map(Map.Entry::getValue).orElse(null);
         int wallLeft = wall == null ? -1 : Perimeter.open(world, wall).size();
         // Of stone: an enderman picks a dirt block out of a wall and opens a hole (backlog/building-guide.md).
         long wallSoft = wall == null ? 0 : wall.stream().filter(c -> world.isSoil(c.x(), c.y(), c.z())).count();
@@ -780,6 +788,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * site with no water near it, reporting it was in position.
      */
     private final Map<String, String> farmless = new ConcurrentHashMap<>();
+    /** The key of the camp's wall its standard measures: the squads at the camp work this one - measure writes, squad loop reads. */
+    private volatile String campWallKey;
     /** What each soldier's squad is gathering, and around where - squad loop writes, tick reads; absent when nothing. */
     private final Map<String, Objective> gathering = new ConcurrentHashMap<>();
     /** No hostile this close to a soldier, nor any squadmate in contact, before it stops to make a sword. */
@@ -2120,7 +2130,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         FarmPlan farm = taskOf(squadName, Objective.Task.Farm.class).map(o -> {
             BlockPos at = BlockPos.containing(
                     o.location().x(), o.location().y(), o.location().z());
-            if (state.farm != null && Math.hypot(state.farm.water().x() - at.x(), state.farm.water().z() - at.z()) <= FARM_SITE_RADIUS) {
+            // Kept for the point it was sited for, as a wall is: live, its water lay just over the
+            // radius from the site, and it was sited afresh every cycle, found or not by where a
+            // soldier stood.
+            if (state.farm != null && (at.equals(state.farmFor)
+                    || Math.hypot(state.farm.water().x() - at.x(), state.farm.water().z() - at.z()) <= FARM_SITE_RADIUS)) {
                 return state.farm;
             }
             Position from = statuses.get(0).position();
@@ -2133,6 +2147,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 LOG.warn("[{}] no ground to farm by water within {} blocks of {}", squadName, FARM_SITE_RADIUS, o.location());
             } else {
                 LOG.info("[{}] FARM by the water at {}: {} cells to plant", squadName, sited.water(), sited.plot().size());
+                state.farmFor = at;
             }
             return sited;
         }).orElse(null);
@@ -2168,12 +2183,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // are dug and the wall goes up, and a wall laid out again round it lost its progress -
             // in the squad simulation, and live, a wall that never closed.
             Position asked = fortify.get().location();
-            String wallKey = (int) Math.floor(asked.x()) + "," + (int) Math.floor(asked.z());
+            // At the camp, the camp's wall - the one its standard measures - not a new one round
+            // wherever the order points.
+            String measured = campWallKey;
+            String wallKey = measured != null && nearCamp((int) Math.floor(asked.x()), (int) Math.floor(asked.z())) ? measured
+                    : (int) Math.floor(asked.x()) + "," + (int) Math.floor(asked.z());
             if (!wallKey.equals(state.wallKey)) {
+                int kx = Integer.parseInt(wallKey.split(",")[0]);
+                int kz = Integer.parseInt(wallKey.split(",")[1]);
                 // Round the ground most of the camp stands on, not a hut roof at its centre.
-                BlockPos at = typicalGround((int) Math.floor(asked.x()), (int) Math.floor(asked.z()),
-                        (int) Math.floor(asked.y())).orElse(TerrainSurveyor.groundAt(world,
-                                BlockPos.containing(asked.x(), asked.y(), asked.z())));
+                BlockPos at = typicalGround(kx, kz, (int) Math.floor(asked.y())).orElse(TerrainSurveyor.groundAt(world,
+                        BlockPos.containing(kx + 0.5, asked.y(), kz + 0.5)));
                 // One layout a wall, whichever squad comes to it first: a squad that lays out a wall
                 // another has half built lays it out on top of what's there.
                 state.wall = walls.computeIfAbsent(wallKey, key -> wallStore.load(key).orElseGet(() -> {
