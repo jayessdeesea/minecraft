@@ -408,7 +408,7 @@ public final class DeterministicSoldier implements Soldier {
 
     /**
      * Whether a swing now would sweep a squadmate: a sword in hand, and another player within
-     * {@link #SWEEP_REACH} of the target across and a block and a half up or down. Three soldiers
+     * {@link #SWEEP_REACH} of the target across, its body meeting the target's grown box up or down. Three soldiers
      * died that way, cut down beside the zombie a squadmate swung at. The swing waits; the squadmate
      * moves on or the target does.
      */
@@ -424,8 +424,19 @@ public final class DeterministicSoldier implements Soldier {
         Stream<Position> others = self >= 0 ? world.playersNear(target, SWEEP_REACH + 1, self).stream()
                 : world.playersNear(target, SWEEP_REACH + 1).stream()
                 .filter(p -> Math.hypot(p.x() - position.x(), p.z() - position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - position.y()) > 1);
-        return others.anyMatch(p -> Math.hypot(p.x() - target.x(), p.z() - target.z()) <= SWEEP_REACH && Math.abs(p.y() - target.y()) <= 1.5);
+        // Up and down, the boxes: the target's grown a quarter block, against a player's height. Not
+        // feet to feet - live, a phantom two blocks over a squadmate's feet was swung at, and the
+        // sweep killed the squadmate at a heart.
+        return others.anyMatch(p -> Math.hypot(p.x() - target.x(), p.z() - target.z()) <= SWEEP_REACH
+                && target.y() - SWEEP_RISE <= p.y() + PLAYER_HEIGHT && p.y() <= target.y() + TALLEST_MOB + SWEEP_RISE);
     }
+
+    /** How far a sweep grows its target's box up and down. */
+    static final double SWEEP_RISE = 0.25;
+    /** A player's box, feet to crown. */
+    static final double PLAYER_HEIGHT = 1.8;
+    /** The tallest box a soldier swings at, an enderman's: what the target reaches above its feet, at most. */
+    static final double TALLEST_MOB = 2.9;
 
     /** Its own player entity's ID, as the server gave it on joining - -1 until told. */
     private volatile int entityId = -1;

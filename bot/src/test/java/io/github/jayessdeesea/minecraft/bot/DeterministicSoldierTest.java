@@ -306,6 +306,42 @@ class DeterministicSoldierTest {
         assertEquals(OptionalInt.of(1), alice.tick(withHostileAt(zombie, false)), "with nobody beside it, she swings");
     }
 
+    /**
+     * A flier's sweep reaches down a squadmate's whole height: live, Dana swung at a phantom two
+     * blocks over Fran's feet, and the sweep killed Fran at a heart.
+     */
+    @Test
+    void aSquadmateUnderAFlierIsInTheSwordsSweep() {
+        DeterministicSoldier dana = new DeterministicSoldier("Dana", new Position(0, 64, 0));
+        dana.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
+        dana.entityId(7);
+        Position phantom = new Position(1.5, 66, 0);
+        WorldView franUnderIt = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, 154, phantom));
+            }
+
+            @Override
+            public List<Position> playersNear(Position center, double radius, int except) {
+                return List.of(new Position(1.5, 64, 1));
+            }
+        };
+
+        assertEquals(OptionalInt.empty(), dana.tick(franUnderIt), "Fran stands under the phantom, in the sweep");
+        assertEquals(OptionalInt.of(1), dana.tick(withHostileAt(phantom, false)), "with nobody under it, she swings");
+    }
+
     @Test
     void aSquadmateStandingWhereTheSwordsmanStandsIsStillInItsSweep() {
         DeterministicSoldier eli = new DeterministicSoldier("Eli", new Position(0, 64, 0));
