@@ -3,7 +3,8 @@
 Each echelon as a role: what it does on its own, what it's given, what it decides or does, and what
 it reports. These describe the code as it is ([conventions.md](../conventions.md#docs)). Each is the
 contract; the mechanics behind a line, and the doctrine it comes from, are in the
-[military-doctrine.md](../military-doctrine.md) section it links to.
+[military-doctrine.md](../military-doctrine.md) section it links to. The principles the contracts
+come from, and that each bad outcome is checked against, are the [tenets](tenets.md).
 
 | Echelon | Thinks with | Decides every | Gives | Files |
 |---|---|---|---|---|
@@ -16,8 +17,9 @@ General ──Objective(place, mission, intent, Task)──▶ Squad leader ─�
    ▲                                                    ▲                                         │
    └──────────── SquadStatus, Foothold ─────────────────┴──────────── SoldierStatus ◀─────────────┘
 
-                 Task ─────────────── read by app.SoldierRunner ──── starts the routines ─────▶ Soldier's hands
+          Task, and each soldier's Plan ── read by app.SoldierRunner ── starts the routines ──▶ Soldier's hands
 ```
 
-The second line is the one that isn't a message between echelons: the general's `Task` goes past
-the squad leader, and the runner reads it to start the soldiers' routines.
+The second line is the one that isn't a message between echelons: the runner reads the general's
+`Task` for the riflemen, and each soldier's `Plan` - its role and directives, set by the squad
+leader - for the rest, to start the soldiers' routines.

@@ -41,6 +41,9 @@ Each points to its home, which has the reasons.
 - **Standard formats through standard libraries**, never hand-built strings. [docs/conventions.md](docs/conventions.md#standard-formats-go-through-standard-libraries)
 - **`docs/` is what's built; `backlog/` is what's planned. Each fact has one home.**
   [docs/conventions.md](docs/conventions.md#docs)
+- **Every commit closes its loop:** a backlog item it finishes is deleted, one it advances is
+  trimmed to what's left, and the docs it touches are checked against the code and made current
+  in the same commit. [docs/conventions.md](docs/conventions.md#docs)
 - **Don't ask the order of work.** What needs doing, do; ask only what changes what gets built.
   [docs/conventions.md](docs/conventions.md#working-without-guidance)
 
@@ -51,7 +54,7 @@ Each points to its home, which has the reasons.
 | [docs/conventions.md](docs/conventions.md) | Before changing structure or docs: the legibility tenets, failing loud, docs and backlog rules, working without guidance. |
 | [docs/architecture.md](docs/architecture.md) | Before changing how an echelon decides or acts, or where code lives: timescales, behaviour modelling, modules, the pipeline's rule, and the squad simulation that tests a change with no server. |
 | [docs/stack.md](docs/stack.md) | Before touching dependencies, the protocol pin or the model providers. |
-| [docs/echelons/](docs/echelons/README.md) | What the general, squad leader and soldier can each do, are told and report. |
+| [docs/echelons/](docs/echelons/README.md) | What the general, squad leader and soldier can each do, are told and report. Its [tenets](docs/echelons/tenets.md) after every live run, and before changing what an echelon owns. |
 | [docs/prompting.md](docs/prompting.md) | Before changing a prompt or what goes into one. |
 | [docs/military-doctrine.md](docs/military-doctrine.md) | The doctrine each behaviour emulates, with manual citations and how it maps onto code. |
 | [docs/protocol-spec.md](docs/protocol-spec.md) | Wire protocol: packets, states, compression, encryption. |

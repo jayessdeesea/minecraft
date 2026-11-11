@@ -131,6 +131,18 @@ under `docs/` states only what the code does today. A sentence about what "will"
 and writes whatever stays true into `docs/` or the code. A reader never has to ask "is this built
 yet?"
 
+**Before every commit, check the docs against the code.** A targeted read of what the change
+touched - `docs/`, README.md, DEVELOPMENT.md, AGENTS.md - for a prose claim it made untrue: a stale
+example, a "doesn't do X yet" that now does. And the backlog: an item the change finished is
+deleted, one it advanced is trimmed to what's left. A fact found in two places is collapsed to one
+home, the other pointing at it.
+
+**After every live run, review the tenets.** Each death, `[Alert]`, timeout and order that was
+awkward to give is checked against [docs/echelons/tenets.md](echelons/tenets.md): a soldier duty
+that didn't hold, a squad leader's miss, or something no echelon's API could say. A gap becomes a
+change to the tenets or the API, or a backlog item. Finding nothing to change is a fine outcome;
+skipping the look isn't.
+
 **Before starting a backlog item, sanity-check it.** It was written against the architecture and
 requirements of its day, and both drift. Re-read it against the current code and docs:
 - Does its "Why" still hold?
