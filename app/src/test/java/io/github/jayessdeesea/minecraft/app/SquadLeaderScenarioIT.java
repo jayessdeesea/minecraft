@@ -84,7 +84,7 @@ class SquadLeaderScenarioIT {
      * at a point - his GO_TO there; KEPT, Carol already the squad's miner and nothing asked - her role
      * left as it is. In every other variant, no plan changes at all.
      */
-    private enum Variant { PLAIN, STUCK, RETASKED, STRANDED, STRUGGLING, MINER, POST, KEPT, TIMEDOUT }
+    private enum Variant { PLAIN, STUCK, RETASKED, STRANDED, STRUGGLING, MINER, POST, KEPT, TIMEDOUT, ALLDETACHED }
 
     private record Outcome(Scenario scenario, Variant variant, long millis, String risk, List<String> failures) {
         String name() {
@@ -204,6 +204,14 @@ class SquadLeaderScenarioIT {
         if (variant == Variant.KEPT) {
             leader.receivePlans(Map.of("Carol", carolMining), Map.of());
         }
+        // ALLDETACHED: every soldier a miner, and the general wants the squad moved: someone goes. Live,
+        // all four of Bravo's soldiers had roles, and the general's FORTIFY reached nobody all day. Open:
+        // 0 of 7 (docs/prompting.md).
+        Map<String, Plan> allMining = new HashMap<>();
+        squad.forEach(s -> allMining.put(s.name(), carolMining));
+        if (variant == Variant.ALLDETACHED) {
+            leader.receivePlans(allMining, Map.of());
+        }
         // TIMEDOUT: Bob's fetch timed out - nothing to fetch there - and nothing new is asked: don't give it him again.
         Directive fetch = new Directive.Fetch(
                 Resource.WOOD, 8, new Position(start.x() + 10, start.y(), start.z()));
@@ -238,7 +246,7 @@ class SquadLeaderScenarioIT {
         }
         // What the order changes: one restating a plan as it stands changes nothing, and the runner makes nothing of it.
         Map<String, Plan> before = new HashMap<>();
-        squad.forEach(s -> before.put(s.name(), variant == Variant.KEPT && s.name().equals("Carol")
+        squad.forEach(s -> before.put(s.name(), variant == Variant.ALLDETACHED || variant == Variant.KEPT && s.name().equals("Carol")
                 ? carolMining : Plan.RIFLEMAN));
         Map<String, Plan> after = new HashMap<>(before);
         order.changes().forEach(c -> after.computeIfPresent(c.soldier(), (n, p) -> p.with(c)));
@@ -268,6 +276,11 @@ class SquadLeaderScenarioIT {
             case KEPT -> {
                 if (changes.stream().anyMatch(c -> !c.soldier().equals("Carol") || !carolMining.with(c).equals(carolMining))) {
                     failures.add("the standing miner's role changed, unasked: " + changes);
+                }
+            }
+            case ALLDETACHED -> {
+                if (after.values().stream().noneMatch(p -> p.role() == Role.RIFLEMAN)) {
+                    failures.add("nobody sent with the squad, every soldier still detached: " + changes);
                 }
             }
             case TIMEDOUT -> {

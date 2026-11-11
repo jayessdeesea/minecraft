@@ -30,3 +30,8 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   `Recovering` instead, it got 14 of 14.
 - **A section that explains itself needs no paragraph about it:** a two-line note on `<foothold>`
   in the doctrine took the night rule from 6 of 6 to 0 of 6.
+- **Some calls the squad leader won't make, however they're shown.** With every soldier in a role
+  and the mission left with nobody (`SquadLeaderScenarioIT`'s `alldetached`), `qwen3:14b` put none
+  back with the squad: 0 of 7 shown the state ("every soldier has a role of its own"), and 0 of 7
+  with the role paragraph saying to put one back - which also cost the miner situation 3 of 7. The
+  situation stays in the evaluation as the open miss.
