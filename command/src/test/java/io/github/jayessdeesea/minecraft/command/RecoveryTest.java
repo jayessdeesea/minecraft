@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class RecoveryTest {
 
@@ -33,6 +34,23 @@ class RecoveryTest {
         assertEquals(new Order.Idle(), orders.get(0));
         assertEquals(new Order.MoveTo(7.5, 81, 0.5, Recovery.TOLERANCE, Recovery.TOLERANCE, Risk.LOW), orders.get(1));
         assertEquals(new Order.Idle(), orders.get(2));
+    }
+
+    /**
+     * Reports and orders go soldier for soldier: live, a squad's reports held a detached soldier its
+     * orders didn't, and recovery set the order at the stranded one's place in the reports - past
+     * the end of the orders, every tick.
+     */
+    @Test
+    void reportsThatDontMatchTheOrdersAreRefused() {
+        List<SoldierStatus> four = List.of(
+                soldier("Alice", new Position(20, 64, 0), new Report.InPosition(), 64),
+                soldier("Bob", new Position(3, 64, 0), new Report.InPosition(), 64),
+                soldier("Gus", new Position(30, 64, 0), new Report.InPosition(), 0),
+                soldier("Dana", new Position(7.5, 81, 0.5), STUCK, 0));
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, () -> new Recovery().orders(four, IDLE, NO_STAIR));
+        assertEquals("4 soldiers reported for 3 orders: [Alice, Bob, Gus, Dana]", refused.getMessage());
     }
 
     @Test

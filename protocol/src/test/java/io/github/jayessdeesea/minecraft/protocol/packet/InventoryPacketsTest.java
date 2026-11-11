@@ -119,6 +119,39 @@ class InventoryPacketsTest {
         assertEquals(Optional.of(new ItemSlot(ARROW, 16, -1, false)), contents.slots().get(1));
     }
 
+    /**
+     * Live: a pillager captain's banner carries what its tooltip hides, and its ominous bottle its
+     * amplifier. Each dropped the rest of the inventory, and a soldier's planks to sticks went unseen.
+     */
+    @Test
+    void aCaptainsBannerAndBottleAreReadPast() {
+        ByteBuf in = Unpooled.buffer();
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 3);  // three slots: the banner, the bottle, then arrows
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 1417); // white_banner
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 18); // tooltip_display: shown, two components hidden
+        in.writeBoolean(false);
+        ProtocolCodec.writeVarInt(in, 2);
+        ProtocolCodec.writeVarInt(in, 70);
+        ProtocolCodec.writeVarInt(in, 71);
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 1657); // ominous_bottle
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 65); // ominous_bottle_amplifier
+        ProtocolCodec.writeVarInt(in, 3);
+        stack(in, 16, ARROW);
+
+        InventoryUpdate.Contents contents = (InventoryUpdate.Contents) InventoryPackets.decodeSetContent(in).update();
+
+        assertEquals(true, contents.complete(), contents.toString());
+        assertEquals(Optional.of(new ItemSlot(ARROW, 16, -1, false)), contents.slots().get(2));
+    }
+
     @Test
     void setHeldSlot() {
         ByteBuf in = Unpooled.buffer();

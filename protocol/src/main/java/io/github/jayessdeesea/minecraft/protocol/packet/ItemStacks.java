@@ -20,7 +20,8 @@ import java.util.Optional;
  * gap, not a broken connection: the frame is already length-isolated (same reasoning as
  * {@code UnknownPacket}), so the caller keeps what it decoded and drops the rest, and the type is
  * logged loudly so the gap gets closed. Known: the plain-number components a soldier's gear
- * carries, and enchantments (codecs confirmed in {@code DataComponents}).
+ * carries, enchantments, names and lore, and what a pillager captain drops - its banner's
+ * tooltip display and its bottle's amplifier (codecs confirmed in the server jar).
  */
 final class ItemStacks {
 
@@ -42,6 +43,11 @@ final class ItemStacks {
     private static final int ITEM_NAME = 9;
     private static final int LORE = 11;
     private static final int MAX_LORE_LINES = 256;
+    // TooltipDisplay.STREAM_CODEC: a boolean (the whole tooltip hidden), then the component types it
+    // hides - a VarInt-counted collection of DataComponentType registry IDs. A captain's banner.
+    private static final int TOOLTIP_DISPLAY = 18;
+    // OminousBottleAmplifier.STREAM_CODEC: a VarInt. A captain's ominous bottle.
+    private static final int OMINOUS_BOTTLE_AMPLIFIER = 65;
     /** More than any item carries: there are well under 64 enchantments. */
     private static final int MAX_ENCHANTMENTS = 64;
 
@@ -75,7 +81,14 @@ final class ItemStacks {
             int type = ProtocolCodec.readVarInt(in);
             switch (type) {
                 case DAMAGE -> damage = ProtocolCodec.readVarInt(in);
-                case MAX_DAMAGE, REPAIR_COST -> ProtocolCodec.readVarInt(in);
+                case MAX_DAMAGE, REPAIR_COST, OMINOUS_BOTTLE_AMPLIFIER -> ProtocolCodec.readVarInt(in);
+                case TOOLTIP_DISPLAY -> {
+                    in.readBoolean();
+                    int hidden = ProtocolCodec.readVarIntCount(in, MAX_COMPONENTS);
+                    for (int h = 0; h < hidden; h++) {
+                        ProtocolCodec.readVarInt(in);
+                    }
+                }
                 case UNBREAKABLE -> {
                 }
                 case ENCHANTMENTS -> enchantments = readEnchantments(in);

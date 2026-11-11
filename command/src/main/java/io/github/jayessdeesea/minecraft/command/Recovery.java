@@ -95,10 +95,15 @@ public final class Recovery {
     /**
      * As {@link #orders(List, List, Function)}, and for one stranded below - in a pocket, with no
      * stair down to build - {@code cut}, the engineer's stair up, dug by the nearest squadmate with a
-     * pickaxe: an {@code Order.Dig} of just its cells.
+     * pickaxe: an {@code Order.Dig} of just its cells. {@code reported} and {@code orders} go soldier
+     * for soldier, in one order.
      */
     public List<Order> orders(List<SoldierStatus> reported, List<Order> orders, Function<SoldierStatus, Optional<List<Cell>>> stair,
                               Function<SoldierStatus, Optional<List<Cell>>> cut) {
+        if (reported.size() != orders.size()) {
+            throw new IllegalArgumentException(reported.size() + " soldiers reported for " + orders.size() + " orders: "
+                    + reported.stream().map(SoldierStatus::name).toList());
+        }
         Map<String, SoldierStatus> byName = new LinkedHashMap<>();
         reported.forEach(s -> byName.put(s.name(), s));
         recovering.entrySet().removeIf(e -> !byName.containsKey(e.getKey())

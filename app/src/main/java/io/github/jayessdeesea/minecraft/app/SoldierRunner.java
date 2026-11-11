@@ -1877,7 +1877,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             principal, supplyPoint),
                     principal, threats));
         } else {
-            orders = ReactToContact.orders(statuses, state.recovery.orders(state.reported,
+            // Each soldier's own report, in the statuses' order and only for those led here: the main
+            // body's reports also hold its detached soldiers', and a replacement's place differs. Live,
+            // recovery set an order by its place in the reports, and failed every tick for half an hour.
+            Map<String, SoldierStatus> ownReports = new HashMap<>();
+            state.reported.forEach(r -> ownReports.put(r.name(), r));
+            List<SoldierStatus> reported = statuses.stream().map(s -> ownReports.getOrDefault(s.name(), s)).toList();
+            orders = ReactToContact.orders(statuses, state.recovery.orders(reported,
                     Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, Formations.assign(order, statuses))),
                             order.objective(), supplyPoint), stairDown(squadName), stairUp(squadName)));
         }
