@@ -1,7 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.farm;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
-import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 
 import java.util.ArrayList;
@@ -84,8 +83,7 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot) {
      * of 44 cells fed eight soldiers a few loaves an hour, and they went hungry.
      */
     public static FarmPlan grown(WorldView world, FarmPlan farm, int want, int vertical, java.util.function.Predicate<BlockPos> walkable) {
-        // A farm kept from before the landing rule loses the cells it rules out, as any plot would.
-        java.util.LinkedHashSet<BlockPos> plot = new java.util.LinkedHashSet<>(farm.plot().stream().filter(c -> !belowALedge(world, c)).toList());
+        java.util.LinkedHashSet<BlockPos> plot = new java.util.LinkedHashSet<>(farm.plot());
         while (plot.size() < want) {
             java.util.Set<BlockPos> taken = java.util.Set.copyOf(plot);
             Optional<FarmPlan> next = site(world, farm.water(), GROWN_RADIUS, vertical,
@@ -95,17 +93,10 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot) {
             }
             plot.addAll(next.get().plot());
         }
-        return List.copyOf(plot).equals(farm.plot()) ? farm : new FarmPlan(farm.water(), List.copyOf(plot));
+        return plot.size() == farm.plot().size() ? farm : new FarmPlan(farm.water(), List.copyOf(plot));
     }
 
-    /**
-     * How far from ground a soldier comes down from the plot keeps clear: landing on farmland from a
-     * drop tramples it to dirt, and stepping off a one-block ledge at a walk lands up to two blocks on.
-     * Live, half a camp's farm in a hollow stood bare, trampled as fast as it was tilled.
-     */
-    static final int LANDING = 2;
-
-    /** The cells round {@code water} that make farmland: tillable or tilled, level with it, open above, clear of a landing. */
+    /** The cells round {@code water} that make farmland: tillable or tilled, level with it, open above. */
     public static List<BlockPos> plotAround(WorldView world, BlockPos water) {
         List<BlockPos> plot = new ArrayList<>();
         for (int dx = -HYDRATION; dx <= HYDRATION; dx++) {
@@ -114,26 +105,12 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot) {
                 boolean ground = world.isTillable(cell.x(), cell.y(), cell.z()) || world.isFarmland(cell.x(), cell.y(), cell.z());
                 int y = cell.y() + 1;
                 boolean open = !world.isSolid(cell.x(), y, cell.z()) && !world.isHazard(cell.x(), y, cell.z());
-                if ((dx != 0 || dz != 0) && ground && open && !belowALedge(world, cell)) {
+                if ((dx != 0 || dz != 0) && ground && open) {
                     plot.add(cell);
                 }
             }
         }
         plot.sort(Comparator.comparingInt((BlockPos c) -> Math.abs(c.x() - water.x()) + Math.abs(c.z() - water.z())));
         return plot;
-    }
-
-    /** Whether ground a soldier could stand on, higher than {@code cell}'s top, is within {@link #LANDING} of it. */
-    private static boolean belowALedge(WorldView world, BlockPos cell) {
-        for (int dx = -LANDING; dx <= LANDING; dx++) {
-            for (int dz = -LANDING; dz <= LANDING; dz++) {
-                for (int up = 1; up <= 3; up++) {
-                    if ((dx != 0 || dz != 0) && Pathfinder.standable(world, cell.offset(dx, 1 + up, dz))) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
     }
 }

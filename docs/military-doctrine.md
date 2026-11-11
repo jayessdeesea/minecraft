@@ -157,10 +157,7 @@ carries a **basic load** of 6 rations, and is short below 2:
    (`app.WallStore`), since sited again after a restart it moved to another pond. Once a run it's
    grown toward 96 cells with the plots round the waters within 16 blocks of its own
    (`FarmPlan.grown`): one water's plot is 80 cells at best and about half that by a pond, and
-   eight working soldiers eat about a loaf and a half a minute. No plot is tilled within 2 blocks
-   of higher ground a soldier could come down from (`FarmPlan.LANDING`): landing on farmland from a
-   drop tramples it to dirt, and stepping off a one-block ledge at a walk lands up to two blocks
-   on. Live, half a farm in a hollow stood bare, trampled as fast as it was tilled.
+   eight working soldiers eat about a loaf and a half a minute.
 3. **The squad asks.** A soldier still short with none of those means - no wheat, no game in sight,
    nobody sharing, and no wheat growing in the camp's farm, whose bread is on the way - makes the
    squad's Class I **RED**. Its LOGSTAT then carries the request: "Class

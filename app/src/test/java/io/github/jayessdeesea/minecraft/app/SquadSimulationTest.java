@@ -1250,32 +1250,6 @@ class SquadSimulationTest {
         return x >= 6 && x <= 8 && z >= 6 && z <= 8 && y == GROUND ? SimServer.WATER : flat(x, y, z);
     }
 
-    /** A pond off the camp, it and the ground round it a block lower than the camp's: a hollow. */
-    private static int pondInAHollow(int x, int y, int z) {
-        // Clear of the camp's ground work, which would fill it as a pit: the live farm lay 30 blocks out.
-        boolean hollow = x >= 11 && x <= 21 && z >= 11 && z <= 21;
-        if (!hollow) {
-            return flat(x, y, z);
-        }
-        if (y >= GROUND) {
-            return SimServer.AIR;
-        }
-        if (y == GROUND - 1) {
-            return x >= 15 && x <= 17 && z >= 15 && z <= 17 ? SimServer.WATER : SimServer.GRASS;
-        }
-        return flat(x, y, z);
-    }
-
-    /**
-     * As live: the camp's farm by water lower than the camp, so the farmers come down onto it. Half
-     * the live farm stood bare, its farmland trampled to dirt as fast as it was tilled: a farmer
-     * stood on each cell to work it, and landed on it coming down. Nobody lands on the farmland.
-     */
-    @Test
-    void aSquadFarmingInAHollowDoesntTrampleIt() {
-        hungrySquadFarms(SquadSimulationTest::pondInAHollow);
-    }
-
     /**
      * Field feeding: a squad with no food and nothing to hunt, under another task, keeps the camp's
      * farm - tills, sows, harvests the wheat as it ripens and bakes it - without a FARM order. Live,
@@ -1323,8 +1297,7 @@ class SquadSimulationTest {
         int harvested = server.count("Alice", wheat) + server.count("Bob", wheat) + server.count("Alice", food) + server.count("Bob", food);
         assertTrue(harvested > 0, "wheat harvested, or baked; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
-        // Nobody lands on the farmland: live, half the camp's farm stood bare, trampled to dirt as
-        // fast as it was tilled - a farmer stood on each cell to work it.
+        // Nobody lands on the farmland: on flat ground by a pond, nobody comes down onto it.
         List<String> trampled = server.log.stream().filter(l -> l.contains("trampled")).toList();
         assertEquals(List.of(), trampled, "farmland trampled");
     }
