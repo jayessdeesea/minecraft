@@ -995,7 +995,7 @@ soldier where its squad leader put it; a soldier with none is a rifleman.
 
 - **Roles** (`command.Role`): a `RIFLEMAN` goes with the squad - the formation and the general's
   task. Each other role is a task at its site, whatever the general's: `MINER` (§ 16, the site's y
-  its depth), `FARMER` (§ 4), `MASON` (§ 15's ground work and wall), `FORESTER`, `WOODCUTTER` and
+  its depth - one on or over the ground, down to the iron at y=16), `FARMER` (§ 4), `MASON` (§ 15's ground work and wall), `FORESTER`, `WOODCUTTER` and
   `QUARRYMAN` (§ 12), `SENTRY` (§ 15's patrol). Everyone in a squad with one role works one site: a
   new site for one moves them all.
 - **Directives** (`command.Directive`), each done by what the soldier or the world shows, never by

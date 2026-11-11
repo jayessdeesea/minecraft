@@ -128,6 +128,20 @@ class TaskOrganisationSimulationTest {
     }
 
     /**
+     * A miner sited on the ground, as the model gives it, cuts down to the iron: live, the site's
+     * height was taken for the mine's depth, and three miners stood over a one-step staircase.
+     */
+    @Test
+    void aMinerSitedOnTheGroundCutsDownToTheIron() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, SquadSimulationTest::flat, """
+                [{"soldier": "Alice", "role": "MINER", "x": 8, "y": %d, "z": 8}]""".formatted(GROUND + 1), "[]");
+        clock.advance(10 * 60_000);
+
+        assertTrue(cutBelow(server) >= 20, "the miner cut its stairs down: " + cutBelow(server) + " cells cut below y=53");
+    }
+
+    /**
      * As the model gives it: a new miner also sent to its site, at the mine's depth. It gets there on
      * the ground over it, and goes on to mine.
      */

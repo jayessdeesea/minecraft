@@ -2236,7 +2236,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // said once and looked for again a minute on: live, it was searched and said every
             // second, 747 times, beside a flooded shaft.
             // The camp's mine, kept from before a restart, is cut on down wherever it was sited.
-            int depth = (int) Math.floor(o.location().y());
+            // Its head on the camp's ground, not where a soldier stands: live, one standing down an
+            // old shaft had a staircase sited from a step in it.
+            int nearY = campGround != null && Math.hypot(campGround.x() - x, campGround.z() - z) <= 2 * Staircase.SITE_RADIUS
+                    ? campGround.y() : (int) Math.floor(statuses.get(0).position().y());
+            // A site on the ground says where, not how deep: down to the iron. Live, a miner's site at
+            // the camp's height was taken for its depth, and three miners stood over one step.
+            int asked = (int) Math.floor(o.location().y());
+            int depth = asked >= nearY - 1 ? ChainOfCommand.MINE_DEPTH : asked;
             // Any mine ordered near the camp is the camp's: the general's point is a guess - live, it
             // moved the order to the camp's centre, 13 blocks from the mine cut to the bottom, and a
             // new staircase was started inside the wall and kept in its place.
@@ -2254,10 +2261,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (failedHere && clockwork.millis() < state.stairsRetryAt) {
                 return null;
             }
-            // Its head on the camp's ground, not where a soldier stands: live, one standing down an
-            // old shaft had a staircase sited from a step in it.
-            int nearY = campGround != null && Math.hypot(campGround.x() - x, campGround.z() - z) <= 2 * Staircase.SITE_RADIUS
-                    ? campGround.y() : (int) Math.floor(statuses.get(0).position().y());
             Optional<Staircase> sited = Staircase.site(
                     world, x, z, nearY, depth);
             if (sited.isEmpty()) {
