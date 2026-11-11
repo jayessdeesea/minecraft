@@ -1062,6 +1062,45 @@ class SquadSimulationTest {
         assertTrue(after.stream().noneMatch(l -> l.contains("Alice taken off dig the camp's ground")), "Alice, fit, keeps at it");
     }
 
+    /** Flat stone, its only soil a patch 30 blocks east. */
+    private static int stoneWithSoilFar(int x, int y, int z) {
+        if (y > GROUND) {
+            return SimServer.AIR;
+        }
+        return y == GROUND && x >= 28 && x <= 32 && z >= -2 && z <= 2 ? SimServer.DIRT : SimServer.STONE;
+    }
+
+    /**
+     * Dirt is everywhere, so a soldier with none near isn't sent a long way for it. Live, one digging
+     * dirt for its squad's hut by night went forty blocks off for it, met a witch, and died.
+     */
+    @Test
+    void noSoldierGoesALongWayForDirtForTheHut() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::stoneWithSoilFar, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build a patrol base where you stand", camp, "Shelter",
+                new Objective.Task.PatrolBase())), squadLeader(camp),
+                SquadLeaderPrompts.read(new org.springframework.core.io.ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new org.springframework.core.io.ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        double farthest = 0;
+        for (int step = 0; step < 36; step++) {
+            clock.advance(5_000);
+            for (String name : List.of("Alice", "Bob")) {
+                PlayerPosition at = server.position(name);
+                farthest = Math.max(farthest, Math.hypot(at.x(), at.z()));
+            }
+        }
+        assertTrue(farthest < 22, "a soldier went " + farthest + " blocks off for dirt");
+    }
+
     /** Flat, with a pond by the camp: farm ground by water. */
     private static int pondByCamp(int x, int y, int z) {
         return x >= 6 && x <= 8 && z >= 6 && z <= 8 && y == GROUND ? SimServer.WATER : flat(x, y, z);

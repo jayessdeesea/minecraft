@@ -173,7 +173,11 @@ public final class Gatherer {
         // wider before asking for help - live, a camp long since cleared of trees had a wood a
         // minute's walk off, and its squad stood reporting CANTCO.
         Optional<Digger.Spot> spot = Optional.empty();
-        for (int radius : WIDER) {
+        // Not for dirt, which is everywhere: one with none near isn't sent a long way for it. Live,
+        // a soldier digging dirt for its squad's hut by night went forty blocks off for it, met a
+        // witch out there, and died.
+        int[] rings = target == Digger.Target.SOIL ? new int[]{WIDER[0]} : WIDER;
+        for (int radius : rings) {
             spot = Digger.findSpot(world, BlockPos.containing(around.x(), around.y(), around.z()), excluded, target, radius);
             if (spot.isPresent()) {
                 break;
@@ -181,7 +185,7 @@ public final class Gatherer {
         }
         if (spot.isEmpty()) {
             if (digger != null || retry == 0) {
-                LOG.info("{}: no {} within {} blocks of the objective", name, target, WIDER[WIDER.length - 1]);
+                LOG.info("{}: no {} within {} blocks of the objective", name, target, rings[rings.length - 1]);
             }
             digger = null;
             retry = RETRY_TICKS;
