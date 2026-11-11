@@ -1104,7 +1104,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Map<String, List<Integer>> members = new LinkedHashMap<>();
         members.put(squad, new ArrayList<>());
         for (int i = 0; i < statuses.size(); i++) {
-            String unit = escorting ? squad : planBook.of(names.get(i)).unit(squad, names.get(i));
+            // By night only miners work on, underground: every other role comes in with its squad,
+            // which shelters. Live, two farmers working farms 40 blocks out were shot by skeletons.
+            Plan plan = planBook.of(names.get(i));
+            boolean inForTheNight = chainOfCommand.sheltering() && plan.role() != Role.MINER && plan.current().isEmpty();
+            String unit = escorting || inForTheNight ? squad : plan.unit(squad, names.get(i));
             members.computeIfAbsent(unit, u -> new ArrayList<>()).add(i);
             String was = unitOf.put(names.get(i), unit);
             if (!unit.equals(was == null ? squad : was)) {

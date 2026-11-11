@@ -15,6 +15,9 @@ before dark, to plan the night:
   squad not yet sealed in, is moved into the camp too. A squad sealed in is never ordered out.
   The hut is sited off the camp's workshop (stand, table, furnace, chest) and the 3x3 round its
   mine head, so the night's base never seals the stockpile in or the way down shut.
+- **A squad's detachments come in with it**, but for its miners, who work on underground: a
+  soldier with any other role, and no order of its own, is in its squad's main body by night, and
+  shelters with it (`ChainOfCommand.sheltering`).
 - **Every other squad is on the night shift:** whatever the general orders, a patrol base included,
   it's sent down the camp's mine. The head is 4 blocks east and 4 north of the camp's centre,
   inside the wall, cut to the iron at y=16 (`ChainOfCommand.nightShift`). With no camp measured

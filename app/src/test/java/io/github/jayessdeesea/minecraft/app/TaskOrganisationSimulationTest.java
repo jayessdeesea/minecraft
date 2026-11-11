@@ -80,17 +80,23 @@ class TaskOrganisationSimulationTest {
 
     /** As {@link #run(SimClock, SimServer.Terrain, String, String, List)}, with the camp at {@code camp} ("x,z"; "" for none). */
     private SimServer run(SimClock clock, SimServer.Terrain ground, String roles, String orders, List<int[]> more, String camp) {
+        return run(clock, ground, roles, orders, more, camp, 1000, false);
+    }
+
+    /** As {@link #run(SimClock, SimServer.Terrain, String, String, List, String)}, from {@code timeOfDay}, sheltering by night or not. */
+    private SimServer run(SimClock clock, SimServer.Terrain ground, String roles, String orders, List<int[]> more, String camp,
+                          long timeOfDay, boolean shelterAtNight) {
         List<int[]> kit = new ArrayList<>(List.of(
                 new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                 new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
                 new int[]{38, SimServer.ITEM_BREAD, 16}));
         kit.addAll(more);
-        SimServer server = new SimServer(clock, ground, 1000); // morning
+        SimServer server = new SimServer(clock, ground, timeOfDay);
         Roster roster = new Roster("Alpha:Alice,Bob");
         ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
                 "A foothold", new Objective.Task.None())), squadLeader(roles, orders),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, shelterAtNight, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, camp, state.toString())
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit))
                 .run();
@@ -145,6 +151,28 @@ class TaskOrganisationSimulationTest {
         clock.advance(10 * 60_000);
 
         assertTrue(cutBelow(server) >= 20, "the miner cut its stairs down: " + cutBelow(server) + " cells cut below y=53");
+    }
+
+    /** Flat, with a one-block pond thirty blocks east of the camp. */
+    private static int pondFarOff(int x, int y, int z) {
+        return x == 30 && z == 0 && y == GROUND ? SimServer.WATER : SquadSimulationTest.flat(x, y, z);
+    }
+
+    /**
+     * By night a farmer comes in to the camp with its squad: live, two farmers working farms 40
+     * blocks out were shot by skeletons, one in the dark and one at first light. Only miners work
+     * on through the night, underground.
+     */
+    @Test
+    void byNightAFarmerComesInToTheCamp() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::pondFarOff, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 30, "y": %d, "z": 0}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}), "0,0", 14_000, true);
+        clock.advance(3 * 60_000);
+
+        PlayerPosition alice = server.position("Alice");
+        assertTrue(Math.hypot(alice.x(), alice.z()) <= 8, "in the camp by night, not at " + alice);
     }
 
     /** Flat, with a one-block pond six blocks east of the camp. */

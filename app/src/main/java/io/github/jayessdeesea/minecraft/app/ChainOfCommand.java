@@ -188,6 +188,12 @@ public class ChainOfCommand implements DisposableBean {
         this.ground = ground;
     }
 
+    /** Whether the night rule holds now: under {@link #shelterAtNight}, from just before dark until day. */
+    boolean sheltering() {
+        TimeOfDay now = time;
+        return shelterAtNight && now != null && (now.dark() || now.ticksUntilDark() <= SHELTER_LEAD_TICKS);
+    }
+
     /**
      * {@code objective}, or - at night, under {@link #shelterAtNight}, when the general's order
      * would leave a squad in the open or take it out of the base it is sealed in - the patrol base it was already
