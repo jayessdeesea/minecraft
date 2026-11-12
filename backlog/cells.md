@@ -23,7 +23,7 @@ adding cells outward.
   keeps every floor cell above block light 0, the only light monsters spawn at.
 - **The moat:** the lit, open ground between and round the cells, under clear sky, so anything
   that does spawn in the night burns at dawn. Nothing is built over it.
-- **Level at sea level.** Ground flattened to y=63 (feet at 64): cut high ground, fill low ground
+- **Level, slightly above sea level.** Ground flattened to one height just above y=63, the sea: cut high ground, fill low ground
   with what was cut. That makes the moat easy to keep open and the ground easy to walk.
 - **Fenced and gated:** fence on each cell's edges, with a fence gate on each side that has a
   neighbouring cell. Spiders still climb fences, so the keep keeps its wall.
@@ -44,7 +44,7 @@ adding cells outward.
 - At the main base it replaces the ring wall as FORTIFY's work. The foothold keeps its wall.
 
 ## Done when
-- The keep and the 8 cells round it are lit, fenced, gated and level at y=63, each with a purpose,
+- The keep and the 8 cells round it are lit, fenced, gated and level at that one height, each with a purpose,
   and the dawn AAR reports them cell by cell.
 - No monster spawns inside the fence line through a night, measured over a multi-day garrison run.
 
@@ -58,13 +58,19 @@ adding cells outward.
   on the chunk's boundary with a light moat round it; the main base the same, 2x2 chunks.
   Height: sea level, y=63, unless there's a practical reason not to - a mountain, a valley, a
   village to keep. Measured so far: the walks from the camp's centre to its sites
-  (`RouteEffort`, docs/military-doctrine.md § 17). **Decided (operator, 2026-11-11):** the
-  foothold at (-48, 44), on a hillside, keeps its floor at its own height (its measured ground,
-  feet at y=71 live) rather than cut to y=63 - high ground, and the least earthwork (FM 5-103, ATP 3-37.34).
-  Built: the floor is cleared of what was put on it, cobblestone included (§ 15's ground work),
-  and paved - its soil replaced with stone inside the wall line, a standard of phase 3 (§ 17).
-  Left: a pothole is filled by the ground work's fill with dirt, then paved over again; a fill of
-  stone straight away would save the second trip.
+  (`RouteEffort`, docs/military-doctrine.md § 17).
+- **Direction (operator, 2026-11-12): the base is flattened to one height slightly above sea
+  level**, set by the plan, not by the local terrain: the nearby chunks all flattened to it,
+  fenced and gated, and lit. Built so far, as a step: the foothold at (-48, 44) is cleared of
+  what was put on it, cobblestone included (§ 15's ground work), and paved - its soil replaced
+  with stone inside the wall line, a standard of phase 3 (§ 17) - at its measured ground. Left:
+  - The height fixed, not measured. Live, the camp at (-48, 44) is heaped with old cobblestone at
+    y=70-72; soldiers stand on the heaps, and a restart measured the ground two blocks up (feet
+    73 against 71), where the cobblestone heaps read as a paved floor.
+  - The flattening: cut every column within the nearby chunks to the floor height and fill below
+    it, from the camp's centre outward, at a cost of thousands of blocks a chunk on a hillside.
+  - A pothole filled with dirt by the ground work and then paved over again; a fill of stone
+    straight away would save the second trip.
 - **The floor's inspection keeps every way down open.** Filling and paving a cell's potholes never
   fills a mine head or a stairwell in it: they're kept structures every dig and fill skips, taken
   from the one list the ground work already uses (`SoldierRunner.groundExcept` - the camp's kept

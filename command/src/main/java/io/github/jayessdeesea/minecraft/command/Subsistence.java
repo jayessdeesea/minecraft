@@ -10,9 +10,9 @@ import java.util.Set;
  *
  * <p>A soldier carries a <b>basic load</b> of {@link #BASIC_LOAD} rations. Hungry, it eats. Below
  * {@link #RESUPPLY} it restocks when that's convenient - bakes the wheat it carries, hunts game in
- * sight, draws bread from the stockpile near it - and below {@link #FOOD_FIRST} food comes before its
- * work: it hunts and draws from the stockpile wherever it is, and a squadmate with rations to spare
- * shares them (cross-leveling, § 13). One still short with none of those means makes the squad's
+ * sight, draws bread from the stockpile near it, and a squadmate with rations to spare shares them
+ * (cross-leveling, § 13) - and below {@link #FOOD_FIRST} food comes before its work: it hunts and
+ * draws from the stockpile wherever it is. One still short with none of those means makes the squad's
  * Class I {@link Rating#RED}: the squad can't feed itself, and asks. Feeding a force is planned above
  * the squad, as field feeding is above the company, so the request goes to the general, whose answer
  * is a farm or a move to game. Bread beyond the basic load goes into the stockpile, for whoever's short.
@@ -21,9 +21,9 @@ public final class Subsistence {
 
     /** Rations a soldier keeps: a stack, days of work - the operator's standard ration. */
     public static final int BASIC_LOAD = 64;
-    /** Below this, a soldier restocks when it's convenient: bakes, hunts what's in sight, draws from a stockpile near. */
+    /** Below this, a soldier restocks when it's convenient: bakes, hunts what's in sight, draws from a stockpile near, asks its squadmates. */
     public static final int RESUPPLY = 32;
-    /** Below this, food comes first: a squadmate shares, and a soldier with no means of its own is short. */
+    /** Below this, food comes first, and a soldier with no means of its own is short. */
     public static final int FOOD_FIRST = 10;
 
     private Subsistence() {
@@ -35,9 +35,9 @@ public final class Subsistence {
         NONE,
         /** Hungry, with a ration to eat. */
         EAT,
-        /** Below {@link #RESUPPLY}: restocks as it goes - bakes, hunts what's in sight, draws from a stockpile near. */
+        /** Below {@link #RESUPPLY}: restocks as it goes - bakes, hunts what's in sight, draws from a stockpile near, is shared some. */
         RESTOCK,
-        /** Below {@link #FOOD_FIRST}: food before its work - hunts, draws from the stockpile, is shared some. */
+        /** Below {@link #FOOD_FIRST}: food before its work - hunts and draws from the stockpile wherever it is. */
         FOOD_FIRST
     }
 

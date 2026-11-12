@@ -838,8 +838,9 @@ class SquadSimulationTest {
     }
 
     /**
-     * Running low, a soldier asks its squadmates before it goes hungry: Hal, fed but carrying 5 of
-     * a basic load of 64, is handed rations by Fran, who carries 40.
+     * Running low, a soldier asks its squadmates before it goes hungry: Hal, fed but carrying 20 of
+     * a basic load of 64 - below its resupply mark, not yet its food-first one - is handed rations
+     * by Fran, who carries 40.
      */
     @Test
     void aSoldierRunningLowIsSharedRationsByASquadmateBeforeItGoesHungry() {
@@ -854,13 +855,13 @@ class SquadSimulationTest {
         SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
                 .simulated(clock, server.connector(n -> new PlayerPosition(0.5, GROUND + 1, 0.5),
                         n -> List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
-                                new int[]{37, SimServer.ITEM_BREAD, n.equals("Fran") ? 40 : 5})));
+                                new int[]{37, SimServer.ITEM_BREAD, n.equals("Fran") ? 40 : 20})));
         runner.run();
 
         clock.advance(60_000);
 
         int hal = server.count("Hal", ItemClassRegistry.ItemClass.FOOD);
-        assertTrue(hal >= Subsistence.FOOD_FIRST, "Hal shared up to his food-first mark: " + hal + "; last server events: "
+        assertTrue(hal > 20, "Hal shared some of Fran's: " + hal + "; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
@@ -1432,11 +1433,11 @@ class SquadSimulationTest {
     }
 
     /**
-     * Food, shelter and weapons come first: the camp's farm and every soldier armed stand in the
-     * same phase as its ground lit and its wall, ahead of the buildup of wood and stone and of armour.
+     * Safety first: the camp's ground lit, its wall and every soldier armed are its first phase of
+     * work, and its food is buildup with its wood and stone - while the force eats.
      */
     @Test
-    void foodShelterAndWeaponsAreTheCampsFirstPhaseOfWork() {
+    void shelterAndWeaponsComeFirstAndFoodIsBuildupWhileTheForceEats() {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
         Roster roster = new Roster("Alpha:Alice");
@@ -1454,8 +1455,36 @@ class SquadSimulationTest {
 
         Map<String, Integer> phases = new HashMap<>();
         chain.foothold().orElseThrow().standards().forEach(st -> phases.put(st.name(), st.phase()));
-        assertEquals(Map.of("the camp's ground lit", 2, "the camp walled in", 2, "food", 2, "every soldier armed", 2,
+        assertEquals(Map.of("the camp's ground lit", 2, "the camp walled in", 2, "food", 3, "every soldier armed", 2,
                 "the camp's floor paved", 3, "wood that grows back", 3, "stone and iron", 3, "every soldier armoured", 4), phases);
+    }
+
+    /**
+     * When survival is at stake - a soldier starving one hit from death with nothing to eat - food
+     * stands beside the wall in the first phase of work: the force does what it takes to eat.
+     */
+    @Test
+    void aSoldierStarvingWithNothingToEatPutsFoodBesideTheWall() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1})))
+                .run();
+        clock.advance(5_000);
+        server.starve("Alice", 4);
+
+        clock.advance(30_000);
+
+        Foothold.Standard food = chain.foothold().orElseThrow().standards().stream().filter(st -> st.name().equals("food"))
+                .findFirst().orElseThrow();
+        assertEquals(2, food.phase(), "food: " + food.status());
     }
 
     /**

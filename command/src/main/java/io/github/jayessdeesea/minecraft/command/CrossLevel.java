@@ -9,7 +9,7 @@ import java.util.Set;
 
 /**
  * Cross-leveling within the squad (docs/military-doctrine.md §13): a soldier that needs logs for a
- * tool and can't chop them, food and has none, or a weapon and is bare-handed, gets them from the
+ * tool and can't chop them, food and is running low, or a weapon and is bare-handed, gets them from the
  * nearest squadmate with some to spare. This drill only pairs them; walking over and handing them across is the soldiers'
  * ({@code bot.supply}).
  *
@@ -20,8 +20,8 @@ public final class CrossLevel {
 
     /** Logs a giver keeps for itself: enough for its own next pickaxe. */
     public static final int KEEP_LOGS = 3;
-    /** Rations a giver keeps for itself: as many as would put food first for it ({@link Subsistence#FOOD_FIRST}). */
-    public static final int KEEP_RATIONS = Subsistence.FOOD_FIRST;
+    /** Rations a giver keeps for itself: below this it has none to spare (the operator's). */
+    public static final int KEEP_RATIONS = 15;
     /** Rations handed to a short soldier at a time: a day's meals, enough to get back to its work. */
     public static final int RATIONS_GIVEN = 4;
     /**
@@ -70,8 +70,9 @@ public final class CrossLevel {
 
     /**
      * As {@link #pair(List, Map)}, logs first, then {@link #RATIONS_GIVEN} rations to each soldier in
-     * {@code rationsWanted} (by name) from the nearest squadmate with that many beyond
-     * {@link #KEEP_RATIONS}. A soldier is in one transfer at a time, giving or receiving.
+     * {@code rationsWanted} (by name), the one carrying fewest first, from the nearest squadmate with
+     * that many beyond {@link #KEEP_RATIONS}: one running low itself still gives to one with fewer, as
+     * long as it's left with no fewer than it gave to. A soldier is in one transfer at a time, giving or receiving.
      */
     public static List<Transfer> pair(List<SoldierStatus> squad, Map<String, Integer> logsWanted, Map<String, Integer> rationsWanted) {
         return pair(squad, logsWanted, rationsWanted, Map.of());
@@ -96,7 +97,7 @@ public final class CrossLevel {
     }
 
     /** Whether {@code soldier} is starving one hit from death, with nothing to eat. */
-    static boolean critical(SoldierStatus soldier) {
+    public static boolean critical(SoldierStatus soldier) {
         return soldier.condition().filter(c -> c.food() == 0 && c.health() <= CRITICAL_HEALTH
                 && c.kit().map(Kit::rations).orElse(0) == 0).isPresent();
     }
@@ -124,7 +125,8 @@ public final class CrossLevel {
     }
 
     private static void pair(List<SoldierStatus> squad, Item item, Map<String, Integer> wantedBy, Set<String> busy, List<Transfer> transfers) {
-        for (SoldierStatus receiver : squad) {
+        List<SoldierStatus> receivers = squad.stream().sorted(Comparator.comparingInt(item::carried)).toList();
+        for (SoldierStatus receiver : receivers) {
             Integer wanted = wantedBy.get(receiver.name());
             // A replacement links up first, then the squad reorganises round it: live, a giver was
             // sent to one still stranded where it respawned, out of reach on a peak.
@@ -133,7 +135,11 @@ public final class CrossLevel {
             }
             squad.stream()
                     .filter(giver -> !giver.name().equals(receiver.name()) && !busy.contains(giver.name())
-                            && !wantedBy.containsKey(giver.name()) && !(giver.report() instanceof Report.LinkingUp))
+                            && !(giver.report() instanceof Report.LinkingUp))
+                    // One wanting the same gives only rations, and only to one carrying fewer than it'll
+                    // be left with: two running low don't hand the same rations back and forth.
+                    .filter(giver -> !wantedBy.containsKey(giver.name())
+                            || item == Item.RATIONS && item.carried(giver) - wanted >= item.carried(receiver) + wanted)
                     .filter(giver -> item.carried(giver) - item.kept() >= wanted)
                     .min(Comparator.comparingDouble(giver -> Cohesion.distance(giver.position(), receiver.position())))
                     .ifPresent(giver -> {

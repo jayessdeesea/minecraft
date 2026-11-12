@@ -141,15 +141,17 @@ each time it stalls there again, up to 40 - so a soldier at a tree too tall to f
 of standing at it.
 
 *Class I, by echelon* (`command.Subsistence`; FM 4-0, ATP 4-41 field feeding). Each soldier
-carries a **basic load** of 64 rations - a stack. Below 32 it restocks when that's convenient,
-and below 10 it is short, and food comes before its work:
+carries a **basic load** of 64 rations - a stack. Below 32 it restocks when that's convenient
+and asks its squadmates for some, and below 10 it is short, and food comes before its work:
 1. **The soldier feeds itself.** Hungry, it eats. Below its basic load it bakes all the wheat it
    carries into bread at its workshop (§11). Below 32, within 16 blocks of a stockpile last seen
    holding rations, it draws some out until it carries 32 (`SoldierRunner.drawsFood`); short, it
    draws from it wherever it is, and hunts any game in sight, fed or not. Bread beyond its basic
    load - a whole stack, the basic load still in its pack - goes into the stockpile (§12).
-2. **The squad shares, and keeps the camp's farm.** A short soldier, hungry yet or not, gets four
-   rations from the nearest squadmate who keeps 10 after giving them (cross-leveling, §13). One starving at death's door - food
+2. **The squad shares, and keeps the camp's farm.** A soldier below 32, hungry yet or not, gets four
+   rations from the nearest squadmate who keeps 15 after giving them (cross-leveling, §13) - the
+   one carrying fewest first. A squadmate below 32 itself still gives, to one it's left with more
+   than; below 15 it has none to spare (the operator's). One starving at death's door - food
    0, health 6 or less - gets a meal from the nearest squadmate carrying any, its last or not,
    before anything else is handed across: buddy aid. Live, a soldier stood at a third of a heart
    beside a squadmate with one ration, kept as its own. And while the squad is AMBER or
@@ -581,9 +583,9 @@ wood has to be grown. The soldier at it reports `Planting`.
 | **Cross-leveling** | Supplies move laterally, between units at the same echelon, rather than waiting on resupply from above. Doctrine describes it at company level and up; here it's the same idea within a squad. | FM 4-0; FM 4-93.51 ch. 9 |
 
 *How we use it:* a soldier that needs logs for a tool (§11, §12), has tried to chop them and found
-no tree in reach, is short; so is one that wants food (§4) and carries none. `command.CrossLevel`
+no tree in reach, is short; so is one below its resupply mark of 32 rations (§4). `command.CrossLevel`
 pairs each with the nearest squadmate carrying more than it needs: a giver keeps 3 logs, enough for
-its own next pickaxe, or 2 rations, and hands over the logs short or 2 rations. A bare-handed
+its own next pickaxe, or 15 rations, and hands over the logs short or 4 rations. A bare-handed
 soldier - a replacement respawns with nothing - gets a squadmate's spare melee weapon: the worst
 of those it carries beyond its best (`Inventory.spareWeaponSlot`), never the one in hand. Weapons
 are paired first, then logs, then rations, and a soldier is in one hand-over at a time, giving or
@@ -946,18 +948,21 @@ up. The camp's mine standard (§ 17) is met once the stairs reach the bottom.
 *How we use it:* a garrison's camp (`minecraft.camp`, as `x,z`) is built up the way an airborne
 force builds a lodgment after the drop. Its phases:
 1. Shelter: a patrol base each night (§14).
-2. The airhead - food, shelter and weapons, the operator's first priorities: food that grows
-   (§12, FARM), the camp's ground lit (§15, SECURE) and walled (§15, FORTIFY), and every soldier
-   armed with a stone sword or better (§11, STONE). Food isn't met while more than half the
-   soldiers are hungry with nothing to eat, however much is planted - wheat feeds nobody for days:
-   a unit eats before it improves its position (GeneralScenarioIT's `starving-airhead`), and the
-   standard names where the camp's farm ground is, so the squad is sent there. With no logs
+2. The airhead - safety first, the operator's: the camp's ground lit (§15, SECURE) and walled
+   (§15, FORTIFY), and every soldier armed with a stone sword or better (§11, STONE). Food that
+   grows (§12, FARM) is buildup, unless survival is at stake - more than half the soldiers hungry
+   with nothing to eat, or one starving at death's door (food 0, health 6 or less, no rations) -
+   when it stands here beside the wall, and the general does what it takes to eat
+   (GeneralScenarioIT's `starving-airhead`). Food isn't met while more than half are hungry,
+   however much is planted - wheat feeds nobody for days - and the standard names where the
+   camp's farm ground is, so the squad is sent there. With no logs
    carried to make torches from and no tree in sight, the lit standard's task is TREE_FARM: the
    wood is grown first.
-3. The buildup: wood that grows back (§12, TREE_FARM), stone and iron from a mine (§16, MINE),
-   and the camp's floor paved (FORTIFY): once the wall is closed and of stone, its repointer
-   replaces the soil of the floor inside it with cobblestone, block by block, at the camp's own
-   height - not cut to sea level, the operator's call for a foothold on a hillside.
+3. The buildup: food while the force eats, wood that grows back (§12, TREE_FARM), stone and iron
+   from a mine (§16, MINE), and the camp's floor paved (FORTIFY): once the wall is closed and of
+   stone, its repointer replaces the soil of the floor inside it with cobblestone, block by block,
+   at the camp's measured height - until the base is flattened to one height above sea level
+   (backlog/cells.md).
 4. Armour: every soldier armoured (§11).
 
 Every ten seconds the runner measures each phase's standards at the camp - from its ground, the

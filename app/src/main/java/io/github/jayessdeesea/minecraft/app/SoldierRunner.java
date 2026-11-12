@@ -595,12 +595,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         campFarm = keptFarm;
         Optional<FarmPlan> farm = Optional.ofNullable(keptFarm);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
-        // Food, shelter and weapons come first, in one phase: a unit eats before it improves its
-        // position. Live, both squads walled the camp while all eight soldiers went hungry, health
-        // falling to 1.
-        boolean starving = hungry * 2 > everyone.size();
+        // Safety first: food is buildup, behind the wall and the weapons (the operator's). Unless
+        // the force's survival is at stake - most of it hungry with nothing to eat, or one starving
+        // one hit from death - then food stands beside the wall, and the general does what it takes.
+        // Live, both squads walled the camp while all eight soldiers went hungry, health falling to 1.
+        boolean starving = hungry * 2 > everyone.size()
+                || everyone.stream().anyMatch(CrossLevel::critical);
+        int foodPhase = starving ? 2 : 3;
         // Met when the farm grows and the force eats: wheat planted today feeds nobody for days.
-        standards.add(new Foothold.Standard(2, "food", growing >= FARM_GROWING && !starving,
+        standards.add(new Foothold.Standard(foodPhase, "food", growing >= FARM_GROWING && !starving,
                 // Where: a coordinate written out is one the model copies, and here it should - live,
                 // told only a count, it sent a squad to farm 50 blocks off, where the count never sees it.
                 (farm.isEmpty() ? "no ground to farm by water near the camp" : growing + " of " + farm.get().plot().size()
@@ -1992,10 +1995,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 wanted.put(s.name(), logs);
             }
         });
-        // Rations to one below its food-first mark (command.Subsistence), hungry yet or not: running
-        // low, it asks its squadmates before it goes hungry.
+        // Rations to one running low (command.Subsistence's resupply mark), hungry yet or not: it
+        // asks its squadmates before it goes hungry (the operator's).
         Map<String, Integer> fed = new HashMap<>();
-        statuses.forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> Subsistence.short_(k.rations()))
+        statuses.forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> Subsistence.low(k.rations()))
                 .ifPresent(k -> fed.put(s.name(), CrossLevel.RATIONS_GIVEN)));
         // And a spare weapon to one bare-handed: a replacement respawns with nothing. Not to one
         // making its kit: mid-craft its weapon can be on a window's cursor, and it isn't counted -

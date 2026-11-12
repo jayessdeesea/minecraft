@@ -95,13 +95,32 @@ class CrossLevelTest {
     void aSoldierWithNoFoodGetsRationsFromOneWithFoodToSpare() {
         SoldierStatus hungry = soldier("Alice", 0, 0, new Report.Idle());
         SoldierStatus hunter = new SoldierStatus("Bob", new Position(4, 64, 0), SLOT, new Report.Idle(), Optional.of(new Condition(20, 20, 0,
-                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 14)))));
+                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 20)))));
         SoldierStatus lean = new SoldierStatus("Carol", new Position(1, 64, 0), SLOT, new Report.Idle(), Optional.of(new Condition(20, 20, 0,
-                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 13)))));
+                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 18)))));
 
         assertEquals(List.of(new CrossLevel.Transfer("Bob", "Alice", CrossLevel.Item.RATIONS, CrossLevel.RATIONS_GIVEN)),
                 CrossLevel.pair(List.of(hungry, hunter, lean), Map.of(), Map.of("Alice", CrossLevel.RATIONS_GIVEN)),
-                "Carol keeps her ten and has three to spare: not enough");
+                "Carol keeps her fifteen and has three to spare: not enough");
+    }
+
+    private static SoldierStatus carrying(String name, double x, int rations) {
+        return new SoldierStatus(name, new Position(x, 64, 0), SLOT, new Report.Idle(), Optional.of(new Condition(20, 20, 0,
+                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, rations)))));
+    }
+
+    @Test
+    void oneRunningLowItselfStillGivesToOneWithFewerButTwoAlikeDont() {
+        Map<String, Integer> wanted = Map.of("Alice", CrossLevel.RATIONS_GIVEN, "Bob", CrossLevel.RATIONS_GIVEN, "Carol", CrossLevel.RATIONS_GIVEN);
+
+        assertEquals(List.of(new CrossLevel.Transfer("Bob", "Alice", CrossLevel.Item.RATIONS, CrossLevel.RATIONS_GIVEN)),
+                CrossLevel.pair(List.of(carrying("Alice", 0, 5), carrying("Bob", 1, 24)), Map.of(), wanted),
+                "Bob, below his resupply mark, has 9 beyond his keep and is left with more than he gives Alice");
+        assertEquals(List.of(), CrossLevel.pair(List.of(carrying("Alice", 0, 20), carrying("Bob", 1, 24)), Map.of(), wanted),
+                "Bob would be left with fewer than Alice: they'd hand the same rations back and forth");
+        assertEquals(List.of(new CrossLevel.Transfer("Bob", "Carol", CrossLevel.Item.RATIONS, CrossLevel.RATIONS_GIVEN)),
+                CrossLevel.pair(List.of(carrying("Alice", 0, 12), carrying("Bob", 1, 40), carrying("Carol", 2, 3)), Map.of(), wanted),
+                "the one carrying fewest is served first, though Alice is nearer");
     }
 
     @Test

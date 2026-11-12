@@ -11,8 +11,10 @@ review). Most of the time nothing changes; the point is to look.
   and pits ([capabilities.md](soldier/capabilities.md)).
 - **Owns how, never what.** Its plan - a role at a site, directives ahead of it - says what; it
   chooses where to stand, which cell next, which route ([orders.md](soldier/orders.md)).
-- **Asks for help only when out of ways of its own**, saying what it tried and what's in the way
-  (CANTCO, [military-doctrine.md § 4](../military-doctrine.md#4-reports-upward)).
+- **Asks its squad leader for help only when out of ways of its own**, saying what it tried and
+  what's in the way (CANTCO, [military-doctrine.md § 4](../military-doctrine.md#4-reports-upward)).
+  Supplies are the exception: running low on food, it asks its squadmates before it's out, and
+  they give from what they can spare (cross-leveling, § 13).
 - **Never calls a model, never waits on time** - only on the server's answer
   ([architecture.md](../architecture.md)).
 
