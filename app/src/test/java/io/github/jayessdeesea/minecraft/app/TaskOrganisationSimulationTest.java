@@ -454,6 +454,37 @@ class TaskOrganisationSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
+    /**
+     * Ore the force carries in pieces too small for a piece of armour is pooled in the stockpile and
+     * drawn by whoever it completes one for, whichever squad dug it: Alice's five raw copper and Bob's
+     * three make one chestplate. Live, eleven raw copper lay in four packs, none enough for a piece.
+     */
+    @Test
+    void copperInPiecesTooSmallForArmourIsPooledAndMadeIntoOne() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice;Bravo:Bob");
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
+                "A foothold", new Objective.Task.None())), squadLeader("[]", "[]"),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(n -> new PlayerPosition(0.5, GROUND + 1, 0.5), n -> List.of(
+                        new int[]{36, SimServer.itemNamedOrMinus("stone_sword"), 1},
+                        new int[]{37, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.itemNamedOrMinus("raw_copper"), n.equals("Alice") ? 5 : 3},
+                        new int[]{11, SimServer.ITEM_OAK_LOG, 12},
+                        new int[]{12, SimServer.ITEM_COBBLESTONE, 16})))
+                .run();
+        clock.advance(10 * 60_000);
+
+        int copper = List.of("Alice", "Bob").stream().mapToInt(n -> List.of("copper_chestplate", "copper_leggings", "copper_boots",
+                "copper_helmet").stream().mapToInt(p -> server.count(n, SimServer.itemNamedOrMinus(p))).sum()).sum();
+        assertTrue(copper > 0, "no copper armour made; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
     /** Flat, with a mound two high at x=10..12, z=-1..1 and a hole two deep at x=14..15, z=-1..1. */
     private static int moundAndHole(int x, int y, int z) {
         boolean inZ = z >= -1 && z <= 1;

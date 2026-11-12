@@ -34,6 +34,7 @@ import io.github.jayessdeesea.minecraft.bot.supply.Miner;
 import io.github.jayessdeesea.minecraft.bot.supply.Perimeter;
 import io.github.jayessdeesea.minecraft.bot.supply.Quartermaster;
 import io.github.jayessdeesea.minecraft.bot.supply.Quiver;
+import io.github.jayessdeesea.minecraft.bot.supply.MetalPool;
 import io.github.jayessdeesea.minecraft.bot.supply.Pack;
 import io.github.jayessdeesea.minecraft.bot.supply.Rations;
 import io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor;
@@ -3580,6 +3581,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Its own, else the camp's: live, a farmer working 15 blocks out, sited none, gave up its
             // bread 13 times for want of a table near, and its squad starved with the wheat in its pack.
             Optional<Workshop> workshop = Optional.ofNullable(workshops.get(name)).or(() -> Optional.ofNullable(campWorkshop));
+            // Raw ore through the common stockpile (bot.supply.MetalPool): what its next piece can't
+            // be made from goes in; what the stockpile completes it with is drawn - and the armourer
+            // waits for the draw rather than walking off to dig.
+            MetalPool.Plan metal = MetalPool.plan(inventory, rung, chainOfCommand.stockpile());
+            Optional<MetalPool.Draw> metalDraw = metal.draw().filter(d -> stockpileFor(name).isPresent());
+            boolean drawingMetal = metalDraw.isPresent() || depositor.drawing(ItemClass.RAW_IRON) || depositor.drawing(ItemClass.RAW_COPPER);
+            if (drawingMetal) {
+                rung.ifPresent(tools::remove);
+            }
+            boolean poolOre = metal.stocking(inventory) >= POOL_TRIP;
             // A farmer's hoe, and its wheat baked into bread three at a time.
             FarmPlan field = farming.get(name);
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
@@ -3764,7 +3775,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Optional<Workshop> shop = Optional.ofNullable(workshops.get(name));
             // A full load and no chest to put it in: the workshop's is fitted first, at its stand.
             long fitNow = clockwork.millis();
-            boolean fitStore = (fullLoad || Depositor.surplusFood(inventory)) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
+            boolean fitStore = (fullLoad || Depositor.surplusFood(inventory) || poolOre) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
             turns.put(Hands.Routine.DEPOSITOR, turn(() -> depositor.active() || chestFitter.active(), free -> {
                 if (free && fitStore && atStand(status.position(), shop.get())) {
@@ -3785,8 +3796,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
+                } else if (metalDraw.isPresent() || depositor.drawing(ItemClass.RAW_IRON) || depositor.drawing(ItemClass.RAW_COPPER)) {
+                    ItemClass ore = metalDraw.map(MetalPool.Draw::ore)
+                            .orElse(depositor.drawing(ItemClass.RAW_IRON) ? ItemClass.RAW_IRON : ItemClass.RAW_COPPER);
+                    depositor.tickDraw(status.position(), stockpile, ore, metalDraw.map(MetalPool.Draw::carry).orElse(inventory.count(ore)),
+                            free && !threatened && fort == null && metalDraw.isPresent());
                 } else {
-                    depositor.tick(status.position(), stockpile, free && (fullLoad || Depositor.surplusFood(inventory)) && !threatened && fort == null);
+                    depositor.tick(status.position(), stockpile, free && (fullLoad || Depositor.surplusFood(inventory) || poolOre)
+                            && !threatened && fort == null, metal.stock());
                 }
             }));
             storeWalks.put(name, fitStore && !atStand(status.position(), shop.get())
@@ -4124,6 +4141,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
     }
 
+    /** Raw ore a soldier carries for the force before it walks it to the stockpile on its own. */
+    static final int POOL_TRIP = 3;
+
     /** The pickaxe a soldier sent to quarry without one makes: the quarry's own stone makes it a better one later. */
     private static final Recipe ORDER_PICKAXE = Recipe.WOODEN_PICKAXE;
 
@@ -4146,8 +4166,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Map<ItemClass, Integer> setAside = Map.of(ItemClass.COBBLESTONE, stoneSetAside.getOrDefault(name, 0));
         // A station a walk away counts: the armourer goes to it rather than make another.
         Set<Workstation> inReach = armourers.get(name).stationsNear(world, at);
+        // Or ore the stockpile holds, to draw (bot.supply.MetalPool): the force's pooled copper makes
+        // a piece for whoever it completes one for, though there's none in reach to dig.
+        boolean nearStockpile = stockpileFor(name).isPresent();
+        Optional<Stockpile> pool = chainOfCommand.stockpile();
         Predicate<ItemClass> canDig = material ->
-                setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims);
+                setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims)
+                        || nearStockpile && pool.map(st -> material == ItemClass.RAW_COPPER ? st.rawCopper()
+                        : material == ItemClass.RAW_IRON ? st.rawIron() : 0).orElse(0) > 0;
         Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig,
                 upgradeAllowed.getOrDefault(name, false) ? highest : Math.min(highest, Ladder.BASIC_LOAD));
         next.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));

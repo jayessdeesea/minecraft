@@ -101,6 +101,17 @@ public final class Depositor {
     }
 
     public synchronized void tick(Position soldier, Optional<Position> stockpile, boolean wanted) {
+        tick(soldier, stockpile, wanted, Set.of());
+    }
+
+    /**
+     * As {@link #tick(Position, Optional, boolean)}, putting in all it carries of {@code pooled} too -
+     * raw ore that's the force's ({@link MetalPool}) - on a trip it makes for them or for its load.
+     */
+    public synchronized void tick(Position soldier, Optional<Position> stockpile, boolean wanted, Set<ItemClass> pooled) {
+        if (script == null) {
+            this.pooled = Set.copyOf(pooled);
+        }
         this.soldierAt = soldier;
         this.wanted = wanted;
         ticks++;
@@ -122,8 +133,9 @@ public final class Depositor {
             case Script.Status.Running _ -> {
             }
             case Script.Status.Done _ -> {
-                Stockpile seen = new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE), chest.chestCount(ItemClass.FOOD));
-                LOG.info("{} stockpiled its load - the chest holds {} logs, {} cobblestone, {} rations", name, seen.logs(), seen.stone(), seen.rations());
+                Stockpile seen = seen();
+                LOG.info("{} stockpiled its load - the chest holds {} logs, {} cobblestone, {} rations, {} raw iron, {} raw copper", name,
+                        seen.logs(), seen.stone(), seen.rations(), seen.rawIron(), seen.rawCopper());
                 stockpileSeen.accept(seen);
                 trips.worked(at);
                 finish();
@@ -167,7 +179,7 @@ public final class Depositor {
             case Script.Status.Running _ -> {
             }
             case Script.Status.Done _ -> {
-                Stockpile seen = new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE), chest.chestCount(ItemClass.FOOD));
+                Stockpile seen = seen();
                 LOG.info("{} drew {} from the stockpile, carrying {} - the chest holds {} logs, {} cobblestone, {} rations", name, material,
                         inventory.count(material), seen.logs(), seen.stone(), seen.rations());
                 stockpileSeen.accept(seen);
@@ -237,9 +249,19 @@ public final class Depositor {
                 List.of(new Guard("the trip is no longer wanted", () -> wanted || !walking)));
     }
 
-    /** Shift-clicks across every stack of the material there's a full load of. */
+    /** The chest as it stands open. */
+    private Stockpile seen() {
+        return new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE), chest.chestCount(ItemClass.FOOD),
+                chest.chestCount(ItemClass.RAW_IRON), chest.chestCount(ItemClass.RAW_COPPER));
+    }
+
+    /** Raw ore put in on this trip: the force's, every bit of it carried. */
+    private Set<ItemClass> pooled = Set.of();
+
+    /** Shift-clicks across every stack of the material there's a full load of, and the pooled ore. */
     private void deposit() {
         load = EnumSet.noneOf(ItemClass.class);
+        load.addAll(pooled);
         if (inventory.count(ItemClass.LOG) >= Gatherer.CARRY_LOGS) {
             load.add(ItemClass.LOG);
         }

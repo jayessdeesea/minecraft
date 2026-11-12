@@ -546,7 +546,11 @@ wears out in 59 blocks. What the chest holds when it's
 opened goes to the general (`General.receiveStockpile`), shown with the supply point. It's drawn on
 too: a mason out of blocks, when the stockpile was last seen holding a load of cobblestone, walks
 over and shift-clicks stacks out until it carries a load (`Depositor.tickDraw`) before it digs any
-dirt - so one squad's quarrying walls another's camp. Logs carried show in each
+dirt - so one squad's quarrying walls another's camp. Raw ore goes through it the same way
+(`bot.supply.MetalPool`): a soldier keeps the iron or copper ore its next piece of kit takes only
+if it can make that piece with it, or with the stockpile's added - which it then draws, its
+armourer waiting rather than walking off to dig. Any other raw ore it carries is the force's, and
+goes in once it has 3. Live, eleven raw copper lay in four packs, none enough for a piece. Logs carried show in each
 soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
 
 Food is grown as well as gathered. The survey also reports ground to farm: the largest plot of

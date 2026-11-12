@@ -47,5 +47,5 @@ The operator's (2026-11-12). The force's materials are the force's, not a squad'
 - **The general balances it, as a cross-squad matter.** It sees what the stockpile holds against
   what the standards still need, and gives some squad the production a shortfall calls for -
   never a soldier's own errand to make up.
-- Built so far: logs, cobblestone and bread. Ore and ingots are
+- Built so far: logs, cobblestone, bread and raw ore. Ingots, and the mine worked for ore, are
   [backlog/common-stockpile.md](../../backlog/common-stockpile.md).
