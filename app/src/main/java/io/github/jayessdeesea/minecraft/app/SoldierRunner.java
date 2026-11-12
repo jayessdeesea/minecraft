@@ -3185,7 +3185,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         CompletableFuture<PlaySession> sessionReady = new CompletableFuture<>();
 
         CompletableFuture<PlaySession> joined = connector.join(name, new PlaySessionListeners(
-                update -> chunkCache.load(update.chunkX(), update.chunkZ(), update.sectionBlockStates(), name),
+                update -> logDivergence(name, chunkCache.load(update.chunkX(), update.chunkZ(), update.sectionBlockStates(), name)),
                 unload -> chunkCache.unload(unload.chunkX(), unload.chunkZ(), name),
                 position -> {
                     if (!firstPosition.complete(position)) {
@@ -3956,6 +3956,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         scheduler.scheduleAtFixedRate(loudly(name + "'s status log",
                 () -> LOG.debug("{} status: {} - plan: {} - session open: {}", name, soldier.status(), soldier.lastPlan(), session.isOpen())),
                 STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
+    }
+
+    /**
+     * A chunk sent again that differs from the one kept, logged: the world model's check on itself
+     * (backlog/world-model-stale.md). Each sample is x, y, z, the state kept and the state sent.
+     */
+    private void logDivergence(String name, ChunkCache.Divergence diverged) {
+        if (diverged.blocks() > 0) {
+            LOG.warn("[Model] a chunk sent to {} differs from the one kept at {} blocks, e.g. {}", name, diverged.blocks(),
+                    diverged.samples().stream().map(java.util.Arrays::toString).toList());
+        }
     }
 
     /** The pickaxe a soldier sent to quarry without one makes: the quarry's own stone makes it a better one later. */

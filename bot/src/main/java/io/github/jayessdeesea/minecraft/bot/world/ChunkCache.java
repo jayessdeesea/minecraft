@@ -47,12 +47,51 @@ public final class ChunkCache {
      * another's update and undo it. A soldier that respawns lets its chunks go first
      * ({@link #removeOwner}), so none is kept on the word of an owner that no longer sees it.
      */
-    public void load(int chunkX, int chunkZ, List<int[]> sectionBlockStates, Object owner) {
+    public Divergence load(int chunkX, int chunkZ, List<int[]> sectionBlockStates, Object owner) {
+        Divergence[] diverged = {Divergence.NONE};
         chunks.compute(chunkKey(chunkX, chunkZ), (key, existing) -> {
+            if (existing != null) {
+                diverged[0] = Divergence.of(chunkX, chunkZ, existing.sectionBlockStates, sectionBlockStates);
+            }
             LoadedChunk chunk = existing != null ? existing : new LoadedChunk(sectionBlockStates);
             chunk.owners.add(owner);
             return chunk;
         });
+        return diverged[0];
+    }
+
+    /**
+     * Where a chunk sent again differs from the one kept: how many blocks, and the first few - each
+     * {x, y, z, kept state, sent state}. The world model's check on itself: a kept chunk its owners'
+     * block updates have kept current differs only by an update still on its way to the new owner;
+     * one that differs for long has gone stale (backlog/world-model-stale.md).
+     */
+    public record Divergence(int blocks, List<int[]> samples) {
+        static final Divergence NONE = new Divergence(0, List.of());
+        static final int SAMPLES = 5;
+
+        public Divergence {
+            samples = List.copyOf(samples);
+        }
+
+        static Divergence of(int chunkX, int chunkZ, List<int[]> kept, List<int[]> sent) {
+            int blocks = 0;
+            List<int[]> samples = new java.util.ArrayList<>();
+            for (int section = 0; section < Math.min(kept.size(), sent.size()); section++) {
+                int[] a = kept.get(section);
+                int[] b = sent.get(section);
+                for (int i = 0; i < Math.min(a.length, b.length); i++) {
+                    if (a[i] != b[i]) {
+                        blocks++;
+                        if (samples.size() < SAMPLES) {
+                            samples.add(new int[]{chunkX * SECTION_SIZE + (i & 15), (section + MIN_SECTION_Y) * SECTION_SIZE + (i >>> 8),
+                                    chunkZ * SECTION_SIZE + (i >>> 4 & 15), a[i], b[i]});
+                        }
+                    }
+                }
+            }
+            return blocks == 0 ? NONE : new Divergence(blocks, samples);
+        }
     }
 
     /** Removes {@code owner}'s reference; the chunk is evicted once no owner remains. */

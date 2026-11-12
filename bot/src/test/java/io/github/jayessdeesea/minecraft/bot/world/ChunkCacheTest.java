@@ -65,6 +65,21 @@ class ChunkCacheTest {
     }
 
     @Test
+    void aChunkSentAgainSaysWhereItDiffersFromTheOneKept() {
+        ChunkCache cache = new ChunkCache();
+        assertEquals(0, cache.load(1, -2, List.of(filled(STONE)), "soldier-a").blocks(), "nothing kept to differ from");
+        cache.setBlock(17, -64, -30, AIR);
+
+        ChunkCache.Divergence diverged = cache.load(1, -2, List.of(filled(STONE)), "soldier-b");
+
+        assertEquals(1, diverged.blocks());
+        assertEquals(List.of(17, -64, -30, AIR, STONE), Arrays.stream(diverged.samples().getFirst()).boxed().toList());
+        int[] asKept = filled(STONE);
+        asKept[(2 << 4) | 1] = AIR; // (17, -64, -30): x 1, z 2 in chunk (1, -2)
+        assertEquals(0, cache.load(1, -2, List.of(asKept), "soldier-c").blocks(), "the same blocks: no divergence");
+    }
+
+    @Test
     void anOwnerThatRespawnedNoLongerKeepsItsChunks() {
         ChunkCache cache = new ChunkCache();
         cache.load(0, 0, List.of(filled(STONE)), "soldier-a");
