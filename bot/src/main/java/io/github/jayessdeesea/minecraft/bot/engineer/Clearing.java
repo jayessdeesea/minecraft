@@ -108,14 +108,17 @@ public final class Clearing {
     }
 
     /**
-     * Whether a clear digs the block at (x, y, z): a tree's, or the ground's - never ground with
-     * water beside or over it, which would flow into the hole and the camp.
+     * Whether a clear digs the block at (x, y, z): a tree's, the ground's, or cobblestone put down
+     * over it - old huts, pillar steps: a dig is over a camp's floor, and the floor is kept clear -
+     * never ground with water beside or over it, which would flow into the hole and the camp. The
+     * camp's kept structures are the caller's {@code except}.
      */
     public static boolean diggable(WorldView world, int x, int y, int z) {
         if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
             return true;
         }
-        return (world.isSoil(x, y, z) && !world.isFarmland(x, y, z) || world.isStone(x, y, z) || world.isGravel(x, y, z))
+        return (world.isSoil(x, y, z) && !world.isFarmland(x, y, z) || world.isStone(x, y, z) || world.isGravel(x, y, z)
+                || world.isCobblestone(x, y, z))
                 && !letsInWater(world, new BlockPos(x, y, z));
     }
 

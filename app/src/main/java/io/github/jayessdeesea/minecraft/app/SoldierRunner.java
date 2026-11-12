@@ -548,6 +548,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Of stone: an enderman picks a dirt block out of a wall and opens a hole (backlog/building-guide.md).
         Set<BlockPos> wallCells = wall == null ? Set.of() : Set.copyOf(wall);
         long wallSoft = wall == null ? 0 : wall.stream().filter(c -> softInWall(c, camp[0], camp[1], wallCells)).count();
+        campWalled = wall == null || wallLeft == 0 && wallSoft == 0;
         standards.add(new Foothold.Standard(2, "the camp walled in", wallLeft == 0 && wallSoft == 0,
                 wall == null ? "not begun" : wallLeft > 0 ? wallLeft + " of " + wall.size() + " wall blocks still to place"
                         + (wallSoft > 0 ? ", and " + wallSoft + " of dirt to replace with stone" : "")
@@ -777,6 +778,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Workshop> workshops = new ConcurrentHashMap<>();
     /** The camp's own workshop, at its ground: every squad near the camp crafts there. */
     private volatile Workshop campWorkshop;
+    /**
+     * Whether no wall is going up round the camp - none laid out, or closed and all stone - as last
+     * measured: foothold check writes, squad loop reads.
+     */
+    private volatile boolean campWalled = true;
     /** How near the camp an objective is for its squad to craft at the camp's workshop. */
     private static final int CAMP_WORKSHOP_RANGE = 48;
     /** Ticks to each soldier's next stand-to check. */
@@ -1459,6 +1465,19 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }
         }
+        // Cobblestone over the floor only while no wall is going up: the masons' steps inside it are
+        // cobblestone, and dug out from under them the wall stood unfinished in the squad simulation.
+        if (!campWalled) {
+            for (int x = dig.minX(); x <= dig.maxX(); x++) {
+                for (int z = dig.minZ(); z <= dig.maxZ(); z++) {
+                    for (int y = dig.minY(); y <= dig.maxY(); y++) {
+                        if (world.isCobblestone(x, y, z)) {
+                            except.add(new Cell(x, y, z));
+                        }
+                    }
+                }
+            }
+        }
         List<BlockPos> toDig = Clearing.toClear(world, dig, except);
         List<BlockPos> toFill = toDig.isEmpty()
                 ? Clearing.toFill(world, fill, except) : List.of();
@@ -1753,6 +1772,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // took in the wall's own blocks, dug out as the masons put them back - live, soldiers broke
         // blocks and put them back all day.
         walls.values().forEach(keep::addAll);
+        // A hut going up is kept as well as one built: cobblestone over the floor is dug by day.
+        fortifying.values().forEach(f -> keep.addAll(f.cells()));
         for (SquadState s : squadStates.values()) {
             if (s.builtBase != null) {
                 s.builtBase.cells().forEach(c -> keep.add(BlockPos.containing(c.x(), c.y(), c.z())));

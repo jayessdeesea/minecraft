@@ -1030,6 +1030,46 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
     }
 
+    /** Flat, with an old hut's wall of cobblestone two high in the camp. */
+    private static int oldHutInCamp(int x, int y, int z) {
+        return x >= 3 && x <= 5 && z == 3 && y > GROUND && y <= GROUND + 2 ? SimServer.COBBLESTONE : flat(x, y, z);
+    }
+
+    /**
+     * The camp's floor is kept clear of what was put on it: an idle squad digs out an old hut's
+     * cobblestone, as it digs high ground. Live, old huts' blocks round the camp's chest shut it in.
+     */
+    @Test
+    void anIdleSquadClearsAnOldHutsCobblestoneOffTheCampsFloor() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::oldHutInCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(4 * 60_000);
+
+        long hut = 0;
+        for (int x = 3; x <= 5; x++) {
+            for (int y = GROUND + 1; y <= GROUND + 2; y++) {
+                if (server.block(x, y, 3) != SimServer.AIR) {
+                    hut++;
+                }
+            }
+        }
+        assertEquals(0, hut, "blocks of the old hut left; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
     /** Flat, with a mound of dirt two high in the camp. */
     private static int moundInCamp(int x, int y, int z) {
         return x >= 3 && x <= 4 && z >= 3 && z <= 4 && y > GROUND && y <= GROUND + 2 ? SimServer.DIRT : flat(x, y, z);

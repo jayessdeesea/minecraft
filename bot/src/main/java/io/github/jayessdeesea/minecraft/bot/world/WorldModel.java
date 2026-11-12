@@ -51,6 +51,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public boolean isCobblestone(int x, int y, int z) {
+        return chunks.isCobblestone(x, y, z);
+    }
+
+    @Override
     public boolean isIronOre(int x, int y, int z) {
         return chunks.isIronOre(x, y, z);
     }

@@ -122,6 +122,7 @@ public final class Clearer {
         Digger.Target target = c.log() ? Digger.Target.LOG
                 : world.leaves(b.x(), b.y(), b.z()).isPresent() ? Digger.Target.LEAVES
                 : world.isStone(b.x(), b.y(), b.z()) ? Digger.Target.STONE
+                : world.isCobblestone(b.x(), b.y(), b.z()) ? Digger.Target.COBBLESTONE
                 : world.isGravel(b.x(), b.y(), b.z()) ? Digger.Target.GRAVEL : Digger.Target.SOIL;
         if (!target.canDig(inventory)) {
             failed.failed(b, ticks, "no tool to dig the " + target + " at " + b);

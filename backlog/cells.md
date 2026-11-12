@@ -58,9 +58,12 @@ adding cells outward.
   on the chunk's boundary with a light moat round it; the main base the same, 2x2 chunks.
   Height: sea level, y=63, unless there's a practical reason not to - a mountain, a valley, a
   village to keep. Measured so far: the walks from the camp's centre to its sites
-  (`RouteEffort`, docs/military-doctrine.md § 17). **Needs decision:** the foothold at
-  (-48, 44) stands on a hillside at about y=69 - its floor at its own height, or cut to y=63 (about
-  1,700 blocks over 17x17 before paving)?
+  (`RouteEffort`, docs/military-doctrine.md § 17). **Decided (operator, 2026-11-11):** the
+  foothold at (-48, 44), on a hillside, keeps its floor at its own height (its measured ground,
+  y=71 live) rather than cut to y=63 - high ground, and the least earthwork (FM 5-103, ATP 3-37.34).
+  Built: the floor is cleared of what was put on it, cobblestone included (§ 15's ground work).
+  Left: paving it - the floor's soil replaced with stone inside the wall line, and its potholes
+  filled and paved again as they come.
 - **The floor's inspection keeps every way down open.** Filling and paving a cell's potholes never
   fills a mine head or a stairwell in it: they're kept structures every dig and fill skips, taken
   from the one list the ground work already uses (`SoldierRunner.groundExcept` - the camp's kept
@@ -73,8 +76,8 @@ adding cells outward.
 - **Expected (operator, 2026-11-08): the foothold gets the same treatment, smaller.** Fences, clear
   sky and flatter ground at the camp: clear sky so the zombies left at dawn burn, flat ground so
   the squads see across it. FORTIFY digs everything over the camp's ground inside the wall line -
-  trees, dirt, stone, gravel - and then fills under it with the squad's own dirt
-  (docs/military-doctrine.md § 15). Left: cobblestone and other placed blocks over the camp; then
+  trees, dirt, stone, gravel, cobblestone put down - and then fills under it with the squad's own
+  dirt (docs/military-doctrine.md § 15). Left: planks and other placed blocks over the camp; then
   a fence on the wall's line.
 - Depends on the engineer and concrete commands (backlog/echelon-contracts.md), wood that grows back (backlog/renewables.md), and on torches made from charcoal or
   mined coal (backlog/mining.md).

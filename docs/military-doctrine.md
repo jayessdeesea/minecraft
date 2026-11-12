@@ -790,10 +790,12 @@ boxes (`command.Groundwork`) - a dig box from the camp's feet level 24 up, and a
 below up to the ground, both inside the wall line - and the squad's drill (`command.Tasking`)
 splits the work left in them into a strip for each soldier. Digging first: while anything in the
 dig box is left, each soldier's command is `Order.Dig(box, except)`, every log, leaf, dirt, stone
-or gravel block in its strip. Then filling: `Order.Fill(box, except)`, every open cell in each
+or gravel block in its strip, and the cobblestone put down over the floor - old huts' walls,
+pillar steps - which shut the camp's chest in on three sides; that only while no wall is going up,
+since the masons stand on cobblestone steps inside it. Then filling: `Order.Fill(box, except)`, every open cell in each
 column of its strip from the top down to the first solid block or water. The strips are cut from
 where the work is left, not the whole site, so no soldier is handed a strip with nothing in it.
-`except` is what neither touches: the squads' huts, the workshops, the farm, the wall line, the
+`except` is what neither touches: the squads' huts, built or going up, the workshops, the farm, the wall line, the
 mine - the 3x3 columns round its head, where the night shift cuts it, and its walkway and
 landing - so it's the camp's whatever the squads' tasks. A soldier reports `Working(command, cells left)`.
 

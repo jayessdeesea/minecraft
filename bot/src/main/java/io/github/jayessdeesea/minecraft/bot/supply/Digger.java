@@ -71,6 +71,8 @@ final class Digger {
         LOG(70, 3, null, 0, ItemClass.LOG),
         /** Plain stone, with a pickaxe - by hand it drops nothing. At feet or head height. */
         STONE(35, 1, ItemClass.PICKAXE, 0, ItemClass.COBBLESTONE),
+        /** Cobblestone put down over the camp's floor, with a pickaxe: hardness 2, a third longer than stone. At feet or head height. */
+        COBBLESTONE(45, 1, ItemClass.PICKAXE, 0, ItemClass.COBBLESTONE),
         /** Iron ore, with a stone pickaxe or better - a wooden one breaks it for nothing. At feet or head height. */
         IRON_ORE(45, 1, ItemClass.PICKAXE, 1, ItemClass.RAW_IRON),
         /** Copper ore, with a stone pickaxe or better: raw copper - armour where there's no iron. At feet or head height. */
@@ -116,6 +118,7 @@ final class Digger {
             return switch (this) {
                 case LOG -> world.isLog(block.x(), block.y(), block.z());
                 case STONE -> world.isStone(block.x(), block.y(), block.z());
+                case COBBLESTONE -> world.isCobblestone(block.x(), block.y(), block.z());
                 case IRON_ORE -> world.isIronOre(block.x(), block.y(), block.z());
                 case GRAVEL -> world.isGravel(block.x(), block.y(), block.z());
                 case COPPER_ORE -> world.oreOf(block.x(), block.y(), block.z()).filter("copper"::equals).isPresent();
