@@ -17,11 +17,14 @@ probes solid too. So no route ends within reach, and every load stays in the sol
 the miners' stone among them, which the wall's repointing wants.
 
 ## Done when
-- A stockpile trip walks to a cell the soldier can stand in and reach the chest from: one it
-  can get to, as a gatherer's stand is (`Gatherer`, `Pathfinder.climbs`). With none, its CANTCO
-  says the chest is shut in, so the camp's upkeep or the squad leader can open it up.
-- A scenario: a chest walled on three sides; loads go into it.
-- Live, "can't reach the stockpile" CANTCOs fall to near none.
+- Live, "can't reach the stockpile" CANTCOs fall to near none. (Built: a stockpile trip walks to
+  the nearest cell within reach of the chest the soldier can stand in and get to -
+  `SoldierRunner.chestStand`.)
+- With no such cell, its CANTCO says the chest is shut in, so the camp's upkeep or the squad
+  leader can open it up.
+- A scenario that fails without the stand: in the open the walk's partial route ends within
+  reach anyway, so none does yet. Live, the chest at (-47, 70, 45) has open stands beside it at
+  (-47, 70, 44) and (-48, 70, 44), and a way in from the west.
 
 ## Notes
 - `Depositor.tick` has no world; `SoldierRunner.stockpileFor` does, and can hand the stand with

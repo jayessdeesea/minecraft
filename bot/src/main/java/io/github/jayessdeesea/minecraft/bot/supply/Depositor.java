@@ -71,6 +71,11 @@ public final class Depositor {
         return script != null;
     }
 
+    /** Whether a soldier at {@code soldier} reaches the chest at {@code chest} to open it. */
+    public static boolean withinReach(Position soldier, Position chest) {
+        return ChestWindow.withinReach(soldier, chest);
+    }
+
     /** Where the soldier should go while it carries its load in. */
     public synchronized Optional<Position> standAt() {
         return script != null && walking ? Optional.of(at) : Optional.empty();

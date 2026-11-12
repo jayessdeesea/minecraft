@@ -2786,7 +2786,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 stand = torchmakers.get(soldierName).standAt();
             }
             if (stand.isEmpty() && depositors.containsKey(soldierName)) {
-                stand = depositors.get(soldierName).standAt();
+                SoldierStatus self = statuses.get(i);
+                stand = depositors.get(soldierName).standAt().map(chest -> chestStand(self.position(), chest).orElse(chest));
             }
             if (stand.isEmpty()) {
                 stand = storeWalks.getOrDefault(soldierName, Optional.empty());
@@ -2829,6 +2830,41 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             byName.get(soldierName).receiveOrder(given);
         }
     }
+
+    /**
+     * Where a soldier at {@code from} stands to reach the chest at {@code chest}: the nearest cell
+     * within reach of it that the soldier can stand in and get to - on foot, on its blocks or
+     * cutting steps. Not the chest's own cell, which nobody stands in: live, a chest walled on
+     * three sides left every trip to it short of reach, and the day's loads in the soldiers' packs.
+     */
+    private Optional<Position> chestStand(Position from, Position chest) {
+        BlockPos feet = BlockPos.containing(from.x(), from.y(), from.z());
+        int cx = (int) Math.floor(chest.x()), cy = (int) Math.floor(chest.y()), cz = (int) Math.floor(chest.z());
+        int span = Math.max(Math.abs(cx - feet.x()), Math.abs(cz - feet.z())) + CHEST_STAND_ACROSS + 2;
+        Set<BlockPos> reachable = Pathfinder.climbs(world, feet, span, CHEST_STAND_BUDGET, 0, false).keySet();
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int dx = -CHEST_STAND_ACROSS; dx <= CHEST_STAND_ACROSS; dx++) {
+            for (int dz = -CHEST_STAND_ACROSS; dz <= CHEST_STAND_ACROSS; dz++) {
+                for (int dy = -2; dy <= 1; dy++) {
+                    BlockPos cell = new BlockPos(cx + dx, cy + dy, cz + dz);
+                    Position centre = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
+                    if (!reachable.contains(cell) || !Depositor.withinReach(centre, chest)) {
+                        continue;
+                    }
+                    double distance = Math.hypot(centre.x() - from.x(), centre.z() - from.z()) + Math.abs(centre.y() - from.y());
+                    if (distance < bestDistance) {
+                        best = cell;
+                        bestDistance = distance;
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(best).map(c -> new Position(c.x() + 0.5, c.y(), c.z() + 0.5));
+    }
+
+    /** How far across from a chest a stand to reach it is looked for, and how far the flood for it goes. */
+    static final int CHEST_STAND_ACROSS = 3, CHEST_STAND_BUDGET = 20_000;
 
     /** The block-state IDs the world model holds at {@code to}'s cell and the two over it, "?" for none known. */
     private String modelBlocks(Order.MoveTo to) {
