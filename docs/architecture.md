@@ -96,8 +96,9 @@ implementation, `bot.world.WorldModel`, combines a `ChunkCache` and an `EntityTr
 every Soldier's own connection. The chunk cache — loaded as chunks arrive and unloaded as they leave — is a *shared*
 structure (the block data is the same ground truth for every soldier; there's no reason to decode
 or store it per-connection), but chunk *visibility* is per-connection, so eviction has to be
-reference-counted (loaded by which connections). A chunk sent again replaces the cached blocks, since it's the server's
-current state and an owner that stopped seeing the chunk without unloading it has missed changes. `ConcurrentHashMap.compute()`
+reference-counted (loaded by which connections). A chunk another connection holds keeps its blocks when sent again -
+its block updates keep it current, and a chunk sent earlier can arrive after another stream's update - and a soldier
+that respawns lets go of every chunk it held, since the server never unloads what it saw before. `ConcurrentHashMap.compute()`
 gives atomic, per-chunk-key read-modify-write for that bookkeeping directly — no dedicated writer
 thread or event queue needed; reads (`isSolid`, called every tick, from every soldier) stay
 lock-free `get()`s, which matters because the tick loop is the one place in this system latency is

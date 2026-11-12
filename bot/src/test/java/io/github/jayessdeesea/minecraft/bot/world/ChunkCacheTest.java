@@ -55,14 +55,23 @@ class ChunkCacheTest {
     }
 
     @Test
-    void aChunkSentAgainReplacesWhatWasCached() {
+    void aChunkSentAgainKeepsWhatItsOwnersKeptCurrent() {
         ChunkCache cache = new ChunkCache();
-        cache.load(0, 0, List.of(filled(STONE)), "soldier-a"); // soldier-a respawns far off: never unloaded
+        cache.load(0, 0, List.of(filled(STONE)), "soldier-a");
+        cache.setBlock(0, -64, 0, AIR);                       // dug, as soldier-a was told
+        cache.load(0, 0, List.of(filled(STONE)), "soldier-b"); // sent to soldier-b before the dig, arriving after
+
+        assertFalse(cache.isSolid(0, -64, 0), "the dig stands");
+    }
+
+    @Test
+    void anOwnerThatRespawnedNoLongerKeepsItsChunks() {
+        ChunkCache cache = new ChunkCache();
+        cache.load(0, 0, List.of(filled(STONE)), "soldier-a");
+        cache.removeOwner("soldier-a");                        // respawned far off: it no longer sees the chunk
         cache.load(0, 0, List.of(filled(AIR)), "soldier-b");   // the block broken since, as sent now
 
         assertFalse(cache.isSolid(0, -64, 0), "the chunk as the server sends it now");
-        cache.unload(0, 0, "soldier-b");
-        assertFalse(cache.isSolid(0, -64, 0), "still held by soldier-a, and still current");
     }
 
     @Test

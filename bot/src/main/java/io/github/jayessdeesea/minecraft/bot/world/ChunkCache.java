@@ -41,18 +41,15 @@ public final class ChunkCache {
 
     /**
      * Records {@code owner} as holding a reference to chunk ({@code chunkX}, {@code chunkZ}) with
-     * the given per-section block-state arrays (bottom section first). The blocks are the server's
-     * as it sends them now, so they replace any cached already: a chunk held by an owner that no
-     * longer sees it - a soldier respawned far off, which the server never sends the unload for -
-     * misses every change made there since. Live, a chest broken at the camp stood in the cache for
-     * a night, and a soldier walked its loads to it and failed to open it time after time.
+     * the given per-section block-state arrays (bottom section first). A chunk another owner holds
+     * already keeps its blocks: that owner's block updates have kept them current, and the
+     * connections are separate streams - a chunk one was sent before an update can arrive after
+     * another's update and undo it. A soldier that respawns lets its chunks go first
+     * ({@link #removeOwner}), so none is kept on the word of an owner that no longer sees it.
      */
     public void load(int chunkX, int chunkZ, List<int[]> sectionBlockStates, Object owner) {
         chunks.compute(chunkKey(chunkX, chunkZ), (key, existing) -> {
-            LoadedChunk chunk = new LoadedChunk(sectionBlockStates);
-            if (existing != null) {
-                chunk.owners.addAll(existing.owners);
-            }
+            LoadedChunk chunk = existing != null ? existing : new LoadedChunk(sectionBlockStates);
             chunk.owners.add(owner);
             return chunk;
         });

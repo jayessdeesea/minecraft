@@ -3110,6 +3110,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // sends a Player Position, which arrives above as a correction.
                     if (health.health() <= 0) {
                         LOG.warn("{} is dead - respawning", name);
+                        // What it saw goes with it: the server sends what it sees from where it
+                        // respawns, and never unloads what it saw before. Kept on its word, a chunk
+                        // nobody saw any more missed every change made there.
+                        chunkCache.removeOwner(name);
                         sessionReady.thenAccept(PlaySession::respawn);
                     }
                 },
