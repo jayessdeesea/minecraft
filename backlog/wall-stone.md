@@ -25,8 +25,10 @@ last cells out of reach. A soldier that did quarry stone filled the camp's hollo
   wall wanted stone - the slope's soldiers carried only cobblestone, and filled nothing.
 - The stockpile chest (-47, 70, 45) is boxed in by an old hut's blocks; the miners' stone never
   reaches it to be drawn (`cells.md`, the floor's inspection).
-- Live, the last dirt block is (-40, 64, 39), in the wall kept as "-48,44" - dirt on the server
-  too.
+- Live, the last dirt block is (-40, 64, 39), in the wall kept as "-48,44" - buried: the camp's
+  levelling filled over the wall's bottom course where it ran through a dip, solid over it and
+  on the camp's side from y=64 to 68, open air outside with no floor. No longer counted
+  (`softInWall`, `aBuriedDirtBlockOfTheWallDoesntKeepTheCampOpen`).
 - Live, after the wall's soldier was built (field101-102): the soldier on the wall's last block
   was put on the camp's farm too - a hungry squad's half that keeps the farm (`farmHalf`) - and
   reported Farming on the wall's tasking until the register took it off as stalled. Fix: leave

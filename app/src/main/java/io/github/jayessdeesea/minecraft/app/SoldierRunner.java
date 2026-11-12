@@ -545,7 +545,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         List<BlockPos> wall = best.map(Map.Entry::getValue).orElse(null);
         int wallLeft = wall == null ? -1 : Perimeter.open(world, wall).size();
         // Of stone: an enderman picks a dirt block out of a wall and opens a hole (backlog/building-guide.md).
-        long wallSoft = wall == null ? 0 : wall.stream().filter(c -> world.isSoil(c.x(), c.y(), c.z())).count();
+        Set<BlockPos> wallCells = wall == null ? Set.of() : Set.copyOf(wall);
+        long wallSoft = wall == null ? 0 : wall.stream().filter(c -> softInWall(c, camp[0], camp[1], wallCells)).count();
         standards.add(new Foothold.Standard(2, "the camp walled in", wallLeft == 0 && wallSoft == 0,
                 wall == null ? "not begun" : wallLeft > 0 ? wallLeft + " of " + wall.size() + " wall blocks still to place"
                         + (wallSoft > 0 ? ", and " + wallSoft + " of dirt to replace with stone" : "")
@@ -2236,7 +2237,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         // A closed wall of dirt isn't done: each block of it is replaced with stone by a mason carrying some.
         List<BlockPos> soft = state.wall == null ? List.of()
-                : state.wall.stream().filter(c -> world.isSoil(c.x(), c.y(), c.z())).toList();
+                : state.wall.stream().filter(c -> softInWall(c, state.wallCentre.x(), state.wallCentre.z(), Set.copyOf(state.wall))).toList();
         if (state.wall != null && soft.size() != state.softLeft) {
             LOG.info("[{}] FORTIFY: {} of the wall's blocks dirt, to replace with stone{}", squadName, soft.size(),
                     soft.isEmpty() ? "" : " - " + soft.stream().limit(4).map(c -> c.x() + " " + c.y() + " " + c.z()).toList()
@@ -2865,6 +2866,37 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** How far across from a chest a stand to reach it is looked for, and how far the flood for it goes. */
     static final int CHEST_STAND_ACROSS = 3, CHEST_STAND_BUDGET = 20_000;
+
+    /**
+     * Whether the wall's cell {@code c}, round a wall centred at ({@code cx}, {@code cz}), is dirt
+     * that wants to be stone: dirt or grass, and not buried - covered over and with the camp's
+     * ground filled in against it on the inside. A buried block, taken out, opens no way in, and
+     * nobody can stand to reach it: live, the camp's levelling buried the wall's bottom course
+     * where it ran through a dip, and the camp's wall stood open on that one block for days.
+     */
+    private boolean softInWall(BlockPos c, int cx, int cz, Set<BlockPos> wall) {
+        if (!world.isSoil(c.x(), c.y(), c.z())) {
+            return false;
+        }
+        if (!world.isSolid(c.x(), c.y() + 1, c.z())) {
+            return true;
+        }
+        // Inside: each side nearer the centre that isn't the wall itself - at a corner, two.
+        double here = Math.hypot(c.x() - cx, c.z() - cz);
+        int insideSides = 0;
+        for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            BlockPos side = c.offset(d[0], 0, d[1]);
+            if (wall.contains(side) || Math.hypot(side.x() - cx, side.z() - cz) >= here) {
+                continue;
+            }
+            insideSides++;
+            // Ground, risen over it - not a table or a step put down beside the wall.
+            if (!world.isSolid(side.x(), side.y(), side.z()) || !world.isSolid(side.x(), side.y() + 1, side.z())) {
+                return true;
+            }
+        }
+        return insideSides == 0;
+    }
 
     /** The block-state IDs the world model holds at {@code to}'s cell and the two over it, "?" for none known. */
     private String modelBlocks(Order.MoveTo to) {

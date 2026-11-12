@@ -1153,6 +1153,47 @@ class SquadSimulationTest {
         assertTrue(walled.met(), "the camp's wall: " + walled.status());
     }
 
+    /** A cell of the wall's lower course in the middle of its east side, and the block inside it, toward the camp. */
+    private static final BlockPos BURIED_DIRT = CAMP_WALL.stream().filter(c -> c.y() == GROUND + 1 && c.z() == 0)
+            .max(Comparator.comparingInt(BlockPos::x)).orElseThrow();
+    private static final BlockPos FILLED_INSIDE = BURIED_DIRT.offset(-1, 0, 0);
+
+    /** As {@link #walledCamp}, one block of the wall's lower course dirt, covered by the course over it and the ground filled in against it. */
+    private static int walledCampBuriedDirt(int x, int y, int z) {
+        BlockPos at = new BlockPos(x, y, z);
+        return at.equals(BURIED_DIRT) ? SimServer.DIRT
+                : at.equals(FILLED_INSIDE) || at.equals(FILLED_INSIDE.offset(0, 1, 0)) ? SimServer.DIRT : walledCamp(x, y, z);
+    }
+
+    /**
+     * A dirt block of the wall that's buried - its top covered and the camp's ground filled in
+     * against it - isn't the wall's to make stone: taken out, it opens no way in, and nobody can
+     * stand to reach it. Live, the camp's levelling buried the wall's bottom course where it ran
+     * through a dip, and "the camp walled in" stood open on that one block for days.
+     */
+    @Test
+    void aBuriedDirtBlockOfTheWallDoesntKeepTheCampOpen() {
+        new WallStore(state).save("0,0", List.copyOf(CAMP_WALL));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::walledCampBuriedDirt, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})))
+                .run();
+        clock.advance(5_000); // read before the camp's levelling digs out the fill - here, unlike live, above its floor
+
+        Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
+                .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
+        assertTrue(walled.met(), "the camp's wall: " + walled.status());
+    }
+
     /**
      * SECURE ordered at the camp, the general's point a few blocks off its centre and above its
      * ground, as live: the squad lights the camp's ground, and the camp's standard is met. Live,
