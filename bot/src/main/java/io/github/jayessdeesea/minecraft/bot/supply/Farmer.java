@@ -110,6 +110,11 @@ public final class Farmer {
     /** How long a plot cell whose job failed - not walked to, not answered - is first passed over; longer each time. */
     public static final int PASS_OVER_TICKS = 2400;
     private long ticks;
+    /** How many times a harvest is started on one crop, never done, before it's passed over. */
+    static final int RESTARTS_BEFORE_PASSING_OVER = 3;
+    /** The crop last started on, and how many times running - reset by any harvest done. */
+    private BlockPos lastHarvest;
+    private int restarts;
     private final Setbacks<BlockPos> passedOver = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
 
     /** Why it needs its squad leader's help, if it's out of ways of its own ({@link Setbacks#stuck}). */
@@ -140,6 +145,8 @@ public final class Farmer {
                 }
                 case Digger.Progress.Done _ -> {
                     passedOver.worked(digger.spot().block().offset(0, -1, 0));
+                    lastHarvest = null;
+                    restarts = 0;
                     stopDigging();
                 }
                 // The crop gone before it got there is a squadmate's harvest, not a failure: live,
@@ -193,6 +200,19 @@ public final class Farmer {
         Optional<BlockPos> ripe = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).findFirst();
         if (ripe.isPresent()) {
             BlockPos crop = ripe.get().offset(0, 1, 0);
+            // Started on again and again, never done: a failure, whatever stopped it each time.
+            // Live, three farmers started on one ripe wheat 168 times in an hour, every start
+            // interrupted before it could fail, and the crop never passed over.
+            restarts = crop.equals(lastHarvest) ? restarts + 1 : 1;
+            lastHarvest = crop;
+            if (restarts > RESTARTS_BEFORE_PASSING_OVER) {
+                passedOver.failed(ripe.get(), ticks, "the wheat at " + crop + " started on " + RESTARTS_BEFORE_PASSING_OVER + " times and never done");
+                shared.failed(ripe.get(), ticks);
+                lastHarvest = null;
+                restarts = 0;
+                next(world, farm); // the next job, the crop passed over now
+                return;
+            }
             digger = new Digger(name, session, inventory, claims, new Digger.Spot(Digger.Target.WHEAT, crop, crop), Digger.walkTicks(soldier, crop));
             LOG.info("{} harvests the wheat at {}", name, crop);
             return;

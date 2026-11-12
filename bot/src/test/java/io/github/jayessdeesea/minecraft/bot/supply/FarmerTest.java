@@ -212,6 +212,32 @@ class FarmerTest {
         assertTrue(claims.contains(PLOT.get(1).offset(0, 1, 0)), "the other wheat taken: " + claims);
     }
 
+    /**
+     * A harvest started again and again on the same crop, never done - interrupted each time, the
+     * crop never going - is a failure, and the crop is passed over for the rest. Live, three farmers
+     * started on one ripe wheat 168 times in an hour: the world model held a crop the server didn't.
+     */
+    @Test
+    void aCropHarvestedAgainAndAgainWithoutEndIsPassedOver() {
+        PLOT.forEach(c -> {
+            farmland.add(c);
+            wheat.put(c.offset(0, 1, 0), Digger.RIPE);
+        });
+        Set<BlockPos> claims = new HashSet<>();
+        Farmer farmer = new Farmer("Eli", session, inventory, claims);
+        Position near = new Position(0.5, GROUND + 1, 1.5);
+        BlockPos nearer = PLOT.get(0).offset(0, 1, 0);
+
+        for (int i = 0; i < Farmer.RESTARTS_BEFORE_PASSING_OVER; i++) {
+            farmer.tick(near, world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+            assertTrue(claims.contains(nearer), "on the nearer crop, start " + (i + 1) + ": " + claims);
+            farmer.tick(near, world, Optional.of(new FarmPlan(WATER, PLOT)), false); // its hands taken
+        }
+        farmer.tick(near, world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+
+        assertTrue(claims.contains(PLOT.get(1).offset(0, 1, 0)), "on to the other crop: " + claims);
+    }
+
     @Test
     void tillsThePlotThenPlantsIt() {
         inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.HOE), 1});
