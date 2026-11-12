@@ -30,6 +30,6 @@ last cells out of reach. A soldier that did quarry stone filled the camp's hollo
 - Live, after the wall's soldier was built (field101-102): the soldier on the wall's last block
   was put on the camp's farm too - a hungry squad's half that keeps the farm (`farmHalf`) - and
   reported Farming on the wall's tasking until the register took it off as stalled. Fix: leave
-  the wall's soldier out of that half. The scenario wants a camp's farm actually sited in the
-  simulation (one pond inside the wall, or 30 blocks out, sited none); `theCampsFarmIsGrownRoundTheNextWater`'s
-  `twoPonds` does site one.
+  the wall's soldier out of that half. Not reproduced yet: with `twoPonds`' water (which sites
+  the camp's farm) and a hungry squad, the wall's soldier farmed and repointed both, carrying its
+  stone from the start; live, Carol had none and was quarrying for it.
