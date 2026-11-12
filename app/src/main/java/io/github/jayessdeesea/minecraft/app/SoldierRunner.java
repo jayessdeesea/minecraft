@@ -3472,7 +3472,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             // What needs a table or furnace is made at the workshop the engineer sited: the squad's,
             // or the mine base for a soldier down the stairs. The armourer walks there itself.
-            Optional<Workshop> workshop = Optional.ofNullable(workshops.get(name));
+            // Its own, else the camp's: live, a farmer working 15 blocks out, sited none, gave up its
+            // bread 13 times for want of a table near, and its squad starved with the wheat in its pack.
+            Optional<Workshop> workshop = Optional.ofNullable(workshops.get(name)).or(() -> Optional.ofNullable(campWorkshop));
             // A farmer's hoe, and its wheat baked into bread three at a time.
             FarmPlan field = farming.get(name);
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
