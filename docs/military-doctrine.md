@@ -584,7 +584,10 @@ weapon still comes first. It reports
 `Farming`. Each ripe wheat gives seeds back, more than its cell takes to sow again, so a soldier
 keeps two stacks (128) and, at three or more, throws the rest away a stack at a time
 (`bot.supply.Pack`): live,
-farmers carried up to 580 seeds, packs full, and a harvest's wheat had no slot to go to.
+farmers carried up to 580 seeds, packs full, and a harvest's wheat had no slot to go to. And a
+pack down to 2 free slots throws away its smallest stack of what no routine uses - rotten flesh,
+bones, gravel, phantom membrane: an item of no class (`bot.world.ItemClassRegistry`) - never the
+one in hand.
 
 Wood is grown when it runs out. An objective's task can be `TREE_FARM`: the squad plants saplings
 round the objective, on every third block both ways of open dirt or grass within 8 blocks, with

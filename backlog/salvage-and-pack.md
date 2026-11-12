@@ -37,7 +37,11 @@ them, and wood is already the bottleneck. And nothing decides what a full pack t
 
 ## Built so far
 - Seeds beyond two stacks are thrown away (`bot.supply.Pack`) - live, packs full of seeds left a
-  harvest's wheat on the ground. A fixed rule for one item; the value by scarcity is still to come.
+  harvest's wheat on the ground.
+- A pack down to 2 free slots throws away what no routine uses, an item of no class, smallest
+  stack first (`aFullPackShedsWhatNoRoutineUses`).
+- Both are fixed rules; the value by scarcity - a scarce item kept, a plentiful one dropped first,
+  rotten flesh kept if a villager will trade for it - is still to come.
 
 ## Done when
 - A simulation: soldiers clearing ground under a torch and a crafting table come away with both.

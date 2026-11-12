@@ -1889,6 +1889,39 @@ class SquadSimulationTest {
     }
 
     /**
+     * A full pack sheds what no routine uses: a soldier whose pack is full of rotten flesh throws some
+     * away, keeping room for a harvest's wheat - and keeps its sword and bread. Live, packs held rotten
+     * flesh, bones, gravel and phantom membranes, 36 of 36 slots used.
+     */
+    @Test
+    void aFullPackShedsWhatNoRoutineUses() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        int flesh = 1264; // rotten flesh, of no item class: registries.json at the pinned version
+        List<int[]> kit = new java.util.ArrayList<>(List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16}));
+        for (int slot = 9; slot <= 44; slot++) {
+            if (slot != 36 && slot != 37) {
+                kit.add(new int[]{slot, flesh, 1});
+            }
+        }
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit))
+                .run();
+
+        clock.advance(20_000);
+
+        assertTrue(server.count("Alice", flesh) <= 34 - Pack.FULL_AT - 1, server.count("Alice", flesh) + " rotten flesh");
+        assertEquals(16, server.count("Alice", ItemClassRegistry.ItemClass.FOOD), "its bread kept");
+        assertEquals(1, server.count("Alice", SimServer.ITEM_WOODEN_SWORD), "its sword kept");
+    }
+
+    /**
      * A pack isn't filled with seeds: a soldier carrying five stacks throws away all but two. Live,
      * farmers carried 200 to 580 seeds, packs full, and a harvest's wheat had no slot to go to.
      */

@@ -10,8 +10,8 @@ import org.apache.logging.log4j.Logger;
 import java.util.Optional;
 
 /**
- * One soldier's pack kept from filling with what's worth least: seeds beyond {@link #SEEDS_KEPT}
- * are thrown away, a stack at a time. Every ripe wheat harvested gives seeds back, more than its
+ * One soldier's pack kept from filling with what's worth least: near full, what no routine uses is
+ * thrown away; and seeds beyond {@link #SEEDS_KEPT} are, a stack at a time. Every ripe wheat harvested gives seeds back, more than its
  * cell takes to sow again: live, farmers carried 200 to 580 seeds, packs full, and the wheat of a
  * harvest had no slot to go to - bread lost on the ground (backlog/salvage-and-pack.md).
  */
@@ -47,7 +47,20 @@ public final class Pack {
             settle--;
             return;
         }
-        if (!free || inventory.count(ItemClass.SEEDS) < THROW_FROM) {
+        if (!free) {
+            return;
+        }
+        // A pack near full sheds what no routine uses - rotten flesh, bones, gravel - before seeds.
+        Optional<Integer> junk = freeSlots(inventory) <= FULL_AT ? unused(inventory) : Optional.empty();
+        if (junk.isPresent()) {
+            int slot = junk.get();
+            LOG.info("{} throws away {} of item {}, which nothing it does uses - its pack is nearly full", name,
+                    inventory.countAt(slot), inventory.itemAt(slot));
+            session.throwStack(0, 0, slot); // stale state: the server resends the inventory
+            settle = SETTLE_TICKS;
+            return;
+        }
+        if (inventory.count(ItemClass.SEEDS) < THROW_FROM) {
             return;
         }
         surplusSeeds(inventory).ifPresent(slot -> {
@@ -56,6 +69,38 @@ public final class Pack {
             session.throwStack(0, 0, slot); // stale state: the server resends the inventory
             settle = SETTLE_TICKS;
         });
+    }
+
+    /** Free slots at or under which the pack counts as full: room kept for a harvest's wheat and seeds. */
+    public static final int FULL_AT = 2;
+
+    /** Empty slots in the main inventory and hotbar. */
+    static int freeSlots(Inventory inventory) {
+        int free = 0;
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            if (inventory.itemAt(slot) < 0) {
+                free++;
+            }
+        }
+        return free;
+    }
+
+    /**
+     * The smallest stack of an item no routine uses - one of no {@link ItemClass} - never the one in
+     * hand: live, packs full of rotten flesh, bones, gravel and phantom membranes had no slot for a
+     * harvest's wheat. The operator's: what's worth least goes first, a torch kept over rotten flesh.
+     */
+    static Optional<Integer> unused(Inventory inventory) {
+        int held = Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot();
+        Integer best = null;
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            int item = inventory.itemAt(slot);
+            if (slot != held && item >= 0 && ItemClassRegistry.classOf(item).isEmpty()
+                    && (best == null || inventory.countAt(slot) < inventory.countAt(best))) {
+                best = slot;
+            }
+        }
+        return Optional.ofNullable(best);
     }
 
     /**
