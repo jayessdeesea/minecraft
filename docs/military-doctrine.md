@@ -804,7 +804,11 @@ block update. "The camp walled in" isn't met, and FORTIFY isn't done, while any 
 the wall; its progress says how many blocks. A mason on it with no cobblestone, the wall
 otherwise closed, draws some from the stockpile when it was last seen holding stone, or quarries
 some where its squad saw stone nearest the camp - as one short of blocks for a wall going up digs
-dirt.
+dirt. One soldier is the wall's while a closed wall has dirt in it - the one carrying most stone,
+then the nearest - and is off the camp's ground work meanwhile: that work outranks the mason and
+the quarry for a soldier's hands, and fills with the stone the wall wants. The rest keep the
+ground. A gather's stands are ones the soldier can get to on foot, on the blocks it carries or
+cutting steps - from down a pit it was filling, too.
 
 A fill (`Clearing.toFill`, `bot.supply.Filler`) puts cobblestone or dirt in its strip's cells,
 the lowest it can reach first, nearest first, so a pit under the wall line becomes footing again;

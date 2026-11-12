@@ -268,6 +268,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         TreeFarm trees;
         /** The squad's farm, while it has one. */
         FarmPlan farm;
+        /** The soldier who is the closed wall's while it has dirt in it, if one is. */
+        String wallHand;
         /** The point the farm was sited for: kept while it's ordered there. */
         BlockPos farmFor;
         /** Blocks of the laid-out base still to place, at the last check - empty with none laid out. */
@@ -2360,6 +2362,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         List<Position> patrolRound = taskOf(squadName, Objective.Task.Patrol.class).map(o -> patrolRound(o.location())).orElse(List.of());
         int baseBlocks = !baseOrdered ? 0 : state.baseBlocksLeft.orElse(PatrolBase.hasty(new Position(0, 0, 0), statuses.size()).cells().size());
         int stoneShare = (baseBlocks + statuses.size() - 1) / statuses.size();
+        // One soldier is the closed wall's while it has dirt in it - the one carrying most stone,
+        // then the nearest - off the camp's ground work, which outranks the mason and the quarry
+        // for its hands and fills with the stone the wall wants. The rest keep the ground. Live,
+        // the ground work, never done, held every soldier all day, and the wall's last dirt block
+        // stood for days.
+        // Kept while it's here: chosen afresh each cycle it flipped between two with no stone, each
+        // taken off the job unfinished as the other came nearer.
+        boolean wallWanted = !soft.isEmpty() && wallLeft.isEmpty() && !squadInContact;
+        if (!wallWanted) {
+            state.wallHand = null;
+        } else if (state.wallHand == null || statuses.stream().noneMatch(st -> st.name().equals(state.wallHand))) {
+            state.wallHand = statuses.stream()
+                    .max(Comparator.<SoldierStatus>comparingInt(st -> st.condition().flatMap(c -> c.kit()).map(Kit::stone).orElse(0))
+                            .thenComparingDouble(st -> -Math.hypot(st.position().x() - soft.getFirst().x(), st.position().z() - soft.getFirst().z())))
+                    .map(SoldierStatus::name).orElse(null);
+        }
+        String wallHand = state.wallHand;
         for (int i = 0; i < statuses.size(); i++) {
             String soldierName = statuses.get(i).name();
             // Stranded with nobody to fetch it: the recovery drill sends it down to its squad, over
@@ -2470,6 +2489,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // some, or quarried - as a mason short of blocks for a wall going up digs dirt. Live,
                 // the camp's wall's last dirt block stood a day, its masons carrying none and nothing
                 // sending them for it. Not while it's still walling: the open wall comes first.
+                if (soldierName.equals(wallHand)) {
+                    route(soldierName, null);
+                    upkeeping.remove(soldierName);
+                }
                 Kit pack = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
                 if (pack != null && pack.stone() == 0 && wallLeft.isEmpty()) {
                     boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false) && stockpileFor(soldierName).isPresent();

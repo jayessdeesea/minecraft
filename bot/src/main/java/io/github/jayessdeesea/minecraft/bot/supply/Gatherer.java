@@ -174,9 +174,12 @@ public final class Gatherer {
 
     private void next(WorldView world, Position soldier, Position around, Digger.Target target) {
         Set<BlockPos> excluded = new HashSet<>(claims);
-        // Stands it can walk to, from where it is: a stand on paper can be shut off on every side.
+        // Stands it can get to from where it is - on foot, on the blocks it carries, or cutting steps,
+        // as its route there would: a stand on paper can be shut off on every side, and one down a
+        // pit it was filling gets out on its blocks.
         int span = (int) Math.ceil(Math.hypot(around.x() - soldier.x(), around.z() - soldier.z())) + WIDER[WIDER.length - 1] + 4;
-        Set<BlockPos> walkable = Pathfinder.reachable(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), span, REACH_BUDGET);
+        Set<BlockPos> walkable = Pathfinder.climbs(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), span, REACH_BUDGET,
+                inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT), inventory.slotOf(ItemClass.PICKAXE) >= 0).keySet();
         excluded.addAll(avoid);
         // Nearest first, then further out: none within reach of the objective is a reason to look
         // wider before asking for help - live, a camp long since cleared of trees had a wood a
