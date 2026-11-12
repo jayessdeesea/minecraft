@@ -112,7 +112,7 @@ class SpringAiGeneralTest {
     void buildContextShowsTheSupplyPointWhenThereIsOne() {
         String prompt = SpringAiGeneral.buildContext(Prompts.GENERAL, "secure the village", Optional.empty(),
                 Optional.of(new Position(10, 70, -5)),
-                Optional.of(new Stockpile(40, 64)), List.of(ALPHA)).prompt();
+                Optional.of(new Stockpile(40, 64, 0)), List.of(ALPHA)).prompt();
 
         assertTrue(prompt.contains("<supply_point>\nA chest stocked with weapons and armour at (10, 70, -5)."));
         assertTrue(prompt.contains("Last seen holding 40 logs and 64 cobblestone."));
