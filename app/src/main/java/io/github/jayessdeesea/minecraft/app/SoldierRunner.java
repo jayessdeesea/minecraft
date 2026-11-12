@@ -3572,6 +3572,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             boolean rearming = rung.filter(r -> bareHanded && r.makes() == ItemClassRegistry.ItemClass.WEAPON)
                     .isPresent();
+            // Bread on an errand of its own - a weapon first, if bare-handed: asked with kit it can't
+            // make yet, it waited on that kit's makings, and was given up with it. Live, seven loaves
+            // went with copper boots there was no fuel to smelt for.
+            if (tools.contains(Recipe.BREAD) && !rearming) {
+                tools.retainAll(Set.of(Recipe.BREAD));
+            }
             Fortify fort = fortifying.get(name);
             Opening exit = opening.get(name);
             torchesCarried.put(name, inventory.count(ItemClassRegistry.ItemClass.TORCH));

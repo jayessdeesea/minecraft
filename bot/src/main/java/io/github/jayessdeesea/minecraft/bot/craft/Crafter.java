@@ -487,20 +487,24 @@ public final class Crafter {
             session.click(window, 0, FURNACE_IN, true);
         }
         session.click(window, 0, from - Inventory.MAIN_FIRST + windowSlots, false);
-        // Fuel: planks of the kind already burning, topped up - or what's there taken out first.
+        // Fuel: of the kind already burning, topped up - or what's there taken out first. One stack
+        // that covers it, planks or logs, which burn as long: live, a soldier with two kinds of
+        // planks, two of each, and ten logs gave up its smelts for want of three planks of a kind.
         Optional<ItemSlot> burning = furnace[FURNACE_FUEL];
         int fuel = Recipe.fuelFor(count) - burning.map(ItemSlot::count).orElse(0);
         if (fuel <= 0) {
             return count;
         }
-        int planks = biggest(ItemClass.PLANKS, burning.map(ItemSlot::itemId).orElse(-1));
+        int planks = fuelSlot(burning.map(ItemSlot::itemId).orElse(-1), fuel);
         if (planks < 0) {
-            session.quickMove(window, 0, FURNACE_FUEL);
-            planks = biggest(ItemClass.PLANKS, -1);
+            if (burning.isPresent()) {
+                session.quickMove(window, 0, FURNACE_FUEL);
+            }
             fuel = Recipe.fuelFor(count);
+            planks = fuelSlot(-1, fuel);
         }
-        if (planks < 0 || inventory.countAt(planks) < fuel) {
-            throw new IllegalStateException("not enough planks to burn for " + count + " smelts - " + inventory.summary());
+        if (planks < 0) {
+            throw new IllegalStateException("no stack of planks or logs to burn for " + count + " smelts - " + inventory.summary());
         }
         session.click(window, 0, planks - Inventory.MAIN_FIRST + windowSlots, false);
         for (int i = 0; i < fuel; i++) {
@@ -508,6 +512,20 @@ public final class Crafter {
         }
         session.click(window, 0, planks - Inventory.MAIN_FIRST + windowSlots, false);
         return count;
+    }
+
+    /**
+     * The slot of planks - of item {@code itemId}, unless -1 - with {@code need} or more, or failing
+     * that of logs: planks first, as the plan counted them, so logs it meant for planks aren't burned. Or -1.
+     */
+    private int fuelSlot(int itemId, int need) {
+        for (ItemClass fuel : List.of(ItemClass.PLANKS, ItemClass.LOG)) {
+            int slot = biggest(fuel, itemId);
+            if (slot >= 0 && inventory.countAt(slot) >= need) {
+                return slot;
+            }
+        }
+        return -1;
     }
 
     /** The inventory slot with the most of {@code itemClass} - of item {@code itemId}, unless -1 - or -1. */

@@ -460,7 +460,8 @@ standing within 16 blocks, walked to, or else at its squad's workshop. What's ma
 free, a soldier stands to: every two seconds it puts on any better armour it carries and takes its
 best weapon back in hand, rather than the seeds or dirt its last job left there. A first wooden sword takes
 about a minute. While crafting or smelting, the soldier stays where it began, since a window closes
-on a player who walks away from it.
+on a player who walks away from it. A furnace burns one kind of fuel at a time: the soldier feeds
+it from a stack of planks that covers the smelts, or failing that of logs, which burn as long.
 
 The squad climbs together. Nobody works above the lowest rung a squadmate is still working toward,
 so the first soldier up the ladder doesn't dig out the ore the rest need for their shields. A
@@ -570,9 +571,12 @@ farming there, and the rest of the plot is worked first.
 
 Each job is an expect script: stand on the cell - landed, not still coming down onto it - item in hand, use it on the cell, and done when
 the server's block update shows farmland or a sprout. A soldier without a hoe makes a wooden one,
-and one carrying three wheat bakes it into bread, the ration every soldier eats (§11). It reports
+and one carrying three wheat bakes it into bread, the ration every soldier eats (§11) - on an
+errand of its own, never held up by other kit it's short of the makings of; a bare-handed soldier's
+weapon still comes first. It reports
 `Farming`. Each ripe wheat gives seeds back, more than its cell takes to sow again, so a soldier
-keeps two stacks (128) and throws the rest away, a stack at a time (`bot.supply.Pack`): live,
+keeps two stacks (128) and, at three or more, throws the rest away a stack at a time
+(`bot.supply.Pack`): live,
 farmers carried up to 580 seeds, packs full, and a harvest's wheat had no slot to go to.
 
 Wood is grown when it runs out. An objective's task can be `TREE_FARM`: the squad plants saplings

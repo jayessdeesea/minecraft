@@ -21,6 +21,12 @@ public final class Pack {
 
     /** Seeds a soldier keeps: two stacks, enough to sow the camp's farm over. */
     public static final int SEEDS_KEPT = 128;
+    /**
+     * Seeds it carries before it throws any: a stack over its keep. Live, thrown at the keep itself,
+     * each harvest's few seeds were thrown on their own, one stack of 1 to 6 after another, every
+     * throw restarting the errand the soldier was on.
+     */
+    static final int THROW_FROM = SEEDS_KEPT + 64;
     /** Ticks to wait after a throw for the server's resent inventory, so a stack isn't thrown twice. */
     static final int SETTLE_TICKS = 20;
 
@@ -41,7 +47,7 @@ public final class Pack {
             settle--;
             return;
         }
-        if (!free) {
+        if (!free || inventory.count(ItemClass.SEEDS) < THROW_FROM) {
             return;
         }
         surplusSeeds(inventory).ifPresent(slot -> {

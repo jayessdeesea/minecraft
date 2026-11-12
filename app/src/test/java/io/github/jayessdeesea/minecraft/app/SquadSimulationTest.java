@@ -1818,6 +1818,34 @@ class SquadSimulationTest {
     }
 
     /**
+     * Bread is baked on an errand of its own, not held up by kit it can't make yet: a soldier sent
+     * for stone with no pickaxe, no tree in reach, four planks and six wheat makes a table and two
+     * loaves. Live, bread asked with copper boots it couldn't smelt was given up with them.
+     */
+    @Test
+    void breadIsBakedWhateverElseIsWaitingOnMaterials() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Quarry stone", camp, "Stone for the wall",
+                new Objective.Task.Gather(Resource.STONE))), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{9, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 6},
+                        new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.PLANKS), 4})))
+                .run();
+
+        clock.advance(90_000);
+
+        assertTrue(server.count("Alice", ItemClassRegistry.ItemClass.FOOD) >= 2, "bread baked; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+    }
+
+    /**
      * A pack isn't filled with seeds: a soldier carrying five stacks throws away all but two. Live,
      * farmers carried 200 to 580 seeds, packs full, and a harvest's wheat had no slot to go to.
      */

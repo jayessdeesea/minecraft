@@ -54,6 +54,25 @@ class CrafterTest {
         assertEquals(0, server.inventory.heldHotbarSlot(), "its weapon back in hand");
     }
 
+    /**
+     * Fuel is taken from whatever stack of one kind covers it, logs too: live, a soldier with two
+     * kinds of planks, two of each, and ten logs gave up four copper smelts - and the bread asked
+     * with them - "not enough planks to burn".
+     */
+    @Test
+    void smeltsAreFuelledFromAnyStackThatCoversThemLogsToo() {
+        workshop();
+        server.give(9, FakeCraftingServer.itemOf(ItemClass.RAW_COPPER, 0), 4);
+        server.give(10, FakeCraftingServer.itemOf(ItemClass.PLANKS, 0), 2);
+        server.give(11, FakeCraftingServer.itemOf(ItemClass.PLANKS, 1), 2);
+        server.give(12, ItemClass.LOG, 10);
+
+        Outcome outcome = run(Map.of(Recipe.COPPER_INGOT, 4), t -> false, 3000);
+
+        assertEquals(Outcome.MADE, outcome, crafter.failure().orElse(""));
+        assertEquals(4, server.count(ItemClass.COPPER_INGOT));
+    }
+
     @Test
     void aFurnaceLeftLoadedAndColdIsBurnedFreeForTheTorches() {
         workshop();
