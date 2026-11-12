@@ -17,7 +17,7 @@ public record Foothold(Position camp, List<Standard> standards) {
     /**
      * One standard of a phase: whether it's met, how far along it is, and the task that advances it.
      *
-     * @param phase  1 shelter, 2 airhead, 3 buildup, 4 equipment
+     * @param phase  1 shelter, 2 airhead (food, shelter, weapons), 3 buildup, 4 armour
      * @param name   what's measured: "the camp's ground lit"
      * @param met    whether it's met
      * @param status how it stands, in plain words: "18 cells still dark"

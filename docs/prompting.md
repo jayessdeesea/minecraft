@@ -38,6 +38,11 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   echelon up: in `GeneralScenarioIT`'s `wall-open-alpha-detached`, with the wall open and every
   soldier of Alpha in a role, it gave the wall to Bravo 3 of 5 shown nothing, 3 of 10 shown a line
   saying so, and 0 of 3 shown Alpha's CANTCO - it takes the wall off Alpha and gives Bravo none.
+- **Food in the airhead costs the morning.** With food moved from the buildup into phase 2 beside
+  the lit ground and the wall (the operator's food, shelter and weapons first), `morning-wall-open`
+  - the wall open just after dawn, food met - fell from 6 of 10 to 5 of 20: the general sends the
+  squads to a patrol base in the morning. Calling phase 2 "first needs" instead of "airhead" made
+  no difference (4 of 10). The situation stays as the open miss.
 - **The squad leader's miner situation moves with any edit to its paragraphs of standing kit.**
   Correcting the rearm paragraph to the basic load as built (soldiers make stone tools and copper
   or iron armour unasked) took `miner` from 5 of 7 to 1 of 7 at one seed; reverted. The prompt

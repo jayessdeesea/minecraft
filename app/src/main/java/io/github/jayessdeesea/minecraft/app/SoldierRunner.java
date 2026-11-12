@@ -589,13 +589,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         campFarm = keptFarm;
         Optional<FarmPlan> farm = Optional.ofNullable(keptFarm);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
-        // Food is buildup - unless the force is starving now: then it comes before the wall, as a
-        // unit eats before it improves its position. Live, both squads walled the camp while all
-        // eight soldiers went hungry, health falling to 1.
+        // Food, shelter and weapons come first, in one phase: a unit eats before it improves its
+        // position. Live, both squads walled the camp while all eight soldiers went hungry, health
+        // falling to 1.
         boolean starving = hungry * 2 > everyone.size();
-        int foodPhase = starving ? 2 : 3;
         // Met when the farm grows and the force eats: wheat planted today feeds nobody for days.
-        standards.add(new Foothold.Standard(foodPhase, "food", growing >= FARM_GROWING && !starving,
+        standards.add(new Foothold.Standard(2, "food", growing >= FARM_GROWING && !starving,
                 // Where: a coordinate written out is one the model copies, and here it should - live,
                 // told only a count, it sent a squad to farm 50 blocks off, where the count never sees it.
                 (farm.isEmpty() ? "no ground to farm by water near the camp" : growing + " of " + farm.get().plot().size()
@@ -625,7 +624,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         return false;
                     }
                 }).orElse(false)).count();
-        standards.add(new Foothold.Standard(4, "every soldier armed", armed == everyone.size(),
+        // A weapon each is shelter's other half: even a wooden sword wins most fights a fist loses.
+        standards.add(new Foothold.Standard(2, "every soldier armed", armed == everyone.size(),
                 armed + " of " + everyone.size() + " carry a stone sword or better", "STONE"));
         int armour = everyone.stream().mapToInt(s -> s.condition().flatMap(c -> c.kit()).map(k -> k.armour()).orElse(0)).sum();
         standards.add(new Foothold.Standard(4, "every soldier armoured",
@@ -3403,6 +3403,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         torchmakers.put(name, torchmaker);
         AtomicInteger ladderTicks = new AtomicInteger();
         AtomicReference<Optional<Recipe>> ladderStep = new AtomicReference<>(Optional.empty());
+        AtomicBoolean armourerWas = new AtomicBoolean();
         // Ticks while told to light the base: one torch tried a second, until the light check sees it.
         AtomicInteger torchTicks = new AtomicInteger();
         torchmakerRef.set(torchmaker);
@@ -3473,7 +3474,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // dig): a weapon if bare-handed and allowed to rearm, more only if allowed to upgrade.
             // Not while the armourer is at the last one: its own claim on the ore it's digging hides
             // that ore from the look for more, and the rung would read as out of reach mid-job.
-            if (ladderTicks.getAndIncrement() % 20 == 0 && !armourer.active()) {
+            // And at once when a run ends: the rung it made is held now, and asked again it would be
+            // made again - a request is for one more than carried.
+            boolean armourerActive = armourer.active();
+            if ((ladderTicks.getAndIncrement() % 20 == 0 || armourerWas.getAndSet(armourerActive)) && !armourerActive) {
                 ladderStep.set(nextRung(name, inventory, status.position()));
             }
             // The ladder's next rung, if allowed; a pickaxe, if sent for stone without one - both at one table.

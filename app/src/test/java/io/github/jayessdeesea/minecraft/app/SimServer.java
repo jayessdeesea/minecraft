@@ -263,6 +263,15 @@ final class SimServer {
         return total;
     }
 
+    /** How many of {@code item} a slot holds, as vanilla's: one tool, weapon or piece of armour; 64 of the rest. */
+    static int maxStack(int item) {
+        Optional<ItemClass> itemClass = ItemClassRegistry.classOf(item);
+        boolean one = itemClass.filter(c -> c == ItemClass.WEAPON || c == ItemClass.ARMOUR || c == ItemClass.PICKAXE
+                || c == ItemClass.SHIELD || c == ItemClass.HOE || c == ItemClass.BUCKET || c == ItemClass.WATER_BUCKET).isPresent()
+                || ItemClassRegistry.meleeRank(item).isPresent() || ItemClassRegistry.nameOf(item).equals(Optional.of("bow"));
+        return one ? 1 : 64;
+    }
+
     /** Uses a pickaxe has in it, as vanilla's: wooden 59, stone 131. */
     private static int uses(int item) {
         return item == ITEM_WOODEN_PICKAXE ? 59 : item == ITEM_STONE_PICKAXE ? 131 : Integer.MAX_VALUE;
@@ -486,7 +495,7 @@ final class SimServer {
             for (int pass = 0; pass < 2; pass++) {
                 for (int slot : order()) {
                     int[] s = slots[slot];
-                    if (pass == 0 && s != null && s[0] == item && s[1] < 64 || pass == 1 && s == null) {
+                    if (pass == 0 && s != null && s[0] == item && s[1] < maxStack(item) || pass == 1 && s == null) {
                         slots[slot] = s == null ? new int[]{item, 1} : new int[]{item, s[1] + 1};
                         sendSlot(slot);
                         return;
@@ -649,16 +658,17 @@ final class SimServer {
         private void store(int[] item) {
             int left = item[1];
             for (int slot = 9; slot < 45 && left > 0; slot++) {
-                if (slots[slot] != null && slots[slot][0] == item[0] && slots[slot][1] < 64) {
-                    int fits = Math.min(left, 64 - slots[slot][1]);
+                if (slots[slot] != null && slots[slot][0] == item[0] && slots[slot][1] < maxStack(item[0])) {
+                    int fits = Math.min(left, maxStack(item[0]) - slots[slot][1]);
                     slots[slot] = new int[]{item[0], slots[slot][1] + fits};
                     left -= fits;
                 }
             }
             for (int slot = 9; slot < 45 && left > 0; slot++) {
                 if (slots[slot] == null) {
-                    slots[slot] = new int[]{item[0], left};
-                    left = 0;
+                    int fits = Math.min(left, maxStack(item[0]));
+                    slots[slot] = new int[]{item[0], fits};
+                    left -= fits;
                 }
             }
             if (left > 0) {
@@ -838,7 +848,7 @@ final class SimServer {
             } else if (there == null || there[0] == cursor[0]) {
                 int moving = right ? 1 : cursor[1];
                 int count = there == null ? 0 : there[1];
-                int fits = Math.min(moving, 64 - count);
+                int fits = Math.min(moving, maxStack(cursor[0]) - count);
                 holder[index] = new int[]{cursor[0], count + fits};
                 cursor = cursor[1] - fits == 0 ? null : new int[]{cursor[0], cursor[1] - fits};
             } else {

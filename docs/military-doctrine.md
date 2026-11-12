@@ -426,14 +426,19 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
    (§4's hunting, chickens only); with no flint and nothing else to gather, it digs gravel by hand,
    one block in ten giving flint, until it carries two.
 4. A stone pickaxe, which mines iron ore.
-5. A shield, worn in the off hand and raised against arrows (§8).
-6. Copper armour - chestplate, leggings, boots, helmet - from copper ore mined with the stone
+5. A spare weapon, then a spare pickaxe, of stone - a wooden spare would spend the logs the first
+   tools and torches want: a sword breaks in a fight and a pickaxe halfway down the mine, and the
+   spare is in the pack. A
+   piece of kit asked for is one more than carried when first asked, held to that while it's asked,
+   so a spare is a second and not a third (`Armourer`).
+6. A shield, worn in the off hand and raised against arrows (§8).
+7. Copper armour - chestplate, leggings, boots, helmet - from copper ore mined with the stone
    pickaxe and smelted: copper lies near the surface far more often than iron.
-7. Iron armour: chestplate, leggings, boots, helmet.
-8. An iron sword.
-9. An iron pickaxe.
-10. An iron axe, which chops a log in a sixth of the bare-handed time.
-11. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
+8. Iron armour: chestplate, leggings, boots, helmet.
+9. An iron sword.
+10. An iron pickaxe.
+11. An iron axe, which chops a log in a sixth of the bare-handed time.
+12. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
     the miner takes beside its stairs (§16) with an iron pickaxe, not something a soldier fetches.
 
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
@@ -479,7 +484,7 @@ another block there - a wall's cobblestone - isn't the chest. With no workshop s
 rather than putting a table down where it stands.
 
 A soldier's basic load is its own to keep: out of contact, it makes a weapon and climbs unordered
-through a stone sword, a bow, a stone pickaxe, a shield and copper or iron armour from the ore to
+through a stone sword, a bow, a stone pickaxe, a spare weapon and pickaxe, a shield and copper or iron armour from the ore to
 hand (`Ladder.BASIC_LOAD`) - the kit the camp's armed and armoured standards ask of it. The squad
 leader decides whether there's time for more: its order's `rearm` lets soldiers climb past the
 basic load, to an iron sword and up. Climbing past it also waits until the
@@ -939,14 +944,17 @@ up. The camp's mine standard (§ 17) is met once the stairs reach the bottom.
 *How we use it:* a garrison's camp (`minecraft.camp`, as `x,z`) is built up the way an airborne
 force builds a lodgment after the drop. Its phases:
 1. Shelter: a patrol base each night (§14).
-2. The airhead: the camp's ground lit (§15, SECURE) and walled (§15, FORTIFY). With no logs
+2. The airhead - food, shelter and weapons, the operator's first priorities: food that grows
+   (§12, FARM), the camp's ground lit (§15, SECURE) and walled (§15, FORTIFY), and every soldier
+   armed with a stone sword or better (§11, STONE). Food isn't met while more than half the
+   soldiers are hungry with nothing to eat, however much is planted - wheat feeds nobody for days:
+   a unit eats before it improves its position (GeneralScenarioIT's `starving-airhead`), and the
+   standard names where the camp's farm ground is, so the squad is sent there. With no logs
    carried to make torches from and no tree in sight, the lit standard's task is TREE_FARM: the
    wood is grown first.
-3. The buildup of sustainment: food that grows (§12, FARM), wood that grows back (§12, TREE_FARM),
-   and stone and iron from a mine (§16, MINE). While more than half the soldiers are hungry with
-   nothing to eat, food is an airhead standard instead, and isn't met however much is planted -
-   wheat feeds nobody for days: a unit eats before it improves its position (GeneralScenarioIT's `starving-airhead`, 5 of 5), and the standard names where the camp's farm ground is, so the squad is sent there.
-4. Equipment: every soldier armed with a stone sword or better and armoured (§11).
+3. The buildup of sustainment: wood that grows back (§12, TREE_FARM) and stone and iron from a
+   mine (§16, MINE).
+4. Armour: every soldier armoured (§11).
 
 Every ten seconds the runner measures each phase's standards at the camp - from its ground, the
 typical height of the ground round it found once, so a heap of old huts at its centre is neither

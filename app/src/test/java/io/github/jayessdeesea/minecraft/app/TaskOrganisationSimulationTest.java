@@ -396,6 +396,35 @@ class TaskOrganisationSimulationTest {
     }
 
     /**
+     * A spare of each is in the basic load: with a stone sword and pickaxe, and the makings of
+     * another of each, a soldier makes them unasked - a sword breaks in a fight, a pickaxe halfway
+     * down the mine.
+     */
+    @Test
+    void aSoldierMakesASpareSwordAndPickaxeWithoutBeingToldTo() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
+                "A foothold", new Objective.Task.None())), squadLeader("[]", "[]"),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.itemNamedOrMinus("stone_sword"), 1},
+                        new int[]{37, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_COBBLESTONE, 8},
+                        new int[]{11, SimServer.ITEM_OAK_LOG, 4})))
+                .run();
+        clock.advance(5 * 60_000);
+
+        String events = "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size());
+        assertEquals(2, server.count("Alice", SimServer.itemNamedOrMinus("stone_sword")), "a spare sword" + events);
+        assertEquals(2, server.count("Alice", SimServer.ITEM_STONE_PICKAXE), "a spare pickaxe" + events);
+    }
+
+    /**
      * Armour from ore is a soldier's basic load too: with iron to hand it makes its iron armour,
      * though its squad leader hasn't said "rearm". Live, the camp's armoured standard stood at 3 of
      * 32 slots for days with ore in the soldiers' packs: in 700 FRAGOs no squad leader said "rearm".

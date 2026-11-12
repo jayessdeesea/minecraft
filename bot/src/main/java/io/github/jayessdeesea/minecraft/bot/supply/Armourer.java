@@ -185,6 +185,7 @@ public final class Armourer {
         if (!wanted.equals(making)) {
             stopDigging();
             making = Set.copyOf(wanted);
+            kitWanted.keySet().retainAll(making);
         }
         boolean fitting = false;
         try {
@@ -386,16 +387,22 @@ public final class Armourer {
     }
 
     /**
-     * How many of what each recipe makes: one tool or piece of kit; bread, all the wheat carried
+     * How many of what each recipe makes: a tool or piece of kit, one more than was carried when it
+     * was first asked for, kept while it's asked - a spare is a second of one held, and counted again
+     * after each one made it would be a third, and a fourth; bread, all the wheat carried
      * makes, on top of the food already carried - its target is the class, so one asked for was
      * "some food", and live a soldier with a loaf in its pack carried 22 wheat for days.
      */
     private Map<Recipe, Integer> once(Set<Recipe> recipes) {
         Map<Recipe, Integer> items = new LinkedHashMap<>();
         recipes.forEach(r -> items.put(r, r == Recipe.BREAD
-                ? inventory.count(ItemClass.FOOD) + inventory.count(ItemClass.WHEAT) / 3 : 1));
+                ? inventory.count(ItemClass.FOOD) + inventory.count(ItemClass.WHEAT) / 3
+                : kitWanted.computeIfAbsent(r, k -> Stock.of(inventory).count(k) + 1)));
         return items;
     }
+
+    /** Each piece of kit asked for, and how many of it to carry: set when first asked, dropped once it isn't. */
+    private final Map<Recipe, Integer> kitWanted = new java.util.HashMap<>();
 
     /** What the run under way was asked for, kept for its length - null before the first. */
     private Map<Recipe, Integer> asking;

@@ -26,6 +26,7 @@ import java.util.function.Predicate;
  *   <li><b>A stone sword</b> - 2 cobblestone for a hit of 5, not 4: cheap, though worth little
  *       against a skeleton, whose arrows on the way in do most of the harm.
  *   <li><b>A stone pickaxe</b> - 3 cobblestone, and it mines iron ore.
+ *   <li><b>A spare weapon and a spare pickaxe</b> - of stone: both wear out.
  *   <li><b>A shield</b> - 1 iron ingot and 6 planks, raised against arrows in flight: against a
  *       skeleton it's worth what a chestplate is, for an eighth of the iron.
  *   <li><b>Iron armour</b>, chestplate, leggings, boots, helmet - by protection per ingot (6 points
@@ -52,6 +53,13 @@ public final class Ladder {
             // Only with the string in hand: string is a spider's drop, not something to go and fetch.
             new Rung("a bow", i -> i.slotOfNamed("bow") >= 0, List.of(Recipe.BOW)),
             new Rung("a stone pickaxe", i -> bestPickaxe(i) >= 1, List.of(Recipe.STONE_PICKAXE)),
+            // A spare of each: a sword and a pickaxe wear out in use, and one that breaks mid-fight or
+            // halfway down the mine leaves the soldier bare-handed until it gets back to a table. Of
+            // stone only: a wooden spare spends the logs the first tools and torches want - in the
+            // squad simulation it took the last logs of a tree a squadmate was sent to fetch.
+            new Rung("a spare weapon", i -> i.meleeWeapons() >= 2, List.of(Recipe.STONE_SWORD)),
+            new Rung("a spare pickaxe", i -> Stock.of(i).classes().getOrDefault(ItemClass.PICKAXE, 0) >= 2,
+                    List.of(Recipe.STONE_PICKAXE)),
             new Rung("a shield", i -> Stock.of(i).classes().getOrDefault(ItemClass.SHIELD, 0) > 0, List.of(Recipe.SHIELD)),
             // Copper first, where there is copper: it's on the surface far more often than iron, and
             // a soldier in copper is better off than one in nothing while the iron is found.
@@ -99,7 +107,8 @@ public final class Ladder {
 
     /**
      * The last rung of a soldier's basic load, its own to make unasked: through iron armour - a
-     * weapon, a bow, a stone pickaxe, a shield, and copper or iron armour from the ore to hand.
+     * weapon, a bow, a stone pickaxe, a spare weapon and pickaxe, a shield, and copper or iron armour
+     * from the ore to hand.
      * Live, the camp's armoured standard stood at 3 of 32 slots for days with ore in the packs: in
      * 700 FRAGOs no squad leader said "rearm". Above it - an iron sword and up - the squad leader's leave.
      */
@@ -124,7 +133,8 @@ public final class Ladder {
                 continue;
             }
             for (Recipe option : rung.options()) {
-                CraftPlan plan = CraftPlan.of(Map.of(option, 1), stock, inReach);
+                // One more than carried: a spare is a second of what's held.
+                CraftPlan plan = CraftPlan.of(Map.of(option, stock.count(option) + 1), stock, inReach);
                 if (plan.short_().keySet().stream().allMatch(canGather)) {
                     return Optional.of(option);
                 }

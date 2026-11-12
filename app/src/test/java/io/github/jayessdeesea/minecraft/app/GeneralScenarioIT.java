@@ -76,13 +76,13 @@ class GeneralScenarioIT {
                     new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
                     new Foothold.Standard(2, "the camp walled in", false,
                             "57 of 170 wall blocks still to place", "FORTIFY"),
-                    new Foothold.Standard(3, "food", true, "", "FARM"),
+                    new Foothold.Standard(2, "food", true, "", "FARM"),
                     new Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))),
             "wall-open-alpha-detached", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
                     new Foothold.Standard(2, "the camp walled in", false,
                             "57 of 170 wall blocks still to place", "FORTIFY"),
-                    new Foothold.Standard(3, "food", true, "", "FARM"),
+                    new Foothold.Standard(2, "food", true, "", "FARM"),
                     new Foothold.Standard(3, "stone and iron", true, "", "MINE"))),
             "starving-airhead", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
@@ -96,7 +96,7 @@ class GeneralScenarioIT {
                     new Foothold.Standard(2, "the camp's ground lit", false,
                             "31 walkable cells within 12 blocks still dark", "SECURE"),
                     new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"),
-                    new Foothold.Standard(3, "food", false,
+                    new Foothold.Standard(2, "food", false,
                             "no ground to farm by water near the camp; 0 of 8 soldiers hungry with nothing to eat", "FARM"),
                     new Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))));
 
