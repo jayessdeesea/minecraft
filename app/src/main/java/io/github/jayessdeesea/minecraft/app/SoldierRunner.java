@@ -613,6 +613,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Optional<Staircase> campMine = campStairs();
         int cutNow = Math.max(stairsCut.get(), campMine.map(s -> s.stepsCut(world)).orElse(0));
         boolean mined = stairsDone.get() || campMine.map(s -> s.stepsCut(world) == s.steps()).orElse(false);
+        // Once seen cut to the bottom, it stays cut: with nobody down there its deep chunks unload,
+        // and counted from what's loaded the mine read 43 steps down, then met, then 43 again - live,
+        // "stone and iron" held 35% of a day it was met all of.
+        if (mined) {
+            stairsDone.set(true);
+        }
         standards.add(new Foothold.Standard(3, "stone and iron", mined,
                 cutNow == 0 ? "no mine yet" : mined ? "a mine cut down to the iron" : "a mine " + cutNow + " steps down",
                 "MINE"));
