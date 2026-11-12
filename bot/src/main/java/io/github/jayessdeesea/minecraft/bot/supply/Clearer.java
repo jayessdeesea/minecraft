@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiPredicate;
 
 /**
  * One soldier clearing its camp ({@link Clearing}): the sky over it first - the lowest log or
@@ -41,11 +42,20 @@ public final class Clearer {
     private long ticks;
     private int cooldown;
 
+    /** Where it may stand to cut, in the world as it is: anywhere in reach, unless its owner says otherwise. */
+    private final BiPredicate<WorldView, BlockPos> stands;
+
     public Clearer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims) {
+        this(name, session, inventory, claims, (world, stand) -> true);
+    }
+
+    /** As {@link #Clearer(String, PlaySession, Inventory, Set)}, cutting only from stands that pass {@code stands}. */
+    public Clearer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, BiPredicate<WorldView, BlockPos> stands) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
         this.claims = claims;
+        this.stands = stands;
     }
 
     public synchronized boolean active() {
@@ -60,6 +70,21 @@ public final class Clearer {
     /** Why it needs its squad leader's help, if it's out of ways of its own ({@link Setbacks#stuck}). */
     public synchronized Optional<String> stuck() {
         return failed.stuck().map(s -> "can't clear the camp: " + s);
+    }
+
+    /**
+     * A tick passed with no {@link #tick} - its owner at other work: the time still counts toward
+     * the wait before it looks again. Live, a farmer's earthwork looked once, found nothing in reach,
+     * and with its wait counted only on its own ticks - one each job the farmer finished - never
+     * looked again.
+     */
+    public synchronized void pass() {
+        if (digger == null) {
+            ticks++;
+            if (cooldown > 0) {
+                cooldown--;
+            }
+        }
     }
 
     /** Each tick: cuts the {@code cover} over the camp while {@code free}; anything else stops the cut under way. */
@@ -118,7 +143,7 @@ public final class Clearer {
         Set<BlockPos> reachable = Pathfinder.climbs(world, feet, span, REACH_BUDGET,
                 inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT),
                 inventory.slotOf(ItemClass.PICKAXE) >= 0).keySet();
-        Optional<Clearing.Cut> cut = Clearing.next(world, cover, soldier, excluded, reachable::contains);
+        Optional<Clearing.Cut> cut = Clearing.next(world, cover, soldier, excluded, s -> reachable.contains(s) && stands.test(world, s));
         if (cut.isEmpty()) {
             cooldown = COOLDOWN_TICKS;
             return;

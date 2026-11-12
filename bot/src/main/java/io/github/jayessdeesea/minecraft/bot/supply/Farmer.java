@@ -79,7 +79,9 @@ public final class Farmer {
         this.inventory = inventory;
         this.claims = claims;
         this.shared = shared;
-        this.unburier = new Clearer(name, session, inventory, claims);
+        // Cut from off the farmland: in the squad simulation, stands on the plot in its hollow had the
+        // farmers walking in and out over it, trampling it, to dig the ground round it.
+        this.unburier = new Clearer(name, session, inventory, claims, (world, stand) -> !world.isFarmland(stand.x(), stand.y() - 1, stand.z()));
     }
 
     /**
@@ -167,6 +169,7 @@ public final class Farmer {
         if (cooldown > 0) {
             cooldown--;
         }
+        unburier.pass();
         if (farm.isEmpty()) {
             passedOver.noWork();
         }
