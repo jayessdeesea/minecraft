@@ -178,6 +178,25 @@ class MinerTest {
         assertEquals(bottom.y(), lastMain.feet().y(), "level with the last step");
     }
 
+    /**
+     * A mine long cut is worked again for its ore: ore in sight of a tunnel the miner cut before -
+     * passed by, or one it couldn't harvest then - is mined before the mine counts as done. Live,
+     * no miner mined ore in twelve runs: the tunnels were cut, and nobody went back down them.
+     */
+    @Test
+    void aMineAlreadyCutIsWorkedForTheOreInSightOfItsTunnels() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000));
+        BlockPos above = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList().get(3).feet().offset(0, 2, 0);
+        dug.remove(above);
+        ore.add(above);
+        Inventory stonePickaxe = new Inventory();
+        stonePickaxe.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(1), 1});
+
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000, stonePickaxe));
+        assertTrue(dug.contains(above), "the ore over branch 1 at " + above + " is mined");
+    }
+
     private static int pickaxe(int tier) {
         return IntStream.range(0, 4096)
                 .filter(id -> ItemClassRegistry.miningTier(id).equals(OptionalInt.of(tier)))

@@ -19,14 +19,15 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
 - Raw ore through the stockpile (`bot.supply.MetalPool`, docs/military-doctrine.md § 12): kept
   only for a piece it makes, drawn to complete one, else pooled - one squad's copper armours the
   other (`copperInPiecesTooSmallForArmourIsPooledAndMadeIntoOne`).
+- A mine cut to the bottom is worked again for the ore in sight of its cuts (`Miner.prospect`),
+  as a squad sheltering down it at night does.
 
 ## Left
 - The general isn't shown the ore in the stockpile: its line says logs and cobblestone only.
 - Ingots stay with whoever smelted them.
 
 ## Done when
-- A miner takes ore it can see from its stairs and tunnels - a vein followed, not just a face
-  touched - copper as well as iron: copper armour beats none.
+- A miner follows a vein - the ore behind the ore it took - not only the faces its cuts touch.
 - "Stone and iron" is met only while the stockpile and the force's packs hold the ore the armour
   still missing needs; short, the general sends a squad to MINE the tunnels.
 - Simulation: one squad's miner stocks ore it mined; the other squad's soldier draws it and makes armour.

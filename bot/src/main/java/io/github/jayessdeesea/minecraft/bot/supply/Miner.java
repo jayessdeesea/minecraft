@@ -112,8 +112,16 @@ public final class Miner {
         while (true) {
             next = firstUncut(world, cuts, blocked);
             if (next.isEmpty()) {
-                stop();
-                return new Progress.Done();
+                // All cut: worked again for the ore in sight of what was cut - passed by, or not
+                // harvestable then. Live, no miner mined ore in twelve runs: the tunnels were cut,
+                // and nobody went back down them.
+                next = prospect(world, stairs, cuts);
+                if (next.isEmpty()) {
+                    stop();
+                    return new Progress.Done();
+                }
+                cut = cuts.get(next.getAsInt());
+                break;
             }
             cut = cuts.get(next.getAsInt());
             Optional<String> hazard = hazard(world, cut, next.getAsInt());
@@ -162,6 +170,21 @@ public final class Miner {
         }
         breacher.tick(world, cut.cells());
         return new Progress.Working(k, cuts.size());
+    }
+
+    /** The first cut, all open, with ore in sight of its stand ({@link #oreInSight}) - empty when none has. */
+    private OptionalInt prospect(WorldView world, Staircase stairs, List<Staircase.Cut> cuts) {
+        for (int k = 0; k < cuts.size(); k++) {
+            Staircase.Cut cut = cuts.get(k);
+            if (blocked.contains(cut.tunnel())
+                    || cut.cells().stream().anyMatch(c -> world.isSolid(c.x(), c.y(), c.z()) && world.workstation(c.x(), c.y(), c.z()).isEmpty())) {
+                continue;
+            }
+            if (oreInSight(world, stairs, cut.stand(), cut).isPresent()) {
+                return OptionalInt.of(k);
+            }
+        }
+        return OptionalInt.empty();
     }
 
     /**
