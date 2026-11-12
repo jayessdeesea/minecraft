@@ -34,6 +34,17 @@ public final class Pack {
     private final PlaySession session;
     private final Inventory inventory;
     private int settle;
+    private long ticks;
+    /** How many of each item it had left after throwing some away, by item id - to see one picked back up. */
+    private final java.util.Map<Integer, Integer> leftAfter = new java.util.HashMap<>();
+    /** When it picked back up an item it threw away, by item id: not thrown again for a while. */
+    private final java.util.Map<Integer, Long> pickedBack = new java.util.HashMap<>();
+    /**
+     * Ticks an item picked back up after it was thrown away isn't thrown again: a dropped item's life
+     * on the ground (5 minutes). Live, a soldier standing still picked up what it threw as soon as it
+     * could, and threw it 454 times.
+     */
+    static final long THROWN_FOR = 6000;
 
     public Pack(String name, PlaySession session, Inventory inventory) {
         this.name = name;
@@ -43,6 +54,14 @@ public final class Pack {
 
     /** Each tick: with its hands {@code free}, throws away a stack of seeds it doesn't need. */
     public synchronized void tick(boolean free) {
+        ticks++;
+        leftAfter.entrySet().removeIf(e -> {
+            if (countOf(e.getKey()) > e.getValue()) {
+                pickedBack.put(e.getKey(), ticks);
+                return true;
+            }
+            return false;
+        });
         if (settle > 0) {
             settle--;
             return;
@@ -51,11 +70,13 @@ public final class Pack {
             return;
         }
         // A pack near full sheds what no routine uses - rotten flesh, bones, gravel - before seeds.
-        Optional<Integer> junk = freeSlots(inventory) <= FULL_AT ? unused(inventory) : Optional.empty();
+        Optional<Integer> junk = freeSlots(inventory) <= FULL_AT
+                ? unused(inventory, item -> ticks - pickedBack.getOrDefault(item, Long.MIN_VALUE / 2) < THROWN_FOR) : Optional.empty();
         if (junk.isPresent()) {
             int slot = junk.get();
             LOG.info("{} throws away {} of item {}, which nothing it does uses - its pack is nearly full", name,
                     inventory.countAt(slot), inventory.itemAt(slot));
+            leftAfter.put(inventory.itemAt(slot), countOf(inventory.itemAt(slot)) - inventory.countAt(slot));
             session.throwStack(0, 0, slot); // stale state: the server resends the inventory
             settle = SETTLE_TICKS;
             return;
@@ -69,6 +90,17 @@ public final class Pack {
             session.throwStack(0, 0, slot); // stale state: the server resends the inventory
             settle = SETTLE_TICKS;
         });
+    }
+
+    /** How many of item {@code item} it carries, every stack. */
+    private int countOf(int item) {
+        int count = 0;
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            if (inventory.itemAt(slot) == item) {
+                count += inventory.countAt(slot);
+            }
+        }
+        return count;
     }
 
     /** Free slots at or under which the pack counts as full: room kept for a harvest's wheat and seeds. */
@@ -91,11 +123,16 @@ public final class Pack {
      * harvest's wheat. The operator's: what's worth least goes first, a torch kept over rotten flesh.
      */
     static Optional<Integer> unused(Inventory inventory) {
+        return unused(inventory, item -> false);
+    }
+
+    /** As {@link #unused(Inventory)}, passing over the items {@code recentlyThrown}. */
+    static Optional<Integer> unused(Inventory inventory, java.util.function.IntPredicate recentlyThrown) {
         int held = Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot();
         Integer best = null;
         for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
             int item = inventory.itemAt(slot);
-            if (slot != held && item >= 0 && ItemClassRegistry.classOf(item).isEmpty()
+            if (slot != held && item >= 0 && ItemClassRegistry.classOf(item).isEmpty() && !recentlyThrown.test(item)
                     && (best == null || inventory.countAt(slot) < inventory.countAt(best))) {
                 best = slot;
             }

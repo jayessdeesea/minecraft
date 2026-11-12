@@ -587,7 +587,8 @@ keeps two stacks (128) and, at three or more, throws the rest away a stack at a 
 farmers carried up to 580 seeds, packs full, and a harvest's wheat had no slot to go to. And a
 pack down to 2 free slots throws away its smallest stack of what no routine uses - rotten flesh,
 bones, gravel, phantom membrane: an item of no class (`bot.world.ItemClassRegistry`) - never the
-one in hand.
+one in hand, and an item it threw away and picked back up isn't thrown again for 5 minutes, a drop's life on the ground:
+live, one standing still picked it straight back up, and threw it 454 times.
 
 Wood is grown when it runs out. An objective's task can be `TREE_FARM`: the squad plants saplings
 round the objective, on every third block both ways of open dirt or grass within 8 blocks, with
