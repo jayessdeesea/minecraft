@@ -553,7 +553,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 wall == null ? "not begun" : wallLeft > 0 ? wallLeft + " of " + wall.size() + " wall blocks still to place"
                         + (wallSoft > 0 ? ", and " + wallSoft + " of dirt to replace with stone" : "")
                         : wallSoft + " of its blocks dirt, to replace with stone", "FORTIFY"));
-        long hungry = everyone.stream().filter(s -> s.condition().map(SoldierRunner::wantsFood).orElse(false)).count();
+        // Its floor paved at its own height (the operator's: not cut to sea level), once it's walled:
+        // FORTIFY's last work, the soil inside replaced with stone.
+        int unpaved = floorToPave().size();
+        standards.add(new Foothold.Standard(3, "the camp's floor paved", unpaved == 0,
+                unpaved + " cells of the floor inside the wall still soil, to pave with stone", "FORTIFY"));
+        long hungry =everyone.stream().filter(s -> s.condition().map(SoldierRunner::wantsFood).orElse(false)).count();
         // The camp's farm, sited once and kept while its water is there: a farm is tended for days,
         // and live a farm sited again each check moved between ponds, and its crop was left to new ground.
         FarmPlan keptFarm = campFarm;
@@ -2287,16 +2292,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             state.wallLeft = wallLeft.size();
         }
         // A closed wall of dirt isn't done: each block of it is replaced with stone by a mason carrying some.
-        List<BlockPos> soft = state.wall == null ? List.of()
+        List<BlockPos> wallSoft = state.wall == null ? List.of()
                 : state.wall.stream().filter(c -> softInWall(c, state.wallCentre.x(), state.wallCentre.z(), Set.copyOf(state.wall))).toList();
-        if (state.wall != null && soft.size() != state.softLeft) {
-            LOG.info("[{}] FORTIFY: {} of the wall's blocks dirt, to replace with stone{}", squadName, soft.size(),
-                    soft.isEmpty() ? "" : " - " + soft.stream().limit(4).map(c -> c.x() + " " + c.y() + " " + c.z()).toList()
+        if (state.wall != null && wallSoft.size() != state.softLeft) {
+            LOG.info("[{}] FORTIFY: {} of the wall's blocks dirt, to replace with stone{}", squadName, wallSoft.size(),
+                    wallSoft.isEmpty() ? "" : " - " + wallSoft.stream().limit(4).map(c -> c.x() + " " + c.y() + " " + c.z()).toList()
                             + " of the wall kept as " + state.wallKey);
-            state.softLeft = soft.size();
+            state.softLeft = wallSoft.size();
         } else if (state.wall == null) {
             state.softLeft = -1;
         }
+        // The wall closed and of stone, the camp's floor inside it is paved the same way: its soil,
+        // block by block, replaced with cobblestone (backlog/cells.md - the floor at its own height).
+        List<BlockPos> soft = state.wall != null && wallSoft.isEmpty() && wallLeft.isEmpty() && state.wallKey != null
+                && state.wallKey.equals(campWallKey) ? floorToPave() : wallSoft;
         // Fortifying starts with the ground: the engineer's dig and fill boxes round the camp,
         // handed out by the squad's drill as each soldier's concrete command (command.Tasking).
         Map<String, Order> ground = new HashMap<>(state.wallCentre == null || squadInContact ? Map.of()
@@ -3987,6 +3996,32 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         scheduler.scheduleAtFixedRate(loudly(name + "'s status log",
                 () -> LOG.debug("{} status: {} - plan: {} - session open: {}", name, soldier.status(), soldier.lastPlan(), session.isOpen())),
                 STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
+    }
+
+    /**
+     * The camp's floor still to pave: the soil at the camp's ground height inside the wall line, open
+     * above - the floor, not ground under something - and no kept structure's, nor the mine head's.
+     * Empty with no camp ground measured yet.
+     */
+    private List<BlockPos> floorToPave() {
+        BlockPos ground = campGround;
+        if (ground == null || camp == null) {
+            return List.of();
+        }
+        Set<Cell> except = groundExcept();
+        int headX = camp[0] + ChainOfCommand.MINE_HEAD_DX, headZ = camp[1] + ChainOfCommand.MINE_HEAD_DZ;
+        List<BlockPos> floor = new ArrayList<>();
+        for (int x = ground.x() - (WALL_RADIUS - 1); x <= ground.x() + WALL_RADIUS - 1; x++) {
+            for (int z = ground.z() - (WALL_RADIUS - 1); z <= ground.z() + WALL_RADIUS - 1; z++) {
+                int y = ground.y() - 1; // the camp's ground is where its feet are: the floor is under them
+                boolean head = Math.abs(x - headX) <= 1 && Math.abs(z - headZ) <= 1;
+                if (!head && world.isSoil(x, y, z) && !world.isFarmland(x, y, z) && !world.isSolid(x, y + 1, z)
+                        && !except.contains(new Cell(x, y, z))) {
+                    floor.add(new BlockPos(x, y, z));
+                }
+            }
+        }
+        return floor;
     }
 
     /** How often the camp's key blocks are logged as the model holds them, for a sweep against the server. */

@@ -1245,6 +1245,44 @@ class SquadSimulationTest {
         assertTrue(walled.met(), "the camp's wall: " + walled.status());
     }
 
+    /**
+     * The wall closed and of stone, FORTIFY paves the camp's floor inside it at its own height: its
+     * grass, block by block, replaced with cobblestone (backlog/cells.md).
+     */
+    @Test
+    void aWalledCampsFloorIsPavedWithStoneAtItsOwnHeight() {
+        new WallStore(state).save("0,0", List.copyOf(CAMP_WALL));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::walledCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Fortify the camp", camp, "Nothing walks in",
+                new Objective.Task.Fortify())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, SimServer.ITEM_COBBLESTONE, 64},
+                        new int[]{10, SimServer.ITEM_COBBLESTONE, 64})))
+                .run();
+
+        clock.advance(6 * 60_000);
+
+        int paved = 0;
+        for (int x = -7; x <= 7; x++) {
+            for (int z = -7; z <= 7; z++) {
+                paved += server.block(x, GROUND, z) == SimServer.COBBLESTONE ? 1 : 0;
+            }
+        }
+        Foothold.Standard floor = chain.foothold().orElseThrow().standards().stream()
+                .filter(s -> s.name().equals("the camp's floor paved")).findFirst().orElseThrow();
+        assertTrue(paved >= 20, paved + " of the floor's cells paved; the standard: " + floor.status() + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+    }
+
     /** One block of the camp's wall, its first by layout order, of dirt. */
     private static final BlockPos DIRT_IN_WALL = CAMP_WALL.stream().min(Comparator.comparingInt(BlockPos::x)
             .thenComparingInt(BlockPos::z).thenComparingInt(BlockPos::y)).orElseThrow();
@@ -1381,7 +1419,7 @@ class SquadSimulationTest {
         Map<String, Integer> phases = new HashMap<>();
         chain.foothold().orElseThrow().standards().forEach(st -> phases.put(st.name(), st.phase()));
         assertEquals(Map.of("the camp's ground lit", 2, "the camp walled in", 2, "food", 2, "every soldier armed", 2,
-                "wood that grows back", 3, "stone and iron", 3, "every soldier armoured", 4), phases);
+                "the camp's floor paved", 3, "wood that grows back", 3, "stone and iron", 3, "every soldier armoured", 4), phases);
     }
 
     /**

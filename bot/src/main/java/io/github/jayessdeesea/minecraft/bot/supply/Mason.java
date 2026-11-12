@@ -221,9 +221,15 @@ public final class Mason {
         }
         soft.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && world.isSoil(c.x(), c.y(), c.z()))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
-                .flatMap(cell -> inside(world, cell, centre, radius, soldier, reached(world)).filter(stand -> !claims.contains(stand))
+                .flatMap(cell -> (onWall(cell, centre, radius) ? inside(world, cell, centre, radius, soldier, reached(world))
+                        : beside(world, cell, soldier, reached(world))).filter(stand -> !claims.contains(stand))
                         .map(stand -> Map.entry(cell, stand)).stream())
                 .findFirst().ifPresent(next -> startRepoint(world, next.getKey(), next.getValue()));
+    }
+
+    /** Whether {@code cell} is on the wall's line, {@code radius} out from {@code centre}: off it, it's the floor's. */
+    static boolean onWall(BlockPos cell, BlockPos centre, int radius) {
+        return Math.max(Math.abs(cell.x() - centre.x()), Math.abs(cell.z() - centre.z())) == radius;
     }
 
     /** Break time for dirt by hand, hardness 0.5 - about 15 ticks - with the margin the server's dig timing wants. */
@@ -255,7 +261,7 @@ public final class Mason {
                     }
                 }, new Expect("cobblestone at " + cell, () -> world.isSolid(cell.x(), cell.y(), cell.z())
                         && !world.isSoil(cell.x(), cell.y(), cell.z())), ANSWER_TICKS)));
-        LOG.info("{} replaces the wall's dirt at {} with cobblestone", name, cell);
+        LOG.info("{} replaces the dirt at {} with cobblestone", name, cell);
     }
 
     /**
@@ -318,6 +324,16 @@ public final class Mason {
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * A stand beside a floor cell off the wall's line - one of the four next to it a block up, on
+     * solid ground - nearest {@code soldier} first: the floor is paved from the floor.
+     */
+    static Optional<BlockPos> beside(WorldView world, BlockPos cell, Position soldier, Predicate<BlockPos> allowed) {
+        return java.util.stream.Stream.of(cell.offset(1, 1, 0), cell.offset(-1, 1, 0), cell.offset(0, 1, 1), cell.offset(0, 1, -1))
+                .filter(stand -> Pathfinder.standable(world, stand) && allowed.test(stand))
+                .min(Comparator.comparingDouble(s -> Math.hypot(s.x() + 0.5 - soldier.x(), s.z() + 0.5 - soldier.z())));
     }
 
     /** A stand in the column {@code ring} out from {@code centre} toward {@code cell}, shifted {@code (sx, sz)} along the wall. */

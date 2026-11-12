@@ -60,10 +60,11 @@ adding cells outward.
   village to keep. Measured so far: the walks from the camp's centre to its sites
   (`RouteEffort`, docs/military-doctrine.md § 17). **Decided (operator, 2026-11-11):** the
   foothold at (-48, 44), on a hillside, keeps its floor at its own height (its measured ground,
-  y=71 live) rather than cut to y=63 - high ground, and the least earthwork (FM 5-103, ATP 3-37.34).
-  Built: the floor is cleared of what was put on it, cobblestone included (§ 15's ground work).
-  Left: paving it - the floor's soil replaced with stone inside the wall line, and its potholes
-  filled and paved again as they come.
+  feet at y=71 live) rather than cut to y=63 - high ground, and the least earthwork (FM 5-103, ATP 3-37.34).
+  Built: the floor is cleared of what was put on it, cobblestone included (§ 15's ground work),
+  and paved - its soil replaced with stone inside the wall line, a standard of phase 3 (§ 17).
+  Left: a pothole is filled by the ground work's fill with dirt, then paved over again; a fill of
+  stone straight away would save the second trip.
 - **The floor's inspection keeps every way down open.** Filling and paving a cell's potholes never
   fills a mine head or a stairwell in it: they're kept structures every dig and fill skips, taken
   from the one list the ground work already uses (`SoldierRunner.groundExcept` - the camp's kept

@@ -954,8 +954,10 @@ force builds a lodgment after the drop. Its phases:
    standard names where the camp's farm ground is, so the squad is sent there. With no logs
    carried to make torches from and no tree in sight, the lit standard's task is TREE_FARM: the
    wood is grown first.
-3. The buildup of sustainment: wood that grows back (§12, TREE_FARM) and stone and iron from a
-   mine (§16, MINE).
+3. The buildup: wood that grows back (§12, TREE_FARM), stone and iron from a mine (§16, MINE),
+   and the camp's floor paved (FORTIFY): once the wall is closed and of stone, its repointer
+   replaces the soil of the floor inside it with cobblestone, block by block, at the camp's own
+   height - not cut to sea level, the operator's call for a foothold on a hillside.
 4. Armour: every soldier armoured (§11).
 
 Every ten seconds the runner measures each phase's standards at the camp - from its ground, the
