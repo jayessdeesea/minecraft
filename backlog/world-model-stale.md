@@ -32,3 +32,9 @@ pillar step's cobblestone (`SoldierRunner`, `takePlacement`).
   soldiers (its own block-changed ack and update), an explosion, an enderman, water. A sweep of
   the camp comparing the model to the server, on a schedule, would say how often it happens.
 - `WorldProbeLiveIT` reads the world as one connection sees it, with the garrison stopped.
+- Suspect, since a chunk sent again replaces the cache: connections are independent streams, so a
+  chunk one connection was sent before a block update can arrive after another connection's
+  update and undo it - most likely just after a restart, when every soldier loads the camp's
+  chunks at once. The wall cell was stale within half an hour of one. (The chest predates the
+  replace, so it isn't the only cause.) Ruled out: shared section arrays - every palette decodes
+  to a fresh one.
