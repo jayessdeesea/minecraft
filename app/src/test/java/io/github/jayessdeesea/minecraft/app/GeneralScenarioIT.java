@@ -8,6 +8,7 @@ import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Readiness;
 import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.Role;
 import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.command.ResourceSite;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
@@ -77,6 +78,12 @@ class GeneralScenarioIT {
                             "57 of 170 wall blocks still to place", "FORTIFY"),
                     new Foothold.Standard(3, "food", true, "", "FARM"),
                     new Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))),
+            "wall-open-alpha-detached", new Foothold(new Position(3000, 151, 3000), List.of(
+                    new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
+                    new Foothold.Standard(2, "the camp walled in", false,
+                            "57 of 170 wall blocks still to place", "FORTIFY"),
+                    new Foothold.Standard(3, "food", true, "", "FARM"),
+                    new Foothold.Standard(3, "stone and iron", true, "", "MINE"))),
             "starving-airhead", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
                     new Foothold.Standard(2, "the camp walled in", false,
@@ -92,6 +99,9 @@ class GeneralScenarioIT {
                     new Foothold.Standard(3, "food", false,
                             "no ground to farm by water near the camp; 0 of 8 soldiers hungry with nothing to eat", "FARM"),
                     new Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))));
+
+    private static final Objective WALL_CAMP = new Objective("Wall the camp in", new Position(3000, 151, 3000),
+            "Nothing walks into the camp", new Objective.Task.Fortify());
 
     private static final Objective GATHER_WOOD = new Objective("Gather logs from the trees below the platform",
             new Position(3007, 130, 2990), "Logs for tools and building", Optional.of(Resource.WOOD));
@@ -170,6 +180,14 @@ class GeneralScenarioIT {
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
                     (squads, given) -> given.stream().filter(Objective::patrolBase)
                             .map(o -> "sent to shelter in the morning: " + o.mission()).toList()),
+            // The live miss: the wall given to a squad whose soldiers all had jobs of their own - nobody built it,
+            // and the squad said CANTCO.
+            new Situation("wall-open-alpha-detached", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
+                    TimeOfDay.of(2000, true),
+                    List.of(detached("Alpha", 2996, Optional.of(WALL_CAMP)), fresh("Bravo", 3004, Optional.of(SECURE_CAMP))),
+                    (squads, given) -> given.get(1).fortify() ? List.of()
+                            : List.of("the wall not given to Bravo, the squad with soldiers free: Alpha "
+                                    + given.get(0).task() + ", Bravo " + given.get(1).task())),
             // The live miss: the wall open and every soldier hungry - both squads were sent to the wall.
             new Situation("starving-airhead", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
                     TimeOfDay.of(2000, true),
@@ -371,6 +389,17 @@ class GeneralScenarioIT {
 
     private static SquadStatus fresh(String name, int x, Optional<Objective> standing) {
         return new SquadStatus(name, new Report.Moving(), soldiers(name, x, new Report.Moving(), 16), List.of(), standing, false);
+    }
+
+    /** A squad each of whose four soldiers has a standing job of its own: a miner, a farmer, a forester, a sentry. */
+    private static SquadStatus detached(String name, int x, Optional<Objective> standing) {
+        List<Role> jobs = List.of(Role.MINER, Role.FARMER, Role.FORESTER, Role.SENTRY);
+        Map<String, Role> roles = new java.util.HashMap<>();
+        for (int i = 0; i < jobs.size(); i++) {
+            roles.put(name + (i + 1), jobs.get(i));
+        }
+        Report report = standing.isEmpty() ? new Report.Moving() : SquadCommand.noneFree(roles, standing.get());
+        return new SquadStatus(name, report, soldiers(name, x, new Report.Moving(), 16), List.of(), standing, false);
     }
 
     /** A squad of four inside the outline of its base, its walls half up, the blocks for the rest in hand. */

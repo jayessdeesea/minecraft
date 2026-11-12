@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.app;
 import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Plan;
+import io.github.jayessdeesea.minecraft.command.Role;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
@@ -14,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -78,8 +80,23 @@ final class SquadCommand {
 
     /** Its soldiers' standing plans, as kept - the squad loop's thread sends them, for the squad leader's next look. */
     void receivePlans(Map<String, Plan> plans, Map<String, String> workOrders) {
+        this.plans = Map.copyOf(plans);
         squadLeader.receivePlans(plans, workOrders);
     }
+
+    /** Each soldier's standing role other than rifleman, as its plan last stood: for the general's picture. */
+    Map<String, Role> roles() {
+        Map<String, Role> roles = new HashMap<>();
+        plans.forEach((name, plan) -> {
+            if (plan.role() != Role.RIFLEMAN) {
+                roles.put(name, plan.role());
+            }
+        });
+        return roles;
+    }
+
+    /** The squad's plans, as the squad loop last gave them - squad loop writes, the general's decision reads. */
+    private volatile Map<String, Plan> plans = Map.of();
 
     private final ModelCalls modelCalls;
 
@@ -104,7 +121,34 @@ final class SquadCommand {
      * reachable, and that reads as CANTCO if anyone asks.
      */
     Report report() {
-        return holdingBase ? new Report.InPosition() : squadLeader.report();
+        if (holdingBase) {
+            return new Report.InPosition();
+        }
+        Map<String, Plan> plans = this.plans;
+        Objective objective = this.objective;
+        if (objective != null && noneFree(plans.values().stream().map(Plan::role).toList(), objective.task())) {
+            return noneFree(roles(), objective);
+        }
+        return squadLeader.report();
+    }
+
+    /**
+     * Whether a squad whose soldiers hold {@code roles} has nobody to do {@code task}: every soldier
+     * has a standing job of its own and none of those jobs is the task. A patrol base is the
+     * exception - every soldier comes in for the night - and so is a plain move.
+     */
+    static boolean noneFree(List<Role> roles, Objective.Task task) {
+        return !roles.isEmpty() && !(task instanceof Objective.Task.None) && !(task instanceof Objective.Task.PatrolBase)
+                && roles.stream().allMatch(r -> r != Role.RIFLEMAN && !r.task().equals(Optional.of(task)));
+    }
+
+    /** The squad's CANTCO when nobody is free for its task: who has which job, so the general can send another squad. */
+    static Report noneFree(Map<String, Role> roles, Objective objective) {
+        StringBuilder jobs = new StringBuilder();
+        new java.util.TreeMap<>(roles).forEach((name, role) -> jobs.append(jobs.isEmpty() ? "" : ", ")
+                .append(name).append(' ').append(role.name().toLowerCase(java.util.Locale.ROOT)));
+        return new Report.Cantco("no soldier free for \"" + objective.mission()
+                + "\": every soldier has a standing job of its own (" + jobs + ")");
     }
 
     /** Whether the squad is all inside its sealed patrol base - nothing for its squad leader to decide. */

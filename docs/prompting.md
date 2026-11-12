@@ -34,7 +34,10 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   and the mission left with nobody (`SquadLeaderScenarioIT`'s `alldetached`), `qwen3:14b` put none
   back with the squad: 0 of 7 shown the state ("every soldier has a role of its own"), and 0 of 7
   with the role paragraph saying to put one back - which also cost the miner situation 3 of 7. The
-  situation stays in the evaluation as the open miss.
+  situation stays in the evaluation as the open miss. The general won't make the same call one
+  echelon up: in `GeneralScenarioIT`'s `wall-open-alpha-detached`, with the wall open and every
+  soldier of Alpha in a role, it gave the wall to Bravo 3 of 5 shown nothing, 3 of 10 shown a line
+  saying so, and 0 of 3 shown Alpha's CANTCO - it takes the wall off Alpha and gives Bravo none.
 - **The squad leader's miner situation moves with any edit to its paragraphs of standing kit.**
   Correcting the rearm paragraph to the basic load as built (soldiers make stone tools and copper
   or iron armour unasked) took `miner` from 5 of 7 to 1 of 7 at one seed; reverted. The prompt

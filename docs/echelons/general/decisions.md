@@ -13,7 +13,10 @@ In its user prompt (`command-ai/src/main/resources/prompts/general-user-prompt.m
   earliest unmet phase named (`command.Foothold`;
   [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)).
 - **Each squad's status:** its report, soldiers, resources seen near it, its current objective,
-  whether it holds a patrol base and how many blocks that base has left.
+  whether it holds a patrol base and how many blocks that base has left. A squad every soldier of
+  which has a standing role of its own, none of them its task's, reports CANTCO "no soldier free
+  for ..." with each soldier's role (`SquadCommand.report`): nobody goes with it on the task. A
+  patrol base and a plain move are exempt - everyone comes in for the night.
 - **Each squad's Class I** (`command.Subsistence`): GREEN, AMBER, or RED with the request for
   food the squad can't get itself, which the general answers with a farm or game
   ([military-doctrine.md § 4](../../military-doctrine.md#4-reports-upward)).
