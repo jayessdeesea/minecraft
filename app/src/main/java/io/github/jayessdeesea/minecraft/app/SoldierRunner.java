@@ -4051,12 +4051,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (wall != null) {
             cells.addAll(wall);
         }
+        // The camp's farm and each soldier's own: live, tills on a squad's FARM plot were refused
+        // for cobblestone two high over cells the model held open.
+        Set<BlockPos> plots = new LinkedHashSet<>();
         if (farm != null) {
-            farm.plot().forEach(c -> {
-                cells.add(c);
-                cells.add(new BlockPos(c.x(), c.y() + 1, c.z()));
-            });
+            plots.addAll(farm.plot());
         }
+        farming.values().forEach(f -> plots.addAll(f.plot()));
+        plots.forEach(c -> {
+            cells.add(c);
+            cells.add(new BlockPos(c.x(), c.y() + 1, c.z()));
+            cells.add(new BlockPos(c.x(), c.y() + 2, c.z()));
+        });
         Optional.ofNullable(campWorkshop).flatMap(Workshop::chest).ifPresent(cells::add);
         String held = cells.stream().map(c -> c.x() + "," + c.y() + "," + c.z() + "="
                 + chunkCache.stateIdAt(c.x(), c.y(), c.z()).stream().mapToObj(Integer::toString).findFirst().orElse("?"))
