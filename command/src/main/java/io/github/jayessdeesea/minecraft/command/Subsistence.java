@@ -8,19 +8,23 @@ import java.util.Set;
  * Class I, subsistence (FM 4-0; ATP 4-41 field feeding), for one soldier and for its squad: what a
  * soldier does about food on its own, and when its squad has to ask for help (docs/military-doctrine.md § 4).
  *
- * <p>A soldier carries a <b>basic load</b> of {@link #BASIC_LOAD} rations. Hungry, it eats. Below its
- * basic load it restocks by its own means - bakes the wheat it carries, hunts game in sight - and
- * below {@link #LOW} a squadmate with rations to spare shares them (cross-leveling, § 13). One still
- * low with none of those means makes the squad's Class I {@link Rating#RED}: the squad can't feed
- * itself, and asks. Feeding a force is planned above the squad, as field feeding is above the
- * company, so the request goes to the general, whose answer is a farm or a move to game.
+ * <p>A soldier carries a <b>basic load</b> of {@link #BASIC_LOAD} rations. Hungry, it eats. Below
+ * {@link #RESUPPLY} it restocks when that's convenient - bakes the wheat it carries, hunts game in
+ * sight, draws bread from the stockpile near it - and below {@link #FOOD_FIRST} food comes before its
+ * work: it hunts and draws from the stockpile wherever it is, and a squadmate with rations to spare
+ * shares them (cross-leveling, § 13). One still short with none of those means makes the squad's
+ * Class I {@link Rating#RED}: the squad can't feed itself, and asks. Feeding a force is planned above
+ * the squad, as field feeding is above the company, so the request goes to the general, whose answer
+ * is a farm or a move to game. Bread beyond the basic load goes into the stockpile, for whoever's short.
  */
 public final class Subsistence {
 
-    /** Rations a soldier keeps: three or four meals, a day and more of work. */
-    public static final int BASIC_LOAD = 6;
-    /** Below this, a squadmate shares and a soldier with no means of its own is short. */
-    public static final int LOW = 2;
+    /** Rations a soldier keeps: a stack, days of work - the operator's standard ration. */
+    public static final int BASIC_LOAD = 64;
+    /** Below this, a soldier restocks when it's convenient: bakes, hunts what's in sight, draws from a stockpile near. */
+    public static final int RESUPPLY = 32;
+    /** Below this, food comes first: a squadmate shares, and a soldier with no means of its own is short. */
+    public static final int FOOD_FIRST = 10;
 
     private Subsistence() {
     }
@@ -31,13 +35,15 @@ public final class Subsistence {
         NONE,
         /** Hungry, with a ration to eat. */
         EAT,
-        /** Below its basic load: bakes, hunts, or is shared some. */
-        RESTOCK
+        /** Below {@link #RESUPPLY}: restocks as it goes - bakes, hunts what's in sight, draws from a stockpile near. */
+        RESTOCK,
+        /** Below {@link #FOOD_FIRST}: food before its work - hunts, draws from the stockpile, is shared some. */
+        FOOD_FIRST
     }
 
     /** A squad's Class I rating, as a LOGSTAT gives it. */
     public enum Rating {
-        /** Every soldier at {@link #LOW} rations or more. */
+        /** Every soldier at {@link #FOOD_FIRST} rations or more. */
         GREEN,
         /** Some below, each with a means: wheat to bake, game in sight, a squadmate sharing. */
         AMBER,
@@ -46,7 +52,7 @@ public final class Subsistence {
     }
 
     /**
-     * The squad's Class I: its rating, who is short ({@code short_}, below {@link #LOW}), and who of
+     * The squad's Class I: its rating, who is short ({@code short_}, below {@link #FOOD_FIRST}), and who of
      * them has no means of getting food ({@code helpless}).
      */
     public record Status(Rating rating, List<String> short_, List<String> helpless) {
@@ -72,12 +78,22 @@ public final class Subsistence {
         if (food < Condition.REGENERATION_FOOD && rations > 0) {
             return Need.EAT;
         }
-        return rations < BASIC_LOAD ? Need.RESTOCK : Need.NONE;
+        return rations < FOOD_FIRST ? Need.FOOD_FIRST : rations < RESUPPLY ? Need.RESTOCK : Need.NONE;
     }
 
-    /** Whether a soldier carrying {@code rations} is short: below {@link #LOW}. */
+    /** Whether a soldier carrying {@code rations} is short: below {@link #FOOD_FIRST}. */
     public static boolean short_(int rations) {
-        return rations < LOW;
+        return rations < FOOD_FIRST;
+    }
+
+    /** Whether a soldier carrying {@code rations} restocks when it's convenient: below {@link #RESUPPLY}. */
+    public static boolean low(int rations) {
+        return rations < RESUPPLY;
+    }
+
+    /** Rations a soldier carrying {@code rations} has beyond its basic load, for the stockpile. */
+    public static int surplus(int rations) {
+        return Math.max(0, rations - BASIC_LOAD);
     }
 
     /**

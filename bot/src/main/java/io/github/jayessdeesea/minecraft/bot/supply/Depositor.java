@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Stockpile;
+import io.github.jayessdeesea.minecraft.command.Subsistence;
 import io.github.jayessdeesea.minecraft.protocol.ContainerUpdate;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
@@ -23,7 +24,8 @@ import java.util.function.Consumer;
 /**
  * One soldier carrying gathered materials to the stockpile - the supply point's chest
  * (docs/military-doctrine.md §12): walk to it, open it, shift-click in the material it has a full
- * load of, close it. Only that: a soldier quarrying stone keeps the logs it carries, because its
+ * load of - and the rations it carries beyond its basic load ({@link Subsistence#BASIC_LOAD}), whole
+ * stacks while the basic load stays in its pack - close it. Only that: a soldier quarrying stone keeps the logs it carries, because its
  * wooden pickaxe wears out in 59 blocks and the next one is made from them. What the chest holds
  * once it's done is reported ({@code stockpileSeen}), so the chain of command knows the stockpile
  * without anyone counting it by hand. Driven like {@link SupplyRun}, by the soldier's tick and its
@@ -56,6 +58,8 @@ public final class Depositor {
     private boolean wanted;
     private boolean walking;
     private Set<ItemClass> load = Set.of();
+    /** The rations a trip leaves in the pack once it has put its surplus in: the inventory's count of food, or fewer. */
+    private int foodLeft = Integer.MAX_VALUE;
     /** What a draw takes out, and how many it wants to carry: empty on a trip to put a load in. */
     private Optional<ItemClass> drawing = Optional.empty();
     private int drawTo;
@@ -65,6 +69,11 @@ public final class Depositor {
         this.inventory = inventory;
         this.chest = new ChestWindow(session, inventory);
         this.stockpileSeen = stockpileSeen;
+    }
+
+    /** Whether a trip under way is drawing {@code material} out. */
+    public synchronized boolean drawing(ItemClass material) {
+        return script != null && drawing.equals(Optional.of(material));
     }
 
     public synchronized boolean active() {
@@ -112,8 +121,8 @@ public final class Depositor {
             case Script.Status.Running _ -> {
             }
             case Script.Status.Done _ -> {
-                Stockpile seen = new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE));
-                LOG.info("{} stockpiled its load - the chest holds {} logs, {} cobblestone", name, seen.logs(), seen.stone());
+                Stockpile seen = new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE), chest.chestCount(ItemClass.FOOD));
+                LOG.info("{} stockpiled its load - the chest holds {} logs, {} cobblestone, {} rations", name, seen.logs(), seen.stone(), seen.rations());
                 stockpileSeen.accept(seen);
                 trips.worked(at);
                 finish();
@@ -157,9 +166,9 @@ public final class Depositor {
             case Script.Status.Running _ -> {
             }
             case Script.Status.Done _ -> {
-                Stockpile seen = new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE));
-                LOG.info("{} drew {} from the stockpile, carrying {} - the chest holds {} logs, {} cobblestone", name, material,
-                        inventory.count(material), seen.logs(), seen.stone());
+                Stockpile seen = new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE), chest.chestCount(ItemClass.FOOD));
+                LOG.info("{} drew {} from the stockpile, carrying {} - the chest holds {} logs, {} cobblestone, {} rations", name, material,
+                        inventory.count(material), seen.logs(), seen.stone(), seen.rations());
                 stockpileSeen.accept(seen);
                 trips.worked(at);
                 finish();
@@ -212,7 +221,8 @@ public final class Depositor {
                     chest.open(at);
                 }, new Expect("the chest's contents", chest::isOpen), ChestWindow.ANSWER_TICKS),
                 new Step("put the load in", this::deposit,
-                        new Expect("the load in the chest", () -> load.stream().allMatch(c -> inventory.count(c) == 0)),
+                        new Expect("the load in the chest", () -> load.stream().allMatch(c -> inventory.count(c) == 0)
+                                && inventory.count(ItemClass.FOOD) <= foodLeft),
                         ChestWindow.ANSWER_TICKS)),
                 List.of(new Guard("the trip is no longer wanted", () -> wanted || !walking)));
     }
@@ -226,12 +236,31 @@ public final class Depositor {
         if (inventory.count(ItemClass.COBBLESTONE) >= Gatherer.CARRY_STONE) {
             load.add(ItemClass.COBBLESTONE);
         }
+        foodLeft = inventory.count(ItemClass.FOOD);
         for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
             Optional<ItemClass> itemClass = ItemClassRegistry.classOf(inventory.itemAt(slot));
             if (itemClass.isPresent() && load.contains(itemClass.get())) {
                 chest.quickMove(chest.windowSlotOf(slot));
+            } else if (itemClass.equals(Optional.of(ItemClass.FOOD)) && foodLeft - inventory.countAt(slot) >= Subsistence.BASIC_LOAD) {
+                foodLeft -= inventory.countAt(slot);
+                chest.quickMove(chest.windowSlotOf(slot));
             }
         }
+    }
+
+    /**
+     * Whether {@code inventory} holds a stack of rations it can put in the stockpile and still carry
+     * its basic load: bread beyond it is the squad's, drawn by whoever's short.
+     */
+    public static boolean surplusFood(Inventory inventory) {
+        int food = inventory.count(ItemClass.FOOD);
+        for (int slot = 0; slot <= Inventory.HOTBAR_LAST; slot++) {
+            if (ItemClassRegistry.classOf(inventory.itemAt(slot)).equals(Optional.of(ItemClass.FOOD))
+                    && food - inventory.countAt(slot) >= Subsistence.BASIC_LOAD) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public synchronized void onContainer(ContainerUpdate update) {
@@ -245,6 +274,7 @@ public final class Depositor {
         script = null;
         walking = false;
         load = Set.of();
+        foodLeft = Integer.MAX_VALUE;
         drawing = Optional.empty();
         cooldown = COOLDOWN_TICKS;
     }

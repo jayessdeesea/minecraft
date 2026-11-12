@@ -62,7 +62,7 @@ class DepositorTest {
         assertFalse(depositor.active());
         assertEquals(64, server.inventory.count(ItemClass.COBBLESTONE), "one stack makes up the 40");
         assertEquals(0, server.inventory.count(ItemClass.LOG), "nothing else taken");
-        assertEquals(List.of(new Stockpile(10, 64)), seen);
+        assertEquals(List.of(new Stockpile(10, 64, 0)), seen);
     }
 
     @Test
@@ -80,7 +80,7 @@ class DepositorTest {
         assertFalse(depositor.active());
         assertEquals(0, server.inventory.count(ItemClass.COBBLESTONE));
         assertEquals(3, server.inventory.count(ItemClass.LOG));
-        assertEquals(List.of(new Stockpile(10, Gatherer.CARRY_STONE)), seen);
+        assertEquals(List.of(new Stockpile(10, Gatherer.CARRY_STONE, 0)), seen);
     }
 
     @Test

@@ -20,10 +20,10 @@ public final class CrossLevel {
 
     /** Logs a giver keeps for itself: enough for its own next pickaxe. */
     public static final int KEEP_LOGS = 3;
-    /** Rations a giver keeps for itself: its own next two meals. */
-    public static final int KEEP_RATIONS = 2;
-    /** Rations handed to a soldier with none: two meals, a hungry soldier's way back to full. */
-    public static final int RATIONS_GIVEN = 2;
+    /** Rations a giver keeps for itself: as many as would put food first for it ({@link Subsistence#FOOD_FIRST}). */
+    public static final int KEEP_RATIONS = Subsistence.FOOD_FIRST;
+    /** Rations handed to a short soldier at a time: a day's meals, enough to get back to its work. */
+    public static final int RATIONS_GIVEN = 4;
     /**
      * Health at or under which a starving soldier is one hit from death: it gets a meal from any
      * squadmate carrying one, its keep or not - buddy aid, before anything else is handed across.

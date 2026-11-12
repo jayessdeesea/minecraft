@@ -141,11 +141,15 @@ each time it stalls there again, up to 40 - so a soldier at a tree too tall to f
 of standing at it.
 
 *Class I, by echelon* (`command.Subsistence`; FM 4-0, ATP 4-41 field feeding). Each soldier
-carries a **basic load** of 6 rations, and is short below 2:
+carries a **basic load** of 64 rations - a stack. Below 32 it restocks when that's convenient,
+and below 10 it is short, and food comes before its work:
 1. **The soldier feeds itself.** Hungry, it eats. Below its basic load it bakes all the wheat it
-   carries into bread at its workshop (§11). Short, it hunts any game in sight, fed or not.
-2. **The squad shares, and keeps the camp's farm.** A short soldier gets two rations from the
-   nearest squadmate with more than two (cross-leveling, §13). One starving at death's door - food
+   carries into bread at its workshop (§11). Below 32, within 16 blocks of a stockpile last seen
+   holding rations, it draws some out until it carries 32 (`SoldierRunner.drawsFood`); short, it
+   draws from it wherever it is, and hunts any game in sight, fed or not. Bread beyond its basic
+   load - a whole stack, the basic load still in its pack - goes into the stockpile (§12).
+2. **The squad shares, and keeps the camp's farm.** A short soldier, hungry yet or not, gets four
+   rations from the nearest squadmate who keeps 10 after giving them (cross-leveling, §13). One starving at death's door - food
    0, health 6 or less - gets a meal from the nearest squadmate carrying any, its last or not,
    before anything else is handed across: buddy aid. Live, a soldier stood at a third of a heart
    beside a squadmate with one ration, kept as its own. And while the squad is AMBER or
@@ -159,7 +163,7 @@ carries a **basic load** of 6 rations, and is short below 2:
    (`FarmPlan.grown`): one water's plot is 80 cells at best and about half that by a pond, and
    eight working soldiers eat about a loaf and a half a minute.
 3. **The squad asks.** A soldier still short with none of those means - no wheat, no game in sight,
-   nobody sharing, and no wheat growing in the camp's farm, whose bread is on the way - makes the
+   no rations in the stockpile, nobody sharing, and no wheat growing in the camp's farm, whose bread is on the way - makes the
    squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
    I RED - request: ... The squad can't feed itself."
 4. **The general answers.** Feeding a force is planned above the squad, as field feeding is above
@@ -524,8 +528,9 @@ reach), each with its count, distance and direction (`bot.supply.ResourceSurveyo
 The supply point's chest is also the stockpile; with no supply point set up, the stockpile is the
 chest of the soldier's workshop (§11), fitted by the first soldier with a full load and nowhere to
 put it - crafted from 8 planks at the workshop's table, placed in its cell. A soldier with a full load walks it over and puts in
-the material it has a full load of (`bot.supply.Depositor`) - only that, so a soldier quarrying stone
-keeps the logs for its next pickaxe, which wears out in 59 blocks. What the chest holds when it's
+the material it has a full load of (`bot.supply.Depositor`), and the rations beyond its basic load
+(§4, Class I) - only that, so a soldier quarrying stone keeps the logs for its next pickaxe, which
+wears out in 59 blocks. What the chest holds when it's
 opened goes to the general (`General.receiveStockpile`), shown with the supply point. It's drawn on
 too: a mason out of blocks, when the stockpile was last seen holding a load of cobblestone, walks
 over and shift-clicks stacks out until it carries a load (`Depositor.tickDraw`) before it digs any

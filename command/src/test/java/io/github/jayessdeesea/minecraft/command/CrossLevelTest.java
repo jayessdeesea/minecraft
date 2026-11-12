@@ -95,13 +95,13 @@ class CrossLevelTest {
     void aSoldierWithNoFoodGetsRationsFromOneWithFoodToSpare() {
         SoldierStatus hungry = soldier("Alice", 0, 0, new Report.Idle());
         SoldierStatus hunter = new SoldierStatus("Bob", new Position(4, 64, 0), SLOT, new Report.Idle(), Optional.of(new Condition(20, 20, 0,
-                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 5)))));
+                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 14)))));
         SoldierStatus lean = new SoldierStatus("Carol", new Position(1, 64, 0), SLOT, new Report.Idle(), Optional.of(new Condition(20, 20, 0,
-                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 3)))));
+                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 13)))));
 
         assertEquals(List.of(new CrossLevel.Transfer("Bob", "Alice", CrossLevel.Item.RATIONS, CrossLevel.RATIONS_GIVEN)),
                 CrossLevel.pair(List.of(hungry, hunter, lean), Map.of(), Map.of("Alice", CrossLevel.RATIONS_GIVEN)),
-                "Carol keeps her two and has one to spare: not enough");
+                "Carol keeps her ten and has three to spare: not enough");
     }
 
     @Test

@@ -81,6 +81,7 @@ import io.github.jayessdeesea.minecraft.command.Risk;
 import io.github.jayessdeesea.minecraft.command.Role;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadOrder;
+import io.github.jayessdeesea.minecraft.command.Stockpile;
 import io.github.jayessdeesea.minecraft.command.Subsistence;
 import io.github.jayessdeesea.minecraft.command.TaskRegister;
 import io.github.jayessdeesea.minecraft.command.Tasking;
@@ -726,6 +727,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 && (condition.food() <= HUNT_BELOW_FOOD || condition.health() < Condition.MAX_HEALTH
                 && condition.food() < Condition.REGENERATION_FOOD);
     }
+    /** Within this many blocks of the stockpile, a soldier below {@link Subsistence#RESUPPLY} draws bread from it on its way. */
+    static final double DRAW_FOOD_NEAR = 16;
+
+    /**
+     * Whether a soldier carrying {@code kit} goes to {@code stockpile} for bread: there's bread in it
+     * ({@code seen}, as the chest was last opened), and it is below {@link Subsistence#FOOD_FIRST} -
+     * food before its work, wherever it is - or below {@link Subsistence#RESUPPLY} and near it, as
+     * it's convenient.
+     */
+    static boolean drawsFood(Kit kit, Optional<Stockpile> seen, Position at, Optional<Position> stockpile) {
+        if (kit == null || stockpile.isEmpty() || seen.map(st -> st.rations() == 0).orElse(true)) {
+            return false;
+        }
+        return Subsistence.short_(kit.rations()) || Subsistence.low(kit.rations())
+                && Cohesion.distance(at, stockpile.get()) <= DRAW_FOOD_NEAR;
+    }
+
     /** Each connected soldier's tree planting, by name. */
     private final Map<String, Forester> foresters = new ConcurrentHashMap<>();
     /** The tree farm each soldier plants, while its squad's objective is one - squad loop writes, tick reads. */
@@ -1938,9 +1956,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 wanted.put(s.name(), logs);
             }
         });
+        // Rations to one below its food-first mark (command.Subsistence), hungry yet or not: running
+        // low, it asks its squadmates before it goes hungry.
         Map<String, Integer> fed = new HashMap<>();
-        statuses.forEach(s -> s.condition().filter(c -> c.kit().isPresent() && wantsFood(c))
-                .ifPresent(c -> fed.put(s.name(), CrossLevel.RATIONS_GIVEN)));
+        statuses.forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> Subsistence.short_(k.rations()))
+                .ifPresent(k -> fed.put(s.name(), CrossLevel.RATIONS_GIVEN)));
         // And a spare weapon to one bare-handed: a replacement respawns with nothing. Not to one
         // making its kit: mid-craft its weapon can be on a window's cursor, and it isn't counted -
         // in the squad simulation a sword went round the squad from hand to hand that way.
@@ -3601,7 +3621,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean huntWanted = (hungry || wantsFeathers || shortOfFood && gameNear) && huntAllowed.contains(name) && !inContact;
             // Short with no means of its own - no wheat to bake, no game in sight - it's the squad's
             // to solve: a squadmate shares, or the squad asks for food (Class I RED).
-            if (shortOfFood && inventory.count(ItemClass.WHEAT) < 3 && !gameNear) {
+            boolean stockpiledFood = chainOfCommand.stockpile().map(st -> st.rations() > 0).orElse(false) && stockpileFor(name).isPresent();
+            if (shortOfFood && inventory.count(ItemClass.WHEAT) < 3 && !gameNear && !stockpiledFood) {
                 foodless.add(name);
             } else {
                 foodless.remove(name);
@@ -3649,7 +3670,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Optional<Workshop> shop = Optional.ofNullable(workshops.get(name));
             // A full load and no chest to put it in: the workshop's is fitted first, at its stand.
             long fitNow = clockwork.millis();
-            boolean fitStore = fullLoad && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
+            boolean fitStore = (fullLoad || Depositor.surplusFood(inventory)) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
             turns.put(Hands.Routine.DEPOSITOR, turn(() -> depositor.active() || chestFitter.active(), free -> {
                 if (free && fitStore && atStand(status.position(), shop.get())) {
@@ -3664,10 +3685,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     return;
                 }
                 chestFitter.stop(status.position(), world);
+                Optional<Position> stockpile = stockpileFor(name);
                 if (drawingStone.contains(name)) {
-                    depositor.tickDraw(status.position(), stockpileFor(name), ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
+                    depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
+                } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
+                    depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
+                            && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
                 } else {
-                    depositor.tick(status.position(), stockpileFor(name), free && fullLoad && !threatened && fort == null);
+                    depositor.tick(status.position(), stockpile, free && (fullLoad || Depositor.surplusFood(inventory)) && !threatened && fort == null);
                 }
             }));
             storeWalks.put(name, fitStore && !atStand(status.position(), shop.get())

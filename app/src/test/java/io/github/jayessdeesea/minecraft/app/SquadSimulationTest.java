@@ -13,6 +13,7 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import io.github.jayessdeesea.minecraft.command.Stockpile;
+import io.github.jayessdeesea.minecraft.command.Subsistence;
 import io.github.jayessdeesea.minecraft.command.TaskRegister;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
@@ -802,6 +803,64 @@ class SquadSimulationTest {
 
         assertEquals(1, server.count("Hal", ItemClassRegistry.ItemClass.FOOD),
                 "Fran's ration handed to Hal; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+    }
+
+    /**
+     * Running low, a soldier asks its squadmates before it goes hungry: Hal, fed but carrying 5 of
+     * a basic load of 64, is handed rations by Fran, who carries 40.
+     */
+    @Test
+    void aSoldierRunningLowIsSharedRationsByASquadmateBeforeItGoesHungry() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Fran,Hal");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(n -> new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                                new int[]{37, SimServer.ITEM_BREAD, n.equals("Fran") ? 40 : 5})));
+        runner.run();
+
+        clock.advance(60_000);
+
+        int hal = server.count("Hal", ItemClassRegistry.ItemClass.FOOD);
+        assertTrue(hal >= Subsistence.FOOD_FIRST, "Hal shared up to his food-first mark: " + hal + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+    }
+
+    /**
+     * Bread beyond a basic load is the squad's: Alice, carrying 80, puts a stack of 16 in the camp's
+     * chest, fitting it at the workshop, and Bob of the other squad, carrying 5 with no squadmate to share,
+     * draws it out.
+     */
+    @Test
+    void surplusBreadGoesIntoTheCampsChestAndOneShortDrawsItOut() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice;Bravo:Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(n -> new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> n.equals("Alice") ? List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                                new int[]{37, SimServer.ITEM_BREAD, 64}, new int[]{38, SimServer.ITEM_BREAD, 16},
+                                new int[]{10, SimServer.ITEM_OAK_LOG, 4})
+                                : List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 5})));
+        runner.run();
+
+        clock.advance(4 * 60_000);
+
+        int bob = server.count("Bob", ItemClassRegistry.ItemClass.FOOD);
+        assertEquals(64, server.count("Alice", ItemClassRegistry.ItemClass.FOOD), "Alice keeps her basic load");
+        assertTrue(bob >= Subsistence.FOOD_FIRST, "Bob drew the surplus: " + bob + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
     /** Flat, with a shaft 6 deep down the 3x3 columns round the camp's mine head, (4, -4) from its centre. */
