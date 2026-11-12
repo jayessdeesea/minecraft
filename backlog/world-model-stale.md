@@ -27,10 +27,13 @@ client writes itself is a pillar step's cobblestone (`SoldierRunner`, `takePlace
 
 ## Notes
 - Built: a chunk sent again is compared with the one kept, and each difference logged
-  (`[Model] a chunk sent to ... differs from the one kept at N blocks, e.g. [x, y, z, kept, sent]`).
+  (`[World] a chunk sent to ... differs from the one kept at N blocks, e.g. [x, y, z, kept, sent]`).
   A difference that a block update on its way explains is short-lived; one in a chunk kept for
   long is the stale case. What's left: read the live `[Model]` lines for which blocks and what
-  changed them, then the cause and its test. Ruled out as well: Section Blocks Update's
+  changed them, then the cause and its test. The camp's chunks are held the whole time and never
+  sent again, so for them the runner logs its wall, farm soil and crop and stockpile chest as the
+  model holds them every 10 minutes (`[Sweep]`), for a console sweep against the server (`execute
+  unless block`, which speaks only on a mismatch). Ruled out as well: Section Blocks Update's
   coordinates (sign-extended), and a reconnect (its chunks are let go, as on a respawn).
 - First look: what removed each block and how the server told the clients - a dig by one of our
   soldiers (its own block-changed ack and update), an explosion, an enderman, water. A sweep of

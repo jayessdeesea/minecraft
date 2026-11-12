@@ -632,6 +632,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 armour == everyone.size() * Kit.ARMOUR_SLOTS, armour + " of " + everyone.size() * Kit.ARMOUR_SLOTS + " armour slots filled (copper or iron, from ore)",
                 "MINE"));
         measureRoutes(at);
+        sweepWanted(wall, farm.orElse(null));
         return Optional.of(new Foothold(new Position(at.x(), at.y(), at.z()), List.copyOf(standards)));
     }
 
@@ -3958,13 +3959,46 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
     }
 
+    /** How often the camp's key blocks are logged as the model holds them, for a sweep against the server. */
+    static final long SWEEP_EVERY_MILLIS = 10 * 60_000L;
+    private long lastSweep = Long.MIN_VALUE;
+
+    /**
+     * The camp's key blocks as the model holds them - its wall, its farm's soil and crop, its
+     * stockpile's chest - logged every {@link #SWEEP_EVERY_MILLIS} as {@code x,y,z=state} for a
+     * console sweep to check against the server's (backlog/world-model-stale.md): the chunks
+     * there are held the whole time, so they're never sent again for the model to check itself.
+     */
+    private void sweepWanted(List<BlockPos> wall, FarmPlan farm) {
+        long now = clockwork.millis();
+        if (lastSweep != Long.MIN_VALUE && now - lastSweep < SWEEP_EVERY_MILLIS) {
+            return;
+        }
+        lastSweep = now;
+        List<BlockPos> cells = new ArrayList<>();
+        if (wall != null) {
+            cells.addAll(wall);
+        }
+        if (farm != null) {
+            farm.plot().forEach(c -> {
+                cells.add(c);
+                cells.add(new BlockPos(c.x(), c.y() + 1, c.z()));
+            });
+        }
+        Optional.ofNullable(campWorkshop).flatMap(Workshop::chest).ifPresent(cells::add);
+        String held = cells.stream().map(c -> c.x() + "," + c.y() + "," + c.z() + "="
+                + chunkCache.stateIdAt(c.x(), c.y(), c.z()).stream().mapToObj(Integer::toString).findFirst().orElse("?"))
+                .collect(Collectors.joining(" "));
+        LOG.info("[Sweep] {} blocks as the model holds them: {}", cells.size(), held);
+    }
+
     /**
      * A chunk sent again that differs from the one kept, logged: the world model's check on itself
      * (backlog/world-model-stale.md). Each sample is x, y, z, the state kept and the state sent.
      */
     private void logDivergence(String name, ChunkCache.Divergence diverged) {
         if (diverged.blocks() > 0) {
-            LOG.warn("[Model] a chunk sent to {} differs from the one kept at {} blocks, e.g. {}", name, diverged.blocks(),
+            LOG.warn("[World] a chunk sent to {} differs from the one kept at {} blocks, e.g. {}", name, diverged.blocks(),
                     diverged.samples().stream().map(java.util.Arrays::toString).toList());
         }
     }

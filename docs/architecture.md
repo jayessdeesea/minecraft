@@ -100,7 +100,7 @@ reference-counted (loaded by which connections). A chunk another connection hold
 its block updates keep it current, and a chunk sent earlier can arrive after another stream's update - and a soldier
 that respawns lets go of every chunk it held, since the server never unloads what it saw before. A chunk sent again is
 also the model's check on itself: where it differs from the one kept, the log says how many blocks and the first few
-(`[Model]`, `ChunkCache.Divergence`). `ConcurrentHashMap.compute()`
+(`[World]`, `ChunkCache.Divergence`). `ConcurrentHashMap.compute()`
 gives atomic, per-chunk-key read-modify-write for that bookkeeping directly — no dedicated writer
 thread or event queue needed; reads (`isSolid`, called every tick, from every soldier) stay
 lock-free `get()`s, which matters because the tick loop is the one place in this system latency is

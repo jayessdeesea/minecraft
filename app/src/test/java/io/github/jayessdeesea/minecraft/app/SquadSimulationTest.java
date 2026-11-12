@@ -383,6 +383,38 @@ class SquadSimulationTest {
         assertEquals(80, stored, "both loads in it; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
+    /**
+     * The camp's key blocks are logged as the model holds them, for a console sweep against the
+     * server's: its stockpile's chest among them, at its cell and with its state.
+     */
+    @Test
+    void theCampsKeyBlocksAreLoggedForASweepAgainstTheServer() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, SimServer.ITEM_COBBLESTONE, 40},
+                        new int[]{10, SimServer.ITEM_OAK_LOG, 4})))
+                .run();
+
+        clock.advance(SoldierRunner.SWEEP_EVERY_MILLIS + 3 * 60_000);
+
+        List<String> sweeps = Files.readAllLines(Path.of("target/sim/theCampsKeyBlocksAreLoggedForASweepAgainstTheServer.log")).stream()
+                .filter(l -> l.contains("[Sweep]")).toList();
+        long key = server.chests.keySet().iterator().next();
+        int x = (int) (key >> 38), z = (int) (key << 26 >> 38), y = (int) (key & 0xFFF) - 64;
+        String cell = x + "," + y + "," + z + "=" + server.block(x, y, z);
+        assertTrue(sweeps.size() >= 2 && sweeps.getLast().contains(cell), "the chest " + cell + " in the last of " + sweeps);
+    }
+
     /** Flat, with an oak six logs tall inside the camp's wall line at x=3 z=3. */
     private static int treeInCamp(int x, int y, int z) {
         return x == 3 && z == 3 && y > GROUND && y <= GROUND + 6 ? SimServer.OAK_LOG : flat(x, y, z);
