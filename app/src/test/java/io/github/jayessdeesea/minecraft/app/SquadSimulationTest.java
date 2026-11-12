@@ -1504,7 +1504,7 @@ class SquadSimulationTest {
      */
     @Test
     void aHungrySquadKeepsTheCampsFarmWithoutBeingOrderedTo() {
-        hungrySquadFarms(SquadSimulationTest::pondByCamp);
+        hungrySquadFarms(SquadSimulationTest::pondByCamp, 0);
     }
 
     /**
@@ -1517,10 +1517,37 @@ class SquadSimulationTest {
                 new BlockPos(5, GROUND, 6), new BlockPos(5, GROUND, 7),
                 new BlockPos(5, GROUND, 8), new BlockPos(6, GROUND, 5),
                 new BlockPos(7, GROUND, 5), new BlockPos(8, GROUND, 5)));
-        hungrySquadFarms(SquadSimulationTest::pondByCamp);
+        hungrySquadFarms(SquadSimulationTest::pondByCamp, 0);
     }
 
-    private void hungrySquadFarms(SimServer.Terrain ground) {
+    /**
+     * As {@link #pondByCamp}, the pond and the ground round it a block down in a hollow: the farm's
+     * ground is a step below the ground round it, as live by the camp's pond.
+     */
+    private static int pondInAHollow(int x, int y, int z) {
+        boolean hollow = x >= 2 && x <= 12 && z >= 2 && z <= 12;
+        if (hollow && y == GROUND) {
+            return SimServer.AIR;
+        }
+        return hollow && x >= 6 && x <= 8 && z >= 6 && z <= 8 && y == GROUND - 1 ? SimServer.WATER : flat(x, y, z);
+    }
+
+    /**
+     * Live, about half the camp's farm stood bare: farmland trampled back to dirt as fast as it was
+     * tilled, by farmers coming down onto it off the step round the farm. A farm in a hollow is
+     * farmed without trampling it.
+     */
+    @Test
+    void aFarmInAHollowIsFarmedWithoutTramplingIt() {
+        hungrySquadFarms(SquadSimulationTest::pondInAHollow, 1);
+    }
+
+    /**
+     * A hungry squad keeps the farm on {@code ground}, trampling at most {@code trampledAtMost} of
+     * its cells - a farm in a hollow, one: a soldier stepping up out of it off farmland that falls
+     * back lands on it from a jump's height (backlog/farm-trampling.md).
+     */
+    private void hungrySquadFarms(SimServer.Terrain ground, int trampledAtMost) {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, ground, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
@@ -1546,7 +1573,7 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
         // Nobody lands on the farmland: on flat ground by a pond, nobody comes down onto it.
         List<String> trampled = server.log.stream().filter(l -> l.contains("trampled")).toList();
-        assertEquals(List.of(), trampled, "farmland trampled");
+        assertTrue(trampled.size() <= trampledAtMost, "farmland trampled: " + trampled);
     }
 
     /** Flat, ringed 8 blocks out by a dirt wall two high: closed, but an enderman's to open. */

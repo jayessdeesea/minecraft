@@ -303,7 +303,10 @@ public final class Pathfinder {
                         }
                         break; // landed on something that isn't standable (a 1-high gap, lava)
                     }
-                    if (standable(world, down)) {
+                    // Never down onto farmland: landing on it from over half a block tramples it
+                    // back to dirt. Live, half the camp's farm stood bare, trampled as fast as it
+                    // was tilled by farmers stepping down onto it off the ground round it.
+                    if (standable(world, down) && !world.isFarmland(down.x(), down.y() - 1, down.z())) {
                         double damage = Math.max(0, drop - MAX_DROP) * falls.damageFactor();
                         moves.add(new Move(down, 1 + drop * 0.5 + damage * falls.costPerDamage()));
                         break;

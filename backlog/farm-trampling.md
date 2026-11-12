@@ -19,8 +19,11 @@ standard after the wall.
 "trampled"), so a scenario shows it: a pond in a hollow one block below the ground round it.
 
 ## Done when
-- A squad farming a pond in a hollow tramples nothing, and the farm keeps most of its cells
-  (the scenario asserts both).
+- A squad farming a pond in a hollow tramples nothing. (Built: a route never steps down onto
+  farmland - `Pathfinder`; `aFarmInAHollowIsFarmedWithoutTramplingIt` tramples one cell where it
+  trampled many. Left: a soldier stepping up out of the hollow off farmland that falls back lands
+  on it from a jump's height - forbidding the step up would shut a farmer in a hollow with no
+  level way out.)
 - Live, the camp's farm's planted share climbs above half and stays there.
 
 ## Notes
@@ -28,6 +31,5 @@ standard after the wall.
   (`FarmPlan.LANDING`). The hollow scenario passed, but live the camp's farm went from 113 cells
   to 1: natural ground by a pond has a one-block step within 2 of nearly every cell. A fix has to
   keep the farm.
-- More likely shapes: the soldier's route never drops onto farmland (a step down onto it is
-  closed to the pathfinder, as lava is, so it comes in level or not at all); or a farmer works a
-  cell from beside it, within reach, rather than standing on it. Probably both.
+- Next shape: a farmer works a cell from beside it, within reach, rather than standing on it -
+  fewer steps on and off the farmland.
