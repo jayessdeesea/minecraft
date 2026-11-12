@@ -35,6 +35,10 @@ them, and wood is already the bottleneck. And nothing decides what a full pack t
 - **The pack:** when full, the least valuable stack is dropped (or deposited, at the stockpile)
   to make room for a more valuable one.
 
+## Built so far
+- Seeds beyond two stacks are thrown away (`bot.supply.Pack`) - live, packs full of seeds left a
+  harvest's wheat on the ground. A fixed rule for one item; the value by scarcity is still to come.
+
 ## Done when
 - A simulation: soldiers clearing ground under a torch and a crafting table come away with both.
 - A simulation: a soldier with a full pack facing a scarce drop throws away the least valuable

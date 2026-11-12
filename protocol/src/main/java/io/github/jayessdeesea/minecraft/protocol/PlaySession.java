@@ -121,6 +121,9 @@ public interface PlaySession {
      */
     void throwOne(int containerId, int stateId, int slot);
 
+    /** Throws the whole stack in {@code slot} of a container, like the drop key held with control: thrown away. */
+    void throwStack(int containerId, int stateId, int slot);
+
     /**
      * Starts digging the block at ({@code x}, {@code y}, {@code z}). It breaks only when
      * {@link #finishDigging} follows after the block's break time - bare-handed, a log takes 3

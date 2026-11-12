@@ -889,6 +889,17 @@ final class SimServer {
         }
 
         @Override
+        public void throwStack(int containerId, int stateId, int slot) {
+            if (containerId != 0 || slots[slot] == null) {
+                throw new UnsupportedOperationException("simulated: throwing a stack from slot " + slot + " of " + containerId);
+            }
+            int[] stack = slots[slot];
+            slots[slot] = null;
+            sync();
+            log.add(name + " threw away " + stack[1] + " of " + stack[0]);
+        }
+
+        @Override
         public void startDigging(int x, int y, int z) {
         }
 

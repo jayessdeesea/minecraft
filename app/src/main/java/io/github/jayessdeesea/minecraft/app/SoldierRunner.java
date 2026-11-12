@@ -34,6 +34,7 @@ import io.github.jayessdeesea.minecraft.bot.supply.Miner;
 import io.github.jayessdeesea.minecraft.bot.supply.Perimeter;
 import io.github.jayessdeesea.minecraft.bot.supply.Quartermaster;
 import io.github.jayessdeesea.minecraft.bot.supply.Quiver;
+import io.github.jayessdeesea.minecraft.bot.supply.Pack;
 import io.github.jayessdeesea.minecraft.bot.supply.Rations;
 import io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor;
 import io.github.jayessdeesea.minecraft.bot.supply.Scavenger;
@@ -3431,6 +3432,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Builder placer = new Builder(name, session, inventory);
         placers.put(name, placer);
         Rations rations = new Rations(name, session, inventory);
+        Pack pack = new Pack(name, session, inventory);
         Breacher doorway = new Breacher(name, session, inventory);
         // Cutting steps is part of moving, like a pillar step's block: no routine has the hands for it.
         Breacher stepCutter = new Breacher(name, session, inventory);
@@ -3652,9 +3654,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     sealer.retrySkipped();
                 }
             }));
-            turns.put(Hands.Routine.RATIONS, turn(rations::active,
-                    free -> rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD), free && !threatened,
-                            soldier.yaw(), soldier.pitch())));
+            turns.put(Hands.Routine.RATIONS, turn(rations::active, free -> {
+                rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD), free && !threatened,
+                        soldier.yaw(), soldier.pitch());
+                // Its pack kept for what's worth more: surplus seeds thrown away, between meals.
+                pack.tick(free && !threatened && !rations.active());
+            }));
             Kit eating = status.condition().flatMap(c -> c.kit()).orElse(null);
             boolean hungry = status.condition().filter(c -> c.kit().isPresent()).map(SoldierRunner::wantsFood).orElse(false);
             // Feathers for arrows, for a soldier with a bow and few arrows: a chicken, hunted like any game.

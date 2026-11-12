@@ -570,7 +570,9 @@ farming there, and the rest of the plot is worked first.
 Each job is an expect script: stand on the cell - landed, not still coming down onto it - item in hand, use it on the cell, and done when
 the server's block update shows farmland or a sprout. A soldier without a hoe makes a wooden one,
 and one carrying three wheat bakes it into bread, the ration every soldier eats (§11). It reports
-`Farming`.
+`Farming`. Each ripe wheat gives seeds back, more than its cell takes to sow again, so a soldier
+keeps two stacks (128) and throws the rest away, a stack at a time (`bot.supply.Pack`): live,
+farmers carried up to 580 seeds, packs full, and a harvest's wheat had no slot to go to.
 
 Wood is grown when it runs out. An objective's task can be `TREE_FARM`: the squad plants saplings
 round the objective, on every third block both ways of open dirt or grass within 8 blocks, with

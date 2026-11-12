@@ -34,3 +34,7 @@ standard after the wall.
 - Built since: the farm's earthwork cuts an apron round the plot to its level, so its cells are
   walked onto on the flat (docs/military-doctrine.md § 12). If trampling stays high live, the next
   shape is a farmer working a cell from beside it, within reach, rather than standing on it.
+- **Open (2026-11-12): tills refused by one soldier, not the ground.** Live (field123), with the
+  model and the server agreeing on each cell - grass under open air - every refused till was
+  Fran's (6 cells) or Alice's (3), each cell three tries; squadmates' tills went through. Fran
+  carried a wooden hoe (the server's own `data get entity`). Not yet known why.

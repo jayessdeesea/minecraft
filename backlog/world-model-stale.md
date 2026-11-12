@@ -38,9 +38,6 @@ client writes itself is a pillar step's cobblestone (`SoldierRunner`, `takePlace
 - First look: what removed each block and how the server told the clients - a dig by one of our
   soldiers (its own block-changed ack and update), an explosion, an enderman, water. A sweep of
   the camp comparing the model to the server, on a schedule, would say how often it happens.
-- Open lead (2026-11-12): tills refused on a squad's FARM plot by (-61, 62, 50), the model
-  holding the cell open, the server showing cobblestone two high over it - stale, or put down
-  after; the sweep now covers those plots to tell.
 - `WorldProbeLiveIT` reads the world as one connection sees it, with the garrison stopped.
 - Fixed: a chunk sent again had replaced the cache, and the connections are independent streams -
   a chunk one was sent before a block update could arrive after another's update and undo it. A

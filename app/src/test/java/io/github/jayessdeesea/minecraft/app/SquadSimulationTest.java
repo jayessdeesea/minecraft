@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.supply.Pack;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.supply.Perimeter;
 import io.github.jayessdeesea.minecraft.bot.supply.Staircase;
@@ -1779,6 +1780,34 @@ class SquadSimulationTest {
                 new BlockPos(5, GROUND, 8), new BlockPos(6, GROUND, 5),
                 new BlockPos(7, GROUND, 5), new BlockPos(8, GROUND, 5)));
         hungrySquadFarms(SquadSimulationTest::pondByCamp, 0);
+    }
+
+    /**
+     * A pack isn't filled with seeds: a soldier carrying five stacks throws away all but two. Live,
+     * farmers carried 200 to 580 seeds, packs full, and a harvest's wheat had no slot to go to.
+     */
+    @Test
+    void aSoldierThrowsAwayTheSeedsItDoesntNeed() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        int seeds = SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, seeds, 64}, new int[]{10, seeds, 64}, new int[]{11, seeds, 64},
+                        new int[]{12, seeds, 64}, new int[]{13, seeds, 64})))
+                .run();
+
+        clock.advance(20_000);
+
+        assertEquals(Pack.SEEDS_KEPT, server.count("Alice", ItemClassRegistry.ItemClass.SEEDS), "last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 8), server.log.size()));
     }
 
     /**
