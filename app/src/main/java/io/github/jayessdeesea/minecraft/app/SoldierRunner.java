@@ -136,6 +136,7 @@ import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -2829,6 +2830,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
     }
 
+    /** The block-state IDs the world model holds at {@code to}'s cell and the two over it, "?" for none known. */
+    private String modelBlocks(Order.MoveTo to) {
+        int x = (int) Math.floor(to.x()), y = (int) Math.floor(to.y()), z = (int) Math.floor(to.z());
+        return IntStream.rangeClosed(-1, 1).mapToObj(dy -> chunkCache.stateIdAt(x, y + dy, z))
+                .map(id -> id.isPresent() ? String.valueOf(id.getAsInt()) : "?").collect(Collectors.joining("/"))
+                + " at " + x + " " + (y - 1) + ".." + (y + 1) + " " + z;
+    }
+
     /** {@code task} guarded by {@link #faults}: a fault on one tick is logged and counted, and the next tick runs. */
     private Runnable loudly(String what, Runnable task) {
         return faults.guard(what, task);
@@ -3692,6 +3701,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + ", " + lights.size() + " cells to light with " + inventory.count(ItemClass.TORCH) + " torches"
                         + (lights.isEmpty() ? "" : " (" + lamplighter.passedOver(world, lights) + ")")
                         + (farming.get(name) == null ? "" : ", farm " + farmer.passedOver(world, farming.get(name)))
+                        // The world model's own blocks where it's sent, to check against the server's.
+                        + (status.order() instanceof Order.MoveTo m ? ", model blocks there " + modelBlocks(m) : "")
                         + ", squad's task " + objectiveOf(unitOf(name, definition.squad()))
                         .map(o -> OrderTrace.taskName(o.task()) + " at " + o.location()).orElse("none"))
                         .ifPresent(line -> {
