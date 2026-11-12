@@ -22,7 +22,39 @@ final class AfterActionReview {
 
     private final Map<String, List<String>> deaths = new TreeMap<>();
     private final Map<String, Integer> idle = new TreeMap<>();
+    /** Each standard's foothold checks this day, and how many found it met. */
+    private final Map<String, int[]> held = new TreeMap<>();
     private boolean wasDark;
+
+    /**
+     * The share of a day's checks a standard must hold to score as met: one met at dawn but open
+     * half the day isn't, and one open for a minute at dawn is. Live, the camp's lit ground and wall
+     * went in and out of met 36 times a run, and the dawn's one look decided the day.
+     */
+    static final double STEADY = 0.9;
+
+    /** The camp as one foothold check measured it: counted toward each standard's day. */
+    synchronized void measured(Foothold foothold) {
+        foothold.standards().forEach(s -> {
+            int[] tally = held.computeIfAbsent(s.name(), n -> new int[2]);
+            tally[0]++;
+            tally[1] += s.met() ? 1 : 0;
+        });
+    }
+
+    /** The share of the day's checks {@code standard} held, or its state now with none counted. */
+    private double share(Foothold.Standard standard) {
+        int[] tally = held.get(standard.name());
+        return tally == null || tally[0] == 0 ? (standard.met() ? 1 : 0) : (double) tally[1] / tally[0];
+    }
+
+    private boolean steady(Foothold.Standard standard) {
+        return share(standard) >= STEADY;
+    }
+
+    private String percent(Foothold.Standard standard) {
+        return Math.round(share(standard) * 100) + "% of the day";
+    }
     private int day;
 
     /** {@code soldier} died, as the server's death message key says ({@code death.attack.arrow}). */
@@ -58,20 +90,23 @@ final class AfterActionReview {
         }
         day++;
         StringBuilder review = new StringBuilder("AAR for day " + day + " of this run:");
+        // Scored over the day, not at the dawn's one look (STEADY).
+        List<Foothold.Standard> standards = foothold.map(Foothold::standards).orElse(List.of());
+        int phase = standards.stream().filter(s -> !steady(s)).mapToInt(Foothold.Standard::phase).min().orElse(0);
         foothold.ifPresent(f -> {
-            review.append("\n  camp: ").append(f.nextPhase().isPresent() ? "phase " + f.nextPhase().getAsInt() + " not yet met" : "every phase met");
-            f.standards().forEach(s -> review.append("\n    ").append(s.met() ? "met: " : "OPEN: ").append(s.name())
-                    .append(s.met() ? "" : " - " + s.status()));
+            review.append("\n  camp: ").append(phase > 0 ? "phase " + phase + " not yet met" : "every phase met");
+            f.standards().forEach(s -> review.append("\n    ").append(steady(s) ? "met: " : "OPEN: ").append(s.name())
+                    .append(" - held ").append(percent(s)).append(s.met() ? "" : "; now " + s.status()));
         });
         int dead = deaths.values().stream().mapToInt(List::size).sum();
         int[] shares = commands.shares();
-        List<Foothold.Standard> standards = foothold.map(Foothold::standards).orElse(List.of());
-        Scoreboard.Score score = new Scoreboard.Score(now, day, foothold.flatMap(f -> f.nextPhase().isPresent()
-                ? Optional.of(f.nextPhase().getAsInt()) : Optional.empty()).orElse(0),
-                (int) standards.stream().filter(Foothold.Standard::met).count(), standards.size(),
-                standards.stream().filter(s -> !s.met()).sorted(Comparator.comparingInt(Foothold.Standard::phase))
-                        .map(s -> "phase " + s.phase() + " " + s.name() + " - " + s.status()).toList(),
+        Scoreboard.Score score = new Scoreboard.Score(now, day, phase,
+                (int) standards.stream().filter(this::steady).count(), standards.size(),
+                standards.stream().filter(s -> !steady(s)).sorted(Comparator.comparingInt(Foothold.Standard::phase))
+                        .map(s -> "phase " + s.phase() + " " + s.name() + " - held " + percent(s) + (s.met() ? "" : "; now " + s.status()))
+                        .toList(),
                 dead, shares[0], shares[1], hungry, soldiers, routes, churned);
+        held.clear();
         review.append("\n  casualties: ").append(dead == 0 ? "none" : dead);
         deaths.forEach((cause, who) -> review.append("\n    ").append(cause).append(": ").append(String.join(", ", who)));
         review.append("\n  idle by day: ").append(idle.isEmpty() ? "none" : idle.toString());

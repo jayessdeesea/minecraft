@@ -59,7 +59,7 @@ class ScoreboardTest {
         aar.time(true, Optional.of(camp));
         aar.death("Bob", "death.attack.arrow");
         Scoreboard.Score score = aar.time(false, Optional.of(camp), 3, 8, 42, List.of("to the farm: 80%"), 5).orElseThrow().score();
-        assertEquals(new Scoreboard.Score(42, 1, 1, 1, 3, List.of("phase 1 the camp's ground lit - 8 dark",
-                "phase 2 every soldier armed - 2 of 8"), 1, 0, 0, 3, 8, List.of("to the farm: 80%"), 5), score);
+        assertEquals(new Scoreboard.Score(42, 1, 1, 1, 3, List.of("phase 1 the camp's ground lit - held 0% of the day; now 8 dark",
+                "phase 2 every soldier armed - held 0% of the day; now 2 of 8"), 1, 0, 0, 3, 8, List.of("to the farm: 80%"), 5), score);
     }
 }

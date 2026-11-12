@@ -978,11 +978,14 @@ with the foothold in view it already keeps an exposed squad near shelter (Genera
 `exposed-far-out`).
 
 Each dawn the log carries an after-action review (TC 25-20) of the day and night before (`[AAR]`,
-`app.AfterActionReview`): the camp's standards, met and open, as last measured; the deaths, by the
-server's cause, with who; and who raised an idle alarm by day (§ 3).
+`app.AfterActionReview`): the camp's standards, met and open, each scored over the day - met if it
+held at 90% or more of the day's foothold checks (`AfterActionReview.STEADY`), with the share it held
+and, if open now, how far along; the deaths, by the server's cause, with who; and who raised an idle
+alarm by day (§ 3). Scored at the dawn's one look, the lit ground and the wall, going in and out of
+met 36 times a run, decided the day by when the look fell.
 
 The same dawn scores the day on the garrison's scoreboard (`app.Scoreboard`, `scoreboard.jsonl` in
-the state directory, one JSON line a day kept across restarts): the earliest phase not met, the
+the state directory, one JSON line a day kept across restarts): the earliest phase not met over the day, the
 standards met of all, the open ones earliest phase first, the deaths, the shares of soldier-time
 standing about (`Idle`, `InPosition`) and unable (`CANTCO`), the soldiers hungry at dawn, and how
 hard the camp is to get about (`bot.nav.RouteEffort`): the walk on foot from its centre to the

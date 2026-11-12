@@ -913,7 +913,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         if (camp != null && footholdTicks++ % FOOTHOLD_EVERY == 0) {
             // Its own request: a measure that fails costs the measure, not the squads' orders.
-            faults.run("the foothold's measure", () -> measureFoothold().ifPresent(chainOfCommand::onFoothold));
+            faults.run("the foothold's measure", () -> measureFoothold().ifPresent(f -> {
+                chainOfCommand.onFoothold(f);
+                afterActionReview.measured(f);
+            }));
         }
         chainOfCommand.time().flatMap(t -> {
                     List<SoldierStatus> all = activeSoldiers.values().stream().map(DeterministicSoldier::status).toList();
