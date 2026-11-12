@@ -3506,8 +3506,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     : new Objective("Dig gravel for flint", huntGrounds.getOrDefault(name,
                     status.position()), "Arrows for the bow", new Objective.Task.Gather(
                     Resource.FLINT));
+            // And a dig with stone or cobblestone in it: live, soldiers with no pickaxe handed the
+            // cobblestone over the camp's floor failed at it, and nobody else's strip had it.
+            boolean stoneToClear = clearing.getOrDefault(name, List.of()).stream()
+                    .anyMatch(c -> world.isStone(c.x(), c.y(), c.z()) || world.isCobblestone(c.x(), c.y(), c.z()));
             boolean needsPickaxe = (gather != null && gather.gather().equals(Optional.of(Resource.STONE))
-                    || mining.contains(name))
+                    || mining.contains(name) || stoneToClear)
                     && inventory.slotOf(ItemClassRegistry.ItemClass.PICKAXE) < 0;
             Staircase stairs = cutting.get(name);
             // The next rung of the equipment ladder, worked out once a second (it looks for ore to

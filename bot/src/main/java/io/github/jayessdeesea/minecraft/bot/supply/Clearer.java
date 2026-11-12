@@ -106,6 +106,12 @@ public final class Clearer {
         }
         Set<BlockPos> excluded = failed.barredNow(ticks);
         excluded.addAll(claims);
+        // What its tools can't dig is left to a squadmate's: live, soldiers with no pickaxe were handed
+        // the cobblestone over the camp's floor, and each failed at it three times and reported CANTCO.
+        if (!Digger.Target.STONE.canDig(inventory)) {
+            cover.stream().filter(c -> world.isStone(c.x(), c.y(), c.z()) || world.isCobblestone(c.x(), c.y(), c.z()))
+                    .forEach(excluded::add);
+        }
         // Stands it can get to from where it is - on foot, on the blocks it carries, or cutting steps.
         BlockPos feet = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
         int span = cover.stream().mapToInt(c -> Math.max(Math.abs(c.x() - feet.x()), Math.abs(c.z() - feet.z()))).max().orElse(0) + REACH_MARGIN;

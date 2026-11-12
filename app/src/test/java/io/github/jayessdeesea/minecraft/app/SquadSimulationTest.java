@@ -1070,6 +1070,42 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
     }
 
+    /**
+     * Soldiers with no pickaxe handed the old hut's cobblestone make one from the logs they carry and
+     * dig it. Live, each failed at it three times - "no tool to dig the COBBLESTONE" - and reported CANTCO.
+     */
+    @Test
+    void soldiersWithNoPickaxeMakeOneToClearTheCampsFloor() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::oldHutInCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_OAK_LOG, 4})))
+                .run();
+
+        clock.advance(5 * 60_000);
+
+        long hut = 0;
+        for (int x = 3; x <= 5; x++) {
+            for (int y = GROUND + 1; y <= GROUND + 2; y++) {
+                hut += server.block(x, y, 3) != SimServer.AIR ? 1 : 0;
+            }
+        }
+        long noTool = Files.readAllLines(Path.of("target/sim/soldiersWithNoPickaxeMakeOneToClearTheCampsFloor.log")).stream()
+                .filter(l -> l.contains("no tool to dig")).count();
+        assertEquals(0, hut, "blocks of the old hut left; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+        assertEquals(0, noTool, "tries at the cobblestone with no tool to dig it");
+    }
+
     /** Flat, with a mound of dirt two high in the camp. */
     private static int moundInCamp(int x, int y, int z) {
         return x >= 3 && x <= 4 && z >= 3 && z <= 4 && y > GROUND && y <= GROUND + 2 ? SimServer.DIRT : flat(x, y, z);
