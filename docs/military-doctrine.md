@@ -148,10 +148,13 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    holding rations, it draws some out until it carries 32 (`SoldierRunner.drawsFood`); short, it
    draws from it wherever it is, and hunts any game in sight, fed or not. Bread beyond its basic
    load - a whole stack, the basic load still in its pack - goes into the stockpile (§12).
-2. **The squad shares, and keeps the camp's farm.** A soldier below 32, hungry yet or not, gets four
-   rations from the nearest squadmate who keeps 15 after giving them (cross-leveling, §13) - the
-   one carrying fewest first. A squadmate below 32 itself still gives, to one it's left with more
-   than; below 15 it has none to spare (the operator's). One starving at death's door - food
+2. **The squad shares, and keeps the camp's farm.** A soldier below 32, hungry yet or not, is given
+   rations by the nearest squadmate who keeps 15 (cross-leveling, §13) - one at a time, the one
+   carrying fewest first, and no more often than every four seconds from one giver to one receiver,
+   so a giver's spare goes round everyone short rather than to the first (the operator's). A
+   squadmate below 32 itself still gives, to one it's left with more than; below 15 it has none to
+   spare. One no squadmate can feed is given them across squads, by the nearest soldier of another
+   squad within 32 blocks with some to spare and no hand-over of its own (`CrossLevel.across`). One starving at death's door - food
    0, health 6 or less - gets a meal from the nearest squadmate carrying any, its last or not,
    before anything else is handed across: buddy aid. Live, a soldier stood at a third of a heart
    beside a squadmate with one ration, kept as its own. And while the squad is AMBER or
@@ -598,7 +601,8 @@ wood has to be grown. The soldier at it reports `Planting`.
 *How we use it:* a soldier that needs logs for a tool (§11, §12), has tried to chop them and found
 no tree in reach, is short; so is one below its resupply mark of 32 rations (§4). `command.CrossLevel`
 pairs each with the nearest squadmate carrying more than it needs: a giver keeps 3 logs, enough for
-its own next pickaxe, or 15 rations, and hands over the logs short or 4 rations. A bare-handed
+its own next pickaxe, or 15 rations, and hands over the logs short or one ration - rations go across
+squads too (§4, Class I). A bare-handed
 soldier - a replacement respawns with nothing - gets a squadmate's spare melee weapon: the worst
 of those it carries beyond its best (`Inventory.spareWeaponSlot`), never the one in hand. Weapons
 are paired first, then logs, then rations, and a soldier is in one hand-over at a time, giving or

@@ -1000,6 +1000,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     holdingBase ? OptionalInt.of(0) : state.baseBlocksLeft, progress(p.squad(), state, p.statuses()),
                     Optional.of(classOne(p.squad(), state, p.statuses())));
         }).toList());
+        faults.run("cross-levelling across squads", () -> crossRations(present.stream().filter(p -> p.statuses().stream()
+                .noneMatch(s -> s.report() instanceof Report.InContact)).flatMap(p -> p.statuses().stream()).toList()));
         // Each squad on its own: one squad's fault doesn't leave the other without orders. And each
         // of its units - its main body, and each detachment its soldiers' plans make - led as a squad.
         for (Present p : present) {
@@ -1021,6 +1023,32 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 faults.run(u.name() + "'s register", () -> register(u.name(), state, u.statuses()));
             }
         }
+    }
+
+    /** Rations given across squads and detachments this command cycle, by giver: {@link #crossRations}. */
+    private volatile Map<String, CrossLevel.Transfer> acrossSquads = Map.of();
+
+    /**
+     * Rations across squads, as a squad of its own would share them (the operator's: across squads if
+     * need be): for a soldier running low that no squadmate's sharing with, from the nearest soldier
+     * of the force out of contact - {@code outOfContact} - with rations to spare and no hand-over of
+     * its own squad's. Who's busy is as the units paired last cycle.
+     */
+    private void crossRations(List<SoldierStatus> outOfContact) {
+        Set<String> busy = new HashSet<>();
+        squadStates.values().forEach(st -> st.crossLeveling.forEach(t -> {
+            busy.add(t.giver());
+            busy.add(t.receiver());
+        }));
+        Map<String, CrossLevel.Transfer> was = acrossSquads;
+        List<SoldierStatus> free = outOfContact.stream().filter(s -> !busy.contains(s.name())).toList();
+        List<SoldierStatus> short_ = free.stream().filter(s -> s.condition().flatMap(Condition::kit)
+                .filter(k -> Subsistence.low(k.rations())).isPresent()).toList();
+        Map<String, CrossLevel.Transfer> now = new HashMap<>();
+        CrossLevel.across(short_, free).forEach(t -> now.put(t.giver(), t));
+        now.values().stream().filter(t -> !was.containsValue(t))
+                .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL across squads: {} rations", t.giver(), t.receiver(), t.count()));
+        acrossSquads = Map.copyOf(now);
     }
 
     /**
@@ -2016,8 +2044,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL: {} {} to {}", t.giver(), squadName, t.count(),
                         t.item().name().toLowerCase(Locale.ROOT), t.receiver()));
         state.crossLeveling = crossLeveling;
-        Set<String> receiving = transfers.stream().map(CrossLevel.Transfer::receiver)
-                .collect(Collectors.toUnmodifiableSet());
+        Set<String> receiving = java.util.stream.Stream.concat(transfers.stream(), acrossSquads.values().stream())
+                .map(CrossLevel.Transfer::receiver).collect(Collectors.toUnmodifiableSet());
         // Patrol base (docs/military-doctrine.md §14): each soldier to its place inside the hut's
         // outline; once all are in, they build its walls and roof around themselves.
         Optional<Objective> base = squadInContact
@@ -2466,7 +2494,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             state.escaping.remove(soldierName);
             Optional.ofNullable(workshopOf(state, statuses.get(i).position()))
                     .ifPresentOrElse(w -> workshops.put(soldierName, w), () -> workshops.remove(soldierName));
+            // Its own unit's hand-over first, else one across squads.
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
+                    .or(() -> Optional.ofNullable(acrossSquads.get(soldierName)))
                     .ifPresentOrElse(t -> deliveries.put(soldierName, t), () -> deliveries.remove(soldierName));
             // The basic load - a weapon up to a stone sword - is the soldier's own to keep, out of
             // contact; beyond it, the squad leader's leave. Live, 2 of 8 carried a stone sword or

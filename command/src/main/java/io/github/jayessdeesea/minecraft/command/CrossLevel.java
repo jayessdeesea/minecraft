@@ -22,8 +22,11 @@ public final class CrossLevel {
     public static final int KEEP_LOGS = 3;
     /** Rations a giver keeps for itself: below this it has none to spare (the operator's). */
     public static final int KEEP_RATIONS = 15;
-    /** Rations handed to a short soldier at a time: a day's meals, enough to get back to its work. */
-    public static final int RATIONS_GIVEN = 4;
+    /**
+     * Rations handed across at a time: one, so a giver spreads what it has over everyone short of
+     * it, fewest first, rather than unloading on the first (the operator's).
+     */
+    public static final int RATIONS_GIVEN = 1;
     /**
      * Health at or under which a starving soldier is one hit from death: it gets a meal from any
      * squadmate carrying one, its keep or not - buddy aid, before anything else is handed across.
@@ -93,6 +96,34 @@ public final class CrossLevel {
         pair(squad, Item.WEAPON, weaponsWanted, busy, transfers);
         pair(squad, Item.LOGS, logsWanted, busy, transfers);
         pair(squad, Item.RATIONS, rationsWanted, busy, transfers);
+        return List.copyOf(transfers);
+    }
+
+    /**
+     * Rations across squads, for those {@code short_} their own squad didn't pair: each from the
+     * nearest of {@code givers} within {@link #ACROSS_REACH} - soldiers of other squads, free of their own squad's cross-leveling -
+     * with {@link #RATIONS_GIVEN} beyond {@link #KEEP_RATIONS} and left with more than the receiver
+     * gets to. Fewest first, one transfer a giver. Neither side in contact or linking up: the caller's
+     * to leave out a squad in contact, as {@link #pair} does its own.
+     */
+    /** How near another squad's giver must be: a squad on its own mission a way off isn't walked across the map. */
+    public static final double ACROSS_REACH = 32;
+
+    public static List<Transfer> across(List<SoldierStatus> short_, List<SoldierStatus> givers) {
+        List<Transfer> transfers = new ArrayList<>();
+        Set<String> busy = new HashSet<>();
+        short_.stream().filter(r -> !(r.report() instanceof Report.LinkingUp))
+                .sorted(Comparator.comparingInt(Item.RATIONS::carried)).forEach(receiver -> givers.stream()
+                        .filter(g -> !busy.contains(g.name()) && !g.name().equals(receiver.name()) && !critical(g)
+                                && !(g.report() instanceof Report.LinkingUp) && !(g.report() instanceof Report.InContact)
+                                && Cohesion.distance(g.position(), receiver.position()) <= ACROSS_REACH)
+                        .filter(g -> Item.RATIONS.carried(g) - KEEP_RATIONS >= RATIONS_GIVEN
+                                && Item.RATIONS.carried(g) - RATIONS_GIVEN >= Item.RATIONS.carried(receiver) + RATIONS_GIVEN)
+                        .min(Comparator.comparingDouble(g -> Cohesion.distance(g.position(), receiver.position())))
+                        .ifPresent(g -> {
+                            busy.add(g.name());
+                            transfers.add(new Transfer(g.name(), receiver.name(), Item.RATIONS, RATIONS_GIVEN));
+                        }));
         return List.copyOf(transfers);
     }
 

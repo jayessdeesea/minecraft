@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.bot.script.Script;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Guard;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
+import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
@@ -182,11 +183,20 @@ public final class Depositor {
         }
     }
 
+    /**
+     * How long the walk to the stockpile is given: as far as it is, at a walk. Live and in the squad
+     * simulation, a soldier 150 blocks off failed every draw at a flat 30 seconds, and never got there.
+     */
+    private int walkTicks() {
+        BlockPos chestAt = BlockPos.containing(at.x(), at.y(), at.z());
+        return Digger.walkTicks(soldierAt, chestAt);
+    }
+
     private Script drawTrip() {
         walking = true;
         return new Script(name, List.of(
                 new Step("walk to the stockpile", () -> walking = true,
-                        new Expect("the chest in reach", () -> ChestWindow.withinReach(soldierAt, at)), WALK_TIMEOUT_TICKS),
+                        new Expect("the chest in reach", () -> ChestWindow.withinReach(soldierAt, at)), walkTicks()),
                 new Step("open the chest", () -> {
                     walking = false;
                     chest.open(at);
@@ -215,7 +225,7 @@ public final class Depositor {
         walking = true;
         return new Script(name, List.of(
                 new Step("walk to the stockpile", () -> walking = true,
-                        new Expect("the chest in reach", () -> ChestWindow.withinReach(soldierAt, at)), WALK_TIMEOUT_TICKS),
+                        new Expect("the chest in reach", () -> ChestWindow.withinReach(soldierAt, at)), walkTicks()),
                 new Step("open the chest", () -> {
                     walking = false;
                     chest.open(at);

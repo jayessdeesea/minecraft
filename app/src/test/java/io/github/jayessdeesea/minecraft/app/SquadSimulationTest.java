@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.supply.Staircase;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
@@ -866,34 +867,76 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
+    /** Running low with no squadmate to share, a soldier is given rations by a soldier of the other squad. */
+    @Test
+    void aSoldierNoSquadmateCanFeedIsSharedRationsAcrossSquads() {
+        SquadSimulationTest.Shared run = sharing("Alpha:Fran;Bravo:Hal", Map.of("Fran", 40, "Hal", 20), 60_000);
+
+        assertTrue(run.server().count("Hal", ItemClassRegistry.ItemClass.FOOD) > 20, "Hal shared some of Fran's; last server events: "
+                + run.server().log.subList(Math.max(0, run.server().log.size() - 10), run.server().log.size()));
+    }
+
     /**
-     * Bread beyond a basic load is the squad's: Alice, carrying 80, puts a stack of 16 in the camp's
-     * chest, fitting it at the workshop, and Bob of the other squad, carrying 5 with no squadmate to share,
-     * draws it out.
+     * One ration at a time, no more often than every four seconds, to whoever carries fewest: Fran,
+     * with 40, feeds both her low squadmates rather than unloading on one (the operator's).
      */
     @Test
-    void surplusBreadGoesIntoTheCampsChestAndOneShortDrawsItOut() {
+    void aGiverSharesOneRationAtATimeRoundEveryoneShort() {
+        SquadSimulationTest.Shared run = sharing("Alpha:Fran,Gus,Hal", Map.of("Fran", 40, "Gus", 5, "Hal", 5), 20_000);
+
+        int gus = run.server().count("Gus", ItemClassRegistry.ItemClass.FOOD), hal = run.server().count("Hal", ItemClassRegistry.ItemClass.FOOD);
+        int given = 40 - run.server().count("Fran", ItemClassRegistry.ItemClass.FOOD);
+        assertTrue(gus > 5 && hal > 5, "both fed: Gus " + gus + ", Hal " + hal);
+        assertTrue(given <= 20_000 / 4_000 + 1, given + " given in 20 s");
+    }
+
+    private record Shared(SimServer server) {
+    }
+
+    /** A squad by the camp, each soldier carrying the bread in {@code rations}, run for {@code millis}. */
+    private Shared sharing(String squads, Map<String, Integer> rations, long millis) {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
-        Roster roster = new Roster("Alpha:Alice;Bravo:Bob");
+        Roster roster = new Roster(squads);
         Position camp = new Position(0, GROUND + 1, 0);
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
                 new Objective.Task.None())), squadLeader(camp),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
                 .simulated(clock, server.connector(n -> new PlayerPosition(0.5, GROUND + 1, 0.5),
-                        n -> n.equals("Alice") ? List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
-                                new int[]{37, SimServer.ITEM_BREAD, 64}, new int[]{38, SimServer.ITEM_BREAD, 16},
-                                new int[]{10, SimServer.ITEM_OAK_LOG, 4})
-                                : List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 5})));
-        runner.run();
+                        n -> List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                                new int[]{37, SimServer.ITEM_BREAD, rations.get(n)})))
+                .run();
+        clock.advance(millis);
+        return new Shared(server);
+    }
 
-        clock.advance(4 * 60_000);
+    /**
+     * Bread beyond a basic load is the force's: Alice, carrying 80, puts a stack of 16 in the camp's
+     * chest, fitting it at the workshop, and keeps her basic load. (Drawn out by whoever's short:
+     * DepositorTest; given across squads first, near: aSoldierNoSquadmateCanFeedIsSharedRationsAcrossSquads.)
+     */
+    @Test
+    void surplusBreadGoesIntoTheCampsChest() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.ITEM_BREAD, 64}, new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{10, SimServer.ITEM_OAK_LOG, 4})))
+                .run();
 
-        int bob = server.count("Bob", ItemClassRegistry.ItemClass.FOOD);
-        assertEquals(64, server.count("Alice", ItemClassRegistry.ItemClass.FOOD), "Alice keeps her basic load");
-        assertTrue(bob >= Subsistence.FOOD_FIRST, "Bob drew the surplus: " + bob + "; last server events: "
+        clock.advance(2 * 60_000);
+
+        assertEquals(64, server.count("Alice", ItemClassRegistry.ItemClass.FOOD), "Alice keeps her basic load; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
