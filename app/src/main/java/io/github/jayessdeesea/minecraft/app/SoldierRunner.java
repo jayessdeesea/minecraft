@@ -2237,7 +2237,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         List<BlockPos> soft = state.wall == null ? List.of()
                 : state.wall.stream().filter(c -> world.isSoil(c.x(), c.y(), c.z())).toList();
         if (state.wall != null && soft.size() != state.softLeft) {
-            LOG.info("[{}] FORTIFY: {} of the wall's blocks dirt, to replace with stone", squadName, soft.size());
+            LOG.info("[{}] FORTIFY: {} of the wall's blocks dirt, to replace with stone{}", squadName, soft.size(),
+                    soft.isEmpty() ? "" : " - " + soft.stream().limit(4).map(c -> c.x() + " " + c.y() + " " + c.z()).toList()
+                            + " of the wall kept as " + state.wallKey);
             state.softLeft = soft.size();
         } else if (state.wall == null) {
             state.softLeft = -1;

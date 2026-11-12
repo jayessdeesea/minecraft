@@ -25,6 +25,5 @@ last cells out of reach. A soldier that did quarry stone filled the camp's hollo
   wall wanted stone - the slope's soldiers carried only cobblestone, and filled nothing.
 - The stockpile chest (-47, 70, 45) is boxed in by an old hut's blocks; the miners' stone never
   reaches it to be drawn (`cells.md`, the floor's inspection).
-- Live, the last "dirt" block is a stale model cell: the server has air at (-61, 64, 44), with
-  air below it - a hole the model reads as dirt (`world-model-stale.md`). Met only once that's
-  fixed, or the hole filled.
+- Live, the last dirt block is (-40, 64, 39), in the wall kept as "-48,44" - dirt on the server
+  too.
