@@ -31,5 +31,6 @@ standard after the wall.
   (`FarmPlan.LANDING`). The hollow scenario passed, but live the camp's farm went from 113 cells
   to 1: natural ground by a pond has a one-block step within 2 of nearly every cell. A fix has to
   keep the farm.
-- Next shape: a farmer works a cell from beside it, within reach, rather than standing on it -
-  fewer steps on and off the farmland.
+- Built since: the farm's earthwork cuts an apron round the plot to its level, so its cells are
+  walked onto on the flat (docs/military-doctrine.md § 12). If trampling stays high live, the next
+  shape is a farmer working a cell from beside it, within reach, rather than standing on it.

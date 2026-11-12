@@ -340,6 +340,37 @@ class PathfinderTest {
     }
 
     @Test
+    void noStepIsBuiltOnAFarm() {
+        // Farmland underfoot and all round, the ground under it one block down.
+        WorldView farm = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isFarmland(int x, int y, int z) {
+                return y == GROUND - 1;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(List.of(), Pathfinder.stepBuild(farm, START, new BlockPos(1, GROUND + 1, 0)),
+                "a step on the farmland beside it would turn it to dirt");
+        assertEquals(List.of(new BlockPos(1, GROUND, 0)), Pathfinder.stepBuild(world((x, y, z) -> false), START, new BlockPos(1, GROUND + 1, 0)),
+                "on plain ground it builds the same step");
+    }
+
+    @Test
     void withBlocksItBuildsAStairUpToAPlatformInOpenAir() {
         // A 3x3 platform 8 blocks up, nothing under it.
         WorldView platform = world((x, y, z) -> y == GROUND + 7 && x >= 6 && x <= 8 && z >= -1 && z <= 1);

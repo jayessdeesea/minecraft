@@ -16,6 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -25,6 +26,8 @@ import java.util.function.BooleanSupplier;
  * One soldier keeping its squad's wheat farm ({@link FarmPlan}): each tick it does the most
  * pressing job left, one cell at a time, in this order -
  * <ol>
+ *   <li>its earthwork ({@link #earthwork}): a block put down on the plot dug off, and the ground round
+ *   it cut down to the plot's level, so every cell is walked onto on the flat;</li>
  *   <li>harvest ripe wheat - wheat, and seeds to plant again;</li>
  *   <li>plant seeds on farmland with nothing growing;</li>
  *   <li>till the plot's ground into farmland, with a hoe;</li>
@@ -53,6 +56,8 @@ public final class Farmer {
 
     private Digger digger;
     private Script fieldWork;
+    /** Does the farm's {@link #earthwork}: a {@link Clearer} over it. */
+    private final Clearer unburier;
     private BlockPos claimed;
     private Position standAt;
     private Position soldier;
@@ -74,6 +79,39 @@ public final class Farmer {
         this.inventory = inventory;
         this.claims = claims;
         this.shared = shared;
+        this.unburier = new Clearer(name, session, inventory, claims);
+    }
+
+    /**
+     * The blocks to dig so {@code farm}'s plot is open and walked onto on the flat: the block over
+     * each cell that's cobblestone or soil, and the soil over the ground beside each, up to two
+     * blocks, where that ground is level with the plot - an apron round it. Live, a third of the
+     * camp's farm lay under cobblestone and dirt the soldiers had put down on it, steps built out of
+     * its hollow, the farmland under each turned to dirt; and the rest, a block below the ground
+     * round it, was reached only by stepping down onto it, which tramples farmland.
+     */
+    static List<BlockPos> earthwork(WorldView world, FarmPlan farm) {
+        Set<BlockPos> plot = Set.copyOf(farm.plot());
+        Set<BlockPos> dig = new LinkedHashSet<>();
+        for (BlockPos c : farm.plot()) {
+            BlockPos top = c.offset(0, 1, 0);
+            if (world.isCobblestone(top.x(), top.y(), top.z()) || world.isSoil(top.x(), top.y(), top.z()) && !world.isFarmland(top.x(), top.y(), top.z())) {
+                dig.add(top);
+            }
+            for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                BlockPos beside = c.offset(d[0], 0, d[1]);
+                if (plot.contains(beside) || !world.isSolid(beside.x(), beside.y(), beside.z()) || world.isWater(beside.x(), beside.y(), beside.z())) {
+                    continue;
+                }
+                for (int up = 1; up <= 2; up++) {
+                    BlockPos b = beside.offset(0, up, 0);
+                    if (world.isSoil(b.x(), b.y(), b.z()) && !world.isFarmland(b.x(), b.y(), b.z())) {
+                        dig.add(b);
+                    }
+                }
+            }
+        }
+        return List.copyOf(dig);
     }
 
     /** The cells any farmer working this farm couldn't work, for a while. */
@@ -87,16 +125,17 @@ public final class Farmer {
     public static boolean hasWork(WorldView world, FarmPlan farm) {
         return farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE
                 || world.isFarmland(c.x(), c.y(), c.z()) && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z())
-                || world.isTillable(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z()));
+                || world.isTillable(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z()))
+                || !earthwork(world, farm).isEmpty();
     }
 
     public synchronized boolean active() {
-        return digger != null || fieldWork != null;
+        return digger != null || fieldWork != null || unburier.active();
     }
 
     /** Where the soldier should be standing for the job under way. */
     public synchronized Optional<Position> standAt() {
-        return digger != null ? Optional.of(digger.standAt()) : Optional.ofNullable(standAt);
+        return digger != null ? Optional.of(digger.standAt()) : unburier.active() ? unburier.standAt() : Optional.ofNullable(standAt);
     }
 
     /** Why the last job failed, while the soldier waits before the next. */
@@ -171,6 +210,10 @@ public final class Farmer {
             }
             return;
         }
+        if (unburier.active()) {
+            unburier.tick(soldier, world, earthwork(world, farm.get()), true);
+            return;
+        }
         if (cooldown > 0) {
             return;
         }
@@ -197,6 +240,14 @@ public final class Farmer {
         List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !claims.contains(c.offset(0, 1, 0))
                         && !passedOver.barred(c, ticks) && !shared.barred(c, ticks))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()))).toList();
+        // Earthwork first: a cell in a hollow walked into for a harvest or a sowing is trampled.
+        List<BlockPos> earthwork = earthwork(world, farm);
+        if (!earthwork.isEmpty()) {
+            unburier.tick(soldier, world, earthwork, true);
+            if (unburier.active()) {
+                return;
+            }
+        }
         Optional<BlockPos> ripe = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).findFirst();
         if (ripe.isPresent()) {
             BlockPos crop = ripe.get().offset(0, 1, 0);
@@ -267,8 +318,12 @@ public final class Farmer {
                 }, new Expect(job + " done", done), ANSWER_TICKS)));
     }
 
+    /**
+     * Standing on {@code cell}, landed: farmland's top is 15/16 of a block. Not mid-fall - tilled
+     * under a soldier still coming down onto it, it's trampled as it lands.
+     */
     private boolean on(BlockPos cell) {
-        return Math.hypot(soldier.x() - (cell.x() + 0.5), soldier.z() - (cell.z() + 0.5)) < 0.6 && Math.abs(soldier.y() - (cell.y() + 1)) < 0.6;
+        return Math.hypot(soldier.x() - (cell.x() + 0.5), soldier.z() - (cell.z() + 0.5)) < 0.6 && Math.abs(soldier.y() - (cell.y() + 1)) < 0.1;
     }
 
     private boolean inHand(ItemClass item) {
@@ -333,6 +388,7 @@ public final class Farmer {
     /** Stops the job under way, its claims given up. */
     public synchronized void stop() {
         stopDigging();
+        unburier.stop();
         endFieldWork();
     }
 }

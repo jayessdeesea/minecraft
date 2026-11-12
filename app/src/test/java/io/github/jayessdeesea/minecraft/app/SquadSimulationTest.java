@@ -1782,6 +1782,25 @@ class SquadSimulationTest {
     }
 
     /**
+     * A farm kept on disk, its ground since buried under dirt: its farmers dig it off, then till,
+     * sow and harvest it. Live, a third of the camp's farm lay under blocks the soldiers had put
+     * down on it, and nobody took them off again.
+     */
+    @Test
+    void aHungrySquadDigsTheBlocksOffItsBuriedFarm() {
+        new WallStore(state, "farm").save("0,0", List.of(new BlockPos(30, GROUND, 0),
+                new BlockPos(28, GROUND, -1), new BlockPos(28, GROUND, 0), new BlockPos(28, GROUND, 1),
+                new BlockPos(32, GROUND, -1), new BlockPos(32, GROUND, 0), new BlockPos(32, GROUND, 1)));
+        hungrySquadFarms(SquadSimulationTest::buriedPondOffCamp, 0);
+    }
+
+    /** As {@link #pondOffCamp}, the ground round the pond under a layer of dirt. */
+    private static int buriedPondOffCamp(int x, int y, int z) {
+        boolean round = x >= 26 && x <= 34 && z >= -4 && z <= 4 && !(x >= 29 && x <= 31 && z >= -1 && z <= 1);
+        return round && y == GROUND + 1 ? SimServer.DIRT : pondOffCamp(x, y, z);
+    }
+
+    /**
      * As {@link #pondByCamp}, the pond and the ground round it a block down in a hollow: the farm's
      * ground is a step below the ground round it, as live by the camp's pond.
      */

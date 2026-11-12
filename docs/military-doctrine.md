@@ -550,18 +550,24 @@ tillable ground, dirt or grass, with nothing solid above, at one height within 4
 An objective's task can be `FARM`. The squad keeps the plot round the water nearest the objective,
 the same plot while the objective stays put. Each soldier does the most pressing job left on it,
 one cell at a time (`bot.supply.Farmer`), in this order:
-1. Harvests ripe wheat, for wheat and seeds to plant again.
-2. Plants seeds on bare farmland.
-3. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills
+1. Its earthwork (`Farmer.earthwork`): digs off any cobblestone or soil on a plot cell, and cuts
+   the ground beside the plot down to its level, up to two blocks - an apron, so every cell is
+   walked onto on the flat. Landing on farmland from over half a block tramples it back to dirt,
+   and a route never steps down onto it or builds a step on it (`Pathfinder`), so a farm in a
+   hollow was reached only where the ground happened to be level, and steps built out of it
+   buried a third of the camp's farm.
+2. Harvests ripe wheat, for wheat and seeds to plant again.
+3. Plants seeds on bare farmland.
+4. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills
    only under open air.
-4. With no seeds, breaks grass for them, since one in eight drops some - out to 32 blocks, as a
+5. With no seeds, breaks grass for them, since one in eight drops some - out to 32 blocks, as a
    squad soon clears what grows near.
 
 A plot cell whose job fails - its place not walked to, the server not answering, a ripe crop it
 can't reach - is passed over for two minutes, longer each time it fails again, by every soldier
 farming there, and the rest of the plot is worked first.
 
-Each job is an expect script: stand on the cell, item in hand, use it on the cell, and done when
+Each job is an expect script: stand on the cell - landed, not still coming down onto it - item in hand, use it on the cell, and done when
 the server's block update shows farmland or a sprout. A soldier without a hoe makes a wooden one,
 and one carrying three wheat bakes it into bread, the ration every soldier eats (§11). It reports
 `Farming`.
