@@ -717,6 +717,10 @@ public final class DeterministicSoldier implements Soldier {
     private int navTicks;
     /** Cell visits per plan - bounds the planning cost per tick (see {@link Pathfinder}). */
     private static final int PLAN_BUDGET = 4000;
+    /** The goal a wide search was needed for, searched wide on every replan while it's the goal. Tick loop only. */
+    private Goal wideGoal;
+    /** The wider search, once the cheap ones gain no ground: a way round beyond one cheap search. */
+    private static final int LONG_PLAN_BUDGET = 60_000;
     private static final double WAYPOINT_REACHED = 0.25;
 
     // Navigation state - tick-loop only, like verticalVelocity.
@@ -812,14 +816,26 @@ public final class DeterministicSoldier implements Soldier {
             // A fall is the exception, never the plan: first a route with none - walked, then with
             // steps built from what it carries - and only with no such route one the order's risk allows.
             BlockPos start = standingCell(world, position);
-            Pathfinder.Result plan = Pathfinder.find(world, start, goal, PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(), carriesPickaxe(),
-                    false, avoid);
+            // Wide straight away for a goal a wide search was needed for: a cheap replan on the way
+            // round would only lead back to the wall it's going round.
+            Pathfinder.Result plan = Pathfinder.find(world, start, goal, goal.equals(wideGoal) ? LONG_PLAN_BUDGET : PLAN_BUDGET,
+                    FallAllowance.NONE, pillarBlocks(), carriesPickaxe(), false, avoid);
             if (!plan.reachesGoal() && pillarBlocks() > 0) {
                 Pathfinder.Result built = Pathfinder.find(world, start, goal, PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(),
                         carriesPickaxe(), true, avoid);
                 // Only one that gets there: a partial one, toward a goal beyond one search, leads it astray.
                 if (built.reachesGoal()) {
                     plan = built;
+                }
+            }
+            // A goal beyond one cheap search: once the cheap plans gain no ground, one search wider.
+            // Live, two soldiers stood a day 80 blocks out, every plan ending where they stood.
+            if (!plan.reachesGoal() && failedPlans > 0) {
+                Pathfinder.Result wide = Pathfinder.find(world, start, goal, LONG_PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(),
+                        carriesPickaxe(), false, avoid);
+                if (wide.reachesGoal()) {
+                    plan = wide;
+                    wideGoal = goal;
                 }
             }
             FallAllowance allowance = fallAllowance(current);

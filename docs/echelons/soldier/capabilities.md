@@ -36,6 +36,9 @@ seconds or when stuck:
   the squad's recovery drill reads as stranded when it has too few blocks to build its own way:
   a squadmate with blocks is sent to build it a stair (docs/military-doctrine.md § 7). Live, two
   soldiers floated in a flooded shaft for hours reporting the wood they meant to gather.
+- **Searches wider for a goal its cheap searches can't reach.** Once its plans gain no ground, it
+  searches 15 times wider (`DeterministicSoldier.LONG_PLAN_BUDGET`) and, finding the way, goes on
+  searching that wide for that goal: a cheap replan on the way round would lead back to the wall.
 - **Asks for help when it's out of ways of its own.** The ladder is: try again later, try another
   target or route, then ask. A routine whose last 3 tries in a row all failed, whatever they were
   at, reports CANTCO with the last one's place and reason - clearing, walling, lighting, farming, or

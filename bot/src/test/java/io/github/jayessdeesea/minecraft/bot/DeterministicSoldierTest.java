@@ -85,6 +85,40 @@ class DeterministicSoldierTest {
         assertEquals(new BlockPos(5, 63, 0), DeterministicSoldier.standingCell(world, new Position(5.5, 62.9375, 0.5)));
     }
 
+    /**
+     * A goal behind a wall whose way round is beyond one cheap search: the soldier searches wider
+     * once the cheap plans gain no ground, and walks round. Live, two soldiers stood a day 80 blocks
+     * out, every plan ending where they stood: "no route from (-80, 64, 122)".
+     */
+    @Test
+    void aGoalBeyondOneSearchIsReachedRoundTheLongWay() {
+        WorldView walled = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= GROUND - 1 || z == 10 && x >= -100 && x <= 100 && y >= GROUND && y <= GROUND + 2;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        DeterministicSoldier dana = new DeterministicSoldier("Dana", new Position(0.5, GROUND, 0.5));
+        dana.receiveOrder(new Order.MoveTo(0.5, GROUND, 20.5, 1.5, 2, Risk.LOW));
+
+        for (int i = 0; i < 8000; i++) {
+            dana.tick(walled);
+        }
+
+        Position at = dana.status().position();
+        assertTrue(Math.hypot(at.x() - 0.5, at.z() - 20.5) <= 2, "round the wall to the goal, not at " + at + ": " + dana.status().report());
+    }
+
     @Test
     void trendsTowardTargetWhenUnobstructed() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(10, 64, 10));
