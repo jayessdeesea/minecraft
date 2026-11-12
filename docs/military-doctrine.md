@@ -474,9 +474,11 @@ cobblestone at the table - and places it into its cell. A fixture counts as stan
 another block there - a wall's cobblestone - isn't the chest. With no workshop sited, the soldier says so
 rather than putting a table down where it stands.
 
-A soldier's basic load is its own to keep: out of contact, it makes a weapon and climbs to a stone
-sword (`Ladder.BASIC_LOAD`) unordered. The squad leader decides whether there's time for more: its
-order's `rearm` lets soldiers climb past the basic load. Climbing past it also waits until the
+A soldier's basic load is its own to keep: out of contact, it makes a weapon and climbs unordered
+through a stone sword, a bow, a stone pickaxe, a shield and copper or iron armour from the ore to
+hand (`Ladder.BASIC_LOAD`) - the kit the camp's armed and armoured standards ask of it. The squad
+leader decides whether there's time for more: its order's `rearm` lets soldiers climb past the
+basic load, to an iron sword and up. Climbing past it also waits until the
 squad isn't ordered to a patrol base, since shelter comes first
 and digging iron isn't building it. Each soldier also keeps back its share of the cobblestone its
 squad's base still needs, so a stone sword never costs a wall. A soldier at it reports `Rearming`,

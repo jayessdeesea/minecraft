@@ -35,3 +35,7 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   back with the squad: 0 of 7 shown the state ("every soldier has a role of its own"), and 0 of 7
   with the role paragraph saying to put one back - which also cost the miner situation 3 of 7. The
   situation stays in the evaluation as the open miss.
+- **The squad leader's miner situation moves with any edit to its paragraphs of standing kit.**
+  Correcting the rearm paragraph to the basic load as built (soldiers make stone tools and copper
+  or iron armour unasked) took `miner` from 5 of 7 to 1 of 7 at one seed; reverted. The prompt
+  still says the basic load ends at a stone sword: the soldiers make more, whatever it says.

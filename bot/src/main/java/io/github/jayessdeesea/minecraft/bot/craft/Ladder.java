@@ -97,8 +97,13 @@ public final class Ladder {
     /** How many rungs there are. */
     public static final int RUNGS = LADDER.size();
 
-    /** The last rung of a soldier's basic load, its own to keep: a stone sword. */
-    public static final int BASIC_LOAD = 1;
+    /**
+     * The last rung of a soldier's basic load, its own to make unasked: through iron armour - a
+     * weapon, a bow, a stone pickaxe, a shield, and copper or iron armour from the ore to hand.
+     * Live, the camp's armoured standard stood at 3 of 32 slots for days with ore in the packs: in
+     * 700 FRAGOs no squad leader said "rearm". Above it - an iron sword and up - the squad leader's leave.
+     */
+    public static final int BASIC_LOAD = rungOf(Recipe.IRON_HELMET);
 
     /** Which rung {@code recipe} is made for, counted from 0 - the first that offers it. */
     public static int rungOf(Recipe recipe) {
