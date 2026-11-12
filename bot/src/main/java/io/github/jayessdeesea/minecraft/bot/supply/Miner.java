@@ -101,6 +101,9 @@ public final class Miner {
         return OptionalInt.empty();
     }
 
+    /** How far above the stairs' bottom a cutter still works a mine cut to the bottom for its ore. */
+    static final int PROSPECT_FROM = 8;
+
     /** Tunnels given up for water, lava or a cave beside them. */
     private final Set<Integer> blocked = new HashSet<>();
 
@@ -115,7 +118,11 @@ public final class Miner {
                 // All cut: worked again for the ore in sight of what was cut - passed by, or not
                 // harvestable then. Live, no miner mined ore in twelve runs: the tunnels were cut,
                 // and nobody went back down them.
-                next = prospect(world, stairs, cuts);
+                // Only from down there - at the landing for the night: from the top, the mine reads
+                // done and the squad holds the top. Live, working it from the top kept the squad's
+                // task open, and its soldiers were ordered to the bottom 54 blocks down by a route
+                // that failed: an hour and more of "no route" CANTCO a day.
+                next = soldier.y() <= stairs.bottom() + PROSPECT_FROM ? prospect(world, stairs, cuts) : OptionalInt.empty();
                 if (next.isEmpty()) {
                     stop();
                     return new Progress.Done();

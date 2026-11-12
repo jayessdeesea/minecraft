@@ -919,10 +919,12 @@ One soldier, the first in squad order carrying a pickaxe, cuts it (`bot.supply.M
 on the step above the first not yet cut, breaks that step's cells, walks down onto it, and cuts
 the next. By day the rest hold the top, clear of the shaft. By night they follow it down, within 3
 blocks: the top is open ground in the dark, and on the stairs no monster spawns within 24 blocks
-of a player. With the mine cut to the bottom, the cutter works it again for ore: any it can see from
-a cut's stand - passed by, or not harvestable with the pickaxe it had then - is mined before the
-mine counts as done (`Miner.prospect`); live, no miner mined ore in twelve runs, the tunnels cut
-and nobody going back down them. With nothing left to cut or mine, they wait the night out at
+of a player. With the mine cut to the bottom, a cutter down at the landing for the night works it
+again for ore: any it can see from a cut's stand - passed by, or not harvestable with the pickaxe
+it had then - is mined before the mine counts as done (`Miner.prospect`); live, no miner mined ore
+in twelve runs, the tunnels cut and nobody going back down them. From the top, a mine cut to the
+bottom is done, and the squad holds the top: worked from there, the squad's task stayed open and
+its soldiers were sent to the bottom by a route that failed. With nothing left to cut or mine, they wait the night out at
 the landing. Until one of them has a pickaxe, every one makes one.
 
 Nothing is crafted on the stairs. At the bottom, beside the main tunnel's first cell, the cutter

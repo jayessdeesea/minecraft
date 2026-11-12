@@ -97,8 +97,12 @@ class MinerTest {
     }
 
     private Miner.Progress dig(Staircase stairs, int ticks, Inventory inventory) {
+        return dig(stairs, ticks, inventory, new Position(0.5, GROUND, 0.5));
+    }
+
+    private Miner.Progress dig(Staircase stairs, int ticks, Inventory inventory, Position from) {
         Miner miner = new Miner("Alice", session, inventory);
-        Position soldier = new Position(0.5, GROUND, 0.5);
+        Position soldier = from;
         Miner.Progress progress = null;
         for (int tick = 0; tick < ticks; tick++) {
             answers.forEach(Runnable::run);
@@ -185,16 +189,21 @@ class MinerTest {
      */
     @Test
     void aMineAlreadyCutIsWorkedForTheOreInSightOfItsTunnels() {
-        Staircase stairs = new Staircase(HEAD, GROUND - 6);
-        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000));
+        Staircase stairs = new Staircase(HEAD, GROUND - 20);
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 120000));
         BlockPos above = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList().get(3).feet().offset(0, 2, 0);
         dug.remove(above);
         ore.add(above);
         Inventory stonePickaxe = new Inventory();
         stonePickaxe.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(1), 1});
 
-        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000, stonePickaxe));
-        assertTrue(dug.contains(above), "the ore over branch 1 at " + above + " is mined");
+        Miner miner = new Miner("Alice", session, stonePickaxe);
+        assertInstanceOf(Miner.Progress.Done.class, miner.tick(new Position(0.5, GROUND, 0.5), world, stairs, true),
+                "from the top, the mine reads done: the squad holds the top");
+
+        BlockPos landing = stairs.step(stairs.steps() - 1);
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000, stonePickaxe, new Position(landing.x() + 0.5, landing.y(), landing.z() + 0.5)));
+        assertTrue(dug.contains(above), "from the bottom, the ore over branch 1 at " + above + " is mined");
     }
 
     private static int pickaxe(int tier) {
