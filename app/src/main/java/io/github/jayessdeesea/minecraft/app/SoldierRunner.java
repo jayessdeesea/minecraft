@@ -689,11 +689,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How far round the camp its farm is looked for: the water it needs can be a way off. */
     private static final int CAMP_FARM_RADIUS = 48;
     /**
-     * The cells the camp's farm is grown to: eight working soldiers eat about a loaf and a half a
-     * minute, three wheat each, and hydrated wheat takes half an hour or so to ripen - this is about
-     * half of that, with hunting the rest. One water's plot is half of it by a pond.
+     * The cells the camp's farm is grown to: enough to feed the force and build its basic load, not
+     * only its meals. Hydrated wheat ripens in half an hour or so, three wheat a loaf: live, 97
+     * cells made about 20 loaves an hour, as many as eight soldiers ate, and hunting added next to
+     * nothing - none of them carried more than a few rations. One water's plot is a quarter of it
+     * by a pond.
      */
-    static final int CAMP_FARM_CELLS = 96;
+    static final int CAMP_FARM_CELLS = 192;
     /** And how far up or down: a camp on a hill farms by the water below it. */
     private static final int CAMP_FARM_VERTICAL = 32;
     /** Farm cells a farmer couldn't work, passed over by every farmer for a while. */

@@ -1434,6 +1434,41 @@ class SquadSimulationTest {
     }
 
     /**
+     * The camp's farm is grown to feed the force a basic load, not only its meals: by three ponds,
+     * all three are farmed. Live, a 97-cell farm made about as much bread as eight soldiers ate, and
+     * none of them ever carried more than a few rations.
+     */
+    @Test
+    void theCampsFarmIsGrownRoundEveryPondNearItsOwn() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::threePonds, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(30_000);
+
+        String food = chain.foothold().orElseThrow().standards().stream().filter(st -> st.name().equals("food"))
+                .findFirst().orElseThrow().status();
+        java.util.regex.Matcher cells = java.util.regex.Pattern.compile("of (\\d+) cells of the camp's farm ground").matcher(food);
+        assertTrue(cells.find() && Integer.parseInt(cells.group(1)) > 150, "food: " + food);
+    }
+
+    /** Flat, with three ponds 12 blocks apart north-east, south-east and north-west of the camp. */
+    private static int threePonds(int x, int y, int z) {
+        boolean pond = y == GROUND && (Math.abs(x - 7) <= 1 && Math.abs(z - 7) <= 1 || Math.abs(x - 7) <= 1 && Math.abs(z + 5) <= 1
+                || Math.abs(x + 5) <= 1 && Math.abs(z - 7) <= 1);
+        return pond ? SimServer.WATER : flat(x, y, z);
+    }
+
+    /**
      * Safety first: the camp's ground lit, its wall and every soldier armed are its first phase of
      * work, and its food is buildup with its wood and stone - while the force eats.
      */
