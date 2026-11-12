@@ -237,7 +237,7 @@ public final class Armourer {
                 toStation = null;
                 made(crafter.tick(soldier, world, items, false));
             } else if (cooldown == 0) {
-                walkToStation(soldier, world);
+                walkToStation(soldier, world, workshop);
             }
             return false;
         }
@@ -252,7 +252,7 @@ public final class Armourer {
     }
 
     /** Walks to beside the nearest usable station a walk away - a furnace first, the scarcer - and not yet in reach. */
-    private void walkToStation(Position soldier, WorldView world) {
+    private void walkToStation(Position soldier, WorldView world, Optional<Workshop> workshop) {
         for (Workstation station : List.of(Workstation.FURNACE, Workstation.CRAFTING_TABLE)) {
             Optional<BlockPos> at = crafter.nearestUsable(world, soldier, station, Digger.SEARCH_RADIUS);
             if (at.isEmpty() || crafter.usableInReach(world, soldier, station)) {
@@ -269,7 +269,21 @@ public final class Armourer {
                 }
             }
         }
-        // Nothing to walk to after all - the station went, or there's nowhere to stand by it.
+        // Nothing to walk to after all - the station went, or there's nowhere to stand by it: the
+        // workshop, if one's sited. Live, a farmer gave up its bread by a table it had no stand by,
+        // with the camp's workshop a walk off.
+        Optional<Position> shopStand = workshop.map(w -> new Position(w.stand().x() + 0.5, w.stand().y(), w.stand().z() + 0.5));
+        boolean atShop = shopStand.filter(st -> Math.hypot(soldier.x() - st.x(), soldier.z() - st.z()) <= WORKSHOP_TOLERANCE
+                && Math.abs(soldier.y() - st.y()) <= 1).isPresent();
+        if (workshop.isPresent() && !atShop) {
+            Workshop w = workshop.get();
+            Position stand = shopStand.get();
+            if (!stand.equals(toStation)) {
+                LOG.info("{} goes to the workshop at {} for {}", name, w.stand(), describe(making));
+            }
+            toStation = stand;
+            return;
+        }
         giveUp("no table or furnace to use within " + Digger.SEARCH_RADIUS + " blocks, and not the makings of one");
     }
 
