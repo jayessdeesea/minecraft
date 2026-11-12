@@ -476,42 +476,61 @@ public final class Crafter {
                 SMELT_TICKS);
     }
 
-    /** Up to {@code smelts} of the recipe's ingredient into the furnace, and planks enough to burn for them: how many went in. */
+    /**
+     * Up to {@code smelts} of the recipe's ingredient into the furnace, and fuel enough to burn for
+     * them: how many went in. Fuel first: of the kind already burning, topped up - or what's there
+     * taken out - from one stack of planks or logs, which burn as long; and with no stack that covers
+     * them all, as many smelts as the biggest one does, the rest in the next load. Live, a soldier
+     * with two kinds of planks, two of each, and ten logs gave up its smelts for want of three planks
+     * of a kind; another, seven planks of two kinds, gave up eight.
+     */
     private int load(Recipe recipe, int smelts) {
         ItemClass ingredient = recipe.key().values().iterator().next();
         int from = biggest(ingredient, -1);
         int count = Math.min(Math.min(smelts, MAX_STACK), inventory.countAt(from));
         int window = windowId;
+        Optional<ItemSlot> burning = furnace[FURNACE_FUEL];
+        int burnt = burning.map(ItemSlot::count).orElse(0);
+        int fuelFrom = -1;
+        if (Recipe.fuelFor(count) > burnt) {
+            int kind = burning.map(ItemSlot::itemId).orElse(-1);
+            fuelFrom = fuelSlot(kind, Recipe.fuelFor(count) - burnt);
+            if (fuelFrom < 0) {
+                fuelFrom = biggestFuel(kind);
+            }
+            if (fuelFrom < 0 && burning.isPresent()) {
+                session.quickMove(window, 0, FURNACE_FUEL);
+                burnt = 0;
+                fuelFrom = fuelSlot(-1, Recipe.fuelFor(count));
+                if (fuelFrom < 0) {
+                    fuelFrom = biggestFuel(-1);
+                }
+            }
+            if (fuelFrom < 0) {
+                throw new IllegalStateException("no planks or logs to burn for " + count + " smelts - " + inventory.summary());
+            }
+            count = Math.min(count, (int) Math.floor((burnt + inventory.countAt(fuelFrom)) * Recipe.SMELTS_PER_PLANK));
+        }
         session.click(window, 0, from - Inventory.MAIN_FIRST + windowSlots, false);
         for (int i = 0; i < count; i++) {
             session.click(window, 0, FURNACE_IN, true);
         }
         session.click(window, 0, from - Inventory.MAIN_FIRST + windowSlots, false);
-        // Fuel: of the kind already burning, topped up - or what's there taken out first. One stack
-        // that covers it, planks or logs, which burn as long: live, a soldier with two kinds of
-        // planks, two of each, and ten logs gave up its smelts for want of three planks of a kind.
-        Optional<ItemSlot> burning = furnace[FURNACE_FUEL];
-        int fuel = Recipe.fuelFor(count) - burning.map(ItemSlot::count).orElse(0);
-        if (fuel <= 0) {
-            return count;
-        }
-        int planks = fuelSlot(burning.map(ItemSlot::itemId).orElse(-1), fuel);
-        if (planks < 0) {
-            if (burning.isPresent()) {
-                session.quickMove(window, 0, FURNACE_FUEL);
+        int fuel = Recipe.fuelFor(count) - burnt;
+        if (fuel > 0) {
+            session.click(window, 0, fuelFrom - Inventory.MAIN_FIRST + windowSlots, false);
+            for (int i = 0; i < fuel; i++) {
+                session.click(window, 0, FURNACE_FUEL, true);
             }
-            fuel = Recipe.fuelFor(count);
-            planks = fuelSlot(-1, fuel);
+            session.click(window, 0, fuelFrom - Inventory.MAIN_FIRST + windowSlots, false);
         }
-        if (planks < 0) {
-            throw new IllegalStateException("no stack of planks or logs to burn for " + count + " smelts - " + inventory.summary());
-        }
-        session.click(window, 0, planks - Inventory.MAIN_FIRST + windowSlots, false);
-        for (int i = 0; i < fuel; i++) {
-            session.click(window, 0, FURNACE_FUEL, true);
-        }
-        session.click(window, 0, planks - Inventory.MAIN_FIRST + windowSlots, false);
         return count;
+    }
+
+    /** The biggest stack of planks, or failing those of logs - of item {@code itemId}, unless -1 - or -1. */
+    private int biggestFuel(int itemId) {
+        int planks = biggest(ItemClass.PLANKS, itemId);
+        return planks >= 0 ? planks : biggest(ItemClass.LOG, itemId);
     }
 
     /**

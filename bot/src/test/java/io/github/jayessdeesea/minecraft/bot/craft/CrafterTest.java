@@ -73,6 +73,23 @@ class CrafterTest {
         assertEquals(4, server.count(ItemClass.COPPER_INGOT));
     }
 
+    /**
+     * With no one stack to burn for every smelt, as many as the biggest burns for go in, the rest
+     * after: live, a soldier with seven planks of two kinds gave up eight copper smelts.
+     */
+    @Test
+    void smeltsNoOneStackCanFuelGoInLoadByLoad() {
+        workshop();
+        server.give(9, FakeCraftingServer.itemOf(ItemClass.RAW_COPPER, 0), 8);
+        server.give(10, FakeCraftingServer.itemOf(ItemClass.PLANKS, 0), 4);
+        server.give(11, FakeCraftingServer.itemOf(ItemClass.PLANKS, 1), 3);
+
+        Outcome outcome = run(Map.of(Recipe.COPPER_INGOT, 8), t -> false, 6000);
+
+        assertEquals(Outcome.MADE, outcome, crafter.failure().orElse(""));
+        assertEquals(8, server.count(ItemClass.COPPER_INGOT));
+    }
+
     @Test
     void aFurnaceLeftLoadedAndColdIsBurnedFreeForTheTorches() {
         workshop();
