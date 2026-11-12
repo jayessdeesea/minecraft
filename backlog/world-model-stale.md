@@ -8,7 +8,7 @@ doctrine: FM 2-0 (intelligence: confirm what's reported)
 # The world model holds blocks the server no longer has
 
 ## Why
-Twice in one day the shared `ChunkCache` showed a block the server didn't (console probes,
+Three times in one day the shared `ChunkCache` showed a block the server didn't (console probes,
 `execute if block`), each in a chunk some soldier had loaded the whole time:
 - a chest at (-48, 69, 44) - air on the server; a soldier walked its loads to it and failed to
   open it six times running;
@@ -18,6 +18,9 @@ A chunk sent again now replaces the cached copy (architecture.md), which fixed n
 the chunks are never sent again while a soldier keeps them loaded. Block Update (0x08) and
 Section Blocks Update (0x56) are both decoded, and the only block the client writes itself is a
 pillar step's cobblestone (`SoldierRunner`, `takePlacement`).
+- ripe wheat at (-53, 63, 57) - air over farmland on the server (field109, within an hour of a
+  fresh start, so not a chunk kept from before): three farmers tried to harvest it 168 times,
+  most of that run's "harvests", the walk to it failing each time.
 
 ## Done when
 - The cause is found and a test shows it: which change the server made that the model missed.
