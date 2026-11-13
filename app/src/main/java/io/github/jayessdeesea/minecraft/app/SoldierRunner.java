@@ -1713,13 +1713,27 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // dirt from a borrow pit off its squad's side of the keep. Live, a builder sent to cut its
         // strip's top 15 blocks up carried one block of dirt - its steps had used the rest, and the
         // hilltop it dug was stone - and stood under it.
-        int side = share == 0 ? 1 : 0; // west for the first share, east for the second
-        int pitX = side == 1 ? Keep.MIN - Groundwork.BORROW_GAP - 3 : Keep.MAX + Groundwork.BORROW_GAP + 3;
+        // West for the first share, east for the second - and when its fetchers find nothing left there,
+        // the next side round: live, two builders spent a day at a pit dug out, "nothing left to gather".
+        long now = clockwork.millis();
+        boolean dugOut = keepFetching.stream().anyMatch(n -> hands.stream().anyMatch(h -> h.name().equals(n))
+                && now - gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE / 2) < PIT_MOVE_MILLIS
+                && gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE / 2) > keepPitMovedAt.getOrDefault(squad, Long.MIN_VALUE / 2));
+        if (dugOut) {
+            int moved = keepPitShift.merge(squad, 1, Integer::sum);
+            keepPitMovedAt.put(squad, now);
+            LOG.info("[{}] the keep's borrow pit is dug out - the next is off another side of the keep ({})", squad, moved);
+        }
+        int[] sidesInTurn = share == 0 ? new int[]{1, 3, 0, 2} : new int[]{0, 2, 1, 3};
+        int side = sidesInTurn[Math.floorMod(keepPitShift.getOrDefault(squad, 0), 4)];
+        int edge = Keep.MAX + Groundwork.BORROW_GAP + 3;
+        int pitX = side == 0 ? edge : side == 1 ? -edge : 0;
+        int pitZ = side == 2 ? edge : side == 3 ? -edge : 0;
         // Its surface, from high over the hill down: live, a guess at y=68 put the pit under a hill,
         // where no soil has an open top, and every builder's fetch found none all day.
-        Optional<BlockPos> pitGround = TerrainSurveyor.surface(world, pitX, 0, Keep.FLOOR + 60);
+        Optional<BlockPos> pitGround = TerrainSurveyor.surface(world, pitX, pitZ, Keep.FLOOR + 60);
         if (pitGround.isEmpty()) {
-            LOG.warn("[{}] no ground at x={} z=0 for the keep's borrow pit - its builders fetch no dirt", squad, pitX);
+            LOG.warn("[{}] no ground at x={} z={} for the keep's borrow pit - its builders fetch no dirt", squad, pitX, pitZ);
         }
         for (SoldierStatus h : hands) {
             if (!(orders.get(h.name()) instanceof Order.Dig) || pitGround.isEmpty()) {
@@ -1910,6 +1924,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Long> netSentAt = new ConcurrentHashMap<>();
     /** Each connected soldier's chat command line, by name. */
     private final Map<String, Consumer<String>> chatLines = new ConcurrentHashMap<>();
+
+    /** How recently a fetcher must have found nothing for its squad's pit to move on. */
+    static final long PIT_MOVE_MILLIS = 60_000;
+    /** How many times each squad's keep borrow pit has moved on, and when it last did - squad loop only. */
+    private final Map<String, Integer> keepPitShift = new ConcurrentHashMap<>();
+    private final Map<String, Long> keepPitMovedAt = new ConcurrentHashMap<>();
 
     /** Builders on the keep fetching dirt to climb on - squad loop only. */
     private final Set<String> keepFetching = ConcurrentHashMap.newKeySet();

@@ -1107,7 +1107,8 @@ next; and with nothing on the ground in reach, it cuts the top layer from the ai
 builds a dirt pillar up to (`Pathfinder` offers pillar steps in open air under a goal overhead).
 The pillar is dirt in its strip, so it's the next top layer, dug back down from on top of it. A
 builder carrying fewer than 4 blocks to climb on fetches a load of 32 dirt from a borrow pit off
-its squad's side of the keep first: live, one with a single block stood all day 15 under its
+its squad's side of the keep first - on the ground's surface there, found from above - and when
+its fetchers find nothing left, the squad's next pit is off another side, round the keep in turn: live, one with a single block stood all day 15 under its
 strip's top, the hilltop it dug being stone. And one stranded up a pillar of its own - called off
 it, say, to feed itself - digs it down from on top (`Recovery`, `Stairway.pillarUnder`), its
 episode held until it's at the pillar's foot. The register follows the keep's dig and fill by

@@ -2230,6 +2230,32 @@ class SquadSimulationTest {
         assertTrue(said.contains("y=" + (GROUND + 1)), said);
     }
 
+    /**
+     * With nothing to dig at its borrow pit, a builder's next pit is off another side of the keep:
+     * live, two spent a day at a pit dug out, "nothing left to gather".
+     */
+    @Test
+    void aBuildersDirtComesFromAnotherSideWhenItsPitHasNone() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 10 ? SimServer.GLASS
+                : x < 0 && y <= GROUND && y > -64 ? SimServer.STONE // west, as far as a fetch there looks: rock, no soil
+                : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64})))
+                .run();
+
+        clock.advance(8 * 60_000);
+
+        assertEquals(SimServer.AIR, server.block(3, GROUND + 10, 3), "the glass, from a pillar of dirt from another side; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+    }
+
     /** Food first: a soldier with no rations is left off the keep, to feed itself - its mound left standing. */
     @Test
     void aStarvingSoldierIsLeftOffTheKeepToFeedItself() {
