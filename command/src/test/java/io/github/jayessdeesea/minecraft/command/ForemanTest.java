@@ -44,6 +44,32 @@ class ForemanTest {
                 "the spire down: both cleared on down");
     }
 
+    /**
+     * A spire inside a strip, away from its edges, holds back no one but its own builder: its
+     * neighbour is held only to the edge it faces. Live, held to its neighbours' highest ground
+     * anywhere, every builder but one stood waiting.
+     */
+    @Test
+    void aSpireInsideAStripHoldsBackOnlyItsOwnBuilder() {
+        Foreman foreman = new Foreman();
+        // A's top, 103, in its middle; its east edge, facing B, at 70.
+        foreman.heard("A", new Foreman.Top(103, 70, 70, 70, 70));
+        foreman.heard("B", new Foreman.Top(70));
+        foreman.heard("C", new Foreman.Top(70));
+
+        Map<String, Foreman.Clear> clear = foreman.decide(strips());
+
+        assertEquals(new Foreman.Clear(102), clear.get("A"));
+        assertEquals(new Foreman.Clear(69), clear.get("B"), "held only to A's edge facing it");
+    }
+
+    @Test
+    void itsLinesWithEdgesAreReadAsTheyreSaid() {
+        Foreman.Top top = new Foreman.Top(89, 85, Foreman.NONE, 89, 84);
+        assertEquals("KEEP TOP 89 EDGES 85 NONE 89 84", top.text());
+        assertEquals(Optional.of(top), Foreman.parse(top.text()));
+    }
+
     /** A builder beside one that hasn't said its top waits on it: that ground isn't known. */
     @Test
     void aBuilderBesideOneNotHeardFromWaits() {

@@ -1779,7 +1779,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             tops.put(e.getKey(), t);
             if (chief != null) {
-                reporters.computeIfAbsent(e.getKey(), n -> new Foreman.Reporter()).report(t, now)
+                Foreman.Top said = new Foreman.Top(t, edgeTop(top, b.minX(), b.minX(), b.minZ(), b.maxZ()),
+                        edgeTop(top, b.maxX(), b.maxX(), b.minZ(), b.maxZ()), edgeTop(top, b.minX(), b.maxX(), b.minZ(), b.minZ()),
+                        edgeTop(top, b.minX(), b.maxX(), b.maxZ(), b.maxZ()));
+                reporters.computeIfAbsent(e.getKey(), n -> new Foreman.Reporter()).report(said, now)
                         .ifPresent(line -> say(e.getKey(), chief, line));
             }
         }
@@ -1803,6 +1806,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         return orders;
+    }
+
+    /** The highest ground left in the columns from ({@code x0}, {@code z0}) to ({@code x1}, {@code z1}): an edge of a strip. */
+    private static int edgeTop(java.util.function.IntBinaryOperator top, int x0, int x1, int z0, int z1) {
+        int t = Foreman.NONE;
+        for (int x = x0; x <= x1; x++) {
+            for (int z = z0; z <= z1; z++) {
+                t = Math.max(t, top.applyAsInt(x, z));
+            }
+        }
+        return t;
     }
 
     /** {@code from} says {@code line} to {@code to}: on the net, a line a second at most from each sender - or to itself, at once. */

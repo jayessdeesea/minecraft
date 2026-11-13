@@ -1086,16 +1086,19 @@ the sky over it cleared to the top of the world, top down, as ground is dug only
 Level by level, strip by strip, paced by the keep's foreman (`command.Foreman`, operator
 2026-11-13): one soldier the squad leader appoints - the first builder of the first squad on the
 keep, again whenever that one is off it - who runs the flattening over the net, point to point
-(`/msg`). Each builder says its strip's top to the foreman ("KEEP TOP 88") when it changes, and
-every 30 seconds in case a line was lost; the foreman clears each builder to a floor ("KEEP CLEAR TO
-87") a step under the highest top heard in and beside its strip, the other squad's strips across
-the seam counted (`Keep.LAYER_WINDOW`), and says it again only when the floor moves. A builder
+(`/msg`). Each builder says its strip's top and the highest ground along each of its edges to the
+foreman ("KEEP TOP 89 EDGES 85 87 89 84", west, east, north, south) when they change, and every 30
+seconds in case a line was lost; the foreman clears each builder to a floor ("KEEP CLEAR TO 88") a
+step under its own top and under each neighbour's edge facing it, the other squad's strips across
+the seam counted (`Keep.LAYER_WINDOW`), and says it again only when the floor moves - live, held to
+its neighbours' highest ground anywhere, every builder but the one with the keep's top block
+stood waiting. A builder
 digs only once cleared, and only down to its floor, so neighbouring strips stay within a step of
 each other - a soldier steps up one block, and a two-block edge is a wall to it - and the site
 comes down as a terrace a soldier walks, not pits and towers. The foreman decides only from what
 it's been told; each builder's top is its own strip's, from the world. A sender says a line a
 second at most: the server cuts off a connection that chats faster. The log reads
-"[Keep] Bob -> Alice: KEEP TOP 88". A spire holds back only the
+"[Keep] Bob -> Alice: KEEP TOP 88 EDGES 86 88 87 85". A spire holds back only the
 strips beside it - live, one spire at y=103 set a keep-wide layer, and a whole squad stood idle
 under it - and a builder not yet cleared, or with nothing over its floor, is free for other work. The log reads "the
 keep: N blocks to dig, its top y=T, the keep's y=K". A builder stands only in its own strip's columns, a neighbour working the
