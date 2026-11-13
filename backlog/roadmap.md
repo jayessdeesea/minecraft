@@ -102,8 +102,8 @@ In the order the timetable meets them:
 - **Decided (operator):** friendly fire stays on, and kit is dropped at death (`pvp` and
   `keepInventory` at their defaults). Both are part of what the chain of command has to manage.
 - **Decided (operator):** the foothold is where the first night is made, here at (-48, 44). The
-  main base is later, at (0, 63, 0), flattened to sea level (backlog/cells.md), once there's the
-  shelter, food and tools to move that much ground.
+  main base is later, at the origin (its layout is backlog/cells.md), built while the foothold is
+  the temporary base.
 - **Decided (operator):** materials are traded off, not waited for. Armour from whatever metal
   there is, copper included. Stone tools over wooden ones. Scarce premium materials (diamond) go
   to armour and weapons before tools like hoes. The equipment ladder already ranks them this way

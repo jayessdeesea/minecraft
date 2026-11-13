@@ -14,6 +14,27 @@ boundaries into cells, each levelled, fenced, gated and lit, with open sky over 
 them. Monsters don't spawn on the lit ground, and any that do burn at dawn. The camp grows by
 adding cells outward.
 
+## The main base (decided, operator 2026-11-12)
+- **The keep is a raised platform**: chunks (-1,-1) to (0,0), x and z from -16 to 15, centred on
+  the origin. Solid cobblestone from y=64 to 67, all four layers - cobblestone because endermen
+  can't take it - standing on ground at y=63, so its floor is walked at feet y=68. Nothing over it:
+  the sky above it is cleared.
+- **Its edge is the wall.** A 4-block lip that zombies, skeletons and creepers can't climb; a
+  fence along it against spiders. Ramps down to the fields, a gate at the top of each. Lit, like
+  any cell, so nothing spawns on it.
+- **The fields round it are at sea level**: ground top y=63, walked at feet 64, fenced and gated on
+  the chunk boundaries. Farmland there needs water carried in - buckets and a two-by-two source -
+  since levelled ground has none.
+- **The height is the plan's, never measured.** A site plan gives each column its target - cut
+  above, fill below, the material of each layer - and the difference from the world is the work.
+- **Before committing to the origin, survey it** from the heightmaps in the chunk data: the cut
+  and fill it costs, reported to the general.
+- **Built while the foothold at (-48, 44) stands as the temporary base**, and moved into once
+  the keep has shelter and the stockpile. Order: the keep (shelter, chests, furnaces); one chunk
+  of fields with water; then the ring of 12 chunks round the keep, from the ramps outward.
+- Cost: 4,096 cobblestone for the keep alone, against 385 in the stockpile today - so the mine's
+  spoil is its supply.
+
 ## Design sketch
 - **Cells are chunk-aligned.** Fences run along chunk boundaries, the unit the server loads and
   the chunk cache keys on. A cell is one chunk or a block of them. The cell at the camp's centre is
@@ -23,10 +44,10 @@ adding cells outward.
   keeps every floor cell above block light 0, the only light monsters spawn at.
 - **The moat:** the lit, open ground between and round the cells, under clear sky, so anything
   that does spawn in the night burns at dawn. Nothing is built over it.
-- **Level, slightly above sea level.** Ground flattened to one height just above y=63, the sea: cut high ground, fill low ground
-  with what was cut. That makes the moat easy to keep open and the ground easy to walk.
+- **Level at the plan's height.** The fields at sea level, the keep raised on its platform (above):
+  cut high ground, fill low ground. That makes the moat easy to keep open and the ground easy to walk.
 - **Fenced and gated:** fence on each cell's edges, with a fence gate on each side that has a
-  neighbouring cell. Spiders still climb fences, so the keep keeps its wall.
+  neighbouring cell. Spiders still climb fences; the keep's lip is its wall.
 - **A purpose for each cell:** keep, barracks (beds), farm, pumpkins and melons, a pen (sheep for
   wool and beds, cows for food), tree farm, mine head. The general picks the purpose and the
   style; the cell is a blueprint the engineer lays out and inspects (backlog/echelon-contracts.md).
@@ -39,8 +60,7 @@ adding cells outward.
 - **Wood** is the bottleneck. 64 fence posts round a chunk, at 3 fences per 4 planks and 2 sticks,
   is about 30 logs a cell. The tree farm (§ 12) has to supply it.
 - **Torches:** coal or charcoal.
-- **Levelling** to y=63 on uneven ground can be thousands of blocks a chunk. The ground by the
-  water is closest to it.
+- **Levelling** to the plan's heights on uneven ground can be thousands of blocks a chunk.
 - At the main base it replaces the ring wall as FORTIFY's work. The foothold keeps its wall.
 
 ## Done when
@@ -56,8 +76,8 @@ adding cells outward.
   inspected like the wall, and a crater (a creeper's) is filled and paved again. Sizes: a
   foothold minimal, while the squads arm and armour; an outpost one chunk, 16x16, fenced and gated
   on the chunk's boundary with a light moat round it; the main base the same, 2x2 chunks.
-  Height: sea level, y=63, unless there's a practical reason not to - a mountain, a valley, a
-  village to keep. Measured so far: the walks from the camp's centre to its sites
+  Height: the main base's is set above; an outpost's sea level, y=63, unless there's a practical
+  reason not to - a mountain, a valley, a village to keep. Measured so far: the walks from the camp's centre to its sites
   (`RouteEffort`, docs/military-doctrine.md § 17).
 - **Direction (operator, 2026-11-12): the base is flattened to one height slightly above sea
   level**, set by the plan, not by the local terrain: the nearby chunks all flattened to it,
@@ -77,9 +97,6 @@ adding cells outward.
   structures, its kept mine, every staircase being cut, the columns round each mine head), not a
   list of the inspection's own. Left: a mine away from the camp is kept on disk only while it's the
   camp's - after a restart, another's cells aren't protected; a mine head in any cell has to be.
-- **Decided (operator):** the cells are the main base, at (0, 63, 0) within 100 blocks each way,
-  flattened to sea level - built once the foothold at (-48, 44) has the shelter, food and tools
-  to move that much ground (backlog/roadmap.md).
 - **Expected (operator, 2026-11-08): the foothold gets the same treatment, smaller.** Fences, clear
   sky and flatter ground at the camp: clear sky so the zombies left at dawn burn, flat ground so
   the squads see across it. FORTIFY digs everything over the camp's ground inside the wall line -
