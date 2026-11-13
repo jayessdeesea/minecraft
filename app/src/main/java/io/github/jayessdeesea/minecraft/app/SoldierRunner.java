@@ -1371,6 +1371,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 keepWorkshop = keep;
             }
+            // The camp's too, if no squad there has sited it since a restart: its chest is the common
+            // stockpile a keep builder draws from until the keep's own chest stands. Live, both squads
+            // on the keep left it unsited, and with it every draw.
+            if (campWorkshop == null && campGround != null) {
+                Workshop camp = Workshop.hasty(world, campGround, new HashSet<>(treeClaims)).orElse(null);
+                if (camp != null) {
+                    LOG.info("[{}] the camp's workshop, for its stockpile: stand {}, chest {}", squad, camp.stand(), camp.chest());
+                }
+                campWorkshop = camp;
+            }
             state.workshop = keep;
             state.workshopFor = null;
             return;
