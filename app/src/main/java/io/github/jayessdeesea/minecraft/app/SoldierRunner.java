@@ -519,8 +519,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // The camp's ground found once and kept: found again from where the squads are, it moves
         // onto a hut roof one time and back the next, and every measure moves with it.
         if (campGround == null) {
-            double[] heights = everyone.stream().mapToDouble(s -> s.position().y()).sorted().toArray();
-            campGround = typicalGround(camp[0], camp[1], (int) Math.floor(heights[heights.length / 2])).orElse(null);
+            // Near the surface, found from above, not near where the squads are: live, restarted at
+            // night with every soldier down the mine, the camp's ground was read off a cave floor at
+            // y=28, and the camp's workshop sited there with no chest.
+            int[] surfaces = IntStream.rangeClosed(-WALL_RADIUS, WALL_RADIUS).boxed()
+                    .flatMap(dx -> IntStream.rangeClosed(-WALL_RADIUS, WALL_RADIUS)
+                            .mapToObj(dz -> TerrainSurveyor.surface(world, camp[0] + dx, camp[1] + dz, Keep.SKY_TOP)))
+                    .flatMap(Optional::stream).mapToInt(BlockPos::y).sorted().toArray();
+            if (surfaces.length == 0) {
+                return Optional.empty();
+            }
+            campGround = typicalGround(camp[0], camp[1], surfaces[surfaces.length / 2]).orElse(null);
             if (campGround == null) {
                 return Optional.empty();
             }

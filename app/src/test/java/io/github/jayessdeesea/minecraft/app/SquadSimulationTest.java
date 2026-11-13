@@ -2203,6 +2203,33 @@ class SquadSimulationTest {
         assertEquals(SimServer.AIR, server.block(-5, GROUND + 2, -5), "and the other");
     }
 
+    /**
+     * The camp's ground is its surface, whoever is wherever: live, restarted at night with every
+     * soldier down the mine, it was read off a cave floor at y=28.
+     */
+    @Test
+    void theCampsGroundIsItsSurfaceThoughTheSquadIsDownACaveUnderIt() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> Math.abs(x) <= 6 && Math.abs(z) <= 6 && y >= 28 && y <= 31 ? SimServer.AIR
+                : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, 28, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(30_000);
+
+        String said = Files.readAllLines(Path.of("target/sim/theCampsGroundIsItsSurfaceThoughTheSquadIsDownACaveUnderIt.log")).stream()
+                .filter(l -> l.contains("the camp's ground is")).findFirst().orElseThrow(() -> new AssertionError("no camp's ground"));
+        assertTrue(said.contains("y=" + (GROUND + 1)), said);
+    }
+
     /** Food first: a soldier with no rations is left off the keep, to feed itself - its mound left standing. */
     @Test
     void aStarvingSoldierIsLeftOffTheKeepToFeedItself() {
