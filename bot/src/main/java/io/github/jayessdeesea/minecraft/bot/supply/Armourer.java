@@ -350,7 +350,7 @@ public final class Armourer {
                 return;
             }
             LOG.info("{} goes to dig {} for {} - {} short - at {}", name, target, describe(making), count, spot.get().block());
-            digger = new Digger(name, session, inventory, claims, spot.get());
+            digger = new Digger(name, session, inventory, claims, spot.get(), Digger.walkTicks(soldier, spot.get().stand()));
         }
         switch (digger.tick(soldier, world)) {
             case Digger.Progress.Working _ -> {

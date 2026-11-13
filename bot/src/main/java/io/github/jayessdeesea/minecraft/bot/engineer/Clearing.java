@@ -193,7 +193,7 @@ public final class Clearing {
             if (HEIGHT_WEIGHT * (order(world, block) - lowest) > bestScore) {
                 break;
             }
-            Optional<BlockPos> stand = canStandHere && !here.offset(0, -1, 0).equals(block) && reach(here, block) <= REACH
+            Optional<BlockPos> stand = canStandHere && safeFrom(world, here, block) && reach(here, block) <= REACH
                     ? Optional.of(here) : standFor(world, block, excluded, reach);
             if (stand.isEmpty()) {
                 continue;
@@ -229,7 +229,7 @@ public final class Clearing {
                 for (int dy = -(int) Math.ceil(REACH + EYES); dy <= 1; dy++) {
                     BlockPos stand = block.offset(dx, dy, dz);
                     // On the ground, not on the tree: never on the log being cut, nor up in a canopy.
-                    if (excluded.contains(stand) || !Pathfinder.standable(world, stand) || !reach.test(stand) || stand.offset(0, -1, 0).equals(block)
+                    if (excluded.contains(stand) || !Pathfinder.standable(world, stand) || !reach.test(stand) || !safeFrom(world, stand, block)
                             || world.isLog(stand.x(), stand.y() - 1, stand.z()) || world.leaves(stand.x(), stand.y() - 1, stand.z()).isPresent()) {
                         continue;
                     }
@@ -242,6 +242,25 @@ public final class Clearing {
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    /**
+     * Whether {@code block} is safe to dig from {@code stand} (operator, 2026-11-13: dig toward what's
+     * known). Straight down - the block it stands on - only onto known ground: solid under it, and no
+     * water or lava, so the drop is one block. Straight up - its own column overhead - only with
+     * nothing over the block that falls: sand or gravel would come down on its head. To the side
+     * always: what's beside it the world knows, and a cut that would let water in is never made.
+     */
+    static boolean safeFrom(WorldView world, BlockPos stand, BlockPos block) {
+        if (stand.x() != block.x() || stand.z() != block.z()) {
+            return true;
+        }
+        if (block.y() == stand.y() - 1) {
+            // Never the tree it stands on: a log or leaves is cut from the ground beside it.
+            boolean tree = world.isLog(block.x(), block.y(), block.z()) || world.leaves(block.x(), block.y(), block.z()).isPresent();
+            return !tree && world.isSolid(block.x(), block.y() - 1, block.z()) && !world.isHazard(block.x(), block.y() - 1, block.z());
+        }
+        return block.y() > stand.y() && !world.falls(block.x(), block.y() + 1, block.z());
     }
 
     /** From the eyes of a soldier standing in {@code stand} to the nearest point of {@code block}. */

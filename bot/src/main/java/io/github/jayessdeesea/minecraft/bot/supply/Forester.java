@@ -134,7 +134,7 @@ public final class Forester {
             fail("no sapling, and no leaves within " + Digger.SEARCH_RADIUS + " blocks to get one from");
             return;
         }
-        digger = new Digger(name, session, inventory, claims, leaves.get());
+        digger = new Digger(name, session, inventory, claims, leaves.get(), Digger.walkTicks(soldier, leaves.get().stand()));
     }
 
     /** The slot of a sapling to plant: a spruce one if carried, any other if not. */

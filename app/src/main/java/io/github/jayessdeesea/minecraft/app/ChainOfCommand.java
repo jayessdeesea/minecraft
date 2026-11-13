@@ -206,23 +206,20 @@ public class ChainOfCommand implements DisposableBean {
                 || squad.soldiers().isEmpty()) {
             return objective;
         }
-        // The night isn't wasted: one squad holds the camp, and the rest go down the camp's mine -
+        // The night isn't wasted: every squad goes down the camp's mine (operator, 2026-11-13) -
         // whatever the general orders, a patrol base included: seeing the squad out of one, it
-        // ordered one two minutes into the shift.
+        // ordered one two minutes into the shift. Its shift ends in time to climb out at sunrise.
         Optional<Objective> nightShift = nightShift(squad.squadName());
+        if (nightShift.isPresent() && surfacing()) {
+            return objective;
+        }
         if (nightShift.isPresent() && objective.equals(nightShift.get())) {
             return objective;
         }
-        // Near the camp, the night's base is in it, behind its wall and in its light - not where the
-        // point man stands: live, a squad on the wall's last block at dusk built its hut five blocks
-        // down outside the wall, and skeletons killed all four as they built it.
+        // With no camp to go down the mine of, a squad already sealed in is the one most to keep there,
+        // and a base the general orders is the night's.
         Position at = squad.soldiers().getFirst().position();
-        Optional<Position> camp = Optional.ofNullable(foothold).map(Foothold::camp)
-                .filter(c -> Math.hypot(c.x() - at.x(), c.z() - at.z()) <= CAMP_SHELTER_RANGE);
-        // A squad already sealed in is the one most to keep there: an order out of it is no exception.
-        // Nor a base the general orders, unless it's outside the camp a squad not yet sealed in is near.
-        if (nightShift.isEmpty() && objective.patrolBase() && (squad.holdingBase() || camp.isEmpty()
-                || Math.hypot(objective.location().x() - camp.get().x(), objective.location().z() - camp.get().z()) <= CAMP_WALL_RADIUS)) {
+        if (nightShift.isEmpty() && objective.patrolBase()) {
             return objective;
         }
         if (nightShift.isPresent()) {
@@ -238,12 +235,9 @@ public class ChainOfCommand implements DisposableBean {
                     squad.squadName(), objective.mission(), objective.task());
             return standing.get();
         }
-        Objective shelter = grounded(camp.map(c -> new Objective("Build a patrol base in the camp and spend the night in it",
-                        new Position(Math.floor(c.x()), c.y(), Math.floor(c.z())), "Squad safe from monsters until dawn, behind the camp's wall",
-                        new Objective.Task.PatrolBase()))
-                .orElse(new Objective("Build a patrol base where you stand and spend the night in it",
-                        new Position(Math.floor(at.x()), at.y(), Math.floor(at.z())), "Squad safe from monsters until dawn",
-                        new Objective.Task.PatrolBase())), squad.soldiers());
+        Objective shelter = grounded(new Objective("Build a patrol base where you stand and spend the night in it",
+                new Position(Math.floor(at.x()), at.y(), Math.floor(at.z())), "Squad safe from monsters until dawn",
+                new Objective.Task.PatrolBase()), squad.soldiers());
         LOG.warn("[General -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule shelters it instead, at {}",
                 squad.squadName(), objective.mission(), objective.task(), at(shelter.location()));
         return shelter;
@@ -263,7 +257,7 @@ public class ChainOfCommand implements DisposableBean {
      * night's rule, which still comes first at dusk.
      */
     Objective byDay(Objective objective, SquadStatus squad) {
-        if (!keepByDay || time == null || time.dark() || sheltering() || objective.task() instanceof Objective.Task.Keep) {
+        if (!keepByDay || time == null || (time.dark() || sheltering()) && !surfacing() || objective.task() instanceof Objective.Task.Keep) {
             return objective;
         }
         Objective keep = new Objective("Build the main base's keep: flatten the ground at the origin and lay its slab",
@@ -273,10 +267,18 @@ public class ChainOfCommand implements DisposableBean {
         return keep;
     }
 
-    /** How near the camp a squad at dusk shelters in it, rather than where it stands. */
-    static final double CAMP_SHELTER_RANGE = 48;
-    /** How far out from the camp's centre its wall stands: a base within it is in the camp. */
-    static final double CAMP_WALL_RADIUS = 8;
+    /**
+     * How long before sunrise the night shift ends: the climb out of the mine at y=16 and the walk
+     * to the day's work, about 30 seconds - so the squads come out as the sun burns the undead off
+     * the surface (operator, 2026-11-13: come up right before dawn).
+     */
+    static final long SURFACE_LEAD_TICKS = 600;
+
+    /** Whether the night shift is climbing out: dark, and sunrise within {@link #SURFACE_LEAD_TICKS}. */
+    boolean surfacing() {
+        TimeOfDay now = time;
+        return now != null && now.dark() && now.ticksUntilLight() <= SURFACE_LEAD_TICKS;
+    }
 
     /** Where the camp's mine is cut, from the camp's centre: inside its wall, clear of the huts. */
     static final int MINE_HEAD_DX = 4;
@@ -285,12 +287,12 @@ public class ChainOfCommand implements DisposableBean {
     static final int MINE_DEPTH = 16;
 
     /**
-     * The night's work for {@code squad} at the camp's mine - for every squad but the first, which
-     * holds the camp - or empty for the first, or with no camp measured yet.
+     * The night's work for {@code squad} at the camp's mine - every squad's, its stairs shared
+     * (operator, 2026-11-13: both squads work the mine at night) - or empty with no camp measured yet.
      */
     Optional<Objective> nightShift(String squad) {
         Foothold camp = foothold;
-        if (camp == null || squads.isEmpty() || squads.keySet().iterator().next().equals(squad)) {
+        if (camp == null || squads.isEmpty()) {
             return Optional.empty();
         }
         Position c = camp.camp();

@@ -95,6 +95,11 @@ public interface WorldView {
         return false;
     }
 
+    /** Whether the block falls into a hole dug under it: sand, gravel - what's never dug from under it. */
+    default boolean falls(int x, int y, int z) {
+        return isGravel(x, y, z);
+    }
+
     /** Whether the block is ore of any kind: coal, iron, copper, gold, redstone, lapis, emerald, diamond. */
     default boolean isOre(int x, int y, int z) {
         return false;

@@ -77,6 +77,7 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
 - Climb ladders or vines, or step over a fence.
 - Build steps toward an objective beyond one search (about 4000 cells). It builds only when the
   route it plans reaches.
-- Dig straight down, or tunnel, except as the staircase routine does.
+- Dig straight down, but for the block it stands on with known ground a block under it - its own
+  pillar - or straight up under a block that falls. Nor tunnel, except as the staircase routine does.
 - Open doors or gates.
 - Decide what to work on. That comes from its squad's task (see [routines.md](routines.md)).

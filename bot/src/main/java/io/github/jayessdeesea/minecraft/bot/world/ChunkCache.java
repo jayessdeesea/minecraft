@@ -195,6 +195,12 @@ public final class ChunkCache {
         return BlockClassRegistry.isGravel(rawStateIdAt(x, y, z));
     }
 
+    /** Whether the block falls - grit: sand, gravel. Unknown blocks don't. */
+    public boolean falls(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.GRIT;
+    }
+
     /** Whether the block is ore of any kind - unknown blocks aren't. */
     public boolean isOre(int x, int y, int z) {
         return BlockClassRegistry.isOre(rawStateIdAt(x, y, z));

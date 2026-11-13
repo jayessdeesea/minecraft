@@ -297,7 +297,7 @@ public final class Farmer {
                 fail("no seeds, and no grass within " + SEEDS_RADIUS + " blocks to find them in");
                 return;
             }
-            digger = new Digger(name, session, inventory, claims, grass.get());
+            digger = new Digger(name, session, inventory, claims, grass.get(), Digger.walkTicks(soldier, grass.get().stand()));
         }
     }
 

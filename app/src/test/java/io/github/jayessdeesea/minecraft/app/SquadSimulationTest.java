@@ -2319,20 +2319,20 @@ class SquadSimulationTest {
     }
 
     /**
-     * At dusk the squad shelters in the camp - but not over its workshop. Live, the night's hut at
-     * the camp's centre sealed the workshop's chest inside it, and the miners stood all night unable
-     * to put their loads away.
+     * A patrol base in the camp is sited off its workshop. Live, the night's hut at the camp's
+     * centre sealed the workshop's chest inside it, and the miners stood all night unable to put
+     * their loads away.
      */
     @Test
     void theNightsBaseInTheCampLeavesItsWorkshopClear() {
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 12_300); // just before dusk
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
-                new Objective.Task.None())), squadLeader(camp),
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build a patrol base in the camp", camp, "Safe",
+                new Objective.Task.PatrolBase())), squadLeader(camp),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, true, clock);
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
                 .simulated(clock, server.connector(new PlayerPosition(4.5, GROUND + 1, 9.5), List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},

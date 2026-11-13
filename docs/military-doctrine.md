@@ -702,8 +702,8 @@ squad holds its sealed base, its squad leader isn't asked to decide anything and
 InPosition. From inside a sealed hut no ground is reachable, which would otherwise read upward as
 CANTCO.
 
-Where the operator sets it, no squad spends the night in the open: one holds the camp in its
-patrol base and the rest work the night shift down the camp's mine. The rule and its timing are in
+Where the operator sets it, no squad spends the night in the open: every squad works the night
+shift down the camp's mine, and comes up as the sun does. The rule and its timing are in
 docs/echelons/general/operator-rules.md.
 
 The base is lit as well as sealed. Light is checked alongside breaches (`PatrolBase.Plan.unlit`):
@@ -893,7 +893,11 @@ reach, or whose stand it doesn't get to within 20 seconds, is skipped for the ne
 is filled too, its water the floor: capped from the rim, since nobody stands in water to fill it
 from below - live, the camp's mine shaft flooded with soldiers afloat in it. And no dig breaks
 ground with water or lava beside or above it (`Clearing.letsInWater`, for every dig): opened, the
-water flows into the hole, which is how that shaft was flooded. Progress reads "N cells under the
+water flows into the hole, which is how that shaft was flooded. A dig goes toward what's known
+(`Clearing.safeFrom`, operator 2026-11-13): to the side always; the block a soldier stands on only
+with solid ground a block under it, so the drop is one block - its own pillar comes down that way;
+the block over its head only with nothing over that to fall, sand or gravel. The world's chunk data
+is what's known: every block of a loaded chunk, water and lava included, is seen before a cut. Progress reads "N cells under the
 camp's ground to fill". Live, a pit 13 deep under the east wall line left 42 wall cells nothing to
 stand on.
 

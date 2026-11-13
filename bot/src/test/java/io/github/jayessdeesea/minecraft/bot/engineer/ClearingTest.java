@@ -292,4 +292,49 @@ class ClearingTest {
 
         assertEquals(new BlockPos(3, 65, 3), cut.block());
     }
+
+    /** Solid in {@code solid}, gravel in {@code gravel} (which falls), nothing else. */
+    private static WorldView cells(Set<BlockPos> solid, Set<BlockPos> gravel) {
+        return new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos at = new BlockPos(x, y, z);
+                return solid.contains(at) || gravel.contains(at);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean isGravel(int x, int y, int z) {
+                return gravel.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    /**
+     * Dig toward what's known (operator, 2026-11-13): the block it stands on only onto solid ground
+     * a block down - its own pillar, dug back down - and the block over its head only with nothing
+     * over that to fall on it. To the side, always.
+     */
+    @Test
+    void itDigsStraightDownOnlyOntoKnownGroundAndStraightUpOnlyFromUnderNothingThatFalls() {
+        BlockPos stand = new BlockPos(0, 66, 0);
+        BlockPos under = new BlockPos(0, 65, 0);
+        assertTrue(Clearing.safeFrom(cells(Set.of(under, new BlockPos(0, 64, 0)), Set.of()), stand, under),
+                "its own pillar: ground a block under it");
+        assertTrue(!Clearing.safeFrom(cells(Set.of(under), Set.of()), stand, under), "open under it: a fall");
+
+        BlockPos over = new BlockPos(0, 68, 0);
+        assertTrue(Clearing.safeFrom(cells(Set.of(over), Set.of()), stand, over), "nothing over it");
+        assertTrue(!Clearing.safeFrom(cells(Set.of(over), Set.of(new BlockPos(0, 69, 0))), stand, over), "gravel over it would fall on its head");
+        assertTrue(Clearing.safeFrom(cells(Set.of(), Set.of(new BlockPos(1, 69, 0))), stand, new BlockPos(1, 68, 0)), "beside it: always");
+    }
 }

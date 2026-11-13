@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.command.Directive;
+import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Plan;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -86,6 +87,13 @@ class TaskOrganisationSimulationTest {
     /** As {@link #run(SimClock, SimServer.Terrain, String, String, List, String)}, from {@code timeOfDay}, sheltering by night or not. */
     private SimServer run(SimClock clock, SimServer.Terrain ground, String roles, String orders, List<int[]> more, String camp,
                           long timeOfDay, boolean shelterAtNight) {
+        return run(clock, ground, roles, orders, more, camp, timeOfDay, shelterAtNight,
+                new Objective("Hold the camp", CAMP, "A foothold", new Objective.Task.None()));
+    }
+
+    /** As {@link #run(SimClock, SimServer.Terrain, String, String, List, String, long, boolean)}, the general's {@code objective} given. */
+    private SimServer run(SimClock clock, SimServer.Terrain ground, String roles, String orders, List<int[]> more, String camp,
+                          long timeOfDay, boolean shelterAtNight, Objective objective) {
         List<int[]> kit = new ArrayList<>(List.of(
                 new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                 new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
@@ -93,8 +101,7 @@ class TaskOrganisationSimulationTest {
         kit.addAll(more);
         SimServer server = new SimServer(clock, ground, timeOfDay);
         Roster roster = new Roster("Alpha:Alice,Bob");
-        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", CAMP,
-                "A foothold", new Objective.Task.None())), squadLeader(roles, orders),
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> objective), squadLeader(roles, orders),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, shelterAtNight, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, camp, state.toString())
@@ -122,6 +129,21 @@ class TaskOrganisationSimulationTest {
     private static double fromCamp(SimServer server, String soldier) {
         PlayerPosition at = server.position(soldier);
         return Math.hypot(at.x() - CAMP.x(), at.z() - CAMP.z());
+    }
+
+    /**
+     * By day on the keep, a miner is one of its builders: the squads mine by night (operator,
+     * 2026-11-13). Live, a miner kept the camp alone all day while its squad dug the keep.
+     */
+    @Test
+    void aMinerOfASquadOnTheKeepBuildsTheKeepByDay() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, SquadSimulationTest::flat, MINER_ALICE, "[]", List.of(), "", 1000, false,
+                new Objective("Build the keep", Keep.CENTRE, "The main base's keep", new Objective.Task.Keep()));
+
+        clock.advance(3 * 60_000);
+
+        assertEquals(0, cutBelow(server), "no mine cut by day: its miner is on the keep");
     }
 
     /** The squad leader makes one soldier its miner: it cuts the mine at its site, and the other holds the camp. */

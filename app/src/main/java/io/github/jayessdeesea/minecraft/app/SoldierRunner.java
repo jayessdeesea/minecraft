@@ -1221,7 +1221,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // which shelters. Live, two farmers working farms 40 blocks out were shot by skeletons.
             Plan plan = planBook.of(names.get(i));
             boolean inForTheNight = chainOfCommand.sheltering() && plan.role() != Role.MINER && plan.current().isEmpty();
-            String unit = escorting || inForTheNight ? squad : plan.unit(squad, names.get(i));
+            // And by day on the keep, its miners are builders: the whole squad mines by night, so its
+            // mine has its shift. Live, a miner kept the camp alone all day while its squad dug the keep.
+            boolean minerOnTheKeep = !chainOfCommand.sheltering() && plan.role() == Role.MINER && plan.current().isEmpty()
+                    && taskOf(squad, Objective.Task.Keep.class).isPresent();
+            String unit = escorting || inForTheNight || minerOnTheKeep ? squad : plan.unit(squad, names.get(i));
             members.computeIfAbsent(unit, u -> new ArrayList<>()).add(i);
             String was = unitOf.put(names.get(i), unit);
             if (!unit.equals(was == null ? squad : was)) {
