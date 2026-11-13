@@ -1618,7 +1618,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             LOG.info("[{}] {}", squad, said);
             state.keepSaid = said;
         }
-        List<Tasking.Hand> crew = hands.stream().map(h -> new Tasking.Hand(h.name(),
+        // Food first: a builder below its food-first mark is left to its own feeding - the farm, the
+        // hunt, a squadmate's share - and comes back when it's fed. Live, with every soldier on the
+        // keep, the camp's farm went unkept and a builder worked the hilltop at food 1 with none.
+        List<Tasking.Hand> crew = hands.stream()
+                .filter(h -> h.condition().flatMap(c -> c.kit()).map(k -> !Subsistence.short_(k.rations())).orElse(true))
+                .map(h -> new Tasking.Hand(h.name(),
                 h.condition().flatMap(c -> c.kit()).map(Kit::stone).orElse(0))).toList();
         Map<String, Order> orders = new HashMap<>(Tasking.keep(crew, bounds(toDig),
                 toDig.isEmpty() ? bounds(toFill) : Optional.empty(), toDig.isEmpty() ? kept : digExcept));
@@ -1775,6 +1780,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             && o.task() instanceof Objective.Task.Gather(var r) ? "gather " + r
                     : patrolLegs.containsKey(n) ? "patrol" : null;
             if (task == null) {
+                continue;
+            }
+            // The keep's by the squad's share, not the soldier's own strip: a builder climbing to its
+            // strip's top puts its dirt steps in the strip, and live its own count rose as fast as it
+            // dug - read as stalled while the squad's share came down.
+            if (task.equals("dig the keep") || task.equals("fill the keep")) {
+                int shareLeft = task.equals("dig the keep") ? state.keepDigLeft : state.keepFillLeft;
+                on.put(n, new TaskRegister.Assignment(task, s.report(), shareLeft < 0 ? OptionalInt.empty() : OptionalInt.of(shareLeft)));
                 continue;
             }
             List<?> left = switch (task) {

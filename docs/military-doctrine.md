@@ -1070,7 +1070,9 @@ layers; then the slab, and any hollow open under it within 8 blocks, is filled i
 (`Tasking.keep`), each squad on it its own share of the site - west to east in the roster's order
 - and each of its soldiers a strip of that: the sky over it cleared to the top of the world, top
 down, as ground is dug only from an open top. The register follows the keep's dig and fill by
-their own names (`dig the keep`, `fill the keep`), measured by the squad's share. Its builders'
+their own names (`dig the keep`, `fill the keep`), each builder measured by its squad's share, not
+its own strip: the dirt steps it climbs on are in its strip too. Food first: a builder below its
+food-first mark (`Subsistence.FOOD_FIRST`) gets no keep work, and feeds itself first. Its builders'
 workshop and chest are the keep's own, one for every squad on it, off the slab's west edge
 (`Keep.DEPOT`), where nothing digs under them; a builder carries what it digs until its pack is
 nearly full before taking it there. Its cobblestone is the mine's: miners carry their loads to the stockpile, and a

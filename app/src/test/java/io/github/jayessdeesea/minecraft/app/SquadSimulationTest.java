@@ -2000,6 +2000,29 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
+    /** Food first: a soldier with no rations is left off the keep, to feed itself - its mound left standing. */
+    @Test
+    void aStarvingSoldierIsLeftOffTheKeepToFeedItself() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= 4 && x <= 5 && z >= 4 && z <= 5 && (y == GROUND + 1 || y == GROUND + 2)
+                ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1})))
+                .run();
+
+        clock.advance(4 * 60_000);
+
+        assertEquals(SimServer.DIRT, server.block(4, GROUND + 2, 4), "the mound dug by a starving soldier; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+    }
+
     /**
      * A soldier without a bed hunts sheep for their wool and makes one: three white wool over three
      * planks (backlog/rest-plan.md).
