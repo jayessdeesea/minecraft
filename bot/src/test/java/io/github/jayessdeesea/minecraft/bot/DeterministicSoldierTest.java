@@ -156,7 +156,7 @@ class DeterministicSoldierTest {
     void sprintsToAFarGoalAndWalksTheLastStretch() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
         alice.reportKit(RATIONED);
-        alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
+        alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW, true));
         alice.tick(terrain(false)); // plans
         double before = alice.status().position().x();
         alice.tick(terrain(false));
@@ -164,7 +164,7 @@ class DeterministicSoldierTest {
 
         DeterministicSoldier bob = new DeterministicSoldier("Bob", new Position(0.5, GROUND, 0.5));
         bob.reportKit(RATIONED);
-        bob.receiveOrder(new Order.MoveTo(-4.5, GROUND, 0.5, 1, 256, Risk.LOW));
+        bob.receiveOrder(new Order.MoveTo(-4.5, GROUND, 0.5, 1, 256, Risk.LOW, true));
         bob.tick(terrain(false));
         before = bob.status().position().x();
         bob.tick(terrain(false));
@@ -178,14 +178,14 @@ class DeterministicSoldierTest {
             new Kit(Optional.empty(), 0, 0, 0, 0, 0, 4);
 
     @Test
-    void aSoldierWithoutRationsWalksEvenFar() {
+    void aRoutineWalkIsWalkedEvenFarAndWithRations() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
-        alice.reportKit(new Kit(Optional.empty(), 0, 0, 0, 0, 0, 0));
+        alice.reportKit(RATIONED);
         alice.receiveOrder(new Order.MoveTo(-29.5, GROUND, 0.5, 1, 256, Risk.LOW));
         alice.tick(terrain(false));
         alice.tick(terrain(false));
 
-        assertTrue(!alice.sprinting(), "nothing to make the food up with");
+        assertTrue(!alice.sprinting(), "walking costs no food, sprinting 0.1 a metre: routine walks are walked");
     }
 
     @Test

@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.bot.engineer;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
+import io.github.jayessdeesea.minecraft.bot.world.Hardness;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Box;
 import io.github.jayessdeesea.minecraft.command.Cell;
@@ -34,6 +35,11 @@ public final class Clearing {
     static final int STAND_ACROSS = 3;
     /** A block one higher counts as this many blocks' walk further: the lowest goes first. */
     static final double HEIGHT_WEIGHT = 2;
+    /**
+     * The longest a block is given to break by hand, in ticks: deepslate and ore by hand take 300,
+     * obsidian 5,000 - a block slower than this isn't a clearing's; it's left, and what stands on it.
+     */
+    public static final int MAX_DIG_TICKS = 400;
 
     /** One block to cut: a log or leaves, and where to stand to reach it. */
     public record Cut(BlockPos block, BlockPos stand, boolean log) {
@@ -43,12 +49,12 @@ public final class Clearing {
     }
 
     /**
-     * What an {@code Order.Dig} of {@code box} digs: every log, leaf, soil, plain stone or gravel
-     * block in it but {@code except}, in the order it's dug - a tree's logs and leaves lowest first
-     * (cut-off leaves decay), the ground top down (soil is dug only from an open top). Anything else
-     * - cobblestone, a table, rock - is left for the soldier to report, and so is the ground under
-     * it or under a cell in {@code except}: it can't be dug from its top, and it's what that stands on.
-     * Live, a soldier tried soil under a hut's wall every tick, its digger finding no open top.
+     * What an {@code Order.Dig} of {@code box} digs: every block in it that {@link #diggable breaks}
+     * but {@code except}, in the order it's dug - a tree's logs and leaves lowest first (cut-off
+     * leaves decay), everything else top down (ground is dug only from an open top). What doesn't
+     * break - bedrock, a chest, a table, farmland - is left, and so is the ground under it or under a
+     * cell in {@code except}: it can't be dug from its top, and it's what that stands on. Live, a
+     * soldier tried soil under a hut's wall every tick, its digger finding no open top.
      */
     public static List<BlockPos> toClear(WorldView world, Box box,
                                          Set<Cell> except) {
@@ -108,18 +114,22 @@ public final class Clearing {
     }
 
     /**
-     * Whether a clear digs the block at (x, y, z): a tree's, the ground's, or cobblestone put down
-     * over it - old huts, pillar steps: a dig is over a camp's floor, and the floor is kept clear -
-     * never ground with water beside or over it, which would flow into the hole and the camp. The
-     * camp's kept structures are the caller's {@code except}.
+     * Whether a clear digs the block at (x, y, z): a tree's, or any solid block that breaks by hand
+     * inside {@link #MAX_DIG_TICKS} - soil, stone, sand, glass, planks, cobblestone put down over the
+     * ground (operator, 2026-11-13: most material can be dug by hand; a soldier is never stuck for
+     * the want of a list). Never a chest or a workstation, never farmland, and never ground with water
+     * beside or over it, which would flow into the hole. The camp's kept structures are the caller's
+     * {@code except}. Live, glass high over the keep was left standing, and every block under it with it.
      */
     public static boolean diggable(WorldView world, int x, int y, int z) {
         if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
             return true;
         }
-        return (world.isSoil(x, y, z) && !world.isFarmland(x, y, z) || world.isStone(x, y, z) || world.isGravel(x, y, z)
-                || world.isCobblestone(x, y, z))
-                && !letsInWater(world, new BlockPos(x, y, z));
+        boolean breaks = world.isSoil(x, y, z) && !world.isFarmland(x, y, z) || world.isStone(x, y, z) || world.isGravel(x, y, z)
+                || world.isCobblestone(x, y, z)
+                || world.isSolid(x, y, z) && !world.isFarmland(x, y, z) && world.workstation(x, y, z).isEmpty()
+                && world.hardness(x, y, z).filter(h -> h.ticks(Hardness.HAND) <= MAX_DIG_TICKS).isPresent();
+        return breaks && !letsInWater(world, new BlockPos(x, y, z));
     }
 
     /**

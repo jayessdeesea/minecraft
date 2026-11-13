@@ -48,9 +48,9 @@ public final class DeterministicSoldier implements Soldier {
      * Revisit if the server starts correcting reported positions (it would send Player Position). */
     private static final double STEP = 0.2;
     /**
-     * Sprinting, vanilla's 5.6 blocks/s: on a move to a goal more than {@link #SPRINT_DISTANCE} away by
-     * a soldier carrying rations, or whatever it carries when the time is worth the food - an urgent
-     * order, closing on a hostile it fights, moving under fire.
+     * Sprinting, vanilla's 5.6 blocks/s: only when the time is worth the food - an urgent move to a
+     * goal more than {@link #SPRINT_DISTANCE} away, closing on a hostile it fights, moving under fire.
+     * A routine walk is walked.
      */
     static final double SPRINT_STEP = 0.28;
     /** Far enough from its goal that a soldier sprints to catch up - a moving principal, a distant slot. */
@@ -891,11 +891,12 @@ public final class DeterministicSoldier implements Soldier {
             centreZ = waypoint.z() + 0.5;
         }
         boolean far = Math.hypot(goal.x() - position.x(), goal.z() - position.z()) > SPRINT_DISTANCE;
-        // The server charges for every metre. An ordinary move is worth that food only while there's
-        // food to make it up - rations carried; an urgent one, or one under fire, whatever it carries.
-        Kit carried = kit;
+        // The server charges sprinting 0.1 exhaustion a metre and walking nothing: a routine walk is
+        // walked, and only an urgent move, or one under fire, is run. Live, soldiers carrying rations
+        // sprinted every walk past eight blocks and ate eleven loaves a day each - about the farm's
+        // whole harvest (operator, 2026-11-13).
         boolean urgent = order instanceof Order.MoveTo move && move.urgent() || underFireTicks > 0;
-        sprinting = far && canSprint() && (urgent || carried != null && carried.rations() > 0);
+        sprinting = far && canSprint() && urgent;
         stepToward(world, centreX, centreZ, sprinting ? SPRINT_STEP : STEP);
     }
 

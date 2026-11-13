@@ -2000,6 +2000,36 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
+    /**
+     * Any block that breaks is the keep's to dig, not a list of ground: a pane of glass over a mound
+     * is dug, and the mound under it with it. Live, glass high over the keep stood, and every block
+     * under it was never counted - the dig takes ground only from an open top.
+     */
+    @Test
+    void glassOverTheKeepsSiteIsDugAndTheGroundUnderIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 4 && z == 4 && y == GROUND + 3 ? SimServer.GLASS
+                : x >= 4 && x <= 5 && z >= 4 && z <= 5 && (y == GROUND + 1 || y == GROUND + 2) ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(4 * 60_000);
+
+        assertEquals(SimServer.AIR, server.block(4, GROUND + 3, 4), "the glass; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+        assertEquals(SimServer.AIR, server.block(4, GROUND + 2, 4), "the mound under the glass; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+    }
+
     /** Food first: a soldier with no rations is left off the keep, to feed itself - its mound left standing. */
     @Test
     void aStarvingSoldierIsLeftOffTheKeepToFeedItself() {

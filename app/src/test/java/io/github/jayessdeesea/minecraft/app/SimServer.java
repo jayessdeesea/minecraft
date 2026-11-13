@@ -47,7 +47,7 @@ import java.util.stream.IntStream;
 final class SimServer {
 
     static final int AIR = 0, STONE = 1, GRASS = 9, DIRT = 10, COBBLESTONE = 14, BEDROCK = 88, WATER = 89,
-            IRON_ORE = 134, COAL_ORE = 136, TORCH = 4926, OAK_LOG = 140, CRAFTING_TABLE = 6866, FURNACE = 6884, CHEST = 5544;
+            IRON_ORE = 134, COAL_ORE = 136, GLASS = 661, TORCH = 4926, OAK_LOG = 140, CRAFTING_TABLE = 6866, FURNACE = 6884, CHEST = 5544;
     /** A chest's own slots, as vanilla's single chest. */
     static final int CHEST_SLOTS = 27;
     /** What each chest holds, by its cell's key. */
@@ -317,6 +317,7 @@ final class SimServer {
         boolean stonePick = held.filter(i -> i == ITEM_STONE_PICKAXE).isPresent();
         return switch (state) {
             case GRASS, DIRT -> Optional.of(ITEM_DIRT);
+            case GLASS -> Optional.empty(); // glass drops nothing without silk touch
             case STONE, COBBLESTONE -> pickaxe ? Optional.of(ITEM_COBBLESTONE) : Optional.empty();
             case COAL_ORE -> pickaxe ? Optional.of(ITEM_COAL) : Optional.empty();
             case IRON_ORE -> stonePick ? Optional.of(ITEM_RAW_IRON) : Optional.empty();

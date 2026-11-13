@@ -52,8 +52,8 @@ public final class Footing {
         // Dirt first: a step or a pillar is scaffolding, left behind or dug away, and cobblestone is
         // what a floor and a wall are made of (operator, 2026-11-12). Logs last: a soldier only plans
         // steps on them out of the water, with nothing else to build with.
-        ItemClass block = inventory.slotOf(ItemClass.COBBLESTONE) >= 0 ? ItemClass.COBBLESTONE
-                : inventory.slotOf(ItemClass.DIRT) >= 0 ? ItemClass.DIRT : ItemClass.LOG;
+        ItemClass block = inventory.slotOf(ItemClass.DIRT) >= 0 ? ItemClass.DIRT
+                : inventory.slotOf(ItemClass.COBBLESTONE) >= 0 ? ItemClass.COBBLESTONE : ItemClass.LOG;
         return place(cell, block, support) ? Optional.of(block) : Optional.empty();
     }
 

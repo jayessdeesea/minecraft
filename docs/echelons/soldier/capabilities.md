@@ -48,8 +48,8 @@ seconds or when stuck:
   Work it can't begin it does elsewhere, or says so at once: a farm ordered where there's no
   ground by water within 8 blocks is the camp's farm instead, logged why; with no camp's farm
   either, CANTCO "no ground to farm by water within 8 blocks of (x, y, z)".
-- **Sprints** on a long move (over 8 blocks) while it carries rations, or on an urgent order or
-  under fire, and never at food 6 or below.
+- **Sprints** only on an urgent move over 8 blocks, closing on a hostile, or under fire, and never
+  at food 6 or below. A routine walk is walked: walking costs no food, sprinting 0.1 exhaustion a metre.
 
 ## Fighting
 How it fights, measured, is in [military-doctrine.md § 8](../../military-doctrine.md#8-actions-on-contact-and-the-react-to-contact-drill).

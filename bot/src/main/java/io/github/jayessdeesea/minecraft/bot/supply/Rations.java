@@ -34,6 +34,12 @@ public final class Rations {
     static final int EAT_TICKS = 50;
     /** Before trying again after a meal that failed. */
     static final int COOLDOWN_TICKS = 200;
+    /**
+     * At this food or below a soldier eats though it's whole: a loaf is five, so eaten here none of it
+     * is lost over the top of the bar. Hurt, it eats below {@link Condition#REGENERATION_FOOD}, where
+     * health comes back - eaten at 17, two-fifths of a loaf would be thrown away.
+     */
+    public static final int EAT_AT = 15;
 
     private final String name;
     private final PlaySession session;
@@ -58,11 +64,11 @@ public final class Rations {
     }
 
     /**
-     * Each tick: starts a meal when {@code food} (the server's 0-20) is below the regeneration level
-     * and the soldier is {@code free} to stop; advances one under way. A meal interrupted - the
+     * Each tick: starts a meal when it {@link #wantsMeal wants one} and the soldier is {@code free} to
+     * stop; advances one under way. A meal interrupted - the
      * soldier no longer free - ends with the weapon back in hand and no backoff.
      */
-    public synchronized void tick(int food, boolean free, float yaw, float pitch) {
+    public synchronized void tick(int food, boolean hurt, boolean free, float yaw, float pitch) {
         this.food = food;
         this.free = free;
         this.yaw = yaw;
@@ -71,7 +77,7 @@ public final class Rations {
             cooldown--;
         }
         if (script == null) {
-            if (!free || cooldown > 0 || food >= Condition.REGENERATION_FOOD || inventory.slotOf(ItemClass.FOOD) < 0) {
+            if (!free || cooldown > 0 || !wantsMeal(food, hurt) || inventory.slotOf(ItemClass.FOOD) < 0) {
                 return;
             }
             script = meal(food);
@@ -89,6 +95,11 @@ public final class Rations {
                 finish(COOLDOWN_TICKS);
             }
         }
+    }
+
+    /** Whether a soldier at {@code food} eats: at {@link #EAT_AT} or below, or below the healing level when {@code hurt}. */
+    public static boolean wantsMeal(int food, boolean hurt) {
+        return food <= EAT_AT || hurt && food < Condition.REGENERATION_FOOD;
     }
 
     private Script meal(int foodBefore) {

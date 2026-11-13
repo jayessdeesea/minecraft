@@ -101,10 +101,11 @@ the chain of command's gap; one jumping in place is stuck.
 *How we use it:* each soldier's status is a SITREP (position, task, condition, and a CANTCO if
 any); contact with hostiles adds a SALUTE-shaped spot report. The condition is LACE-shaped
 (`command.Condition`): liquids is food, casualties is health and deaths, ammunition is the weapon
-in hand and arrows, equipment is armour worn (`command.Kit`). A soldier below food 18, the level
-health regenerates at, eats from its rations when it's out of contact and nothing else has its
-hands (`bot.supply.Rations`): the food goes into a hotbar slot without a weapon or tool, the server
-times the meal, and the weapon comes back to hand. Rations are the food items it carries, less
+in hand and arrows, equipment is armour worn (`command.Kit`). A soldier eats from its rations when
+it's out of contact and nothing else has its hands (`bot.supply.Rations`): at food 15 or below,
+where a loaf of five fits under the bar with nothing lost, or - hurt - below 18, the level health
+regenerates at. The food goes into a hotbar slot without a weapon or tool, the server times the
+meal, and the weapon comes back to hand. Rations are the food items it carries, less
 those that poison or are too precious to eat (`tools/item-class-generator`).
 
 *Requests up the chain, timed* (`app.RequestLedger`). A soldier asks its squad leader for help by
@@ -403,9 +404,10 @@ recomputed each squad cycle from where the principal is now:
 A soldier who respawns goes straight to its slot in the ring rather than linking up with the point
 man first (§6), and any soldier more than 8 blocks from its goal sprints, so the ring keeps up with
 a principal on the move. Sprinting is the game's, at the game's price: the soldier tells the
-server it's sprinting (Player Command), so the server charges the food it costs. An ordinary move
-sprints only while the soldier carries rations to make that food up. An urgent one sprints
-whatever it carries: the ring's moves, an intercept, a teammate going to support one in contact
+server it's sprinting (Player Command), so the server charges the food it costs - 0.1 exhaustion a
+metre, where walking costs none. An ordinary move is walked, whatever it carries: live, soldiers
+sprinting every walk past 8 blocks ate eleven loaves a day each, about the farm's whole harvest.
+An urgent one sprints: the ring's moves, an intercept, a teammate going to support one in contact
 (§8), closing on a hostile it fights, and any move while under fire. Nobody sprints at food 6 or
 below, where vanilla won't let a player, or with a shield raised. The squad leader still chooses the interval and the risk. The soldiers find the principal by its
 offline-mode UUID among the entities they see; if none of them can see it, the squad holds the last
@@ -844,9 +846,10 @@ The ground work is handed down as concrete commands, not "level the camp": the e
 boxes (`command.Groundwork`) - a dig box from the camp's feet level 24 up, and a fill box from 16
 below up to the ground, both inside the wall line - and the squad's drill (`command.Tasking`)
 splits the work left in them into a strip for each soldier. Digging first: while anything in the
-dig box is left, each soldier's command is `Order.Dig(box, except)`, every log, leaf, dirt, stone
-or gravel block in its strip, and the cobblestone put down over the floor - old huts' walls,
-pillar steps - which shut the camp's chest in on three sides; that only while no wall is going up,
+dig box is left, each soldier's command is `Order.Dig(box, except)`, every block in its strip that
+breaks by hand within 20 seconds (`Clearing.diggable`) - soil, stone, sand, glass, planks - and
+the cobblestone put down over the floor - old huts' walls, pillar steps - which shut the camp's
+chest in on three sides; that only while no wall is going up,
 since the masons stand on cobblestone steps inside it. Then filling: `Order.Fill(box, except)`, every open cell in each
 column of its strip from the top down to the first solid block or water. The strips are cut from
 where the work is left, not the whole site, so no soldier is handed a strip with nothing in it.
@@ -882,7 +885,10 @@ cutting steps - from down a pit it was filling, too.
 
 A fill (`Clearing.toFill`, `bot.supply.Filler`) puts cobblestone or dirt in its strip's cells,
 the lowest it can reach first, nearest first, so a pit under the wall line becomes footing again;
-a block put in high can seal a pocket of air under it, underground and harmless. A cell it can't
+a block put in high can seal a pocket of air under it, underground and harmless. Never a cell over
+its own head - above its feet in its own column or one beside it: it fills round itself at its own
+level and stands on what it laid; in the squad simulation a soldier filling a pit from inside
+walled itself into a shaft. A cell it can't
 reach, or whose stand it doesn't get to within 20 seconds, is skipped for the next. A flooded pit
 is filled too, its water the floor: capped from the rim, since nobody stands in water to fill it
 from below - live, the camp's mine shaft flooded with soldiers afloat in it. And no dig breaks

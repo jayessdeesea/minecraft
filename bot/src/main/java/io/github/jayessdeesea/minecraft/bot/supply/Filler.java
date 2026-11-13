@@ -86,7 +86,13 @@ public final class Filler {
         // soldier fills its own patch upward instead of crossing the camp for every lowest cell. One
         // out of reach is the builder's to skip for the next.
         int lowest = hollows.stream().mapToInt(BlockPos::y).min().orElse(0);
+        // Never over its own head: a cell above its feet in its own column or one beside it walls it
+        // into a shaft. It fills round itself at its own level, then stands on what it laid. In the
+        // squad simulation a soldier filling a pit from inside buried itself, and its way out dug the
+        // pit open again.
+        BlockPos feet = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
         List<BlockPos> plan = hollows.stream()
+                .filter(c -> c.y() <= feet.y() || Math.max(Math.abs(c.x() - feet.x()), Math.abs(c.z() - feet.z())) > 1)
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())
                         + LAYER_WEIGHT * (c.y() - lowest)))
                 .toList();

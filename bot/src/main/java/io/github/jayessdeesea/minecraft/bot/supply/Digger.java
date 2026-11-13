@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.script.Script;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
+import io.github.jayessdeesea.minecraft.bot.world.Hardness;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
@@ -12,6 +13,7 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -88,7 +90,14 @@ final class Digger {
         /** Spruce leaves - the pine the camp prefers - by hand: a spruce sapling, one time in twenty. */
         SPRUCE_LEAVES(10, 3, null, 0, ItemClass.SAPLING, false),
         /** Any tree's leaves, by hand: its sapling, one time in twenty (oak, one in twenty too, and an apple). */
-        LEAVES(10, 3, null, 0, ItemClass.SAPLING, false);
+        LEAVES(10, 3, null, 0, ItemClass.SAPLING, false),
+        /**
+         * Any other block that breaks - glass, sand, planks, andesite - dug to clear it, not for what it
+         * drops, which is left: in its own break time from its hardness, with the best pickaxe where a
+         * pickaxe is the block's tool and one is carried, otherwise by hand. Up to
+         * {@link Clearing#MAX_DIG_TICKS}. At feet or head height.
+         */
+        OTHER(Clearing.MAX_DIG_TICKS, 1, null, 0, null, false);
 
         final int digTicks;
         final int reachUp;
@@ -128,6 +137,7 @@ final class Digger {
                         && !world.isSolid(block.x(), block.y() + 1, block.z());
                 case SPRUCE_LEAVES -> world.leaves(block.x(), block.y(), block.z()).filter("spruce"::equals).isPresent();
                 case LEAVES -> world.leaves(block.x(), block.y(), block.z()).isPresent();
+                case OTHER -> world.isSolid(block.x(), block.y(), block.z()) && world.hardness(block.x(), block.y(), block.z()).isPresent();
             };
         }
 
@@ -252,7 +262,7 @@ final class Digger {
         claims.add(spot.stand());
         Target target = spot.target();
         BlockPos block = spot.block();
-        this.script = new Script(name, List.of(
+        List<Step> steps = new ArrayList<>(List.of(
                 new Step("walk to " + spot.stand(), () -> {
                 }, new Expect("standing beside the " + target, () -> {
                     if (!target.at(world, block)) {
@@ -265,15 +275,16 @@ final class Digger {
                 // The server times the dig itself: finishing early is refused, so wait out its break time.
                 new Step("dig the " + target + " at " + block, () -> {
                     digStarted = ticks;
-                    digTicks = target.digTicks(inventory);
-                    dropsBefore = inventory.count(target.drop);
+                    digTicks = target == Target.OTHER ? otherTicks() : target.digTicks(inventory);
+                    dropsBefore = target.drop == null ? 0 : inventory.count(target.drop);
                     session.startDigging(block.x(), block.y(), block.z());
-                }, new Expect("the break time to pass", () -> ticks - digStarted >= digTicks), target.digTicks + 1),
+                }, new Expect("the break time to pass", () -> ticks - digStarted >= digTicks), target.digTicks + Breacher.MARGIN_TICKS + 1),
                 new Step("break the " + target, () -> session.finishDigging(block.x(), block.y(), block.z()),
-                        new Expect("the " + target + " at " + block + " broken", () -> !target.at(world, block)), ANSWER_TICKS),
-                // Done once the drop is off the ground: in the pack, or in a squadmate's, which
-                // working the same trees often gets there first. Never seen at all is the fault.
-                new Step("pick up the " + target.drop, () -> {
+                        new Expect("the " + target + " at " + block + " broken", () -> !target.at(world, block)), ANSWER_TICKS)));
+        if (target.drop != null) {
+            // Done once the drop is off the ground: in the pack, or in a squadmate's, which
+            // working the same trees often gets there first. Never seen at all is the fault.
+            steps.add(new Step("pick up the " + target.drop, () -> {
                     pickingUp = true;
                     pickupStarted = ticks;
                 }, new Expect("the " + target.drop + " picked up", () -> {
@@ -283,7 +294,25 @@ final class Digger {
                     boolean onGround = !dropsNear().isEmpty();
                     dropSeen |= onGround;
                     return dropSeen && !onGround || !target.dropsAlways && !dropSeen && ticks - pickupStarted > MAYBE_DROP_TICKS;
-                }), PICKUP_TICKS)));
+                }), PICKUP_TICKS));
+        }
+        this.script = new Script(name, steps);
+    }
+
+    /** For {@link Target#OTHER}: whether the block is a pickaxe's and one is carried - then it's dug with the best. */
+    private boolean pickaxeForOther() {
+        BlockPos b = spot.block();
+        return world != null && world.hardness(b.x(), b.y(), b.z()).filter(h -> h.pickaxeTier() >= 0).isPresent()
+                && Target.bestTool(inventory) >= 0;
+    }
+
+    /** For {@link Target#OTHER}: its break time, from its hardness and what's in hand, with the server's margin. */
+    private int otherTicks() {
+        BlockPos b = spot.block();
+        int held = ItemClassRegistry.miningTier(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot())).orElse(Hardness.HAND);
+        Hardness hardness = world.hardness(b.x(), b.y(), b.z())
+                .orElseThrow(() -> new IllegalStateException("no hardness for the block at " + b + " - it can't be broken"));
+        return hardness.ticks(held) + Breacher.MARGIN_TICKS;
     }
 
     /** Gives up this dig's claims - call once it's done, failed, or abandoned. */
@@ -327,6 +356,9 @@ final class Digger {
         int item = inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
         Optional<ItemClass> held = ItemClassRegistry.classOf(item);
         ItemClass tool = spot.target().tool;
+        if (spot.target() == Target.OTHER && pickaxeForOther()) {
+            return item == inventory.itemAt(Target.bestTool(inventory));
+        }
         int axe = spot.target().speedTool(inventory);
         if (axe >= 0) {
             return item == inventory.itemAt(axe);
@@ -341,6 +373,15 @@ final class Digger {
      */
     private void takeInHand() {
         ItemClass tool = spot.target().tool;
+        if (spot.target() == Target.OTHER && pickaxeForOther()) {
+            int pickaxe = Target.bestTool(inventory);
+            if (pickaxe >= Inventory.HOTBAR_FIRST) {
+                hold(pickaxe - Inventory.HOTBAR_FIRST);
+            } else {
+                session.swapWithHotbar(0, 0, pickaxe, inventory.heldHotbarSlot()); // stale state: the server resends the inventory
+            }
+            return;
+        }
         int axe = spot.target().speedTool(inventory);
         if (axe >= 0) {
             if (axe >= Inventory.HOTBAR_FIRST) {

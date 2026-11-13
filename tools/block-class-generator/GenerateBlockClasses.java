@@ -51,7 +51,12 @@ import java.util.zip.ZipFile;
  *       one sometimes drops its tree's sapling; the name says which tree.
  *   <li>{@code G} grit - solid, dug by hand (a shovel's work): what the {@code mineable/shovel} tag
  *       names that isn't soil - gravel, sand. Falls into what's dug under it. Hardness rides along.
+ *   <li>{@code S} solid - every other block with collision that can be broken: glass, planks,
+ *       stairs, slabs. Its hardness and least pickaxe tier ride along, as on rock, the tier -1 (by
+ *       hand) for a block no pickaxe tag names. Listed so that anything breakable is dug by its own
+ *       break time; a block that can't be broken (bedrock, hardness -1) is left unlisted.
  * </ul>
+ * Tall blocks ({@code T}) carry the same hardness and tier.
  * What a farm needs to know rides along as a fourth field: {@code level=N} on water (0 is a
  * source), {@code age=N} on wheat. Grass plants keep their names - {@code short_grass} and
  * {@code tall_grass} drop wheat seeds when broken.
@@ -105,7 +110,17 @@ public class GenerateBlockClasses {
         Set<String> needsStone;
         Set<String> needsIron;
         Set<String> needsDiamond;
+        // A block's break time and least tier follow every tag naming it, nested ones too: walls and
+        // stairs are a pickaxe's through #walls and #stairs, and by hand take over three times as long.
+        Set<String> pickaxeAll;
+        Set<String> needsStoneAll;
+        Set<String> needsIronAll;
+        Set<String> needsDiamondAll;
         try (ZipFile jar = new ZipFile(args[3])) {
+            pickaxeAll = tagDeep(jar, "mineable/pickaxe");
+            needsStoneAll = tagDeep(jar, "needs_stone_tool");
+            needsIronAll = tagDeep(jar, "needs_iron_tool");
+            needsDiamondAll = tagDeep(jar, "needs_diamond_tool");
             pickaxe = tag(jar, "mineable/pickaxe");
             shovel = tag(jar, "mineable/shovel");
             needsStone = tag(jar, "needs_stone_tool");
@@ -162,12 +177,19 @@ public class GenerateBlockClasses {
                 if (cls == 'S') {
                     leftSolid.add(type);
                 }
-                if (cls != 'S') {
+                String tier = String.valueOf(needsDiamondAll.contains(id) ? 3 : needsIronAll.contains(id) ? 2
+                        : needsStoneAll.contains(id) ? 1 : pickaxeAll.contains(id) ? 0 : -1);
+                boolean breakable = Double.parseDouble(hardness.get(id)) >= 0;
+                if (cls == 'S' && breakable) {
+                    classes.put(state.get("id").asInt(), "S " + blockName + " " + hardness.get(id) + " " + tier);
+                    counts.merge(cls, 1, Integer::sum);
+                } else if (cls != 'S') {
                     String detail = blockName.equals("water") ? " level=" + state.path("properties").path("level").asText()
                             : blockName.equals("wheat") ? " age=" + state.path("properties").path("age").asText()
                             : cls == 'R' ? " " + hardness.get(id) + " " + (needsDiamond.contains(id) ? 3 : needsIron.contains(id) ? 2
                                     : needsStone.contains(id) ? 1 : 0)
-                            : cls == 'G' ? " " + hardness.get(id) : "";
+                            : cls == 'G' ? " " + hardness.get(id)
+                            : cls == 'T' && breakable ? " " + hardness.get(id) + " " + tier : "";
                     classes.put(state.get("id").asInt(), cls + " " + blockName + detail);
                     counts.merge(cls, 1, Integer::sum);
                 }
@@ -178,9 +200,9 @@ public class GenerateBlockClasses {
             out.println("# Generated from the pinned server jar's `--reports` blocks.json by");
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
             out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, C = chest, D = soil, O = iron ore, F = farmland (all solid);");
-            out.println("# R = rock (mined with a pickaxe), G = grit (dug by hand, falls), V = leaves;");
-            out.println("# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, <hardness> on grit.");
-            out.println("# Every state NOT listed is solid (safe to walk into, not to stand on: the generator prints the types it left solid).");
+            out.println("# R = rock (mined with a pickaxe), G = grit (dug by hand, falls), V = leaves, S = any other solid block that breaks;");
+            out.println("# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, solid and tall (tier -1: by hand), <hardness> on grit.");
+            out.println("# Every state NOT listed is solid and can't be broken (bedrock and the like: the generator prints the types it classed solid).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));
         }
         System.out.println("States: " + totalStates + ", non-solid by class: " + counts);
@@ -201,6 +223,26 @@ public class GenerateBlockClasses {
             for (JsonNode value : new ObjectMapper().readTree(in).get("values")) {
                 if (!value.asText().startsWith("#")) {
                     blocks.add(value.asText());
+                }
+            }
+        }
+        return blocks;
+    }
+
+    /** The blocks a tag names, through every tag nested in it. */
+    static Set<String> tagDeep(ZipFile jar, String name) throws Exception {
+        var entry = jar.getEntry("data/minecraft/tags/block/" + name + ".json");
+        if (entry == null) {
+            throw new IllegalStateException("no block tag " + name + " in the jar");
+        }
+        Set<String> blocks = new HashSet<>();
+        try (var in = jar.getInputStream(entry)) {
+            for (JsonNode value : new ObjectMapper().readTree(in).get("values")) {
+                String v = value.isTextual() ? value.asText() : value.path("id").asText();
+                if (v.startsWith("#")) {
+                    blocks.addAll(tagDeep(jar, v.substring(1).replace("minecraft:", "")));
+                } else {
+                    blocks.add(v);
                 }
             }
         }

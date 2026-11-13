@@ -33,6 +33,7 @@ class RationsTest {
     private int food = 14;
     private boolean silent;
     private boolean noFood;
+    private boolean hurt;
 
     private final PlaySession session = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(),
             new Class<?>[]{PlaySession.class}, (proxy, method, args) -> {
@@ -84,8 +85,20 @@ class RationsTest {
                 food = 20;
                 mealStarted = -1;
             }
-            rations.tick(food, free, 0, 0);
+            rations.tick(food, hurt, free, 0, 0);
         }
+    }
+
+    @Test
+    void aWholeSoldierEatsOnlyOnceALoafFitsUnderTheBarAndAHurtOneBelowTheHealingLevel() {
+        Rations rations = new Rations("Alice", session, inventory);
+
+        food = Rations.EAT_AT + 1;
+        run(rations, 1, true);
+        assertTrue(calls.isEmpty(), "whole, at 16: a loaf of five would be lost over the top");
+        hurt = true;
+        run(rations, 1, true);
+        assertFalse(calls.isEmpty(), "hurt: it eats where health comes back");
     }
 
     @Test

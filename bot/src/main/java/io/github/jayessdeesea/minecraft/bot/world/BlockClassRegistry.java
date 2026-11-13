@@ -154,15 +154,16 @@ final class BlockClassRegistry {
     }
 
     /**
-     * What digging {@code stateId} takes, for the blocks a soldier digs: rock and grit as generated,
-     * plain stone, iron ore and soil as vanilla has them. Empty for anything else.
+     * What digging {@code stateId} takes: as generated for every block that breaks - rock, grit,
+     * tall and any other solid block - and plain stone, iron ore and soil as vanilla has them. Empty
+     * for what never breaks (bedrock), what has no body to break, and a chest or workstation.
      */
     static Optional<Hardness> hardness(int stateId) {
         return switch (classOf(stateId)) {
             case STONE -> Optional.of(new Hardness(1.5, 0));
             case IRON_ORE -> Optional.of(new Hardness(3.0, 1));
             case SOIL -> Optional.of(new Hardness(0.65, Hardness.HAND));
-            case ROCK, GRIT -> Optional.of(HARDNESS.get(stateId));
+            case ROCK, GRIT, SOLID, TALL -> Optional.ofNullable(HARDNESS.get(stateId));
             default -> Optional.empty();
         };
     }
@@ -238,7 +239,16 @@ final class BlockClassRegistry {
                     }
                     classes[stateId] = switch (fields[1]) {
                         case "P" -> BlockClass.PASSABLE;
-                        case "T" -> BlockClass.TALL;
+                        case "S" -> {
+                            HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Integer.parseInt(fields[4])));
+                            yield BlockClass.SOLID;
+                        }
+                        case "T" -> {
+                            if (fields.length > 4) {
+                                HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Integer.parseInt(fields[4])));
+                            }
+                            yield BlockClass.TALL;
+                        }
                         case "H" -> BlockClass.HAZARD;
                         case "L" -> BlockClass.LOG;
                         case "Q" -> BlockClass.STONE;

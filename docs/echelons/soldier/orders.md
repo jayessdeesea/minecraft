@@ -18,9 +18,10 @@ A soldier takes exactly one order at a time, and keeps it until the next replace
 
 The ground work comes as commands over a `command.Box` (min and max x, y and z) - concrete, so the
 soldier is told cells, never "level the camp" ([military-doctrine.md § 15](../../military-doctrine.md#15-securing-the-camp)):
-- **`Dig(box, except)`**: dig every log, leaf, dirt, stone or gravel block in the box, but the
-  cells in `except` - a tree from its foot up, the ground from its top down, never ground with
-  water beside it.
+- **`Dig(box, except)`**: dig every block in the box that breaks by hand within 20 seconds -
+  logs, leaves, soil, stone, sand, glass, planks - but the cells in `except`, and never a chest,
+  a workstation or farmland: a tree from its foot up, everything else from its top down, never
+  ground with water beside it. Each is dug in its own break time, from the block's hardness.
 - **`Fill(box, except)`**: put a block in each open cell of each column in the box, from its top
   down to the first solid block or water.
 - **`Gather(resource, box, amount)`**: go to the box and dig the resource there until it carries

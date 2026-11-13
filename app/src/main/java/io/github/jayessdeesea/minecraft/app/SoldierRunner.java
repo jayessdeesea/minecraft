@@ -3937,7 +3937,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }));
             turns.put(Hands.Routine.RATIONS, turn(rations::active, free -> {
-                rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD), free && !threatened,
+                rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD),
+                        status.condition().map(c -> c.health() < Condition.MAX_HEALTH).orElse(false), free && !threatened,
                         soldier.yaw(), soldier.pitch());
                 // Its pack kept for what's worth more: surplus seeds thrown away, between meals.
                 pack.tick(free && !threatened && !rations.active());
@@ -3972,7 +3973,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // food 0 with two rations in its pack.
             boolean foodCalls = huntWanted && !hunter.active()
                     && Hunter.gameInSight(world, huntGround, food, quarry)
-                    || !rations.active() && !threatened && food < Condition.REGENERATION_FOOD && inventory.slotOf(ItemClass.FOOD) >= 0;
+                    || !rations.active() && !threatened && inventory.slotOf(ItemClass.FOOD) >= 0
+                    && Rations.wantsMeal(food, status.condition().map(c -> c.health() < Condition.MAX_HEALTH).orElse(false));
             turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), huntGround,
                     Hunter.radius(food), quarry, world,
                     free && huntWanted,
