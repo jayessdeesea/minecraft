@@ -35,10 +35,21 @@ adding cells outward.
 - **Scaffolding of bamboo** (operator, 2026-11-12: preferred over dirt for climbing). Left: bamboo
   scaffolding is climbed inside and sneaked down, not stood on, so it wants its own moves in the
   route planner, and bamboo from a jungle and string to make it.
-- **Open: a dirt step recorded as dirt.** A step a soldier builds is put in its world model as
-  cobblestone until the server's update says it's dirt; recorded as dirt at once, the squad
-  simulation's pit fill (`aSquadFillsAPitInTheCampFromTheBottom`) stalled, a placer's hand out of
-  step with the inventory. Not yet understood.
+- **The simulation's server answers a block placed at once** - live, its update comes a tick
+  later - so a soldier's cobblestone stand-in for a step it built is written over the update, and
+  a dirt step stays cobblestone in its model for good. Live it's corrected a tick on. Written only
+  over an open cell, the slope wall, pit-fill and farm-in-a-hollow sims fail: they pass on dirt
+  steps read as stone. Left: the sim's server answering a tick later, as the real one does, and
+  those three made to pass on what's there.
+- **Idle strips** (operator, 2026-11-13, later): a soldier whose strip has nothing within the
+  keep's layer window - the hill's flank, a hollow - is free today; it could farm, or build a row
+  of chests outside the dig site.
+- **A soldier per chunk, long term** (operator, 2026-11-13): 16 soldiers, four squads, each its
+  own chunk of the ground, all in parallel - a mountain flattened quickly - then each building up
+  what its section's requirements say: the keep's slab, a field, a wall line. The general gives
+  squads sections, the squad's tasking gives each soldier its chunk, the layer window keeps
+  neighbours level. Left: more squads, and strips cut on chunk boundaries (today a share of 16 x 32
+  splits four ways into 16 x 8).
 - Cost: 4,096 cobblestone for the keep alone, against 385 in the stockpile today - so the mine's
   spoil is its supply.
 

@@ -467,6 +467,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, List<BlockPos>> repointing = new ConcurrentHashMap<>();
     /** The blocks of each soldier's {@code Order.Dig} - squad loop writes, tick reads. */
     private final Map<String, List<BlockPos>> clearing = new ConcurrentHashMap<>();
+    /** Each soldier's dig's box - squad loop writes, tick reads: the keep's builders stand only in theirs. */
+    private final Map<String, Box> clearingStrip = new ConcurrentHashMap<>();
     /** The blocks of cover a clearer has taken, and where it stands for each: shared, so each takes another. */
     private final Set<BlockPos> clearClaims = ConcurrentHashMap.newKeySet();
     /** The wall cells each soldier's squad still has to fill, while its objective is FORTIFY - squad loop writes, tick reads. */
@@ -1636,12 +1638,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int share = Math.max(0, onKeep.indexOf(squad));
         Box digShare = Keep.dig().strips(Math.max(1, onKeep.size())).get(share);
         Box fillShare = Keep.fill().strips(Math.max(1, onKeep.size())).get(share);
-        List<BlockPos> toDig = Clearing.toClear(world, digShare, digExcept);
+        // The keep's current layer is the highest ground left anywhere on it, every squad's share; no
+        // soldier digs more than Keep.LAYER_WINDOW under it, so the site comes down level by level.
+        List<BlockPos> wholeDig = Clearing.toClear(world, Keep.dig(), digExcept);
+        List<BlockPos> toDig = wholeDig.stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX()
+                && c.z() >= digShare.minZ() && c.z() <= digShare.maxZ()).toList();
+        int layer = wholeDig.stream().filter(c -> !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty())
+                .mapToInt(BlockPos::y).max().orElse(Keep.BOTTOM);
+        int floor = Keep.floor(layer);
+        List<BlockPos> inWindow = toDig.stream().filter(c -> c.y() >= floor).toList();
         List<BlockPos> toFill = toDig.isEmpty() ? Clearing.toFill(world, fillShare, kept) : List.of();
         state.keepDigLeft = toDig.size();
         state.keepFillLeft = toDig.isEmpty() ? toFill.size() : -1;
-        String said = "the keep: " + toDig.size() + " blocks to dig" + (toDig.isEmpty() ? ", " + toFill.size() + " cells to fill" : "")
-                + " in its share " + digShare;
+        String said = "the keep: " + toDig.size() + " blocks to dig" + (toDig.isEmpty() ? ", " + toFill.size() + " cells to fill"
+                : ", layer y=" + layer + ", " + inWindow.size() + " down to y=" + floor) + " in its share " + digShare;
         if (!said.equals(state.keepSaid)) {
             LOG.info("[{}] {}", squad, said);
             state.keepSaid = said;
@@ -1653,7 +1663,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .filter(h -> h.condition().flatMap(c -> c.kit()).map(k -> !Subsistence.short_(k.rations())).orElse(true))
                 .map(h -> new Tasking.Hand(h.name(),
                 h.condition().flatMap(c -> c.kit()).map(Kit::stone).orElse(0))).toList();
-        Map<String, Order> orders = new HashMap<>(Tasking.keep(crew, bounds(toDig),
+        // Each soldier a fixed range of x and z, its strip of the squad's share, from the window's
+        // floor up (operator, 2026-11-13: you get this x range and this z range, top down) - not cut
+        // from where work is left: a strip that narrow left no stand beside its last block.
+        Optional<Box> window = inWindow.isEmpty() ? Optional.empty()
+                : Optional.of(new Box(digShare.minX(), floor, digShare.minZ(), digShare.maxX(), digShare.maxY(), digShare.maxZ()));
+        Map<String, Order> orders = new HashMap<>(Tasking.keep(crew, window,
                 toDig.isEmpty() ? bounds(toFill) : Optional.empty(), toDig.isEmpty() ? kept : digExcept));
         boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false);
         for (Tasking.Hand hand : crew) {
@@ -1711,6 +1726,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return Optional.of(new Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]));
     }
 
+    /** Whether {@code cell} is a structure's - a wall line's, or the keep's slab - where a step goes in as cobblestone. */
+    private boolean builtCell(BlockPos cell) {
+        return Keep.slab().contains(cell.x(), cell.y(), cell.z()) || walls.values().stream().anyMatch(w -> w.contains(cell));
+    }
+
     /** The register's name for a command on the keep. */
     private static String keepTask(Order order) {
         return order instanceof Order.Fill ? "fill the keep" : "dig the keep";
@@ -1733,6 +1753,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         switch (order) {
             case Order.Dig d -> {
                 clearing.put(soldier, Clearing.toClear(world, d.box(), d.except()));
+                clearingStrip.put(soldier, d.box());
                 filling.remove(soldier);
                 groundGather.remove(soldier);
             }
@@ -4081,7 +4102,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }));
             List<BlockPos> wall = walling.getOrDefault(name, List.of());
             turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
-                    clearing.getOrDefault(name, List.of()), free && !threatened && !foodCalls)));
+                    clearing.getOrDefault(name, List.of()), free && !threatened && !foodCalls,
+                    keepHands.contains(name) ? Optional.ofNullable(clearingStrip.get(name)) : Optional.empty())));
             Filler filler = stoneFilling.contains(name) ? paver : plainFiller;
             (filler == paver ? plainFiller : paver).stop();
             fillers.put(name, filler);
@@ -4303,10 +4325,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     session.finishDigging(cell.x(), cell.y(), cell.z());
                 }
                 // A solid block in the model until the server's update says what landed, a tick on:
-                // stood on before the server confirms it. Recorded as the dirt it is, the squad
-                // simulation's pit fill stalled - an interaction not yet understood (backlog/cells.md).
+                // stood on before the server confirms it. The squad simulation's server answers at
+                // once, so there the stand-in is written over its update and a dirt step stays
+                // cobblestone in the model; the sims that pass on that are noted in backlog/cells.md.
                 Builder.support(world, cell)
-                        .flatMap(face -> footing.placeStep(cell, face))
+                        .flatMap(face -> footing.placeStep(cell, face, builtCell(cell)))
                         .ifPresent(block -> chunkCache.setBlock(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE));
             });
             footing.tick();

@@ -210,6 +210,37 @@ public final class Clearing {
     }
 
     /**
+     * For the highest ground block of {@code cover} - the top layer, dug first - that no stand on
+     * the ground reaches: a cut from a stand in the air beside it, at its own height less one, its
+     * eyes level with it - a cell the soldier builds steps up to (operator, 2026-11-13: pillar up to
+     * what's high, dig the top layer first). Beside it in a cell {@code within} allows, open for its
+     * body. Its steps are dirt in the dig, and come down top first. Empty when there's none.
+     */
+    public static Optional<Cut> fromTheAir(WorldView world, List<BlockPos> cover, Set<BlockPos> excluded, Predicate<BlockPos> within) {
+        int top = cover.stream().filter(b -> !excluded.contains(b) && diggable(world, b.x(), b.y(), b.z())
+                        && !world.isLog(b.x(), b.y(), b.z()) && world.leaves(b.x(), b.y(), b.z()).isEmpty())
+                .mapToInt(BlockPos::y).max().orElse(Integer.MIN_VALUE);
+        if (top == Integer.MIN_VALUE) {
+            return Optional.empty();
+        }
+        int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (BlockPos block : cover) {
+            if (block.y() != top || excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())
+                    || world.isSolid(block.x(), block.y() + 1, block.z())) {
+                continue;
+            }
+            for (int[] side : sides) {
+                BlockPos stand = block.offset(side[0], -1, side[1]);
+                if (!excluded.contains(stand) && within.test(stand) && !world.isSolid(stand.x(), stand.y(), stand.z())
+                        && !world.isSolid(stand.x(), stand.y() + 1, stand.z()) && !world.isHazard(stand.x(), stand.y(), stand.z())) {
+                    return Optional.of(new Cut(block, stand, false));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
      * The nearest cell to {@code block} a soldier can stand in and reach it from. Ground is dug from
      * no more than a block below where it can be, as a hole is dug from its top: in the squad
      * simulation, a squadmate digging a stair up to one boxed in below was sent to stand in the box.

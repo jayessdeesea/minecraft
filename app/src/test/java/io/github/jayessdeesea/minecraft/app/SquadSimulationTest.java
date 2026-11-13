@@ -2030,6 +2030,56 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
+    /**
+     * Top down, level by level, whatever's up there: a pane of glass ten blocks over the keep's
+     * ground is cut first, from dirt steps built up to it - no ground stand reaches it - while a
+     * mound on the site waits its layer; and the steps come down after. Live, a hilltop over the
+     * keep stood while its builders stood under it.
+     */
+    @Test
+    void theKeepsTopLayerIsCutFromStepsBuiltUpToItAndTheStepsComeDown() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 10 ? SimServer.GLASS
+                : x == -5 && z == -5 && y == GROUND + 1 ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(4 * 60_000);
+
+        assertEquals(SimServer.AIR, server.block(3, GROUND + 10, 3), "the glass; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+        int glass = server.log.indexOf(server.log.stream().filter(e -> e.contains("dug " + SimServer.GLASS + " ")).findFirst().orElseThrow());
+        int mound = server.log.stream().filter(e -> e.contains("dug " + SimServer.DIRT + " at -5," + (GROUND + 1) + ",-5")).findFirst()
+                .map(server.log::indexOf).orElse(Integer.MAX_VALUE);
+        assertTrue(glass < mound, "the top layer first: the mound waited for the glass");
+
+        clock.advance(6 * 60_000);
+
+        List<String> left = new ArrayList<>();
+        for (int x = Keep.MIN; x <= Keep.MAX; x++) {
+            for (int z = Keep.MIN; z <= Keep.MAX; z++) {
+                for (int y = Keep.FLOOR; y <= GROUND + 12; y++) {
+                    if (server.block(x, y, z) != SimServer.AIR) {
+                        left.add(x + "," + y + "," + z);
+                    }
+                }
+            }
+        }
+        // Over the slab: in it, the simulation's server answers a step at once and the soldier's
+        // model keeps it as the cobblestone stand-in, the slab's own (backlog/cells.md).
+        assertEquals(List.of(), left, "its steps dug back down; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+    }
+
     /** Food first: a soldier with no rations is left off the keep, to feed itself - its mound left standing. */
     @Test
     void aStarvingSoldierIsLeftOffTheKeepToFeedItself() {

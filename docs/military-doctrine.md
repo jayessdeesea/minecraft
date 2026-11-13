@@ -1081,8 +1081,17 @@ y=64 up into the sky over it is dug out, but rock and the slab's own cobblestone
 layers; then the slab, and any hollow open under it within 8 blocks, is filled in cobblestone only
 (`Order.Fill`'s `stoneOnly`, a filler of its own), never dirt, which endermen take. A strip each
 (`Tasking.keep`), each squad on it its own share of the site - west to east in the roster's order
-- and each of its soldiers a strip of that: the sky over it cleared to the top of the world, top
-down, as ground is dug only from an open top. The register follows the keep's dig and fill by
+- and each of its soldiers a fixed strip of that, its own range of x and z (operator, 2026-11-13):
+the sky over it cleared to the top of the world, top down, as ground is dug only from an open top.
+Level by level: the keep's current layer is the highest ground left anywhere on it, and no soldier
+digs more than two under it (`Keep.LAYER_WINDOW`), so neighbouring strips stay within two of each
+other and the site comes down as a terrace a soldier walks, not pits and towers; a strip with
+nothing in the window is free for other work. The log reads "the keep: N blocks to dig, layer
+y=L, M down to y=F". A builder stands only in its own strip's columns, a neighbour working the
+next; and with nothing on the ground in reach, it cuts the top layer from the air
+(`Clearing.fromTheAir`): a stand beside the highest block, its eyes level with it, that its route
+builds a dirt pillar up to (`Pathfinder` offers pillar steps in open air under a goal overhead).
+The pillar is dirt in its strip, so it's the next top layer, dug back down from on top of it. The register follows the keep's dig and fill by
 their own names (`dig the keep`, `fill the keep`), each builder measured by its squad's share, not
 its own strip: the dirt steps it climbs on are in its strip too. Food first: a builder below its
 food-first mark (`Subsistence.FOOD_FIRST`) gets no keep work, and feeds itself first. Its builders'

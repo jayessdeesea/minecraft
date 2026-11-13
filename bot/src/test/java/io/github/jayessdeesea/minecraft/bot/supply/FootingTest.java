@@ -29,6 +29,16 @@ class FootingTest {
                 "scaffolding of dirt: the cobblestone is the floor's and the wall's");
     }
 
+    @Test
+    void aStepOnAWallLineOrInASlabIsCobblestone() {
+        Inventory inventory = new Inventory();
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.COBBLESTONE), 64});
+        inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item(ItemClass.DIRT), 8});
+
+        assertEquals(Optional.of(ItemClass.COBBLESTONE), new Footing(session, inventory).placeStep(new BlockPos(0, 64, 0), BlockFace.DOWN, true),
+                "the structure's own: a dirt step there is dirt in the wall");
+    }
+
     private static int item(ItemClass itemClass) {
         return IntStream.range(0, 4096).filter(i -> ItemClassRegistry.classOf(i).equals(Optional.of(itemClass))).findFirst().orElseThrow();
     }

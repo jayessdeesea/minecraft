@@ -45,15 +45,25 @@ public final class Footing {
     }
 
     /**
-     * A block for a pillar or built step in {@code cell}, against {@code support}: cobblestone, or
-     * dirt once that's gone. False with neither.
+     * A block for a pillar or built step in {@code cell}, against {@code support}: dirt, or
+     * cobblestone once that's gone. Empty with neither.
      */
     public synchronized Optional<ItemClass> placeStep(BlockPos cell, BlockFace support) {
+        return placeStep(cell, support, false);
+    }
+
+    /**
+     * As {@link #placeStep(BlockPos, BlockFace)}, cobblestone first where the cell is {@code built}
+     * - a wall line's, a slab's - so a step that lands there is the structure's own.
+     */
+    public synchronized Optional<ItemClass> placeStep(BlockPos cell, BlockFace support, boolean built) {
         // Dirt first: a step or a pillar is scaffolding, left behind or dug away, and cobblestone is
-        // what a floor and a wall are made of (operator, 2026-11-12). Logs last: a soldier only plans
-        // steps on them out of the water, with nothing else to build with.
-        ItemClass block = inventory.slotOf(ItemClass.DIRT) >= 0 ? ItemClass.DIRT
-                : inventory.slotOf(ItemClass.COBBLESTONE) >= 0 ? ItemClass.COBBLESTONE : ItemClass.LOG;
+        // what a floor and a wall are made of (operator, 2026-11-12) - so on a wall line or in a slab,
+        // cobblestone: a dirt step there is dirt in the wall, to be dug out and put back in stone. Logs
+        // last: a soldier only plans steps on them out of the water, with nothing else to build with.
+        ItemClass first = built ? ItemClass.COBBLESTONE : ItemClass.DIRT;
+        ItemClass second = built ? ItemClass.DIRT : ItemClass.COBBLESTONE;
+        ItemClass block = inventory.slotOf(first) >= 0 ? first : inventory.slotOf(second) >= 0 ? second : ItemClass.LOG;
         return place(cell, block, support) ? Optional.of(block) : Optional.empty();
     }
 

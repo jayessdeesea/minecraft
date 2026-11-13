@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.Box;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 /**
  * One soldier clearing its camp ({@link Clearing}): the sky over it first - the lowest log or
@@ -89,6 +91,15 @@ public final class Clearer {
 
     /** Each tick: cuts the {@code cover} over the camp while {@code free}; anything else stops the cut under way. */
     public synchronized void tick(Position soldier, WorldView world, List<BlockPos> cover, boolean free) {
+        tick(soldier, world, cover, free, Optional.empty());
+    }
+
+    /**
+     * As {@link #tick(Position, WorldView, List, boolean)}, standing only in the columns of
+     * {@code strip} when there is one - a neighbour works the next strip (operator, 2026-11-13) -
+     * and with nothing on the ground in reach, cutting the top layer from steps it builds up to it.
+     */
+    public synchronized void tick(Position soldier, WorldView world, List<BlockPos> cover, boolean free, Optional<Box> strip) {
         ticks++;
         if (cooldown > 0) {
             cooldown--;
@@ -143,7 +154,16 @@ public final class Clearer {
         Set<BlockPos> reachable = Pathfinder.climbs(world, feet, span, REACH_BUDGET,
                 inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT),
                 inventory.slotOf(ItemClass.PICKAXE) >= 0).keySet();
-        Optional<Clearing.Cut> cut = Clearing.next(world, cover, soldier, excluded, s -> reachable.contains(s) && stands.test(world, s));
+        Predicate<BlockPos> within = s -> strip.map(b -> s.x() >= b.minX() && s.x() <= b.maxX() && s.z() >= b.minZ() && s.z() <= b.maxZ())
+                .orElse(true);
+        Optional<Clearing.Cut> cut = Clearing.next(world, cover, soldier, excluded,
+                s -> reachable.contains(s) && stands.test(world, s) && within.test(s));
+        // Nothing on the ground reaches: the top layer from the air, on steps it builds - only with
+        // blocks to build them of. Live, a hilltop over the keep stood while its builders stood under it.
+        if (cut.isEmpty() && strip.isPresent() && inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.COBBLESTONE) > 0) {
+            cut = Clearing.fromTheAir(world, cover, excluded, within);
+            cut.ifPresent(c -> LOG.info("{} builds up to the top of its strip to cut {} from {}", name, c.block(), c.stand()));
+        }
         if (cut.isEmpty()) {
             cooldown = COOLDOWN_TICKS;
             return;

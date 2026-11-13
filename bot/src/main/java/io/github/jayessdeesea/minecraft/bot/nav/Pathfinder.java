@@ -25,7 +25,8 @@ import java.util.Set;
  * {@link FallAllowance}, at a cost per point of fall damage. A soldier carrying blocks can also
  * pillar: jump and place a block under itself, rising one block straight up - the way up a wall
  * or cliff, repeated, then a step off onto the top. Pillar steps are offered only beside a wall,
- * where they get somewhere a walk can't; anywhere else they'd spend the search on open air. And any
+ * where they get somewhere a walk can't, or in open air straight under a goal more than a jump
+ * overhead; anywhere else they'd spend the search on open air. And any
  * soldier can dig a step into a slope too steep to jump: {@link #stepCut} cells of soil by hand, or
  * of stone too with a pickaxe. And one carrying blocks builds steps where there are none
  * ({@link #stepBuild}): down off a drop it would otherwise fall, or up toward a goal above it with
@@ -171,7 +172,13 @@ public final class Pathfinder {
             // Pillar steps only beside a wall: anywhere else they spend the search budget on open air.
             // Built steps only toward the goal's height, for the same reason.
             int heading = !build ? 0 : goal.y() < current.y() - goal.verticalTolerance() ? -1 : goal.y() > current.y() + goal.verticalTolerance() ? 1 : 0;
-            for (Move move : moves(world, current, falls, used < blocks && besideWall(world, current), pickaxe, blocks - used, heading)) {
+            // And straight up under a goal well overhead - past a jump - in open air: a pillar to a
+            // stand in the sky over its column, to cut the top of a strip from (operator, 2026-11-13:
+            // pillar up to it). Not for a block up: in the squad simulation a farmer pillared a step
+            // in its farm's hollow and trampled the crop stepping off.
+            boolean underGoal = current.x() == (int) Math.floor(goal.x()) && current.z() == (int) Math.floor(goal.z())
+                    && goal.y() > current.y() + goal.verticalTolerance() + 2;
+            for (Move move : moves(world, current, falls, used < blocks && (besideWall(world, current) || underGoal), pickaxe, blocks - used, heading)) {
                 double cost = base + move.cost() + (avoid.contains(move.to()) ? AVOID_COST : 0);
                 Double known = costSoFar.get(move.to());
                 if (known == null || cost < known) {
