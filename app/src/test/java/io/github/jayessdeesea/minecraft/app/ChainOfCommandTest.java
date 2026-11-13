@@ -88,6 +88,8 @@ class ChainOfCommandTest {
         assertEquals(bravo, two.sheltered(hut, squad("Bravo", "Bob")), "the general's patrol base doesn't take it off the night shift");
 
         two.setKeepByDay(true);
+        assertEquals(ChainOfCommand.KEEP_MINE, two.sheltered(WALL, squad("Bravo", "Bob")).location(),
+                "building the keep, the night's mine is the keep's own, beside it");
         two.onTime(TimeOfDay.of(TimeOfDay.DAWN - ChainOfCommand.SURFACE_LEAD_TICKS + 1, true));
         Objective climbingOut = two.sheltered(two.byDay(WALL, squad("Bravo", "Bob")), squad("Bravo", "Bob"));
         assertTrue(climbingOut.task() instanceof Objective.Task.Keep, "just before sunrise it climbs out to the day's work: " + climbingOut);

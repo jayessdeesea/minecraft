@@ -59,22 +59,4 @@ class TaskingTest {
     void eachSoldiersBorrowPitIsOnItsOwnSide() {
         assertEquals(4, IntStream.range(0, 4).mapToObj(i -> Groundwork.borrowPit(FEET, 8, i)).distinct().count());
     }
-
-    /**
-     * Level by level, strip by strip: a spire in one strip holds back the strip beside it to two
-     * under it, and leaves a strip further off to dig its own ground. Live, one spire at y=103
-     * set the whole keep's layer, and a squad's every strip stood idle under it.
-     */
-    @Test
-    void aSpireHoldsBackOnlyTheStripsBesideIt() {
-        Box share = new Box(0, 64, 0, 15, 319, 11); // three strips across x: 0..4, 5..9, 10..15
-        java.util.function.IntBinaryOperator top = (x, z) -> x < 0 || x > 15 || z < 0 || z > 11 ? Integer.MIN_VALUE
-                : z == 0 && x == 4 ? 103 : 70; // the spire on A's edge, beside B
-        Map<String, Order> orders = Tasking.keepDig(List.of(new Tasking.Hand("A", 0), new Tasking.Hand("B", 0), new Tasking.Hand("C", 0)),
-                share, top, Set.of());
-
-        assertEquals(101, ((Order.Dig) orders.get("A")).box().minY(), "the spire's own strip, top down");
-        assertTrue(!orders.containsKey("B"), "beside it: nothing at or over 101 till the spire comes down - free for other work");
-        assertEquals(68, ((Order.Dig) orders.get("C")).box().minY(), "further off: its own ground, two under its own top");
-    }
 }

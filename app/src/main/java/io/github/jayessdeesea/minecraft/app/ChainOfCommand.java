@@ -283,6 +283,11 @@ public class ChainOfCommand implements DisposableBean {
     /** Where the camp's mine is cut, from the camp's centre: inside its wall, clear of the huts. */
     static final int MINE_HEAD_DX = 4;
     static final int MINE_HEAD_DZ = -4;
+    /**
+     * The keep's mine head: off its north-west corner, clear of the slab, its depot and the west
+     * borrow pit (x -25..-20, z -17..17).
+     */
+    static final Position KEEP_MINE = new Position(Keep.MIN - 10, ChainOfCommand.MINE_DEPTH, Keep.MIN - 8);
     /** How deep the night shift cuts: the iron, commonest round y=16. */
     static final int MINE_DEPTH = 16;
 
@@ -294,6 +299,13 @@ public class ChainOfCommand implements DisposableBean {
         Foothold camp = foothold;
         if (camp == null || squads.isEmpty()) {
             return Optional.empty();
+        }
+        // Building the keep by day, the night's mine is the keep's own, beside it: from the camp's,
+        // 65 blocks off and 48 down, the climb out and the walk to the keep were two-fifths of the
+        // day (field151; operator, 2026-11-13: cutting a second mine is fine).
+        if (keepByDay) {
+            return Optional.of(new Objective("Cut the keep's mine down to the iron through the night", KEEP_MINE,
+                    "Stone for the keep's slab, and the night spent working underground beside it", new Objective.Task.Mine()));
         }
         Position c = camp.camp();
         return Optional.of(new Objective("Cut the camp's mine down to the iron through the night",

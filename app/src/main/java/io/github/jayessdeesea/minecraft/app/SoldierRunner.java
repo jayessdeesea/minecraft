@@ -64,6 +64,7 @@ import io.github.jayessdeesea.minecraft.command.Escort;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.Formation;
 import io.github.jayessdeesea.minecraft.command.Formations;
+import io.github.jayessdeesea.minecraft.command.Foreman;
 import io.github.jayessdeesea.minecraft.command.Groundwork;
 import io.github.jayessdeesea.minecraft.command.Interval;
 import io.github.jayessdeesea.minecraft.command.Keep;
@@ -1668,17 +1669,26 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Each soldier a fixed range of x and z, its strip of the squad's share, from its floor up
         // (operator, 2026-11-13: you get this x range and this z range, top down) - not cut from
         // where work is left: a strip that narrow left no stand beside its last block.
-        Map<String, Order> orders = new HashMap<>(!toDig.isEmpty() ? Tasking.keepDig(crew, digShare, top, digExcept) : Tasking.keep(crew, Optional.empty(),
-                toDig.isEmpty() ? bounds(toFill) : Optional.empty(), toDig.isEmpty() ? kept : digExcept));
+        Map<String, Order> orders = new HashMap<>(toDig.isEmpty() ? Tasking.keep(crew, Optional.empty(), bounds(toFill), kept) : Map.of());
+        if (!toDig.isEmpty()) {
+            orders.putAll(foremansNet(squad, onKeep, crew, digShare, top, digExcept));
+        } else {
+            keepStripsBySquad.remove(squad);
+        }
         // A pillar's stock: a builder on the keep's dig short of blocks to climb on fetches a load of
         // dirt from a borrow pit off its squad's side of the keep. Live, a builder sent to cut its
         // strip's top 15 blocks up carried one block of dirt - its steps had used the rest, and the
         // hilltop it dug was stone - and stood under it.
         int side = share == 0 ? 1 : 0; // west for the first share, east for the second
         int pitX = side == 1 ? Keep.MIN - Groundwork.BORROW_GAP - 3 : Keep.MAX + Groundwork.BORROW_GAP + 3;
-        BlockPos pitGround = TerrainSurveyor.groundAt(world, BlockPos.containing(pitX + 0.5, Keep.FLOOR, 0.5));
+        // Its surface, from high over the hill down: live, a guess at y=68 put the pit under a hill,
+        // where no soil has an open top, and every builder's fetch found none all day.
+        Optional<BlockPos> pitGround = TerrainSurveyor.surface(world, pitX, 0, Keep.FLOOR + 60);
+        if (pitGround.isEmpty()) {
+            LOG.warn("[{}] no ground at x={} z=0 for the keep's borrow pit - its builders fetch no dirt", squad, pitX);
+        }
         for (SoldierStatus h : hands) {
-            if (!(orders.get(h.name()) instanceof Order.Dig)) {
+            if (!(orders.get(h.name()) instanceof Order.Dig) || pitGround.isEmpty()) {
                 keepFetching.remove(h.name());
                 continue;
             }
@@ -1689,7 +1699,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     LOG.info("[{}] {} carries {} blocks to climb on - fetches a load of dirt first", squad, h.name(), blocks);
                 }
                 orders.put(h.name(), new Order.Gather(Resource.SOIL,
-                        Groundwork.borrowPit(new Cell(0, pitGround.y(), 0), Keep.MAX + 1, side), Tasking.LOAD));
+                        Groundwork.borrowPit(new Cell(0, pitGround.get().y(), 0), Keep.MAX + 1, side), Tasking.LOAD));
             } else {
                 keepFetching.remove(h.name());
             }
@@ -1717,6 +1727,141 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Soldiers whose dig or fill is the keep's, not the camp's - squad loop writes, tick reads. */
     private final Set<String> keepHands = ConcurrentHashMap.newKeySet();
+
+    /**
+     * The keep's net, run each squad cycle for {@code squad}: its builders' strips - each a fixed
+     * range of x and z of the squad's share - each builder's strip's top said to the foreman when it
+     * changes, the foreman's clearances sent (it's the first builder of the first squad on the
+     * keep: the squad leader's appointment), and each builder's dig, down to the floor it's been
+     * cleared to and no lower. A builder not yet cleared, or with nothing left over its floor, has no
+     * dig - free for other work. The lines go point to point over the server's chat ({@code /msg}).
+     */
+    private Map<String, Order> foremansNet(String squad, List<String> onKeep, List<Tasking.Hand> crew, Box share,
+                                           java.util.function.IntBinaryOperator top, Set<Cell> except) {
+        long now = clockwork.millis();
+        List<Box> strips = share.strips(Math.max(1, crew.size()));
+        Map<String, Box> mine = new LinkedHashMap<>();
+        for (int i = 0; i < crew.size(); i++) {
+            mine.put(crew.get(i).name(), strips.get(i % strips.size()));
+        }
+        Map<String, Box> before = keepStripsBySquad.put(squad, mine);
+        if (before != null) {
+            before.keySet().stream().filter(n -> !mine.containsKey(n)).forEach(n -> {
+                synchronized (foreman) {
+                    foreman.forget(n);
+                }
+                clearances.remove(n);
+                reporters.remove(n);
+            });
+        }
+        // The squad leader's appointment: the first builder of the first squad on the keep, again
+        // whenever that one is off it.
+        if (!onKeep.isEmpty() && squad.equals(onKeep.getFirst()) && !crew.isEmpty()
+                && !crew.stream().map(Tasking.Hand::name).toList().contains(keepForeman)) {
+            String appointed = crew.getFirst().name();
+            LOG.info("[{}] {} is the keep's foreman", squad, appointed);
+            keepForeman = appointed;
+            synchronized (foreman) {
+                foreman = new Foreman();
+            }
+            clearances.clear();
+            reporters.clear();
+        }
+        String chief = keepForeman;
+        Map<String, Integer> tops = new HashMap<>();
+        for (Map.Entry<String, Box> e : mine.entrySet()) {
+            Box b = e.getValue();
+            int t = Foreman.NONE;
+            for (int x = b.minX(); x <= b.maxX(); x++) {
+                for (int z = b.minZ(); z <= b.maxZ(); z++) {
+                    t = Math.max(t, top.applyAsInt(x, z));
+                }
+            }
+            tops.put(e.getKey(), t);
+            if (chief != null) {
+                reporters.computeIfAbsent(e.getKey(), n -> new Foreman.Reporter()).report(t, now)
+                        .ifPresent(line -> say(e.getKey(), chief, line));
+            }
+        }
+        if (chief != null && squad.equals(onKeep.getFirst())) {
+            Map<String, Box> all = new LinkedHashMap<>();
+            keepStripsBySquad.values().forEach(all::putAll);
+            Map<String, Foreman.Clear> decided;
+            synchronized (foreman) {
+                decided = foreman.decide(all);
+            }
+            decided.forEach((soldier, clear) -> say(chief, soldier, clear));
+        }
+        drainNet(now);
+        Map<String, Order> orders = new HashMap<>();
+        for (Map.Entry<String, Box> e : mine.entrySet()) {
+            Integer floor = clearances.get(e.getKey());
+            int t = tops.get(e.getKey());
+            if (floor != null && t != Foreman.NONE && t >= floor) {
+                Box b = e.getValue();
+                orders.put(e.getKey(), new Order.Dig(new Box(b.minX(), floor, b.minZ(), b.maxX(), b.maxY(), b.maxZ()), except));
+            }
+        }
+        return orders;
+    }
+
+    /** {@code from} says {@code line} to {@code to}: on the net, a line a second at most from each sender - or to itself, at once. */
+    private void say(String from, String to, Foreman.Signal line) {
+        if (from.equals(to)) {
+            netHeard(to, from, line);
+            return;
+        }
+        netOutbox.computeIfAbsent(from, n -> new java.util.ArrayDeque<>()).add(new String[]{to, line.text()});
+    }
+
+    /** Sends each sender's next line, a second after its last: the server cuts off a connection that chats faster. */
+    private void drainNet(long now) {
+        netOutbox.forEach((from, queue) -> {
+            if (queue.isEmpty() || now - netSentAt.getOrDefault(from, Long.MIN_VALUE / 2) < NET_LINE_MILLIS) {
+                return;
+            }
+            Consumer<String> line = chatLines.get(from);
+            if (line == null) {
+                return; // not connected: kept till it is
+            }
+            String[] next = queue.poll();
+            line.accept("msg " + next[0] + " " + next[1]);
+            netSentAt.put(from, now);
+            LOG.info("[Keep] {} -> {}: {}", from, next[0], next[1]);
+        });
+    }
+
+    /** {@code receiver} heard {@code line} from {@code sender} on the net: a top for the foreman, a clearance for a builder. */
+    private void netHeard(String receiver, String sender, Foreman.Signal line) {
+        switch (line) {
+            case Foreman.Top t when receiver.equals(keepForeman) -> {
+                synchronized (foreman) {
+                    foreman.heard(sender, t);
+                }
+            }
+            case Foreman.Clear c when sender.equals(keepForeman) -> clearances.put(receiver, c.floor());
+            default -> LOG.warn("[Keep] {} heard {} from {}, not on the foreman's net", receiver, line.text(), sender);
+        }
+    }
+
+    /** The server cuts off a connection chatting faster than this, sustained. */
+    static final long NET_LINE_MILLIS = 1_000;
+    /** The keep's foreman, by name - squad loop writes, connections read. */
+    private volatile String keepForeman;
+    /** The foreman's book of tops and clearances - guarded by itself; replaced on a new appointment. */
+    private volatile Foreman foreman = new Foreman();
+    /** Each builder's floor, as it was cleared to on the net - connections write, squad loop reads. */
+    private final Map<String, Integer> clearances = new ConcurrentHashMap<>();
+    /** Each builder's side of the net - squad loop only. */
+    private final Map<String, Foreman.Reporter> reporters = new ConcurrentHashMap<>();
+    /** Each keep squad's builders' strips - squad loops. */
+    private final Map<String, Map<String, Box>> keepStripsBySquad = new ConcurrentHashMap<>();
+    /** Lines waiting to go on the net, by sender - squad loops. */
+    private final Map<String, java.util.Deque<String[]>> netOutbox = new ConcurrentHashMap<>();
+    /** When each sender last said a line - squad loops. */
+    private final Map<String, Long> netSentAt = new ConcurrentHashMap<>();
+    /** Each connected soldier's chat command line, by name. */
+    private final Map<String, Consumer<String>> chatLines = new ConcurrentHashMap<>();
 
     /** Builders on the keep fetching dirt to climb on - squad loop only. */
     private final Set<String> keepFetching = ConcurrentHashMap.newKeySet();
@@ -2411,6 +2556,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // leaves it the same way as one it remembers: the room is read from the world.
         if (state.builtBase == null && objectiveOf(squadName).isPresent()) {
             statuses.stream().filter(st -> plan == null || !plan.inside(st.position()))
+                    // Not a keep builder on its dirt run, in the borrow pit it's digging: it climbs out
+                    // on what it carries. In the squad simulation one three deep in its own pit was
+                    // taken for shut in, cut a "doorway" into the ground beside it every few seconds,
+                    // and never got its load.
+                    .filter(st -> !keepFetching.contains(st.name()))
                     // Walled by what a squad builds with, not a tree: live, a soldier up a canopy was
                     // taken for shut in a hut, cut a doorway out of the leaves, and fell ten blocks.
                     .flatMap(st -> PatrolBase.enclosing(st.position(), c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z())
@@ -2623,8 +2773,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // The camp's mine, kept from before a restart, is cut on down wherever it was sited.
             // Its head on the camp's ground, not where a soldier stands: live, one standing down an
             // old shaft had a staircase sited from a step in it.
+            // Off the camp - the keep's mine - its head on the column's own surface: the point man may
+            // be anywhere at dusk, up a hill or down a pit.
             int nearY = campGround != null && Math.hypot(campGround.x() - x, campGround.z() - z) <= 2 * Staircase.SITE_RADIUS
-                    ? campGround.y() : (int) Math.floor(statuses.get(0).position().y());
+                    ? campGround.y()
+                    : TerrainSurveyor.surface(world, x, z, Keep.SKY_TOP).map(BlockPos::y).orElse((int) Math.floor(statuses.get(0).position().y()));
             // A site on the ground says where, not how deep: down to the iron. Live, a miner's site at
             // the camp's height was taken for its depth, and three miners stood over one step.
             int asked = (int) Math.floor(o.location().y());
@@ -2636,8 +2789,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     (Math.max(Math.abs(k.head().x() - x), Math.abs(k.head().z() - z)) <= Staircase.SITE_RADIUS
                             || nearCamp(x, z))
                             && k.bottom() == Math.max(Staircase.DEEPEST, Math.min(depth, k.head().y() - 1)));
+            // A mine off the camp is kept on disk by the x and z it was ordered at: after a restart it's
+            // cut on down, not sited again over its own half-cut steps.
+            if (kept.isEmpty() && !nearCamp(x, z)) {
+                kept = mineStore.load("mine" + x + "," + z).filter(k -> k.size() == 2).map(k -> new Staircase(k.get(0), k.get(1).y()));
+            }
             if (kept.isPresent()) {
-                LOG.info("[{}] MINE: the camp's staircase, kept on disk: down from {} to y={}", squadName, kept.get().head(), kept.get().bottom());
+                LOG.info("[{}] MINE: the staircase kept on disk: down from {} to y={}", squadName, kept.get().head(), kept.get().bottom());
                 state.stairsFor = new int[]{x, z};
                 treeClaims.addAll(kept.get().walkway());
                 return kept.get();
@@ -2660,6 +2818,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             LOG.info("[{}] MINE: a staircase down from {} to y={}", squadName, sited.get().head(), sited.get().bottom());
             state.stairsFor = new int[]{x, z};
+            if (!nearCamp(x, z)) {
+                mineStore.save("mine" + x + "," + z, List.of(sited.get().head(), sited.get().step(sited.get().steps() - 1)));
+            }
             // Its stairs and tunnels are claimed: no table, furnace or other digger goes in them.
             treeClaims.addAll(sited.get().walkway());
             return sited.get();
@@ -3567,6 +3728,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // is passed on once; one whispered to a soldier (/msg) reaches only that one, which
                 // relays it up the chain.
                 chat -> {
+                    // The keep's net: a line whispered to this soldier by another - never its own,
+                    // which the server echoes back to it.
+                    Foreman.parse(chat.message()).ifPresent(line -> soldierNamed(chat.sender())
+                            .filter(sender -> !sender.equals(definition.name()))
+                            .ifPresent(sender -> netHeard(definition.name(), sender, line)));
                     if (firstHearing(chat)) {
                         operatorOrders.orderFrom(chat).ifPresent(order -> {
                             LOG.info("{} relays {} from the operator: {}", definition.name(),
@@ -3685,6 +3851,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .map(cell -> OptionalInt.of(cell.y())).orElse(OptionalInt.empty()));
         }
         activeSoldiers.put(name, soldier);
+        chatLines.put(name, session::sendChatCommand);
         SupplyRun run = new SupplyRun(name, session, inventory, () -> {
             Kit drawn = inventory.kit();
             lastKit.set(drawn);
@@ -4503,6 +4670,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private static final long SAME_LINE_NANOS = 2_000_000_000L;
     /** When each line was last heard, by sender and text - every connection's event loop. */
     private final Map<String, Long> lastHeard = new ConcurrentHashMap<>();
+
+    /** The soldier whose offline-mode UUID {@code uuid} is, if it's one of ours. */
+    private Optional<String> soldierNamed(java.util.UUID uuid) {
+        return soldierDefinitions.stream().map(SoldierDefinition::name)
+                .filter(n -> OperatorOrders.offlineUuid(n).equals(uuid)).findFirst();
+    }
 
     /** Whether no connection has heard {@code chat} in the last {@link #SAME_LINE_NANOS}. */
     private boolean firstHearing(ChatMessage chat) {

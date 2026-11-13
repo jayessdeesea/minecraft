@@ -2141,6 +2141,68 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
+    /**
+     * The borrow pit for a builder's dirt is on the ground's surface, wherever that is: live, the pit
+     * was put at a guessed y=68 under a hill, and every fetch found no soil all day.
+     */
+    @Test
+    void aBuildersDirtComesFromTheSurfaceOfAHillBesideTheKeep() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 10 ? SimServer.GLASS
+                : x < Keep.MIN - 1 && y > GROUND && y <= GROUND + 12 ? SimServer.DIRT // the hill, west of the keep
+                : x == Keep.MIN - 1 && z > Keep.MAX + 2 && y > GROUND && y <= GROUND + Math.min(12, z - Keep.MAX - 2) ? SimServer.DIRT // its ramp
+                : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1})))
+                .run();
+
+        clock.advance(8 * 60_000);
+
+        assertTrue(server.log.stream().anyMatch(e -> e.matches("Alice dug " + SimServer.DIRT + " at -[0-9]+,.*")
+                        && Integer.parseInt(e.replaceAll(".* at (-[0-9]+),.*", "$1")) < Keep.MIN - 1),
+                "dirt dug off the hill west of the keep; last server events: "
+                        + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+    }
+
+    /**
+     * The keep's foreman runs the flattening over the net (operator, 2026-11-13): each builder says
+     * its strip's top to the foreman point to point, the foreman clears it to a floor, and it digs
+     * its own strip down to that and no lower.
+     */
+    @Test
+    void theKeepsForemanClearsEachBuilderOverTheNet() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 5 && z == 5 && y > GROUND && y <= GROUND + 2 ? SimServer.DIRT
+                : x == -5 && z == -5 && y > GROUND && y <= GROUND + 2 ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{10, SimServer.ITEM_DIRT, 32})))
+                .run();
+
+        clock.advance(4 * 60_000);
+
+        assertTrue(server.log.stream().anyMatch(e -> e.startsWith("Bob /msg Alice KEEP TOP ")), "Bob's top said to the foreman: "
+                + server.log.stream().filter(e -> e.contains("/msg")).toList());
+        assertTrue(server.log.stream().anyMatch(e -> e.startsWith("Alice /msg Bob KEEP CLEAR TO ")), "Bob cleared by the foreman: "
+                + server.log.stream().filter(e -> e.contains("/msg")).toList());
+        assertEquals(SimServer.AIR, server.block(5, GROUND + 2, 5), "a mound dug; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+        assertEquals(SimServer.AIR, server.block(-5, GROUND + 2, -5), "and the other");
+    }
+
     /** Food first: a soldier with no rations is left off the keep, to feed itself - its mound left standing. */
     @Test
     void aStarvingSoldierIsLeftOffTheKeepToFeedItself() {

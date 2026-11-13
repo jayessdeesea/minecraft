@@ -75,6 +75,20 @@ public final class TerrainSurveyor {
         return groundUnder(world, cell);
     }
 
+    /**
+     * The surface of column ({@code x}, {@code z}): the highest cell from {@code fromY} down with
+     * solid ground under it and room for a body - not a cave's floor under a hill, as
+     * {@link #groundAt}, which looks only a few blocks under a guess, finds. Empty with none.
+     */
+    public static java.util.Optional<BlockPos> surface(WorldView world, int x, int z, int fromY) {
+        for (int y = fromY; y > fromY - 256; y--) {
+            if (world.isSolid(x, y - 1, z) && !world.isSolid(x, y, z) && !world.isSolid(x, y + 1, z) && !world.isHazard(x, y, z)) {
+                return java.util.Optional.of(new BlockPos(x, y, z));
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
     static BlockPos groundUnder(WorldView world, BlockPos cell) {
         for (int ring = 0; ring <= WADE_RADIUS; ring++) {
             for (int dz = -ring; dz <= ring; dz++) {

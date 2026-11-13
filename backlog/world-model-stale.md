@@ -18,6 +18,12 @@ Three times in one day the shared `ChunkCache` showed a block the server didn't 
   fresh start, so not a chunk kept from before): three farmers tried to harvest it 168 times,
   most of that run's "harvests", the walk to it failing each time.
 
+- the commonest live CANTCO of field148-152 (2026-11-13), "no route to within 0 of" a stand a block
+  down and diagonal: at one, (-25, 69, 7), a probe's own fresh chunks showed the stand solid, a
+  gatherer having walked at it for a minute. A dig failing at once on a stand read as filled was
+  tried and dropped: the farm-in-a-hollow simulation trampled its crop with it. Not yet known
+  whether the soldiers' model had the stand open (stale) or solid (the walk's own fault).
+
 Block Update (0x08) and Section Blocks Update (0x56) are both decoded, and the only block the
 client writes itself is a pillar step's cobblestone (`SoldierRunner`, `takePlacement`).
 

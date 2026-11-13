@@ -609,6 +609,12 @@ final class SimServer {
         @Override
         public void sendChatCommand(String command) {
             log.add(name + " /" + command);
+            // A whisper, as the server delivers one: to its one listener, from its sender.
+            String[] words = command.split(" ", 3);
+            if (words.length == 3 && words[0].equals("msg") && players.containsKey(words[1])) {
+                players.get(words[1]).listeners.onChat().accept(new io.github.jayessdeesea.minecraft.protocol.ChatMessage(
+                        OperatorOrders.offlineUuid(name), words[2]));
+            }
         }
 
         @Override

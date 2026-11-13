@@ -9,9 +9,12 @@ From nightfall until dawn - a hut goes up in a minute or two, faster than the ni
 monsters spawn and walk in, so the day is worked to its end. The general is still asked 90 seconds
 before dark, to plan the night:
 - **Every squad is on the night shift** (operator, 2026-11-13): whatever the general orders, a
-  patrol base included, it's sent down the camp's mine, every squad by the one stairway. The head
-  is 4 blocks east and 4 north of the camp's centre, inside the wall, cut to the iron at y=16
-  (`ChainOfCommand.nightShift`). The shift ends 30 seconds before sunrise
+  patrol base included, it's sent down the mine, every squad by the one stairway. Under the keep
+  rule it's the keep's own mine, off its north-west corner (`ChainOfCommand.KEEP_MINE`): from the
+  camp's, the climb out and the walk were two-fifths of the day. Otherwise the camp's: 4 blocks
+  east and 4 north of its centre, inside the wall. Cut to the iron at y=16
+  (`ChainOfCommand.nightShift`); a mine off the camp is kept on disk by where it was ordered, and
+  cut on down after a restart. The shift ends 30 seconds before sunrise
   (`ChainOfCommand.SURFACE_LEAD_TICKS`): the climb out and the walk to the day's work, so the
   squads come up as the sun burns the undead off the surface, and the day's rule - the keep - takes
   them from there. How a squad works the mine at night is in
