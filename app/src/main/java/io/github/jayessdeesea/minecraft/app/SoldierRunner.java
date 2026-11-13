@@ -36,6 +36,7 @@ import io.github.jayessdeesea.minecraft.bot.supply.Quartermaster;
 import io.github.jayessdeesea.minecraft.bot.supply.Quiver;
 import io.github.jayessdeesea.minecraft.bot.supply.MetalPool;
 import io.github.jayessdeesea.minecraft.bot.supply.Pack;
+import io.github.jayessdeesea.minecraft.bot.supply.WayOut;
 import io.github.jayessdeesea.minecraft.bot.supply.Rations;
 import io.github.jayessdeesea.minecraft.bot.supply.ResourceSurveyor;
 import io.github.jayessdeesea.minecraft.bot.supply.Scavenger;
@@ -3480,6 +3481,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Torchmaker torchmaker = new Torchmaker(name, session, inventory, furnaces);
         torchmakers.put(name, torchmaker);
         AtomicInteger ladderTicks = new AtomicInteger();
+        // Boxed in with no doorway anyone knows to cut - a hut it was sealed in before a restart -
+        // the wall toward where it's sent, broken from where it stands (bot.supply.WayOut).
+        AtomicReference<List<BlockPos>> wayOut = new AtomicReference<>(List.of());
         AtomicReference<Optional<Recipe>> ladderStep = new AtomicReference<>(Optional.empty());
         AtomicBoolean armourerWas = new AtomicBoolean();
         // Ticks while told to light the base: one torch tried a second, until the light check sees it.
@@ -3650,9 +3654,24 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Map<Hands.Routine, Hands.Turn> turns = new EnumMap<>(Hands.Routine.class);
             turns.put(Hands.Routine.SUPPLY_RUN, turn(run::active,
                     free -> run.tick(status.position(), supplyPoint, free && Resupply.isShort(status) && !inContact)));
-            turns.put(Hands.Routine.DOORWAY, turn(() -> exit != null, free -> {
+            if (ladderTicks.get() % 20 == 0) {
+                boolean noRoute = status.report() instanceof Report.Cantco(String why) && why.startsWith("no route");
+                wayOut.set(exit == null && fort == null && !inContact && noRoute && status.order() instanceof Order.MoveTo to
+                        ? WayOut.cells(world, BlockPos.containing(status.position().x(), status.position().y() + 0.01, status.position().z()),
+                        new Position(to.x(), to.y(), to.z()))
+                        : List.of());
+                if (!wayOut.get().isEmpty() && !doorway.active()) {
+                    LOG.warn("{} is boxed in at {} with no way out - breaks the wall at {}", name, status.position(), wayOut.get());
+                }
+            }
+            List<BlockPos> out = wayOut.get();
+            turns.put(Hands.Routine.DOORWAY, turn(() -> exit != null || !out.isEmpty(), free -> {
                 if (free && exit != null && Math.hypot(status.position().x() - exit.stand().x(), status.position().z() - exit.stand().z()) < 0.5) {
                     doorway.tick(world, exit.cells());
+                } else if (free && exit == null && !out.isEmpty() && !threatened) {
+                    if (doorway.tick(world, out)) {
+                        wayOut.set(List.of());
+                    }
                 } else {
                     doorway.stop();
                 }

@@ -1889,6 +1889,44 @@ class SquadSimulationTest {
     }
 
     /**
+     * A soldier boxed in a pocket no one knows to open - as after a restart, no hut's shape - breaks
+     * its own way out toward where it's sent. Live, three soldiers stood a day in a three-cell pocket,
+     * every move "no route".
+     */
+    @Test
+    void aSoldierSealedInAHutBreaksItsWayOut() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::sealedHut, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(20.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(3 * 60_000);
+
+        PlayerPosition at = server.position("Alice");
+        assertTrue(at.x() > 4, "Alice at " + at
+                + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 8), server.log.size()));
+    }
+
+    /**
+     * Flat, with an L-shaped pocket of three cells at (0, 0), (-1, 0) and (-1, -1) in a solid block of
+     * cobblestone 7 across and 3 high - no hut's shape, as live: a room no squad's record has.
+     */
+    private static int sealedHut(int x, int y, int z) {
+        boolean block = Math.abs(x) <= 3 && Math.abs(z) <= 3 && y > GROUND && y <= GROUND + 3;
+        boolean pocket = y <= GROUND + 2 && (x == 0 && z == 0 || x == -1 && z == 0 || x == -1 && z == -1);
+        return block && !pocket ? SimServer.COBBLESTONE : flat(x, y, z);
+    }
+
+    /**
      * A full pack sheds what no routine uses: a soldier whose pack is full of rotten flesh throws some
      * away, keeping room for a harvest's wheat - and keeps its sword and bread. Live, packs held rotten
      * flesh, bones, gravel and phantom membranes, 36 of 36 slots used.
