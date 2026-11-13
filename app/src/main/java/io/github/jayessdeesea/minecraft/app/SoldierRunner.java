@@ -773,6 +773,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 && Cohesion.distance(at, stockpile.get()) <= DRAW_FOOD_NEAR;
     }
 
+    /** Logs a soldier short of them for its kit draws from the stockpile: a table, sticks and a tool's worth. */
+    static final int DRAW_LOGS = 8;
+
+    /**
+     * Whether a soldier goes to {@code stockpile} for logs: its kit's last try gave up for want of a
+     * tree in reach ({@code failure}), it carries too few to make a table and a tool from, and the
+     * chest was last seen holding a load. Live, a bare-handed miner with no tree within 48 blocks
+     * stood a day in the mine, while the camp's chest held 85 logs.
+     */
+    static boolean drawsLogs(Optional<String> failure, int logs, Optional<Stockpile> seen, Optional<Position> stockpile) {
+        return stockpile.isPresent() && logs < 2 && failure.filter(f -> f.contains("no LOG")).isPresent()
+                && seen.map(st -> st.logs() >= DRAW_LOGS).orElse(false);
+    }
+
     /** Each connected soldier's tree planting, by name. */
     private final Map<String, Forester> foresters = new ConcurrentHashMap<>();
     /** The tree farm each soldier plants, while its squad's objective is one - squad loop writes, tick reads. */
@@ -4004,6 +4018,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Optional<Position> stockpile = stockpileFor(name);
                 if (drawingStone.contains(name) || keepDrawing.contains(name)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
+                } else if (drawsLogs(armourer.failure(), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile)
+                        || depositor.drawing(ItemClass.LOG)) {
+                    depositor.tickDraw(status.position(), stockpile, ItemClass.LOG, DRAW_LOGS, free && !threatened
+                            && drawsLogs(armourer.failure(), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile));
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));

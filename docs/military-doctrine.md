@@ -470,6 +470,9 @@ fastest shovel, a stone one in a quarter of the bare-handed time. A step or pill
 dirt before cobblestone (`Footing.placeStep`): scaffolding, while cobblestone is a floor's and a
 wall's.
 
+With no tree in reach for its kit's logs, it draws 8 from its stockpile, while the chest was last
+seen holding that many (`SoldierRunner.drawsLogs`).
+
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
 It crafts what it can in its 2x2 inventory grid. What needs a table or a furnace it makes at one
