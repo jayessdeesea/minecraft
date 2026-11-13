@@ -240,8 +240,10 @@ public final class Farmer {
     private void next(WorldView world, FarmPlan farm) {
         // A harvest claims the crop over its cell, not the cell: live, four farmers harvested one
         // ripe wheat in turn, each checking the ground cell a squadmate's harvest hadn't claimed.
+        // And not a cell with no room for the head over it: live, a hut's wall stood over the farm's
+        // edge, and its farmers tried for the cell, "no route", minutes on end.
         List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !claims.contains(c.offset(0, 1, 0))
-                        && !passedOver.barred(c, ticks) && !shared.barred(c, ticks))
+                        && !passedOver.barred(c, ticks) && !shared.barred(c, ticks) && !world.isSolid(c.x(), c.y() + 2, c.z()))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()))).toList();
         // Earthwork first: a cell in a hollow walked into for a harvest or a sowing is trampled.
         List<BlockPos> earthwork = earthwork(world, farm);

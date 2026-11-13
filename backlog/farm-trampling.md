@@ -38,3 +38,9 @@ standard after the wall.
   model and the server agreeing on each cell - grass under open air - every refused till was
   Fran's (6 cells) or Alice's (3), each cell three tries; squadmates' tills went through. Fran
   carried a wooden hoe (the server's own `data get entity`). Not yet known why.
+- **Open (2026-11-12): farmers crowd one cell.** Live (field138), two farmers of one squad stood
+  on one spot with the same stand as their goal, their escorts a block off, and each reported
+  "no route ... to within 0" for two minutes: the route is fine (the probe reaches the cell from
+  either side), but bodies push, the soldier makes no progress, and each re-plan counts as a
+  failure. Claims are by plot cell; what's left is to keep any two farmers' stands - and an
+  escort's place - apart.
