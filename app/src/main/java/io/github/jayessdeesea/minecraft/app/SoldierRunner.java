@@ -796,7 +796,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * in the mine, while the camp's chest held 85 logs nobody had opened it to see.
      */
     static boolean drawsLogs(Optional<String> failure, int logs, Optional<Stockpile> seen, Optional<Position> stockpile) {
-        return stockpile.isPresent() && logs < 2 && failure.filter(f -> f.contains("no LOG")).isPresent()
+        return stockpile.isPresent() && logs < 2 && failure.filter(f -> f.contains("no LOG") || f.contains("{LOG=")).isPresent()
                 && seen.map(st -> st.logs() >= DRAW_LOGS).orElse(true);
     }
 
@@ -1451,7 +1451,22 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (supplyPoint.isPresent()) {
             return supplyPoint;
         }
-        Workshop w = workshops.get(soldier);
+        return stockpileOf(chestOf(workshops.get(soldier)), chestOf(campWorkshop));
+    }
+
+    /**
+     * The stockpile a soldier draws from and stocks: its own workshop's chest, or with none standing
+     * there, the camp's - the force's stores are common, whichever squad put them there (the
+     * operator's, docs/echelons/tenets.md). Live, the keep's builders had no chest at the keep's
+     * workshop - fitting one takes logs - and with only their own to go to drew nothing all day:
+     * not the logs for the chest, nor for a pickaxe or a torch.
+     */
+    static Optional<Position> stockpileOf(Optional<Position> own, Optional<Position> camp) {
+        return own.or(() -> camp);
+    }
+
+    /** Where {@code w}'s chest stands, if it has one standing. */
+    private Optional<Position> chestOf(Workshop w) {
         return w == null || !w.chestStands(world) ? Optional.empty()
                 : Optional.of(new Position(w.chest().get().x() + 0.5, w.chest().get().y(), w.chest().get().z() + 0.5));
     }
@@ -4275,10 +4290,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Optional<Position> stockpile = stockpileFor(name);
                 if (drawingStone.contains(name) || keepDrawing.contains(name)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
-                } else if (drawsLogs(armourer.failure(), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile)
+                } else if (drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile)
                         || depositor.drawing(ItemClass.LOG)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.LOG, DRAW_LOGS, free && !threatened
-                            && drawsLogs(armourer.failure(), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile));
+                            && drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile));
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));

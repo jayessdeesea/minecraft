@@ -1116,7 +1116,10 @@ its own strip: the dirt steps it climbs on are in its strip too. Food first: a b
 food-first mark (`Subsistence.FOOD_FIRST`) gets no keep work, and feeds itself first. Its builders'
 workshop and chest are the keep's own, one for every squad on it, off the slab's west edge
 (`Keep.DEPOT`), where nothing digs under them; a builder carries what it digs until its pack is
-nearly full before taking it there. A soldier of the squad off the keep's work - feeding itself at
+nearly full before taking it there. Until that chest stands, a builder's stockpile is the camp's -
+the force's stores are common (`SoldierRunner.stockpileOf`) - and one short of the logs to fit it
+draws them there: live, with only an unfitted chest of their own, the builders drew nothing all
+day, not the logs for the chest nor for a pickaxe. A soldier of the squad off the keep's work - feeding itself at
 the camp's farm - bakes and stocks at the camp's workshop, not the keep's. Its cobblestone is the mine's: miners carry their loads to the stockpile, and a
 soldier on the keep short of it draws a load from there while the chest was last seen holding
 some; with none there it's free for other work, and the log says the keep waits on cobblestone.
