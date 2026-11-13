@@ -11,6 +11,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySessionListeners;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
+import io.github.jayessdeesea.minecraft.command.Position;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -20,10 +21,13 @@ import java.util.concurrent.TimeUnit;
  * {@code ?} not loaded, {@code @} the probed cell.
  *
  * <pre>mvn -pl app test -Dtest=TerrainProbeIT -Dsurefire.failIfNoSpecifiedTests=false -Dprobe=84,67,29</pre>
+ *
+ * <p>{@code -Dprobe.radius=10} widens the slices; {@code -Dprobe.target=x,y,z} also prints the
+ * wall {@code WayOut} would break for a soldier at the probed cell sent there.
  */
 class TerrainProbeIT {
 
-    private static final int RADIUS = 6;
+    private static final int RADIUS = Integer.getInteger("probe.radius", 6);
 
     @Test
     void probe() throws Exception {
@@ -80,6 +84,13 @@ class TerrainProbeIT {
                     out.append(x == px && z == pz ? '@' : r ? 'R' : '.');
                 }
                 out.append('\n');
+            }
+            String target = System.getProperty("probe.target");
+            if (target != null) {
+                String[] t = target.split(",");
+                Position to = new Position(Double.parseDouble(t[0].trim()), Double.parseDouble(t[1].trim()), Double.parseDouble(t[2].trim()));
+                out.append(String.format("WayOut toward %s: %s%n", to,
+                        io.github.jayessdeesea.minecraft.bot.supply.WayOut.cells(world, new BlockPos(px, py, pz), to)));
             }
             System.out.println(out);
         } finally {

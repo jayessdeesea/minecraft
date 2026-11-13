@@ -51,26 +51,13 @@ public final class WayOut {
     }
 
     /**
-     * The cells it can walk to from {@code feet} - level, a step up or a step down - up to one more
-     * than {@link #BOXED_IN}: no steps cut, as {@link Pathfinder#reachable} cuts them through soil.
+     * The cells it can walk to from {@code feet}, up to one more than {@link #BOXED_IN}: the route
+     * planner's own moves ({@link Pathfinder#reachable}), so what reads as a way out is one a route
+     * can take. Live, a flood of its own stepped down under an overhang no soldier fits under, read
+     * a trench of six cells as open to a quarry of 130, and broke nothing.
      */
     static Set<BlockPos> walkable(WorldView world, BlockPos feet) {
-        Set<BlockPos> seen = new java.util.HashSet<>(List.of(feet));
-        java.util.ArrayDeque<BlockPos> frontier = new java.util.ArrayDeque<>(List.of(feet));
-        while (!frontier.isEmpty() && seen.size() <= BOXED_IN) {
-            BlockPos c = frontier.poll();
-            for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-                for (int dy : new int[]{0, 1, -1}) {
-                    BlockPos n = c.offset(d[0], dy, d[1]);
-                    boolean headroom = dy <= 0 || !world.isSolid(c.x(), c.y() + 2, c.z());
-                    if (headroom && Pathfinder.standable(world, n) && seen.add(n)) {
-                        frontier.add(n);
-                        break;
-                    }
-                }
-            }
-        }
-        return seen;
+        return Pathfinder.reachable(world, feet, BOXED_IN, BOXED_IN + 1);
     }
 
     private static boolean diggable(WorldView world, BlockPos c) {
