@@ -2080,6 +2080,67 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
+    /**
+     * Stranded up a pillar of its own - too high to jump, nothing beside it - a soldier digs it down
+     * from on top, a block's drop at a time onto known ground. Live, a builder called off its pillar
+     * to feed itself stood at y=98 with no route down.
+     */
+    @Test
+    void aSoldierStrandedUpItsOwnPillarDigsItDown() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 6 && z == 6 && y > GROUND && y <= GROUND + 16 ? SimServer.DIRT
+                : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(name -> name.equals("Alice") ? new PlayerPosition(6.5, GROUND + 17, 6.5)
+                        : new PlayerPosition(0.5, GROUND + 1, 0.5), name -> List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(4 * 60_000);
+
+        List<String> left = new ArrayList<>();
+        // Down to a stub it steps off - a pillar no more: nothing over a jump's height is left.
+        for (int y = GROUND + 3; y <= GROUND + 16; y++) {
+            if (server.block(6, y, 6) != SimServer.AIR) {
+                left.add(String.valueOf(y));
+            }
+        }
+        assertEquals(List.of(), left, "its pillar dug down; Alice at " + server.position("Alice") + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+        assertTrue(server.position("Alice").y() <= GROUND + 2, "down on the ground, or its stub: " + server.position("Alice"));
+    }
+
+    /**
+     * A builder with nothing to climb on fetches a load of dirt before it pillars up to its strip's
+     * top. Live, one carrying a single block stood 15 blocks under its strip's top all day.
+     */
+    @Test
+    void aBuilderWithNothingToClimbOnFetchesDirtForItsPillar() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 10 ? SimServer.GLASS : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1})))
+                .run();
+
+        clock.advance(6 * 60_000);
+
+        assertEquals(SimServer.AIR, server.block(3, GROUND + 10, 3), "the glass; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+    }
+
     /** Food first: a soldier with no rations is left off the keep, to feed itself - its mound left standing. */
     @Test
     void aStarvingSoldierIsLeftOffTheKeepToFeedItself() {

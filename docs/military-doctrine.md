@@ -1093,7 +1093,12 @@ keep: N blocks to dig, its top y=T, the keep's y=K". A builder stands only in it
 next; and with nothing on the ground in reach, it cuts the top layer from the air
 (`Clearing.fromTheAir`): a stand beside the highest block, its eyes level with it, that its route
 builds a dirt pillar up to (`Pathfinder` offers pillar steps in open air under a goal overhead).
-The pillar is dirt in its strip, so it's the next top layer, dug back down from on top of it. The register follows the keep's dig and fill by
+The pillar is dirt in its strip, so it's the next top layer, dug back down from on top of it. A
+builder carrying fewer than 4 blocks to climb on fetches a load of 32 dirt from a borrow pit off
+its squad's side of the keep first: live, one with a single block stood all day 15 under its
+strip's top, the hilltop it dug being stone. And one stranded up a pillar of its own - called off
+it, say, to feed itself - digs it down from on top (`Recovery`, `Stairway.pillarUnder`), its
+episode held until it's at the pillar's foot. The register follows the keep's dig and fill by
 their own names (`dig the keep`, `fill the keep`), each builder measured by its squad's share, not
 its own strip: the dirt steps it climbs on are in its strip too. Food first: a builder below its
 food-first mark (`Subsistence.FOOD_FIRST`) gets no keep work, and feeds itself first. Its builders'

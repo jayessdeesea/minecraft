@@ -37,6 +37,8 @@ public final class Recovery {
         final Optional<List<Cell>> stair;
         /** With no stair down: the cells of a stair up to dig, if one can be laid. */
         final Optional<List<Cell>> cut;
+        /** Up a pillar of its own: the pillar's cells, for it to dig down from on top. */
+        Optional<List<Cell>> pillar = Optional.empty();
         String fetcher;
 
         Episode(Position at, Optional<List<Cell>> stair, Optional<List<Cell>> cut) {
@@ -100,22 +102,41 @@ public final class Recovery {
      */
     public List<Order> orders(List<SoldierStatus> reported, List<Order> orders, Function<SoldierStatus, Optional<List<Cell>>> stair,
                               Function<SoldierStatus, Optional<List<Cell>>> cut) {
+        return orders(reported, orders, stair, cut, s -> Optional.empty());
+    }
+
+    /**
+     * As {@link #orders(List, List, Function, Function)}, and first, for one up on a pillar -
+     * {@code pillar}, the column standing free under it - its own way down: it digs the pillar from
+     * on top, a block's drop at a time onto known ground (operator, 2026-11-13: if you know the
+     * area, it's safe to dig down). Live, a builder sent off its pillar to feed itself stood at
+     * y=98 with no route down.
+     */
+    public List<Order> orders(List<SoldierStatus> reported, List<Order> orders, Function<SoldierStatus, Optional<List<Cell>>> stair,
+                              Function<SoldierStatus, Optional<List<Cell>>> cut, Function<SoldierStatus, Optional<List<Cell>>> pillar) {
         if (reported.size() != orders.size()) {
             throw new IllegalArgumentException(reported.size() + " soldiers reported for " + orders.size() + " orders: "
                     + reported.stream().map(SoldierStatus::name).toList());
         }
         Map<String, SoldierStatus> byName = new LinkedHashMap<>();
         reported.forEach(s -> byName.put(s.name(), s));
-        recovering.entrySet().removeIf(e -> !byName.containsKey(e.getKey())
-                || Cohesion.distance(byName.get(e.getKey()).position(), e.getValue().at) > MOVED_OFF);
+        // Off where it was stranded, it's out - but for one digging its pillar down, which is out
+        // only at the pillar's foot: each block it digs drops it one, and the drill let go of it
+        // after the first, in the squad simulation, and it built its pillar back.
+        recovering.entrySet().removeIf(e -> !byName.containsKey(e.getKey()) || (e.getValue().pillar.isPresent()
+                ? byName.get(e.getKey()).position().y() <= e.getValue().pillar.get().getLast().y() + 0.5
+                : Cohesion.distance(byName.get(e.getKey()).position(), e.getValue().at) > MOVED_OFF));
         for (SoldierStatus s : reported) {
             int stuck = stranded(s) ? strandedFor.merge(s.name(), 1, Integer::sum) : 0;
             if (stuck == 0) {
                 strandedFor.remove(s.name());
             }
             if (stuck >= reports && !recovering.containsKey(s.name())) {
-                Optional<List<Cell>> down = stair.apply(s).filter(c -> !c.isEmpty());
-                recovering.put(s.name(), new Episode(s.position(), down, down.isPresent() ? Optional.empty() : cut.apply(s)));
+                Optional<List<Cell>> own = pillar.apply(s).filter(c -> !c.isEmpty());
+                Optional<List<Cell>> down = own.isPresent() ? Optional.empty() : stair.apply(s).filter(c -> !c.isEmpty());
+                Episode episode = new Episode(s.position(), down, down.isPresent() || own.isPresent() ? Optional.empty() : cut.apply(s));
+                episode.pillar = own;
+                recovering.put(s.name(), episode);
             }
         }
         if (reported.stream().anyMatch(s -> s.report() instanceof Report.InContact)) {
@@ -130,6 +151,10 @@ public final class Recovery {
             // live, a soldier stood a quarter of an hour on a ledge with 8 logs, nobody in its squad
             // carrying blocks enough to come up for it.
             SoldierStatus self = byName.get(e.getKey());
+            if (episode.pillar.isPresent()) {
+                result.set(names.indexOf(e.getKey()), dig(episode.pillar.get()));
+                continue;
+            }
             if (episode.stair.isPresent() && self != null && ownBlocks(self) >= episode.stair.get().size()) {
                 result.set(names.indexOf(e.getKey()), new Order.Place(fromTop(episode.stair.get())));
                 continue;

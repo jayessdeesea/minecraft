@@ -41,6 +41,10 @@ adding cells outward.
   over an open cell, the slope wall, pit-fill and farm-in-a-hollow sims fail: they pass on dirt
   steps read as stone. Left: the sim's server answering a tick later, as the real one does, and
   those three made to pass on what's there.
+- **A pillar's stub.** A soldier stranded up its own pillar digs it down (`Recovery`, the pillar's
+  episode), but the last block or two it steps off, building a step down beside them, and leaves
+  both: in the squad simulation, a two-block stub and three steps by it. Left: its episode held
+  until the stub is dug too.
 - **Idle strips** (operator, 2026-11-13, later): a soldier whose strip has nothing within the
   keep's layer window - the hill's flank, a hollow - is free today; it could farm, or build a row
   of chests outside the dig site.

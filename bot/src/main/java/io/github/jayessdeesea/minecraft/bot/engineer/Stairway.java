@@ -38,6 +38,32 @@ public final class Stairway {
      * is a step), or if none can be laid: no edge near, a wall in the way, water below, or ground
      * further down than {@link #MAX_STEPS}.
      */
+    /**
+     * The pillar a soldier at {@code feet} stands on, top first: the column under it standing free
+     * - nothing solid beside it at any height - down to the ground it stands on. Empty when it isn't
+     * up one at least two blocks high, or any block of it won't dig.
+     */
+    public static Optional<List<BlockPos>> pillarUnder(WorldView world, BlockPos feet) {
+        List<BlockPos> pillar = new java.util.ArrayList<>();
+        int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (int y = feet.y() - 1; ; y--) {
+            BlockPos c = new BlockPos(feet.x(), y, feet.z());
+            if (!world.isSolid(c.x(), c.y(), c.z())) {
+                return Optional.empty();
+            }
+            int fy = y;
+            boolean free = java.util.Arrays.stream(sides).noneMatch(d -> world.isSolid(c.x() + d[0], fy, c.z() + d[1]));
+            if (!free) {
+                break; // the ground it stands on
+            }
+            if (!Clearing.diggable(world, c.x(), c.y(), c.z())) {
+                return Optional.empty();
+            }
+            pillar.add(c);
+        }
+        return pillar.size() >= 2 ? Optional.of(List.copyOf(pillar)) : Optional.empty();
+    }
+
     public static Optional<List<BlockPos>> down(WorldView world, BlockPos feet) {
         return Arrays.stream(HEADINGS)
                 .map(h -> flight(world, feet, h[0], h[1]))

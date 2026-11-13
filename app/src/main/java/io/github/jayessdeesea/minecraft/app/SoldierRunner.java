@@ -1670,6 +1670,30 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // where work is left: a strip that narrow left no stand beside its last block.
         Map<String, Order> orders = new HashMap<>(!toDig.isEmpty() ? Tasking.keepDig(crew, digShare, top, digExcept) : Tasking.keep(crew, Optional.empty(),
                 toDig.isEmpty() ? bounds(toFill) : Optional.empty(), toDig.isEmpty() ? kept : digExcept));
+        // A pillar's stock: a builder on the keep's dig short of blocks to climb on fetches a load of
+        // dirt from a borrow pit off its squad's side of the keep. Live, a builder sent to cut its
+        // strip's top 15 blocks up carried one block of dirt - its steps had used the rest, and the
+        // hilltop it dug was stone - and stood under it.
+        int side = share == 0 ? 1 : 0; // west for the first share, east for the second
+        int pitX = side == 1 ? Keep.MIN - Groundwork.BORROW_GAP - 3 : Keep.MAX + Groundwork.BORROW_GAP + 3;
+        BlockPos pitGround = TerrainSurveyor.groundAt(world, BlockPos.containing(pitX + 0.5, Keep.FLOOR, 0.5));
+        for (SoldierStatus h : hands) {
+            if (!(orders.get(h.name()) instanceof Order.Dig)) {
+                keepFetching.remove(h.name());
+                continue;
+            }
+            int blocks = h.condition().flatMap(c -> c.kit()).map(k -> k.dirt() + k.stone()).orElse(0);
+            boolean fetching = keepFetching.contains(h.name()) ? blocks < Tasking.LOAD : blocks < Tasking.LOW;
+            if (fetching) {
+                if (keepFetching.add(h.name())) {
+                    LOG.info("[{}] {} carries {} blocks to climb on - fetches a load of dirt first", squad, h.name(), blocks);
+                }
+                orders.put(h.name(), new Order.Gather(Resource.SOIL,
+                        Groundwork.borrowPit(new Cell(0, pitGround.y(), 0), Keep.MAX + 1, side), Tasking.LOAD));
+            } else {
+                keepFetching.remove(h.name());
+            }
+        }
         boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false);
         for (Tasking.Hand hand : crew) {
             // Short for the fill: to the stockpile for a load, and kept at it until it carries one.
@@ -1693,6 +1717,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Soldiers whose dig or fill is the keep's, not the camp's - squad loop writes, tick reads. */
     private final Set<String> keepHands = ConcurrentHashMap.newKeySet();
+
+    /** Builders on the keep fetching dirt to climb on - squad loop only. */
+    private final Set<String> keepFetching = ConcurrentHashMap.newKeySet();
 
     /** Soldiers on the keep sent to the stockpile for cobblestone - squad loop writes, tick reads. */
     private final Set<String> keepDrawing = ConcurrentHashMap.newKeySet();
@@ -2142,6 +2169,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         };
     }
 
+    /** A stranded soldier's own pillar under it, top first, for it to dig down from on top. */
+    private Function<SoldierStatus, Optional<List<Cell>>> pillarDown(String squadName) {
+        return stuck -> {
+            Position at = stuck.position();
+            Optional<List<Cell>> pillar = Stairway.pillarUnder(world, BlockPos.containing(at.x(), at.y(), at.z()))
+                    .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList());
+            pillar.ifPresent(p -> LOG.info("[{}] RECOVERY: {} is stranded on a pillar at {} - digs it down, {} blocks", squadName, stuck.name(), at, p.size()));
+            return pillar;
+        };
+    }
+
     /** The engineer's stair up for a soldier stranded below, from where it stands: the cells to dig. */
     private Function<SoldierStatus, Optional<List<Cell>>> stairUp(String squadName) {
         return stuck -> {
@@ -2181,7 +2219,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<SoldierStatus> reported = statuses.stream().map(s -> ownReports.getOrDefault(s.name(), s)).toList();
             orders = ReactToContact.orders(statuses, state.recovery.orders(reported,
                     Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, Formations.assign(order, statuses))),
-                            order.objective(), supplyPoint), stairDown(squadName), stairUp(squadName)));
+                            order.objective(), supplyPoint), stairDown(squadName), stairUp(squadName), pillarDown(squadName)));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
         if (!Objects.equals(straggler, state.haltedFor)) {
