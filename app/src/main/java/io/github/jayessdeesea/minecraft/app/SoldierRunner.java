@@ -3658,12 +3658,22 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Map<Hands.Routine, Hands.Turn> turns = new EnumMap<>(Hands.Routine.class);
             turns.put(Hands.Routine.SUPPLY_RUN, turn(run::active,
                     free -> run.tick(status.position(), supplyPoint, free && Resupply.isShort(status) && !inContact)));
-            if (ladderTicks.get() % 20 == 0) {
+            // A way out chosen is kept until it's broken, not dropped with the next report: live, a
+            // soldier's CANTCO flipped between "no route" and "no blocks to build with" each second,
+            // and the break started and stopped forever.
+            boolean breakingOut = !wayOut.get().isEmpty() && exit == null && fort == null && !inContact
+                    && wayOut.get().stream().anyMatch(c -> Math.hypot(c.x() + 0.5 - status.position().x(), c.z() + 0.5 - status.position().z()) < 3);
+            if (ladderTicks.get() % 20 == 0 && !breakingOut) {
                 boolean noRoute = status.report() instanceof Report.Cantco(String why) && why.startsWith("no route");
                 wayOut.set(exit == null && fort == null && !inContact && noRoute && status.order() instanceof Order.MoveTo to
                         ? WayOut.cells(world, BlockPos.containing(status.position().x(), status.position().y() + 0.01, status.position().z()),
                         new Position(to.x(), to.y(), to.z()))
                         : List.of());
+                // Never through a wall's line, the camp's included: live, three soldiers in a pocket of
+                // the camp's heaps went to break the camp's own west wall.
+                if (!wayOut.get().stream().allMatch(offTheWall())) {
+                    wayOut.set(List.of());
+                }
                 if (!wayOut.get().isEmpty() && !doorway.active()) {
                     LOG.warn("{} is boxed in at {} with no way out - breaks the wall at {}", name, status.position(), wayOut.get());
                 }

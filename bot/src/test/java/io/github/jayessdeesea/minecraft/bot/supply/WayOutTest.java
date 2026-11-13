@@ -130,6 +130,33 @@ class WayOutTest {
     }
 
     @Test
+    void strandedOnALedgeItsNotBoxedIn() {
+        WorldView pillar = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND || x == 0 && z == 0 && y < GROUND + 12;
+            }
+
+            @Override
+            public boolean isCobblestone(int x, int y, int z) {
+                return isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(List.of(), WayOut.cells(pillar, new BlockPos(0, GROUND + 12, 0), new Position(10.5, GROUND, 0.5)),
+                "a drop all round: the stair down is its way, not a wall");
+    }
+
+    @Test
     void notBoxedInThereIsNothingToBreak() {
         assertEquals(List.of(), WayOut.cells(hut(true), new BlockPos(10, GROUND, 0), new Position(0.5, GROUND, 0.5)),
                 "outside the hut, on open ground");

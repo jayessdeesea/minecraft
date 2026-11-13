@@ -39,7 +39,7 @@ public final class WayOut {
      */
     public static List<BlockPos> cells(WorldView world, BlockPos feet, Position target) {
         Set<BlockPos> room = walkable(world, feet);
-        if (room.size() > BOXED_IN) {
+        if (room.size() > BOXED_IN || room.stream().anyMatch(c -> dropBeside(world, c, room))) {
             return List.of();
         }
         Optional<BlockPos> wall = room.stream()
@@ -58,6 +58,16 @@ public final class WayOut {
      */
     static Set<BlockPos> walkable(WorldView world, BlockPos feet) {
         return Pathfinder.reachable(world, feet, BOXED_IN, BOXED_IN + 1);
+    }
+
+    /**
+     * Whether a side of {@code c} outside the room is open at feet and head - a drop off a ledge,
+     * not a wall: a soldier on a ledge is stranded, not boxed in, and breaking blocks won't bring it
+     * down - building its stair will.
+     */
+    private static boolean dropBeside(WorldView world, BlockPos c, Set<BlockPos> room) {
+        return java.util.stream.Stream.of(c.offset(1, 0, 0), c.offset(-1, 0, 0), c.offset(0, 0, 1), c.offset(0, 0, -1))
+                .anyMatch(n -> !room.contains(n) && !world.isSolid(n.x(), n.y(), n.z()) && !world.isSolid(n.x(), n.y() + 1, n.z()));
     }
 
     private static boolean diggable(WorldView world, BlockPos c) {

@@ -729,7 +729,9 @@ its way out the same way, so a squad that wakes up sealed in after a restart, or
 it never finished, walks out. And a soldier the squad's drill misses - reporting "no route" from a
 pocket it can walk no more than 128 cells of by the route planner's own moves, under the walled
 camp's own floor - breaks the wall
-nearest where it's sent from where it stands (`bot.supply.WayOut`): live, after a restart, three
+nearest where it's sent from where it stands (`bot.supply.WayOut`), keeping to that break until
+it's made however its reports change, and never through a wall's line, the camp's included. A
+pocket with a drop beside it is a ledge, not a box: that soldier builds its stair down instead: live, after a restart, three
 soldiers stood a day in a three-cell pocket the drill never saw, the squad still holding its night
 base's record; and three more in a trench between the camp's wall and old cobblestone heaps.
 
