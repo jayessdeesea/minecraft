@@ -773,6 +773,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 && Cohesion.distance(at, stockpile.get()) <= DRAW_FOOD_NEAR;
     }
 
+    /**
+     * The workshop {@code squads} - its squad's - for a soldier, but the camp's for one of a squad on
+     * the keep that isn't on the keep's work ({@code onKeepWork}): fed first at the camp's farm, it
+     * bakes and stocks there. Live, a farmer walked 70 blocks to the keep's table to bake a loaf.
+     */
+    static Workshop soldiersWorkshop(Workshop squads, Workshop keep, Workshop camp, boolean onKeepWork) {
+        return squads != null && squads == keep && !onKeepWork && camp != null ? camp : squads;
+    }
+
     /** Logs a soldier short of them for its kit draws from the stockpile: a table, sticks and a tool's worth. */
     static final int DRAW_LOGS = 8;
 
@@ -2673,7 +2682,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 continue;
             }
             state.escaping.remove(soldierName);
-            Optional.ofNullable(workshopOf(state, statuses.get(i).position()))
+            Optional.ofNullable(soldiersWorkshop(workshopOf(state, statuses.get(i).position()), keepWorkshop, campWorkshop,
+                            keepHands.contains(soldierName)))
                     .ifPresentOrElse(w -> workshops.put(soldierName, w), () -> workshops.remove(soldierName));
             // Its own unit's hand-over first, else one across squads.
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
