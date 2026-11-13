@@ -226,6 +226,7 @@ public final class SpringAiGeneral implements General {
             case Objective.Task.Fortify() -> "FORTIFY";
             case Objective.Task.Mine() -> "MINE";
             case Objective.Task.Patrol() -> "PATROL";
+            case Objective.Task.Keep() -> "KEEP";
         };
         // The mission in quotes, its ground apart: written as "<mission> at <place>", the model copied
         // the whole of it into its next mission, and the place grew a clause with every decision.
@@ -414,6 +415,7 @@ public final class SpringAiGeneral implements General {
                         case FORTIFY -> new Objective.Task.Fortify();
                         case MINE -> new Objective.Task.Mine();
                         case PATROL -> new Objective.Task.Patrol();
+                        case KEEP -> new Objective.Task.Keep();
                     }));
         }
         if (bySquad.size() != squadStatuses.size()) {

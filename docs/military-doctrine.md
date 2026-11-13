@@ -1048,6 +1048,17 @@ seconds of being given (`TaskRegister.CHURN_MILLIS`), work taken back before it 
 The log's `[Scoreboard]` line sets the day beside the day
 before and names the earliest open standard - the next thing to work on.
 
+The main base is built beside the foothold, which stays the base until it's done
+(backlog/cells.md): first its keep (`command.Keep`), the task `KEEP` - a slab of solid
+cobblestone on chunks (-1, -1) to (0, 0), x and z from -16 to 15, from y=64 to 67 on ground at sea
+level, its floor walked at feet 68. The heights are the plan's, not the ground's: everything from
+y=64 up into the sky over it is dug out, but rock and the slab's own cobblestone in its four
+layers; then the slab, and any hollow open under it within 8 blocks, is filled in cobblestone only
+(`Order.Fill`'s `stoneOnly`, a filler of its own), never dirt, which endermen take. A strip each
+(`Tasking.keep`). Its cobblestone is the mine's: miners carry their loads to the stockpile, and a
+soldier on the keep short of it draws a load from there while the chest was last seen holding
+some; with none there it's free for other work, and the log says the keep waits on cobblestone.
+
 It ends with the commands' scorecard (`app.CommandScorecard`). Each soldier is sampled once a
 second, and each kind of command is scored by how its soldiers spent their time: each task the
 general gave (FORTIFY, MINE ...), and each kind of order a soldier carried (`MoveTo`, `Place`).

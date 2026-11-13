@@ -52,6 +52,7 @@ It keeps nothing between calls but each squad's current objective (backlog/opera
 | `FORTIFY` | Wall in the ground 8 blocks out each way. |
 | `MINE` | Cut a spiral staircase down to the given depth. |
 | `PATROL` | Walk the round inside the wall line, on watch ([military-doctrine.md § 15](../../military-doctrine.md#15-securing-the-camp)). |
+| `KEEP` | Build the main base's keep at the origin, wherever the objective points ([military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)). |
 
 ## When it decides
 Every 2 minutes, at once on a new mission from the operator or a squad with no objective, and on a

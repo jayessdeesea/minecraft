@@ -25,8 +25,8 @@ adding cells outward.
 - **The fields round it are at sea level**: ground top y=63, walked at feet 64, fenced and gated on
   the chunk boundaries. Farmland there needs water carried in - buckets and a two-by-two source -
   since levelled ground has none.
-- **The height is the plan's, never measured.** A site plan gives each column its target - cut
-  above, fill below, the material of each layer - and the difference from the world is the work.
+- **The height is the plan's, never measured.** Built for the keep's slab (docs/military-doctrine.md
+  § 17, task `KEEP`). Left: the same for the fields round it, at sea level.
 - **Before committing to the origin, survey it** from the heightmaps in the chunk data: the cut
   and fill it costs, reported to the general.
 - **Built while the foothold at (-48, 44) stands as the temporary base**, and moved into once

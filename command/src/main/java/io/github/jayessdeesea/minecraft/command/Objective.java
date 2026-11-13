@@ -54,6 +54,13 @@ public record Objective(String mission, Position location, String intent, Task t
         /** Walk the ground round the location, round and round inside its wall line: security, not work (§15). */
         record Patrol() implements Task {
         }
+
+        /**
+         * Build the main base's keep ({@link Keep}): its ground cut and filled to the plan, the slab
+         * of cobblestone laid. Wherever the location points, the keep is where the plan has it.
+         */
+        record Keep() implements Task {
+        }
     }
 
     public Objective {

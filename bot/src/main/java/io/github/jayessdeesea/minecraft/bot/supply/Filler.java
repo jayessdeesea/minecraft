@@ -25,10 +25,13 @@ public final class Filler {
 
     /** What a hollow is filled with: never planks or logs, which are tools and torches. */
     static final List<ItemClass> MATERIALS = List.of(ItemClass.COBBLESTONE, ItemClass.DIRT);
+    /** What a floor endermen can't take apart is filled with: the keep's slab. */
+    public static final List<ItemClass> STONE = List.of(ItemClass.COBBLESTONE);
 
     private final String name;
     private final Inventory inventory;
     private final Builder builder;
+    private final List<ItemClass> materials;
     private boolean active;
     private String failure;
     /** Ticks to wait after a fill that couldn't go on, before trying again. */
@@ -38,9 +41,15 @@ public final class Filler {
     private int cooldown;
 
     public Filler(String name, PlaySession session, Inventory inventory) {
+        this(name, session, inventory, MATERIALS);
+    }
+
+    /** A filler that fills with {@code materials} only, in that order. */
+    public Filler(String name, PlaySession session, Inventory inventory, List<ItemClass> materials) {
         this.name = name;
         this.inventory = inventory;
-        this.builder = new Builder(name, session, inventory, MATERIALS);
+        this.materials = List.copyOf(materials);
+        this.builder = new Builder(name, session, inventory, this.materials);
     }
 
     public synchronized boolean active() {
@@ -65,7 +74,7 @@ public final class Filler {
         if (cooldown > 0) {
             cooldown--;
         }
-        if (!free || cooldown > 0 || hollows.isEmpty() || MATERIALS.stream().noneMatch(m -> inventory.count(m) > 0)) {
+        if (!free || cooldown > 0 || hollows.isEmpty() || materials.stream().noneMatch(m -> inventory.count(m) > 0)) {
             stop();
             return;
         }

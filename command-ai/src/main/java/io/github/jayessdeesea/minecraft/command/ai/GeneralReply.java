@@ -21,7 +21,9 @@ record GeneralReply(@JsonPropertyDescription("Exactly one objective per squad") 
                     + "roofed shelter at the objective and spend the night in it; FARM to till, plant and keep a wheat farm "
                     + "by the water at the objective; TREE_FARM to plant saplings round the objective; SECURE to light the ground round the objective with torches so no "
                     + "monster spawns on it; FORTIFY to wall the ground round the objective in; MINE to cut a staircase down at the objective's x and z to its y; "
-                    + "PATROL to walk the ground round the objective, on watch")
+                    + "PATROL to walk the ground round the objective, on watch; KEEP to build the main base's keep, a slab of "
+                    + "cobblestone 32 by 32 at the origin - wherever the objective points, the keep is there - with cobblestone "
+                    + "from the stockpile, which the miners fill")
             Task task,
             @JsonPropertyDescription("What the squad must do, in plain words for the squad leader") String mission,
             @JsonPropertyDescription("Objective x coordinate (east is positive)") double x,
@@ -35,5 +37,5 @@ record GeneralReply(@JsonPropertyDescription("Exactly one objective per squad") 
      * One field rather than a gather and a separate patrol-base flag: a model sets one choice reliably
      * and can't ask for both.
      */
-    enum Task { NONE, WOOD, STONE, PATROL_BASE, FARM, TREE_FARM, SECURE, FORTIFY, MINE, PATROL }
+    enum Task { NONE, WOOD, STONE, PATROL_BASE, FARM, TREE_FARM, SECURE, FORTIFY, MINE, PATROL, KEEP }
 }

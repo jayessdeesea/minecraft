@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.command.Foothold;
+import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -56,6 +57,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -1957,6 +1959,45 @@ class SquadSimulationTest {
         assertTrue(server.count("Alice", flesh) <= 34 - Pack.FULL_AT - 1, server.count("Alice", flesh) + " rotten flesh");
         assertEquals(16, server.count("Alice", ItemClassRegistry.ItemClass.FOOD), "its bread kept");
         assertEquals(1, server.count("Alice", SimServer.ITEM_WOODEN_SWORD), "its sword kept");
+    }
+
+    /**
+     * The keep (command.Keep): a squad sent to build it digs the site down to the slab's bottom -
+     * a mound on it dug away - and lays the slab in cobblestone, never the dirt it also carries.
+     */
+    @Test
+    void aSquadOnTheKeepDigsItsSiteAndLaysTheSlabInCobblestone() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= 4 && x <= 5 && z >= 4 && z <= 5 && (y == GROUND + 1 || y == GROUND + 2)
+                ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{9, SimServer.ITEM_COBBLESTONE, 64}, new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(10 * 60_000);
+
+        int cobblestone = 0;
+        for (int x = Keep.MIN; x <= Keep.MAX; x++) {
+            for (int z = Keep.MIN; z <= Keep.MAX; z++) {
+                for (int y = Keep.BOTTOM; y <= Keep.TOP; y++) {
+                    assertNotEquals(SimServer.DIRT, server.block(x, y, z), "dirt in the slab at " + x + "," + y + "," + z
+                            + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+                    if (server.block(x, y, z) == SimServer.COBBLESTONE) {
+                        cobblestone++;
+                    }
+                }
+            }
+        }
+        assertTrue(cobblestone >= 48, cobblestone + " cobblestone laid in the slab; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
     /**

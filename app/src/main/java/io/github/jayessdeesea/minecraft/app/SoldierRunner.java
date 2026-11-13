@@ -66,6 +66,7 @@ import io.github.jayessdeesea.minecraft.command.Formation;
 import io.github.jayessdeesea.minecraft.command.Formations;
 import io.github.jayessdeesea.minecraft.command.Groundwork;
 import io.github.jayessdeesea.minecraft.command.Interval;
+import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
 import io.github.jayessdeesea.minecraft.command.Objective;
@@ -236,6 +237,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         List<BlockPos> wall;
         /** The ground its wall is laid out round. */
         BlockPos wallCentre;
+        /** What was last said of the keep's work, said again only when it changes. */
+        String keepSaid;
+        /** Set while the keep's fill waits on cobblestone, said once. */
+        String keepWaiting;
         /** Wall cells left to fill at the last check: -1 before the first. */
         int wallLeft = -1;
         /** Blocks of the camp's ground work still to dig - trees over it, ground above its level - at the last check: -1 before the first. */
@@ -1553,6 +1558,63 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return orders;
     }
 
+    /**
+     * The keep's work (command.Keep): everything over its slab's bottom dug out but the slab's own
+     * stone, then its slab and the hollows under it filled with cobblestone, a strip each
+     * (command.Tasking). A soldier short of cobblestone draws it from the stockpile - the mine's,
+     * by way of the miners' loads - while the chest was last seen holding some; with none there,
+     * it's free for other work, and the keep waits on the mine.
+     */
+    private Map<String, Order> keepwork(String squad, SquadState state, List<SoldierStatus> hands) {
+        Set<Cell> kept = groundExcept();
+        Set<Cell> digExcept = new HashSet<>(kept);
+        Box slab = Keep.slab();
+        for (int x = slab.minX(); x <= slab.maxX(); x++) {
+            for (int z = slab.minZ(); z <= slab.maxZ(); z++) {
+                for (int y = slab.minY(); y <= slab.maxY(); y++) {
+                    // The slab's own cobblestone, and rock, which is as good: kept. Live in the squad
+                    // simulation, a block laid was the dig's again, and dug and laid in turn.
+                    if (world.isStone(x, y, z) || world.isCobblestone(x, y, z)) {
+                        digExcept.add(new Cell(x, y, z));
+                    }
+                }
+            }
+        }
+        List<BlockPos> toDig = Clearing.toClear(world, Keep.dig(), digExcept);
+        List<BlockPos> toFill = toDig.isEmpty() ? Clearing.toFill(world, Keep.fill(), kept) : List.of();
+        String said = "the keep: " + toDig.size() + " blocks to dig" + (toDig.isEmpty() ? ", " + toFill.size() + " cells to fill" : "");
+        if (!said.equals(state.keepSaid)) {
+            LOG.info("[{}] {}", squad, said);
+            state.keepSaid = said;
+        }
+        List<Tasking.Hand> crew = hands.stream().map(h -> new Tasking.Hand(h.name(),
+                h.condition().flatMap(c -> c.kit()).map(Kit::stone).orElse(0))).toList();
+        Map<String, Order> orders = new HashMap<>(Tasking.keep(crew, bounds(toDig),
+                toDig.isEmpty() ? bounds(toFill) : Optional.empty(), toDig.isEmpty() ? kept : digExcept));
+        boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false);
+        for (Tasking.Hand hand : crew) {
+            // Short for the fill: to the stockpile for a load, and kept at it until it carries one.
+            boolean short_ = toDig.isEmpty() && !toFill.isEmpty() && !orders.containsKey(hand.name());
+            if (short_ && stocked && stockpileFor(hand.name()).isPresent()) {
+                if (keepDrawing.add(hand.name())) {
+                    LOG.info("[{}] {} goes to the stockpile for cobblestone for the keep", squad, hand.name());
+                }
+            } else if (!short_ || hand.blocks() >= WALL_BLOCKS_LOAD) {
+                keepDrawing.remove(hand.name());
+            }
+        }
+        if (toDig.isEmpty() && !toFill.isEmpty() && orders.isEmpty() && !stocked && !"waiting".equals(state.keepWaiting)) {
+            LOG.warn("[{}] the keep waits on cobblestone: {} cells to fill, none carried, none in the stockpile", squad, toFill.size());
+            state.keepWaiting = "waiting";
+        } else if (!orders.isEmpty()) {
+            state.keepWaiting = null;
+        }
+        return orders;
+    }
+
+    /** Soldiers on the keep sent to the stockpile for cobblestone - squad loop writes, tick reads. */
+    private final Set<String> keepDrawing = ConcurrentHashMap.newKeySet();
+
     /** What no ground work digs or fills: the camp's kept structures, its mine, and every squad's stairs. */
     private Set<Cell> groundExcept() {
         Set<Cell> except = new HashSet<>();
@@ -1604,6 +1666,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             case Order.Fill f -> {
                 filling.put(soldier, Clearing.toFill(world, f.box(), f.except()));
+                if (f.stoneOnly()) {
+                    stoneFilling.add(soldier);
+                } else {
+                    stoneFilling.remove(soldier);
+                }
                 clearing.remove(soldier);
                 groundGather.remove(soldier);
             }
@@ -1619,6 +1686,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
     }
+
+    /** Soldiers whose fill is in cobblestone only - the keep's - squad loop writes, tick reads. */
+    private final Set<String> stoneFilling = ConcurrentHashMap.newKeySet();
 
     /** Each soldier's {@code Order.Gather} from the ground work's drill - squad loop writes, tick reads. */
     private final Map<String, Order.Gather> groundGather = new ConcurrentHashMap<>();
@@ -2346,6 +2416,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // handed out by the squad's drill as each soldier's concrete command (command.Tasking).
         Map<String, Order> ground = new HashMap<>(state.wallCentre == null || squadInContact ? Map.of()
                 : groundwork(squadName, state, state.wallCentre, statuses));
+        // Building the keep: its dig and its fill to the plan, a strip each (command.Keep, Tasking.keep).
+        boolean onKeep = taskOf(squadName, Objective.Task.Keep.class).isPresent() && !squadInContact;
+        if (onKeep) {
+            ground.putAll(keepwork(squadName, state, statuses));
+        } else {
+            statuses.forEach(s -> keepDrawing.remove(s.name()));
+        }
         // A soldier told to level ground: its dig or fill, as the world shows what's left.
         if (!squadInContact) {
             statuses.forEach(s -> planBook.of(s.name()).current()
@@ -3499,8 +3576,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Clearer clearer = new Clearer(name, session, inventory,
                 clearClaims);
         clearers.put(name, clearer);
-        Filler filler = new Filler(name, session, inventory);
-        fillers.put(name, filler);
+        Filler plainFiller = new Filler(name, session, inventory);
+        // The keep's slab is cobblestone only: a filler of its own, the plain one's dirt never in it.
+        Filler paver = new Filler(name, session, inventory, Filler.STONE);
+        fillers.put(name, plainFiller);
         // Logs too, last: live, a farmer with two logs and no dirt floated beside its farm for minutes.
         Builder sealer = new Builder(name, session, inventory, List.of(ItemClass.COBBLESTONE, ItemClass.DIRT, ItemClass.LOG));
         AtomicBoolean sealing = new AtomicBoolean();
@@ -3827,7 +3906,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 chestFitter.stop(status.position(), world);
                 Optional<Position> stockpile = stockpileFor(name);
-                if (drawingStone.contains(name)) {
+                if (drawingStone.contains(name) || keepDrawing.contains(name)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
@@ -3872,6 +3951,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<BlockPos> wall = walling.getOrDefault(name, List.of());
             turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
                     clearing.getOrDefault(name, List.of()), free && !threatened && !foodCalls)));
+            Filler filler = stoneFilling.contains(name) ? paver : plainFiller;
+            (filler == paver ? plainFiller : paver).stop();
+            fillers.put(name, filler);
             turns.put(Hands.Routine.FILLER, turn(filler::active, free -> {
                 filler.tick(status.position(), world, filling.getOrDefault(name, List.of()), free && !threatened && !foodCalls);
                 filler.lookAt().ifPresent(soldier::lookAt);

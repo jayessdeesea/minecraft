@@ -159,6 +159,7 @@ final class OrderTrace {
             case Objective.Task.Fortify() -> report instanceof Report.Fortifying || report instanceof Report.Working;
             case Objective.Task.Mine() -> report instanceof Report.Mining;
             case Objective.Task.Patrol() -> report instanceof Report.Patrolling;
+            case Objective.Task.Keep() -> report instanceof Report.Working;
         };
     }
 
@@ -173,6 +174,7 @@ final class OrderTrace {
             case Objective.Task.Fortify() -> "FORTIFY";
             case Objective.Task.Mine() -> "MINE";
             case Objective.Task.Patrol() -> "PATROL";
+            case Objective.Task.Keep() -> "KEEP";
         };
     }
 

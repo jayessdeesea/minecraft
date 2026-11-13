@@ -62,11 +62,16 @@ public sealed interface Order {
     /**
      * Put a block of cobblestone or dirt it carries into every open cell of {@code box} over ground
      * - air or water - but the cells in {@code except}, lowest first: fill a pit, cap a flooded
-     * shaft, make a floor. A cell it can't reach is left and reported.
+     * shaft, make a floor. A cell it can't reach is left and reported. {@code stoneOnly}: cobblestone
+     * and never dirt - a floor endermen can't take apart.
      */
-    record Fill(Box box, Set<Cell> except) implements Order {
+    record Fill(Box box, Set<Cell> except, boolean stoneOnly) implements Order {
         public Fill {
             except = Set.copyOf(except);
+        }
+
+        public Fill(Box box, Set<Cell> except) {
+            this(box, except, false);
         }
     }
 

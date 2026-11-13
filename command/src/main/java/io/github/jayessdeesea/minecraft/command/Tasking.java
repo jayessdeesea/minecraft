@@ -29,6 +29,36 @@ public final class Tasking {
     }
 
     /**
+     * Each of {@code hands}'s command for the keep ({@link Keep}): a strip of {@code dig} each while
+     * there's any, then a strip of {@code fill} each, in cobblestone only - {@code hands}' blocks
+     * counting cobblestone alone. A soldier short of it has no command here: its cobblestone comes
+     * from the stockpile, the mine's, which is the caller's to send it for.
+     */
+    public static Map<String, Order> keep(List<Hand> hands, Optional<Box> dig, Optional<Box> fill, Set<Cell> except) {
+        Map<String, Order> orders = new LinkedHashMap<>();
+        if (hands.isEmpty()) {
+            return orders;
+        }
+        if (dig.isPresent()) {
+            List<Box> strips = dig.get().strips(hands.size());
+            for (int i = 0; i < hands.size(); i++) {
+                orders.put(hands.get(i).name(), new Order.Dig(strips.get(i % strips.size()), except));
+            }
+            return orders;
+        }
+        if (fill.isEmpty()) {
+            return orders;
+        }
+        List<Box> strips = fill.get().strips(hands.size());
+        for (int i = 0; i < hands.size(); i++) {
+            if (hands.get(i).blocks() >= LOW) {
+                orders.put(hands.get(i).name(), new Order.Fill(strips.get(i % strips.size()), except, true));
+            }
+        }
+        return orders;
+    }
+
+    /**
      * Each of {@code hands}'s command for the ground work round {@code feet}: {@code dig} and
      * {@code fill} the boxes with work left in them (empty when there's none), {@code except} the
      * cells neither touches, {@code gathering} those sent for dirt last cycle.
