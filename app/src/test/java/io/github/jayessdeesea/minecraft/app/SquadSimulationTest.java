@@ -1960,6 +1960,36 @@ class SquadSimulationTest {
     }
 
     /**
+     * A soldier without a bed hunts sheep for their wool and makes one: three white wool over three
+     * planks (backlog/rest-plan.md).
+     */
+    @Test
+    void aSoldierWithoutABedHuntsSheepForOne() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{9, SimServer.itemOf(ItemClassRegistry.ItemClass.PLANKS), 8})))
+                .run();
+        for (int i = 0; i < 3; i++) {
+            server.spawnSheep(6.5 + 2 * i, GROUND + 1, 4.5);
+        }
+
+        clock.advance(90_000);
+
+        assertEquals(1, server.count("Alice", ItemClassRegistry.ItemClass.BED), "a bed made; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+        assertEquals(0, server.count("Alice", ItemClassRegistry.ItemClass.WOOL), "its wool all in the bed");
+    }
+
+    /**
      * A pack isn't filled with seeds: a soldier carrying five stacks throws away all but two. Live,
      * farmers carried 200 to 580 seeds, packs full, and a harvest's wheat had no slot to go to.
      */

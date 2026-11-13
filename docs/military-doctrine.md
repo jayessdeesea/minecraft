@@ -456,6 +456,11 @@ leaves for a while what it can't reach (`bot.supply.Scavenger`). A rung is held
 once something as good is, and one whose materials can't be had is passed over, not waited on.
 A tool that wears out is made again, since it no longer holds its rung.
 
+Off the ladder, a soldier without a bed makes one - three white wool over three planks - and,
+short of the wool, hunts sheep for it by day like the chicken for a feather. Only white wool
+counts: a bed wants three of one colour, and most sheep are white. Placing the bed and lying down
+in it are backlog/rest-plan.md.
+
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
 It crafts what it can in its 2x2 inventory grid. What needs a table or a furnace it makes at one

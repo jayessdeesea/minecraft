@@ -3615,6 +3615,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     && inventory.count(ItemClass.ARROWS) < ARROWS_WANTED) {
                 tools.add(Recipe.ARROWS);
             }
+            // A bed of its own, once it has the wool (backlog/rest-plan.md).
+            if (inventory.count(ItemClass.BED) == 0 && inventory.count(ItemClass.WOOL) >= Recipe.BED.ingredients().get(ItemClass.WOOL)) {
+                tools.add(Recipe.BED);
+            }
             boolean rearming = rung.filter(r -> bareHanded && r.makes() == ItemClassRegistry.ItemClass.WEAPON)
                     .isPresent();
             // Bread on an errand of its own - a weapon first, if bare-handed: asked with kit it can't
@@ -3733,16 +3737,19 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Feathers for arrows, for a soldier with a bow and few arrows: a chicken, hunted like any game.
             boolean wantsFeathers = inventory.slotOfNamed("bow") >= 0 && inventory.count(ItemClass.ARROWS) < ARROWS_WANTED
                     && inventory.count(ItemClass.FEATHER) == 0;
+            // Wool for a bed, for a soldier without one: a sheep, hunted like any game.
+            boolean wantsWool = inventory.count(ItemClass.BED) == 0
+                    && inventory.count(ItemClass.WOOL) < Recipe.BED.ingredients().get(ItemClass.WOOL);
             // Short of its basic load's low mark, it restocks: any game in sight is hunted, fed or not.
             boolean shortOfFood = eating != null && Subsistence.short_(eating.rations());
             IntPredicate quarry = hungry || shortOfFood ? kind -> true
-                    : kind -> kind == EntityTracker.CHICKEN_TYPE_ID;
+                    : kind -> wantsFeathers && kind == EntityTracker.CHICKEN_TYPE_ID || wantsWool && kind == EntityTracker.SHEEP_TYPE_ID;
             // Food first: the day's work - gathering, lighting, walling, planting - gives the hands
             // up when there's game in sight to eat, and the hunter takes them next tick.
             Position huntGround = huntGrounds.getOrDefault(name, status.position());
             int food = status.condition().map(Condition::food).orElse(Condition.MAX_FOOD);
             boolean gameNear = (hungry || shortOfFood) && Hunter.gameInSight(world, huntGround, food, quarry);
-            boolean huntWanted = (hungry || wantsFeathers || shortOfFood && gameNear) && huntAllowed.contains(name) && !inContact;
+            boolean huntWanted = (hungry || wantsFeathers || wantsWool || shortOfFood && gameNear) && huntAllowed.contains(name) && !inContact;
             // Short with no means of its own - no wheat to bake, no game in sight - it's the squad's
             // to solve: a squadmate shares, or the squad asks for food (Class I RED).
             boolean stockpiledFood = chainOfCommand.stockpile().map(st -> st.rations() > 0).orElse(false) && stockpileFor(name).isPresent();

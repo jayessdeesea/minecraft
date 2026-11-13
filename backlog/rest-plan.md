@@ -41,8 +41,9 @@ part of the unit sleeps (ATP 3-21.8, ch. 7).
   nothing here: sleeping takes no time and leaves nobody worse off for it.
 - **Turns, where they matter, are for phantoms.** A soldier kept awake for night work - a
   torchbearer, a sentry - needs to sleep one night in three, so the rest plan rotates who stays up.
-- **Beds** are 3 wool and 3 planks. Wool comes from sheep: shorn with shears (2 iron ingots), or one
-  wool from killing one. So beds wait on hunting or shearing sheep, a new capability.
+- **Beds** are made: a soldier without one hunts sheep for three white wool and crafts it
+  (docs/military-doctrine.md § 11). Left: shears (2 iron ingots), which take wool without
+  killing the sheep - more wool per sheep, and the flock left to grow back.
 
 ## Done when
 - A squad sealed in its patrol base at night lies down in beds placed inside it, and is up at dawn.

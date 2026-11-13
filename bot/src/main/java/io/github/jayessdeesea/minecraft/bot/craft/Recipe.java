@@ -67,6 +67,9 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
             Map.of('P', ItemClass.PLANKS, 'S', ItemClass.STICK));
     public static final Recipe BUCKET = material("bucket", ItemClass.BUCKET, 1, Station.TABLE, List.of("I I", " I "),
             Map.of('I', ItemClass.IRON_INGOT));
+    /** A bed: three white wool over any three planks (backlog/rest-plan.md). */
+    public static final Recipe BED = material("bed", ItemClass.BED, 1, Station.TABLE, List.of("WWW", "PPP"),
+            Map.of('W', ItemClass.WOOL, 'P', ItemClass.PLANKS));
 
     /** String from spiders: the bow a soldier shoots back with (docs/military-doctrine.md § 8). */
     public static final Recipe BOW = new Recipe("bow", ItemClass.WEAPON, Optional.of("bow"), 1, Station.TABLE,
@@ -100,7 +103,7 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
 
     /** Every recipe a soldier knows. */
     public static final List<Recipe> ALL = List.of(PLANKS, STICKS, CRAFTING_TABLE, TORCHES, FURNACE, CHARCOAL, IRON_INGOT, COPPER_INGOT, SHIELD,
-            WOODEN_HOE, BREAD, CHEST, LADDER, FENCE, FENCE_GATE, BUCKET, COPPER_HELMET, COPPER_CHESTPLATE, COPPER_LEGGINGS, COPPER_BOOTS,
+            WOODEN_HOE, BREAD, CHEST, LADDER, FENCE, FENCE_GATE, BUCKET, BED, COPPER_HELMET, COPPER_CHESTPLATE, COPPER_LEGGINGS, COPPER_BOOTS,
             BOW, ARROWS,
             WOODEN_SWORD, WOODEN_PICKAXE, STONE_SWORD, STONE_PICKAXE, IRON_SWORD, IRON_PICKAXE, IRON_AXE,
             IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS,

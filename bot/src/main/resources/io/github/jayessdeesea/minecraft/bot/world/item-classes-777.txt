@@ -4,7 +4,7 @@
 # S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;
 # U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;
 # E wheat seeds, Y wheat, Z hoes, B saplings, D dirt; J string, Q flint, V feathers, I diamonds, G raw copper, c copper ingot.
-# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket.
+# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket; u white wool, d beds.
 # Everything NOT listed is just carried.
 55 D dirt
 62 K cobblestone
@@ -50,6 +50,7 @@
 185 L stripped_pale_oak_log
 186 L stripped_mangrove_log
 187 L stripped_poplar_log
+250 u white_wool
 395 T torch
 404 h chest
 405 C crafting_table
@@ -165,6 +166,23 @@
 1192 F tropical_fish
 1194 F cooked_cod
 1195 F cooked_salmon
+1219 d white_bed
+1220 d orange_bed
+1221 d magenta_bed
+1222 d light_blue_bed
+1223 d yellow_bed
+1224 d lime_bed
+1225 d pink_bed
+1226 d gray_bed
+1227 d light_gray_bed
+1228 d cyan_bed
+1229 d purple_bed
+1230 d blue_bed
+1231 d brown_bed
+1232 d green_bed
+1233 d red_bed
+1234 d black_bed
+1235 d straw_bed
 1236 F cookie
 1256 F melon_slice
 1257 F dried_kelp
