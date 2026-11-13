@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.bot.craft;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.bot.world.Workstation;
 
 import java.util.List;
@@ -44,7 +45,11 @@ import java.util.function.Predicate;
 public final class Ladder {
 
     /** One step up: held when {@code held} says so, made from the first of {@code options} that can be. */
-    record Rung(String name, Predicate<Inventory> held, List<Recipe> options) {
+    /** @param carriedOnly made only from what's carried, never fetched: extras, not what to go and get */
+    record Rung(String name, Predicate<Inventory> held, List<Recipe> options, boolean carriedOnly) {
+        Rung(String name, Predicate<Inventory> held, List<Recipe> options) {
+            this(name, held, options, false);
+        }
     }
 
     static final List<Rung> LADDER = List.of(
@@ -81,7 +86,18 @@ public final class Ladder {
             new Rung("diamond leggings", i -> armour(i, Recipe.DIAMOND_LEGGINGS), List.of(Recipe.DIAMOND_LEGGINGS)),
             new Rung("diamond boots", i -> armour(i, Recipe.DIAMOND_BOOTS), List.of(Recipe.DIAMOND_BOOTS)),
             new Rung("a diamond helmet", i -> armour(i, Recipe.DIAMOND_HELMET), List.of(Recipe.DIAMOND_HELMET)),
-            new Rung("a diamond pickaxe", i -> bestPickaxe(i) >= 3, List.of(Recipe.DIAMOND_PICKAXE)));
+            new Rung("a diamond pickaxe", i -> bestPickaxe(i) >= 3, List.of(Recipe.DIAMOND_PICKAXE)),
+            // Last, the tool load: four of each a soldier wears out - weapons, pickaxes, shovels - of
+            // stone, squadmates sharing as for rations (command.CrossLevel; operator, 2026-11-12).
+            // After the armour: protection first, and a rung whose makings can't be had is passed over.
+            // From what's carried only, never quarried for: in the squad simulation, soldiers sent to
+            // fill the camp's pit went to quarry cobblestone for a dozen tools instead.
+            new Rung("a shovel", i -> Stock.of(i).classes().getOrDefault(ItemClass.SHOVEL, 0) >= 1, List.of(Recipe.STONE_SHOVEL), true),
+            new Rung("the tool load's weapons", i -> i.meleeWeapons() >= CrossLevel.TOOL_LOAD, List.of(Recipe.STONE_SWORD), true),
+            new Rung("the tool load's pickaxes", i -> Stock.of(i).classes().getOrDefault(ItemClass.PICKAXE, 0) >= CrossLevel.TOOL_LOAD,
+                    List.of(Recipe.STONE_PICKAXE), true),
+            new Rung("the tool load's shovels", i -> Stock.of(i).classes().getOrDefault(ItemClass.SHOVEL, 0) >= CrossLevel.TOOL_LOAD,
+                    List.of(Recipe.STONE_SHOVEL), true));
 
     private Ladder() {
     }
@@ -135,7 +151,7 @@ public final class Ladder {
             for (Recipe option : rung.options()) {
                 // One more than carried: a spare is a second of what's held.
                 CraftPlan plan = CraftPlan.of(Map.of(option, stock.count(option) + 1), stock, inReach);
-                if (plan.short_().keySet().stream().allMatch(canGather)) {
+                if (rung.carriedOnly() ? plan.short_().isEmpty() : plan.short_().keySet().stream().allMatch(canGather)) {
                     return Optional.of(option);
                 }
             }

@@ -25,13 +25,25 @@ public final class Keep {
 
     /** Where a squad sent to build it is sent: the floor's middle. */
     public static final Position CENTRE = new Position(0, FLOOR, 0);
+    /**
+     * Where the builders' workshop and chest go: off the slab's west edge, toward the camp, on
+     * ground nothing digs - a chest on the site would stand on a pillar of ground the dig can't take.
+     */
+    public static final Position DEPOT = new Position(MIN - 4, FLOOR, 0);
 
     private Keep() {
     }
 
-    /** Everything from the slab's bottom up into the sky: dug out but for the slab's own stone. */
+    /** The top of the world: the sky over the keep is cleared all the way up. */
+    public static final int SKY_TOP = 319;
+
+    /**
+     * Everything from the slab's bottom up to the top of the world: dug out, top down, but for the
+     * slab's own stone. Not to a fixed height over the floor: ground is dug only from an open top,
+     * and a hill standing over the box would have kept every block under it.
+     */
     public static Box dig() {
-        return new Box(MIN, BOTTOM, MIN, MAX, FLOOR + Groundwork.SKY, MAX);
+        return new Box(MIN, BOTTOM, MIN, MAX, SKY_TOP, MAX);
     }
 
     /** The slab: four layers of cobblestone. */

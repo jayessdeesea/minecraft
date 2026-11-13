@@ -107,7 +107,7 @@ public final class Pack {
     public static final int FULL_AT = 2;
 
     /** Empty slots in the main inventory and hotbar. */
-    static int freeSlots(Inventory inventory) {
+    public static int freeSlots(Inventory inventory) {
         int free = 0;
         for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
             if (inventory.itemAt(slot) < 0) {

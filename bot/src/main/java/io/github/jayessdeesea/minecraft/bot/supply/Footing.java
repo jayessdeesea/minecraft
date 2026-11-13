@@ -48,11 +48,13 @@ public final class Footing {
      * A block for a pillar or built step in {@code cell}, against {@code support}: cobblestone, or
      * dirt once that's gone. False with neither.
      */
-    public synchronized boolean placeStep(BlockPos cell, BlockFace support) {
-        // Logs last: a soldier only plans steps on them out of the water, with nothing else to build with.
+    public synchronized Optional<ItemClass> placeStep(BlockPos cell, BlockFace support) {
+        // Dirt first: a step or a pillar is scaffolding, left behind or dug away, and cobblestone is
+        // what a floor and a wall are made of (operator, 2026-11-12). Logs last: a soldier only plans
+        // steps on them out of the water, with nothing else to build with.
         ItemClass block = inventory.slotOf(ItemClass.COBBLESTONE) >= 0 ? ItemClass.COBBLESTONE
                 : inventory.slotOf(ItemClass.DIRT) >= 0 ? ItemClass.DIRT : ItemClass.LOG;
-        return place(cell, block, support);
+        return place(cell, block, support) ? Optional.of(block) : Optional.empty();
     }
 
     /** As {@link #place(BlockPos, ItemClass)}, against the block on {@code support}'s side of {@code cell}. */

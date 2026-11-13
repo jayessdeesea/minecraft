@@ -18,9 +18,11 @@ import java.util.Optional;
  * @param shield  whether a shield is in the off hand, to raise against arrows
  * @param pickaxe  whether a pickaxe is carried - to cut steps into stone with
  * @param spareWeapons  melee weapons carried beyond the best one - to hand a bare-handed squadmate
+ * @param pickaxes  pickaxes carried, toward the tool load ({@link CrossLevel#TOOL_LOAD})
+ * @param shovels  shovels carried, toward the tool load
  */
 public record Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations,
-                  boolean shield, boolean pickaxe, int dirt, boolean bow, int spareWeapons) {
+                  boolean shield, boolean pickaxe, int dirt, boolean bow, int spareWeapons, int pickaxes, int shovels) {
 
     public static final int ARMOUR_SLOTS = 4;
     /** Vanilla caps enchantment protection at 20 points, each taking 4% off the damage. */
@@ -30,6 +32,12 @@ public record Kit(Optional<String> weapon, int arrows, int armour, int fallProte
         if (fallProtection < 0 || fallProtection > MAX_PROTECTION) {
             throw new IllegalArgumentException("fall protection out of range: " + fallProtection);
         }
+    }
+
+    /** Kit counting no tools beyond whether a pickaxe is carried: one, or none. */
+    public Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations,
+               boolean shield, boolean pickaxe, int dirt, boolean bow, int spareWeapons) {
+        this(weapon, arrows, armour, fallProtection, logs, stone, rations, shield, pickaxe, dirt, bow, spareWeapons, pickaxe ? 1 : 0, 0);
     }
 
     /** Kit with no spare weapon. */

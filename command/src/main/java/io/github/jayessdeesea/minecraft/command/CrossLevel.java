@@ -33,9 +33,20 @@ public final class CrossLevel {
      */
     public static final double CRITICAL_HEALTH = 6;
 
+    /**
+     * The tool load: melee weapons, pickaxes and shovels a soldier carries of each - they wear out,
+     * and one that breaks mid-fight or mid-dig is the next in the pack, not a walk to a table
+     * (operator, 2026-11-12).
+     */
+    public static final int TOOL_LOAD = 4;
+    /** Below this many of a tool, a soldier asks its squadmates for one, as for rations. */
+    public static final int TOOLS_LOW = 2;
+    /** What a giver keeps of a tool: it gives only beyond this, one at a time. */
+    public static final int KEEP_TOOLS = 2;
+
     /** What's handed across. */
     public enum Item {
-        LOGS, RATIONS, WEAPON;
+        LOGS, RATIONS, WEAPON, PICKAXE, SHOVEL;
 
         /** How many of it {@code soldier} has to give and keep - for a weapon, only its spares. */
         int carried(SoldierStatus soldier) {
@@ -43,6 +54,8 @@ public final class CrossLevel {
                 case LOGS -> k.logs();
                 case RATIONS -> k.rations();
                 case WEAPON -> k.spareWeapons();
+                case PICKAXE -> k.pickaxes();
+                case SHOVEL -> k.shovels();
             }).orElse(0);
         }
 
@@ -50,7 +63,8 @@ public final class CrossLevel {
             return switch (this) {
                 case LOGS -> KEEP_LOGS;
                 case RATIONS -> KEEP_RATIONS;
-                case WEAPON -> 0; // a spare is spare: the giver keeps its best
+                case WEAPON -> 0; // a spare is spare, to one bare-handed: the giver keeps its best
+                case PICKAXE, SHOVEL -> KEEP_TOOLS;
             };
         }
     }
@@ -96,6 +110,28 @@ public final class CrossLevel {
         pair(squad, Item.WEAPON, weaponsWanted, busy, transfers);
         pair(squad, Item.LOGS, logsWanted, busy, transfers);
         pair(squad, Item.RATIONS, rationsWanted, busy, transfers);
+        return List.copyOf(transfers);
+    }
+
+    /**
+     * As {@link #pair(List, Map, Map, Map)}, and then the tool load: a pickaxe or a shovel to each
+     * soldier in {@code pickaxesWanted} and {@code shovelsWanted} - short of {@link #TOOLS_LOW} - from
+     * the nearest squadmate with more than {@link #KEEP_TOOLS} of it, one at a time.
+     */
+    public static List<Transfer> pair(List<SoldierStatus> squad, Map<String, Integer> logsWanted, Map<String, Integer> rationsWanted,
+                                      Map<String, Integer> weaponsWanted, Map<String, Integer> pickaxesWanted,
+                                      Map<String, Integer> shovelsWanted) {
+        List<Transfer> transfers = new ArrayList<>(pair(squad, logsWanted, rationsWanted, weaponsWanted));
+        if (squad.stream().anyMatch(s -> s.report() instanceof Report.InContact)) {
+            return List.of();
+        }
+        Set<String> busy = new HashSet<>();
+        transfers.forEach(t -> {
+            busy.add(t.giver());
+            busy.add(t.receiver());
+        });
+        pair(squad, Item.PICKAXE, pickaxesWanted, busy, transfers);
+        pair(squad, Item.SHOVEL, shovelsWanted, busy, transfers);
         return List.copyOf(transfers);
     }
 

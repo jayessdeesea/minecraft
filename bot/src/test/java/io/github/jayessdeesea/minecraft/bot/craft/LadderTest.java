@@ -75,7 +75,8 @@ class LadderTest {
     void ironWaitsOnOreItCanDig() {
         carrying("stone_sword", 1).carrying("stone_sword", 1).carrying("stone_pickaxe", 1).carrying("stone_pickaxe", 1).carrying("oak_log", 4).carrying("cobblestone", 16);
 
-        assertEquals(Optional.empty(), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY), "no ore in reach: nothing more to make");
+        assertEquals(Optional.of(Recipe.STONE_SHOVEL), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY),
+                "no ore in reach: no armour, so on to the tool load");
         assertEquals(Optional.of(Recipe.BOW), Ladder.next(inventory, Map.of(), NONE, ANYTHING), "string to be had, a bow first");
         assertEquals(Optional.of(Recipe.SHIELD), Ladder.next(inventory, Map.of(), NONE, c -> c != ItemClass.STRING));
     }
@@ -107,7 +108,8 @@ class LadderTest {
         carrying("stone_sword", 1);
         assertEquals(Optional.of(Recipe.STONE_PICKAXE), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY), "a second pickaxe");
         carrying("stone_pickaxe", 1);
-        assertEquals(Optional.empty(), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY), "both spares held, no ore in reach");
+        assertEquals(Optional.of(Recipe.STONE_SHOVEL), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY),
+                "both spares held, no ore in reach: the tool load next");
     }
 
     @Test
@@ -135,6 +137,14 @@ class LadderTest {
         assertEquals(Optional.empty(), Ladder.upTo(inventory, Map.of(), NONE, LOGS_ONLY, Ladder.rungOf(Recipe.STONE_PICKAXE)),
                 "a squadmate still wants a stone pickaxe: nothing above it");
         assertEquals(Optional.of(Recipe.SHIELD), Ladder.upTo(inventory, Map.of(), NONE, LOGS_ONLY, Ladder.rungOf(Recipe.SHIELD)));
+    }
+
+    @Test
+    void theToolLoadIsMadeFromWhatsCarriedNeverQuarriedFor() {
+        carrying("stone_sword", 1).carrying("stone_sword", 1).carrying("stone_pickaxe", 1).carrying("stone_pickaxe", 1).carrying("oak_log", 4);
+
+        assertEquals(Optional.empty(), Ladder.next(inventory, Map.of(), NONE, c -> c == ItemClass.COBBLESTONE || c == ItemClass.LOG),
+                "no cobblestone carried: no shovel, though stone is to be had");
     }
 
     @Test

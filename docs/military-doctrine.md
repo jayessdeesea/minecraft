@@ -446,6 +446,9 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 11. An iron axe, which chops a log in a sixth of the bare-handed time.
 12. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
     the miner takes beside its stairs (§16) with an iron pickaxe, not something a soldier fetches.
+13. The tool load (`CrossLevel.TOOL_LOAD`): four each of melee weapons, pickaxes and shovels, of
+    stone - they wear out, and the next is in the pack (operator, 2026-11-12). Last, after the
+    armour: protection first, and a rung whose makings can't be had is passed over.
 
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
 Against a skeleton, a stone sword over a wooden one saves 0.3 health a fight. A shield saves
@@ -463,7 +466,9 @@ in it are backlog/rest-plan.md.
 
 A soldier on ground work - a dig of the camp's or the keep's ground, or dirt for a wall - makes a
 shovel if it has none, stone if it carries the cobblestone: it digs soil and gravel with its
-fastest shovel, a stone one in a quarter of the bare-handed time.
+fastest shovel, a stone one in a quarter of the bare-handed time. A step or pillar it builds is of
+dirt before cobblestone (`Footing.placeStep`): scaffolding, while cobblestone is a floor's and a
+wall's.
 
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
@@ -624,7 +629,10 @@ squads too (§4, Class I). A bare-handed
 soldier - a replacement respawns with nothing - gets a squadmate's spare melee weapon: the worst
 of those it carries beyond its best (`Inventory.spareWeaponSlot`), never the one in hand. Weapons
 are paired first, then logs, then rations, and a soldier is in one hand-over at a time, giving or
-receiving. A replacement still linking up gets nothing until it has: the squad reorganises round
+receiving. Then the tool load (§11): a soldier with fewer than two pickaxes or two shovels gets one
+from the nearest squadmate with more than two, the worst it carries (`Inventory.spareToolSlot`),
+one at a time. A weapon goes only to one bare-handed: two soldiers each holding one would hand a
+sword back and forth. A replacement still linking up gets nothing until it has: the squad reorganises round
 it once it's back. Nor does a soldier making its kit (`Rearming`): mid-craft its weapon can be on
 an open window's cursor, where it isn't counted. Nobody cross-levels while
 the squad is in contact, or from a soldier linking up.
@@ -1059,7 +1067,13 @@ level, its floor walked at feet 68. The heights are the plan's, not the ground's
 y=64 up into the sky over it is dug out, but rock and the slab's own cobblestone in its four
 layers; then the slab, and any hollow open under it within 8 blocks, is filled in cobblestone only
 (`Order.Fill`'s `stoneOnly`, a filler of its own), never dirt, which endermen take. A strip each
-(`Tasking.keep`). Its cobblestone is the mine's: miners carry their loads to the stockpile, and a
+(`Tasking.keep`), each squad on it its own share of the site - west to east in the roster's order
+- and each of its soldiers a strip of that: the sky over it cleared to the top of the world, top
+down, as ground is dug only from an open top. The register follows the keep's dig and fill by
+their own names (`dig the keep`, `fill the keep`), measured by the squad's share. Its builders'
+workshop and chest are the keep's own, one for every squad on it, off the slab's west edge
+(`Keep.DEPOT`), where nothing digs under them; a builder carries what it digs until its pack is
+nearly full before taking it there. Its cobblestone is the mine's: miners carry their loads to the stockpile, and a
 soldier on the keep short of it draws a load from there while the chest was last seen holding
 some; with none there it's free for other work, and the log says the keep waits on cobblestone.
 

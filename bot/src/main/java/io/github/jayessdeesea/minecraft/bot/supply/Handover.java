@@ -175,6 +175,8 @@ public final class Handover {
             case LOGS -> ItemClass.LOG;
             case RATIONS -> ItemClass.FOOD;
             case WEAPON -> ItemClass.WEAPON;
+            case PICKAXE -> ItemClass.PICKAXE;
+            case SHOVEL -> ItemClass.SHOVEL;
         };
         remaining = logs;
         phase = Phase.WALKING;
@@ -209,7 +211,9 @@ public final class Handover {
     /** Throws the first slot of what's handed, as many as are still to give; confirmed by the server's count. */
     private Expect throwSlot() {
         // A weapon given is a spare - the worst beyond the best - never the one in hand.
-        int slot = item == CrossLevel.Item.WEAPON ? inventory.spareWeaponSlot() : inventory.slotOf(thrown);
+        int slot = item == CrossLevel.Item.WEAPON ? inventory.spareWeaponSlot()
+                : item == CrossLevel.Item.PICKAXE || item == CrossLevel.Item.SHOVEL ? inventory.spareToolSlot(thrown)
+                : inventory.slotOf(thrown);
         if (slot < 0) {
             throw new IllegalStateException("out of " + what() + " with " + remaining + " still to give");
         }

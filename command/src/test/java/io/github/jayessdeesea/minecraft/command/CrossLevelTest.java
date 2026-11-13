@@ -146,4 +146,23 @@ class CrossLevelTest {
         assertEquals(List.of(), CrossLevel.pair(fighting, Map.of("Alice", 3)));
         assertEquals(List.of(), CrossLevel.pair(rejoining, Map.of("Alice", 3)));
     }
+
+    @Test
+    void aSoldierShortOfShovelsGetsOneFromASquadmateWithMoreThanItKeeps() {
+        SoldierStatus alice = toolsOf("Alice", 0, 0, 0);
+        SoldierStatus bob = toolsOf("Bob", 1, 4, 2);
+        SoldierStatus carol = toolsOf("Carol", 2, 4, 3);
+
+        List<CrossLevel.Transfer> transfers = CrossLevel.pair(List.of(alice, bob, carol), java.util.Map.of(), java.util.Map.of(),
+                java.util.Map.of(), java.util.Map.of(), java.util.Map.of("Alice", 1));
+
+        assertEquals(List.of(new CrossLevel.Transfer("Carol", "Alice", CrossLevel.Item.SHOVEL, 1)), transfers,
+                "Bob, nearer, keeps its two; Carol gives its third");
+    }
+
+    private static SoldierStatus toolsOf(String name, double x, int pickaxes, int shovels) {
+        return new SoldierStatus(name, new Position(x, 64, 0), new Order.Idle(), new Report.InPosition(),
+                Optional.of(new Condition(20, 20, 0, Optional.of(new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, 0, 20,
+                        false, pickaxes > 0, 0, false, 0, pickaxes, shovels)))));
+    }
 }

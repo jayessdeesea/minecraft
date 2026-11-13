@@ -107,6 +107,27 @@ public final class Inventory {
      * The slot of a melee weapon beyond the best one carried - the worst of the rest, the one to give
      * away - or -1 with one or none.
      */
+    /**
+     * The slot of the {@code tool} to give away: the worst carried - the lowest mining tier, or the
+     * slowest shovel - so the giver keeps its best. -1 with none.
+     */
+    public synchronized int spareToolSlot(ItemClassRegistry.ItemClass tool) {
+        int worst = -1;
+        double worstGrade = Double.MAX_VALUE;
+        for (int slot = MAIN_FIRST; slot <= HOTBAR_LAST; slot++) {
+            if (!ItemClassRegistry.classOf(itemIds[slot]).equals(java.util.Optional.of(tool))) {
+                continue;
+            }
+            double grade = tool == ItemClassRegistry.ItemClass.SHOVEL ? ItemClassRegistry.shovelSpeed(itemIds[slot]).orElse(0)
+                    : ItemClassRegistry.miningTier(itemIds[slot]).orElse(0);
+            if (grade < worstGrade) {
+                worst = slot;
+                worstGrade = grade;
+            }
+        }
+        return worst;
+    }
+
     public synchronized int spareWeaponSlot() {
         int best = -1;
         int worst = -1;
@@ -224,6 +245,7 @@ public final class Inventory {
         }
         boolean shield = ItemClassRegistry.classOf(itemIds[OFF_HAND]).equals(Optional.of(ItemClassRegistry.ItemClass.SHIELD));
         return new Kit(weapon, arrows, armour, Math.min(fallProtection, Kit.MAX_PROTECTION), logs, stone, rations, shield,
-                slotOf(ItemClassRegistry.ItemClass.PICKAXE) >= 0, dirt, slotOfNamed("bow") >= 0, Math.max(0, meleeWeapons() - 1));
+                slotOf(ItemClassRegistry.ItemClass.PICKAXE) >= 0, dirt, slotOfNamed("bow") >= 0, Math.max(0, meleeWeapons() - 1),
+                count(ItemClassRegistry.ItemClass.PICKAXE), count(ItemClassRegistry.ItemClass.SHOVEL));
     }
 }

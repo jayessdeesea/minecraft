@@ -32,6 +32,13 @@ adding cells outward.
 - **Built while the foothold at (-48, 44) stands as the temporary base**, and moved into once
   the keep has shelter and the stockpile. Order: the keep (shelter, chests, furnaces); one chunk
   of fields with water; then the ring of 12 chunks round the keep, from the ramps outward.
+- **Scaffolding of bamboo** (operator, 2026-11-12: preferred over dirt for climbing). Left: bamboo
+  scaffolding is climbed inside and sneaked down, not stood on, so it wants its own moves in the
+  route planner, and bamboo from a jungle and string to make it.
+- **Open: a dirt step recorded as dirt.** A step a soldier builds is put in its world model as
+  cobblestone until the server's update says it's dirt; recorded as dirt at once, the squad
+  simulation's pit fill (`aSquadFillsAPitInTheCampFromTheBottom`) stalled, a placer's hand out of
+  step with the inventory. Not yet understood.
 - Cost: 4,096 cobblestone for the keep alone, against 385 in the stockpile today - so the mine's
   spoil is its supply.
 

@@ -160,7 +160,10 @@ public final class Clearer {
             cooldown = COOLDOWN_TICKS;
             return;
         }
-        digger = new Digger(name, session, inventory, claims, new Digger.Spot(target, c.stand(), c.block()));
+        // Given the time its walk takes - a climb up a hill to its top is no 20-second walk: live, the
+        // keep's builders gave up cut after cut on the hill's summit, each walk timed out on the way.
+        digger = new Digger(name, session, inventory, claims, new Digger.Spot(target, c.stand(), c.block()),
+                Digger.walkTicks(soldier, c.stand()));
     }
 
     /** Stops the cut under way, its claims given up. */
