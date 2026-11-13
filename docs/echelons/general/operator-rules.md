@@ -24,5 +24,9 @@ before dark, to plan the night:
   yet, it shelters like the first. How the squad works the mine at night is in
   [military-doctrine.md § 16](../../military-doctrine.md#16-mining-down).
 
+## The keep by day (`minecraft.general.keep-by-day`)
+By day, every squad builds the main base's keep (task `KEEP`, [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)),
+whatever the general orders; a squad already on it holds it. The night rule still comes first.
+
 ## The camp (`minecraft.camp`)
 The x,z the foothold's standards are measured round (docs/echelons/general/decisions.md).

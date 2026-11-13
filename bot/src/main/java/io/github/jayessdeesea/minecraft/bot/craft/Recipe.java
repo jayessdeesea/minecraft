@@ -78,6 +78,10 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
     public static final Recipe ARROWS = material("arrows", ItemClass.ARROWS, 4, Station.TABLE, List.of("F", "S", "E"),
             Map.of('F', ItemClass.FLINT, 'S', ItemClass.STICK, 'E', ItemClass.FEATHER));
 
+    /** A shovel: soil and gravel dug four times as fast with a stone one as by hand. */
+    public static final Recipe WOODEN_SHOVEL = shovel("wooden", 'P', ItemClass.PLANKS);
+    public static final Recipe STONE_SHOVEL = shovel("stone", 'C', ItemClass.COBBLESTONE);
+
     public static final Recipe WOODEN_SWORD = sword("wooden", 'P', ItemClass.PLANKS);
     public static final Recipe WOODEN_PICKAXE = pickaxe("wooden", 'P', ItemClass.PLANKS);
     public static final Recipe STONE_SWORD = sword("stone", 'C', ItemClass.COBBLESTONE);
@@ -104,7 +108,7 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
     /** Every recipe a soldier knows. */
     public static final List<Recipe> ALL = List.of(PLANKS, STICKS, CRAFTING_TABLE, TORCHES, FURNACE, CHARCOAL, IRON_INGOT, COPPER_INGOT, SHIELD,
             WOODEN_HOE, BREAD, CHEST, LADDER, FENCE, FENCE_GATE, BUCKET, BED, COPPER_HELMET, COPPER_CHESTPLATE, COPPER_LEGGINGS, COPPER_BOOTS,
-            BOW, ARROWS,
+            BOW, ARROWS, WOODEN_SHOVEL, STONE_SHOVEL,
             WOODEN_SWORD, WOODEN_PICKAXE, STONE_SWORD, STONE_PICKAXE, IRON_SWORD, IRON_PICKAXE, IRON_AXE,
             IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS,
             DIAMOND_SWORD, DIAMOND_PICKAXE, DIAMOND_HELMET, DIAMOND_CHESTPLATE, DIAMOND_LEGGINGS, DIAMOND_BOOTS);
@@ -116,6 +120,11 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
     private static Recipe sword(String material, char c, ItemClass head) {
         return new Recipe(material + " sword", ItemClass.WEAPON, Optional.of(material + "_sword"), 1, Station.TABLE,
                 List.of(String.valueOf(c), String.valueOf(c), "S"), Map.of(c, head, 'S', ItemClass.STICK));
+    }
+
+    private static Recipe shovel(String material, char c, ItemClass head) {
+        return new Recipe(material + " shovel", ItemClass.SHOVEL, Optional.of(material + "_shovel"), 1, Station.TABLE,
+                List.of(String.valueOf(c), "S", "S"), Map.of(c, head, 'S', ItemClass.STICK));
     }
 
     private static Recipe pickaxe(String material, char c, ItemClass head) {

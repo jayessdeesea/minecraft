@@ -461,6 +461,10 @@ short of the wool, hunts sheep for it by day like the chicken for a feather. Onl
 counts: a bed wants three of one colour, and most sheep are white. Placing the bed and lying down
 in it are backlog/rest-plan.md.
 
+A soldier on ground work - a dig of the camp's or the keep's ground, or dirt for a wall - makes a
+shovel if it has none, stone if it carries the cobblestone: it digs soil and gravel with its
+fastest shovel, a stone one in a quarter of the bare-handed time.
+
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
 It crafts what it can in its 2x2 inventory grid. What needs a table or a furnace it makes at one

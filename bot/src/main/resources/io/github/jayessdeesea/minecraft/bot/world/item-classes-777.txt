@@ -4,7 +4,7 @@
 # S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;
 # U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;
 # E wheat seeds, Y wheat, Z hoes, B saplings, D dirt; J string, Q flint, V feathers, I diamonds, G raw copper, c copper ingot.
-# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket; u white wool, d beds.
+# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket; u white wool, d beds; v shovels.
 # Everything NOT listed is just carried.
 55 D dirt
 62 K cobblestone
@@ -94,30 +94,37 @@
 1019 G raw_copper
 1020 c copper_ingot
 1025 W wooden_sword
+1026 v wooden_shovel
 1027 X wooden_pickaxe
 1028 W wooden_axe
 1029 Z wooden_hoe
 1030 W copper_sword
+1031 v copper_shovel
 1032 X copper_pickaxe
 1033 W copper_axe
 1034 Z copper_hoe
 1035 W stone_sword
+1036 v stone_shovel
 1037 X stone_pickaxe
 1038 W stone_axe
 1039 Z stone_hoe
 1040 W golden_sword
+1041 v golden_shovel
 1042 X golden_pickaxe
 1043 W golden_axe
 1044 Z golden_hoe
 1045 W iron_sword
+1046 v iron_shovel
 1047 X iron_pickaxe
 1048 W iron_axe
 1049 Z iron_hoe
 1050 W diamond_sword
+1051 v diamond_shovel
 1052 X diamond_pickaxe
 1053 W diamond_axe
 1054 Z diamond_hoe
 1055 W netherite_sword
+1056 v netherite_shovel
 1057 X netherite_pickaxe
 1058 W netherite_axe
 1059 Z netherite_hoe

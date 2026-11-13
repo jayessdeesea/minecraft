@@ -139,10 +139,30 @@ final class Digger {
 
         /** The inventory slot of the fastest axe, or -1. */
         static int bestAxe(Inventory inventory) {
+            return fastest(inventory, ItemClassRegistry::axeSpeed);
+        }
+
+        /**
+         * The slot of the fastest tool for this, or -1 for none: an axe for a log, a shovel for
+         * soil or gravel. Live, the squads dug the camp's ground by hand, four times as slow.
+         */
+        int speedTool(Inventory inventory) {
+            return switch (this) {
+                case LOG -> bestAxe(inventory);
+                case SOIL, GRAVEL -> fastest(inventory, ItemClassRegistry::shovelSpeed);
+                default -> -1;
+            };
+        }
+
+        private double speedOf(int item) {
+            return (this == LOG ? ItemClassRegistry.axeSpeed(item) : ItemClassRegistry.shovelSpeed(item)).getAsDouble();
+        }
+
+        private static int fastest(Inventory inventory, java.util.function.IntFunction<java.util.OptionalDouble> speedOf) {
             int best = -1;
             double bestSpeed = 0;
             for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
-                double speed = ItemClassRegistry.axeSpeed(inventory.itemAt(slot)).orElse(0);
+                double speed = speedOf.apply(inventory.itemAt(slot)).orElse(0);
                 if (speed > bestSpeed) {
                     best = slot;
                     bestSpeed = speed;
@@ -153,14 +173,15 @@ final class Digger {
 
         /**
          * Ticks to dig this with what's carried: a log by hand is 60 ticks, with an axe 60 / its
-         * speed - given the same margin as the bare-hand time, since the server refuses an early finish.
+         * speed, and soil or gravel likewise with a shovel - given the same margin as the bare-hand
+         * time, since the server refuses an early finish.
          */
         int digTicks(Inventory inventory) {
-            int axe = this == LOG ? bestAxe(inventory) : -1;
-            if (axe < 0) {
+            int tool = speedTool(inventory);
+            if (tool < 0) {
                 return digTicks;
             }
-            return (int) Math.ceil(digTicks / ItemClassRegistry.axeSpeed(inventory.itemAt(axe)).getAsDouble());
+            return (int) Math.ceil(digTicks / speedOf(inventory.itemAt(tool)));
         }
 
         /** The inventory slot of the best pickaxe, or -1. */
@@ -306,7 +327,7 @@ final class Digger {
         int item = inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
         Optional<ItemClass> held = ItemClassRegistry.classOf(item);
         ItemClass tool = spot.target().tool;
-        int axe = spot.target() == Target.LOG ? Target.bestAxe(inventory) : -1;
+        int axe = spot.target().speedTool(inventory);
         if (axe >= 0) {
             return item == inventory.itemAt(axe);
         }
@@ -320,7 +341,7 @@ final class Digger {
      */
     private void takeInHand() {
         ItemClass tool = spot.target().tool;
-        int axe = spot.target() == Target.LOG ? Target.bestAxe(inventory) : -1;
+        int axe = spot.target().speedTool(inventory);
         if (axe >= 0) {
             if (axe >= Inventory.HOTBAR_FIRST) {
                 hold(axe - Inventory.HOTBAR_FIRST);

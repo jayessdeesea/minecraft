@@ -3679,6 +3679,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
                 tools.add(Recipe.WOODEN_HOE);
             }
+            // A shovel for ground work - a dig of the camp's or the keep's ground, or dirt for a wall:
+            // stone if it carries the cobblestone, wooden if not.
+            boolean groundDigging = clearing.containsKey(name) || groundGather.containsKey(name) || diggingForWall.contains(name);
+            if (groundDigging && inventory.count(ItemClass.SHOVEL) == 0) {
+                tools.add(inventory.count(ItemClass.COBBLESTONE) > 0 ? Recipe.STONE_SHOVEL : Recipe.WOODEN_SHOVEL);
+            }
             // Bread from the wheat it carries: a farmer's work, and anyone's below its basic load
             // (command.Subsistence) - live, a soldier carried 22 wheat for days while its squad starved.
             int carriedRations = status.condition().flatMap(c -> c.kit()).map(Kit::rations).orElse(0);

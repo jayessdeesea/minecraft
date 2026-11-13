@@ -91,6 +91,7 @@ public class GenerateItemClasses {
                     : name.equals("water_bucket") ? 'w'
                     // A bed and what it's made of. White wool only: a bed wants three of one colour,
                     // and most sheep are white - other colours are just carried.
+                    : name.endsWith("_shovel") ? 'v'
                     : name.equals("white_wool") ? 'u'
                     : name.endsWith("_bed") ? 'd'
                     : '-';
@@ -111,7 +112,7 @@ public class GenerateItemClasses {
             out.println("# S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;");
             out.println("# U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;");
             out.println("# E wheat seeds, Y wheat, Z hoes, B saplings, D dirt; J string, Q flint, V feathers, I diamonds, G raw copper, c copper ingot.");
-            out.println("# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket; u white wool, d beds.");
+            out.println("# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket; u white wool, d beds; v shovels.");
             out.println("# Everything NOT listed is just carried.");
             classes.forEach((id, line) -> out.println(id + " " + line));
         }

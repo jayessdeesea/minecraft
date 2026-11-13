@@ -27,7 +27,7 @@ public final class ItemClassRegistry {
     /** What an item counts as. */
     public enum ItemClass { WEAPON, ARMOUR, ARROWS, LOG, PLANKS, STICK, CRAFTING_TABLE, COBBLESTONE, PICKAXE, FOOD, FURNACE, COAL, TORCH, RAW_IRON, IRON_INGOT,
         SHIELD, SEEDS, WHEAT, HOE, SAPLING, DIRT, STRING, FLINT, FEATHER, DIAMOND, RAW_COPPER, COPPER_INGOT,
-        CHEST, LADDER, FENCE, FENCE_GATE, BUCKET, WATER_BUCKET, WOOL, BED }
+        CHEST, LADDER, FENCE, FENCE_GATE, BUCKET, WATER_BUCKET, WOOL, BED, SHOVEL }
 
     private static final String RESOURCE_NAME = "item-classes-777.txt";
 
@@ -141,6 +141,27 @@ public final class ItemClassRegistry {
         };
     }
 
+    /**
+     * How fast a shovel digs soil and gravel, as its material's mining speed - a bare hand is 1, the
+     * same speeds as an axe's (vanilla's tool tiers). Empty for anything but a shovel.
+     */
+    public static OptionalDouble shovelSpeed(int itemId) {
+        Entry entry = ITEMS.get(itemId);
+        if (entry == null || entry.itemClass() != ItemClass.SHOVEL) {
+            return OptionalDouble.empty();
+        }
+        return switch (entry.name().replace("_shovel", "")) {
+            case "wooden" -> OptionalDouble.of(2);
+            case "stone" -> OptionalDouble.of(4);
+            case "copper" -> OptionalDouble.of(5);
+            case "iron" -> OptionalDouble.of(6);
+            case "diamond" -> OptionalDouble.of(8);
+            case "netherite" -> OptionalDouble.of(9);
+            case "golden" -> OptionalDouble.of(12);
+            default -> throw new IllegalStateException("shovel " + entry.name() + " has no speed - extend shovelSpeed");
+        };
+    }
+
     /** Armour materials, worst to best by the protection a full set gives; a turtle shell is an iron helmet's equal. */
     private static final List<String> ARMOUR_GRADES = List.of("leather", "copper", "golden", "chainmail", "iron", "diamond", "netherite");
 
@@ -212,6 +233,7 @@ public final class ItemClassRegistry {
                         case "w" -> ItemClass.WATER_BUCKET;
                         case "u" -> ItemClass.WOOL;
                         case "d" -> ItemClass.BED;
+                        case "v" -> ItemClass.SHOVEL;
                         default -> throw new IllegalStateException("Unknown item class in " + RESOURCE_NAME + ": " + line);
                     };
                     items.put(Integer.parseInt(parts[0]), new Entry(itemClass, parts[2]));

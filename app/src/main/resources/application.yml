@@ -25,6 +25,9 @@ minecraft:
     # that leaves one in the open after dark is replaced by a patrol base where it stands. A garrison
     # wants it; a scenario that sends squads out at night doesn't.
     shelter-at-night: false
+    # The operator's day rule: by day, every squad builds the main base's keep (command.Keep),
+    # whatever the general orders - logged beside its order. The night rule still comes first.
+    keep-by-day: false
     # The operator's intent - the one order that comes from outside the chain of command.
     mission: >-
       Reconnoitre the terrain around the squad's start point and establish an observation post

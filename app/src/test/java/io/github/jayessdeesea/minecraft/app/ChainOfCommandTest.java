@@ -35,6 +35,23 @@ class ChainOfCommandTest {
             new Objective.Task.Fortify());
 
     @Test
+    void underTheKeepRuleEverySquadBuildsTheKeepByDayAndShelterAtNight() {
+        chain.setKeepByDay(true);
+        chain.setGround((x, z, nearY) -> OptionalInt.of(64));
+        SquadStatus alpha = new SquadStatus("Alpha", new Report.InPosition(),
+                List.of(new SoldierStatus("Alice", new Position(0.5, 64, 0.5), new Order.Idle(), new Report.InPosition(), Optional.empty())),
+                List.of(), Optional.empty(), false);
+        chain.onTime(TimeOfDay.of(1000, true));
+
+        Objective byDay = chain.byDay(WALL, alpha);
+
+        assertTrue(byDay.task() instanceof Objective.Task.Keep, byDay.toString());
+        assertEquals(byDay, chain.byDay(byDay, alpha), "a squad on the keep is kept on it");
+        chain.onTime(TimeOfDay.of(18000, true));
+        assertEquals(WALL, chain.byDay(WALL, alpha), "the night is the night rule's");
+    }
+
+    @Test
     void atNightASquadSealedInIsKeptInNotOrderedOut() {
         chain.setGround((x, z, nearY) -> OptionalInt.of(64));
         chain.onTime(TimeOfDay.of(18000, true));

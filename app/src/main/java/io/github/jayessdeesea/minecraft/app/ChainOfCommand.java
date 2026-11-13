@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Foothold;
+import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -246,6 +247,30 @@ public class ChainOfCommand implements DisposableBean {
         LOG.warn("[General -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule shelters it instead, at {}",
                 squad.squadName(), objective.mission(), objective.task(), at(shelter.location()));
         return shelter;
+    }
+
+    /** Under the operator's day rule, every squad builds the keep by day (minecraft.general.keep-by-day). */
+    private volatile boolean keepByDay;
+
+    @Autowired
+    void setKeepByDay(@Value("${minecraft.general.keep-by-day:false}") boolean keepByDay) {
+        this.keepByDay = keepByDay;
+    }
+
+    /**
+     * {@code objective}, or - by day, under {@link #keepByDay} - the keep (command.Keep): the
+     * operator's order for every squad, whatever the general would have it do. Loud, like the
+     * night's rule, which still comes first at dusk.
+     */
+    Objective byDay(Objective objective, SquadStatus squad) {
+        if (!keepByDay || time == null || time.dark() || sheltering() || objective.task() instanceof Objective.Task.Keep) {
+            return objective;
+        }
+        Objective keep = new Objective("Build the main base's keep: flatten the ground at the origin and lay its slab",
+                Keep.CENTRE, "The main base's keep, as the operator ordered", new Objective.Task.Keep());
+        LOG.warn("[General -> {}] by day, ordered '{}' ({}) - the operator's rule puts it on the keep instead",
+                squad.squadName(), objective.mission(), objective.task());
+        return keep;
     }
 
     /** How near the camp a squad at dusk shelters in it, rather than where it stands. */
@@ -682,7 +707,7 @@ public class ChainOfCommand implements DisposableBean {
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
-                    Objective given = sheltered(grounded(objectives.get(i), statuses.get(i).soldiers()), statuses.get(i));
+                    Objective given = sheltered(grounded(byDay(objectives.get(i), statuses.get(i)), statuses.get(i).soldiers()), statuses.get(i));
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
                         LOG.info("[General -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
                         // The feedback not taken: the squad said its task is finished or stuck, and it was kept.
