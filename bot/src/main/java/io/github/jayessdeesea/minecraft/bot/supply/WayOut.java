@@ -16,14 +16,18 @@ import java.util.Set;
  * one knows to cut: the wall at its feet and head on the side nearest where it's been sent, to break
  * from where it stands ({@link Breacher}). A route never tunnels, so boxed in it would stand there
  * for good. Live, three soldiers stood in a sealed hut a whole day after a restart, every move a
- * "no route" CANTCO.
+ * "no route" CANTCO; and three more in a trench between the camp's wall and old cobblestone heaps.
  *
  * <p>Pure: from the world and where it stands.
  */
 public final class WayOut {
 
-    /** Cells a soldier can walk to at or under which it's boxed in: a hut's floor, not a tunnel or a camp. */
-    public static final int BOXED_IN = 24;
+    /**
+     * Cells a soldier can walk to at or under which it's boxed in: a hut's floor, or a trench cut off
+     * between a wall and old heaps - live, three soldiers stood a day in one beside the camp's wall,
+     * too big for a hut's 24. Under the walled camp's own floor (17 x 17), which is never a pocket.
+     */
+    public static final int BOXED_IN = 128;
 
     private WayOut() {
     }

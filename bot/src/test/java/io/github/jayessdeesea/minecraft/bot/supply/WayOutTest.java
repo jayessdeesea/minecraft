@@ -51,6 +51,42 @@ class WayOutTest {
                 WayOut.cells(hut(true), new BlockPos(0, GROUND, 0), new Position(10.5, GROUND, 0.5)));
     }
 
+    /** A trench two wide and thirty long, cut into the ground: walled all round, open to the sky. */
+    private static WorldView trench() {
+        return new WorldView() {
+            private boolean dirt(int x, int y, int z) {
+                boolean cut = x >= 0 && x < 2 && z >= 0 && z < 30 && y >= GROUND - 3;
+                return y < GROUND && !cut;
+            }
+
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return dirt(x, y, z);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return dirt(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    @Test
+    void cutOffInATrenchTooLongForAHutItBreaksTheWallNearestWhereItsSent() {
+        List<BlockPos> cells = WayOut.cells(trench(), new BlockPos(0, GROUND - 3, 5), new Position(10.5, GROUND, 5.5));
+        assertEquals(List.of(new BlockPos(2, GROUND - 2, 5), new BlockPos(2, GROUND - 3, 5)), cells);
+    }
+
     @Test
     void notBoxedInThereIsNothingToBreak() {
         assertEquals(List.of(), WayOut.cells(hut(true), new BlockPos(10, GROUND, 0), new Position(0.5, GROUND, 0.5)),

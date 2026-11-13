@@ -727,9 +727,10 @@ out within 16 cells - a pit in the floor is part of a roofed room, not a way out
 in the open is: a trench by a wall is one a soldier pillars out of) cuts
 its way out the same way, so a squad that wakes up sealed in after a restart, or walled in by a hut
 it never finished, walks out. And a soldier the squad's drill misses - reporting "no route" from a
-pocket it can walk no more than 24 cells of - breaks the wall nearest where it's sent from where it
-stands (`bot.supply.WayOut`): live, after a restart, three soldiers stood a day in a three-cell
-pocket the drill never saw, the squad still holding its night base's record.
+pocket it can walk no more than 128 cells of, under the walled camp's own floor - breaks the wall
+nearest where it's sent from where it stands (`bot.supply.WayOut`): live, after a restart, three
+soldiers stood a day in a three-cell pocket the drill never saw, the squad still holding its night
+base's record; and three more in a trench between the camp's wall and old cobblestone heaps.
 
 ## 15. Securing the camp
 
