@@ -779,12 +779,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /**
      * Whether a soldier goes to {@code stockpile} for logs: its kit's last try gave up for want of a
      * tree in reach ({@code failure}), it carries too few to make a table and a tool from, and the
-     * chest was last seen holding a load. Live, a bare-handed miner with no tree within 48 blocks
-     * stood a day in the mine, while the camp's chest held 85 logs.
+     * chest was last seen holding a load - or hasn't been seen since a restart: the trip looks, and
+     * what it sees is then known. Live, a bare-handed miner with no tree within 48 blocks stood a day
+     * in the mine, while the camp's chest held 85 logs nobody had opened it to see.
      */
     static boolean drawsLogs(Optional<String> failure, int logs, Optional<Stockpile> seen, Optional<Position> stockpile) {
         return stockpile.isPresent() && logs < 2 && failure.filter(f -> f.contains("no LOG")).isPresent()
-                && seen.map(st -> st.logs() >= DRAW_LOGS).orElse(false);
+                && seen.map(st -> st.logs() >= DRAW_LOGS).orElse(true);
     }
 
     /** Each connected soldier's tree planting, by name. */

@@ -18,6 +18,7 @@ class StockpileDrawTest {
     void aSoldierWithNoTreeInReachDrawsLogsForItsKitFromTheStockpile() {
         assertTrue(SoldierRunner.drawsLogs(NO_TREE, 0, Optional.of(new Stockpile(85, 0, 0)), CHEST));
         assertFalse(SoldierRunner.drawsLogs(NO_TREE, 0, Optional.of(new Stockpile(3, 0, 0)), CHEST), "too few in the chest");
+        assertTrue(SoldierRunner.drawsLogs(NO_TREE, 0, Optional.empty(), CHEST), "the chest unseen since a restart: it goes to look");
         assertFalse(SoldierRunner.drawsLogs(Optional.empty(), 0, Optional.of(new Stockpile(85, 0, 0)), CHEST), "its kit not wanting logs");
         assertFalse(SoldierRunner.drawsLogs(NO_TREE, 0, Optional.of(new Stockpile(85, 0, 0)), Optional.empty()), "no chest of its own");
     }

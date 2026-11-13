@@ -471,7 +471,7 @@ dirt before cobblestone (`Footing.placeStep`): scaffolding, while cobblestone is
 wall's.
 
 With no tree in reach for its kit's logs, it draws 8 from its stockpile, while the chest was last
-seen holding that many (`SoldierRunner.drawsLogs`).
+seen holding that many, or hasn't been seen since a restart (`SoldierRunner.drawsLogs`).
 
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
