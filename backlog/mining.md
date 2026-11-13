@@ -20,12 +20,17 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   lit (docs/military-doctrine.md § 16), and with nothing left to cut the night shift waits at
   the landing. What's left: the rest of the mine base (backlog/sites.md), and a next level once
   the first is cut - live, the camp's mine was cut to y=16 in under a quarter of an hour, and the
-  night rule sent the squad back to it every night after with nothing left to do there.
+  night rule sent the squad back to it every night after with nothing left to do there. With every
+  squad on the night shift (field149, 2026-11-13), 846 of 1,450 soldier-reports at the landing were
+  InPosition. Wanted: the squad quarries the stone round the landing - the keep's 4,096
+  cobblestone - with an `Order.Gather(STONE)` round it for each soldier but the cutter. Tried; its
+  squad simulation can't tell it from the miner's own tunnels, which keep every soldier busy there
+  in a fresh mine, so it wants a scenario with the tunnels already cut.
 
 - **The general never orders a mine by day.** 0 of 256 orders in a night's run, 244 of them
   patrol bases: its picture asks for one only through the AAR's "no mine yet". The night shift
   cuts it regardless. A mine head in its own cell (backlog/cells.md) would put it in that picture.
-- **The night shift, live.** Squads after the first now mine the camp's shaft at night
+- **The night shift, live.** Every squad now mines the camp's shaft at night
   (docs/military-doctrine.md § 16). Still to measure over a garrison night: whether hostiles
   follow the squad down from the surface, and whether the stairs need torches and a door at the top.
 

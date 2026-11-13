@@ -35,13 +35,13 @@ public final class Keep {
     }
 
     /**
-     * How far below the keep's current layer - the highest block left to dig anywhere on it - a
-     * soldier digs: neighbouring strips stay within this of each other, so the site comes down as a
-     * terrace a soldier walks, not as pits and towers (operator, 2026-11-13).
+     * How far below the highest ground left in and round its strip a soldier digs: neighbouring
+     * strips stay within this of each other, so the site comes down as a terrace a soldier walks,
+     * not as pits and towers (operator, 2026-11-13).
      */
     public static final int LAYER_WINDOW = 2;
 
-    /** The lowest a soldier digs with the keep's current layer at {@code layer}: never under the slab. */
+    /** The lowest a soldier digs with the highest ground in and round its strip at {@code layer}: never under the slab. */
     public static int floor(int layer) {
         return Math.max(BOTTOM, layer - LAYER_WINDOW);
     }

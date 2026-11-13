@@ -1638,20 +1638,22 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int share = Math.max(0, onKeep.indexOf(squad));
         Box digShare = Keep.dig().strips(Math.max(1, onKeep.size())).get(share);
         Box fillShare = Keep.fill().strips(Math.max(1, onKeep.size())).get(share);
-        // The keep's current layer is the highest ground left anywhere on it, every squad's share; no
-        // soldier digs more than Keep.LAYER_WINDOW under it, so the site comes down level by level.
+        // Level by level, strip by strip: each soldier's floor is two under the highest ground left in
+        // and round its strip (Tasking.keepDig), every squad's share counted - the seam between two
+        // squads' strips is an edge like any other.
         List<BlockPos> wholeDig = Clearing.toClear(world, Keep.dig(), digExcept);
         List<BlockPos> toDig = wholeDig.stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX()
                 && c.z() >= digShare.minZ() && c.z() <= digShare.maxZ()).toList();
-        int layer = wholeDig.stream().filter(c -> !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty())
-                .mapToInt(BlockPos::y).max().orElse(Keep.BOTTOM);
-        int floor = Keep.floor(layer);
-        List<BlockPos> inWindow = toDig.stream().filter(c -> c.y() >= floor).toList();
+        Map<Long, Integer> tops = new HashMap<>();
+        wholeDig.stream().filter(c -> !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty())
+                .forEach(c -> tops.merge(((long) c.x() << 32) ^ (c.z() & 0xffffffffL), c.y(), Math::max));
+        java.util.function.IntBinaryOperator top = (x, z) -> tops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
+        int layer = tops.values().stream().mapToInt(Integer::intValue).max().orElse(Keep.BOTTOM);
         List<BlockPos> toFill = toDig.isEmpty() ? Clearing.toFill(world, fillShare, kept) : List.of();
         state.keepDigLeft = toDig.size();
         state.keepFillLeft = toDig.isEmpty() ? toFill.size() : -1;
         String said = "the keep: " + toDig.size() + " blocks to dig" + (toDig.isEmpty() ? ", " + toFill.size() + " cells to fill"
-                : ", layer y=" + layer + ", " + inWindow.size() + " down to y=" + floor) + " in its share " + digShare;
+                : ", its top y=" + toDig.stream().mapToInt(BlockPos::y).max().orElse(Keep.BOTTOM) + ", the keep's y=" + layer) + " in its share " + digShare;
         if (!said.equals(state.keepSaid)) {
             LOG.info("[{}] {}", squad, said);
             state.keepSaid = said;
@@ -1663,12 +1665,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .filter(h -> h.condition().flatMap(c -> c.kit()).map(k -> !Subsistence.short_(k.rations())).orElse(true))
                 .map(h -> new Tasking.Hand(h.name(),
                 h.condition().flatMap(c -> c.kit()).map(Kit::stone).orElse(0))).toList();
-        // Each soldier a fixed range of x and z, its strip of the squad's share, from the window's
-        // floor up (operator, 2026-11-13: you get this x range and this z range, top down) - not cut
-        // from where work is left: a strip that narrow left no stand beside its last block.
-        Optional<Box> window = inWindow.isEmpty() ? Optional.empty()
-                : Optional.of(new Box(digShare.minX(), floor, digShare.minZ(), digShare.maxX(), digShare.maxY(), digShare.maxZ()));
-        Map<String, Order> orders = new HashMap<>(Tasking.keep(crew, window,
+        // Each soldier a fixed range of x and z, its strip of the squad's share, from its floor up
+        // (operator, 2026-11-13: you get this x range and this z range, top down) - not cut from
+        // where work is left: a strip that narrow left no stand beside its last block.
+        Map<String, Order> orders = new HashMap<>(!toDig.isEmpty() ? Tasking.keepDig(crew, digShare, top, digExcept) : Tasking.keep(crew, Optional.empty(),
                 toDig.isEmpty() ? bounds(toFill) : Optional.empty(), toDig.isEmpty() ? kept : digExcept));
         boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false);
         for (Tasking.Hand hand : crew) {

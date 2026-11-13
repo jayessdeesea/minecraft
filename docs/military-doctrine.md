@@ -1083,11 +1083,13 @@ layers; then the slab, and any hollow open under it within 8 blocks, is filled i
 (`Tasking.keep`), each squad on it its own share of the site - west to east in the roster's order
 - and each of its soldiers a fixed strip of that, its own range of x and z (operator, 2026-11-13):
 the sky over it cleared to the top of the world, top down, as ground is dug only from an open top.
-Level by level: the keep's current layer is the highest ground left anywhere on it, and no soldier
-digs more than two under it (`Keep.LAYER_WINDOW`), so neighbouring strips stay within two of each
-other and the site comes down as a terrace a soldier walks, not pits and towers; a strip with
-nothing in the window is free for other work. The log reads "the keep: N blocks to dig, layer
-y=L, M down to y=F". A builder stands only in its own strip's columns, a neighbour working the
+Level by level, strip by strip (`Tasking.keepDig`): a soldier digs no more than two under the
+highest ground left in its strip or in the columns just round it (`Keep.LAYER_WINDOW`), the other
+squad's strips across the seam counted, so neighbouring strips stay within two of each other and
+the site comes down as a terrace a soldier walks, not pits and towers. A spire holds back only the
+strips beside it - live, one spire at y=103 set a keep-wide layer, and a whole squad stood idle
+under it - and a strip with nothing over its floor is free for other work. The log reads "the
+keep: N blocks to dig, its top y=T, the keep's y=K". A builder stands only in its own strip's columns, a neighbour working the
 next; and with nothing on the ground in reach, it cuts the top layer from the air
 (`Clearing.fromTheAir`): a stand beside the highest block, its eyes level with it, that its route
 builds a dirt pillar up to (`Pathfinder` offers pillar steps in open air under a goal overhead).
