@@ -134,6 +134,11 @@ public final class Pathfinder {
      * tried again and again - live, a soldier jumping at the same block - is a soldier stuck.
      */
     static final double AVOID_COST = 20;
+    /**
+     * What a step down onto farmland costs over the walk: a crop cell trampled, worth a detour of this
+     * many blocks and no more - a wall it is not (operator, 2026-11-13: soldiers are never stuck).
+     */
+    static final double TRAMPLE_COST = 40;
 
     /** As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance, int, boolean, boolean)}, a step into {@code avoid} costing {@link #AVOID_COST} more. */
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
@@ -310,12 +315,15 @@ public final class Pathfinder {
                         }
                         break; // landed on something that isn't standable (a 1-high gap, lava)
                     }
-                    // Never down onto farmland: landing on it from over half a block tramples it
-                    // back to dirt. Live, half the camp's farm stood bare, trampled as fast as it
-                    // was tilled by farmers stepping down onto it off the ground round it.
-                    if (standable(world, down) && !world.isFarmland(down.x(), down.y() - 1, down.z())) {
+                    // Down onto farmland only at a price: landing on it from over half a block tramples
+                    // it back to dirt. Live, half the camp's farm stood bare, trampled as fast as it
+                    // was tilled by farmers stepping down onto it off the ground round it - so any way
+                    // round within TRAMPLE_COST blocks is taken instead; but never a wall: with the
+                    // farm's rim tilled, eight soldiers stood at the camp with "no route" to the keep.
+                    if (standable(world, down)) {
                         double damage = Math.max(0, drop - MAX_DROP) * falls.damageFactor();
-                        moves.add(new Move(down, 1 + drop * 0.5 + damage * falls.costPerDamage()));
+                        double trample = world.isFarmland(down.x(), down.y() - 1, down.z()) ? TRAMPLE_COST : 0;
+                        moves.add(new Move(down, 1 + drop * 0.5 + damage * falls.costPerDamage() + trample));
                         break;
                     }
                 }

@@ -1895,9 +1895,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         for (Map.Entry<String, Box> e : mine.entrySet()) {
             Integer floor = clearances.get(e.getKey());
             int t = tops.get(e.getKey());
+            Box b = e.getValue();
             if (floor != null && t != Foreman.NONE && t >= floor) {
-                Box b = e.getValue();
                 orders.put(e.getKey(), new Order.Dig(new Box(b.minX(), floor, b.minZ(), b.maxX(), b.maxY(), b.maxZ()), except));
+            } else if (t != Foreman.NONE) {
+                // Held at its floor by a neighbour's ground, or not yet cleared: it waits at its strip,
+                // in its own lane (operator, 2026-11-13), ready for the next clearance. Left to "nothing
+                // else to do", live, builders walked 60 blocks to the camp's upkeep and were there when
+                // their floor moved.
+                orders.put(e.getKey(), new Order.MoveTo((b.minX() + b.maxX()) / 2.0 + 0.5, t + 1, (b.minZ() + b.maxZ()) / 2.0 + 0.5, 3, 3,
+                        Risk.LOW, false));
             }
         }
         return orders;

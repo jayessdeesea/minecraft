@@ -602,9 +602,11 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    the squad simulation a farmer dug its own step out of the hollow as dirt over the plot, its
    route built it again, and every jump up it that fell back trampled the farmland. Landing on
    farmland from over half a block tramples it back to dirt,
-   and a route never steps down onto it or builds a step on it (`Pathfinder`), so a farm in a
-   hollow was reached only where the ground happened to be level, and steps built out of it
-   buried a third of the camp's farm.
+   and a route steps down onto it only at a price - a detour of 40 blocks is taken first
+   (`Pathfinder.TRAMPLE_COST`), never a wall: with the farm tilled to its rim, every soldier at the
+   camp stood with "no route" to the keep - and never builds a step on it, so a farm in a hollow
+   was reached only where the ground happened to be level, and steps built out of it buried a
+   third of the camp's farm.
 2. Harvests ripe wheat, for wheat and seeds to plant again.
 3. Plants seeds on bare farmland.
 4. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills
@@ -1140,7 +1142,9 @@ it's been told; each builder's top is its own strip's, from the world. A sender 
 second at most: the server cuts off a connection that chats faster. The log reads
 "[Keep] Bob -> Alice: KEEP TOP 88 EDGES 86 88 87 85". A spire holds back only the
 strips beside it - live, one spire at y=103 set a keep-wide layer, and a whole squad stood idle
-under it - and a builder not yet cleared, or with nothing over its floor, is free for other work. The log reads "the
+under it - and a builder not yet cleared, or held at its floor by a neighbour's ground, waits at
+its strip in its own lane, ready for the next clearance; left free for other work, builders walked
+60 blocks to the camp's upkeep and were there when their floor moved. The log reads "the
 keep: N blocks to dig, its top y=T, the keep's y=K". A builder stands only in its own strip's columns, a neighbour working the
 next. Within its strip it digs one level at a time, the highest first - no lower block is on offer
 while the top level has one left - and sweeps the level in rows from its north edge, each row the

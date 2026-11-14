@@ -339,6 +339,50 @@ class PathfinderTest {
                 "level ground: nothing to build");
     }
 
+    /**
+     * A step down onto farmland tramples it, so a route goes round a farm when it can within
+     * {@link Pathfinder#TRAMPLE_COST} blocks - and crosses it when it can't: live, with the camp's
+     * farm tilled right up to its rim, every soldier at the camp had "no route" to the keep.
+     */
+    @Test
+    void aFarmIsGoneRoundWhenItCanBeAndCrossedWhenItCant() {
+        // Ground at GROUND - 1, feet at GROUND; a trench of farmland one block lower across x=3..5.
+        java.util.function.IntPredicate trenchZ = z -> true;
+        java.util.function.Function<java.util.function.IntPredicate, WorldView> farmed = zs -> new WorldView() {
+            private boolean trench(int x, int z) {
+                return x >= 3 && x <= 5 && zs.test(z);
+            }
+
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return trench(x, z) ? y < GROUND - 1 : y < GROUND;
+            }
+
+            @Override
+            public boolean isFarmland(int x, int y, int z) {
+                return trench(x, z) && y == GROUND - 2;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        Pathfinder.Result across = Pathfinder.find(farmed.apply(trenchZ), START, exactly(8, GROUND, 0), 20_000);
+        assertTrue(across.reachesGoal(), "the farm runs the whole way across: crossed, at a price");
+
+        Pathfinder.Result round = Pathfinder.find(farmed.apply(z -> z >= -10 && z <= 10), START, exactly(8, GROUND, 0), 20_000);
+        assertTrue(round.reachesGoal());
+        assertTrue(round.path().stream().noneMatch(c -> c.x() >= 3 && c.x() <= 5 && c.y() == GROUND - 1),
+                "a way round within reach: not a cell of the farm trodden - " + round.path());
+    }
+
     @Test
     void noStepIsBuiltOnAFarm() {
         // Farmland underfoot and all round, the ground under it one block down.
