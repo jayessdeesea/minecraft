@@ -2943,14 +2943,22 @@ class SquadSimulationTest {
                 "nobody sent down after her: Alice at " + server.position("Alice") + ", Bob at " + server.position("Bob"));
     }
 
+    /** {@link #deepPocketBelow}, with a mound of dirt on the keep over the gallery: work in the stranded builder's strip. */
+    private static int deepPocketBelowAMound(int x, int y, int z) {
+        return x >= 11 && x <= 13 && z >= -1 && z <= 1 && y > GROUND && y <= GROUND + 3 ? SimServer.DIRT : deepPocketBelow(x, y, z);
+    }
+
     /**
-     * The same pocket, the squad on the keep: the stranded builder's strip is 50 blocks off and up,
-     * and its dig held over the stair out, live, a whole day. The drill's order outranks ground work.
+     * The same pocket, the squad on the keep with work in the stranded builder's strip: its dig held
+     * over the stair out, live, a whole day, and its report flickered between "no route" and the dig
+     * - a pillar it meant to build up to its strip's top - so the drill never counted it stranded
+     * twenty reports running. The drill's order outranks ground work, and a soldier in a pocket is
+     * stranded whatever its routine says.
      */
     @Test
     void aKeepBuilderInAPocketTunnelsUpBeforeItDigsItsStrip() {
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::deepPocketBelow, 1000);
+        SimServer server = new SimServer(clock, SquadSimulationTest::deepPocketBelowAMound, 1000);
         Roster roster = new Roster("Alpha:Alice,Dana");
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
                 new Objective.Task.Keep())), squadLeader(Keep.CENTRE),

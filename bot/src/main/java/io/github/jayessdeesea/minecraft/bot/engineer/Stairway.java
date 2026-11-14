@@ -139,44 +139,92 @@ public final class Stairway {
      * pocket its squad had no stair down for (docs/military-doctrine.md § 7).
      */
     public static Optional<List<BlockPos>> up(WorldView world, BlockPos feet) {
-        return Arrays.stream(HEADINGS)
-                .map(h -> flightUp(world, feet, h[0], h[1]))
-                .flatMap(Optional::stream)
-                .min(Comparator.comparingInt(List::size));
+        return up(world, feet, new java.util.HashMap<>());
     }
 
-    private static Optional<List<BlockPos>> flightUp(WorldView world, BlockPos feet, int dx, int dz) {
-        List<BlockPos> dig = new ArrayList<>();
-        BlockPos last = feet;
-        for (int k = 1; k <= MAX_STEPS_UP; k++) {
-            BlockPos step = new BlockPos(feet.x() + dx * k, feet.y() + k, feet.z() + dz * k);
+    /** Steps the search for a stair up looks at before giving up: a few hundred flights' worth. */
+    static final int UP_SEARCH_BUDGET = 4000;
+
+    /**
+     * As {@link #up(WorldView, BlockPos)}, and when none can be laid, {@code whyNot} gets, for each
+     * heading out of the pocket, the deepest step reached on it and what stopped it there.
+     */
+    public static Optional<List<BlockPos>> up(WorldView world, BlockPos feet, java.util.Map<String, String> whyNot) {
+        // A flight winds: straight on where it can, else round to the left or right of its heading,
+        // never back - a cave across the way, or gravel over it, stops a straight flight and live, from
+        // a dead end at a mine's bottom, every one of the four. Depth first, straight on first, so the
+        // first flight found is the straightest; the deepest failure on each heading is kept for the log.
+        record Node(BlockPos last, int dx, int dz, int k, List<BlockPos> dig, int from) {
+        }
+        java.util.Deque<Node> stack = new java.util.ArrayDeque<>();
+        for (int i = HEADINGS.length - 1; i >= 0; i--) {
+            stack.push(new Node(feet, HEADINGS[i][0], HEADINGS[i][1], 1, List.of(), i));
+        }
+        int[] deepest = new int[HEADINGS.length];
+        int budget = UP_SEARCH_BUDGET;
+        while (!stack.isEmpty() && budget-- > 0) {
+            Node n = stack.pop();
+            BlockPos step = n.last().offset(n.dx(), 1, n.dz());
+            String stopped = null;
+            List<BlockPos> dig = new ArrayList<>(n.dig());
             if (!world.isSolid(step.x(), step.y() - 1, step.z()) || world.isHazard(step.x(), step.y() - 1, step.z())) {
-                return Optional.empty(); // nothing to step up onto
+                stopped = "nothing to step up onto at " + step.offset(0, -1, 0);
+            } else {
+                for (BlockPos cell : List.of(n.last().offset(0, 2, 0), step, step.offset(0, 1, 0))) {
+                    if (world.isHazard(cell.x(), cell.y(), cell.z())) {
+                        stopped = "water or lava at " + cell;
+                    } else if (world.isSolid(cell.x(), cell.y(), cell.z())) {
+                        BlockPos over = cell.offset(0, 1, 0);
+                        if (!Clearing.diggable(world, cell.x(), cell.y(), cell.z())) {
+                            stopped = "a block no clear digs at " + cell;
+                        } else if (world.falls(cell.x(), cell.y(), cell.z())) {
+                            stopped = "sand or gravel at " + cell;
+                        } else if (world.falls(over.x(), over.y(), over.z())) {
+                            // Over the cut, what the dig leaves standing: nothing that falls or flows.
+                            stopped = "sand or gravel over " + cell;
+                        } else if (world.isHazard(over.x(), over.y(), over.z())) {
+                            stopped = "water or lava over " + cell;
+                        } else {
+                            dig.add(cell);
+                        }
+                    }
+                    if (stopped != null) {
+                        break;
+                    }
+                }
             }
-            for (BlockPos cell : List.of(last.offset(0, 2, 0), step, step.offset(0, 1, 0))) {
-                if (world.isHazard(cell.x(), cell.y(), cell.z())) {
-                    return Optional.empty();
+            if (stopped != null) {
+                if (n.k() >= deepest[n.from()]) {
+                    deepest[n.from()] = n.k();
+                    whyNot.put(headingName(HEADINGS[n.from()]), "step " + n.k() + ": " + stopped);
                 }
-                if (world.isSolid(cell.x(), cell.y(), cell.z())) {
-                    if (!Clearing.diggable(world, cell.x(), cell.y(), cell.z()) || world.falls(cell.x(), cell.y(), cell.z())) {
-                        return Optional.empty();
-                    }
-                    // Over the cut, what the dig leaves standing: nothing that falls or flows.
-                    BlockPos over = cell.offset(0, 1, 0);
-                    if (world.falls(over.x(), over.y(), over.z()) || world.isHazard(over.x(), over.y(), over.z())) {
-                        return Optional.empty();
-                    }
-                    dig.add(cell);
-                }
+                continue;
             }
             // Out: open sky over the step, the ground's own level.
             if (!world.isSolid(step.x(), step.y() + 2, step.z()) && !world.isSolid(step.x(), step.y() + 3, step.z())
-                    && !world.isSolid(step.x() + dx, step.y(), step.z() + dz)) {
-                return dig.isEmpty() ? Optional.empty() : Optional.of(List.copyOf(dig));
+                    && !world.isSolid(step.x() + n.dx(), step.y(), step.z() + n.dz())) {
+                if (!dig.isEmpty()) {
+                    return Optional.of(List.copyOf(dig));
+                }
+                continue;
             }
-            last = step;
+            if (n.k() >= MAX_STEPS_UP) {
+                if (n.k() >= deepest[n.from()]) {
+                    deepest[n.from()] = n.k();
+                    whyNot.put(headingName(HEADINGS[n.from()]), "step " + n.k() + ": no open sky yet");
+                }
+                continue;
+            }
+            // The turns first onto the stack, straight on last - so it's popped first.
+            stack.push(new Node(step, -n.dz(), n.dx(), n.k() + 1, dig, n.from()));
+            stack.push(new Node(step, n.dz(), -n.dx(), n.k() + 1, dig, n.from()));
+            stack.push(new Node(step, n.dx(), n.dz(), n.k() + 1, dig, n.from()));
         }
         return Optional.empty();
+    }
+
+    private static String headingName(int[] h) {
+        return h[0] > 0 ? "east" : h[0] < 0 ? "west" : h[1] > 0 ? "south" : "north";
     }
 
     private static boolean open(WorldView world, BlockPos cell) {

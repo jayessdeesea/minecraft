@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import io.github.jayessdeesea.minecraft.bot.craft.Stock;
 import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.Workstation;
@@ -327,6 +328,26 @@ public final class Armourer {
         kitChanged.run();
     }
 
+    /**
+     * The nearest block of {@code target} a soldier at {@code feet} can walk to a stand beside -
+     * nearest first, then wider, as a gatherer looks (live, soldiers at a camp cleared of trees went
+     * without a pickaxe for an hour for want of a log 16 blocks off) - and only one it can reach:
+     * live, builders left the keep for iron ore seen 40 blocks off through solid rock, and copper ore
+     * under a blocked stair, and each stood 20 seconds at "no route" before it gave up, every few
+     * minutes, all day.
+     */
+    static Optional<Digger.Spot> spotFor(WorldView world, BlockPos feet, Set<BlockPos> excluded, Digger.Target target) {
+        int widest = Gatherer.WIDER[Gatherer.WIDER.length - 1];
+        Set<BlockPos> reachable = Pathfinder.reachable(world, feet, widest + Clearer.REACH_MARGIN, Clearer.REACH_BUDGET);
+        for (int radius : Gatherer.WIDER) {
+            Optional<Digger.Spot> spot = Digger.findSpot(world, feet, excluded, target, radius, reachable::contains);
+            if (spot.isPresent()) {
+                return spot;
+            }
+        }
+        return Optional.empty();
+    }
+
     /** The next block of {@code target}, toward the {@code count} it's short of. */
     private void dig(Position soldier, WorldView world, Digger.Target target, int count) {
         if (digger == null) {
@@ -336,15 +357,7 @@ public final class Armourer {
             }
             Set<BlockPos> excluded = spots.barredNow(ticks);
             excluded.addAll(claims);
-            // Nearest first, then wider, as a gatherer looks: live, soldiers at a camp cleared of
-            // trees went without a pickaxe for an hour for want of a log 16 blocks off.
-            Optional<Digger.Spot> spot = Optional.empty();
-            for (int radius : Gatherer.WIDER) {
-                spot = Digger.findSpot(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), excluded, target, radius);
-                if (spot.isPresent()) {
-                    break;
-                }
-            }
+            Optional<Digger.Spot> spot = spotFor(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), excluded, target);
             if (spot.isEmpty()) {
                 giveUp("no " + target + " within " + Gatherer.WIDER[Gatherer.WIDER.length - 1] + " blocks");
                 return;

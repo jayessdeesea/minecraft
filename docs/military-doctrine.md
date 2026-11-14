@@ -312,8 +312,11 @@ top step touches the ledge only at a corner, then each step and the block under 
 a soldier stood a quarter of an hour on a ledge with 8 logs, no squadmate carrying 24. One stranded
 below - boxed in a pocket, with no stair down to lay - gets the engineer's stair up instead
 (`Stairway.up`): the cells to dig, one block up and one along a step to open ground, up to 40
-steps - a tunnel to the surface from a dead end at a mine's bottom - and never under sand, gravel,
-water or lava (the operator's rule: cut above only toward what's known). Carrying a pickaxe, the
+steps - a tunnel to the surface from a dead end at a mine's bottom - winding left or right of its
+heading where a cave across the way or gravel over it stops it going straight (live, every one of
+the four straight flights was), and never under sand, gravel, water or lava (the operator's rule:
+cut above only toward what's known). With no way out, the log says for each heading how far it got
+and what stopped it there. Carrying a pickaxe, the
 stranded soldier digs it itself; otherwise the nearest squadmate with one digs it from the top, as
 an `Order.Dig`. Live, a soldier waited two runs in a pocket walled partly in cobblestone, and
 another, with a pickaxe and 263 cobblestone, stood a day in a dead end 30 blocks under the camp, a
@@ -523,7 +526,10 @@ With no tree in reach for its kit's logs, it draws 8 from its stockpile, while t
 seen holding that many, or hasn't been seen since a restart (`SoldierRunner.drawsLogs`).
 
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
-stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach.
+stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach -
+only a block it can walk to a stand beside (`Armourer.spotFor`, a flood fill from where it stands):
+live, builders left the keep for iron seen 40 blocks off through solid rock, and copper under a
+blocked stair, and each stood 20 seconds at "no route" before giving up, every few minutes, all day.
 It crafts what it can in its 2x2 inventory grid. What needs a table or a furnace it makes at one
 standing within 16 blocks, walked to, or else at its squad's workshop. What's made is put on: armour worn, the best weapon in hand. And whenever its hands are
 free, a soldier stands to: every two seconds it puts on any better armour it carries and takes its

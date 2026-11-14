@@ -132,6 +132,63 @@ class StairwayTest {
         assertTrue(Pathfinder.find(after, feet, new Goal(0.5, 64, 0.5, 40, 0.5), 60_000).reachesGoal(), "no way out up the tunnel: " + dig);
     }
 
+    /**
+     * A straight flight stopped on every heading - gravel three steps out each way - winds round it:
+     * two steps east, then north and out. Live, from a dead end at a mine's bottom, every one of the
+     * four straight flights was stopped, and the drill said no stair could be dug.
+     */
+    @Test
+    void aStairUpWindsRoundWhatStopsAStraightFlight() {
+        Set<BlockPos> gravel = Set.of(new BlockPos(3, 63, 0), new BlockPos(-3, 63, 0), new BlockPos(0, 63, 3), new BlockPos(0, 63, -3));
+        WorldView base = soil(StairwayTest::pocket, c -> false);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return base.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return base.isSoil(x, y, z) && !gravel.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isGravel(int x, int y, int z) {
+                return gravel.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        BlockPos feet = new BlockPos(0, 60, 0);
+        java.util.Map<String, String> whyNot = new java.util.LinkedHashMap<>();
+
+        List<BlockPos> dig = Stairway.up(world, feet, whyNot).orElseThrow(() -> new AssertionError("no stair: " + whyNot));
+
+        assertTrue(dig.stream().noneMatch(gravel::contains), "round the gravel, not through it: " + dig);
+        Set<BlockPos> dug = new HashSet<>(dig);
+        WorldView after = world(c -> pocket(c) && !dug.contains(c), c -> false);
+        assertTrue(Pathfinder.find(after, feet, new Goal(0.5, 64, 0.5, 12, 0.5), 20_000).reachesGoal(), "no way out up the stair: " + dig);
+    }
+
+    /** With no way out, each heading's deepest step and what stopped it is said, for the log. */
+    @Test
+    void whyNoStairUpCanBeLaidIsSaidPerHeading() {
+        WorldView cobbled = soil(StairwayTest::pocket, c -> c.y() >= 60);
+        java.util.Map<String, String> whyNot = new java.util.LinkedHashMap<>();
+
+        assertEquals(Optional.empty(), Stairway.up(cobbled, new BlockPos(0, 60, 0), whyNot));
+        assertEquals(Set.of("east", "west", "south", "north"), whyNot.keySet());
+        assertTrue(whyNot.values().stream().allMatch(w -> w.startsWith("step 1: a block no clear digs at")), whyNot.toString());
+    }
+
     /** Sand or gravel over a cell to cut comes down on the digger: no stair goes under it, nor under water. */
     @Test
     void noStairUpIsCutUnderGravelOrWater() {

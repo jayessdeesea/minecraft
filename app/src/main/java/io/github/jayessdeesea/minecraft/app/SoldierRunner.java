@@ -2466,8 +2466,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * the stairs every minute, and sent down to its squad, at MEDIUM risk, each time.
      */
     private List<SoldierStatus> cutOff(List<SoldierStatus> reported) {
+        long now = clockwork.millis();
         return reported.stream().map(s -> {
-            if (!Recovery.stranded(s)) {
+            // A soldier in a pocket is stranded whatever its routine says between its "no route"
+            // reports: live, one in a dead end at the mine's bottom reported the dig it meant to pillar
+            // up to, and "nothing left to gather", between them, and the drill's count of twenty
+            // reports running never got there.
+            if (Recovery.stranded(s)) {
+                noRouteAt.put(s.name(), now);
+            } else if (!noRouteAt.containsKey(s.name()) || now - noRouteAt.get(s.name()) > POCKET_MEMORY_MILLIS) {
+                noRouteAt.remove(s.name());
                 walksSaid.remove(s.name());
                 return s;
             }
@@ -2475,15 +2483,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             int cells = Pathfinder.reachable(world, BlockPos.containing(from.x(), from.y(), from.z()), CUT_OFF_SPAN, CUT_OFF_BUDGET).size();
             if (cells <= CUT_OFF_CELLS) {
                 walksSaid.remove(s.name());
-                return s;
+                return Recovery.stranded(s) ? s : new SoldierStatus(s.name(), s.position(), s.order(), new Report.Cantco(String.format(Locale.ROOT,
+                        "no route from (%.0f, %.0f, %.0f): cut off in a pocket of %d cells", from.x(), from.y(), from.z(), cells)), s.condition());
             }
             if (walksSaid.add(s.name())) {
                 LOG.info("{} reports no route to its goal but has {} cells to walk from {} - not stranded", s.name(), cells, from);
             }
-            return new SoldierStatus(s.name(), s.position(), s.order(), new Report.Moving(), s.condition());
+            return Recovery.stranded(s) ? new SoldierStatus(s.name(), s.position(), s.order(), new Report.Moving(), s.condition()) : s;
         }).toList();
     }
 
+    /** How long after its last "no route" a soldier is still looked at as possibly in a pocket. */
+    static final long POCKET_MEMORY_MILLIS = 60_000;
+    /** When each soldier last reported no route - squad loops. */
+    private final Map<String, Long> noRouteAt = new ConcurrentHashMap<>();
     /** Soldiers said to have ground to walk despite their "no route", once each time it starts - squad loops. */
     private final Set<String> walksSaid = ConcurrentHashMap.newKeySet();
 
@@ -2519,12 +2532,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Function<SoldierStatus, Optional<List<Cell>>> stairUp(String squadName) {
         return stuck -> {
             Position at = stuck.position();
+            Map<String, String> whyNot = new LinkedHashMap<>();
             Optional<List<Cell>> stair = Stairway.up(world,
-                            BlockPos.containing(at.x(), at.y(), at.z()))
+                            BlockPos.containing(at.x(), at.y(), at.z()), whyNot)
                     .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList());
             stair.ifPresentOrElse(
                     s -> LOG.info("[{}] RECOVERY: {} is stranded below at {} - a stair up laid out, {} blocks to dig", squadName, stuck.name(), at, s.size()),
-                    () -> LOG.warn("[{}] RECOVERY: {} is stranded at {} and no stair up can be dug from there either", squadName, stuck.name(), at));
+                    () -> LOG.warn("[{}] RECOVERY: {} is stranded at {} and no stair up can be dug from there either - {}", squadName, stuck.name(), at, whyNot));
             return stair;
         };
     }
