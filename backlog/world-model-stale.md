@@ -37,6 +37,11 @@ Block Update (0x08) and Section Blocks Update (0x56) are both decoded.
   to y=84 for a day. Now `ChunkCache.standIn`: written over an open cell only, taken back after two
   seconds unconfirmed (`ChunkCacheTest`). The chest, the dirt and the wheat above predate it and
   are something else: a block the server changed with no update the model applied.
+- Mitigated (2026-11-13), not explained: a soldier stuck short of the same cell three times - stalled
+  at it, or put back by the server - marks it as dirt in the model (`DeterministicSoldier.takeSnag`, the runner's `[World] ... stuck
+  short of ... - the model takes it as a block`), so it plans round what it can't see. The log line
+  names the cells: read them against the server for the cause. Live, Bob stood 15 minutes at
+  (-40, 31, 42) in the camp's mine, stuck short of (-42, 31, 42) 161 times.
 - Built: a chunk sent again is compared with the one kept, and each difference logged
   (`[World] a chunk sent to ... differs from the one kept at N blocks, e.g. [x, y, z, kept, sent]`).
   A difference that a block update on its way explains is short-lived; one in a chunk kept for

@@ -16,6 +16,15 @@ class SubsistenceTest {
                 Optional.of(new Condition(20, food, 0, Optional.of(kit))));
     }
 
+    /** Only a hungry soldier with nothing to eat must go and feed before work; one short of rations but fed works on. */
+    @Test
+    void onlyAHungrySoldierWithNothingToEatMustFeedBeforeWork() {
+        assertTrue(Subsistence.mustFeed(Condition.REGENERATION_FOOD - 1, 0));
+        assertTrue(!Subsistence.mustFeed(20, 0), "fed, nothing carried: works until hungry");
+        assertTrue(!Subsistence.mustFeed(Condition.REGENERATION_FOOD - 1, 3), "hungry with rations: eats and works");
+        assertTrue(!Subsistence.mustFeed(20, 8), "short of rations but fed: works");
+    }
+
     @Test
     void aHungrySoldierWithRationsEatsOneBelowHalfItsLoadRestocksAndOneBelowTenPutsFoodFirst() {
         assertEquals(Subsistence.Need.EAT, Subsistence.need(12, 3));

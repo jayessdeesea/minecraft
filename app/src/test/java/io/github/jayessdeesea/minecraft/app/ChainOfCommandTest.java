@@ -3,7 +3,9 @@ package io.github.jayessdeesea.minecraft.app;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
+import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Order;
+import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
@@ -49,6 +51,27 @@ class ChainOfCommandTest {
         assertEquals(byDay, chain.byDay(byDay, alpha), "a squad on the keep is kept on it");
         chain.onTime(TimeOfDay.of(18000, true));
         assertEquals(WALL, chain.byDay(WALL, alpha), "the night is the night rule's");
+    }
+
+    /**
+     * A request outranks the standing rule, or it's never answered: under the keep rule the general's
+     * WOOD for a squad whose Class IV is RED stands; the same order for one with no request is put
+     * on the keep. Live, the keep's builders asked for logs all day and the rule put every squad back.
+     */
+    @Test
+    void underTheKeepRuleTheGeneralsAnswerToARequestStands() {
+        chain.setKeepByDay(true);
+        chain.setGround((x, z, nearY) -> OptionalInt.of(64));
+        chain.onTime(TimeOfDay.of(1000, true));
+        Objective wood = new Objective("Logs for the keep", new Position(40, 64, 40), "The keep's chest and pickaxes",
+                new Objective.Task.Gather(Resource.WOOD));
+        SquadStatus asking = new SquadStatus("Alpha", new Report.InPosition(),
+                List.of(new SoldierStatus("Alice", new Position(0.5, 64, 0.5), new Order.Idle(), new Report.InPosition(), Optional.empty())),
+                List.of(), Optional.empty(), false, OptionalInt.empty(), Optional.empty(), Optional.empty(),
+                Keep.classFour(1, 0, false));
+
+        assertEquals(wood, chain.byDay(wood, asking), "its request answered: the order stands");
+        assertTrue(chain.byDay(wood, squad("Bravo", "Bob")).task() instanceof Objective.Task.Keep, "no request: the keep");
     }
 
     @Test

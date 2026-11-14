@@ -180,6 +180,18 @@ public final class Clearing {
         BlockPos here = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
         boolean canStandHere = Pathfinder.standable(world, here) && !excluded.contains(here)
                 && (world.isLog(here.x(), here.y() - 1, here.z()) || world.leaves(here.x(), here.y() - 1, here.z()).isPresent());
+        // Ground is dug a level at a time, the highest first: the top level's blocks are the only
+        // ground on offer while any of them is left to dig, and they're taken in a sweep of the level,
+        // not the nearest next (operator, 2026-11-13: clear one level before the next, no random walks).
+        List<BlockPos> ground = cover.stream()
+                .filter(c -> !excluded.contains(c) && !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty()
+                        && !world.isSolid(c.x(), c.y() + 1, c.z()) && diggable(world, c.x(), c.y(), c.z()))
+                .toList();
+        int topLevel = ground.stream().mapToInt(BlockPos::y).max().orElse(Integer.MIN_VALUE);
+        List<BlockPos> level = ground.stream().filter(c -> c.y() == topLevel).toList();
+        int minX = level.stream().mapToInt(BlockPos::x).min().orElse(0);
+        int minZ = level.stream().mapToInt(BlockPos::z).min().orElse(0);
+        int maxX = level.stream().mapToInt(BlockPos::x).max().orElse(0);
         for (BlockPos block : cover) {
             // The list is the squad loop's, up to a cycle old: a block a squadmate has cut since is gone.
             if (excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())) {
@@ -188,12 +200,12 @@ public final class Clearing {
             // Ground only from an open top - the digger won't take it otherwise - so the block over it
             // first: live, a soldier near a low block of a mound was handed it under one still there,
             // its digger refused it every try, and it said it couldn't clear the camp.
-            boolean ground = !world.isLog(block.x(), block.y(), block.z()) && world.leaves(block.x(), block.y(), block.z()).isEmpty();
-            if (ground && world.isSolid(block.x(), block.y() + 1, block.z())) {
+            boolean isGround = !world.isLog(block.x(), block.y(), block.z()) && world.leaves(block.x(), block.y(), block.z()).isEmpty();
+            if (isGround && (world.isSolid(block.x(), block.y() + 1, block.z()) || block.y() != topLevel)) {
                 continue;
             }
             // In digging order: past the best score, nothing later can beat it.
-            if (HEIGHT_WEIGHT * (order(world, block) - lowest) > bestScore) {
+            if (!isGround && HEIGHT_WEIGHT * (order(world, block) - lowest) > bestScore) {
                 break;
             }
             Optional<BlockPos> stand = canStandHere && safeFrom(world, here, block) && reach(here, block) <= REACH
@@ -202,7 +214,8 @@ public final class Clearing {
                 continue;
             }
             BlockPos s = stand.get();
-            double score = Math.hypot(s.x() + 0.5 - soldier.x(), s.z() + 0.5 - soldier.z()) + Math.abs(s.y() - soldier.y())
+            double score = isGround ? sweep(block, minX, maxX, minZ)
+                    : Math.hypot(s.x() + 0.5 - soldier.x(), s.z() + 0.5 - soldier.z()) + Math.abs(s.y() - soldier.y())
                     + HEIGHT_WEIGHT * (order(world, block) - lowest);
             if (score < bestScore) {
                 best = new Cut(block, s, world.isLog(block.x(), block.y(), block.z()));
@@ -210,6 +223,17 @@ public final class Clearing {
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    /**
+     * A block's place in the sweep of its level: row by row from the level's north edge (least z),
+     * each row walked the other way from the last - a boustrophedon, the shortest walk over a flat
+     * level that visits every block - so the soldier's next block is beside its last.
+     */
+    static int sweep(BlockPos block, int minX, int maxX, int minZ) {
+        int row = block.z() - minZ;
+        int along = row % 2 == 0 ? block.x() - minX : maxX - block.x();
+        return row * (maxX - minX + 1) + along;
     }
 
     /**

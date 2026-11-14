@@ -31,6 +31,16 @@ class BlockClassRegistryTest {
     }
 
     /** Live: soldiers stood on sugar cane by the camp's water, the server saw them on air, and they fell. */
+    /** Each block's tool rides with its hardness: stone a pickaxe's, a chest an axe's, dirt a shovel's, glass nobody's. */
+    @Test
+    void eachBlockKnowsTheToolThatDigsIt() {
+        assertEquals(Hardness.Tool.PICKAXE, BlockClassRegistry.hardness(1).orElseThrow().tool(), "stone");
+        assertEquals(Hardness.Tool.AXE, BlockClassRegistry.hardness(5544).orElseThrow().tool(), "a chest");
+        assertEquals(Hardness.Tool.SHOVEL, BlockClassRegistry.hardness(10).orElseThrow().tool(), "dirt");
+        assertEquals(Hardness.Tool.AXE, BlockClassRegistry.hardness(6866).orElseThrow().tool(), "a crafting table");
+        assertEquals(Hardness.Tool.HAND, BlockClassRegistry.hardness(661).orElseThrow().tool(), "glass");
+    }
+
     @Test
     void whatABodyWalksThroughIsPassable() {
         assertEquals(BlockClass.PASSABLE, BlockClassRegistry.classOf(8617));  // sugar_cane

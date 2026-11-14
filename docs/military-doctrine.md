@@ -478,7 +478,13 @@ in it are backlog/rest-plan.md.
 
 A soldier on ground work - a dig of the camp's or the keep's ground, or dirt for a wall - makes a
 shovel if it has none, stone if it carries the cobblestone: it digs soil and gravel with its
-fastest shovel, a stone one in a quarter of the bare-handed time. A step or pillar it builds is of
+fastest shovel, a stone one in a quarter of the bare-handed time. Every other block it clears is
+dug with the tool of its kind too (operator, 2026-11-13; `Hardness.Tool`, from the server's
+`mineable/*` tags in the block registry): the best pickaxe for rock, the fastest axe for wood,
+chests and tables, the fastest shovel for sand, a bare hand for glass - and a block whose drop
+needs a pickaxe of a tier it hasn't got (`needs_*_tool`: stone for iron ore, iron for diamond) is
+left alone, for a squadmate's pickaxe or until one is made, since dug with less it breaks slowly
+and drops nothing (`Clearer`, "leaves N block(s) its tools can't dig"). A step or pillar it builds is of
 dirt before cobblestone (`Footing.placeStep`): scaffolding, while cobblestone is a floor's and a
 wall's.
 
@@ -920,7 +926,12 @@ one block a soldier writes into that model itself is a step it has just placed, 
 it lands on it before the server's update says what went in (`ChunkCache.standIn`) - over an open
 cell only, and taken back after two seconds unconfirmed: a placement the server refused is never
 confirmed, and live one held in the model for hours as the top of a keep builder's strip, every
-strip beside it waiting on a block nobody could dig. Progress reads "N cells under the
+strip beside it waiting on a block nobody could dig. The reverse case - a block the server has and
+the model doesn't (backlog/world-model-stale.md) - is read from the body: a soldier stuck short of
+the same cell three times (`DeterministicSoldier.SNAG_TRIES`; stalled at it, or put back by the
+server) has hit something, and the model takes that cell as dirt until the server says otherwise,
+so the next plan goes round it or breaks it. Live, one soldier down the camp's mine was stuck short of one cell 161 times in a
+quarter of an hour. Progress reads "N cells under the
 camp's ground to fill". Live, a pit 13 deep under the east wall line left 42 wall cells nothing to
 stand on.
 
@@ -1125,7 +1136,11 @@ second at most: the server cuts off a connection that chats faster. The log read
 strips beside it - live, one spire at y=103 set a keep-wide layer, and a whole squad stood idle
 under it - and a builder not yet cleared, or with nothing over its floor, is free for other work. The log reads "the
 keep: N blocks to dig, its top y=T, the keep's y=K". A builder stands only in its own strip's columns, a neighbour working the
-next; and with nothing on the ground in reach, it cuts the top layer from the air
+next. Within its strip it digs one level at a time, the highest first - no lower block is on offer
+while the top level has one left - and sweeps the level in rows from its north edge, each row the
+other way from the last (`Clearing.next`, `Clearing.sweep`: a boustrophedon, so each block is
+beside the last, not the nearest next; operator, 2026-11-13: no random walks). With nothing on the
+ground in reach, it cuts the top layer from the air
 (`Clearing.fromTheAir`): a stand beside the highest block, its eyes level with it, that its route
 builds a dirt pillar up to (`Pathfinder` offers pillar steps in open air under a goal overhead).
 The pillar is dirt in its strip, so it's the next top layer, dug back down from on top of it. A
@@ -1136,8 +1151,10 @@ strip's top, the hilltop it dug being stone. And one stranded up a pillar of its
 it, say, to feed itself - digs it down from on top (`Recovery`, `Stairway.pillarUnder`), its
 episode held until it's at the pillar's foot. The register follows the keep's dig and fill by
 their own names (`dig the keep`, `fill the keep`), each builder measured by its squad's share, not
-its own strip: the dirt steps it climbs on are in its strip too. Food first: a builder below its
-food-first mark (`Subsistence.FOOD_FIRST`) gets no keep work, and feeds itself first. Its builders'
+its own strip: the dirt steps it climbs on are in its strip too. Food first: a builder hungry with
+nothing to eat (`Subsistence.mustFeed`) gets no keep work, and feeds itself first; one short of
+rations but fed works on and eats what it carries - live, two builders held off for carrying 8 and
+9 rations at food 20 dug the camp's ground while their strips stood. Its builders'
 workshop and chest are the keep's own, one for every squad on it, off the slab's west edge
 (`Keep.DEPOT`), where nothing digs under them; a builder carries what it digs until its pack is
 nearly full before taking it there. Until that chest stands, a builder's stockpile is the camp's -

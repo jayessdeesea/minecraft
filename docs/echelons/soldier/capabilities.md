@@ -78,7 +78,9 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
 - Build steps toward an objective beyond one search (about 4000 cells). It builds only when the
   route it plans reaches.
 - Dig straight down, but for the block it stands on with known ground a block under it - its own
-  pillar - never onto farmland, which landing on tramples; or straight up under a block that falls. It pillars in open air only straight up to a
+  pillar - never onto farmland, which landing on tramples; or straight up under a block that falls.
+- Dig a block whose drop needs a pickaxe of a tier it hasn't got: left for a squadmate's, or until
+  one is made. Every other block it digs with the tool of its kind - pickaxe, axe, shovel or hand. It pillars in open air only straight up to a
   goal over its column: a stand to cut the top of its strip from. Nor tunnel, except as the staircase routine does.
 - Open doors or gates.
 - Decide what to work on. That comes from its squad's task (see [routines.md](routines.md)).

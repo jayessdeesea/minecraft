@@ -12,7 +12,9 @@ then turn the decision into each soldier's order ([drills.md](drills.md)).
 - **The time of day.**
 
 ## What it decides: `command.SquadOrder`
-- **Where:** the objective point the squad moves on.
+- **Where:** the objective point the squad moves on - the objective itself when it's beyond the
+  survey (the survey follows the point man), and always on the keep, where each soldier's strip is
+  assigned at the site ([military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)).
 - **How:** formation (`WEDGE`, `FILE`, `LINE`) and interval (`TIGHT`, `NORMAL`, `EXTENDED`;
   [military-doctrine.md § 2](../../military-doctrine.md#2-formations-and-intervals)).
 - **Vertical tolerance:** how far from the point's height the squad may end up.

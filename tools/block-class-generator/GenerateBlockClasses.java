@@ -118,7 +118,13 @@ public class GenerateBlockClasses {
         Set<String> needsStoneAll;
         Set<String> needsIronAll;
         Set<String> needsDiamondAll;
+        // The tool a block is dug fastest with, by its mineable tag: a pickaxe, an axe (wood, chests,
+        // tables), a shovel (soil, sand, gravel) - or none.
+        Set<String> axeAll;
+        Set<String> shovelAll;
         try (ZipFile jar = new ZipFile(args[3])) {
+            axeAll = tagDeep(jar, "mineable/axe");
+            shovelAll = tagDeep(jar, "mineable/shovel");
             pickaxeAll = tagDeep(jar, "mineable/pickaxe");
             needsStoneAll = tagDeep(jar, "needs_stone_tool");
             needsIronAll = tagDeep(jar, "needs_iron_tool");
@@ -182,8 +188,9 @@ public class GenerateBlockClasses {
                 String tier = String.valueOf(needsDiamondAll.contains(id) ? 3 : needsIronAll.contains(id) ? 2
                         : needsStoneAll.contains(id) ? 1 : pickaxeAll.contains(id) ? 0 : -1);
                 boolean breakable = Double.parseDouble(hardness.get(id)) >= 0;
+                String tool = pickaxeAll.contains(id) ? "P" : axeAll.contains(id) ? "A" : shovelAll.contains(id) ? "S" : "H";
                 if (cls == 'S' && breakable) {
-                    classes.put(state.get("id").asInt(), "S " + blockName + " " + hardness.get(id) + " " + tier);
+                    classes.put(state.get("id").asInt(), "S " + blockName + " " + hardness.get(id) + " " + tier + " " + tool);
                     counts.merge(cls, 1, Integer::sum);
                 } else if (cls != 'S') {
                     String detail = blockName.equals("water") ? " level=" + state.path("properties").path("level").asText()
@@ -191,7 +198,7 @@ public class GenerateBlockClasses {
                             : cls == 'R' ? " " + hardness.get(id) + " " + (needsDiamond.contains(id) ? 3 : needsIron.contains(id) ? 2
                                     : needsStone.contains(id) ? 1 : 0)
                             : cls == 'G' ? " " + hardness.get(id)
-                            : (cls == 'T' || cls == 'C' || cls == 'W') && breakable ? " " + hardness.get(id) + " " + tier : "";
+                            : (cls == 'T' || cls == 'C' || cls == 'W') && breakable ? " " + hardness.get(id) + " " + tier + " " + tool : "";
                     classes.put(state.get("id").asInt(), cls + " " + blockName + detail);
                     counts.merge(cls, 1, Integer::sum);
                 }
@@ -203,7 +210,8 @@ public class GenerateBlockClasses {
             out.println("# tools/block-class-generator. One block state per line: <id> <class> <blockName>,");
             out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, C = chest, D = soil, O = iron ore, F = farmland (all solid);");
             out.println("# R = rock (mined with a pickaxe), G = grit (dug by hand, falls), V = leaves, S = any other solid block that breaks;");
-            out.println("# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, solid, tall, chests and workstations (tier -1: by hand), <hardness> on grit.");
+            out.println("# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, <hardness> on grit, and");
+            out.println("# <hardness> <least pickaxe tier> <tool> on solid, tall, chests and workstations (tier -1: by hand; tool P pickaxe, A axe, S shovel, H none).");
             out.println("# Every state NOT listed is solid and can't be broken (bedrock and the like: the generator prints the types it classed solid).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));
         }

@@ -2319,7 +2319,10 @@ class SquadSimulationTest {
         assertEquals(SimServer.AIR, server.block(6, GROUND + 1, 6), "and at its feet");
     }
 
-    /** Food first: a soldier with no rations is left off the keep, to feed itself - its mound left standing. */
+    /**
+     * Food first: a soldier hungry with nothing to eat is left off the keep, to feed itself - its mound
+     * left standing. One merely short of rations works on (`Subsistence.mustFeed`).
+     */
     @Test
     void aStarvingSoldierIsLeftOffTheKeepToFeedItself() {
         SimClock clock = new SimClock();
@@ -2335,6 +2338,8 @@ class SquadSimulationTest {
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1})))
                 .run();
+        clock.advance(2_000);
+        server.starve("Alice", 20); // hungry - food 0 - and nothing to eat
 
         clock.advance(4 * 60_000);
 

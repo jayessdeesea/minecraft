@@ -159,11 +159,28 @@ final class BlockClassRegistry {
      * for what never breaks (bedrock) and what has no body to break. A chest or a workstation breaks
      * like any block: left on a site, it would stand on a pillar of ground no dig can take.
      */
+    /** A line's {@code <hardness> <least pickaxe tier> [<tool>]}: the tool a pickaxe when it has a tier, else none, where the line says nothing. */
+    private static Hardness hardnessOf(String[] fields) {
+        double hardness = Double.parseDouble(fields[3]);
+        int tier = Integer.parseInt(fields[4]);
+        if (fields.length <= 5) {
+            return new Hardness(hardness, tier);
+        }
+        Hardness.Tool tool = switch (fields[5]) {
+            case "P" -> Hardness.Tool.PICKAXE;
+            case "A" -> Hardness.Tool.AXE;
+            case "S" -> Hardness.Tool.SHOVEL;
+            case "H" -> Hardness.Tool.HAND;
+            default -> throw new IllegalStateException("Unknown tool '" + fields[5] + "' in " + RESOURCE_NAME + ": " + String.join(" ", fields));
+        };
+        return new Hardness(hardness, tier, tool);
+    }
+
     static Optional<Hardness> hardness(int stateId) {
         return switch (classOf(stateId)) {
             case STONE -> Optional.of(new Hardness(1.5, 0));
             case IRON_ORE -> Optional.of(new Hardness(3.0, 1));
-            case SOIL -> Optional.of(new Hardness(0.65, Hardness.HAND));
+            case SOIL -> Optional.of(new Hardness(0.65, Hardness.HAND, Hardness.Tool.SHOVEL));
             case ROCK, GRIT, SOLID, TALL, WORKSTATION -> Optional.ofNullable(HARDNESS.get(stateId));
             default -> Optional.empty();
         };
@@ -241,12 +258,12 @@ final class BlockClassRegistry {
                     classes[stateId] = switch (fields[1]) {
                         case "P" -> BlockClass.PASSABLE;
                         case "S" -> {
-                            HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Integer.parseInt(fields[4])));
+                            HARDNESS.put(stateId, hardnessOf(fields));
                             yield BlockClass.SOLID;
                         }
                         case "T" -> {
                             if (fields.length > 4) {
-                                HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Integer.parseInt(fields[4])));
+                                HARDNESS.put(stateId, hardnessOf(fields));
                             }
                             yield BlockClass.TALL;
                         }
@@ -263,18 +280,18 @@ final class BlockClassRegistry {
                         case "V" -> BlockClass.LEAVES;
                         case "C" -> {
                             if (fields.length > 4) {
-                                HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Integer.parseInt(fields[4])));
+                                HARDNESS.put(stateId, hardnessOf(fields));
                             }
                             yield BlockClass.SOLID;
                         }
                         case "G" -> {
-                            HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Hardness.HAND));
+                            HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Hardness.HAND, Hardness.Tool.SHOVEL));
                             yield BlockClass.GRIT;
                         }
                         case "W" -> {
                             WORKSTATIONS.put(stateId, Workstation.valueOf(fields[2].toUpperCase(Locale.ROOT)));
                             if (fields.length > 4) {
-                                HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Integer.parseInt(fields[4])));
+                                HARDNESS.put(stateId, hardnessOf(fields));
                             }
                             yield BlockClass.WORKSTATION;
                         }

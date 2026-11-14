@@ -1375,12 +1375,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * stockpile's, and whether the keep's chest stands. Said in the log when it starts and when it's met.
      */
     private Optional<String> classFour(String squad, SquadState state, List<SoldierStatus> statuses) {
-        Optional<String> request = taskOf(squad, Objective.Task.Keep.class).isEmpty() ? Optional.empty()
+        boolean onKeep = taskOf(squad, Objective.Task.Keep.class).isPresent();
+        Optional<String> request = !onKeep ? Optional.empty()
                 : Keep.classFour(Logstat.of(statuses).logs(), chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
                         keepWorkshop != null && keepWorkshop.chestStands(world));
         if (!request.equals(state.classFour)) {
-            request.ifPresentOrElse(line -> LOG.warn("[{}] {}", squad, line),
-                    () -> LOG.info("[{}] Class IV: the keep's builders have their logs", squad));
+            request.ifPresentOrElse(line -> LOG.warn("[{}] {}", squad, line), () -> {
+                if (onKeep) {
+                    LOG.info("[{}] Class IV: the keep's builders have their logs", squad);
+                }
+            });
             state.classFour = request;
         }
         return request;
@@ -1723,11 +1727,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             LOG.info("[{}] {}", squad, said);
             state.keepSaid = said;
         }
-        // Food first: a builder below its food-first mark is left to its own feeding - the farm, the
+        // Food first: a builder hungry with nothing to eat is left to its own feeding - the farm, the
         // hunt, a squadmate's share - and comes back when it's fed. Live, with every soldier on the
-        // keep, the camp's farm went unkept and a builder worked the hilltop at food 1 with none.
+        // keep, the camp's farm went unkept and a builder worked the hilltop at food 1 with none; and
+        // held off for carrying fewer than 10 rations at food 20, two builders dug the camp's ground
+        // while their strips stood.
         List<Tasking.Hand> crew = hands.stream()
-                .filter(h -> h.condition().flatMap(c -> c.kit()).map(k -> !Subsistence.short_(k.rations())).orElse(true))
+                .filter(h -> h.condition().map(c -> !Subsistence.mustFeed(c.food(), c.kit().map(Kit::rations).orElse(0))).orElse(true))
                 .map(h -> new Tasking.Hand(h.name(),
                 h.condition().flatMap(c -> c.kit()).map(Kit::stone).orElse(0))).toList();
         // Each soldier a fixed range of x and z, its strip of the squad's share, from its floor up
@@ -3743,6 +3749,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private static final int SHUT_IN_CELLS = 30;
     /** {@code minecraft:cobblestone}'s block state in protocol 777 - a placed pillar block, until the server's update. */
     private static final int COBBLESTONE_STATE = 14;
+    /** Dirt's block state: what a snag the model didn't show is taken as, until the server says otherwise. */
+    private static final int DIRT_STATE = 10;
 
     /** Whether a soldier can step into {@code cell} from beside it: room for a body, and ground at most a block down. */
     private boolean walkable(Position cell) {
@@ -4055,6 +4063,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             soldier.tick(world).ifPresent(target -> {
                 LOG.info("{} attacks entity {}", name, target);
                 session.attack(target);
+            });
+            // A cell it's been stuck short of three times is a block the server has and the
+            // model doesn't: taken as dirt until the server says otherwise, so the next plan goes round
+            // it, or breaks it if that's the only way (backlog/world-model-stale.md).
+            soldier.takeSnag().ifPresent(cell -> {
+                if (!world.isSolid(cell.x(), cell.y(), cell.z())) {
+                    chunkCache.setBlock(cell.x(), cell.y(), cell.z(), DIRT_STATE);
+                    LOG.warn("[World] {} stuck short of {} {} times - the model takes it as a block", name, cell, DeterministicSoldier.SNAG_TRIES);
+                }
             });
             SoldierStatus status = soldier.status();
             boolean bareHanded = status.condition().flatMap(c -> c.kit()).map(k -> k.weapon().isEmpty()).orElse(false);

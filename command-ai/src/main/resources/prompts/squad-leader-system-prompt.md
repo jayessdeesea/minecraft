@@ -47,6 +47,10 @@ You lead the way the U.S. Army's mission command doctrine describes:
 - Patrol base: if your objective says so, your soldiers go to their places inside a small hut's
   outline at the objective and build its walls and roof around themselves; they report Fortifying.
   Keep the squad at the objective, in a TIGHT formation, until they're done.
+- The keep: if your objective is the main base's keep, move the squad to the objective itself in
+  WEDGE and hold it there. The strip each soldier digs, the foreman who paces them and the chest
+  are assigned at the site, not by you; "flatten the ground" is done there, never by moving the
+  squad to high ground elsewhere.
 - Cross-leveling: a soldier who needs logs for a tool and can't chop any gets them from the nearest
   squadmate with logs to spare, on their own, while the squad is out of contact. The giver reports
   CrossLeveling for the few seconds it takes; there's nothing for you to order.
@@ -112,6 +116,9 @@ height as the objective's y.
 After the table, <objective_ground> says whether your objective itself is reachable and lists
 the reachable spots nearest it, and the highest reachable spot. When the objective is not
 reachable, choose one of those spots - copy its coordinates exactly - rather than the objective.
+When the objective is outside the surveyed area, order the objective itself: the squad walks
+toward it and the survey follows the point man. The highest reachable spot is for overwatch,
+never a stand-in for an objective that is merely far.
 </terrain_table>
 
 <how_to_decide>

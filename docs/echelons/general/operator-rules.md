@@ -28,8 +28,10 @@ before dark, to plan the night:
 
 ## The keep by day (`minecraft.general.keep-by-day`)
 By day, every squad builds the main base's keep (task `KEEP`, [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)),
-whatever the general orders; a squad already on it holds it. The night rule still comes first, but
-for the night shift's last 30 seconds, when the squads climb out to it. A squad's miner, with no
+whatever the general orders; a squad already on it holds it - but for the general's answer to a
+request the squad raised, which stands: `WOOD` to its Class IV RED, `FARM` to its Class I RED
+(a request outranks the standing rule, or it's never answered). The night rule still comes first,
+but for the night shift's last 30 seconds, when the squads climb out to it. A squad's miner, with no
 order of its own, builds the keep with it by day: the whole squad mines by night.
 
 ## The camp (`minecraft.camp`)

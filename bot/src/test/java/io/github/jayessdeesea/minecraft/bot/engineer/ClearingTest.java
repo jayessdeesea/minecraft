@@ -218,6 +218,64 @@ class ClearingTest {
                 "the squad's own table, excepted: kept, and its ground with it");
     }
 
+    /**
+     * One level at a time, the highest first (operator, 2026-11-13): the mound's top block is the
+     * next cut though the other mound's block is at the soldier's feet - a lower level isn't on
+     * offer while the top one has blocks left.
+     */
+    @Test
+    void theTopLevelIsFinishedBeforeALowerBlockIsOffered() {
+        List<BlockPos> cover = Clearing.toClear(MOUND, SKY, Set.of());
+        Clearing.Cut cut = Clearing.next(MOUND, cover, new Position(-3.5, 64, -2.5), Set.of()).orElseThrow();
+
+        assertEquals(new BlockPos(2, 65, 2), cut.block(), "the top level, not the block beside it");
+    }
+
+    /**
+     * A level is swept in rows from its north edge, each row the other way from the last - not the
+     * nearest block next (operator, 2026-11-13: no random walks). From the south-east corner the
+     * first cut is the north-west block, and after it the one beside it east.
+     */
+    @Test
+    void aLevelIsSweptInRowsNotToTheNearestBlock() {
+        Set<BlockPos> slab = new HashSet<>();
+        for (int x = 0; x <= 2; x++) {
+            for (int z = 0; z <= 2; z++) {
+                slab.add(new BlockPos(x, 64, z));
+            }
+        }
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 || slab.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return isSolid(x, y, z) && y >= 60;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        List<BlockPos> cover = Clearing.toClear(world, new Box(-2, 64, -2, 4, 70, 4), Set.of());
+        Position southEast = new Position(3.5, 64, 2.5);
+
+        Clearing.Cut first = Clearing.next(world, cover, southEast, Set.of()).orElseThrow();
+        assertEquals(new BlockPos(0, 64, 0), first.block(), "the sweep's first, not the nearest");
+        Clearing.Cut second = Clearing.next(world, cover, southEast, Set.of(first.block())).orElseThrow();
+        assertEquals(new BlockPos(1, 64, 0), second.block(), "along the row");
+        assertEquals(0, Clearing.sweep(new BlockPos(0, 64, 0), 0, 2, 0));
+        assertEquals(3, Clearing.sweep(new BlockPos(2, 64, 1), 0, 2, 0), "the second row walked back from the east");
+    }
+
     @Test
     void aHutIsNotHighGround() {
         assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(2, 64, 2)),

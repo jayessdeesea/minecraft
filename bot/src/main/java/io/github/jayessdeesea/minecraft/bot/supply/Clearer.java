@@ -3,7 +3,9 @@ package io.github.jayessdeesea.minecraft.bot.supply;
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
+import io.github.jayessdeesea.minecraft.bot.world.Hardness;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Box;
@@ -43,6 +45,8 @@ public final class Clearer {
     private Digger digger;
     private long ticks;
     private int cooldown;
+    /** How many of the cover's blocks its tools can't dig for their drop, as last counted: said once when it changes. */
+    private int leftForTools;
 
     /** Where it may stand to cut, in the world as it is: anywhere in reach, unless its owner says otherwise. */
     private final BiPredicate<WorldView, BlockPos> stands;
@@ -142,11 +146,23 @@ public final class Clearer {
         }
         Set<BlockPos> excluded = failed.barredNow(ticks);
         excluded.addAll(claims);
-        // What its tools can't dig is left to a squadmate's: live, soldiers with no pickaxe were handed
-        // the cobblestone over the camp's floor, and each failed at it three times and reported CANTCO.
-        if (!Digger.Target.STONE.canDig(inventory)) {
-            cover.stream().filter(c -> world.isStone(c.x(), c.y(), c.z()) || world.isCobblestone(c.x(), c.y(), c.z()))
-                    .forEach(excluded::add);
+        // What its tools can't dig is left to a squadmate's, or until the tool is made: a pickaxe's
+        // block with no pickaxe carried, or one whose least tier is above its best - dug by hand or
+        // with a lesser pickaxe it would break, slowly, and drop nothing (operator, 2026-11-13: a block
+        // that needs a tool of a strength it hasn't got is left alone). Live, soldiers with no pickaxe
+        // were handed the cobblestone over the camp's floor, and each failed at it three times.
+        int bestPickaxe = Digger.Target.bestTool(inventory);
+        int bestTier = bestPickaxe < 0 ? Hardness.HAND : ItemClassRegistry.miningTier(inventory.itemAt(bestPickaxe)).orElse(Hardness.HAND);
+        List<BlockPos> beyondItsTools = cover.stream()
+                .filter(c -> world.hardness(c.x(), c.y(), c.z()).filter(h -> h.tool() == Hardness.Tool.PICKAXE && !h.drops(bestTier)).isPresent())
+                .toList();
+        excluded.addAll(beyondItsTools);
+        if (beyondItsTools.size() != leftForTools) {
+            leftForTools = beyondItsTools.size();
+            if (leftForTools > 0) {
+                LOG.info("{} leaves {} block(s) its tools can't dig for their drop - {} - for a better pickaxe", name, leftForTools,
+                        bestTier == Hardness.HAND ? "no pickaxe carried" : "the best carried is tier " + bestTier);
+            }
         }
         // Stands it can get to from where it is - on foot, on the blocks it carries, or cutting steps.
         BlockPos feet = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());

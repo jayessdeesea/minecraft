@@ -61,4 +61,49 @@ class ClearerTest {
         clearer.tick(feet, world, List.of(MOUND), true);
         assertTrue(clearer.active(), "the wait over, the mound in reach is cut");
     }
+
+    /**
+     * A block whose drop needs a pickaxe it hasn't got is left alone (operator, 2026-11-13): dug by
+     * hand or with a lesser pickaxe it would break, slowly, for nothing. With the pickaxe, it's cut.
+     */
+    @Test
+    void aBlockBeyondItsToolsIsLeftForABetterPickaxe() {
+        WorldView stony = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return world.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isStone(int x, int y, int z) {
+                return MOUND.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return y <= GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Position feet = new Position(0.5, GROUND + 1, 0.5);
+        Inventory bareHanded = new Inventory();
+        Clearer clearer = new Clearer("Alice", session, bareHanded, new HashSet<>());
+        clearer.tick(feet, stony, List.of(MOUND), true);
+        assertFalse(clearer.active(), "stone with no pickaxe: left");
+
+        Inventory withPickaxe = new Inventory();
+        withPickaxe.setSlot(Inventory.MAIN_FIRST, new int[]{DiggerTest.item("wooden_pickaxe"), 1});
+        Clearer equipped = new Clearer("Bob", session, withPickaxe, new HashSet<>());
+        equipped.tick(feet, stony, List.of(MOUND), true);
+        assertTrue(equipped.active(), "with a pickaxe: cut");
+    }
 }

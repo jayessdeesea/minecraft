@@ -119,6 +119,55 @@ class DeterministicSoldierTest {
         assertTrue(Math.hypot(at.x() - 0.5, at.z() - 20.5) <= 2, "round the wall to the goal, not at " + at + ": " + dana.status().report());
     }
 
+    /**
+     * Put back by the server every time it reaches one cell - a block the server has and the model
+     * doesn't - a soldier is stuck short of that cell three plans running and reports it as a snag,
+     * once; walking freely it reports none. Live, one down the camp's mine was stuck short of one
+     * cell 161 times in a quarter of an hour (backlog/world-model-stale.md).
+     */
+    @Test
+    void putBackAtTheSameCellThreeTimesASoldierReportsItAsASnag() {
+        WorldView flat = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        DeterministicSoldier bob = new DeterministicSoldier("Bob", new Position(0.5, GROUND, 0.5));
+        bob.receiveOrder(new Order.MoveTo(12.5, GROUND, 0.5, 1, 2, Risk.LOW));
+        Optional<BlockPos> snag = Optional.empty();
+        int corrections = 0;
+        for (int i = 0; i < 4000 && snag.isEmpty(); i++) {
+            bob.tick(flat);
+            if (bob.status().position().x() >= 6.0) {
+                bob.correctPosition(new Position(5.9, GROUND, 0.5)); // the server's wall the model doesn't show
+                corrections++;
+            }
+            snag = bob.takeSnag();
+        }
+
+        assertTrue(snag.isPresent() && snag.get().x() == 6 && snag.get().y() == GROUND,
+                "a cell of the wall it's put back from, after " + corrections + " corrections: " + snag);
+        assertTrue(corrections >= DeterministicSoldier.SNAG_TRIES, "put back " + corrections + " times");
+
+        DeterministicSoldier free = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        free.receiveOrder(new Order.MoveTo(12.5, GROUND, 0.5, 1, 2, Risk.LOW));
+        for (int i = 0; i < 400; i++) {
+            free.tick(flat);
+            assertEquals(Optional.empty(), free.takeSnag(), "walking freely: no snag");
+        }
+    }
+
     @Test
     void trendsTowardTargetWhenUnobstructed() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(10, 64, 10));

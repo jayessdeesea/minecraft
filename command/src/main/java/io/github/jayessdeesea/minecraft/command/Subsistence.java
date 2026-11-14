@@ -86,6 +86,16 @@ public final class Subsistence {
         return rations < FOOD_FIRST;
     }
 
+    /**
+     * Whether a soldier at {@code food} with {@code rations} must go and feed before any work: hungry
+     * - below {@link Condition#REGENERATION_FOOD} - with nothing to eat. One short of rations but fed
+     * works on and eats what it has; live, two builders carrying 8 and 9 rations at food 20 were held
+     * off the keep as short, and with two more keeping the farm the squad had nobody on it.
+     */
+    public static boolean mustFeed(int food, int rations) {
+        return food < Condition.REGENERATION_FOOD && rations == 0;
+    }
+
     /** Whether a soldier carrying {@code rations} restocks when it's convenient: below {@link #RESUPPLY}. */
     public static boolean low(int rations) {
         return rations < RESUPPLY;

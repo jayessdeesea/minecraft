@@ -260,11 +260,22 @@ public class ChainOfCommand implements DisposableBean {
 
     /**
      * {@code objective}, or - by day, under {@link #keepByDay} - the keep (command.Keep): the
-     * operator's order for every squad, whatever the general would have it do. Loud, like the
-     * night's rule, which still comes first at dusk.
+     * operator's order for every squad, whatever the general would have it do - but for the
+     * general's answer to a request the squad raised: WOOD to its Class IV RED, FARM to its Class I
+     * RED. A request outranks the standing rule, or it's never answered: live, the keep's builders
+     * asked for logs all day and the rule put every squad back on the keep. Loud, like the night's
+     * rule, which still comes first at dusk.
      */
     Objective byDay(Objective objective, SquadStatus squad) {
         if (!keepByDay || time == null || (time.dark() || sheltering()) && !surfacing() || objective.task() instanceof Objective.Task.Keep) {
+            return objective;
+        }
+        boolean answersWood = objective.task() instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD && squad.classFour().isPresent();
+        boolean answersFood = objective.task() instanceof Objective.Task.Farm
+                && squad.classOne().filter(c -> c.rating() == Subsistence.Rating.RED).isPresent();
+        if (answersWood || answersFood) {
+            LOG.info("[General -> {}] by day, ordered '{}' ({}) answering the squad's {} request: it stands over the keep rule",
+                    squad.squadName(), objective.mission(), objective.task(), answersWood ? "Class IV" : "Class I");
             return objective;
         }
         Objective keep = new Objective("Build the main base's keep: flatten the ground at the origin and lay its slab",

@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.world.Hardness;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
@@ -173,7 +174,23 @@ class DiggerTest {
         assertEquals((int) Math.ceil(Digger.Target.LOG.digTicks / 4.0), Digger.Target.LOG.digTicks(inventory), "logs by the axe, not the shovel");
     }
 
-    private static int item(String name) {
+    /** A block dug to clear it takes the tool of its own kind: a chest the axe, sand the shovel, andesite the pickaxe, glass a hand. */
+    @Test
+    void aBlockClearedIsDugWithTheToolOfItsKind() {
+        Inventory inventory = new Inventory();
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item("stone_axe"), 1});
+        inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item("wooden_shovel"), 1});
+        inventory.setSlot(Inventory.MAIN_FIRST + 2, new int[]{item("iron_pickaxe"), 1});
+
+        assertEquals(Inventory.MAIN_FIRST, Digger.Target.toolFor(new Hardness(2.5, Hardness.HAND, Hardness.Tool.AXE), inventory), "a chest: the axe");
+        assertEquals(Inventory.MAIN_FIRST + 1, Digger.Target.toolFor(new Hardness(0.5, Hardness.HAND, Hardness.Tool.SHOVEL), inventory), "sand: the shovel");
+        assertEquals(Inventory.MAIN_FIRST + 2, Digger.Target.toolFor(new Hardness(1.5, 0), inventory), "andesite: the pickaxe");
+        assertEquals(-1, Digger.Target.toolFor(new Hardness(0.3, Hardness.HAND, Hardness.Tool.HAND), inventory), "glass: a hand");
+        assertEquals(4, Digger.Target.speedFor(new Hardness(2.5, Hardness.HAND, Hardness.Tool.AXE), item("stone_axe")), "a stone axe's speed");
+        assertEquals(1, Digger.Target.speedFor(new Hardness(2.5, Hardness.HAND, Hardness.Tool.AXE), item("iron_pickaxe")), "the wrong tool: hand speed");
+    }
+
+    static int item(String name) {
         return IntStream.range(0, 4096).filter(i -> ItemClassRegistry.nameOf(i).equals(Optional.of(name))).findFirst().orElseThrow();
     }
 

@@ -465,6 +465,13 @@ public final class DeterministicSoldier implements Soldier {
 
         Position correction = pendingCorrection.getAndSet(null);
         if (correction != null) {
+            // Put back by the server on its way somewhere: it walked into what the model doesn't
+            // show. The waypoint it was short of is routed round for a while, as when it stalls
+            // short of one, and three such at one cell are a snag (takeSnag).
+            if (route != null && routeIndex < route.size() && !goal.contains(route.get(routeIndex))
+                    && Math.hypot(correction.x() - position.x(), correction.z() - position.z()) > 0.05) {
+                stuckShortOf(route.get(routeIndex));
+            }
             position = correction;
             verticalVelocity = 0;
             onGround = false; // unknown until gravity settles it - and no route is planned mid-air
@@ -713,6 +720,40 @@ public final class DeterministicSoldier implements Soldier {
     private static final int AVOID_TICKS = 200;
     /** Cells it got stuck short of, and the tick each is tried again from: plans route round them meanwhile. */
     private final Map<BlockPos, Integer> avoided = new HashMap<>();
+    /**
+     * How many times it gets stuck short of one cell before that cell is a snag: a block
+     * the server has and the model doesn't (backlog/world-model-stale.md). Live, a soldier down the
+     * camp's mine was stuck short of one cell 161 times in a quarter of an hour, every plan through it.
+     */
+    public static final int SNAG_TRIES = 3;
+    /** How many times it has been stuck short of each cell - a cell is routed round for a while between tries. */
+    private final Map<BlockPos, Integer> snagTries = new HashMap<>();
+    private BlockPos snag;
+
+    /**
+     * The cell it has been stuck short of {@link #SNAG_TRIES} times, if any - taken, so it's
+     * reported once: the caller marks it solid in the model, and the next plan goes round it or breaks it.
+     */
+    public Optional<BlockPos> takeSnag() {
+        BlockPos taken = snag;
+        snag = null;
+        return Optional.ofNullable(taken);
+    }
+
+    /**
+     * Stuck short of {@code failed}, a waypoint it couldn't get into - stalled at it, or put back by
+     * the server: not tried again straight away, and counted toward a snag.
+     */
+    private void stuckShortOf(BlockPos failed) {
+        if (avoided.put(failed, navTicks + AVOID_TICKS) != null) {
+            return;
+        }
+        LOG.info("{} stuck short of {} - tries another way round it for a while", name, failed);
+        if (snagTries.merge(failed, 1, Integer::sum) >= SNAG_TRIES) {
+            snag = failed;
+            snagTries.remove(failed);
+        }
+    }
     private static final Logger LOG = LogManager.getLogger(DeterministicSoldier.class);
     private int navTicks;
     /** Cell visits per plan - bounds the planning cost per tick (see {@link Pathfinder}). */
@@ -807,10 +848,7 @@ public final class DeterministicSoldier implements Soldier {
             // Stuck short of a waypoint: not tried again straight away. The next plan goes round it if
             // there's a way - a squadmate may be on the same step - and comes back to it only later.
             if (stuck && route != null && routeIndex < route.size() && !goal.contains(route.get(routeIndex))) {
-                BlockPos failed = route.get(routeIndex);
-                if (avoided.put(failed, navTicks + AVOID_TICKS) == null) {
-                    LOG.info("{} stuck short of {} - tries another way round it for a while", name, failed);
-                }
+                stuckShortOf(route.get(routeIndex));
             }
             Set<BlockPos> avoid = Set.copyOf(avoided.keySet());
             // A fall is the exception, never the plan: first a route with none - walked, then with

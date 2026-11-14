@@ -153,6 +153,29 @@ final class Digger {
         }
 
         /**
+         * The slot of the tool {@code block} is dug fastest with, from what's carried, or -1 for none or
+         * for a block dug by hand (operator, 2026-11-13: the right tool for the block): the best
+         * pickaxe for rock, the fastest axe for wood and chests, the fastest shovel for soil and grit.
+         */
+        static int toolFor(Hardness block, Inventory inventory) {
+            return switch (block.tool()) {
+                case PICKAXE -> bestTool(inventory);
+                case AXE -> bestAxe(inventory);
+                case SHOVEL -> fastest(inventory, ItemClassRegistry::shovelSpeed);
+                case HAND -> -1;
+            };
+        }
+
+        /** The speed of {@code item} as the tool {@code block} wants, or 1 for a hand or the wrong tool. */
+        static double speedFor(Hardness block, int item) {
+            return switch (block.tool()) {
+                case AXE -> ItemClassRegistry.axeSpeed(item).orElse(1);
+                case SHOVEL -> ItemClassRegistry.shovelSpeed(item).orElse(1);
+                case PICKAXE, HAND -> 1;
+            };
+        }
+
+        /**
          * The slot of the fastest tool for this, or -1 for none: an axe for a log, a shovel for
          * soil or gravel. Live, the squads dug the camp's ground by hand, four times as slow.
          */
@@ -300,19 +323,20 @@ final class Digger {
     }
 
     /** For {@link Target#OTHER}: whether the block is a pickaxe's and one is carried - then it's dug with the best. */
-    private boolean pickaxeForOther() {
+    /** For {@link Target#OTHER}: the slot of the tool the block is dug fastest with, from what's carried, or -1 ({@link Target#toolFor}). */
+    private int toolForOther() {
         BlockPos b = spot.block();
-        return world != null && world.hardness(b.x(), b.y(), b.z()).filter(h -> h.pickaxeTier() >= 0).isPresent()
-                && Target.bestTool(inventory) >= 0;
+        return world == null ? -1 : world.hardness(b.x(), b.y(), b.z()).map(h -> Target.toolFor(h, inventory)).orElse(-1);
     }
 
     /** For {@link Target#OTHER}: its break time, from its hardness and what's in hand, with the server's margin. */
     private int otherTicks() {
         BlockPos b = spot.block();
-        int held = ItemClassRegistry.miningTier(inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot())).orElse(Hardness.HAND);
+        int item = inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
+        int held = ItemClassRegistry.miningTier(item).orElse(Hardness.HAND);
         Hardness hardness = world.hardness(b.x(), b.y(), b.z())
                 .orElseThrow(() -> new IllegalStateException("no hardness for the block at " + b + " - it can't be broken"));
-        return hardness.ticks(held) + Breacher.MARGIN_TICKS;
+        return hardness.ticks(held, Target.speedFor(hardness, item)) + Breacher.MARGIN_TICKS;
     }
 
     /** Gives up this dig's claims - call once it's done, failed, or abandoned. */
@@ -356,8 +380,8 @@ final class Digger {
         int item = inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
         Optional<ItemClass> held = ItemClassRegistry.classOf(item);
         ItemClass tool = spot.target().tool;
-        if (spot.target() == Target.OTHER && pickaxeForOther()) {
-            return item == inventory.itemAt(Target.bestTool(inventory));
+        if (spot.target() == Target.OTHER && toolForOther() >= 0) {
+            return item == inventory.itemAt(toolForOther());
         }
         int axe = spot.target().speedTool(inventory);
         if (axe >= 0) {
@@ -373,12 +397,12 @@ final class Digger {
      */
     private void takeInHand() {
         ItemClass tool = spot.target().tool;
-        if (spot.target() == Target.OTHER && pickaxeForOther()) {
-            int pickaxe = Target.bestTool(inventory);
-            if (pickaxe >= Inventory.HOTBAR_FIRST) {
-                hold(pickaxe - Inventory.HOTBAR_FIRST);
+        int forOther = spot.target() == Target.OTHER ? toolForOther() : -1;
+        if (forOther >= 0) {
+            if (forOther >= Inventory.HOTBAR_FIRST) {
+                hold(forOther - Inventory.HOTBAR_FIRST);
             } else {
-                session.swapWithHotbar(0, 0, pickaxe, inventory.heldHotbarSlot()); // stale state: the server resends the inventory
+                session.swapWithHotbar(0, 0, forOther, inventory.heldHotbarSlot()); // stale state: the server resends the inventory
             }
             return;
         }

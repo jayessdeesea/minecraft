@@ -15,6 +15,13 @@ command or two, reading the log. Three offline suites exist:
 
 Nothing covers variation in biome, time of day, difficulty, squad size or number of squads.
 
+A live miss to turn into a `SquadLeaderScenarioIT` variant (docs/prompting.md): **FAR** - the
+objective beyond the surveyed area, so `<objective_ground>` says "outside the surveyed area" and
+names the highest reachable spot. Live (2026-11-13) the squad leader sent its squad to that hill
+"to begin flattening" the keep 60 blocks off, and the squad stood there a day. The prompt was
+changed to order a far objective itself; the variant would measure it. Needs the synthetic world
+wide enough for an objective past the survey's radius, and the progress check scored toward it.
+
 A regression in one of those shows up only if someone happens to run that case by hand.
 
 ## Done when

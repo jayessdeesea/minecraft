@@ -21,6 +21,12 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   passed every `GeneralScenarioIT` situation. Turn each live miss into a situation there first.
 - **A coordinate written out is a coordinate the model copies.** Give positions it shouldn't reuse
   (an old order's, a resource's) relative to the squad, not as a y.
+- **A far objective is not an unreachable one.** Told its objective was "outside the surveyed
+  area" and shown the highest reachable spot, the squad leader sent its squad to that hill "to
+  begin flattening" (live, 2026-11-13: Alpha spent a day on a hilltop by the camp while its share
+  of the keep stood untouched, the hilltop itself unreachable). The prompt now says to order a far
+  objective itself - the survey follows the point man - and that the keep's work is assigned at the
+  site, never by moving the squad to high ground.
 - **Worked examples are copied the same way**, their coordinates and their choices: one example of
   a sealed squad sent to SECURE pulled every sealed squad out.
 - **Put a rule in the paragraph of the task it sets**, not in a general section after it.
