@@ -65,7 +65,7 @@ import io.github.jayessdeesea.minecraft.command.Escort;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.Formation;
 import io.github.jayessdeesea.minecraft.command.Formations;
-import io.github.jayessdeesea.minecraft.command.Foreman;
+import io.github.jayessdeesea.minecraft.command.LevelPlan;
 import io.github.jayessdeesea.minecraft.command.Groundwork;
 import io.github.jayessdeesea.minecraft.command.Interval;
 import io.github.jayessdeesea.minecraft.command.Keep;
@@ -482,6 +482,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Long> keepFoughtAt = new ConcurrentHashMap<>();
     /** How long past its last contact a builder's strip stays out of the site's level. */
     static final long KEEP_FIGHT_MILLIS = 30_000;
+    /** Where each keep builder last fought - squad loops. */
+    private final Map<String, Position> keepFightingAt = new ConcurrentHashMap<>();
+    /** How near a fight the keep's ground is nobody's: past the reach of a soldier's eyes on a hostile. */
+    static final double KEEP_FIGHT_CLEAR = 12;
     /** Each soldier's best pickaxe's mining tier - its tick writes, the squad loop reads. */
     private final Map<String, Integer> pickaxeTiers = new ConcurrentHashMap<>();
     /** Soldiers whose dig is a tunnel - the recovery drill's stair up, cut cell by cell under rock. Squad loop writes, tick reads. */
@@ -1742,7 +1746,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // top for good, and in lock step hold the whole site at its level. Set aside, the site goes on
         // down past it; with the pickaxe it's the strip's top again and is cleared like any block.
         Map<String, Box> owners = new HashMap<>();
-        keepStripsBySquad.values().forEach(owners::putAll);
+        KeepPlan standing = keepPlan;
+        if (standing != null) {
+            standing.boxes().forEach((builder, boxes) -> owners.put(builder, boxes.getFirst()));
+        }
         int squadsBest = hands.stream().mapToInt(h -> pickaxeTiers.getOrDefault(h.name(), Hardness.HAND)).max().orElse(Hardness.HAND);
         Set<Cell> oreAside = new HashSet<>();
         for (BlockPos c : Clearing.toClear(world, Keep.dig(), digExcept)) {
@@ -1795,9 +1802,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // where work is left: a strip that narrow left no stand beside its last block.
         Map<String, Order> orders = new HashMap<>(toDig.isEmpty() ? Tasking.keep(crew, Optional.empty(), bounds(toFill), kept) : Map.of());
         if (!toDig.isEmpty()) {
-            orders.putAll(foremansNet(squad, onKeep, crew, digShare, top, digExcept));
+            orders.putAll(foremansNet(squad, onKeep, hands, crew, top, layer, digExcept));
         } else {
-            keepStripsBySquad.remove(squad);
+            keepCrews.remove(squad);
         }
         // A pillar's stock: a builder on the keep's dig short of blocks to climb on fetches a load of
         // dirt from a borrow pit off its squad's side of the keep. Live, a builder sent to cut its
@@ -1878,126 +1885,110 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Set<String> keepHands = ConcurrentHashMap.newKeySet();
 
     /**
-     * The keep's net, run each squad cycle for {@code squad}: its builders' strips - each a fixed
-     * range of x and z of the squad's share - each builder's strip's top said to the foreman when it
-     * changes, the foreman's clearances sent (it's the first builder of the first squad on the
-     * keep: the squad leader's appointment), and each builder's dig, down to the floor it's been
-     * cleared to and no lower. A builder not yet cleared, or with nothing left over its floor, has no
-     * dig - free for other work. The lines go point to point over the server's chat ({@code /msg}).
+     * The keep's foreman's plan, run each squad cycle for {@code squad} (operator, 2026-11-14): the
+     * site comes down in lock step, one level at a time - {@code layer}, the highest ground left
+     * anywhere on it - and at the start of each level the foreman shares what's left of it out among
+     * the builders on hand, every squad's, a rectangle of x and z each ({@link LevelPlan}); with less
+     * work than builders, the nearest get it and the rest wait where they stand. Planned again when
+     * the level falls, when the builders on hand change - one fighting, fed, lost or back - and when
+     * a builder has cleared its rectangle while the level still has ground, so what's left is shared
+     * out again and nobody stands by a level others are still digging. Nothing is kept from level to
+     * level. The foreman - the first builder of the first squad on the keep - says each builder's
+     * rectangle on the net ({@code /msg}), so the plan reads in the chat as it does in the log.
      */
-    private Map<String, Order> foremansNet(String squad, List<String> onKeep, List<Tasking.Hand> crew, Box share,
-                                           java.util.function.IntBinaryOperator top, Set<Cell> except) {
+    private Map<String, Order> foremansNet(String squad, List<String> onKeep, List<SoldierStatus> hands, List<Tasking.Hand> crew,
+                                           java.util.function.IntBinaryOperator top, int layer, Set<Cell> except) {
         long now = clockwork.millis();
-        List<Box> strips = share.strips(Math.max(1, crew.size()));
-        // By name, not by this cycle's order of reports: the drills reorder the squad - one in
-        // contact, one rejoining at the rear - and in the squad simulation two builders swapped
-        // strips each time one of them fought, and walked across the keep to the other's.
-        List<String> byName = crew.stream().map(Tasking.Hand::name).sorted().toList();
-        Map<String, Box> mine = new LinkedHashMap<>();
-        for (int i = 0; i < byName.size(); i++) {
-            mine.put(byName.get(i), strips.get(i % strips.size()));
-        }
-        Map<String, Box> before = keepStripsBySquad.put(squad, mine);
-        if (before != null) {
-            before.keySet().stream().filter(n -> !mine.containsKey(n)).forEach(n -> {
-                synchronized (foreman) {
-                    foreman.forget(n);
-                }
-                clearances.remove(n);
-                reporters.remove(n);
-            });
-        }
+        Set<String> inCrew = crew.stream().map(Tasking.Hand::name).collect(Collectors.toSet());
+        keepCrews.put(squad, hands.stream().filter(h -> inCrew.contains(h.name()) && !keepFighting.contains(h.name()))
+                .map(h -> new LevelPlan.Builder(h.name(), h.position())).toList());
         // The squad leader's appointment: the first builder of the first squad on the keep, again
         // whenever that one is off it.
-        if (!onKeep.isEmpty() && squad.equals(onKeep.getFirst()) && !crew.isEmpty()
-                && !crew.stream().map(Tasking.Hand::name).toList().contains(keepForeman)) {
-            String appointed = crew.getFirst().name();
-            LOG.info("[{}] {} is the keep's foreman", squad, appointed);
-            keepForeman = appointed;
-            synchronized (foreman) {
-                foreman = new Foreman();
-            }
-            clearances.clear();
-            reporters.clear();
+        if (!onKeep.isEmpty() && squad.equals(onKeep.getFirst()) && !crew.isEmpty() && !inCrew.contains(keepForeman)) {
+            keepForeman = crew.getFirst().name();
+            LOG.info("[{}] {} is the keep's foreman", squad, keepForeman);
         }
-        String chief = keepForeman;
-        Map<String, Integer> tops = new HashMap<>();
-        for (Map.Entry<String, Box> e : mine.entrySet()) {
-            Box b = e.getValue();
-            int t = Foreman.NONE;
-            for (int x = b.minX(); x <= b.maxX(); x++) {
-                for (int z = b.minZ(); z <= b.maxZ(); z++) {
-                    t = Math.max(t, top.applyAsInt(x, z));
+        KeepPlan plan;
+        synchronized (keepPlanLock) {
+            List<LevelPlan.Builder> all = onKeep.stream().flatMap(u -> keepCrews.getOrDefault(u, List.of()).stream())
+                    .sorted(Comparator.comparing(LevelPlan.Builder::name)).toList();
+            Set<String> names = all.stream().map(LevelPlan.Builder::name).collect(Collectors.toUnmodifiableSet());
+            Box site = Keep.dig();
+            // Ground under a fight is nobody's until it's over: not shared out - in the squad
+            // simulation the fighter's rectangle went to its squadmate, who walked into the fight -
+            // and not counted for the level, or the site would wait on it. When the fight's done its
+            // ground is the highest again, and the level comes back up to it.
+            List<Position> fights = keepFightingAt.entrySet().stream().filter(e -> keepFighting.contains(e.getKey()))
+                    .map(Map.Entry::getValue).toList();
+            java.util.function.IntBinaryOperator calm = (x, z) -> fights.stream()
+                    .anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR) ? Integer.MIN_VALUE : top.applyAsInt(x, z);
+            int level = Integer.MIN_VALUE;
+            for (int x = site.minX(); x <= site.maxX(); x++) {
+                for (int z = site.minZ(); z <= site.maxZ(); z++) {
+                    level = Math.max(level, calm.applyAsInt(x, z));
                 }
             }
-            tops.put(e.getKey(), t);
-            if (chief != null) {
-                // A builder in a fight has no ground to offer the level: in lock step its strip would
-                // hold every other builder until the fight ends. Said as nothing left; when it's back
-                // its top is said again, and the level comes back up to it like a block put in a strip
-                // already done.
-                Foreman.Top said = keepFighting.contains(e.getKey()) ? new Foreman.Top(Foreman.NONE)
-                        : new Foreman.Top(t, edgeTop(top, b.minX(), b.minX(), b.minZ(), b.maxZ()),
-                        edgeTop(top, b.maxX(), b.maxX(), b.minZ(), b.maxZ()), edgeTop(top, b.minX(), b.maxX(), b.minZ(), b.minZ()),
-                        edgeTop(top, b.minX(), b.maxX(), b.maxZ(), b.maxZ()));
-                reporters.computeIfAbsent(e.getKey(), n -> new Foreman.Reporter()).report(said, now)
-                        .ifPresent(line -> say(e.getKey(), chief, line));
+            List<LevelPlan.Column> columns = new ArrayList<>();
+            for (int x = site.minX(); x <= site.maxX() && level != Integer.MIN_VALUE; x++) {
+                for (int z = site.minZ(); z <= site.maxZ(); z++) {
+                    if (calm.applyAsInt(x, z) == level) {
+                        columns.add(new LevelPlan.Column(x, z));
+                    }
+                }
             }
-        }
-        if (chief != null && squad.equals(onKeep.getFirst())) {
-            Map<String, Box> all = new LinkedHashMap<>();
-            keepStripsBySquad.values().forEach(all::putAll);
-            Map<String, Foreman.Clear> decided;
-            synchronized (foreman) {
-                decided = foreman.decide(all);
+            plan = keepPlan;
+            // One with its rectangle cleared, and ground still left at the level: shared out again,
+            // though not every second - a builder walking to its rectangle has cleared nothing yet.
+            boolean idleHand = plan != null && now - plan.at() >= KEEP_REPLAN_MILLIS && !columns.isEmpty()
+                    && plan.boxes().values().stream().anyMatch(boxes -> boxes.stream().noneMatch(b -> columns.stream()
+                    .anyMatch(c -> c.x() >= b.minX() && c.x() <= b.maxX() && c.z() >= b.minZ() && c.z() <= b.maxZ())));
+            if (plan == null || plan.level() != level || !plan.crew().equals(names) || idleHand) {
+                Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of() : LevelPlan.plan(level, site.maxY(), columns, all);
+                plan = new KeepPlan(level, names, boxes, now);
+                keepPlan = plan;
+                LOG.info("[Keep] level y={}: {} block(s) left, {} of {} builder(s) on it - {}", level, columns.size(), boxes.size(), all.size(),
+                        boxes.entrySet().stream().map(e -> e.getKey() + " " + e.getValue().stream()
+                                .map(b -> "x=" + b.minX() + ".." + b.maxX() + " z=" + b.minZ() + ".." + b.maxZ()).toList()).toList());
+                String chief = keepForeman;
+                if (chief != null) {
+                    for (LevelPlan.Builder b : all) {
+                        List<Box> mine = boxes.getOrDefault(b.name(), List.of());
+                        say(chief, b.name(), mine.isEmpty() ? "KEEP WAIT " + level
+                                : "KEEP DIG " + level + " " + mine.stream().map(r -> r.minX() + " " + r.minZ() + " " + r.maxX() + " " + r.maxZ())
+                                .collect(Collectors.joining(" ")));
+                    }
+                }
             }
-            decided.forEach((soldier, clear) -> say(chief, soldier, clear));
         }
         drainNet(now);
         Map<String, Order> orders = new HashMap<>();
-        for (Map.Entry<String, Box> e : mine.entrySet()) {
-            Integer floor = clearances.get(e.getKey());
-            int t = tops.get(e.getKey());
-            Box b = e.getValue();
-            if (floor != null && t != Foreman.NONE && t >= floor) {
-                orders.put(e.getKey(), new Order.Dig(new Box(b.minX(), floor, b.minZ(), b.maxX(), b.maxY(), b.maxZ()), except));
-            } else if (t != Foreman.NONE) {
-                // Held at its floor by a neighbour's ground, or not yet cleared: it waits at its strip,
-                // in its own lane (operator, 2026-11-13), ready for the next clearance. Left to "nothing
-                // else to do", live, builders walked 60 blocks to the camp's upkeep and were there when
-                // their floor moved.
-                orders.put(e.getKey(), new Order.MoveTo((b.minX() + b.maxX()) / 2.0 + 0.5, t + 1, (b.minZ() + b.maxZ()) / 2.0 + 0.5, 3, 3,
-                        Risk.LOW, false));
-                String held = floor == null ? "not yet cleared" : "cleared to y=" + floor;
-                if (!held.equals(keepHeld.put(e.getKey(), held))) {
-                    LOG.info("[{}] {} waits at its strip: its top y={}, {}", squad, e.getKey(), t, held);
-                }
+        for (SoldierStatus h : hands) {
+            if (!inCrew.contains(h.name())) {
+                continue;
             }
-            if (orders.get(e.getKey()) instanceof Order.Dig) {
-                keepHeld.remove(e.getKey());
+            List<Box> mine = plan.boxes().getOrDefault(h.name(), List.of());
+            if (!mine.isEmpty()) {
+                orders.put(h.name(), new Order.Dig(mine.getFirst(), except));
+            } else {
+                // No rectangle at this level - less work than builders, or it's in a fight: it waits
+                // where it stands, on the site, for the next plan. Left to "nothing else to do", live,
+                // builders walked 60 blocks to the camp's upkeep and were there when the level moved.
+                orders.put(h.name(), new Order.MoveTo(h.position().x(), h.position().y(), h.position().z(), 3, 3, Risk.LOW, false));
             }
         }
         return orders;
     }
 
-    /** The highest ground left in the columns from ({@code x0}, {@code z0}) to ({@code x1}, {@code z1}): an edge of a strip. */
-    private static int edgeTop(java.util.function.IntBinaryOperator top, int x0, int x1, int z0, int z1) {
-        int t = Foreman.NONE;
-        for (int x = x0; x <= x1; x++) {
-            for (int z = z0; z <= z1; z++) {
-                t = Math.max(t, top.applyAsInt(x, z));
-            }
-        }
-        return t;
+    /** The foreman's plan for a level: who's on it, their rectangles, and when it was made. */
+    private record KeepPlan(int level, Set<String> crew, Map<String, List<Box>> boxes, long at) {
     }
 
-    /** {@code from} says {@code line} to {@code to}: on the net, a line a second at most from each sender - or to itself, at once. */
-    private void say(String from, String to, Foreman.Signal line) {
+    /** {@code from} says {@code line} to {@code to} on the net: a line a second at most from each sender; nothing said to itself. */
+    private void say(String from, String to, String line) {
         if (from.equals(to)) {
-            netHeard(to, from, line);
             return;
         }
-        netOutbox.computeIfAbsent(from, n -> new java.util.ArrayDeque<>()).add(new String[]{to, line.text()});
+        netOutbox.computeIfAbsent(from, n -> new java.util.ArrayDeque<>()).add(new String[]{to, line});
     }
 
     /** Sends each sender's next line, a second after its last: the server cuts off a connection that chats faster. */
@@ -2017,33 +2008,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         });
     }
 
-    /** {@code receiver} heard {@code line} from {@code sender} on the net: a top for the foreman, a clearance for a builder. */
-    private void netHeard(String receiver, String sender, Foreman.Signal line) {
-        switch (line) {
-            case Foreman.Top t when receiver.equals(keepForeman) -> {
-                synchronized (foreman) {
-                    foreman.heard(sender, t);
-                }
-            }
-            case Foreman.Clear c when sender.equals(keepForeman) -> clearances.put(receiver, c.floor());
-            default -> LOG.warn("[Keep] {} heard {} from {}, not on the foreman's net", receiver, line.text(), sender);
-        }
-    }
-
     /** The server cuts off a connection chatting faster than this, sustained. */
     static final long NET_LINE_MILLIS = 1_000;
-    /** The keep's foreman, by name - squad loop writes, connections read. */
+    /** How long a level's plan stands before a builder done with its rectangle has what's left shared out again. */
+    static final long KEEP_REPLAN_MILLIS = 5_000;
+    /** The keep's foreman, by name - squad loops. */
     private volatile String keepForeman;
-    /** The foreman's book of tops and clearances - guarded by itself; replaced on a new appointment. */
-    private volatile Foreman foreman = new Foreman();
-    /** Each builder's floor, as it was cleared to on the net - connections write, squad loop reads. */
-    private final Map<String, Integer> clearances = new ConcurrentHashMap<>();
-    /** Why each builder waiting at its strip waits, as last said - squad loops. */
-    private final Map<String, String> keepHeld = new ConcurrentHashMap<>();
-    /** Each builder's side of the net - squad loop only. */
-    private final Map<String, Foreman.Reporter> reporters = new ConcurrentHashMap<>();
-    /** Each keep squad's builders' strips - squad loops. */
-    private final Map<String, Map<String, Box>> keepStripsBySquad = new ConcurrentHashMap<>();
+    /** The foreman's plan for the site's level - guarded by {@link #keepPlanLock}; read by every squad's loop. */
+    private volatile KeepPlan keepPlan;
+    private final Object keepPlanLock = new Object();
+    /** Each keep squad's builders on hand - on the keep, fed, not fighting - and where they stand: squad loops. */
+    private final Map<String, List<LevelPlan.Builder>> keepCrews = new ConcurrentHashMap<>();
     /** Lines waiting to go on the net, by sender - squad loops. */
     private final Map<String, java.util.Deque<String[]>> netOutbox = new ConcurrentHashMap<>();
     /** When each sender last said a line - squad loops. */
@@ -3016,6 +2991,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             statuses.forEach(st -> {
                 if (fighting.contains(st.name())) {
                     keepFoughtAt.put(st.name(), keepNow);
+                    keepFightingAt.put(st.name(), st.position());
                 }
                 if (keepNow - keepFoughtAt.getOrDefault(st.name(), Long.MIN_VALUE / 2) < KEEP_FIGHT_MILLIS) {
                     keepFighting.add(st.name());
@@ -3048,6 +3024,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // The fight first: a soldier in contact answers its squad leader until it's over, and takes
         // its ground work up again then.
         fighting.forEach(ground::remove);
+        // Support is for free hands (docs/military-doctrine.md § 8): a soldier with ground work of its
+        // own, out of contact, keeps at it and isn't sent to a squadmate's fight. In the squad
+        // simulation a builder left its spire for a zombie its squadmate had in hand, 20 blocks off.
+        List<Order> supporting = new ArrayList<>(orders);
+        for (int i = 0; i < statuses.size(); i++) {
+            SoldierStatus st = statuses.get(i);
+            if (supporting.get(i) instanceof Order.MoveTo support && support.urgent() && ground.containsKey(st.name())) {
+                supporting.set(i, new Order.MoveTo(st.position().x(), st.position().y(), st.position().z(), 3, 3, Risk.LOW, false));
+            }
+        }
+        List<Order> eased = List.copyOf(supporting);
         if (state.wallCentre == null) {
             state.digLeft = -1;
             state.fillLeft = -1;
@@ -3504,7 +3491,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         cutting ? 0.3 : dark ? MINE_FOLLOW : 1.5, cutting ? 0.5 : dark ? MINE_FOLLOW : 4, Risk.LOW));
                 continue;
             }
-            Order given = orders.get(i);
+            Order given = eased.get(i);
             // On patrol: round the objective's ground, waypoint to waypoint, each soldier at its own
             // point of the round - moving, on watch. Contact takes over as it always does.
             if (!patrolRound.isEmpty() && !squadInContact && !(given instanceof Order.Place)) {
@@ -4046,11 +4033,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // is passed on once; one whispered to a soldier (/msg) reaches only that one, which
                 // relays it up the chain.
                 chat -> {
-                    // The keep's net: a line whispered to this soldier by another - never its own,
-                    // which the server echoes back to it.
-                    Foreman.parse(chat.message()).ifPresent(line -> soldierNamed(chat.sender())
-                            .filter(sender -> !sender.equals(definition.name()))
-                            .ifPresent(sender -> netHeard(definition.name(), sender, line)));
                     if (firstHearing(chat)) {
                         operatorOrders.orderFrom(chat).ifPresent(order -> {
                             LOG.info("{} relays {} from the operator: {}", definition.name(),
@@ -4706,8 +4688,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<BlockPos> wall = walling.getOrDefault(name, List.of());
             pickaxeTiers.put(name, Clearer.bestPickaxeTier(inventory));
             turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
-                    clearing.getOrDefault(name, List.of()), free && !threatened && !foodCalls,
-                    keepHands.contains(name) ? Optional.ofNullable(clearingStrip.get(name)) : Optional.empty(),
+                    clearing.getOrDefault(name, List.of()), free && !(keepHands.contains(name) ? inContact : threatened) && !foodCalls,
+                    // Its stands in its rectangle or a column beside it: the last block of a rectangle one
+                    // wide is cut from the neighbour's edge, not from on top of itself.
+                    keepHands.contains(name) ? Optional.ofNullable(clearingStrip.get(name))
+                            .map(b -> new Box(b.minX() - 1, b.minY(), b.minZ() - 1, b.maxX() + 1, b.maxY(), b.maxZ() + 1)) : Optional.empty(),
                     clearingTunnel.contains(name))));
             Filler filler = stoneFilling.contains(name) ? paver : plainFiller;
             (filler == paver ? plainFiller : paver).stop();

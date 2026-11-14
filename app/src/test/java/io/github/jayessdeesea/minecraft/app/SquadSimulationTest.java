@@ -2184,16 +2184,58 @@ class SquadSimulationTest {
     }
 
     /**
+     * A level wide enough for everyone is everyone's: four builders, a slab of dirt eight by eight on
+     * the keep, and the foreman's plan puts all four on it, a rectangle each, and it's gone. Live,
+     * with a fixed strip each and the high ground in two of eight, six builders stood by while two dug.
+     */
+    @Test
+    void aWideLevelIsSharedOutAmongTheWholeCrew() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= -4 && x <= 3 && z >= -4 && z <= 3 && y == GROUND + 1
+                ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(-8.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(3 * 60_000);
+
+        int left = 0;
+        for (int x = -4; x <= 3; x++) {
+            for (int z = -4; z <= 3; z++) {
+                left += server.block(x, GROUND + 1, z) != SimServer.AIR ? 1 : 0;
+            }
+        }
+        List<String> plans;
+        try {
+            plans = Files.readAllLines(Path.of("target/sim/aWideLevelIsSharedOutAmongTheWholeCrew.log")).stream()
+                    .filter(l -> l.contains("[Keep] level y=")).toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        assertTrue(plans.stream().anyMatch(l -> l.contains("4 of 4 builder(s) on it")), "all four on the level: " + plans);
+        assertEquals(0, left, "the slab dug; the plans: " + plans);
+    }
+
+    /**
      * One builder in contact at its end of the keep, zombie after zombie, for three minutes: the
-     * other keeps digging its own strip. Live, a single zombie at the keep's edge held eight builders
-     * off it for a quarter of an hour, every one of them answering the squad leader's "move to the
-     * keep" instead - contact takes the soldiers in it off the work, not the squad.
+     * other digs on. A spire at the far end is one builder's by the foreman's plan - the nearer one's -
+     * and the fight at the other end, under which the ground is nobody's, doesn't hold it. Live, a
+     * single zombie at the keep's edge held eight builders off it for a quarter of an hour, every one
+     * of them answering the squad leader's "move to the keep" instead - contact takes the soldiers
+     * in it off the work, not the squad.
      */
     @Test
     void aBuilderInContactDoesntTakeTheOthersOffTheKeep() {
         SimClock clock = new SimClock();
-        // A mound at each end of the keep, one each: Bob's keeps him at his, where the zombies come.
-        SimServer server = new SimServer(clock, (x, y, z) -> Math.abs(Math.abs(x) - 12) <= 1 && z >= -1 && z <= 1 && y > GROUND && y <= GROUND + 3
+        SimServer server = new SimServer(clock, (x, y, z) -> x == -12 && z == 0 && y > GROUND && y <= GROUND + 3
                 ? SimServer.DIRT : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
@@ -2217,16 +2259,12 @@ class SquadSimulationTest {
         }
 
         List<String> left = new ArrayList<>();
-        for (int x = -13; x <= -11; x++) {
-            for (int z = -1; z <= 1; z++) {
-                for (int y = GROUND + 1; y <= GROUND + 3; y++) {
-                    if (server.block(x, y, z) != SimServer.AIR) {
-                        left.add(x + "," + y + "," + z);
-                    }
-                }
+        for (int y = GROUND + 1; y <= GROUND + 3; y++) {
+            if (server.block(-12, y, 0) != SimServer.AIR) {
+                left.add("-12," + y + ",0");
             }
         }
-        assertEquals(List.of(), left, "Alice's mound, dug while Bob fought; Alice at " + server.position("Alice")
+        assertEquals(List.of(), left, "Alice's spire, dug while Bob fought; Alice at " + server.position("Alice")
                 + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
@@ -2322,12 +2360,11 @@ class SquadSimulationTest {
     }
 
     /**
-     * The keep's foreman runs the flattening over the net (operator, 2026-11-13): each builder says
-     * its strip's top to the foreman point to point, the foreman clears it to a floor, and it digs
-     * its own strip down to that and no lower.
+     * The keep's foreman says its plan for each level over the net (operator, 2026-11-14), point to
+     * point: each builder its rectangle, or to wait when the level has less work than builders.
      */
     @Test
-    void theKeepsForemanClearsEachBuilderOverTheNet() {
+    void theKeepsForemanSaysEachLevelsPlanOverTheNet() {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, (x, y, z) -> x == 5 && z == 5 && y > GROUND && y <= GROUND + 2 ? SimServer.DIRT
                 : x == -5 && z == -5 && y > GROUND && y <= GROUND + 2 ? SimServer.DIRT : flat(x, y, z), 1000);
@@ -2344,10 +2381,8 @@ class SquadSimulationTest {
 
         clock.advance(4 * 60_000);
 
-        assertTrue(server.log.stream().anyMatch(e -> e.startsWith("Bob /msg Alice KEEP TOP ")), "Bob's top said to the foreman: "
-                + server.log.stream().filter(e -> e.contains("/msg")).toList());
-        assertTrue(server.log.stream().anyMatch(e -> e.startsWith("Alice /msg Bob KEEP CLEAR TO ")), "Bob cleared by the foreman: "
-                + server.log.stream().filter(e -> e.contains("/msg")).toList());
+        assertTrue(server.log.stream().anyMatch(e -> e.startsWith("Alice /msg Bob KEEP DIG ") || e.startsWith("Alice /msg Bob KEEP WAIT ")),
+                "Bob told the level's plan by the foreman: " + server.log.stream().filter(e -> e.contains("/msg")).toList());
         assertEquals(SimServer.AIR, server.block(5, GROUND + 2, 5), "a mound dug; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
         assertEquals(SimServer.AIR, server.block(-5, GROUND + 2, -5), "and the other");

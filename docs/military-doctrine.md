@@ -398,18 +398,13 @@ the squad to falls.
   can't close on keeps shooting.
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
-- **Work under contact.** The soldiers in contact drop their ground work - the keep's strip, the
+- **Work under contact.** The soldiers in contact drop their ground work - the keep's rectangle, the
   camp's ground, a levelling order - and answer the squad leader until it's over; the rest keep
-  theirs, and the strips stay laid out over the whole crew so nobody's moves while a squadmate
-  fights (`SoldierRunner`, the squad loop). The squad's side jobs - the wall, the lights, the mine's
+  theirs, and aren't sent to support: that drill is for free hands. On the keep the ground under
+  the fight is nobody's meanwhile (§17). The squad's side jobs - the wall, the lights, the mine's
   cutter, rearming past the basic load, the farm - pause for the whole squad as before. Live, one
   zombie at the keep's edge held eight builders off it for a quarter of an hour, every one of them
   answering the squad leader's "move to the keep" instead of digging.
-- **The squad leader and the general** hear of it at once: a soldier newly in contact is a contact
-  report, and the squad leader decides then, not at its next scheduled look, whether to fight on,
-  bypass or break contact. A squad newly in contact triggers the general the same way. Both keep
-  the same minimum gap between decisions as a CANTCO does, so a running fight doesn't flood the
-  models.
 
 In the combat simulation, three zombies on one soldier's flank kill a lone soldier 64 times in
 100. A squad spread 10 blocks apart without the drill still wins, but loses its flank soldier 66
@@ -1184,28 +1179,27 @@ layers; then the slab, and any hollow open under it within 8 blocks, is filled i
 (`Tasking.keep`), each squad on it its own share of the site - west to east in the roster's order
 - and each of its soldiers a fixed strip of that, its own range of x and z (operator, 2026-11-13):
 the sky over it cleared to the top of the world, top down, as ground is dug only from an open top.
-Level by level, strip by strip, paced by the keep's foreman (`command.Foreman`, operator
-2026-11-13): one soldier the squad leader appoints - the first builder of the first squad on the
-keep, again whenever that one is off it - who runs the flattening over the net, point to point
-(`/msg`). Each builder says its strip's top and the highest ground along each of its edges to the
-foreman ("KEEP TOP 89 EDGES 85 87 89 84", west, east, north, south) when they change, and every 30
-seconds in case a line was lost. The foreman runs it in lock step (operator, 2026-11-14): the
-site's level is the highest top any builder has said, the other squad's strips counted, and every
-builder is cleared to that level and no lower ("KEEP CLEAR TO 89"), told again only when the level
-moves. Only the strips with ground at the level dig, and only that level; the level falls when every
-strip's top is under it, and nothing is decided until every builder has spoken. So the site comes
-down as one flat floor: nobody climbs over a neighbour's ground, and a block put into a strip
-already done - a step, a pillar left - is that strip's top again, cleared before anyone goes down.
-A builder in a fight, and for half a minute after, offers the level nothing - its strip is said
-as empty, so the rest go on - and back on its strip its top brings the level up to it again. Strips
-go to builders by name, not by a cycle's order of reports, which the drills shuffle. The price is that one spire holds every other builder until its strip's builder has it down; a
-strip a step under its neighbours' edges was tried first, and builders walled each other in with
-the steps they built to climb the terraces. The foreman decides only from what
-it's been told; each builder's top is its own strip's, from the world. A sender says a line a
-second at most: the server cuts off a connection that chats faster. The log reads
-"[Keep] Bob -> Alice: KEEP TOP 88 EDGES 86 88 87 85". A builder not yet cleared, or with no
-ground at the site's level, waits at
-its strip in its own lane, ready for the next clearance; left free for other work, builders walked
+Level by level, in lock step, planned by the keep's foreman (`command.LevelPlan`, operator
+2026-11-14): one soldier the squad leader appoints - the first builder of the first squad on the
+keep, again whenever that one is off it. The site's level is the highest ground left anywhere on
+it, and nobody digs lower till it's gone, so the site comes down as one flat floor: nobody climbs
+over a neighbour's ground, and a block put where the level was already done - a step, a pillar left
+- is the level again, cleared before anyone goes down. At the start of each level the foreman
+shares what's left of it out among the builders on hand, every squad's: a rectangle of x and z
+each, none overlapping, near-equal in blocks, each to the builder nearest it. With less work than
+four blocks a builder, fewer are sent - a spire one block across is the nearest builder's - and the
+rest wait where they stand. It plans again when the level falls, when the builders on hand change,
+and when a builder has cleared its rectangle while the level still has ground, so what's left is
+shared out again. Nothing is kept from level to level, or overnight. The foreman says each plan on
+the net, point to point (`/msg`), a line a second at most since the server cuts off a connection
+that chats faster; the log reads "[Keep] level y=77: 41 block(s) left, 6 of 8 builder(s) on it"
+and "[Keep] Alice -> Bob: KEEP DIG 77 3 -4 9 2". Ground within 12 blocks of a builder's fight, and
+for half a minute after it, is nobody's and isn't counted for the level: the rest go on, and when
+the fight's done that ground is the highest again. A builder with ground work isn't sent to
+support a squadmate's fight (§8), and digs on with a hostile in sight that isn't on it. Tried
+first: a fixed strip each, a step under its neighbours' edges - builders walled each other in with
+the steps they built to climb the terraces; then fixed strips in lock step - with the high ground
+in two strips of eight, six builders stood by. Left free for other work while they waited, builders walked
 60 blocks to the camp's upkeep and were there when their floor moved. The log reads "the
 keep: N blocks to dig, its top y=T, the keep's y=K". A builder stands only in its own strip's columns, a neighbour working the
 next. Within its strip it digs one level at a time, the highest first - no lower block is on offer
