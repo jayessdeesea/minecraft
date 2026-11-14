@@ -1716,9 +1716,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // West for the first share, east for the second - and when its fetchers find nothing left there,
         // the next side round: live, two builders spent a day at a pit dug out, "nothing left to gather".
         long now = clockwork.millis();
-        boolean dugOut = keepFetching.stream().anyMatch(n -> hands.stream().anyMatch(h -> h.name().equals(n))
-                && now - gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE / 2) < PIT_MOVE_MILLIS
-                && gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE / 2) > keepPitMovedAt.getOrDefault(squad, Long.MIN_VALUE / 2));
+        int[] sidesNow = share == 0 ? new int[]{1, 3, 0, 2} : new int[]{0, 2, 1, 3};
+        int sideNow = sidesNow[Math.floorMod(keepPitShift.getOrDefault(squad, 0), 4)];
+        int edgeNow = Keep.MAX + Groundwork.BORROW_GAP + 3;
+        Position pitNow = new Position(sideNow == 0 ? edgeNow : sideNow == 1 ? -edgeNow : 0, 0, sideNow == 2 ? edgeNow : sideNow == 3 ? -edgeNow : 0);
+        // Only a fetcher at the pit says it's dug out: one stuck far off finds nothing anywhere. Live,
+        // a builder shut in by the farm moved its squad's pit round the keep every minute.
+        // And not again until its fetchers have had a minute at the new one: a gatherer that finds
+        // nothing says so every tick, and live the pit went round the keep every second.
+        boolean dugOut = now - keepPitMovedAt.getOrDefault(squad, Long.MIN_VALUE / 2) >= PIT_MOVE_MILLIS
+                && hands.stream().filter(h -> keepFetching.contains(h.name()))
+                .filter(h -> Math.hypot(h.position().x() - pitNow.x(), h.position().z() - pitNow.z()) <= PIT_NEAR)
+                .map(SoldierStatus::name)
+                .anyMatch(n -> now - gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE / 2) < PIT_MOVE_MILLIS
+                        && gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE / 2) > keepPitMovedAt.getOrDefault(squad, Long.MIN_VALUE / 2));
         if (dugOut) {
             int moved = keepPitShift.merge(squad, 1, Integer::sum);
             keepPitMovedAt.put(squad, now);
@@ -1927,6 +1938,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** How recently a fetcher must have found nothing for its squad's pit to move on. */
     static final long PIT_MOVE_MILLIS = 60_000;
+    /** How near its pit a fetcher must be for its finding nothing to move the pit on. */
+    static final double PIT_NEAR = 32;
     /** How many times each squad's keep borrow pit has moved on, and when it last did - squad loop only. */
     private final Map<String, Integer> keepPitShift = new ConcurrentHashMap<>();
     private final Map<String, Long> keepPitMovedAt = new ConcurrentHashMap<>();

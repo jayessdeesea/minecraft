@@ -2235,7 +2235,7 @@ class SquadSimulationTest {
      * live, two spent a day at a pit dug out, "nothing left to gather".
      */
     @Test
-    void aBuildersDirtComesFromAnotherSideWhenItsPitHasNone() {
+    void aBuildersDirtComesFromAnotherSideWhenItsPitHasNone() throws IOException {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 10 ? SimServer.GLASS
                 : x < 0 && y <= GROUND && y > -64 ? SimServer.STONE // west, as far as a fetch there looks: rock, no soil
@@ -2254,6 +2254,11 @@ class SquadSimulationTest {
 
         assertEquals(SimServer.AIR, server.block(3, GROUND + 10, 3), "the glass, from a pillar of dirt from another side; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+        // And moved on only as often as it's tried and found wanting - a minute at each at least: live,
+        // a gatherer's "nothing found" every tick moved the pit round the keep every second.
+        long moves = Files.readAllLines(Path.of("target/sim/aBuildersDirtComesFromAnotherSideWhenItsPitHasNone.log")).stream()
+                .filter(l -> l.contains("borrow pit is dug out")).count();
+        assertTrue(moves <= 4, moves + " moves of the pit in 8 minutes");
     }
 
     /**
