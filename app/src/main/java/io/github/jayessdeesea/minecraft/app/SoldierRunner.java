@@ -11,8 +11,6 @@ import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.farm.TreeFarm;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
-import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
-import io.github.jayessdeesea.minecraft.bot.nav.Goal;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.nav.RouteEffort;
 import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
@@ -2454,37 +2452,40 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** How far above or below a soldier its goal can be for a wall between them to be what stops it. */
     static final int WAY_OUT_RISE = 3;
-    /** Route search for whether a soldier reporting no route can still walk to a squadmate: the drill's long look. */
-    static final int CUT_OFF_BUDGET = 20_000;
-    /** How near a squadmate counts as reaching it. */
-    static final double CUT_OFF_TOLERANCE = 3;
+    /** The flood fill for whether a soldier reporting no route is in a pocket: how far and how many steps. */
+    static final int CUT_OFF_SPAN = 48, CUT_OFF_BUDGET = 20_000;
+    /** A soldier that can walk no more cells than this is in a pocket - WayOut's measure of one. */
+    static final int CUT_OFF_CELLS = 128;
 
     /**
-     * {@code reported}, with a soldier's "no route" read as stranded only when it's cut off from its
-     * squad: no route to the nearest squadmate not stranded itself, with the pickaxe it carries. One
-     * whose order's goal is out of reach - a squadmate in a pocket, a plot across water - but that can
-     * walk to its squad isn't stranded, and is shown to the drill as moving. Live, the keep's foreman,
-     * carrying rations to one in a dead end at the mine's bottom, was "stranded" on the stairs every
-     * minute, and sent down to its squad, at MEDIUM risk, each time.
+     * {@code reported}, with a soldier's "no route" read as stranded only when it's cut off: it can
+     * walk no more than {@link #CUT_OFF_CELLS} cells from where it stands, by the route planner's own
+     * moves. One whose order's goal is out of reach - a squadmate in a pocket, a plot across water -
+     * but that has the ground to walk isn't stranded, and is shown to the drill as moving. Live, the
+     * keep's foreman, carrying rations to one in a dead end at the mine's bottom, was "stranded" on
+     * the stairs every minute, and sent down to its squad, at MEDIUM risk, each time.
      */
     private List<SoldierStatus> cutOff(List<SoldierStatus> reported) {
         return reported.stream().map(s -> {
             if (!Recovery.stranded(s)) {
+                walksSaid.remove(s.name());
                 return s;
             }
-            Optional<SoldierStatus> mate = reported.stream().filter(m -> !m.name().equals(s.name()) && !Recovery.stranded(m))
-                    .min(Comparator.comparingDouble(m -> distance(m.position(), s.position())));
-            if (mate.isEmpty()) {
-                return s;
-            }
-            boolean pickaxe = s.condition().flatMap(Condition::kit).map(Kit::pickaxe).orElse(false);
-            Position to = mate.get().position();
             Position from = s.position();
-            boolean walks = Pathfinder.find(world, BlockPos.containing(from.x(), from.y(), from.z()),
-                    new Goal(to.x(), to.y(), to.z(), CUT_OFF_TOLERANCE, 1), CUT_OFF_BUDGET, FallAllowance.NONE, 0, pickaxe).reachesGoal();
-            return walks ? new SoldierStatus(s.name(), s.position(), s.order(), new Report.Moving(), s.condition()) : s;
+            int cells = Pathfinder.reachable(world, BlockPos.containing(from.x(), from.y(), from.z()), CUT_OFF_SPAN, CUT_OFF_BUDGET).size();
+            if (cells <= CUT_OFF_CELLS) {
+                walksSaid.remove(s.name());
+                return s;
+            }
+            if (walksSaid.add(s.name())) {
+                LOG.info("{} reports no route to its goal but has {} cells to walk from {} - not stranded", s.name(), cells, from);
+            }
+            return new SoldierStatus(s.name(), s.position(), s.order(), new Report.Moving(), s.condition());
         }).toList();
     }
+
+    /** Soldiers said to have ground to walk despite their "no route", once each time it starts - squad loops. */
+    private final Set<String> walksSaid = ConcurrentHashMap.newKeySet();
 
     /** The engineer's stair down for a stranded soldier, from where it stands. */
     private Function<SoldierStatus, Optional<List<Cell>>> stairDown(String squadName) {
@@ -3202,7 +3203,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 farmlessLogged.remove(soldierName);
             }
             long now = clockwork.millis();
-            Order work = ground.get(soldierName);
+            // The recovery drill's order - its own stair or cut, or a squadmate's - over its ground work:
+            // live, a builder in a dead end at the mine's bottom kept its strip's dig over the stair out.
+            Order work = state.recovery.ordered(soldierName) ? null : ground.get(soldierName);
             if (work != null && !state.relieved(soldierName, keepHands.contains(soldierName) ? keepTask(work) : groundTask(work), now)) {
                 // The task's now, not the upkeep's: left the upkeep's, the upkeep would drop it again
                 // on seeing the wall - in the squad simulation, every soldier on and off its dig.

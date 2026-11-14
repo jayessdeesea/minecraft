@@ -80,8 +80,9 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
   route it plans reaches.
 - Dig straight down, but for the block it stands on with known ground a block under it - its own
   pillar - never onto farmland, which landing on tramples; or straight up under a block that falls.
-- Dig a block whose drop needs a pickaxe of a tier it hasn't got: left for a squadmate's, or until
-  one is made. Every other block it digs with the tool of its kind - pickaxe, axe, shovel or hand. It pillars in open air only straight up to a
+- Dig ore whose drop needs a pickaxe of a tier it hasn't got: left for a squadmate's, or until
+  one is made. Every other block it digs with the best tool carried for its kind - pickaxe, axe,
+  shovel, or fists, which break anything but bedrock, slowly and for no drop. It pillars in open air only straight up to a
   goal over its column: a stand to cut the top of its strip from. Nor tunnel, except as the staircase routine does and
   as the recovery drill's stair up out of a pocket does (docs/military-doctrine.md § 7): a cut the
   engineer lays, up to 40 steps to the surface, dug cell by cell from where it stands, never under

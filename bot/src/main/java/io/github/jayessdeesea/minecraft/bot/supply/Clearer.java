@@ -14,6 +14,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -47,6 +48,8 @@ public final class Clearer {
     private int cooldown;
     /** How many of the cover's blocks its tools can't dig for their drop, as last counted: said once when it changes. */
     private int leftForTools;
+    /** Blocks of a tool's kind it has taken to by hand, said once each. */
+    private final Set<BlockPos> byHand = new HashSet<>();
 
     /** Where it may stand to cut, in the world as it is: anywhere in reach, unless its owner says otherwise. */
     private final BiPredicate<WorldView, BlockPos> stands;
@@ -163,13 +166,17 @@ public final class Clearer {
         int bestPickaxe = Digger.Target.bestTool(inventory);
         int bestTier = bestPickaxe < 0 ? Hardness.HAND : ItemClassRegistry.miningTier(inventory.itemAt(bestPickaxe)).orElse(Hardness.HAND);
         List<BlockPos> beyondItsTools = cover.stream()
+                // Only ore: a clear is for the ground gone, not the drop, and anything else is dug with the
+                // best tool carried, fists included (operator, 2026-11-14) - stone by hand in 7.5 seconds for
+                // no cobblestone, rather than a soldier stood still for the want of a pickaxe.
+                .filter(c -> world.isOre(c.x(), c.y(), c.z()))
                 .filter(c -> world.hardness(c.x(), c.y(), c.z()).filter(h -> h.tool() == Hardness.Tool.PICKAXE && !h.drops(bestTier)).isPresent())
                 .toList();
         excluded.addAll(beyondItsTools);
         if (beyondItsTools.size() != leftForTools) {
             leftForTools = beyondItsTools.size();
             if (leftForTools > 0) {
-                LOG.info("{} leaves {} block(s) its tools can't dig for their drop - {} - for a better pickaxe", name, leftForTools,
+                LOG.info("{} leaves {} ore block(s) its tools can't dig for their drop - {} - for a better pickaxe", name, leftForTools,
                         bestTier == Hardness.HAND ? "no pickaxe carried" : "the best carried is tier " + bestTier);
             }
         }
@@ -202,10 +209,19 @@ public final class Clearer {
                 : world.isCobblestone(b.x(), b.y(), b.z()) ? Digger.Target.COBBLESTONE
                 : world.isGravel(b.x(), b.y(), b.z()) ? Digger.Target.GRAVEL
                 : world.isSoil(b.x(), b.y(), b.z()) ? Digger.Target.SOIL : Digger.Target.OTHER;
+        // Without the tool the kind wants - stone with no pickaxe - it's dug as any other block, by
+        // hand in its own break time, for the clear and not the drop: a way out, a snag, the ground.
         if (!target.canDig(inventory)) {
-            failed.failed(b, ticks, "no tool to dig the " + target + " at " + b);
-            cooldown = COOLDOWN_TICKS;
-            return;
+            if (world.hardness(b.x(), b.y(), b.z()).isEmpty()) {
+                failed.failed(b, ticks, "no tool to dig the " + target + " at " + b + ", and no break time known to dig it by hand");
+                cooldown = COOLDOWN_TICKS;
+                return;
+            }
+            if (!byHand.contains(b)) {
+                byHand.add(b);
+                LOG.info("{} digs the {} at {} by hand - no {} carried; it drops nothing that way", name, target, b, target.tool);
+            }
+            target = Digger.Target.OTHER;
         }
         // Given the time its walk takes - a climb up a hill to its top is no 20-second walk: live, the
         // keep's builders gave up cut after cut on the hill's summit, each walk timed out on the way.

@@ -166,6 +166,35 @@ class RecoveryTest {
         assertEquals(new Order.MoveTo(3, 64, 0, Recovery.ESCAPE_TOLERANCE, Recovery.ESCAPE_TOLERANCE, Risk.MEDIUM), orders.get(2));
     }
 
+    /**
+     * Stranded below with no pickaxe and nobody carrying one to come, it digs the cut by hand - fists
+     * break anything but bedrock (operator, 2026-11-14) - rather than wait; with a squadmate's pickaxe
+     * on offer, that squadmate digs it from the top, twelve times as fast.
+     */
+    @Test
+    void oneStrandedBelowWithNoPickaxeTunnelsUpByHandUnlessASquadmateWithOneCanCome() {
+        Position pocket = new Position(0.5, 60, 0.5);
+        Kit pick = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, true, 0, false);
+        List<Cell> cut = List.of(new Cell(0, 62, 0), new Cell(1, 61, 0), new Cell(1, 62, 0));
+        List<SoldierStatus> alone = List.of(
+                soldier("Bob", new Position(3, 64, 0), new Report.InPosition(), 0),
+                soldier("Dana", pocket, STUCK, 0));
+        List<SoldierStatus> helped = List.of(
+                new SoldierStatus("Bob", new Position(3, 64, 0), new Order.Idle(), new Report.InPosition(),
+                        Optional.of(new Condition(20, 20, 0, Optional.of(pick)))),
+                soldier("Dana", pocket, STUCK, 0));
+
+        Recovery byHand = new Recovery();
+        assertEquals(List.of(new Order.Idle(), Recovery.dig(cut)),
+                byHand.orders(alone, List.of(new Order.Idle(), new Order.Idle()), NO_STAIR, s -> Optional.of(cut)), "by hand, alone");
+        assertEquals(true, byHand.ordered("Dana"));
+        Recovery fetched = new Recovery();
+        assertEquals(List.of(Recovery.dig(cut), new Order.Idle()),
+                fetched.orders(helped, List.of(new Order.Idle(), new Order.Idle()), NO_STAIR, s -> Optional.of(cut)), "Bob's pickaxe, from the top");
+        assertEquals(true, fetched.ordered("Bob"));
+        assertEquals(false, fetched.ordered("Dana"));
+    }
+
     /** Stranded below with a pickaxe of its own, it digs the engineer's cut itself: a tunnel up, nobody fetched. */
     @Test
     void oneStrandedBelowWithAPickaxeTunnelsUpItself() {

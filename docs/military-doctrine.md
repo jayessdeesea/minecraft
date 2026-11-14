@@ -320,11 +320,15 @@ another, with a pickaxe and 263 cobblestone, stood a day in a dead end 30 blocks
 12-step stair short. A squadmate is sent where no stair or cut is laid only to one up on a ledge -
 a carrier from below, whose own route builds the steps it finds - never down to one in a pocket:
 live, two squadmates in turn walked down to one and were trapped beside it. Stranded means cut
-off: a soldier reporting no route whose squad it can still walk to - its order's goal out of reach,
-a squadmate in a pocket, a plot across water - isn't stranded (`SoldierRunner.cutOff`), and nothing
-is cross-levelled to one the drill has: live, the keep's foreman spent a day on the stairs with
-rations for one in a dead end, "stranded" every minute on its way. With nobody to fetch it and
-nothing to build with, the stranded soldier
+off: a soldier reporting no route that can walk no more than 128 cells from where it stands, by the
+planner's own moves (`SoldierRunner.cutOff`, WayOut's measure of a pocket). One with the ground to
+walk - its order's goal out of reach, a squadmate in a pocket, a plot across water - isn't
+stranded, and nothing is cross-levelled to or from one the drill has: live, the keep's foreman
+spent a day on the stairs with rations for one in a dead end, "stranded" every minute on its way.
+The drill's order - its own stair or cut, or a squadmate's - outranks ground work: live, a builder
+in a dead end kept its keep strip's dig, 50 blocks off and up, over the stair out. Without a pickaxe
+and with nobody carrying one to come, the stranded soldier digs the cut by hand. With nobody to
+fetch it and nothing to build with, the stranded soldier
 goes down to its nearest squadmate itself at MEDIUM risk, over its own routine's stand: a fall
 that leaves it half its health or more. Live, soldiers stood for an hour on hut roofs, the wall
 and a canopy over the camp, a 4-block drop from the ground that the squad's LOW risk wouldn't take. A recovery lasts until the
@@ -505,10 +509,13 @@ shovel if it has none, stone if it carries the cobblestone: it digs soil and gra
 fastest shovel, a stone one in a quarter of the bare-handed time. Every other block it clears is
 dug with the tool of its kind too (operator, 2026-11-13; `Hardness.Tool`, from the server's
 `mineable/*` tags in the block registry): the best pickaxe for rock, the fastest axe for wood,
-chests and tables, the fastest shovel for sand, a bare hand for glass - and a block whose drop
-needs a pickaxe of a tier it hasn't got (`needs_*_tool`: stone for iron ore, iron for diamond) is
-left alone, for a squadmate's pickaxe or until one is made, since dug with less it breaks slowly
-and drops nothing (`Clearer`, "leaves N block(s) its tools can't dig"). A step or pillar it builds is of
+chests and tables, the fastest shovel for sand, a bare hand for glass. Fists are the floor
+(operator, 2026-11-14: the best tool available, and sometimes that's fists): they break anything
+but bedrock, slowly and for no drop - stone in 7.5 seconds for no cobblestone - so a soldier with no
+pickaxe digs stone by hand rather than stand, for a way out, a snag or the ground. The one block it
+leaves is ore whose drop needs a pickaxe of a tier it hasn't got (`needs_*_tool`: stone for iron
+ore, iron for diamond), for a squadmate's pickaxe or until one is made, since dug with less the
+drop is lost for good (`Clearer`, "leaves N ore block(s) its tools can't dig for their drop"). A step or pillar it builds is of
 dirt before cobblestone (`Footing.placeStep`): scaffolding, while cobblestone is a floor's and a
 wall's.
 

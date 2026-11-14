@@ -2944,6 +2944,32 @@ class SquadSimulationTest {
     }
 
     /**
+     * The same pocket, the squad on the keep: the stranded builder's strip is 50 blocks off and up,
+     * and its dig held over the stair out, live, a whole day. The drill's order outranks ground work.
+     */
+    @Test
+    void aKeepBuilderInAPocketTunnelsUpBeforeItDigsItsStrip() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::deepPocketBelow, 1000);
+        Roster roster = new Roster("Alpha:Alice,Dana");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(
+                        n -> n.equals("Dana") ? new PlayerPosition(10.5, GROUND - 25, 0.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> List.of(new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(10 * 60_000);
+
+        server.dumpLog("aKeepBuilderInAPocketTunnelsUpBeforeItDigsItsStrip");
+        assertTrue(server.position("Dana").y() >= GROUND, "Dana out of the pocket: at " + server.position("Dana")
+                + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+    }
+
+    /**
      * As live (field35 to field38): Dana boxed in a pocket below the ground with nothing to dig or
      * build with, no stair down to lay. The engineer lays a stair up, a squadmate with a pickaxe digs
      * it from the top, and she walks out.

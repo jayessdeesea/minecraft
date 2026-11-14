@@ -150,6 +150,7 @@ public final class Recovery {
         List<Order> result = new ArrayList<>(orders);
         List<String> names = List.copyOf(byName.keySet());
         escaping.clear();
+        ordered.clear();
         for (Map.Entry<String, Episode> e : recovering.entrySet()) {
             Episode episode = e.getValue();
             // Carrying the blocks for its own stair - logs too - it builds it, from the top down:
@@ -158,16 +159,19 @@ public final class Recovery {
             SoldierStatus self = byName.get(e.getKey());
             if (episode.pillar.isPresent()) {
                 result.set(names.indexOf(e.getKey()), dig(episode.pillar.get()));
+                ordered.add(e.getKey());
                 continue;
             }
             if (episode.stair.isPresent() && self != null && ownBlocks(self) >= episode.stair.get().size()) {
                 result.set(names.indexOf(e.getKey()), new Order.Place(fromTop(episode.stair.get())));
+                ordered.add(e.getKey());
                 continue;
             }
             // Below, with a pickaxe: it tunnels up itself, along the engineer's cut. Live, a soldier
             // with a pickaxe and 263 cobblestone stood a day in a dead end at the mine's bottom.
             if (episode.cut.isPresent() && self != null && pickaxe(self)) {
                 result.set(names.indexOf(e.getKey()), dig(episode.cut.get()));
+                ordered.add(e.getKey());
                 continue;
             }
             if (episode.fetcher == null || !fetching(episode.fetcher, byName)) {
@@ -182,6 +186,14 @@ public final class Recovery {
                 episode.fetcher = nearestCarrier(e.getKey(), episode.at, reported, episode.cut.isPresent(), nothingLaid);
             }
             if (episode.fetcher == null) {
+                // Below with no pickaxe and nobody with one to come: it digs the cut by hand - fists
+                // break anything but bedrock, slowly, for no drop, and a way out wants no drop
+                // (operator, 2026-11-14: the best tool available, and sometimes that's fists).
+                if (episode.cut.isPresent() && self != null) {
+                    result.set(names.indexOf(e.getKey()), dig(episode.cut.get()));
+                    ordered.add(e.getKey());
+                    continue;
+                }
                 // Nobody to fetch it, and nothing to build its own way down with: it goes down to its
                 // squad itself, at MEDIUM - a fall that leaves it half its health or more. Live, soldiers
                 // stood for an hour on hut roofs, the wall and a canopy over the camp, a 4-block drop
@@ -201,8 +213,21 @@ public final class Recovery {
             result.set(names.indexOf(episode.fetcher), episode.stair.<Order>map(Order.Place::new)
                     .or(() -> episode.cut.map(Recovery::dig))
                     .orElse(new Order.MoveTo(at.x(), at.y(), at.z(), TOLERANCE, TOLERANCE, Risk.LOW)));
+            ordered.add(episode.fetcher);
         }
         return List.copyOf(result);
+    }
+
+    /** The soldiers the drill ordered this cycle - the stranded building or digging their way, the fetchers. */
+    private final Set<String> ordered = new HashSet<>();
+
+    /**
+     * Whether {@code soldier}'s order this cycle is the drill's: a stair to build or a cut to dig, its
+     * own or a stranded squadmate's. It outranks the soldier's ground work - live, a builder in a dead
+     * end at the mine's bottom kept its keep strip's dig, 50 blocks off and up, over the stair out.
+     */
+    public boolean ordered(String soldier) {
+        return ordered.contains(soldier);
     }
 
     /** Whether the drill has {@code soldier}: stranded, and not yet off where it was stuck. */
