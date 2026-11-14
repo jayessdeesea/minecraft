@@ -67,7 +67,27 @@ public final class WayOut {
      */
     private static boolean dropBeside(WorldView world, BlockPos c, Set<BlockPos> room) {
         return java.util.stream.Stream.of(c.offset(1, 0, 0), c.offset(-1, 0, 0), c.offset(0, 0, 1), c.offset(0, 0, -1))
-                .anyMatch(n -> !room.contains(n) && !world.isSolid(n.x(), n.y(), n.z()) && !world.isSolid(n.x(), n.y() + 1, n.z()));
+                .anyMatch(n -> !room.contains(n) && !world.isSolid(n.x(), n.y(), n.z()) && !world.isSolid(n.x(), n.y() + 1, n.z())
+                        && !ontoTheFarm(world, n));
+    }
+
+    /**
+     * Whether going over the side into {@code n} lands on a farm - its wheat, or its farmland: no
+     * route treads there, so it's no way down and the side is a wall. Live, four soldiers stood two
+     * days in a pocket by the camp's farm whose one open side dropped into the wheat, read as a
+     * ledge, and nothing broke them out.
+     */
+    private static boolean ontoTheFarm(WorldView world, BlockPos n) {
+        for (int down = 0; down <= 3; down++) {
+            BlockPos c = n.offset(0, -down, 0);
+            if (world.wheatAge(c.x(), c.y(), c.z()).isPresent() || world.isFarmland(c.x(), c.y() - 1, c.z())) {
+                return true;
+            }
+            if (world.isSolid(c.x(), c.y() - 1, c.z())) {
+                return false;
+            }
+        }
+        return false;
     }
 
     private static boolean diggable(WorldView world, BlockPos c) {

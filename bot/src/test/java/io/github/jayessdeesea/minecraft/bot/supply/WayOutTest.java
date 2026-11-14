@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WayOutTest {
 
@@ -160,5 +161,55 @@ class WayOutTest {
     void notBoxedInThereIsNothingToBreak() {
         assertEquals(List.of(), WayOut.cells(hut(true), new BlockPos(10, GROUND, 0), new Position(0.5, GROUND, 0.5)),
                 "outside the hut, on open ground");
+    }
+
+    /**
+     * A pocket whose one open side drops into a farm's wheat is boxed in, not a ledge: no route
+     * treads the farm. Live, four soldiers stood two days in one by the camp's farm.
+     */
+    @Test
+    void aPocketWhoseOnlyOpenSideDropsOntoTheFarmIsBoxedIn() {
+        WorldView pocket = new WorldView() {
+            // Cobblestone all round (0, 64, 0) and over it, but for (-1, 64, 0) and (-1, 65, 0): open,
+            // over wheat at (-1, 63, 0) on farmland at (-1, 62, 0).
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                if (x == 0 && z == 0 && (y == GROUND || y == GROUND + 1)) {
+                    return false;
+                }
+                if (x == -1 && z == 0 && (y == GROUND || y == GROUND + 1 || y == GROUND - 1)) {
+                    return false;
+                }
+                return Math.abs(x) <= 2 && Math.abs(z) <= 2 && y <= GROUND + 2 || y < GROUND - 1;
+            }
+
+            @Override
+            public boolean isCobblestone(int x, int y, int z) {
+                return isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public java.util.OptionalInt wheatAge(int x, int y, int z) {
+                return x == -1 && z == 0 && y == GROUND - 1 ? java.util.OptionalInt.of(7) : java.util.OptionalInt.empty();
+            }
+
+            @Override
+            public boolean isFarmland(int x, int y, int z) {
+                return x == -1 && z == 0 && y == GROUND - 2;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertTrue(!WayOut.cells(pocket, new BlockPos(0, GROUND, 0), new Position(10.5, GROUND, 0.5)).isEmpty(),
+                "boxed in: the wheat is no way down");
     }
 }
