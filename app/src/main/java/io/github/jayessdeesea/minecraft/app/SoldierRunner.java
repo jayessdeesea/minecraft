@@ -2472,9 +2472,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // reports: live, one in a dead end at the mine's bottom reported the dig it meant to pillar
             // up to, and "nothing left to gather", between them, and the drill's count of twenty
             // reports running never got there.
+            // And one stood still a minute (IdleWatch) with no "no route" said at all: live, a soldier in
+            // a pocket, its gatherer finding no gravel, reported "nothing left to gather" all morning.
             if (Recovery.stranded(s)) {
                 noRouteAt.put(s.name(), now);
-            } else if (!noRouteAt.containsKey(s.name()) || now - noRouteAt.get(s.name()) > POCKET_MEMORY_MILLIS) {
+            } else if ((!noRouteAt.containsKey(s.name()) || now - noRouteAt.get(s.name()) > POCKET_MEMORY_MILLIS) && !idleWatch.alarmed(s.name())) {
                 noRouteAt.remove(s.name());
                 walksSaid.remove(s.name());
                 return s;
@@ -2486,7 +2488,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 return Recovery.stranded(s) ? s : new SoldierStatus(s.name(), s.position(), s.order(), new Report.Cantco(String.format(Locale.ROOT,
                         "no route from (%.0f, %.0f, %.0f): cut off in a pocket of %d cells", from.x(), from.y(), from.z(), cells)), s.condition());
             }
-            if (walksSaid.add(s.name())) {
+            if (Recovery.stranded(s) && walksSaid.add(s.name())) {
                 LOG.info("{} reports no route to its goal but has {} cells to walk from {} - not stranded", s.name(), cells, from);
             }
             return Recovery.stranded(s) ? new SoldierStatus(s.name(), s.position(), s.order(), new Report.Moving(), s.condition()) : s;

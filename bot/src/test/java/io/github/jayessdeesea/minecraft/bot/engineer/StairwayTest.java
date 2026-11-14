@@ -133,18 +133,18 @@ class StairwayTest {
     }
 
     /**
-     * A straight flight stopped on every heading - gravel three steps out each way - winds round it:
-     * two steps east, then north and out. Live, from a dead end at a mine's bottom, every one of the
-     * four straight flights was stopped, and the drill said no stair could be dug.
+     * A straight flight stopped on every heading - gravel lying over its third step each way - winds
+     * round it: two steps east, then a turn and out. Live, from a dead end at a mine's bottom, every
+     * one of the four straight flights was stopped, and the drill said no stair could be dug.
      */
     @Test
     void aStairUpWindsRoundWhatStopsAStraightFlight() {
-        Set<BlockPos> gravel = Set.of(new BlockPos(3, 63, 0), new BlockPos(-3, 63, 0), new BlockPos(0, 63, 3), new BlockPos(0, 63, -3));
+        Set<BlockPos> gravel = Set.of(new BlockPos(3, 64, 0), new BlockPos(-3, 64, 0), new BlockPos(0, 64, 3), new BlockPos(0, 64, -3));
         WorldView base = soil(StairwayTest::pocket, c -> false);
         WorldView world = new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
-                return base.isSolid(x, y, z);
+                return base.isSolid(x, y, z) || gravel.contains(new BlockPos(x, y, z));
             }
 
             @Override
@@ -172,9 +172,9 @@ class StairwayTest {
 
         List<BlockPos> dig = Stairway.up(world, feet, whyNot).orElseThrow(() -> new AssertionError("no stair: " + whyNot));
 
-        assertTrue(dig.stream().noneMatch(gravel::contains), "round the gravel, not through it: " + dig);
+        assertTrue(dig.stream().noneMatch(c -> gravel.contains(c.offset(0, 1, 0))), "round the gravel, never under it: " + dig);
         Set<BlockPos> dug = new HashSet<>(dig);
-        WorldView after = world(c -> pocket(c) && !dug.contains(c), c -> false);
+        WorldView after = world(c -> (pocket(c) || gravel.contains(c)) && !dug.contains(c), c -> false);
         assertTrue(Pathfinder.find(after, feet, new Goal(0.5, 64, 0.5, 12, 0.5), 20_000).reachesGoal(), "no way out up the stair: " + dig);
     }
 
@@ -189,7 +189,11 @@ class StairwayTest {
         assertTrue(whyNot.values().stream().allMatch(w -> w.startsWith("step 1: a block no clear digs at")), whyNot.toString());
     }
 
-    /** Sand or gravel over a cell to cut comes down on the digger: no stair goes under it, nor under water. */
+    /**
+     * Sand or gravel over a cell to cut comes down on the digger: no stair goes under it, nor under
+     * water. A cell of gravel itself is dug like any other - live, a pocket walled in gravel had every
+     * heading stopped at its first step.
+     */
     @Test
     void noStairUpIsCutUnderGravelOrWater() {
         WorldView base = soil(StairwayTest::pocket, c -> false);

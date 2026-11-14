@@ -175,10 +175,11 @@ public final class Stairway {
                         stopped = "water or lava at " + cell;
                     } else if (world.isSolid(cell.x(), cell.y(), cell.z())) {
                         BlockPos over = cell.offset(0, 1, 0);
+                        // A cell of sand or gravel is dug like any other - what matters is what's over the
+                        // hole it leaves: live, a pocket walled in gravel had every heading stopped at its
+                        // first step. Gravel beside the digger falls only when the block under it goes.
                         if (!Clearing.diggable(world, cell.x(), cell.y(), cell.z())) {
                             stopped = "a block no clear digs at " + cell;
-                        } else if (world.falls(cell.x(), cell.y(), cell.z())) {
-                            stopped = "sand or gravel at " + cell;
                         } else if (world.falls(over.x(), over.y(), over.z())) {
                             // Over the cut, what the dig leaves standing: nothing that falls or flows.
                             stopped = "sand or gravel over " + cell;

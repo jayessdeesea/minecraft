@@ -27,6 +27,12 @@ final class IdleWatch {
 
     private final Map<String, Spell> spells = new HashMap<>();
 
+    /** Whether {@code soldier} has stood still long enough for the alert, and hasn't moved on since. */
+    synchronized boolean alarmed(String soldier) {
+        Spell spell = spells.get(soldier);
+        return spell != null && spell.alarmed();
+    }
+
     /**
      * {@code soldier} is at {@code position} at {@code now}; {@code resting} whether its squad is
      * hiding or sleeping. {@code doing} describes what it's at, for the alert. A line when the alert
