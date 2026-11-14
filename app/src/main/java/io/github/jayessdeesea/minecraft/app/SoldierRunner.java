@@ -3749,8 +3749,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private static final int SHUT_IN_CELLS = 30;
     /** {@code minecraft:cobblestone}'s block state in protocol 777 - a placed pillar block, until the server's update. */
     private static final int COBBLESTONE_STATE = 14;
-    /** Dirt's block state: what a snag the model didn't show is taken as, until the server says otherwise. */
-    private static final int DIRT_STATE = 10;
+    /** Stone's block state: what a snag the model didn't show is taken as, until the server says otherwise - a dig timed for it outwaits anything softer. */
+    private static final int STONE_STATE = 1;
 
     /** Whether a soldier can step into {@code cell} from beside it: room for a body, and ground at most a block down. */
     private boolean walkable(Position cell) {
@@ -4065,12 +4065,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 session.attack(target);
             });
             // A cell it's been stuck short of three times is a block the server has and the
-            // model doesn't: taken as dirt until the server says otherwise, so the next plan goes round
-            // it, or breaks it if that's the only way (backlog/world-model-stale.md).
+            // model doesn't: taken as stone until the server says otherwise - a dig timed for stone
+            // outwaits anything softer - so the next plan goes round it; and it's broken straight
+            // away, since what stopped the body three times is in its way (backlog/world-model-stale.md).
+            // Live, marked and left to the planner, a soldier down the camp's mine stood on with "no route".
             soldier.takeSnag().ifPresent(cell -> {
                 if (!world.isSolid(cell.x(), cell.y(), cell.z())) {
-                    chunkCache.setBlock(cell.x(), cell.y(), cell.z(), DIRT_STATE);
-                    LOG.warn("[World] {} stuck short of {} {} times - the model takes it as a block", name, cell, DeterministicSoldier.SNAG_TRIES);
+                    chunkCache.setBlock(cell.x(), cell.y(), cell.z(), STONE_STATE);
+                    LOG.warn("[World] {} stuck short of {} {} times - the model takes it as a block, and breaks it", name, cell, DeterministicSoldier.SNAG_TRIES);
+                    wayOut.set(List.of(cell, cell.offset(0, 1, 0)));
                 }
             });
             SoldierStatus status = soldier.status();

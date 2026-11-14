@@ -929,8 +929,10 @@ confirmed, and live one held in the model for hours as the top of a keep builder
 strip beside it waiting on a block nobody could dig. The reverse case - a block the server has and
 the model doesn't (backlog/world-model-stale.md) - is read from the body: a soldier stuck short of
 the same cell three times (`DeterministicSoldier.SNAG_TRIES`; stalled at it, or put back by the
-server) has hit something, and the model takes that cell as dirt until the server says otherwise,
-so the next plan goes round it or breaks it. Live, one soldier down the camp's mine was stuck short of one cell 161 times in a
+server) has hit something, and the model takes that cell as stone until the server says otherwise -
+a dig timed for stone outwaits anything softer - and the soldier breaks it at once, since what
+stopped its body three times is in its way; live, marked and left to the planner, it stood on with
+"no route". Live, one soldier down the camp's mine was stuck short of one cell 161 times in a
 quarter of an hour. Progress reads "N cells under the
 camp's ground to fill". Live, a pit 13 deep under the east wall line left 42 wall cells nothing to
 stand on.
