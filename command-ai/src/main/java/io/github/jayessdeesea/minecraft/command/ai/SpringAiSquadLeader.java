@@ -291,8 +291,12 @@ public final class SpringAiSquadLeader implements SquadLeader {
                 && Math.abs(objective.z() - terrain.originZ()) <= terrain.radius();
         StringBuilder out = new StringBuilder();
         if (!inside) {
-            out.append(String.format(Locale.ROOT, "The objective is outside the surveyed area, %.0f blocks beyond its edge.\n",
-                    distance(nearest, objective)));
+            // No spots to copy: shown the highest reachable one, the model sent its squad there "to
+            // begin flattening" a keep 60 blocks off (docs/prompting.md). A far objective is ordered
+            // as it is; the survey moves with the point man.
+            return out.append(String.format(Locale.ROOT, "The objective is outside the surveyed area, %.0f blocks beyond its edge:"
+                    + " order the objective itself, the squad walks toward it and the survey follows the point man.\n",
+                    distance(nearest, objective))).toString();
         } else if (nearest.ground() == TerrainSurvey.Ground.LAND && nearest.reachable()) {
             out.append("The objective is on reachable land at height ").append(nearest.height()).append(climb(nearest)).append(".\n");
         } else {

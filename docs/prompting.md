@@ -26,7 +26,9 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   begin flattening" (live, 2026-11-13: Alpha spent a day on a hilltop by the camp while its share
   of the keep stood untouched, the hilltop itself unreachable). The prompt now says to order a far
   objective itself - the survey follows the point man - and that the keep's work is assigned at the
-  site, never by moving the squad to high ground.
+  site, never by moving the squad to high ground; and, since a rule in prose lost to a coordinate
+  in the lookup (the leader did it again the next day), `<objective_ground>` lists no spots at all
+  for an objective beyond the survey, only that instruction.
 - **Worked examples are copied the same way**, their coordinates and their choices: one example of
   a sealed squad sent to SECURE pulled every sealed squad out.
 - **Put a rule in the paragraph of the task it sets**, not in a general section after it.

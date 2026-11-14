@@ -150,8 +150,11 @@ class SpringAiSquadLeaderTest {
 
     @Test
     void objectiveGroundSaysWhenTheObjectiveIsBeyondTheSurvey() {
-        assertTrue(SpringAiSquadLeader.describeObjectiveGround(TERRAIN, new Position(0, 64, -40))
-                .contains("outside the surveyed area, 32 blocks beyond its edge"));
+        String far = SpringAiSquadLeader.describeObjectiveGround(TERRAIN, new Position(0, 64, -40));
+        assertTrue(far.contains("outside the surveyed area, 32 blocks beyond its edge"), far);
+        // No spot to copy: live, shown the highest reachable spot, the leader sent its squad up a hill
+        // by the camp instead of toward the keep 60 blocks off.
+        assertTrue(far.contains("order the objective itself") && !far.contains("Highest reachable spot") && !far.contains("Reachable spots"), far);
     }
 
     @Test

@@ -84,7 +84,10 @@ What's left:
   chunk data doesn't show stops his body two cells west, at (-42, 31, 42): stuck short of it
   three times a minute with the cell air on the server (a dig of it "didn't come") and no
   squadmate in it - an entity, or the server putting him back for a reason the client can't see.
-  A console `execute if entity @e[x=-42,y=31,z=42,distance=..1]` would say. What's needed is a
+  A console `execute if entity @e[x=-42,y=31,z=42,distance=..1]` would say. And the recovery drill
+  feeds the pocket: told Bob was stranded with nobody to fetch him, it sent Gus down to him, and
+  the next day Carol, each trapped in turn beside him - a fetcher's route down should be one it
+  can come back up. What's needed is a
   tunnel up: cut steps through rock toward the surface (the staircase routine run upward, or the
   pathfinder's step-cutting given the budget to reach daylight), with the known-ground rule for
   what's over the head.
