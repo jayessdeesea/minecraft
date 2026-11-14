@@ -23,11 +23,4 @@ class KeepTest {
         assertEquals(Optional.empty(), Keep.classFour(2, 2, false), "enough between them and the stockpile");
         assertEquals(Optional.empty(), Keep.classFour(Keep.LOGS_WANTED, 0, false));
     }
-
-    /** Level by level: no soldier digs more than the window under the keep's current layer, and never under the slab. */
-    @Test
-    void aSoldierDigsNoLowerThanTheWindowUnderTheLayerNorUnderTheSlab() {
-        assertEquals(93 - Keep.LAYER_WINDOW, Keep.floor(93));
-        assertEquals(Keep.BOTTOM, Keep.floor(Keep.BOTTOM + 1), "the slab's bottom is the floor of the dig");
-    }
 }

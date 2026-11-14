@@ -2111,6 +2111,40 @@ class SquadSimulationTest {
         assertEquals(SimServer.AIR, server.block(-5, GROUND + 1, -5), "the chest; " + events);
     }
 
+    /** Emerald ore, which only an iron pickaxe gets the drop from (the block registry's state id). */
+    private static final int EMERALD_ORE = 11315;
+
+    /**
+     * Emerald ore standing two blocks over the keep, its builder carrying a stone pickaxe: the ore is
+     * set aside, with the dirt it stands on, and the site still comes down past it - the mound a level
+     * lower elsewhere is dug. Left in the dig, the ore would be its strip's top for good, and in lock
+     * step hold the whole site at its level (operator, 2026-11-14: an emerald the workers ignore).
+     */
+    @Test
+    void oreItsBuildersPickaxeWontGetIsSetAsideAndTheSiteGoesOnDown() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 1 ? SimServer.DIRT
+                : x == 3 && z == 3 && y == GROUND + 2 ? EMERALD_ORE
+                : x == -5 && z == -5 && y == GROUND + 1 ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(6 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        assertEquals(EMERALD_ORE, server.block(3, GROUND + 2, 3), "the emerald ore left for an iron pickaxe; " + events);
+        assertEquals(SimServer.AIR, server.block(-5, GROUND + 1, -5), "the mound a level lower, dug all the same; " + events);
+    }
+
     /**
      * A hill of dirt over the keep's depot, with a one-wide tunnel cut into it at the slab's height
      * - as live, west of the keep. The keep's workshop goes on the hill's surface, not in the tunnel,

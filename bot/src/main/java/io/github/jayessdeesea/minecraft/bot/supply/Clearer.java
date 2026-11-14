@@ -67,6 +67,12 @@ public final class Clearer {
         this.stands = stands;
     }
 
+    /** The mining tier of the best pickaxe in {@code inventory}, or {@link Hardness#HAND} with none. */
+    public static int bestPickaxeTier(Inventory inventory) {
+        int slot = Digger.Target.bestTool(inventory);
+        return slot < 0 ? Hardness.HAND : ItemClassRegistry.miningTier(inventory.itemAt(slot)).orElse(Hardness.HAND);
+    }
+
     public synchronized boolean active() {
         return digger != null;
     }

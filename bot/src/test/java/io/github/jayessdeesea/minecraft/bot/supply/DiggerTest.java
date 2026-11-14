@@ -294,6 +294,47 @@ class DiggerTest {
         assertEquals(1, server.inventory.count(ItemClass.LOG));
     }
 
+    /**
+     * A drop lying where no body can stand - fallen into a gap, here inside the ground - is lost, and
+     * the dig is done: not walked to, not waited out. Live, three builders in turn stood a minute and
+     * more over one under a dirt block.
+     */
+    @Test
+    void aDropWhereNoBodyCanStandIsLostAndTheDigIsDone() {
+        FakeServer server = new FakeServer();
+        BlockPos log = new BlockPos(5, GROUND, 0);
+        server.logs.add(log);
+        server.landsAt = new Position(6.7, GROUND - 2, 1.8);
+        Digger digger = new Digger("Carol", server.session, server.inventory, new HashSet<>(),
+                new Digger.Spot(Digger.Target.LOG, new BlockPos(4, GROUND, 0), log));
+        Position stand = new Position(4.5, GROUND, 0.5);
+
+        Digger.Progress progress = server.run(digger, stand, 200);
+
+        assertEquals(new Digger.Progress.Done(), progress);
+        assertEquals(0, server.inventory.count(ItemClass.LOG));
+        assertEquals(stand, digger.standAt(), "never sent to stand where it lies");
+    }
+
+    /**
+     * A stand with a block in it - a step put there since it was chosen - ends the dig at once. Live,
+     * builders stood six minutes on a step of their own, sent to stand inside it.
+     */
+    @Test
+    void aStandWithABlockInItEndsTheDigAtOnce() {
+        FakeServer server = new FakeServer();
+        BlockPos log = new BlockPos(5, GROUND, 0);
+        BlockPos stand = new BlockPos(4, GROUND, 0);
+        server.logs.add(log);
+        server.logs.add(stand);
+        Digger digger = new Digger("Carol", server.session, server.inventory, new HashSet<>(),
+                new Digger.Spot(Digger.Target.LOG, stand, log));
+
+        Digger.Progress progress = server.run(digger, new Position(4.5, GROUND + 1, 0.5), 5);
+
+        assertTrue(progress instanceof Digger.Progress.Failed(String why) && why.contains("has a block in it"), progress.toString());
+    }
+
     @Test
     void aDropASquadmatePicksUpFirstIsPickedUp() {
         FakeServer server = new FakeServer();

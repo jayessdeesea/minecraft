@@ -48,6 +48,7 @@ import io.github.jayessdeesea.minecraft.bot.world.ChunkCache;
 import io.github.jayessdeesea.minecraft.bot.world.EntityTracker;
 import io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
+import io.github.jayessdeesea.minecraft.bot.world.Hardness;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
@@ -245,6 +246,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         String keepWaiting;
         /** What's left of the squad's share of the keep's dig and fill, -1 when it isn't on them. */
         int keepDigLeft = -1;
+        /** The keep's ore set aside for a better pickaxe, as last said. */
+        Set<Cell> keepOreAside = Set.of();
         int keepFillLeft = -1;
         /** Wall cells left to fill at the last check: -1 before the first. */
         int wallLeft = -1;
@@ -473,6 +476,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, List<BlockPos>> clearing = new ConcurrentHashMap<>();
     /** Each soldier's dig's box - squad loop writes, tick reads: the keep's builders stand only in theirs. */
     private final Map<String, Box> clearingStrip = new ConcurrentHashMap<>();
+    /** Keep builders in contact, or out of it less than {@link #KEEP_FIGHT_MILLIS}: their strips offer the level nothing - squad loops. */
+    private final Set<String> keepFighting = ConcurrentHashMap.newKeySet();
+    /** When each keep builder was last in contact - squad loops. */
+    private final Map<String, Long> keepFoughtAt = new ConcurrentHashMap<>();
+    /** How long past its last contact a builder's strip stays out of the site's level. */
+    static final long KEEP_FIGHT_MILLIS = 30_000;
+    /** Each soldier's best pickaxe's mining tier - its tick writes, the squad loop reads. */
+    private final Map<String, Integer> pickaxeTiers = new ConcurrentHashMap<>();
     /** Soldiers whose dig is a tunnel - the recovery drill's stair up, cut cell by cell under rock. Squad loop writes, tick reads. */
     private final Set<String> clearingTunnel = ConcurrentHashMap.newKeySet();
     /** The blocks of cover a clearer has taken, and where it stands for each: shared, so each takes another. */
@@ -1725,6 +1736,34 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Level by level, strip by strip: each soldier's floor is two under the highest ground left in
         // and round its strip (Tasking.keepDig), every squad's share counted - the seam between two
         // squads' strips is an edge like any other.
+        // Ore whose drop its strip's builder can't get - emerald with a stone pickaxe - is set aside,
+        // with the ground under it, till that builder carries the pickaxe for it (operator,
+        // 2026-11-13: left for a tool of the right strength). Left in the dig it would be its strip's
+        // top for good, and in lock step hold the whole site at its level. Set aside, the site goes on
+        // down past it; with the pickaxe it's the strip's top again and is cleared like any block.
+        Map<String, Box> owners = new HashMap<>();
+        keepStripsBySquad.values().forEach(owners::putAll);
+        int squadsBest = hands.stream().mapToInt(h -> pickaxeTiers.getOrDefault(h.name(), Hardness.HAND)).max().orElse(Hardness.HAND);
+        Set<Cell> oreAside = new HashSet<>();
+        for (BlockPos c : Clearing.toClear(world, Keep.dig(), digExcept)) {
+            if (!world.isOre(c.x(), c.y(), c.z())) {
+                continue;
+            }
+            int tier = owners.entrySet().stream()
+                    .filter(e -> c.x() >= e.getValue().minX() && c.x() <= e.getValue().maxX() && c.z() >= e.getValue().minZ() && c.z() <= e.getValue().maxZ())
+                    .map(e -> pickaxeTiers.getOrDefault(e.getKey(), Hardness.HAND)).findFirst().orElse(squadsBest);
+            if (world.hardness(c.x(), c.y(), c.z()).filter(h -> h.tool() == Hardness.Tool.PICKAXE && !h.drops(tier)).isPresent()) {
+                oreAside.add(new Cell(c.x(), c.y(), c.z()));
+            }
+        }
+        if (!oreAside.equals(state.keepOreAside)) {
+            if (!oreAside.isEmpty()) {
+                LOG.info("[{}] the keep sets aside {} ore block(s) its builders' pickaxes won't get the drop from - {} - till one carries a better",
+                        squad, oreAside.size(), oreAside.stream().limit(4).map(c -> c.x() + " " + c.y() + " " + c.z()).toList());
+            }
+            state.keepOreAside = oreAside;
+        }
+        digExcept.addAll(oreAside);
         List<BlockPos> wholeDig = Clearing.toClear(world, Keep.dig(), digExcept);
         List<BlockPos> toDig = wholeDig.stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX()
                 && c.z() >= digShare.minZ() && c.z() <= digShare.maxZ()).toList();
@@ -1850,9 +1889,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                            java.util.function.IntBinaryOperator top, Set<Cell> except) {
         long now = clockwork.millis();
         List<Box> strips = share.strips(Math.max(1, crew.size()));
+        // By name, not by this cycle's order of reports: the drills reorder the squad - one in
+        // contact, one rejoining at the rear - and in the squad simulation two builders swapped
+        // strips each time one of them fought, and walked across the keep to the other's.
+        List<String> byName = crew.stream().map(Tasking.Hand::name).sorted().toList();
         Map<String, Box> mine = new LinkedHashMap<>();
-        for (int i = 0; i < crew.size(); i++) {
-            mine.put(crew.get(i).name(), strips.get(i % strips.size()));
+        for (int i = 0; i < byName.size(); i++) {
+            mine.put(byName.get(i), strips.get(i % strips.size()));
         }
         Map<String, Box> before = keepStripsBySquad.put(squad, mine);
         if (before != null) {
@@ -1889,7 +1932,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             tops.put(e.getKey(), t);
             if (chief != null) {
-                Foreman.Top said = new Foreman.Top(t, edgeTop(top, b.minX(), b.minX(), b.minZ(), b.maxZ()),
+                // A builder in a fight has no ground to offer the level: in lock step its strip would
+                // hold every other builder until the fight ends. Said as nothing left; when it's back
+                // its top is said again, and the level comes back up to it like a block put in a strip
+                // already done.
+                Foreman.Top said = keepFighting.contains(e.getKey()) ? new Foreman.Top(Foreman.NONE)
+                        : new Foreman.Top(t, edgeTop(top, b.minX(), b.minX(), b.minZ(), b.maxZ()),
                         edgeTop(top, b.maxX(), b.maxX(), b.minZ(), b.maxZ()), edgeTop(top, b.minX(), b.maxX(), b.minZ(), b.minZ()),
                         edgeTop(top, b.minX(), b.maxX(), b.maxZ(), b.maxZ()));
                 reporters.computeIfAbsent(e.getKey(), n -> new Foreman.Reporter()).report(said, now)
@@ -2961,6 +3009,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Building the keep: its dig and its fill to the plan, a strip each (command.Keep, Tasking.keep).
         boolean onKeep = taskOf(squadName, Objective.Task.Keep.class).isPresent();
         if (onKeep) {
+            // Held as fighting half a minute past its last contact: in and out of a fight each second,
+            // in the squad simulation, a builder's top came and went with it, the level went up and
+            // down a step each cycle, and its squadmate was put on its dig and taken off it all day.
+            long keepNow = clockwork.millis();
+            statuses.forEach(st -> {
+                if (fighting.contains(st.name())) {
+                    keepFoughtAt.put(st.name(), keepNow);
+                }
+                if (keepNow - keepFoughtAt.getOrDefault(st.name(), Long.MIN_VALUE / 2) < KEEP_FIGHT_MILLIS) {
+                    keepFighting.add(st.name());
+                } else {
+                    keepFighting.remove(st.name());
+                }
+            });
             Map<String, Order> keepOrders = keepwork(squadName, state, statuses);
             ground.putAll(keepOrders);
             statuses.forEach(s -> {
@@ -4642,6 +4704,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }));
             List<BlockPos> wall = walling.getOrDefault(name, List.of());
+            pickaxeTiers.put(name, Clearer.bestPickaxeTier(inventory));
             turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
                     clearing.getOrDefault(name, List.of()), free && !threatened && !foodCalls,
                     keepHands.contains(name) ? Optional.ofNullable(clearingStrip.get(name)) : Optional.empty(),

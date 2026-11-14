@@ -9,12 +9,13 @@ import java.util.Optional;
 /**
  * The keep's foreman (operator, 2026-11-13): one soldier, appointed by its squad leader - the
  * first builder of the first squad on the keep - who runs the flattening level by level over
- * the net. Each builder tells it its strip's top, the highest block left to dig in its own range of
- * x and z, and the highest along each of its four edges; it clears each builder to dig down to a
- * floor a step under its own top and under its neighbours' edges facing it, so where two strips
- * meet they're never more than a step apart - the step a soldier walks up - while a spire inside
- * a strip holds back no one but its own builder. A builder digs only once cleared, and only down
- * to its floor.
+ * the net, in lock step (operator, 2026-11-14). Each builder tells it its strip's top, the highest
+ * block left to dig in its own range of x and z; the site's level is the highest any of them said,
+ * and every builder is cleared to that level and no lower. Only the strips with ground at the level
+ * dig, and only that level; when every strip is under it the level falls. A block put into a strip
+ * already done is that strip's top again, and is cleared before anyone goes down; and with the
+ * whole site at one height, nobody climbs over a neighbour's ground. A builder digs only once
+ * cleared, and only down to its floor.
  *
  * <p>Decided only from what it's been told: the reports are the net's, point to point
  * ({@code /msg}), and the world - the builder's own strip - is what each report says. Plain Java,
@@ -114,41 +115,29 @@ public final class Foreman {
     }
 
     /**
-     * The clearances to send now, given each builder's {@code strips}: a floor a step under its own
-     * top and under each neighbour's edge facing it ({@link Keep#floor}), for each builder that has
-     * said its top and whose floor isn't the one it was last sent. A builder beside one that hasn't
-     * spoken yet waits on it: that neighbour's ground isn't known. Live, held to its neighbours'
-     * highest ground anywhere, every builder but the one with the keep's top block stood waiting.
+     * The clearances to send now, given each builder's {@code strips}: the site's level - the highest
+     * top said - for each builder with ground left whose floor isn't the one it was last sent. Nothing
+     * until every builder has said its top.
      */
     public Map<String, Clear> decide(Map<String, Box> strips) {
         Map<String, Clear> out = new LinkedHashMap<>();
-        for (Map.Entry<String, Box> e : strips.entrySet()) {
-            String soldier = e.getKey();
-            Top own = tops.get(soldier);
-            if (own == null || own.top() == NONE) {
-                continue;
-            }
-            int round = own.top();
-            boolean known = true;
-            for (Map.Entry<String, Box> n : strips.entrySet()) {
-                if (n.getKey().equals(soldier) || !touching(e.getValue(), n.getValue())) {
-                    continue;
-                }
-                Top theirs = tops.get(n.getKey());
-                if (theirs == null) {
-                    known = false;
-                } else {
-                    int facing = facing(e.getValue(), n.getValue(), theirs);
-                    if (facing != NONE) {
-                        round = Math.max(round, facing);
-                    }
-                }
-            }
-            if (!known) {
-                continue;
-            }
-            int floor = Keep.floor(round);
-            if (!Objects.equals(cleared.get(soldier), floor)) {
+        // Lock step (operator, 2026-11-14): one level for the whole site - the highest top any
+        // builder has said - and every builder cleared to that level and no lower. Only the strips
+        // with ground at the level dig, and only that level; the rest wait, and a block put into a
+        // strip already done is that strip's top again and is cleared before anyone goes down. The
+        // level falls when every builder's top is under it, so the site comes down as one flat
+        // floor and nobody climbs over a neighbour's ground. Nothing is decided until every builder
+        // has spoken: a strip not heard from may hold the highest ground.
+        if (strips.isEmpty() || !tops.keySet().containsAll(strips.keySet())) {
+            return out;
+        }
+        int level = strips.keySet().stream().mapToInt(s -> tops.get(s).top()).max().orElse(NONE);
+        if (level == NONE) {
+            return out;
+        }
+        int floor = Math.max(Keep.BOTTOM, level);
+        for (String soldier : strips.keySet()) {
+            if (tops.get(soldier).top() != NONE && !Objects.equals(cleared.get(soldier), floor)) {
                 cleared.put(soldier, floor);
                 out.put(soldier, new Clear(floor));
             }
@@ -156,28 +145,9 @@ public final class Foreman {
         return out;
     }
 
-    /**
-     * The top of neighbour {@code b}'s edge facing strip {@code a}, from what {@code b} said: its west
-     * edge for a strip to its west, and so on - at a corner, the higher of the two edges there.
-     */
-    static int facing(Box a, Box b, Top theirs) {
-        int y = NONE;
-        if (b.maxX() < a.minX()) {
-            y = Math.max(y, theirs.east());
-        } else if (b.minX() > a.maxX()) {
-            y = Math.max(y, theirs.west());
-        }
-        if (b.maxZ() < a.minZ()) {
-            y = Math.max(y, theirs.south());
-        } else if (b.minZ() > a.maxZ()) {
-            y = Math.max(y, theirs.north());
-        }
-        return y;
-    }
-
-    /** Whether strips {@code a} and {@code b} share an edge or a corner: neighbours, a column apart at most. */
-    static boolean touching(Box a, Box b) {
-        return a.minX() - 1 <= b.maxX() && b.minX() <= a.maxX() + 1 && a.minZ() - 1 <= b.maxZ() && b.minZ() <= a.maxZ() + 1;
+    /** The site's level, as last decided for {@code soldier}: the floor it was cleared to. */
+    public Optional<Integer> clearedTo(String soldier) {
+        return Optional.ofNullable(cleared.get(soldier));
     }
 
     /**

@@ -529,7 +529,12 @@ but bedrock, slowly and for no drop - stone in 7.5 seconds for no cobblestone - 
 pickaxe digs stone by hand rather than stand, for a way out, a snag or the ground. The one block it
 leaves is ore whose drop needs a pickaxe of a tier it hasn't got (`needs_*_tool`: stone for iron
 ore, iron for diamond), for a squadmate's pickaxe or until one is made, since dug with less the
-drop is lost for good (`Clearer`, "leaves N ore block(s) its tools can't dig for their drop"). A step or pillar it builds is of
+drop is lost for good (`Clearer`, "leaves N ore block(s) its tools can't dig for their drop"). On the keep
+such ore is set aside with the ground under it, by its strip's builder's pickaxe, and the site goes
+on down past it - left in the dig it would hold the whole site at its level in lock step (§17) - and
+with the pickaxe carried it's the strip's top again, cleared like any block. A drop fallen where no
+body can stand - into a gap a block high - is lost, not walked to: live, three builders in turn
+stood a minute over one. A step or pillar it builds is of
 dirt before cobblestone (`Footing.placeStep`): scaffolding, while cobblestone is a floor's and a
 wall's.
 
@@ -1184,19 +1189,22 @@ Level by level, strip by strip, paced by the keep's foreman (`command.Foreman`, 
 keep, again whenever that one is off it - who runs the flattening over the net, point to point
 (`/msg`). Each builder says its strip's top and the highest ground along each of its edges to the
 foreman ("KEEP TOP 89 EDGES 85 87 89 84", west, east, north, south) when they change, and every 30
-seconds in case a line was lost; the foreman clears each builder to a floor ("KEEP CLEAR TO 88") a
-step under its own top and under each neighbour's edge facing it, the other squad's strips across
-the seam counted (`Keep.LAYER_WINDOW`), and says it again only when the floor moves - live, held to
-its neighbours' highest ground anywhere, every builder but the one with the keep's top block
-stood waiting. A builder
-digs only once cleared, and only down to its floor, so neighbouring strips stay within a step of
-each other - a soldier steps up one block, and a two-block edge is a wall to it - and the site
-comes down as a terrace a soldier walks, not pits and towers. The foreman decides only from what
+seconds in case a line was lost. The foreman runs it in lock step (operator, 2026-11-14): the
+site's level is the highest top any builder has said, the other squad's strips counted, and every
+builder is cleared to that level and no lower ("KEEP CLEAR TO 89"), told again only when the level
+moves. Only the strips with ground at the level dig, and only that level; the level falls when every
+strip's top is under it, and nothing is decided until every builder has spoken. So the site comes
+down as one flat floor: nobody climbs over a neighbour's ground, and a block put into a strip
+already done - a step, a pillar left - is that strip's top again, cleared before anyone goes down.
+A builder in a fight, and for half a minute after, offers the level nothing - its strip is said
+as empty, so the rest go on - and back on its strip its top brings the level up to it again. Strips
+go to builders by name, not by a cycle's order of reports, which the drills shuffle. The price is that one spire holds every other builder until its strip's builder has it down; a
+strip a step under its neighbours' edges was tried first, and builders walled each other in with
+the steps they built to climb the terraces. The foreman decides only from what
 it's been told; each builder's top is its own strip's, from the world. A sender says a line a
 second at most: the server cuts off a connection that chats faster. The log reads
-"[Keep] Bob -> Alice: KEEP TOP 88 EDGES 86 88 87 85". A spire holds back only the
-strips beside it - live, one spire at y=103 set a keep-wide layer, and a whole squad stood idle
-under it - and a builder not yet cleared, or held at its floor by a neighbour's ground, waits at
+"[Keep] Bob -> Alice: KEEP TOP 88 EDGES 86 88 87 85". A builder not yet cleared, or with no
+ground at the site's level, waits at
 its strip in its own lane, ready for the next clearance; left free for other work, builders walked
 60 blocks to the camp's upkeep and were there when their floor moved. The log reads "the
 keep: N blocks to dig, its top y=T, the keep's y=K". A builder stands only in its own strip's columns, a neighbour working the

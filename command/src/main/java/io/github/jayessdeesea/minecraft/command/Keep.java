@@ -37,19 +37,6 @@ public final class Keep {
     private Keep() {
     }
 
-    /**
-     * How far below the highest ground left in and round its strip a soldier digs: neighbouring
-     * strips stay within this of each other, so the site comes down as a terrace a soldier walks,
-     * not as pits and towers (operator, 2026-11-13). One: a soldier steps up one block, and a
-     * two-block edge between strips is a wall to it.
-     */
-    public static final int LAYER_WINDOW = 1;
-
-    /** The lowest a soldier digs with the highest ground in and round its strip at {@code layer}: never under the slab. */
-    public static int floor(int layer) {
-        return Math.max(BOTTOM, layer - LAYER_WINDOW);
-    }
-
     /** The top of the world: the sky over the keep is cleared all the way up. */
     public static final int SKY_TOP = 319;
 

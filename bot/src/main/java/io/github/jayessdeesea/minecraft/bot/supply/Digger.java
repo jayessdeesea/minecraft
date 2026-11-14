@@ -291,6 +291,12 @@ final class Digger {
                     if (!target.at(world, block)) {
                         throw new IllegalStateException("the " + target + " at " + block + " is gone");
                     }
+                    // A block in the stand itself - a step put there since it was chosen, or one the
+                    // world model showed as air for a moment: no walk ends in it. Live, builders stood
+                    // six minutes on a step of their own, sent to stand inside it.
+                    if (world.isSolid(spot.stand().x(), spot.stand().y(), spot.stand().z())) {
+                        throw new IllegalStateException("the stand at " + spot.stand() + " has a block in it");
+                    }
                     return at(soldierAt, spot.stand());
                 }), walkTicks),
                 new Step("take " + (target.tool == null ? "an empty hand" : target.tool) + " in hand", this::inHand, this::takeInHand,
@@ -316,6 +322,10 @@ final class Digger {
                     }
                     boolean onGround = !dropsNear().isEmpty();
                     dropSeen |= onGround;
+                    // Lying only where no body can stand: lost, and the dig is done - not waited out.
+                    if (!onGround && !dropsAnywhere().isEmpty() && ticks - pickupStarted > MAYBE_DROP_TICKS) {
+                        return true;
+                    }
                     return dropSeen && !onGround || !target.dropsAlways && !dropSeen && ticks - pickupStarted > MAYBE_DROP_TICKS;
                 }), PICKUP_TICKS));
         }
@@ -359,9 +369,20 @@ final class Digger {
     }
 
     /** Dropped items around the dug block, nearest first. */
-    private List<Position> dropsNear() {
+    private List<Position> dropsAnywhere() {
         BlockPos block = spot.block();
         return world.itemsNear(new Position(block.x() + 0.5, block.y() + 0.5, block.z() + 0.5), DROP_RADIUS);
+    }
+
+    /** Dropped items around the dug block a soldier can stand at, nearest first. */
+    private List<Position> dropsNear() {
+        BlockPos block = spot.block();
+        // Only where a body can stand: one fallen into a gap a block high is lost, not walked to.
+        // Live, three builders in turn stood a minute and more over a drop under a dirt block.
+        return world.itemsNear(new Position(block.x() + 0.5, block.y() + 0.5, block.z() + 0.5), DROP_RADIUS).stream()
+                .filter(at -> standable(world, BlockPos.containing(at.x(), at.y() + 0.01, at.z()))
+                        || standable(world, BlockPos.containing(at.x(), at.y() + 0.01, at.z()).offset(0, -1, 0)))
+                .toList();
     }
 
     Progress tick(Position soldier, WorldView world) {

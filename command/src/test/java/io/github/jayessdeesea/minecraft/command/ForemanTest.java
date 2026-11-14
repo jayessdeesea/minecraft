@@ -21,12 +21,12 @@ class ForemanTest {
     }
 
     /**
-     * Level by level: each builder is cleared to a step under the highest top in and beside its
-     * strip - the spire's own strip and its neighbour held up there, the strip beyond on its own
-     * ground - and is told again only when its floor moves.
+     * Lock step (operator, 2026-11-14): the site's level is the highest top any builder says, and
+     * every builder is cleared to it and no lower - the strip with the spire digs that level, the
+     * rest wait - and told again only when the level moves. It falls a level at a time as the tops do.
      */
     @Test
-    void eachBuilderIsClearedAStepUnderTheHighestTopBesideIt() {
+    void everyBuilderIsClearedToTheSitesHighestLevelAndNoLower() {
         Foreman foreman = new Foreman();
         foreman.heard("A", new Foreman.Top(103));
         foreman.heard("B", new Foreman.Top(70));
@@ -34,33 +34,43 @@ class ForemanTest {
 
         Map<String, Foreman.Clear> first = foreman.decide(strips());
 
-        assertEquals(new Foreman.Clear(102), first.get("A"));
-        assertEquals(new Foreman.Clear(102), first.get("B"), "beside the spire: held to a step under it");
-        assertEquals(new Foreman.Clear(69), first.get("C"), "two strips off: its own ground");
+        assertEquals(Map.of("A", new Foreman.Clear(103), "B", new Foreman.Clear(103), "C", new Foreman.Clear(103)), first,
+                "one level for the site: only A has ground at it");
         assertEquals(Map.of(), foreman.decide(strips()), "said once: nothing new to say");
 
+        foreman.heard("A", new Foreman.Top(102));
+        assertEquals(new Foreman.Clear(102), foreman.decide(strips()).get("C"), "A's level done: the site's level falls one");
         foreman.heard("A", new Foreman.Top(70));
-        assertEquals(Map.of("A", new Foreman.Clear(69), "B", new Foreman.Clear(69)), foreman.decide(strips()),
-                "the spire down: both cleared on down");
+        assertEquals(Map.of("A", new Foreman.Clear(70), "B", new Foreman.Clear(70), "C", new Foreman.Clear(70)), foreman.decide(strips()),
+                "the spire down: all three on the same level");
     }
 
     /**
-     * A spire inside a strip, away from its edges, holds back no one but its own builder: its
-     * neighbour is held only to the edge it faces. Live, held to its neighbours' highest ground
-     * anywhere, every builder but one stood waiting.
+     * A block put into a strip already done - a neighbour's step, a pillar left - is that strip's top
+     * again: the level goes back up to it, and it's cleared before anyone goes down.
      */
     @Test
-    void aSpireInsideAStripHoldsBackOnlyItsOwnBuilder() {
+    void aBlockPutIntoAStripAlreadyDoneIsClearedBeforeAnyoneGoesDown() {
         Foreman foreman = new Foreman();
-        // A's top, 103, in its middle; its east edge, facing B, at 70.
-        foreman.heard("A", new Foreman.Top(103, 70, 70, 70, 70));
+        foreman.heard("A", new Foreman.Top(70));
         foreman.heard("B", new Foreman.Top(70));
         foreman.heard("C", new Foreman.Top(70));
+        foreman.decide(strips());
 
-        Map<String, Foreman.Clear> clear = foreman.decide(strips());
+        foreman.heard("B", new Foreman.Top(72));
 
-        assertEquals(new Foreman.Clear(102), clear.get("A"));
-        assertEquals(new Foreman.Clear(69), clear.get("B"), "held only to A's edge facing it");
+        assertEquals(Map.of("A", new Foreman.Clear(72), "B", new Foreman.Clear(72), "C", new Foreman.Clear(72)), foreman.decide(strips()));
+    }
+
+    /** A strip with nothing left is told nothing, and holds nobody; never under the slab's bottom. */
+    @Test
+    void aStripWithNothingLeftHoldsNobodyAndTheFloorStopsAtTheSlab() {
+        Foreman foreman = new Foreman();
+        foreman.heard("A", new Foreman.Top(Foreman.NONE));
+        foreman.heard("B", new Foreman.Top(Keep.BOTTOM));
+        foreman.heard("C", new Foreman.Top(Foreman.NONE));
+
+        assertEquals(Map.of("B", new Foreman.Clear(Keep.BOTTOM)), foreman.decide(strips()));
     }
 
     @Test
@@ -70,15 +80,14 @@ class ForemanTest {
         assertEquals(Optional.of(top), Foreman.parse(top.text()));
     }
 
-    /** A builder beside one that hasn't said its top waits on it: that ground isn't known. */
+    /** Nothing is decided until every builder has said its top: one not heard from may hold the highest ground. */
     @Test
-    void aBuilderBesideOneNotHeardFromWaits() {
+    void nobodyIsClearedUntilEveryBuilderHasSpoken() {
         Foreman foreman = new Foreman();
+        foreman.heard("A", new Foreman.Top(70));
         foreman.heard("C", new Foreman.Top(70));
 
-        Map<String, Foreman.Clear> clear = foreman.decide(strips());
-
-        assertTrue(!clear.containsKey("C"), "B, beside it, hasn't spoken");
+        assertEquals(Map.of(), foreman.decide(strips()), "B hasn't spoken");
     }
 
     @Test
