@@ -13,6 +13,7 @@ import java.lang.reflect.Proxy;
 import java.util.HashSet;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -128,6 +129,17 @@ class ClearerTest {
         Clearer equipped = new Clearer("Bob", session, stone, new HashSet<>());
         equipped.tick(feet, stony(true), List.of(MOUND), true);
         assertTrue(equipped.active(), "with a stone pickaxe: cut");
+    }
+
+    /**
+     * Iron ore in the dig is mined for its drop and picked up, not broken as a block in the way:
+     * live, a day's flattening went through ore after ore and nobody held an ingot.
+     */
+    @Test
+    void ironOreInTheDigIsMinedForItsDrop() {
+        assertEquals(Digger.Target.IRON_ORE, Clearer.targetFor(stony(true), MOUND, false));
+        assertEquals(Digger.Target.STONE, Clearer.targetFor(stony(false), MOUND, false));
+        assertEquals(Digger.Target.SOIL, Clearer.targetFor(stony(false), new BlockPos(0, GROUND, 0), false));
     }
 
     /**

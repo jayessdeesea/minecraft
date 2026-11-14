@@ -541,7 +541,7 @@ final class Digger {
             }
             // Only a tree at any height: soil and stone are taken near the height asked - in the squad
             // simulation, dirt for a pit's fill was dug out of the pit's own bottom.
-            if (target != Target.LOG && Math.abs(stand.y() - around.y()) > 4) {
+            if (!anyHeight(target) && Math.abs(stand.y() - around.y()) > 4) {
                 continue;
             }
             for (int[] side : sides) {
@@ -549,7 +549,7 @@ final class Digger {
                     BlockPos block = stand.offset(side[0], up, side[1]);
                     if (!claimed.contains(block) && target.at(world, block) && !letsInWater(world, block)) {
                         // As the search by height does it, for all but a tree: nearest in height too.
-                        double distance = Math.hypot(dx, dz) + (target == Target.LOG ? 0 : Math.abs(stand.y() - around.y())) + up * 0.1;
+                        double distance = Math.hypot(dx, dz) + (anyHeight(target) ? 0 : Math.abs(stand.y() - around.y())) + up * 0.1;
                         if (distance < bestDistance) {
                             best = new Spot(target, stand, block);
                             bestDistance = distance;
@@ -559,6 +559,11 @@ final class Digger {
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    /** What's looked for at any height a soldier can walk to: trees up and down a slope, ore down a mine. */
+    private static boolean anyHeight(Target target) {
+        return target == Target.LOG || target == Target.IRON_ORE || target == Target.COPPER_ORE;
     }
 
     static boolean letsInWater(WorldView world, BlockPos block) {

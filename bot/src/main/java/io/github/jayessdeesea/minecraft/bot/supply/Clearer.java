@@ -209,12 +209,7 @@ public final class Clearer {
         }
         Clearing.Cut c = cut.get();
         BlockPos b = c.block();
-        Digger.Target target = c.log() ? Digger.Target.LOG
-                : world.leaves(b.x(), b.y(), b.z()).isPresent() ? Digger.Target.LEAVES
-                : world.isStone(b.x(), b.y(), b.z()) ? Digger.Target.STONE
-                : world.isCobblestone(b.x(), b.y(), b.z()) ? Digger.Target.COBBLESTONE
-                : world.isGravel(b.x(), b.y(), b.z()) ? Digger.Target.GRAVEL
-                : world.isSoil(b.x(), b.y(), b.z()) ? Digger.Target.SOIL : Digger.Target.OTHER;
+        Digger.Target target = targetFor(world, b, c.log());
         // Without the tool the kind wants - stone with no pickaxe - it's dug as any other block, by
         // hand in its own break time, for the clear and not the drop: a way out, a snag, the ground.
         if (!target.canDig(inventory)) {
@@ -233,6 +228,23 @@ public final class Clearer {
         // keep's builders gave up cut after cut on the hill's summit, each walk timed out on the way.
         digger = new Digger(name, session, inventory, claims, new Digger.Spot(target, c.stand(), c.block()),
                 Digger.walkTicks(soldier, c.stand()));
+    }
+
+    /**
+     * What a clear digs {@code block} as: a tree's log or leaves, stone, cobblestone, gravel and soil
+     * for their drops - and iron and copper ore for theirs, taken and picked up, not broken as a block
+     * in the way. Live, a day's flattening went through ore after ore, the raw iron left lying where
+     * it fell, and no soldier of eight held an ingot. Anything else is dug to clear it.
+     */
+    static Digger.Target targetFor(WorldView world, BlockPos b, boolean log) {
+        return log ? Digger.Target.LOG
+                : world.leaves(b.x(), b.y(), b.z()).isPresent() ? Digger.Target.LEAVES
+                : world.isIronOre(b.x(), b.y(), b.z()) ? Digger.Target.IRON_ORE
+                : Digger.Target.COPPER_ORE.at(world, b) ? Digger.Target.COPPER_ORE
+                : world.isStone(b.x(), b.y(), b.z()) ? Digger.Target.STONE
+                : world.isCobblestone(b.x(), b.y(), b.z()) ? Digger.Target.COBBLESTONE
+                : world.isGravel(b.x(), b.y(), b.z()) ? Digger.Target.GRAVEL
+                : world.isSoil(b.x(), b.y(), b.z()) ? Digger.Target.SOIL : Digger.Target.OTHER;
     }
 
     /** Stops the cut under way, its claims given up. */

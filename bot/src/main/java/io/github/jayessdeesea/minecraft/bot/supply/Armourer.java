@@ -340,7 +340,11 @@ public final class Armourer {
         int widest = Gatherer.WIDER[Gatherer.WIDER.length - 1];
         Set<BlockPos> reachable = Pathfinder.reachable(world, feet, widest + Clearer.REACH_MARGIN, Clearer.REACH_BUDGET);
         for (int radius : Gatherer.WIDER) {
-            Optional<Digger.Spot> spot = target == Digger.Target.LOG ? Digger.findSpotAmong(world, feet, excluded, target, radius, reachable)
+            // A tree or ore from wherever it can walk to, at any height: ore lies down the mine's stairs,
+            // forty blocks under a soldier on the keep. Live, five of eight gave up a shield for want of
+            // one ingot, "no IRON_ORE within 48 blocks", with ore beside the stairs they walked each night.
+            boolean anyHeight = target == Digger.Target.LOG || target == Digger.Target.IRON_ORE || target == Digger.Target.COPPER_ORE;
+            Optional<Digger.Spot> spot = anyHeight ? Digger.findSpotAmong(world, feet, excluded, target, radius, reachable)
                     : Digger.findSpot(world, feet, excluded, target, radius, reachable::contains);
             if (spot.isPresent()) {
                 return spot;
