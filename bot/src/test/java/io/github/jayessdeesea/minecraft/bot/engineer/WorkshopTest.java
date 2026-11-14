@@ -62,6 +62,24 @@ class WorkshopTest {
         assertTrue(w.stands(flat(Map.of(table, Workstation.CRAFTING_TABLE)), Workstation.CRAFTING_TABLE));
     }
 
+    /**
+     * A workshop is sited where its chest has room too: with the cells behind the nearest stand's table
+     * and furnace taken, the next stand with a chest's cell is the one. Live, the keep's depot stood
+     * on a slope with no level cell for a chest, and never got one.
+     */
+    @Test
+    void theWorkshopIsSitedWhereItsChestHasRoom() {
+        BlockPos ground = new BlockPos(0, 64, 0);
+        Workshop open = Workshop.hasty(flat(Map.of()), ground, Set.of()).orElseThrow();
+        Set<BlockPos> behind = Set.of(open.table().offset(open.table().x() - open.stand().x(), 0, open.table().z() - open.stand().z()),
+                open.furnace().offset(open.furnace().x() - open.stand().x(), 0, open.furnace().z() - open.stand().z()));
+
+        Workshop sited = Workshop.hasty(flat(Map.of()), ground, behind).orElseThrow();
+
+        assertTrue(sited.chest().isPresent(), "a chest's cell: " + sited);
+        assertTrue(!behind.contains(sited.chest().get()));
+    }
+
     @Test
     void claimedCellsAreLeftAlone() {
         BlockPos ground = new BlockPos(0, 64, 0);

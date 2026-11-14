@@ -1419,7 +1419,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // On the keep, the keep's workshop: one for every squad on it, off the slab at its depot.
         if (taskOf(squad, Objective.Task.Keep.class).isPresent()) {
             Workshop keep = keepWorkshop;
-            if (keep == null || !Pathfinder.standable(world, keep.stand())) {
+            // Sited again too while it has no cell for a chest and none stands: a depot is a stockpile.
+            if (keep == null || !Pathfinder.standable(world, keep.stand()) || keep.chest().isEmpty() && !keep.stands(world, Workstation.CRAFTING_TABLE)) {
+                Workshop was = keep;
                 // On the depot's surface, from high over any hill there down - not the first cell with
                 // ground under it near the slab's height, which under a hill is a cave's floor or a
                 // tunnel's: live, that was a one-wide tunnel into the hill west of the keep, and both
@@ -1435,7 +1437,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         keepWorkshopNowhere = depot;
                     }
                 } else {
-                    LOG.info("[{}] the keep's workshop: stand {}, table {}, furnace {}", squad, keep.stand(), keep.table(), keep.furnace());
+                    if (!keep.equals(was)) {
+                        LOG.info("[{}] the keep's workshop: stand {}, table {}, furnace {}, chest {}", squad, keep.stand(), keep.table(), keep.furnace(),
+                                keep.chest().map(Object::toString).orElse("no room for one"));
+                    }
                     keepWorkshopNowhere = null;
                 }
                 keepWorkshop = keep;
@@ -4845,7 +4850,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // levelling the camp reported the mason's "none to build" between their cuts.
                     : !clearing.containsKey(name) && !walling.getOrDefault(name, List.of()).isEmpty() && mason.stuck().isPresent()
                     ? new Report.Cantco(mason.stuck().get())
-                    : depositor.stuck().isPresent() && !depositor.active() ? new Report.Cantco(depositor.stuck().get())
+                    // Not a keep builder's: a depot chest too full to take its load is the depot's shortfall,
+                    // and it digs on with what it carries. Live, the depot's first chest filled with one
+                    // builder's load, and four more reported the dig CANTCO from beside it.
+                    : depositor.stuck().isPresent() && !depositor.active() && !keepHands.contains(name) ? new Report.Cantco(depositor.stuck().get())
                     : forester.active() ? new Report.Planting()
                     : grove != null && forester.failure().isPresent() && !Forester.planted(world, grove)
                     ? new Report.Cantco("can't plant the tree farm: " + forester.failure().get())

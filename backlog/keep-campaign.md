@@ -43,6 +43,13 @@ The keep's dig runs with no supply behind it (operator, 2026-11-14). Live:
   for its block.
 
 ## Notes
+- **One chest isn't a depot (field183, 2026-11-14).** The chest went up two minutes after the depot
+  was sited with room for one, and filled with the first builder's load: 27 stacks, against 13 of
+  cobblestone and 5 of dirt in one pack. Eight builders carry about 9,000 blocks and the dig has
+  5,500 to go; the slab wants about 4,000 cobblestone back. So: a row of chests sized from those
+  counts, cobblestone, logs, ore and spare tools stowed, and dirt past a couple of stacks for
+  scaffolding thrown away - it would take a dozen chests and nothing wants it. `Depositor` and
+  `Workshop` know one chest's cell; the stockpile becomes a list.
 - The depot's spot exists (`SoldierRunner.siteWorkshop`, the keep's branch): stand, table, furnace
   and chest cells on the depot's surface. Nothing is built at it for want of logs.
 - `Depositor` stows at the squad's stockpile and reports what the chest holds; `MetalPool` pools

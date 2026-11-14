@@ -78,6 +78,11 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
                 }
             }
         }
+        // The nearest with room for its chest too: a workshop is the squad's stockpile, and one sited
+        // on a slope with no level cell behind its table or furnace never gets a chest. Live, the
+        // keep's depot stood so for days, its builders carrying 20 logs past it. Failing that, the
+        // nearest with room for the table and furnace.
+        Workshop chestless = null;
         for (BlockPos stand : around) {
             if (!Pathfinder.standable(world, stand) || claimed.contains(stand)) {
                 continue;
@@ -87,11 +92,17 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
                 int[] next = SIDES[(i + 1) % SIDES.length];
                 BlockPos furnace = stand.offset(next[0], 0, next[1]);
                 if (free(world, table, claimed) && free(world, furnace, claimed)) {
-                    return Optional.of(new Workshop(stand, table, furnace, chestBehind(world, stand, table, furnace, claimed)));
+                    Optional<BlockPos> chest = chestBehind(world, stand, table, furnace, claimed);
+                    if (chest.isPresent()) {
+                        return Optional.of(new Workshop(stand, table, furnace, chest));
+                    }
+                    if (chestless == null) {
+                        chestless = new Workshop(stand, table, furnace, chest);
+                    }
                 }
             }
         }
-        return Optional.empty();
+        return Optional.ofNullable(chestless);
     }
 
     /**
