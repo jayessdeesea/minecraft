@@ -4172,7 +4172,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (!wayOut.get().stream().allMatch(offTheWall())) {
                     wayOut.set(List.of());
                 }
-                if (!wayOut.get().isEmpty() && !doorway.active()) {
+                // Stood in a block - at its feet or its head - it breaks that first, whatever its orders:
+                // live, four soldiers stood a day and a night in dirt at the farm, suffocating as fast
+                // as they healed, every route from there "no route".
+                // At its head, that is: a step it puts under itself mid-jump is at its feet for a tick,
+                // and in the squad simulation, broken as that, its pillars and walls came apart.
+                BlockPos feetCell = BlockPos.containing(status.position().x(), status.position().y() + 0.01, status.position().z());
+                BlockPos headCell = feetCell.offset(0, 1, 0);
+                List<BlockPos> inside = !world.isSolid(headCell.x(), headCell.y(), headCell.z()) ? List.of()
+                        : java.util.stream.Stream.of(headCell, feetCell)
+                        .filter(c -> world.isSolid(c.x(), c.y(), c.z()) && Clearing.diggable(world, c.x(), c.y(), c.z())).toList();
+                if (!inside.isEmpty() && !inContact) {
+                    wayOut.set(inside);
+                    LOG.warn("{} stands in a block at {} - breaks {}", name, status.position(), inside);
+                } else if (!wayOut.get().isEmpty() && !doorway.active()) {
                     LOG.warn("{} is boxed in at {} with no way out - breaks the wall at {}", name, status.position(), wayOut.get());
                 }
             }

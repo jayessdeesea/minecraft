@@ -85,6 +85,27 @@ class TerrainProbeIT {
                 }
                 out.append('\n');
             }
+            // -Dprobe.states: each cell round the probed one by its block state's name, as the model has it.
+            if (Boolean.getBoolean("probe.states")) {
+                java.util.Map<Integer, String> names = new java.util.HashMap<>();
+                try (var in = io.github.jayessdeesea.minecraft.bot.world.ChunkCache.class.getResourceAsStream("block-classes-777.txt")) {
+                    for (String line : new String(in.readAllBytes()).split("\\R")) {
+                        String[] f = line.trim().split(" ");
+                        if (f.length >= 3 && !line.startsWith("#")) {
+                            names.put(Integer.parseInt(f[0]), f[1] + " " + f[2]);
+                        }
+                    }
+                }
+                for (int y = py - 1; y <= py + 2; y++) {
+                    for (int z = pz - 1; z <= pz + 1; z++) {
+                        for (int x = px - 1; x <= px + 1; x++) {
+                            java.util.OptionalInt id = cache.stateIdAt(x, y, z);
+                            out.append(String.format("(%d,%d,%d) %s%n", x, y, z,
+                                    id.isEmpty() ? "unknown" : id.getAsInt() + " " + names.getOrDefault(id.getAsInt(), "unlisted")));
+                        }
+                    }
+                }
+            }
             String target = System.getProperty("probe.target");
             if (target != null) {
                 String[] t = target.split(",");
