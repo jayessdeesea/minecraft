@@ -104,6 +104,15 @@ public final class Clearer {
      * and with nothing on the ground in reach, cutting the top layer from steps it builds up to it.
      */
     public synchronized void tick(Position soldier, WorldView world, List<BlockPos> cover, boolean free, Optional<Box> strip) {
+        tick(soldier, world, cover, free, strip, false);
+    }
+
+    /**
+     * As {@link #tick(Position, WorldView, List, boolean, Optional)}, or cutting a {@code tunnel}: the
+     * recovery drill's stair up, cell by cell from where it stands, under rock with no open top
+     * ({@link Clearing#nextInTunnel}).
+     */
+    public synchronized void tick(Position soldier, WorldView world, List<BlockPos> cover, boolean free, Optional<Box> strip, boolean tunnel) {
         ticks++;
         if (cooldown > 0) {
             cooldown--;
@@ -172,11 +181,12 @@ public final class Clearer {
                 inventory.slotOf(ItemClass.PICKAXE) >= 0).keySet();
         Predicate<BlockPos> within = s -> strip.map(b -> s.x() >= b.minX() && s.x() <= b.maxX() && s.z() >= b.minZ() && s.z() <= b.maxZ())
                 .orElse(true);
-        Optional<Clearing.Cut> cut = Clearing.next(world, cover, soldier, excluded,
-                s -> reachable.contains(s) && stands.test(world, s) && within.test(s));
+        Predicate<BlockPos> standable = s -> reachable.contains(s) && stands.test(world, s) && within.test(s);
+        Optional<Clearing.Cut> cut = tunnel ? Clearing.nextInTunnel(world, cover, soldier, excluded, standable)
+                : Clearing.next(world, cover, soldier, excluded, standable);
         // Nothing on the ground reaches: the top layer from the air, on steps it builds - only with
         // blocks to build them of. Live, a hilltop over the keep stood while its builders stood under it.
-        if (cut.isEmpty() && strip.isPresent() && inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.COBBLESTONE) > 0) {
+        if (cut.isEmpty() && !tunnel && strip.isPresent() && inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.COBBLESTONE) > 0) {
             cut = Clearing.fromTheAir(world, cover, excluded, within);
             cut.ifPresent(c -> LOG.info("{} builds up to the top of its strip to cut {} from {}", name, c.block(), c.stand()));
         }

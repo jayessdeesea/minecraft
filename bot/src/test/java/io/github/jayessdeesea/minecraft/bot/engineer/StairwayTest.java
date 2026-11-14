@@ -111,6 +111,85 @@ class StairwayTest {
         assertTrue(!Pathfinder.find(world, feet, new Goal(10.5, 64, 0.5, 2, 0.5), 20_000).reachesGoal(), "boxed in before");
     }
 
+    /** Flat dirt ground at y=63, with a pocket at (0, 0) open from 38 to 39: a dead end 25 blocks down, as at a mine's bottom. */
+    private static boolean deepPocket(BlockPos c) {
+        return c.y() <= 63 && !(c.x() == 0 && c.z() == 0 && c.y() >= 38 && c.y() <= 39);
+    }
+
+    /**
+     * A pocket 25 blocks down is tunnelled out of, up and along to the surface. Live, a soldier
+     * stood a day in a dead end 30 blocks under the camp, the stair up then capped at 12 steps.
+     */
+    @Test
+    void aTunnelIsDugUpOutOfAPocketDeepUnderTheGround() {
+        WorldView world = soil(StairwayTest::deepPocket, c -> false);
+        BlockPos feet = new BlockPos(0, 38, 0);
+
+        List<BlockPos> dig = Stairway.up(world, feet).orElseThrow();
+
+        Set<BlockPos> dug = new HashSet<>(dig);
+        WorldView after = world(c -> deepPocket(c) && !dug.contains(c), c -> false);
+        assertTrue(Pathfinder.find(after, feet, new Goal(0.5, 64, 0.5, 40, 0.5), 60_000).reachesGoal(), "no way out up the tunnel: " + dig);
+    }
+
+    /** Sand or gravel over a cell to cut comes down on the digger: no stair goes under it, nor under water. */
+    @Test
+    void noStairUpIsCutUnderGravelOrWater() {
+        WorldView base = soil(StairwayTest::pocket, c -> false);
+        // Gravel everywhere at y=62: every heading's first step's head room has it overhead.
+        WorldView gravelled = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return base.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return base.isSoil(x, y, z);
+            }
+
+            @Override
+            public boolean isGravel(int x, int y, int z) {
+                return y == 62;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        WorldView flooded = soil(StairwayTest::pocket, c -> false);
+        WorldView wet = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return flooded.isSolid(x, y, z) && y != 63;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return y == 63; // a lake over the whole ground
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return flooded.isSoil(x, y, z);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(Optional.empty(), Stairway.up(gravelled, new BlockPos(0, 60, 0)));
+        assertEquals(Optional.empty(), Stairway.up(wet, new BlockPos(0, 60, 0)));
+    }
+
     @Test
     void noStairUpIsLaidThroughCobblestone() {
         WorldView world = soil(StairwayTest::pocket, c -> c.y() >= 60);

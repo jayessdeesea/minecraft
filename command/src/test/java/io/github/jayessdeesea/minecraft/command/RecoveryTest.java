@@ -144,8 +144,13 @@ class RecoveryTest {
                 recovery.orders(stuck, IDLE, NO_STAIR).get(1), "three in a row");
     }
 
+    /**
+     * With neither a stair to build nor a cut to dig, nobody is sent: live, two squadmates in turn
+     * walked down to one in a dead end at the mine's bottom and were trapped beside it. The stranded
+     * one tries its own way down to the nearest, as with nobody to fetch it.
+     */
     @Test
-    void withNoStairToLayASquadmateWithAPickaxeIsSentToCutTheWay() {
+    void withNothingLaidOutNobodyIsSentEvenWithAPickaxe() {
         Position pocket = new Position(7.5, 60, 0.5);
         Kit pick = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, true, 0, false);
         List<SoldierStatus> squad = List.of(
@@ -156,8 +161,36 @@ class RecoveryTest {
 
         List<Order> orders = new Recovery().orders(squad, IDLE, NO_STAIR);
 
-        assertEquals(new Order.MoveTo(7.5, 60, 0.5, Recovery.TOLERANCE, Recovery.TOLERANCE, Risk.LOW), orders.get(1));
-        assertEquals(new Order.Idle(), orders.get(0), "no pickaxe, no blocks");
+        assertEquals(new Order.Idle(), orders.get(1), "Bob's pickaxe has nothing laid out to cut");
+        assertEquals(new Order.Idle(), orders.get(0));
+        assertEquals(new Order.MoveTo(3, 64, 0, Recovery.ESCAPE_TOLERANCE, Recovery.ESCAPE_TOLERANCE, Risk.MEDIUM), orders.get(2));
+    }
+
+    /** Stranded below with a pickaxe of its own, it digs the engineer's cut itself: a tunnel up, nobody fetched. */
+    @Test
+    void oneStrandedBelowWithAPickaxeTunnelsUpItself() {
+        Position pocket = new Position(0.5, 60, 0.5);
+        Kit pick = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, true, 0, false);
+        List<SoldierStatus> squad = List.of(
+                new SoldierStatus("Bob", new Position(3, 64, 0), new Order.Idle(), new Report.InPosition(),
+                        Optional.of(new Condition(20, 20, 0, Optional.of(pick)))),
+                new SoldierStatus("Dana", pocket, new Order.Idle(), STUCK, Optional.of(new Condition(20, 20, 0, Optional.of(pick)))));
+        List<Cell> cut = List.of(new Cell(0, 62, 0), new Cell(1, 61, 0), new Cell(1, 62, 0));
+        Recovery recovery = new Recovery();
+
+        List<Order> orders = recovery.orders(squad, List.of(new Order.Idle(), new Order.Idle()), NO_STAIR, s -> Optional.of(cut));
+
+        assertEquals(new Order.Idle(), orders.get(0), "nobody fetched");
+        assertEquals(Recovery.dig(cut), orders.get(1));
+        assertEquals(true, recovery.recovering("Dana"));
+        assertEquals(false, recovery.recovering("Bob"));
+        // Up a step, still in the drill: a stair is left only at its top.
+        List<SoldierStatus> climbing = List.of(squad.get(0),
+                new SoldierStatus("Dana", new Position(1.5, 61, 0.5), new Order.Idle(), new Report.Working("dig", 1), squad.get(1).condition()));
+        assertEquals(Recovery.dig(cut), recovery.orders(climbing, List.of(new Order.Idle(), new Order.Idle()), NO_STAIR, s -> Optional.of(cut)).get(1));
+        // Its stair dug, the world says: released, whatever its height.
+        assertEquals(List.of("Dana"), recovery.release("Dana"));
+        assertEquals(false, recovery.recovering("Dana"));
     }
 
     @Test

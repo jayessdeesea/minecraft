@@ -51,11 +51,18 @@ public sealed interface Order {
      * {@code except}, keeping what it cuts: a tree from its foot up, the ground from its top down.
      * Clears the sky over ground, takes a rise down. A block it can't reach or can't dig is left
      * and reported. One call for a whole region, as a squad leader gives it: "dig x=0..31,
-     * y=64..88, z=0..31" - the soldier works out the cells.
+     * y=64..88, z=0..31" - the soldier works out the cells. A {@code tunnel} is dug cell by cell
+     * from where the digger stands instead - a stair cut up out of a pocket, under rock, where no
+     * cell has an open top (docs/military-doctrine.md § 7).
      */
-    record Dig(Box box, Set<Cell> except) implements Order {
+    record Dig(Box box, Set<Cell> except, boolean tunnel) implements Order {
         public Dig {
             except = Set.copyOf(except);
+        }
+
+        /** A dig of ground: from an open top, level by level. */
+        public Dig(Box box, Set<Cell> except) {
+            this(box, except, false);
         }
     }
 

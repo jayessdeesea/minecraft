@@ -11,6 +11,8 @@ import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.farm.TreeFarm;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
+import io.github.jayessdeesea.minecraft.bot.nav.Goal;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.nav.RouteEffort;
 import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
@@ -473,6 +475,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, List<BlockPos>> clearing = new ConcurrentHashMap<>();
     /** Each soldier's dig's box - squad loop writes, tick reads: the keep's builders stand only in theirs. */
     private final Map<String, Box> clearingStrip = new ConcurrentHashMap<>();
+    /** Soldiers whose dig is a tunnel - the recovery drill's stair up, cut cell by cell under rock. Squad loop writes, tick reads. */
+    private final Set<String> clearingTunnel = ConcurrentHashMap.newKeySet();
     /** The blocks of cover a clearer has taken, and where it stands for each: shared, so each takes another. */
     private final Set<BlockPos> clearClaims = ConcurrentHashMap.newKeySet();
     /** The wall cells each soldier's squad still has to fill, while its objective is FORTIFY - squad loop writes, tick reads. */
@@ -846,6 +850,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private volatile Workshop campWorkshop;
     /** The keep's workshop, at its depot, shared by every squad building it - squad loop only. */
     private volatile Workshop keepWorkshop;
+    /** The depot ground last said to have nowhere for the workshop, so it's said once - squad loops. */
+    private volatile BlockPos keepWorkshopNowhere;
     /**
      * Whether no wall is going up round the camp - none laid out, or closed and all stone - as last
      * measured: foothold check writes, squad loop reads.
@@ -1401,12 +1407,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (taskOf(squad, Objective.Task.Keep.class).isPresent()) {
             Workshop keep = keepWorkshop;
             if (keep == null || !Pathfinder.standable(world, keep.stand())) {
-                BlockPos depot = TerrainSurveyor.groundAt(world, BlockPos.containing(Keep.DEPOT.x() + 0.5, Keep.DEPOT.y(), Keep.DEPOT.z() + 0.5));
+                // On the depot's surface, from high over any hill there down - not the first cell with
+                // ground under it near the slab's height, which under a hill is a cave's floor or a
+                // tunnel's: live, that was a one-wide tunnel into the hill west of the keep, and both
+                // squads said "nowhere" every second for hours while their builders walked 50 blocks to
+                // a stray table for bread.
+                int depotX = (int) Math.floor(Keep.DEPOT.x()), depotZ = (int) Math.floor(Keep.DEPOT.z());
+                BlockPos depot = TerrainSurveyor.surface(world, depotX, depotZ, Keep.FLOOR + 60)
+                        .orElseGet(() -> TerrainSurveyor.groundAt(world, BlockPos.containing(Keep.DEPOT.x() + 0.5, Keep.DEPOT.y(), Keep.DEPOT.z() + 0.5)));
                 keep = Workshop.hasty(world, depot, new HashSet<>(treeClaims)).orElse(null);
                 if (keep == null) {
-                    LOG.warn("[{}] nowhere at the keep's depot {} to site its workshop", squad, depot);
+                    if (!depot.equals(keepWorkshopNowhere)) {
+                        LOG.warn("[{}] nowhere at the keep's depot {} to site its workshop", squad, depot);
+                        keepWorkshopNowhere = depot;
+                    }
                 } else {
                     LOG.info("[{}] the keep's workshop: stand {}, table {}, furnace {}", squad, keep.stand(), keep.table(), keep.furnace());
+                    keepWorkshopNowhere = null;
                 }
                 keepWorkshop = keep;
             }
@@ -1905,6 +1922,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // their floor moved.
                 orders.put(e.getKey(), new Order.MoveTo((b.minX() + b.maxX()) / 2.0 + 0.5, t + 1, (b.minZ() + b.maxZ()) / 2.0 + 0.5, 3, 3,
                         Risk.LOW, false));
+                String held = floor == null ? "not yet cleared" : "cleared to y=" + floor;
+                if (!held.equals(keepHeld.put(e.getKey(), held))) {
+                    LOG.info("[{}] {} waits at its strip: its top y={}, {}", squad, e.getKey(), t, held);
+                }
+            }
+            if (orders.get(e.getKey()) instanceof Order.Dig) {
+                keepHeld.remove(e.getKey());
             }
         }
         return orders;
@@ -1968,6 +1992,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private volatile Foreman foreman = new Foreman();
     /** Each builder's floor, as it was cleared to on the net - connections write, squad loop reads. */
     private final Map<String, Integer> clearances = new ConcurrentHashMap<>();
+    /** Why each builder waiting at its strip waits, as last said - squad loops. */
+    private final Map<String, String> keepHeld = new ConcurrentHashMap<>();
     /** Each builder's side of the net - squad loop only. */
     private final Map<String, Foreman.Reporter> reporters = new ConcurrentHashMap<>();
     /** Each keep squad's builders' strips - squad loops. */
@@ -2048,8 +2074,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private void route(String soldier, Order order) {
         switch (order) {
             case Order.Dig d -> {
-                clearing.put(soldier, Clearing.toClear(world, d.box(), d.except()));
+                clearing.put(soldier, Clearing.toClear(world, d.box(), d.except(), d.tunnel()));
                 clearingStrip.put(soldier, d.box());
+                if (d.tunnel()) {
+                    clearingTunnel.add(soldier);
+                } else {
+                    clearingTunnel.remove(soldier);
+                }
                 filling.remove(soldier);
                 groundGather.remove(soldier);
             }
@@ -2421,6 +2452,40 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return objectiveOf(squad).map(o -> OrderTrace.taskName(o.task())).orElse("none");
     }
 
+    /** How far above or below a soldier its goal can be for a wall between them to be what stops it. */
+    static final int WAY_OUT_RISE = 3;
+    /** Route search for whether a soldier reporting no route can still walk to a squadmate: the drill's long look. */
+    static final int CUT_OFF_BUDGET = 20_000;
+    /** How near a squadmate counts as reaching it. */
+    static final double CUT_OFF_TOLERANCE = 3;
+
+    /**
+     * {@code reported}, with a soldier's "no route" read as stranded only when it's cut off from its
+     * squad: no route to the nearest squadmate not stranded itself, with the pickaxe it carries. One
+     * whose order's goal is out of reach - a squadmate in a pocket, a plot across water - but that can
+     * walk to its squad isn't stranded, and is shown to the drill as moving. Live, the keep's foreman,
+     * carrying rations to one in a dead end at the mine's bottom, was "stranded" on the stairs every
+     * minute, and sent down to its squad, at MEDIUM risk, each time.
+     */
+    private List<SoldierStatus> cutOff(List<SoldierStatus> reported) {
+        return reported.stream().map(s -> {
+            if (!Recovery.stranded(s)) {
+                return s;
+            }
+            Optional<SoldierStatus> mate = reported.stream().filter(m -> !m.name().equals(s.name()) && !Recovery.stranded(m))
+                    .min(Comparator.comparingDouble(m -> distance(m.position(), s.position())));
+            if (mate.isEmpty()) {
+                return s;
+            }
+            boolean pickaxe = s.condition().flatMap(Condition::kit).map(Kit::pickaxe).orElse(false);
+            Position to = mate.get().position();
+            Position from = s.position();
+            boolean walks = Pathfinder.find(world, BlockPos.containing(from.x(), from.y(), from.z()),
+                    new Goal(to.x(), to.y(), to.z(), CUT_OFF_TOLERANCE, 1), CUT_OFF_BUDGET, FallAllowance.NONE, 0, pickaxe).reachesGoal();
+            return walks ? new SoldierStatus(s.name(), s.position(), s.order(), new Report.Moving(), s.condition()) : s;
+        }).toList();
+    }
+
     /** The engineer's stair down for a stranded soldier, from where it stands. */
     private Function<SoldierStatus, Optional<List<Cell>>> stairDown(String squadName) {
         return stuck -> {
@@ -2485,7 +2550,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // recovery set an order by its place in the reports, and failed every tick for half an hour.
             Map<String, SoldierStatus> ownReports = new HashMap<>();
             state.reported.forEach(r -> ownReports.put(r.name(), r));
-            List<SoldierStatus> reported = statuses.stream().map(s -> ownReports.getOrDefault(s.name(), s)).toList();
+            // A stair up dug through - the world shows no cell of it left - ends the recovery it was for.
+            statuses.stream().map(SoldierStatus::name)
+                    .filter(n -> clearingTunnel.contains(n) && clearing.containsKey(n) && clearing.get(n).isEmpty())
+                    .forEach(n -> state.recovery.release(n)
+                            .forEach(freed -> LOG.info("[{}] RECOVERY: the stair up for {} is dug - {} walks out", squadName, freed, freed)));
+            List<SoldierStatus> reported = cutOff(statuses.stream().map(s -> ownReports.getOrDefault(s.name(), s)).toList());
             orders = ReactToContact.orders(statuses, state.recovery.orders(reported,
                     Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, Formations.assign(order, statuses))),
                             order.objective(), supplyPoint), stairDown(squadName), stairUp(squadName), pillarDown(squadName)));
@@ -2508,8 +2578,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Cross-leveling (docs/military-doctrine.md §13): logs from a squadmate with some to spare
         // to one that needs them for a tool and can't chop any, and food to one that wants it and
         // has none.
+        // Never to one the recovery drill has: a hand-over walks the giver to where the receiver
+        // is, and live the foreman spent a day on the stairs with rations for one in a dead end.
         Map<String, Integer> wanted = new HashMap<>();
-        statuses.forEach(s -> {
+        statuses.stream().filter(s -> !state.recovery.recovering(s.name())).forEach(s -> {
             Integer logs = logsWanted.get(s.name());
             if (logs != null) {
                 wanted.put(s.name(), logs);
@@ -2518,7 +2590,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Rations to one running low (command.Subsistence's resupply mark), hungry yet or not: it
         // asks its squadmates before it goes hungry (the operator's).
         Map<String, Integer> fed = new HashMap<>();
-        statuses.forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> Subsistence.low(k.rations()))
+        statuses.stream().filter(s -> !state.recovery.recovering(s.name()))
+                .forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> Subsistence.low(k.rations()))
                 .ifPresent(k -> fed.put(s.name(), CrossLevel.RATIONS_GIVEN)));
         // And a spare weapon to one bare-handed: a replacement respawns with nothing. Not to one
         // making its kit: mid-craft its weapon can be on a window's cursor, and it isn't counted -
@@ -2540,7 +2613,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 shovelsShort.put(s.name(), 1);
             }
         }));
-        List<CrossLevel.Transfer> transfers = CrossLevel.pair(statuses, wanted, fed, disarmed, pickaxesShort, shovelsShort);
+        // Nor from one: in the squad simulation a soldier tunnelling up out of a pocket left its stair
+        // nineteen times to take rations to a squadmate it had no route to.
+        List<CrossLevel.Transfer> transfers = CrossLevel.pair(statuses.stream().filter(s -> !state.recovery.recovering(s.name())).toList(),
+                wanted, fed, disarmed, pickaxesShort, shovelsShort);
         Set<CrossLevel.Transfer> crossLeveling = Set.copyOf(transfers);
         crossLeveling.stream().filter(t -> !state.crossLeveling.contains(t))
                 .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL: {} {} to {}", t.giver(), squadName, t.count(),
@@ -2849,10 +2925,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 && state.wallKey.equals(campWallKey) ? floorToPave() : wallSoft;
         // Fortifying starts with the ground: the engineer's dig and fill boxes round the camp,
         // handed out by the squad's drill as each soldier's concrete command (command.Tasking).
-        Map<String, Order> ground = new HashMap<>(state.wallCentre == null || squadInContact ? Map.of()
+        // Contact takes the soldiers in it off the ground work, not the squad - the rest keep their
+        // strips, laid out over the whole crew so nobody's strip moves while a squadmate fights.
+        // Live, one zombie at the keep's edge held eight builders off it for a quarter of an hour,
+        // every one answering the squad leader's "move to the keep" instead.
+        Set<String> fighting = statuses.stream().filter(s -> s.report() instanceof Report.InContact)
+                .map(SoldierStatus::name).collect(Collectors.toUnmodifiableSet());
+        Map<String, Order> ground = new HashMap<>(state.wallCentre == null ? Map.of()
                 : groundwork(squadName, state, state.wallCentre, statuses));
         // Building the keep: its dig and its fill to the plan, a strip each (command.Keep, Tasking.keep).
-        boolean onKeep = taskOf(squadName, Objective.Task.Keep.class).isPresent() && !squadInContact;
+        boolean onKeep = taskOf(squadName, Objective.Task.Keep.class).isPresent();
         if (onKeep) {
             Map<String, Order> keepOrders = keepwork(squadName, state, statuses);
             ground.putAll(keepOrders);
@@ -2872,12 +2954,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             });
         }
         // A soldier told to level ground: its dig or fill, as the world shows what's left.
-        if (!squadInContact) {
-            statuses.forEach(s -> planBook.of(s.name()).current()
-                    .filter(d -> d instanceof Directive.Level)
-                    .flatMap(d -> levelWork(s, (Directive.Level) d))
-                    .ifPresent(work -> ground.put(s.name(), work)));
-        }
+        statuses.forEach(s -> planBook.of(s.name()).current()
+                .filter(d -> d instanceof Directive.Level)
+                .flatMap(d -> levelWork(s, (Directive.Level) d))
+                .ifPresent(work -> ground.put(s.name(), work)));
+        // The fight first: a soldier in contact answers its squad leader until it's over, and takes
+        // its ground work up again then.
+        fighting.forEach(ground::remove);
         if (state.wallCentre == null) {
             state.digLeft = -1;
             state.fillLeft = -1;
@@ -4259,7 +4342,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     && wayOut.get().stream().anyMatch(c -> Math.hypot(c.x() + 0.5 - status.position().x(), c.z() + 0.5 - status.position().z()) < 3);
             if (ladderTicks.get() % 20 == 0 && !breakingOut) {
                 boolean noRoute = status.report() instanceof Report.Cantco(String why) && why.startsWith("no route");
+                // Toward a goal near its own level: one a wall away. A goal far above or below isn't
+                // behind a wall - the way there is the recovery drill's stair (docs/military-doctrine.md
+                // § 7). In the squad simulation a soldier in a gallery 25 blocks down broke tunnel after
+                // tunnel sideways toward its slot on the surface, and its stair up was laid out again
+                // from each new spot.
                 wayOut.set(exit == null && fort == null && !inContact && noRoute && status.order() instanceof Order.MoveTo to
+                        && Math.abs(to.y() - status.position().y()) <= WAY_OUT_RISE
                         ? WayOut.cells(world, BlockPos.containing(status.position().x(), status.position().y() + 0.01, status.position().z()),
                         new Position(to.x(), to.y(), to.z()))
                         : List.of());
@@ -4493,7 +4582,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<BlockPos> wall = walling.getOrDefault(name, List.of());
             turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
                     clearing.getOrDefault(name, List.of()), free && !threatened && !foodCalls,
-                    keepHands.contains(name) ? Optional.ofNullable(clearingStrip.get(name)) : Optional.empty())));
+                    keepHands.contains(name) ? Optional.ofNullable(clearingStrip.get(name)) : Optional.empty(),
+                    clearingTunnel.contains(name))));
             Filler filler = stoneFilling.contains(name) ? paver : plainFiller;
             (filler == paver ? plainFiller : paver).stop();
             fillers.put(name, filler);

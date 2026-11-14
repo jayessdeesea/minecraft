@@ -188,6 +188,11 @@ logs between them and the stockpile holds M: no chest at the keep's depot, no pi
 make. Request logs - send a squad for WOOD where trees are." The general answers it with a `WOOD`
 task at trees a squad has reported, after food and before the building the logs are for. Live, the
 builders worked a day with no tree within 48 blocks, no chest and no pickaxe, and nobody was asked.
+The depot's workshop - the keep's table, furnace and chest, one for every squad on it - is sited on
+the depot's surface, from high over any hill there down (`TerrainSurveyor.surface`), not at the first
+cell with ground under it near the slab's height: under a hill that's a cave's or a tunnel's floor,
+and live it was a one-wide tunnel into the hill west of the keep, with nowhere beside a stand for a
+table, said every second for hours while the builders walked 50 blocks to a stray table for bread.
 
 GREEN is everyone carrying food, and AMBER is some short but each with a means. The rating is
 logged when it changes.
@@ -306,10 +311,20 @@ top down, nobody fetched: first a block under the ledge's edge, against its unde
 top step touches the ledge only at a corner, then each step and the block under it in turn. Live,
 a soldier stood a quarter of an hour on a ledge with 8 logs, no squadmate carrying 24. One stranded
 below - boxed in a pocket, with no stair down to lay - gets the engineer's stair up instead
-(`Stairway.up`): the cells to dig, one block up and one along a step to open ground, dug from the
-top as an `Order.Dig` by the nearest squadmate with a pickaxe. Live, a soldier waited two runs in
-a pocket walled partly in cobblestone. Where neither stair can be laid, the squadmate is sent to
-the stranded one instead. With nobody to fetch it and nothing to build with, the stranded soldier
+(`Stairway.up`): the cells to dig, one block up and one along a step to open ground, up to 40
+steps - a tunnel to the surface from a dead end at a mine's bottom - and never under sand, gravel,
+water or lava (the operator's rule: cut above only toward what's known). Carrying a pickaxe, the
+stranded soldier digs it itself; otherwise the nearest squadmate with one digs it from the top, as
+an `Order.Dig`. Live, a soldier waited two runs in a pocket walled partly in cobblestone, and
+another, with a pickaxe and 263 cobblestone, stood a day in a dead end 30 blocks under the camp, a
+12-step stair short. A squadmate is sent where no stair or cut is laid only to one up on a ledge -
+a carrier from below, whose own route builds the steps it finds - never down to one in a pocket:
+live, two squadmates in turn walked down to one and were trapped beside it. Stranded means cut
+off: a soldier reporting no route whose squad it can still walk to - its order's goal out of reach,
+a squadmate in a pocket, a plot across water - isn't stranded (`SoldierRunner.cutOff`), and nothing
+is cross-levelled to one the drill has: live, the keep's foreman spent a day on the stairs with
+rations for one in a dead end, "stranded" every minute on its way. With nobody to fetch it and
+nothing to build with, the stranded soldier
 goes down to its nearest squadmate itself at MEDIUM risk, over its own routine's stand: a fall
 that leaves it half its health or more. Live, soldiers stood for an hour on hut roofs, the wall
 and a canopy over the camp, a 4-block drop from the ground that the squad's LOW risk wouldn't take. A recovery lasts until the
@@ -365,6 +380,13 @@ the squad to falls.
   can't close on keeps shooting.
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
+- **Work under contact.** The soldiers in contact drop their ground work - the keep's strip, the
+  camp's ground, a levelling order - and answer the squad leader until it's over; the rest keep
+  theirs, and the strips stay laid out over the whole crew so nobody's moves while a squadmate
+  fights (`SoldierRunner`, the squad loop). The squad's side jobs - the wall, the lights, the mine's
+  cutter, rearming past the basic load, the farm - pause for the whole squad as before. Live, one
+  zombie at the keep's edge held eight builders off it for a quarter of an hour, every one of them
+  answering the squad leader's "move to the keep" instead of digging.
 - **The squad leader and the general** hear of it at once: a soldier newly in contact is a contact
   report, and the squad leader decides then, not at its next scheduled look, whether to fight on,
   bypass or break contact. A squad newly in contact triggers the general the same way. Both keep
@@ -771,7 +793,10 @@ it never finished, walks out. And a soldier the squad's drill misses - reporting
 pocket it can walk no more than 128 cells of by the route planner's own moves, under the walled
 camp's own floor - breaks the wall
 nearest where it's sent from where it stands (`bot.supply.WayOut`), keeping to that break until
-it's made however its reports change, and never through a wall's line, the camp's included. A
+it's made however its reports change, and never through a wall's line, the camp's included. Only
+toward a goal within 3 blocks of its own level: one far above or below isn't a wall away, and the
+way there is the recovery drill's stair (§7) - in the squad simulation a soldier in a gallery 25
+blocks down broke tunnel after tunnel sideways toward its slot on the surface. A
 pocket with a drop beside it is a ledge, not a box: that soldier builds its stair down instead: live, after a restart, three
 soldiers stood a day in a three-cell pocket the drill never saw, the squad still holding its night
 base's record; and three more in a trench between the camp's wall and old cobblestone heaps.

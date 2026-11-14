@@ -34,7 +34,8 @@ seconds or when stuck:
   otherwise keeps for tools and won't build a route on, it puts a block into the water
   within 4 of it from where it floats - sources first, which stop the flow, then the water nearest
   it, flowing or not, which is footing to climb out by. And it reports CANTCO "no route from (x, y, z) out of the water", which
-  the squad's recovery drill reads as stranded when it has too few blocks to build its own way:
+  the squad's recovery drill reads as stranded - cut off, with no route to a squadmate either -
+  when it has too few blocks to build its own way:
   a squadmate with blocks is sent to build it a stair (docs/military-doctrine.md § 7). Live, two
   soldiers floated in a flooded shaft for hours reporting the wood they meant to gather.
 - **Searches wider for a goal its cheap searches can't reach.** Once its plans gain no ground, it
@@ -81,6 +82,9 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
   pillar - never onto farmland, which landing on tramples; or straight up under a block that falls.
 - Dig a block whose drop needs a pickaxe of a tier it hasn't got: left for a squadmate's, or until
   one is made. Every other block it digs with the tool of its kind - pickaxe, axe, shovel or hand. It pillars in open air only straight up to a
-  goal over its column: a stand to cut the top of its strip from. Nor tunnel, except as the staircase routine does.
+  goal over its column: a stand to cut the top of its strip from. Nor tunnel, except as the staircase routine does and
+  as the recovery drill's stair up out of a pocket does (docs/military-doctrine.md § 7): a cut the
+  engineer lays, up to 40 steps to the surface, dug cell by cell from where it stands, never under
+  sand, gravel or a liquid.
 - Open doors or gates.
 - Decide what to work on. That comes from its squad's task (see [routines.md](routines.md)).

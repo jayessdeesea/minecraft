@@ -122,16 +122,21 @@ public final class Stairway {
         return Optional.empty();
     }
 
-    /** Steps at most up out of a pocket: deeper than this is the mine's, not a pocket's. */
-    static final int MAX_STEPS_UP = 12;
+    /**
+     * Steps at most up out of a pocket: a tunnel to the surface from a dead end at the bottom of a
+     * mine. Live, a soldier stood a day in a pocket 30 blocks under the camp, a 12-step stair short.
+     */
+    static final int MAX_STEPS_UP = MAX_STEPS;
 
     /**
      * The cells to dig for the shortest stair from {@code feet} - where a soldier stands boxed in
      * below the ground - up and out, one block up and one along a step: each step's body room, and
      * the head room over the step before it, so the soldier jumps up into it. Empty if none can be
      * laid: on every heading a cell no clear digs (cobblestone, a table), water, no floor to step
-     * onto, or more than {@link #MAX_STEPS_UP} steps. Live, a soldier waited two runs in a pocket
-     * its squad had no stair down for (docs/military-doctrine.md § 7).
+     * onto, more than {@link #MAX_STEPS_UP} steps, or a cut under sand or gravel - which would come
+     * down on the digger's head - or under water or lava (operator, 2026-11-13: cut above only toward
+     * what's known, never under a falling block or a liquid). Live, a soldier waited two runs in a
+     * pocket its squad had no stair down for (docs/military-doctrine.md § 7).
      */
     public static Optional<List<BlockPos>> up(WorldView world, BlockPos feet) {
         return Arrays.stream(HEADINGS)
@@ -153,7 +158,12 @@ public final class Stairway {
                     return Optional.empty();
                 }
                 if (world.isSolid(cell.x(), cell.y(), cell.z())) {
-                    if (!Clearing.diggable(world, cell.x(), cell.y(), cell.z())) {
+                    if (!Clearing.diggable(world, cell.x(), cell.y(), cell.z()) || world.falls(cell.x(), cell.y(), cell.z())) {
+                        return Optional.empty();
+                    }
+                    // Over the cut, what the dig leaves standing: nothing that falls or flows.
+                    BlockPos over = cell.offset(0, 1, 0);
+                    if (world.falls(over.x(), over.y(), over.z()) || world.isHazard(over.x(), over.y(), over.z())) {
                         return Optional.empty();
                     }
                     dig.add(cell);

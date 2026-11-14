@@ -122,9 +122,14 @@ public final class Recovery {
         reported.forEach(s -> byName.put(s.name(), s));
         // Off where it was stranded, it's out - but for one digging its pillar down, which is out
         // only at the pillar's foot: each block it digs drops it one, and the drill let go of it
-        // after the first, in the squad simulation, and it built its pillar back.
+        // after the first, in the squad simulation, and it built its pillar back. And one on a stair
+        // up is out only at the stair's top: each step dug moves it a step, and in the squad
+        // simulation the drill let go of it every two, waited for it to be stranded again, and laid
+        // the stair out afresh from where it stood - five steps up in ten minutes.
         recovering.entrySet().removeIf(e -> !byName.containsKey(e.getKey()) || (e.getValue().pillar.isPresent()
                 ? byName.get(e.getKey()).position().y() <= e.getValue().pillar.get().getLast().y() + 0.5
+                : e.getValue().cut.isPresent()
+                ? byName.get(e.getKey()).position().y() >= e.getValue().cut.get().stream().mapToInt(Cell::y).max().orElse(0) - 0.5
                 : Cohesion.distance(byName.get(e.getKey()).position(), e.getValue().at) > MOVED_OFF));
         for (SoldierStatus s : reported) {
             int stuck = stranded(s) ? strandedFor.merge(s.name(), 1, Integer::sum) : 0;
@@ -159,11 +164,22 @@ public final class Recovery {
                 result.set(names.indexOf(e.getKey()), new Order.Place(fromTop(episode.stair.get())));
                 continue;
             }
+            // Below, with a pickaxe: it tunnels up itself, along the engineer's cut. Live, a soldier
+            // with a pickaxe and 263 cobblestone stood a day in a dead end at the mine's bottom.
+            if (episode.cut.isPresent() && self != null && pickaxe(self)) {
+                result.set(names.indexOf(e.getKey()), dig(episode.cut.get()));
+                continue;
+            }
             if (episode.fetcher == null || !fetching(episode.fetcher, byName)) {
-                // With no stair to build - stranded below, not up on a ledge - a pickaxe is as good as
-                // blocks: its route there cuts the steps the stranded one walks out by. Live, a soldier
-                // boxed in a pocket waited two runs, nobody in its squad carrying blocks enough.
-                episode.fetcher = nearestCarrier(e.getKey(), episode.at, reported, episode.stair.isEmpty());
+                // With a cut laid and no stair - stranded below, not up on a ledge - a pickaxe is as
+                // good as blocks: it digs the cut from the top. Live, a soldier boxed in a pocket waited
+                // two runs, nobody in its squad carrying blocks enough. With nothing laid out, only
+                // one up on a ledge is still gone to, by a carrier from below whose own route builds
+                // the steps it finds; sent down to one in a pocket it has nothing to do there but
+                // stand, and live two squadmates in turn walked down to one in a dead end at the
+                // mine's bottom and were trapped beside it.
+                boolean nothingLaid = episode.stair.isEmpty() && episode.cut.isEmpty();
+                episode.fetcher = nearestCarrier(e.getKey(), episode.at, reported, episode.cut.isPresent(), nothingLaid);
             }
             if (episode.fetcher == null) {
                 // Nobody to fetch it, and nothing to build its own way down with: it goes down to its
@@ -187,6 +203,30 @@ public final class Recovery {
                     .orElse(new Order.MoveTo(at.x(), at.y(), at.z(), TOLERANCE, TOLERANCE, Risk.LOW)));
         }
         return List.copyOf(result);
+    }
+
+    /** Whether the drill has {@code soldier}: stranded, and not yet off where it was stuck. */
+    public boolean recovering(String soldier) {
+        return recovering.containsKey(soldier);
+    }
+
+    /**
+     * The stair {@code digger} was digging is dug, the world says: the recovery it was for ends - its
+     * own, or the one it fetched for - and the names of the soldiers released. With the stair cut the
+     * stranded one has a route out, or is stranded afresh where it stands and gets another. In the
+     * squad simulation one stood at the top but one step of a dug stair, its dig done and its order
+     * met, held by the drill till it should climb out.
+     */
+    public List<String> release(String digger) {
+        List<String> released = recovering.entrySet().stream()
+                .filter(e -> e.getKey().equals(digger) || digger.equals(e.getValue().fetcher))
+                .map(Map.Entry::getKey).toList();
+        released.forEach(recovering::remove);
+        return released;
+    }
+
+    private static boolean pickaxe(SoldierStatus soldier) {
+        return soldier.condition().flatMap(Condition::kit).map(Kit::pickaxe).orElse(false);
     }
 
     /**
@@ -222,7 +262,7 @@ public final class Recovery {
         return Optional.ofNullable(escaping.get(soldier));
     }
 
-    /** An {@code Order.Dig} of just {@code cells}: their box, and every other cell in it kept. */
+    /** An {@code Order.Dig} of just {@code cells}, as a tunnel - cut cell by cell under rock: their box, and every other cell in it kept. */
     static Order.Dig dig(List<Cell> cells) {
         int[] lo = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE}, hi = {Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};
         for (Cell c : cells) {
@@ -245,7 +285,7 @@ public final class Recovery {
                 }
             }
         }
-        return new Order.Dig(new Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]), Set.copyOf(except));
+        return new Order.Dig(new Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]), Set.copyOf(except), true);
     }
 
     /** Whether {@code fetcher} can go on fetching: still in the squad, and neither stranded nor rejoining itself. */
@@ -254,14 +294,22 @@ public final class Recovery {
         return mate != null && !recovering.containsKey(fetcher) && !(mate.report() instanceof Report.LinkingUp);
     }
 
-    private String nearestCarrier(String stuck, Position at, List<SoldierStatus> reported, boolean diggingWillDo) {
+    /**
+     * The nearest squadmate fit to fetch {@code stuck} at {@code at}: one carrying {@link #BLOCKS_TO_FETCH}
+     * blocks, or a pickaxe when {@code diggingWillDo}; and when {@code ledgeOnly}, one standing below
+     * the stranded one - up on a ledge, not down in a pocket.
+     */
+    private String nearestCarrier(String stuck, Position at, List<SoldierStatus> reported, boolean diggingWillDo, boolean ledgeOnly) {
         String best = null;
         double bestDistance = Double.MAX_VALUE;
         for (SoldierStatus mate : reported) {
             boolean taken = recovering.values().stream().anyMatch(e -> mate.name().equals(e.fetcher));
             double distance = Cohesion.distance(mate.position(), at);
             boolean equipped = blocks(mate) >= BLOCKS_TO_FETCH
-                    || diggingWillDo && mate.condition().flatMap(Condition::kit).map(Kit::pickaxe).orElse(false);
+                    || diggingWillDo && pickaxe(mate);
+            if (ledgeOnly && mate.position().y() >= at.y() - 1) {
+                continue;
+            }
             if (!mate.name().equals(stuck) && !taken && equipped && !recovering.containsKey(mate.name())
                     && !(mate.report() instanceof Report.LinkingUp) && distance < bestDistance) {
                 best = mate.name();

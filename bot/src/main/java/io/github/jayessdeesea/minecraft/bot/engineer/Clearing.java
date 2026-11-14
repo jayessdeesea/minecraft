@@ -81,6 +81,60 @@ public final class Clearing {
     }
 
     /**
+     * As {@link #toClear(WorldView, Box, Set)}, or for a {@code tunnel} - the recovery drill's stair
+     * up ({@code Stairway.up}), cut under rock - every block in the box that breaks but {@code except},
+     * open top or none, lowest first.
+     */
+    public static List<BlockPos> toClear(WorldView world, Box box, Set<Cell> except, boolean tunnel) {
+        if (!tunnel) {
+            return toClear(world, box, except);
+        }
+        List<BlockPos> cells = new ArrayList<>();
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                for (int y = box.minY(); y <= box.maxY(); y++) {
+                    if (!except.contains(new Cell(x, y, z)) && world.isSolid(x, y, z) && diggable(world, x, y, z)) {
+                        cells.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        cells.sort(Comparator.comparingInt(BlockPos::y));
+        return List.copyOf(cells);
+    }
+
+    /**
+     * The next block of a tunnel's {@code cover} to cut - the recovery drill's stair up, dug cell by
+     * cell from where the digger stands, not level by level from an open top: a cell under rock is
+     * cut from beside or below it, the head room over the digger's own head included (safe with
+     * nothing over it that falls, {@link #safeFrom}). The nearest to the soldier first, the lowest
+     * among those as near, so the flight is cut step by step from its foot.
+     */
+    public static Optional<Cut> nextInTunnel(WorldView world, List<BlockPos> cover, Position soldier, Set<BlockPos> excluded,
+                                             Predicate<BlockPos> reach) {
+        Cut best = null;
+        double bestScore = Double.MAX_VALUE;
+        int lowest = cover.stream().mapToInt(BlockPos::y).min().orElse(0);
+        for (BlockPos block : cover) {
+            if (excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())) {
+                continue;
+            }
+            Optional<BlockPos> stand = standFor(world, block, excluded, reach);
+            if (stand.isEmpty()) {
+                continue;
+            }
+            BlockPos s = stand.get();
+            double score = Math.hypot(s.x() + 0.5 - soldier.x(), s.z() + 0.5 - soldier.z()) + Math.abs(s.y() - soldier.y())
+                    + 0.5 * (block.y() - lowest);
+            if (score < bestScore) {
+                best = new Cut(block, s, world.isLog(block.x(), block.y(), block.z()));
+                bestScore = score;
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /**
      * What an {@code Order.Fill} of {@code box} fills: in each column, the open cells from the box's
      * top down to the first solid block or water - open to the sky, so a pit is filled and a
      * flooded one capped over its water, and a cave underground is left alone. Never one in

@@ -400,6 +400,37 @@ class ClearingTest {
         assertEquals(new BlockPos(3, 65, 3), cut.block());
     }
 
+    /** Stone in {@code rock}, gravel in {@code gravel} (which falls), nothing else. */
+    private static WorldView stone(Set<BlockPos> rock, Set<BlockPos> gravel) {
+        WorldView base = cells(rock, gravel);
+        return new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return base.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isStone(int x, int y, int z) {
+                return rock.contains(new BlockPos(x, y, z)) && !gravel.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isGravel(int x, int y, int z) {
+                return base.isGravel(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
     /** Solid in {@code solid}, gravel in {@code gravel} (which falls), nothing else. */
     private static WorldView cells(Set<BlockPos> solid, Set<BlockPos> gravel) {
         return new WorldView() {
@@ -424,6 +455,38 @@ class ClearingTest {
                 return List.of();
             }
         };
+    }
+
+    /**
+     * A stair cut up out of a pocket is a tunnel: its cells lie under rock, none with an open top, so
+     * the level-by-level clear offers none of them - and the tunnel clear offers the nearest, the head
+     * room over the digger's own head included, from where it stands.
+     */
+    @Test
+    void aTunnelIsCutCellByCellFromWhereTheDiggerStandsNotFromAnOpenTop() {
+        Set<BlockPos> rock = new HashSet<>();
+        for (int x = -2; x <= 4; x++) {
+            for (int y = 56; y <= 63; y++) {
+                for (int z = -1; z <= 1; z++) {
+                    if (!(x == 0 && z == 0 && (y == 60 || y == 61))) {
+                        rock.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        WorldView world = stone(rock, Set.of());
+        Position soldier = new Position(0.5, 60, 0.5);
+        // The first step's cells of a stair up to the east: the head room over the digger, the step's body room and its head room.
+        List<BlockPos> cut = List.of(new BlockPos(0, 62, 0), new BlockPos(1, 61, 0), new BlockPos(1, 62, 0));
+
+        assertEquals(Optional.empty(), Clearing.next(world, cut, soldier, Set.of()), "no open top: the level clear offers nothing");
+        Clearing.Cut first = Clearing.nextInTunnel(world, cut, soldier, Set.of(), s -> true).orElseThrow();
+        assertEquals(new BlockPos(0, 60, 0), first.stand(), "from where it stands");
+        assertTrue(cut.contains(first.block()), "one of the cut's cells: " + first.block());
+        Set<BlockPos> gravelOver = Set.of(new BlockPos(0, 63, 0));
+        WorldView loose = stone(rock, gravelOver);
+        assertTrue(Clearing.nextInTunnel(loose, List.of(new BlockPos(0, 62, 0)), soldier, Set.of(), s -> true).isEmpty(),
+                "gravel over the head room: not cut from under it");
     }
 
     /**

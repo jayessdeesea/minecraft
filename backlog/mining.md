@@ -34,6 +34,12 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   (docs/military-doctrine.md § 16). Still to measure over a garrison night: whether hostiles
   follow the squad down from the surface, and whether the stairs need torches and a door at the top.
 
+- **The task's state flickers.** Live (field168), `task Mine[]` was logged DONE ("the stairs are
+  cut down to y=16, and the ore beside them taken") and UNDER_WAY ("the stairs 51 of 54 steps
+  down") in turn, once a second, all night, by both squads: the state is DONE when any soldier's
+  `stairsProgress` is Done, else the count of steps cut - two readings of the same stairs that
+  disagree. One measure, said once when it changes.
+
 ## Notes
 - Diamonds need an iron pickaxe: the equipment ladder (docs/military-doctrine.md § 11) reaches
   one from the iron the stairs open.

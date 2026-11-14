@@ -2112,6 +2112,91 @@ class SquadSimulationTest {
     }
 
     /**
+     * A hill of dirt over the keep's depot, with a one-wide tunnel cut into it at the slab's height
+     * - as live, west of the keep. The keep's workshop goes on the hill's surface, not in the tunnel,
+     * where no stand has a free cell beside it and both squads said "nowhere" every second for hours.
+     */
+    @Test
+    void theKeepsWorkshopIsSitedOnTheSurfaceOverItsDepotNotInATunnelUnderTheHill() {
+        int dx = (int) Math.floor(Keep.DEPOT.x()), dz = (int) Math.floor(Keep.DEPOT.z());
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> {
+            boolean hill = x >= dx - 6 && x <= dx + 6 && z >= dz - 6 && z <= dz + 6 && y > GROUND && y <= GROUND + 9;
+            boolean tunnel = z == dz && x >= dx - 6 && x <= dx && (y == GROUND + 1 || y == GROUND + 2);
+            return hill && !tunnel ? SimServer.DIRT : flat(x, y, z);
+        }, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1})))
+                .run();
+
+        clock.advance(30_000);
+
+        List<String> sited;
+        try {
+            sited = Files.readAllLines(Path.of("target/sim/theKeepsWorkshopIsSitedOnTheSurfaceOverItsDepotNotInATunnelUnderTheHill.log")).stream()
+                    .filter(l -> l.contains("the keep's workshop: stand") || l.contains("nowhere at the keep's depot")).toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        assertTrue(!sited.isEmpty() && sited.stream().allMatch(l -> l.contains("y=" + (GROUND + 10))),
+                "the workshop on the hill's top, said once: " + sited);
+    }
+
+    /**
+     * One builder in contact at its end of the keep, zombie after zombie, for three minutes: the
+     * other keeps digging its own strip. Live, a single zombie at the keep's edge held eight builders
+     * off it for a quarter of an hour, every one of them answering the squad leader's "move to the
+     * keep" instead - contact takes the soldiers in it off the work, not the squad.
+     */
+    @Test
+    void aBuilderInContactDoesntTakeTheOthersOffTheKeep() {
+        SimClock clock = new SimClock();
+        // A mound at each end of the keep, one each: Bob's keeps him at his, where the zombies come.
+        SimServer server = new SimServer(clock, (x, y, z) -> Math.abs(Math.abs(x) - 12) <= 1 && z >= -1 && z <= 1 && y > GROUND && y <= GROUND + 3
+                ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(name -> name.equals("Alice") ? new PlayerPosition(-8.5, GROUND + 1, 0.5)
+                        : new PlayerPosition(8.5, GROUND + 1, 0.5), name -> List.of(
+                        new int[]{36, SimServer.itemNamedOrMinus("stone_sword"), 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        // A zombie at Bob's end of the keep as soon as the last is down: Bob in contact the whole while.
+        for (int i = 0; i < 90; i++) {
+            if (server.zombiesLeft() == 0) {
+                server.spawnZombie(14.5, GROUND + 1, 0.5);
+            }
+            clock.advance(2000);
+        }
+
+        List<String> left = new ArrayList<>();
+        for (int x = -13; x <= -11; x++) {
+            for (int z = -1; z <= 1; z++) {
+                for (int y = GROUND + 1; y <= GROUND + 3; y++) {
+                    if (server.block(x, y, z) != SimServer.AIR) {
+                        left.add(x + "," + y + "," + z);
+                    }
+                }
+            }
+        }
+        assertEquals(List.of(), left, "Alice's mound, dug while Bob fought; Alice at " + server.position("Alice")
+                + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+    }
+
+    /**
      * Stranded up a pillar of its own - too high to jump, nothing beside it - a soldier digs it down
      * from on top, a block's drop at a time onto known ground. Live, a builder called off its pillar
      * to feed itself stood at y=98 with no route down.
@@ -2813,6 +2898,49 @@ class SquadSimulationTest {
         // In stone, as live: a pickaxe digs it, bare hands don't.
         boolean rock = x >= 6 && x <= 15 && z >= -4 && z <= 4 && y >= GROUND - 6 && y <= GROUND;
         return open ? SimServer.AIR : rock ? SimServer.STONE : flat(x, y, z);
+    }
+
+    /**
+     * Flat, with a dead end 25 blocks down in a block of stone: a gallery two high from (10, 0) to
+     * (30, 0), roofed by the stone - as at the bottom of a mine, too long a room for the shut-in
+     * drill (§14), which cuts out of a hut.
+     */
+    private static int deepPocketBelow(int x, int y, int z) {
+        boolean open = x >= 10 && x <= 30 && z == 0 && y >= GROUND - 25 && y <= GROUND - 24;
+        boolean rock = x >= -20 && x <= 40 && z >= -30 && z <= 30 && y >= GROUND - 30 && y <= GROUND;
+        return open ? SimServer.AIR : rock ? SimServer.STONE : flat(x, y, z);
+    }
+
+    /**
+     * As live (field161 to field168): Bob, with a pickaxe, stood a day in a dead end 30 blocks under
+     * the camp, the stair up then capped at 12 steps; and the drill sent two squadmates down to him
+     * in turn, each trapped beside him. Now the stranded one tunnels up itself along the engineer's
+     * cut, and nobody without work laid out there is sent.
+     */
+    @Test
+    void aSoldierWithAPickaxeInAPocketDeepUnderTheGroundTunnelsUpItself() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::deepPocketBelow, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Dana");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(
+                        n -> n.equals("Dana") ? new PlayerPosition(10.5, GROUND - 25, 0.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> n.equals("Dana") ? List.of(new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})
+                                : List.of(new int[]{37, SimServer.ITEM_BREAD, 16})));
+        runner.run();
+
+        clock.advance(10 * 60_000);
+
+        server.dumpLog("aSoldierWithAPickaxeInAPocketDeepUnderTheGroundTunnelsUpItself");
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        assertTrue(server.position("Dana").y() >= GROUND, "Dana out of the pocket: at " + server.position("Dana") + "; " + events);
+        assertTrue(server.position("Alice").y() >= GROUND && server.position("Bob").y() >= GROUND,
+                "nobody sent down after her: Alice at " + server.position("Alice") + ", Bob at " + server.position("Bob"));
     }
 
     /**
