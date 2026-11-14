@@ -1189,8 +1189,10 @@ shares what's left of it out among the builders on hand, every squad's: a rectan
 each, none overlapping, near-equal in blocks, each to the builder nearest it. With less work than
 four blocks a builder, fewer are sent - a spire one block across is the nearest builder's - and the
 rest wait where they stand. It plans again when the level falls, when the builders on hand change,
-and when a builder has cleared its rectangle while the level still has ground, so what's left is
-shared out again. Nothing is kept from level to level, or overnight. The foreman says each plan on
+when a builder has cleared its rectangle while the level still has ground, and every half minute
+from where the builders stand, so what's left is shared out again. On hand means on the keep, fed,
+not fighting and not off keeping the farm: live, a level's last three blocks went to a builder who
+then walked 80 blocks to the farm, and seven stood by for her. Nothing is kept from level to level, or overnight. The foreman says each plan on
 the net, point to point (`/msg`), a line a second at most since the server cuts off a connection
 that chats faster; the log reads "[Keep] level y=77: 41 block(s) left, 6 of 8 builder(s) on it"
 and "[Keep] Alice -> Bob: KEEP DIG 77 3 -4 9 2". Ground within 12 blocks of a builder's fight, and

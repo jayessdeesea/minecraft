@@ -1900,7 +1900,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                            java.util.function.IntBinaryOperator top, int layer, Set<Cell> except) {
         long now = clockwork.millis();
         Set<String> inCrew = crew.stream().map(Tasking.Hand::name).collect(Collectors.toSet());
-        keepCrews.put(squad, hands.stream().filter(h -> inCrew.contains(h.name()) && !keepFighting.contains(h.name()))
+        // On hand: on the keep, fed, not fighting - and not off keeping the farm. Live, a level's last
+        // three blocks went to a builder who walked 80 blocks to the farm, and seven stood by for her.
+        keepCrews.put(squad, hands.stream().filter(h -> inCrew.contains(h.name()) && !keepFighting.contains(h.name())
+                        && !farming.containsKey(h.name()))
                 .map(h -> new LevelPlan.Builder(h.name(), h.position())).toList());
         // The squad leader's appointment: the first builder of the first squad on the keep, again
         // whenever that one is off it.
@@ -1942,7 +1945,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean idleHand = plan != null && now - plan.at() >= KEEP_REPLAN_MILLIS && !columns.isEmpty()
                     && plan.boxes().values().stream().anyMatch(boxes -> boxes.stream().noneMatch(b -> columns.stream()
                     .anyMatch(c -> c.x() >= b.minX() && c.x() <= b.maxX() && c.z() >= b.minZ() && c.z() <= b.maxZ())));
-            if (plan == null || plan.level() != level || !plan.crew().equals(names) || idleHand) {
+            // And every half minute from where the builders stand now: one sent a rectangle at dawn from
+            // down the mine isn't the nearest to it once the squad is up.
+            boolean old = plan != null && now - plan.at() >= KEEP_PLAN_MILLIS;
+            if (plan == null || plan.level() != level || !plan.crew().equals(names) || idleHand || old) {
                 Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of() : LevelPlan.plan(level, site.maxY(), columns, all);
                 plan = new KeepPlan(level, names, boxes, now);
                 keepPlan = plan;
@@ -2012,6 +2018,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final long NET_LINE_MILLIS = 1_000;
     /** How long a level's plan stands before a builder done with its rectangle has what's left shared out again. */
     static final long KEEP_REPLAN_MILLIS = 5_000;
+    /** How long a level's plan stands at the most before it's made again from where the builders are. */
+    static final long KEEP_PLAN_MILLIS = 30_000;
     /** The keep's foreman, by name - squad loops. */
     private volatile String keepForeman;
     /** The foreman's plan for the site's level - guarded by {@link #keepPlanLock}; read by every squad's loop. */
