@@ -70,6 +70,15 @@ public final class Breacher {
         return script != null;
     }
 
+    /** The block its last run failed to break - the server never said it broke - if one has, taken so it's said once. */
+    public synchronized Optional<BlockPos> takeFailure() {
+        BlockPos taken = failedAt;
+        failedAt = null;
+        return Optional.ofNullable(taken);
+    }
+
+    private BlockPos failedAt;
+
     public synchronized boolean tick(WorldView world, List<BlockPos> cells) {
         this.world = world;
         ticks++;
@@ -96,6 +105,7 @@ public final class Breacher {
             case Script.Status.Done _ -> stop(); // a block put back meanwhile gets a fresh run
             case Script.Status.Failed failed -> {
                 LOG.warn("{} couldn't break through: {}: {}", name, failed.step(), failed.reason());
+                failedAt = scripted.stream().filter(this::solid).findFirst().orElse(null);
                 stop();
                 cooldown = COOLDOWN_TICKS;
             }

@@ -4022,6 +4022,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Boxed in with no doorway anyone knows to cut - a hut it was sealed in before a restart -
         // the wall toward where it's sent, broken from where it stands (bot.supply.WayOut).
         AtomicReference<List<BlockPos>> wayOut = new AtomicReference<>(List.of());
+        /* The cell the model took as a block on this soldier's word (takeSnag), to take back if it won't break. */
+        AtomicReference<BlockPos> snagMarked = new AtomicReference<>();
         AtomicReference<Optional<Recipe>> ladderStep = new AtomicReference<>(Optional.empty());
         AtomicBoolean armourerWas = new AtomicBoolean();
         // Ticks while told to light the base: one torch tried a second, until the light check sees it.
@@ -4070,9 +4072,21 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // away, since what stopped the body three times is in its way (backlog/world-model-stale.md).
             // Live, marked and left to the planner, a soldier down the camp's mine stood on with "no route".
             soldier.takeSnag().ifPresent(cell -> {
-                if (!world.isSolid(cell.x(), cell.y(), cell.z())) {
+                // A squadmate standing in the cell is what stopped it, not a block: live, two soldiers
+                // held each other in a one-wide passage of the camp's mine for a quarter of an hour.
+                Optional<String> standingThere = activeSoldiers.entrySet().stream()
+                        .filter(e -> !e.getKey().equals(name))
+                        .filter(e -> {
+                            Position p = e.getValue().status().position();
+                            return Math.hypot(p.x() - cell.x() - 0.5, p.z() - cell.z() - 0.5) < 1 && Math.abs(p.y() - cell.y()) <= 1;
+                        })
+                        .map(Map.Entry::getKey).findFirst();
+                if (standingThere.isPresent()) {
+                    LOG.warn("[World] {} stuck short of {} {} times - {} stands there", name, cell, DeterministicSoldier.SNAG_TRIES, standingThere.get());
+                } else if (!world.isSolid(cell.x(), cell.y(), cell.z())) {
                     chunkCache.setBlock(cell.x(), cell.y(), cell.z(), STONE_STATE);
                     LOG.warn("[World] {} stuck short of {} {} times - the model takes it as a block, and breaks it", name, cell, DeterministicSoldier.SNAG_TRIES);
+                    snagMarked.set(cell);
                     wayOut.set(List.of(cell, cell.offset(0, 1, 0)));
                 }
             });
@@ -4265,6 +4279,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     if (doorway.tick(world, out)) {
                         wayOut.set(List.of());
                     }
+                    // The server never broke it: the snag the model took as a block on this soldier's word
+                    // isn't one - taken back, or the phantom would wall it in for good (field164, Bob).
+                    doorway.takeFailure().filter(cell -> cell.equals(snagMarked.get())).ifPresent(cell -> {
+                        chunkCache.setBlock(cell.x(), cell.y(), cell.z(), 0);
+                        snagMarked.set(null);
+                        wayOut.set(List.of());
+                        LOG.warn("[World] {}'s snag at {} wouldn't break - not a block; the model takes it back", name, cell);
+                    });
                 } else {
                     doorway.stop();
                 }

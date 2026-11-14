@@ -932,7 +932,9 @@ the same cell three times (`DeterministicSoldier.SNAG_TRIES`; stalled at it, or 
 server) has hit something, and the model takes that cell as stone until the server says otherwise -
 a dig timed for stone outwaits anything softer - and the soldier breaks it at once, since what
 stopped its body three times is in its way; live, marked and left to the planner, it stood on with
-"no route". Live, one soldier down the camp's mine was stuck short of one cell 161 times in a
+"no route". Not when a squadmate stands in the cell - live, two soldiers held each other in a
+one-wide passage of the camp's mine for a quarter of an hour - and taken back if the server never
+breaks it, or the phantom would wall the soldier in for good. Live, one soldier down the camp's mine was stuck short of one cell 161 times in a
 quarter of an hour. Progress reads "N cells under the
 camp's ground to fill". Live, a pit 13 deep under the east wall line left 42 wall cells nothing to
 stand on.
