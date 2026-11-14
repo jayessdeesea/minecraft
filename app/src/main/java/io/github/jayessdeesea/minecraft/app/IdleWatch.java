@@ -27,6 +27,18 @@ final class IdleWatch {
 
     private final Map<String, Spell> spells = new HashMap<>();
 
+    /**
+     * Whether a soldier at {@code at} under {@code order} is holding where it was sent - within the
+     * order's tolerances, a block's slack - so standing there is the order, not being stuck. One sent
+     * somewhere it never got to isn't holding: live, a builder waist-deep in gravel 60 blocks from his
+     * squad leader's point was read as waiting there, and never alerted, for a day.
+     */
+    static boolean holdingWhereSent(io.github.jayessdeesea.minecraft.command.Order order, Position at) {
+        return order instanceof io.github.jayessdeesea.minecraft.command.Order.MoveTo m
+                && Math.hypot(m.x() - at.x(), m.z() - at.z()) <= m.horizontalTolerance() + 1
+                && Math.abs(m.y() - at.y()) <= m.verticalTolerance() + 1;
+    }
+
     /** Whether {@code soldier} has stood still long enough for the alert, and hasn't moved on since. */
     synchronized boolean alarmed(String soldier) {
         Spell spell = spells.get(soldier);

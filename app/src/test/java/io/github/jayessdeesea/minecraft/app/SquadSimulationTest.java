@@ -2943,6 +2943,32 @@ class SquadSimulationTest {
                 "nobody sent down after her: Alice at " + server.position("Alice") + ", Bob at " + server.position("Bob"));
     }
 
+    /**
+     * A soldier stood in a block to its waist - a solid cell at its feet, air at its head - breaks it,
+     * as one with a block at its head does. Live, gravel fallen into the pocket at the camp mine's
+     * bottom held two soldiers a day that way: nothing to reach a stand from, every route "no route".
+     */
+    @Test
+    void aSoldierStoodInABlockToItsWaistBreaksIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 0 && z == 0 && y == GROUND + 1 ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(n -> n.equals("Alice") ? new PlayerPosition(0.5, GROUND + 1, 0.5) : new PlayerPosition(4.5, GROUND + 1, 4.5),
+                        n -> List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(60_000);
+
+        assertEquals(SimServer.AIR, server.block(0, GROUND + 1, 0), "the block at Alice's feet broken; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
     /** {@link #deepPocketBelow}, with a mound of dirt on the keep over the gallery: work in the stranded builder's strip. */
     private static int deepPocketBelowAMound(int x, int y, int z) {
         return x >= 11 && x <= 13 && z >= -1 && z <= 1 && y > GROUND && y <= GROUND + 3 ? SimServer.DIRT : deepPocketBelow(x, y, z);

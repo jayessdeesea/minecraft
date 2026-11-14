@@ -50,6 +50,18 @@ class SubsistenceTest {
         assertEquals(List.of("Alice"), status.short_());
     }
 
+    /**
+     * A squad carrying ten rations a head between them feeds its short soldier by sharing, a hand-over
+     * of seconds, and sends nobody to the farm; one that doesn't, does. Live, a builder with an empty
+     * pack walked 80 blocks to the farm and back while three squadmates carried plenty.
+     */
+    @Test
+    void aSquadCarryingEnoughBetweenThemSharesInsteadOfFarming() {
+        assertTrue(Subsistence.canShare(List.of(soldier("Alice", 20, 0), soldier("Bob", 20, 40), soldier("Carol", 20, 2))));
+        assertTrue(!Subsistence.canShare(List.of(soldier("Alice", 20, 0), soldier("Bob", 20, 12), soldier("Carol", 20, 2))));
+        assertTrue(!Subsistence.canShare(List.of()));
+    }
+
     @Test
     void oneShortWithNoMeansMakesItRedAndTheLineIsARequest() {
         Subsistence.Status status = Subsistence.of(List.of(soldier("Alice", 3, 0), soldier("Bob", 0, 9)), Set.of("Alice", "Bob"));

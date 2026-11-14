@@ -83,7 +83,9 @@ FORTIFY, Securing for SECURE, and so on - each hop timed, and each one late rais
 
 A soldier is always meant to be at something, by night too (the mine), so one that hasn't moved 2
 blocks any way in a minute, other than while its squad hides or sleeps - in its patrol base, or
-down its mine for the night - raises
+down its mine for the night - or holds where its squad leader sent it and got to (within the order's
+tolerances: live, one sent 60 blocks off and stood waist-deep in gravel was read as holding there
+for a day) - raises
 an alert in the log, once a spell (`[Alert]`, `app.IdleWatch`): its report, its order, which
 routine has its hands, and its squad's task. It's logged again when it moves on. A soldier held at
 a table or furnace shows its routine; one with free hands and a task its routines can't start on is
@@ -163,7 +165,12 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    the camp's farm by day, whatever its task - harvesting what's ripe, sowing and tilling (§12) -
    as feeding is a unit's first priority of work, not only the general's to order; while it's
    merely AMBER, short of rations but fed, one soldier keeps the farm and the rest work - live,
-   two squads AMBER on rations alone had half of each at the farm and the keep stood. The camp's farm is sited once, on ground by water near the camp that
+   two squads AMBER on rations alone had half of each at the farm and the keep stood. Neither while
+   the squad carries ten rations a head between them (`Subsistence.canShare`): then the short one is
+   fed by a hand-over of seconds, and the farm is a walk of minutes - live, a builder with an empty
+   pack walked 80 blocks to the farm, baked four loaves for itself and walked 80 back while three
+   squadmates carried plenty. A farmer sent stays four minutes whatever the rating does meanwhile,
+   since the walk is the cost: that one was taken off the farm 24 seconds after arriving. The camp's farm is sited once, on ground by water near the camp that
    the squad can walk to - a flood from the camp's ground, as a FARM order's plot is from the squad -
    and kept while its water is there - on disk too, under `minecraft.state-dir` as the wall is
    (`app.WallStore`), since sited again after a restart it moved to another pond. Once a run it's
@@ -816,7 +823,12 @@ way there is the recovery drill's stair (§7) - in the squad simulation a soldie
 blocks down broke tunnel after tunnel sideways toward its slot on the surface. A
 pocket with a drop beside it is a ledge, not a box: that soldier builds its stair down instead: live, after a restart, three
 soldiers stood a day in a three-cell pocket the drill never saw, the squad still holding its night
-base's record; and three more in a trench between the camp's wall and old cobblestone heaps.
+base's record; and three more in a trench between the camp's wall and old cobblestone heaps. And a
+soldier stood in a block breaks it first, whatever its orders: one at its head, or one at its feet
+alone that lasts two looks a second apart - a step it puts under itself mid-jump is at its feet for
+a tick. Live, four soldiers stood a day and a night in dirt at the farm, suffocating as fast as they
+healed; and two stood a day waist-deep in gravel fallen into the pocket at the camp mine's bottom,
+heads clear, nothing to reach a stand from, every route "no route".
 
 ## 15. Securing the camp
 

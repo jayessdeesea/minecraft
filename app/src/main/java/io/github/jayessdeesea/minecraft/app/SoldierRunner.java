@@ -2452,6 +2452,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** How far above or below a soldier its goal can be for a wall between them to be what stops it. */
     static final int WAY_OUT_RISE = 3;
+    /** How long a soldier sent to the camp's farm stays at it, whatever the squad's rating does meanwhile. */
+    static final long FARM_STINT_MILLIS = 4 * 60_000;
+    /** When each soldier was sent to the camp's farm - squad loops. */
+    private final Map<String, Long> farmSince = new ConcurrentHashMap<>();
+    /** Looks (one a second) a block at the feet alone must last to be one the soldier stands in, not a step mid-jump. */
+    static final int FEET_IN_BLOCK_LOOKS = 2;
     /** How far over a squad's height the surface is looked for from, for the general's objectives. */
     static final int SURFACE_ABOVE = 128;
     /** The flood fill for whether a soldier reporting no route is in a pocket: how far and how many steps. */
@@ -3182,8 +3188,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // had half of each at the farm and the keep stood.
             boolean mustFeed = statuses.stream().anyMatch(s -> s.condition()
                     .map(c -> Subsistence.mustFeed(c.food(), c.kit().map(Kit::rations).orElse(0))).orElse(false));
-            boolean hungrySquad = state.classOne != null && state.classOne.rating() == Subsistence.Rating.RED || mustFeed;
-            boolean shortSquad = state.classOne != null && state.classOne.rating() != Subsistence.Rating.GREEN;
+            // Not while the squad carries enough between them: a hand-over feeds the short one in
+            // seconds, and the farm is a walk of minutes. Live, Bravo went AMBER on Dana's empty pack
+            // with three squadmates carrying plenty; she walked 80 blocks to the farm, baked four
+            // loaves for herself, was taken off it after 24 seconds and walked 80 back.
+            boolean canShare = Subsistence.canShare(statuses);
+            boolean hungrySquad = state.classOne != null && state.classOne.rating() == Subsistence.Rating.RED || mustFeed && !canShare;
+            boolean shortSquad = state.classOne != null && state.classOne.rating() != Subsistence.Rating.GREEN && !canShare;
             boolean farmDay = !chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
             // Every other soldier by its place in the squad's roster, not in this cycle's reports:
             // live, their order changed cycle to cycle, and a farmer was taken off its harvest every
@@ -3194,13 +3205,21 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // a farmer's CANTCO for a dry site went unanswered all day, and it stood there.
             Optional<Objective> farmOrdered = taskOf(squadName, Objective.Task.Farm.class);
             boolean siteDry = farmOrdered.isPresent() && farm == null;
+            // A farmer sent to the camp's farm stays a stint: the walk there is the cost, and live one
+            // was taken off it 24 seconds after arriving, the moment the squad's rating turned.
+            Long since = farmSince.get(soldierName);
+            boolean onStint = since != null && clockwork.millis() - since < FARM_STINT_MILLIS && farmDay && !squadInContact;
             FarmPlan kept = farm != null ? farm
                     : siteDry && campFarm != null ? campFarm
-                    : (hungrySquad || shortSquad) && farmDay && farmHalf ? campFarm : null;
+                    : ((hungrySquad || shortSquad) && farmDay && farmHalf || onStint) ? campFarm : null;
             if (kept != null && !squadInContact) {
+                if (kept == campFarm && farm == null) {
+                    farmSince.putIfAbsent(soldierName, clockwork.millis());
+                }
                 farming.put(soldierName, kept);
             } else {
                 farming.remove(soldierName);
+                farmSince.remove(soldierName);
             }
             if (siteDry) {
                 Position farmSite = farmOrdered.get().location();
@@ -4146,6 +4165,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Torchmaker torchmaker = new Torchmaker(name, session, inventory, furnaces);
         torchmakers.put(name, torchmaker);
         AtomicInteger ladderTicks = new AtomicInteger();
+        // Looks in a row at which this soldier stood with a solid block at its feet and air at its head.
+        AtomicInteger feetInBlock = new AtomicInteger();
         // Boxed in with no doorway anyone knows to cut - a hut it was sealed in before a restart -
         // the wall toward where it's sent, broken from where it stands (bot.supply.WayOut).
         AtomicReference<List<BlockPos>> wayOut = new AtomicReference<>(List.of());
@@ -4394,9 +4415,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // and in the squad simulation, broken as that, its pillars and walls came apart.
                 BlockPos feetCell = BlockPos.containing(status.position().x(), status.position().y() + 0.01, status.position().z());
                 BlockPos headCell = feetCell.offset(0, 1, 0);
-                List<BlockPos> inside = !world.isSolid(headCell.x(), headCell.y(), headCell.z()) ? List.of()
-                        : java.util.stream.Stream.of(headCell, feetCell)
-                        .filter(c -> world.isSolid(c.x(), c.y(), c.z()) && Clearing.diggable(world, c.x(), c.y(), c.z())).toList();
+                // A block at its feet alone, two looks running - two seconds, no step's tick - is one it
+                // stands in to the waist: live, gravel fallen into the pocket at the mine's bottom held two
+                // soldiers a day, each with air at its head and a solid cell at its feet, nothing to reach
+                // a stand from, every route "no route".
+                boolean feetOnly = world.isSolid(feetCell.x(), feetCell.y(), feetCell.z()) && !world.isSolid(headCell.x(), headCell.y(), headCell.z());
+                if (!feetOnly) {
+                    feetInBlock.set(0);
+                }
+                int feetLooks = feetOnly ? feetInBlock.incrementAndGet() : 0;
+                List<BlockPos> inside = world.isSolid(headCell.x(), headCell.y(), headCell.z())
+                        ? java.util.stream.Stream.of(headCell, feetCell)
+                        .filter(c -> world.isSolid(c.x(), c.y(), c.z()) && Clearing.diggable(world, c.x(), c.y(), c.z())).toList()
+                        : feetLooks >= FEET_IN_BLOCK_LOOKS && Clearing.diggable(world, feetCell.x(), feetCell.y(), feetCell.z()) ? List.of(feetCell)
+                        : List.of();
                 if (!inside.isEmpty() && !inContact) {
                     wayOut.set(inside);
                     LOG.warn("{} stands in a block at {} - breaks {}", name, status.position(), inside);
@@ -4675,10 +4707,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // Hiding or sleeping: the squad in its patrol base, or down its mine for the night.
                 // Anything else still that long is worth a look.
                 Integer below = nightBelow.get(unitOf(name, definition.squad()));
-                // Or holding where its squad leader sent it: waiting there is the order.
+                // Or holding where its squad leader sent it - and got to: waiting there is the order.
                 boolean resting = taskOf(unitOf(name, definition.squad()), Objective.Task.PatrolBase.class).isPresent()
                         || planBook.of(name).role() == Role.RIFLEMAN
                         && planBook.of(name).current().filter(d -> d instanceof Directive.GoTo).isPresent()
+                        && IdleWatch.holdingWhereSent(status.order(), status.position())
                         || below != null && status.position().y() < below - MINE_BELOW;
                 afterActionReview.commands.sample(squadTask(unitOf(name, definition.squad())), status.order().getClass().getSimpleName(), status.report());
                 idleWatch.update(name, status.position(), clockwork.millis(), resting, () -> "report " + status.report()

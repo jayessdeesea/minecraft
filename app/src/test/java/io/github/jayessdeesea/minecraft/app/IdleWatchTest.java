@@ -33,6 +33,16 @@ class IdleWatchTest {
         assertTrue(watch.update("Alice", HERE, 60_000, false, () -> "").isPresent(), "up and down a block isn't moving");
     }
 
+    /** Holding where its squad leader sent it is the order; stood 60 blocks short of there, it isn't. */
+    @Test
+    void holdingWhereSentMeansAtTheGoalNotShortOfIt() {
+        io.github.jayessdeesea.minecraft.command.Order.MoveTo there = new io.github.jayessdeesea.minecraft.command.Order.MoveTo(0, 78, 0, 3, 3,
+                io.github.jayessdeesea.minecraft.command.Risk.LOW);
+        assertTrue(IdleWatch.holdingWhereSent(there, new Position(2.5, 79, -1.5)));
+        assertTrue(!IdleWatch.holdingWhereSent(there, new Position(-39.7, 31, 42.5)), "waist-deep in gravel 60 blocks off");
+        assertTrue(!IdleWatch.holdingWhereSent(new io.github.jayessdeesea.minecraft.command.Order.Idle(), new Position(0.5, 78, 0.5)));
+    }
+
     @Test
     void aSquadHidingOrSleepingInItsPatrolBaseIsNoAlert() {
         IdleWatch watch = new IdleWatch();

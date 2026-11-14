@@ -101,6 +101,18 @@ public final class Subsistence {
         return rations < RESUPPLY;
     }
 
+    /**
+     * Whether {@code squad} carries rations enough between them for everyone to be at {@link #FOOD_FIRST}
+     * - so a soldier short is fed by cross-leveling (§ 13), a hand-over of seconds, and nobody walks to
+     * the farm for it. Live, a squad went AMBER on one builder's empty pack while three squadmates
+     * carried plenty, and the builder walked 80 blocks to the camp's farm, baked four loaves for
+     * itself, and walked 80 back.
+     */
+    public static boolean canShare(List<SoldierStatus> squad) {
+        int rations = squad.stream().mapToInt(s -> s.condition().flatMap(Condition::kit).map(Kit::rations).orElse(0)).sum();
+        return !squad.isEmpty() && rations >= FOOD_FIRST * squad.size();
+    }
+
     /** Rations a soldier carrying {@code rations} has beyond its basic load, for the stockpile. */
     public static int surplus(int rations) {
         return Math.max(0, rations - BASIC_LOAD);
