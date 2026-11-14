@@ -158,10 +158,12 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    squad within 32 blocks with some to spare and no hand-over of its own (`CrossLevel.across`). One starving at death's door - food
    0, health 6 or less - gets a meal from the nearest squadmate carrying any, its last or not,
    before anything else is handed across: buddy aid. Live, a soldier stood at a third of a heart
-   beside a squadmate with one ration, kept as its own. And while the squad is AMBER or
-   RED, every other soldier of it keeps the camp's farm by day, whatever its task - harvesting
-   what's ripe, sowing and tilling (§12) - as feeding is a unit's first priority of work, not only
-   the general's to order. The camp's farm is sited once, on ground by water near the camp that
+   beside a squadmate with one ration, kept as its own. And while the squad is RED, or a soldier
+   of it is hungry with nothing to eat (`Subsistence.mustFeed`), every other soldier of it keeps
+   the camp's farm by day, whatever its task - harvesting what's ripe, sowing and tilling (§12) -
+   as feeding is a unit's first priority of work, not only the general's to order; while it's
+   merely AMBER, short of rations but fed, one soldier keeps the farm and the rest work - live,
+   two squads AMBER on rations alone had half of each at the farm and the keep stood. The camp's farm is sited once, on ground by water near the camp that
    the squad can walk to - a flood from the camp's ground, as a FARM order's plot is from the squad -
    and kept while its water is there - on disk too, under `minecraft.state-dir` as the wall is
    (`app.WallStore`), since sited again after a restart it moved to another pond. Once a run it's

@@ -3067,20 +3067,27 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Feeding the squad is its own first priority of work (FM 4-0, field feeding): short of
             // food, half of it keeps the camp's farm by day whatever its task - live, the farm was
             // tended only under a FARM order, and the squads went hungry for hours with wheat to grow.
-            boolean hungrySquad = state.classOne != null
-                    && state.classOne.rating() != Subsistence.Rating.GREEN;
+            // Half of it while the squad is RED or a soldier of it is hungry with nothing to eat; one
+            // soldier - the first by roster - while it's merely short of rations (AMBER), so the farm
+            // is kept and the rest work: live, two squads AMBER on rations alone, every soldier fed,
+            // had half of each at the farm and the keep stood.
+            boolean mustFeed = statuses.stream().anyMatch(s -> s.condition()
+                    .map(c -> Subsistence.mustFeed(c.food(), c.kit().map(Kit::rations).orElse(0))).orElse(false));
+            boolean hungrySquad = state.classOne != null && state.classOne.rating() == Subsistence.Rating.RED || mustFeed;
+            boolean shortSquad = state.classOne != null && state.classOne.rating() != Subsistence.Rating.GREEN;
             boolean farmDay = !chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
             // Every other soldier by its place in the squad's roster, not in this cycle's reports:
             // live, their order changed cycle to cycle, and a farmer was taken off its harvest every
             // few seconds and never reached it.
-            boolean farmHalf = statuses.stream().map(SoldierStatus::name).sorted().toList().indexOf(soldierName) % 2 == 0;
+            int rosterPlace = statuses.stream().map(SoldierStatus::name).sorted().toList().indexOf(soldierName);
+            boolean farmHalf = hungrySquad ? rosterPlace % 2 == 0 : shortSquad && rosterPlace == 0;
             // Ordered to farm where there's no ground to: the camp's farm, saying why it's there. Live,
             // a farmer's CANTCO for a dry site went unanswered all day, and it stood there.
             Optional<Objective> farmOrdered = taskOf(squadName, Objective.Task.Farm.class);
             boolean siteDry = farmOrdered.isPresent() && farm == null;
             FarmPlan kept = farm != null ? farm
                     : siteDry && campFarm != null ? campFarm
-                    : hungrySquad && farmDay && farmHalf ? campFarm : null;
+                    : (hungrySquad || shortSquad) && farmDay && farmHalf ? campFarm : null;
             if (kept != null && !squadInContact) {
                 farming.put(soldierName, kept);
             } else {

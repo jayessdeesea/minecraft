@@ -77,3 +77,14 @@ What's left:
   it dug on the way up.
 - Also open: the survey takes the top ground in each column. In a valley or under an overhang
   that's often far above the squad, which is part of why the high ground dominates its picture.
+- **A pocket at the mine's bottom (field161-165, 2026-11-13).** Bob stood a day at (-40, 31, 42),
+  30 blocks under the camp: a dead end off the camp's mine with a solid ceiling, the stairs
+  continuing down, no route up within the planner's budget, and the recovery drill's "no stair up
+  can be dug from there either". He carried 263 cobblestone and a pickaxe. And something the
+  chunk data doesn't show stops his body two cells west, at (-42, 31, 42): stuck short of it
+  three times a minute with the cell air on the server (a dig of it "didn't come") and no
+  squadmate in it - an entity, or the server putting him back for a reason the client can't see.
+  A console `execute if entity @e[x=-42,y=31,z=42,distance=..1]` would say. What's needed is a
+  tunnel up: cut steps through rock toward the surface (the staircase routine run upward, or the
+  pathfinder's step-cutting given the budget to reach daylight), with the known-ground rule for
+  what's over the head.
