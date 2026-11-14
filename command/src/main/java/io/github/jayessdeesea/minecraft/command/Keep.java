@@ -1,5 +1,8 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.Locale;
+import java.util.Optional;
+
 /**
  * The main base's keep (backlog/cells.md): a raised slab of solid cobblestone on chunks (-1, -1)
  * to (0, 0) - x and z from -16 to 15, centred on the origin - four blocks deep, y=64 to 67, on
@@ -49,6 +52,31 @@ public final class Keep {
 
     /** The top of the world: the sky over the keep is cleared all the way up. */
     public static final int SKY_TOP = 319;
+
+    /**
+     * The logs the keep's builders need between them: two for the chest at the depot (eight planks),
+     * and one each for a pickaxe or four torches - stone dug by hand drops nothing, and the slab is
+     * laid from what the dig drops.
+     */
+    public static final int LOGS_WANTED = 4;
+
+    /**
+     * The LOGSTAT's Class IV line for the keep's builders, said as the request it is when they're
+     * short (FM 4-0: construction materials are requisitioned, or obtained locally; operator,
+     * 2026-11-13: with no resources, the workers ask for supplies): fewer than {@link #LOGS_WANTED}
+     * logs between {@code logsCarried} by the squad and {@code logsStockpiled} in the stockpile, so
+     * with no chest standing at the depot ({@code chestStands}) none can be made, nor a pickaxe
+     * nor a torch. Live, the keep's builders worked a day with no tree within 48 blocks, no chest to
+     * stow in, and no pickaxe to dig stone for the slab. Empty when they have enough.
+     */
+    public static Optional<String> classFour(int logsCarried, int logsStockpiled, boolean chestStands) {
+        if (logsCarried + logsStockpiled >= LOGS_WANTED) {
+            return Optional.empty();
+        }
+        return Optional.of(String.format(Locale.ROOT, "Class IV RED - request: the keep's builders carry %d log%s between them and the"
+                + " stockpile holds %d: %sno pickaxe or torch to make. Request logs - send a squad for WOOD where trees are.",
+                logsCarried, logsCarried == 1 ? "" : "s", logsStockpiled, chestStands ? "" : "no chest at the keep's depot, "));
+    }
 
     /**
      * Everything from the slab's bottom up to the top of the world: dug out, top down, but for the

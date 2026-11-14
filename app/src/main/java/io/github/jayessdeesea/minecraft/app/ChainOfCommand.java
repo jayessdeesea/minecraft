@@ -97,7 +97,14 @@ public class ChainOfCommand implements DisposableBean {
                          Optional<Position> principalAt, Supplier<List<ResourceSite>> resources,
                          boolean holdingBase, OptionalInt baseBlocksLeft,
                          Optional<Progress> progress,
-                         Optional<Subsistence.Status> classOne) {
+                         Optional<Subsistence.Status> classOne, Optional<String> classFour) {
+
+        /** A SITREP with no Class IV request. */
+        public Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt,
+                      Supplier<List<ResourceSite>> resources, boolean holdingBase,
+                      OptionalInt baseBlocksLeft, Optional<Progress> progress, Optional<Subsistence.Status> classOne) {
+            this(squad, soldiers, terrain, principalAt, resources, holdingBase, baseBlocksLeft, progress, classOne, Optional.empty());
+        }
 
         /** A SITREP with no food measured. */
         public Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain, Optional<Position> principalAt,
@@ -710,7 +717,7 @@ public class ChainOfCommand implements DisposableBean {
                 long started = clockwork.millis();
                 List<SquadStatus> statuses = sitreps.stream().map(s -> new SquadStatus(s.squad(),
                         squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
-                        s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne())).toList();
+                        s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList();
                 statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
                 List<Objective> objectives = general.decide(statuses);
                 if (missionVersion.get() != missionAsked) {

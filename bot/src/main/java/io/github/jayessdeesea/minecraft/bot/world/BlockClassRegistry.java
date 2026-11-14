@@ -156,14 +156,15 @@ final class BlockClassRegistry {
     /**
      * What digging {@code stateId} takes: as generated for every block that breaks - rock, grit,
      * tall and any other solid block - and plain stone, iron ore and soil as vanilla has them. Empty
-     * for what never breaks (bedrock), what has no body to break, and a chest or workstation.
+     * for what never breaks (bedrock) and what has no body to break. A chest or a workstation breaks
+     * like any block: left on a site, it would stand on a pillar of ground no dig can take.
      */
     static Optional<Hardness> hardness(int stateId) {
         return switch (classOf(stateId)) {
             case STONE -> Optional.of(new Hardness(1.5, 0));
             case IRON_ORE -> Optional.of(new Hardness(3.0, 1));
             case SOIL -> Optional.of(new Hardness(0.65, Hardness.HAND));
-            case ROCK, GRIT, SOLID, TALL -> Optional.ofNullable(HARDNESS.get(stateId));
+            case ROCK, GRIT, SOLID, TALL, WORKSTATION -> Optional.ofNullable(HARDNESS.get(stateId));
             default -> Optional.empty();
         };
     }
@@ -260,13 +261,21 @@ final class BlockClassRegistry {
                             yield BlockClass.ROCK;
                         }
                         case "V" -> BlockClass.LEAVES;
-                        case "C" -> BlockClass.SOLID;
+                        case "C" -> {
+                            if (fields.length > 4) {
+                                HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Integer.parseInt(fields[4])));
+                            }
+                            yield BlockClass.SOLID;
+                        }
                         case "G" -> {
                             HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Hardness.HAND));
                             yield BlockClass.GRIT;
                         }
                         case "W" -> {
                             WORKSTATIONS.put(stateId, Workstation.valueOf(fields[2].toUpperCase(Locale.ROOT)));
+                            if (fields.length > 4) {
+                                HARDNESS.put(stateId, new Hardness(Double.parseDouble(fields[3]), Integer.parseInt(fields[4])));
+                            }
                             yield BlockClass.WORKSTATION;
                         }
                         default -> throw new IllegalStateException("Unknown block class '" + fields[1] + "' in " + RESOURCE_NAME + ": " + line);

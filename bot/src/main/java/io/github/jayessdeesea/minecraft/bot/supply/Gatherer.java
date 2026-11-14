@@ -57,11 +57,24 @@ public final class Gatherer {
     private boolean exhausted;
 
     public Gatherer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims) {
+        this(name, session, inventory, claims, Set.of());
+    }
+
+    /**
+     * As above, with {@code steps} the squad's own standing steps and pillars, never dug for their
+     * dirt: in the squad simulation a gatherer dug a squadmate's steps out from under it as soil,
+     * and the wall over the slope went short of dirt by the block it climbed on.
+     */
+    public Gatherer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Set<BlockPos> steps) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
         this.claims = claims;
+        this.steps = steps;
     }
+
+    /** The squad's steps and pillars - a live view the runner keeps - left standing. */
+    private final Set<BlockPos> steps;
 
     public synchronized boolean active() {
         return digger != null;
@@ -174,6 +187,7 @@ public final class Gatherer {
 
     private void next(WorldView world, Position soldier, Position around, Digger.Target target) {
         Set<BlockPos> excluded = new HashSet<>(claims);
+        excluded.addAll(steps);
         // Stands it can get to from where it is - on foot, on the blocks it carries, or cutting steps,
         // as its route there would: a stand on paper can be shut off on every side, and one down a
         // pit it was filling gets out on its blocks.

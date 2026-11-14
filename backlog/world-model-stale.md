@@ -24,14 +24,19 @@ Three times in one day the shared `ChunkCache` showed a block the server didn't 
   tried and dropped: the farm-in-a-hollow simulation trampled its crop with it. Not yet known
   whether the soldiers' model had the stand open (stale) or solid (the walk's own fault).
 
-Block Update (0x08) and Section Blocks Update (0x56) are both decoded, and the only block the
-client writes itself is a pillar step's cobblestone (`SoldierRunner`, `takePlacement`).
+Block Update (0x08) and Section Blocks Update (0x56) are both decoded.
 
 ## Done when
 - The cause is found and a test shows it: which change the server made that the model missed.
 - Live, a console sweep of the camp's wall and stockpile matches the model.
 
 ## Notes
+- Found and fixed (2026-11-13): the one block the client writes itself, a pillar step's cobblestone
+  stand-in, stayed when the server refused the placement - no update ever came to replace it.
+  Live, two such blocks at the top of a keep builder's strip (15, 85, -16) held every strip's floor
+  to y=84 for a day. Now `ChunkCache.standIn`: written over an open cell only, taken back after two
+  seconds unconfirmed (`ChunkCacheTest`). The chest, the dirt and the wheat above predate it and
+  are something else: a block the server changed with no update the model applied.
 - Built: a chunk sent again is compared with the one kept, and each difference logged
   (`[World] a chunk sent to ... differs from the one kept at N blocks, e.g. [x, y, z, kept, sent]`).
   A difference that a block update on its way explains is short-lived; one in a chunk kept for

@@ -169,6 +169,55 @@ class ClearingTest {
                 Clearing.toClear(MOUND, SKY, Set.of()), "every block of it above the camp's ground, the highest first");
     }
 
+    /**
+     * A table or a chest left on the site is dug like any block, and the ground under it with it:
+     * left, it stands on a pillar no dig can take (live, eight such columns held the keep). The
+     * squad's own are the caller's {@code except}.
+     */
+    @Test
+    void aTableLeftOnTheSiteIsDugAndTheGroundUnderIt() {
+        BlockPos table = new BlockPos(2, 66, 2);
+        WorldView withTable = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return MOUND.isSolid(x, y, z) || table.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return MOUND.isSoil(x, y, z);
+            }
+
+            @Override
+            public Optional<io.github.jayessdeesea.minecraft.bot.world.Workstation> workstation(int x, int y, int z) {
+                return table.equals(new BlockPos(x, y, z)) ? Optional.of(io.github.jayessdeesea.minecraft.bot.world.Workstation.CRAFTING_TABLE)
+                        : Optional.empty();
+            }
+
+            @Override
+            public Optional<io.github.jayessdeesea.minecraft.bot.world.Hardness> hardness(int x, int y, int z) {
+                return table.equals(new BlockPos(x, y, z))
+                        ? Optional.of(new io.github.jayessdeesea.minecraft.bot.world.Hardness(2.5, io.github.jayessdeesea.minecraft.bot.world.Hardness.HAND))
+                        : Optional.empty();
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(List.of(table, new BlockPos(2, 65, 2), new BlockPos(-2, 64, -2), new BlockPos(2, 64, 2)),
+                Clearing.toClear(withTable, SKY, Set.of()), "the table first, then the mound it stood on");
+        assertEquals(List.of(new BlockPos(-2, 64, -2)), Clearing.toClear(withTable, SKY, Set.of(new Cell(2, 66, 2))),
+                "the squad's own table, excepted: kept, and its ground with it");
+    }
+
     @Test
     void aHutIsNotHighGround() {
         assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(2, 64, 2)),
@@ -331,6 +380,29 @@ class ClearingTest {
         assertTrue(Clearing.safeFrom(cells(Set.of(under, new BlockPos(0, 64, 0)), Set.of()), stand, under),
                 "its own pillar: ground a block under it");
         assertTrue(!Clearing.safeFrom(cells(Set.of(under), Set.of()), stand, under), "open under it: a fall");
+        WorldView overFarmland = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 64;
+            }
+
+            @Override
+            public boolean isFarmland(int x, int y, int z) {
+                return y == 64;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertTrue(!Clearing.safeFrom(overFarmland, stand, under), "farmland under it: landing on it tramples it");
+        assertTrue(Clearing.safeFrom(overFarmland, new BlockPos(1, 65, 0), under), "beside it, with the farmland a block down: fine");
 
         BlockPos over = new BlockPos(0, 68, 0);
         assertTrue(Clearing.safeFrom(cells(Set.of(over), Set.of()), stand, over), "nothing over it");

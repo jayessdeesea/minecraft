@@ -33,6 +33,47 @@ class ChunkCacheTest {
         assertTrue(cache.isSolid(5, -48, 5), "stone (section 1) should be solid");
     }
 
+    /**
+     * A block the client wrote for itself - a pillar step, before the server's update - is taken
+     * back if the server never confirms it: live, a step the server refused stood as cobblestone in
+     * the model for hours, and a keep's whole dig waited on it.
+     */
+    @Test
+    void aStandInTheServerNeverConfirmsIsTakenBack() {
+        ChunkCache cache = new ChunkCache();
+        cache.load(0, 0, List.of(filled(AIR)), "owner");
+
+        assertTrue(cache.standIn(5, -60, 5, STONE, 1_000), "written over an open cell");
+        assertTrue(cache.isSolid(5, -60, 5), "stood on at once");
+        assertEquals(0, cache.expireStandIns(1_000 + ChunkCache.STAND_IN_MILLIS - 1));
+        assertTrue(cache.isSolid(5, -60, 5), "still waiting on the server's word");
+        assertEquals(1, cache.expireStandIns(1_000 + ChunkCache.STAND_IN_MILLIS));
+        assertFalse(cache.isSolid(5, -60, 5), "never confirmed: the cell is open again");
+    }
+
+    @Test
+    void aStandInTheServerConfirmsStaysAsTheServerSaid() {
+        ChunkCache cache = new ChunkCache();
+        cache.load(0, 0, List.of(filled(AIR)), "owner");
+        int dirt = 2;
+
+        cache.standIn(5, -60, 5, STONE, 0);
+        cache.setBlock(5, -60, 5, dirt);
+        assertEquals(0, cache.expireStandIns(ChunkCache.STAND_IN_MILLIS * 2));
+
+        assertEquals(dirt, cache.stateIdAt(5, -60, 5).getAsInt(), "the server's word, not the stand-in");
+    }
+
+    /** The simulation's server answers a placement at once: a stand-in never covers what it said landed. */
+    @Test
+    void aStandInNeverCoversABlockTheModelHolds() {
+        ChunkCache cache = new ChunkCache();
+        cache.load(0, 0, List.of(filled(STONE)), "owner");
+
+        assertFalse(cache.standIn(5, -60, 5, 3, 0));
+        assertEquals(STONE, cache.stateIdAt(5, -60, 5).getAsInt());
+    }
+
     @Test
     void treatsCoordinatesOutsideTheDecodedSectionRangeAsSolid() {
         ChunkCache cache = new ChunkCache();

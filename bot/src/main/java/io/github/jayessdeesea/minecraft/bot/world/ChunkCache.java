@@ -261,6 +261,58 @@ public final class ChunkCache {
      * tick loops' lock-free reads see it at their next read (an int write is atomic).
      */
     public void setBlock(int x, int y, int z, int stateId) {
+        standIns.remove(cellKey(x, y, z));
+        write(x, y, z, stateId);
+    }
+
+    /**
+     * How long a stand-in stands unconfirmed: the server's update for a block a soldier placed
+     * comes within a tick or two, so one still unconfirmed after this was never placed.
+     */
+    public static final long STAND_IN_MILLIS = 2_000;
+
+    /** A block the client wrote itself, before the server said so: what the cell held, and when the word is overdue. */
+    private record StandIn(int x, int y, int z, int before, long until) {
+    }
+
+    private final ConcurrentHashMap<Long, StandIn> standIns = new ConcurrentHashMap<>();
+
+    /**
+     * A block the soldier has just placed at ({@code x}, {@code y}, {@code z}) stands in the model as
+     * {@code stateId} before the server's update says what landed there, so the soldier lands on its
+     * step at once - but only over a cell that's open, never over a block the model already holds
+     * (the simulation's server answers a placement at once, and a dirt step would read as stone for
+     * good), and only until {@link #STAND_IN_MILLIS} from {@code now}: a placement the server refused
+     * is never confirmed, and the stand-in is taken back ({@link #expireStandIns}). Live, a step the
+     * server wouldn't place held as cobblestone in the model for hours, the top of a keep builder's
+     * strip, and every strip beside it waited on a block nobody could dig. Whether it stood.
+     */
+    public boolean standIn(int x, int y, int z, int stateId, long now) {
+        if (isSolid(x, y, z)) {
+            return false;
+        }
+        standIns.put(cellKey(x, y, z), new StandIn(x, y, z, rawStateIdAt(x, y, z), now + STAND_IN_MILLIS));
+        write(x, y, z, stateId);
+        return true;
+    }
+
+    /** Takes back every stand-in the server hasn't confirmed by {@code now}: the cells are as they were. How many. */
+    public int expireStandIns(long now) {
+        int taken = 0;
+        for (StandIn s : standIns.values()) {
+            if (s.until() <= now && standIns.remove(cellKey(s.x(), s.y(), s.z()), s)) {
+                write(s.x(), s.y(), s.z(), s.before());
+                taken++;
+            }
+        }
+        return taken;
+    }
+
+    private static long cellKey(int x, int y, int z) {
+        return ((long) x & 0x3FFFFFF) << 38 | ((long) z & 0x3FFFFFF) << 12 | (y + 2048) & 0xFFF;
+    }
+
+    private void write(int x, int y, int z, int stateId) {
         chunks.computeIfPresent(chunkKey(Math.floorDiv(x, SECTION_SIZE), Math.floorDiv(z, SECTION_SIZE)), (key, chunk) -> {
             int sectionIndex = Math.floorDiv(y, SECTION_SIZE) - MIN_SECTION_Y;
             if (sectionIndex >= 0 && sectionIndex < chunk.sectionBlockStates.size()) {

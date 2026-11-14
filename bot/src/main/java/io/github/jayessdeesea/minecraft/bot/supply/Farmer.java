@@ -53,6 +53,8 @@ public final class Farmer {
     private final PlaySession session;
     private final Inventory inventory;
     private final Set<BlockPos> claims;
+    /** The squad's steps and pillars - a live view the runner keeps - which the earthwork leaves standing. */
+    private final Set<BlockPos> steps;
 
     private Digger digger;
     private Script fieldWork;
@@ -74,11 +76,22 @@ public final class Farmer {
      * of them - live, four soldiers each found the same unreachable wheat for themselves.
      */
     public Farmer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Setbacks<BlockPos> shared) {
+        this(name, session, inventory, claims, shared, Set.of());
+    }
+
+    /**
+     * As above, with {@code steps} the squad's own standing steps and pillars, which its earthwork
+     * leaves: in the squad simulation a farmer dug the step out of its hollow as dirt over the plot,
+     * its route built the step again, and each jump up it that fell back trampled the farmland.
+     */
+    public Farmer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Setbacks<BlockPos> shared,
+                  Set<BlockPos> steps) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
         this.claims = claims;
         this.shared = shared;
+        this.steps = steps;
         // Cut from off the farmland: in the squad simulation, stands on the plot in its hollow had the
         // farmers walking in and out over it, trampling it, to dig the ground round it.
         this.unburier = new Clearer(name, session, inventory, claims, (world, stand) -> !world.isFarmland(stand.x(), stand.y() - 1, stand.z()));
@@ -92,6 +105,11 @@ public final class Farmer {
      * its hollow, the farmland under each turned to dirt; and the rest, a block below the ground
      * round it, was reached only by stepping down onto it, which tramples farmland.
      */
+    /** {@link #earthwork} less the squad's own steps, which stay. */
+    private List<BlockPos> unburying(WorldView world, FarmPlan farm) {
+        return earthwork(world, farm).stream().filter(c -> !steps.contains(c)).toList();
+    }
+
     static List<BlockPos> earthwork(WorldView world, FarmPlan farm) {
         Set<BlockPos> plot = Set.copyOf(farm.plot());
         Set<BlockPos> dig = new LinkedHashSet<>();
@@ -124,11 +142,11 @@ public final class Farmer {
      * plot growing has none - its farmers are free for other work until it ripens: live, a squad's
      * farm half stood by its growing wheat with the camp to keep.
      */
-    public static boolean hasWork(WorldView world, FarmPlan farm) {
+    public static boolean hasWork(WorldView world, FarmPlan farm, Set<BlockPos> steps) {
         return farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE
                 || world.isFarmland(c.x(), c.y(), c.z()) && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z())
                 || world.isTillable(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z()))
-                || !earthwork(world, farm).isEmpty();
+                || earthwork(world, farm).stream().anyMatch(c -> !steps.contains(c));
     }
 
     public synchronized boolean active() {
@@ -214,7 +232,7 @@ public final class Farmer {
             return;
         }
         if (unburier.active()) {
-            unburier.tick(soldier, world, earthwork(world, farm.get()), true);
+            unburier.tick(soldier, world, unburying(world, farm.get()), true);
             return;
         }
         if (cooldown > 0) {
@@ -246,7 +264,7 @@ public final class Farmer {
                         && !passedOver.barred(c, ticks) && !shared.barred(c, ticks) && !world.isSolid(c.x(), c.y() + 2, c.z()))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()))).toList();
         // Earthwork first: a cell in a hollow walked into for a harvest or a sowing is trampled.
-        List<BlockPos> earthwork = earthwork(world, farm);
+        List<BlockPos> earthwork = unburying(world, farm);
         if (!earthwork.isEmpty()) {
             unburier.tick(soldier, world, earthwork, true);
             if (unburier.active()) {

@@ -16,18 +16,26 @@ import java.util.OptionalInt;
  * general changes it - {@code holdingBase} whether the squad is sealed inside its patrol base, and
  * {@code baseBlocksLeft} how many blocks of the base it has laid out are still to place (empty
  * while it has none laid out), {@code progress} how the standing order's task stands (empty
- * with no task to measure), and {@code classOne} its food (empty where not measured): RED is its
- * request for food ({@link Subsistence}).
+ * with no task to measure), {@code classOne} its food (empty where not measured): RED is its
+ * request for food ({@link Subsistence}) - and {@code classFour} its construction materials, said
+ * only as a request, when its task wants logs it hasn't got ({@link Keep#classFour}).
  */
 public record SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers, List<ResourceSite> resources,
                           Optional<Objective> standing, boolean holdingBase, OptionalInt baseBlocksLeft,
-                          Optional<Progress> progress, Optional<Subsistence.Status> classOne) {
+                          Optional<Progress> progress, Optional<Subsistence.Status> classOne, Optional<String> classFour) {
 
     public SquadStatus {
         resources = List.copyOf(resources);
         if (holdingBase && baseBlocksLeft.orElse(-1) != 0) {
             throw new IllegalArgumentException("holding a base with " + baseBlocksLeft + " blocks of it left to place");
         }
+    }
+
+    /** A squad with no Class IV request. */
+    public SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers, List<ResourceSite> resources,
+                       Optional<Objective> standing, boolean holdingBase, OptionalInt baseBlocksLeft,
+                       Optional<Progress> progress, Optional<Subsistence.Status> classOne) {
+        this(squadName, report, soldiers, resources, standing, holdingBase, baseBlocksLeft, progress, classOne, Optional.empty());
     }
 
     /** A squad whose task's progress isn't measured. */

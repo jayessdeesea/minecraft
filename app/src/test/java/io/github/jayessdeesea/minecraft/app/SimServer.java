@@ -84,6 +84,17 @@ final class SimServer {
     private final Map<Long, int[]> burning = new HashMap<>();
     /** What happened, in order, for a scenario to read. */
     final List<String> log = new ArrayList<>();
+
+    /** Writes every event so far to {@code target/sim/<scenario>-server.log}, beside the scenario's own log, for reading after a failure. */
+    void dumpLog(String scenario) {
+        try {
+            java.nio.file.Path out = java.nio.file.Path.of("target", "sim", scenario + "-server.log");
+            java.nio.file.Files.createDirectories(out.getParent());
+            java.nio.file.Files.write(out, log);
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
     private long dayTicks;
     private int nextEntity = 1000;
     /** Each zombie: [x, y, z, health, cooldown] by entity ID. */
@@ -324,6 +335,8 @@ final class SimServer {
             case TORCH -> Optional.of(ITEM_TORCH);
             case OAK_LOG -> Optional.of(ITEM_OAK_LOG);
             case CRAFTING_TABLE -> Optional.of(itemOf(ItemClass.CRAFTING_TABLE));
+            case CHEST -> Optional.of(itemOf(ItemClass.CHEST));
+            case FURNACE -> pickaxe ? Optional.of(itemOf(ItemClass.FURNACE)) : Optional.empty();
             case WHEAT_RIPE -> Optional.of(itemOf(ItemClass.WHEAT));
             case WHEAT_SPROUT, WHEAT_SPROUT + 1, WHEAT_SPROUT + 2, WHEAT_SPROUT + 3, WHEAT_SPROUT + 4, WHEAT_SPROUT + 5, WHEAT_SPROUT + 6
                     -> Optional.of(itemOf(ItemClass.SEEDS));
@@ -962,6 +975,17 @@ final class SimServer {
             drop(state, heldItem()).ifPresent(this::give);
             if (state == WHEAT_RIPE) {
                 give(itemOf(ItemClass.SEEDS)); // ripe wheat drops its seed too
+            }
+            if (state == CHEST) {
+                // A broken chest spills what it held; the digger beside it picks it up.
+                int[][] held = chests.remove(key(x, y, z));
+                if (held != null) {
+                    for (int[] stack : held) {
+                        for (int i = 0; stack != null && i < stack[1]; i++) {
+                            give(stack[0]);
+                        }
+                    }
+                }
             }
             set(x, y, z, AIR);
             log.add(name + " dug " + state + " at " + x + "," + y + "," + z);

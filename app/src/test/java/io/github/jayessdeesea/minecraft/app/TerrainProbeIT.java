@@ -105,6 +105,38 @@ class TerrainProbeIT {
                         }
                     }
                 }
+                // -Dprobe.layer: every solid cell at the probed height within the radius, by name - what a
+                // strip's top layer is made of.
+                if (Boolean.getBoolean("probe.layer")) {
+                    for (int y = py; y <= py + 3; y++) {
+                        for (int z = pz - RADIUS; z <= pz + RADIUS; z++) {
+                            for (int x = px - RADIUS; x <= px + RADIUS; x++) {
+                                if (cache.isSolid(x, y, z) || cache.isHazard(x, y, z)) {
+                                    int id = cache.stateIdAt(x, y, z).getAsInt();
+                                    out.append(String.format("layer (%d,%d,%d) %d %s%n", x, y, z, id, names.getOrDefault(id, "unlisted")));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // -Dprobe.keep: what the keep's dig (command.Keep) leaves standing, by height and name - the
+            // solid cells in its box that Clearing.toClear doesn't count, with nothing excepted.
+            if (Boolean.getBoolean("probe.keep")) {
+                io.github.jayessdeesea.minecraft.command.Box dig = io.github.jayessdeesea.minecraft.command.Keep.dig();
+                Set<BlockPos> counted = new java.util.HashSet<>(io.github.jayessdeesea.minecraft.bot.engineer.Clearing.toClear(world, dig, Set.of()));
+                java.util.TreeMap<Integer, Integer> perLayer = new java.util.TreeMap<>();
+                counted.forEach(c -> perLayer.merge(c.y(), 1, Integer::sum));
+                perLayer.descendingMap().forEach((y, n) -> out.append(String.format("keep y=%d: %d to dig%n", y, n)));
+                for (int y = dig.maxY(); y >= dig.minY(); y--) {
+                    for (int z = dig.minZ(); z <= dig.maxZ(); z++) {
+                        for (int x = dig.minX(); x <= dig.maxX(); x++) {
+                            if ((cache.isSolid(x, y, z) || cache.isHazard(x, y, z)) && !counted.contains(new BlockPos(x, y, z))) {
+                                out.append(String.format("keep left (%d,%d,%d) %d%n", x, y, z, cache.stateIdAt(x, y, z).getAsInt()));
+                            }
+                        }
+                    }
+                }
             }
             String target = System.getProperty("probe.target");
             if (target != null) {

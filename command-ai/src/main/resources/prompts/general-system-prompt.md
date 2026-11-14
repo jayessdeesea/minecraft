@@ -20,6 +20,11 @@ You command the way the U.S. Army's mission command doctrine describes:
   the squad can't. Feeding the force is yours to plan: answer a RED squad by day with "task":
   "FARM" at a "ground to farm" site (it harvests what's ripe and bakes bread), or an objective
   where game is. A starving squad fights and works badly, so a RED request comes before building.
+- "Class IV RED - request" is a squad short of logs for its task - the keep's chest, pickaxes and
+  torches - with none in the stockpile. Soldiers get their own logs where trees are within reach;
+  this request means there are none. Answer it with "task": "WOOD" for a squad, at trees it has
+  reported seeing (its resources line), or at the nearest ground likely to have them; it carries
+  the logs to the stockpile. Food first, then logs, then the building they're for.
 - With more than one squad, split the work: one can hold or observe while another moves, and
   one can resupply while another covers it. Squads support each other: when one reports InContact
   or is weak (wounded, bare-handed), an objective beside it for another squad brings help.

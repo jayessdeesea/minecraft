@@ -177,6 +177,16 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    the company. Its answer to RED is a `FARM` task at ground by water, which harvests what's ripe
    and bakes it, or an objective where game is.
 
+Class IV, construction materials, goes up the same way (`Keep.classFour`, operator 2026-11-13:
+with no resources, the workers ask for supplies). The keep's builders need logs - two for the
+chest at the depot, one each for a pickaxe or four torches, and stone dug by hand drops nothing to
+lay the slab from - and get their own where a tree is in reach; with fewer than 4 between them and
+the stockpile, the squad's LOGSTAT carries "Class IV RED - request: the keep's builders carry N
+logs between them and the stockpile holds M: no chest at the keep's depot, no pickaxe or torch to
+make. Request logs - send a squad for WOOD where trees are." The general answers it with a `WOOD`
+task at trees a squad has reported, after food and before the building the logs are for. Live, the
+builders worked a day with no tree within 48 blocks, no chest and no pickaxe, and nobody was asked.
+
 GREEN is everyone carrying food, and AMBER is some short but each with a means. The rating is
 logged when it changes.
 
@@ -580,7 +590,10 @@ the same plot while the objective stays put. Each soldier does the most pressing
 one cell at a time (`bot.supply.Farmer`), in this order:
 1. Its earthwork (`Farmer.earthwork`): digs off any cobblestone or soil on a plot cell, and cuts
    the ground beside the plot down to its level, up to two blocks - an apron, so every cell is
-   walked onto on the flat. Landing on farmland from over half a block tramples it back to dirt,
+   walked onto on the flat - but never a step the squad built (`SoldierRunner.scaffolding`): in
+   the squad simulation a farmer dug its own step out of the hollow as dirt over the plot, its
+   route built it again, and every jump up it that fell back trampled the farmland. Landing on
+   farmland from over half a block tramples it back to dirt,
    and a route never steps down onto it or builds a step on it (`Pathfinder`), so a farm in a
    hollow was reached only where the ground happened to be level, and steps built out of it
    buried a third of the camp's farm.
@@ -847,10 +860,15 @@ boxes (`command.Groundwork`) - a dig box from the camp's feet level 24 up, and a
 below up to the ground, both inside the wall line - and the squad's drill (`command.Tasking`)
 splits the work left in them into a strip for each soldier. Digging first: while anything in the
 dig box is left, each soldier's command is `Order.Dig(box, except)`, every block in its strip that
-breaks by hand within 20 seconds (`Clearing.diggable`) - soil, stone, sand, glass, planks - and
+breaks by hand within 20 seconds (`Clearing.diggable`) - soil, stone, sand, glass, planks, a chest
+or a table left there (operator, 2026-11-13: the squad's own are `except`; live, six tables and two
+chests left on the keep held eight columns of it, 126 blocks, since what a dig leaves, the ground
+under it is left too) - and
 the cobblestone put down over the floor - old huts' walls, pillar steps - which shut the camp's
-chest in on three sides; that only while no wall is going up,
-since the masons stand on cobblestone steps inside it. Then filling: `Order.Fill(box, except)`, every open cell in each
+chest in on three sides; that, and the steps the soldiers have built and not yet taken down
+(`SoldierRunner.scaffolding`, known by where each went, since a dirt step reads as the ground's
+dirt; a gatherer never digs one for its dirt either), only while no wall is going up,
+since the masons stand on steps inside it. Then filling: `Order.Fill(box, except)`, every open cell in each
 column of its strip from the top down to the first solid block or water. The strips are cut from
 where the work is left, not the whole site, so no soldier is handed a strip with nothing in it.
 `except` is what neither touches: the squads' huts, built or going up, the workshops, the farm, the wall line, the
@@ -897,7 +915,12 @@ water flows into the hole, which is how that shaft was flooded. A dig goes towar
 (`Clearing.safeFrom`, operator 2026-11-13): to the side always; the block a soldier stands on only
 with solid ground a block under it, so the drop is one block - its own pillar comes down that way;
 the block over its head only with nothing over that to fall, sand or gravel. The world's chunk data
-is what's known: every block of a loaded chunk, water and lava included, is seen before a cut. Progress reads "N cells under the
+is what's known: every block of a loaded chunk, water and lava included, is seen before a cut. The
+one block a soldier writes into that model itself is a step it has just placed, as cobblestone, so
+it lands on it before the server's update says what went in (`ChunkCache.standIn`) - over an open
+cell only, and taken back after two seconds unconfirmed: a placement the server refused is never
+confirmed, and live one held in the model for hours as the top of a keep builder's strip, every
+strip beside it waiting on a block nobody could dig. Progress reads "N cells under the
 camp's ground to fill". Live, a pit 13 deep under the east wall line left 42 wall cells nothing to
 stand on.
 

@@ -2,7 +2,7 @@
 # tools/block-class-generator. One block state per line: <id> <class> <blockName>,
 # class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, C = chest, D = soil, O = iron ore, F = farmland (all solid);
 # R = rock (mined with a pickaxe), G = grit (dug by hand, falls), V = leaves, S = any other solid block that breaks;
-# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, solid and tall (tier -1: by hand), <hardness> on grit.
+# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, solid, tall, chests and workstations (tier -1: by hand), <hardness> on grit.
 # Every state NOT listed is solid and can't be broken (bedrock and the like: the generator prints the types it classed solid).
 0 P air
 1 Q stone
@@ -5535,29 +5535,29 @@
 5541 H oak_stairs
 5542 S oak_stairs 2.0 -1
 5543 H chest
-5544 C chest
+5544 C chest 2.5 -1
 5545 H chest
-5546 C chest
+5546 C chest 2.5 -1
 5547 H chest
-5548 C chest
+5548 C chest 2.5 -1
 5549 H chest
-5550 C chest
+5550 C chest 2.5 -1
 5551 H chest
-5552 C chest
+5552 C chest 2.5 -1
 5553 H chest
-5554 C chest
+5554 C chest 2.5 -1
 5555 H chest
-5556 C chest
+5556 C chest 2.5 -1
 5557 H chest
-5558 C chest
+5558 C chest 2.5 -1
 5559 H chest
-5560 C chest
+5560 C chest 2.5 -1
 5561 H chest
-5562 C chest
+5562 C chest 2.5 -1
 5563 H chest
-5564 C chest
+5564 C chest 2.5 -1
 5565 H chest
-5566 C chest
+5566 C chest 2.5 -1
 5567 P redstone_wire
 5568 P redstone_wire
 5569 P redstone_wire
@@ -6857,7 +6857,7 @@
 6863 R diamond_ore 3.0 2
 6864 R deepslate_diamond_ore 4.5 2
 6865 R diamond_block 5.0 2
-6866 W crafting_table
+6866 W crafting_table 2.5 -1
 6867 P wheat age=0
 6868 P wheat age=1
 6869 P wheat age=2
@@ -6874,14 +6874,14 @@
 6880 F farmland
 6881 F farmland
 6882 F farmland
-6883 W furnace
-6884 W furnace
-6885 W furnace
-6886 W furnace
-6887 W furnace
-6888 W furnace
-6889 W furnace
-6890 W furnace
+6883 W furnace 3.5 0
+6884 W furnace 3.5 0
+6885 W furnace 3.5 0
+6886 W furnace 3.5 0
+6887 W furnace 3.5 0
+6888 W furnace 3.5 0
+6889 W furnace 3.5 0
+6890 W furnace 3.5 0
 6891 H oak_sign
 6892 P oak_sign
 6893 H oak_sign

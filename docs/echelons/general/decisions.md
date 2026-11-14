@@ -22,6 +22,9 @@ In its user prompt (`command-ai/src/main/resources/prompts/general-user-prompt.m
 - **Each squad's Class I** (`command.Subsistence`): GREEN, AMBER, or RED with the request for
   food the squad can't get itself, which the general answers with a farm or game
   ([military-doctrine.md § 4](../../military-doctrine.md#4-reports-upward)).
+- **A squad's Class IV request** (`Keep.classFour`): the keep's builders short of logs, between
+  them and the stockpile, for the depot's chest, pickaxes and torches - answered with a `WOOD` task
+  at trees a squad has reported, after food (same section).
 - **Each task's progress** (`command.Progress`), the squad's answer to the task, measured rather
   than claimed:
   - **DONE**, where the world shows it: the wall closed, every cell lit, the stairs cut.

@@ -182,7 +182,9 @@ public final class SpringAiGeneral implements General {
                     "standing", describeStanding(squad),
                     // A request first, where a small model reads it: in the LOGSTAT's middle it went unanswered.
                     "request", squad.classOne().filter(c -> c.rating() == Subsistence.Rating.RED)
-                            .<Object>map(c -> c.line() + " Answer it with \"task\": \"FARM\" at ground to farm by water.").orElse(false),
+                            .map(c -> c.line() + " Answer it with \"task\": \"FARM\" at ground to farm by water.")
+                            // Class IV, the keep's logs, after food: a squad eats before it builds.
+                            .or(squad::classFour).<Object>map(r -> r).orElse(false),
                     // Said where the squad is listed, not left to be put together from <time> and its state.
                     "night", time.filter(TimeOfDay::dark).isPresent() && !squad.holdingBase(),
                     // And the morning: nothing else says the night is over for a squad still sheltering.

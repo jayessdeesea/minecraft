@@ -35,12 +35,6 @@ adding cells outward.
 - **Scaffolding of bamboo** (operator, 2026-11-12: preferred over dirt for climbing). Left: bamboo
   scaffolding is climbed inside and sneaked down, not stood on, so it wants its own moves in the
   route planner, and bamboo from a jungle and string to make it.
-- **The simulation's server answers a block placed at once** - live, its update comes a tick
-  later - so a soldier's cobblestone stand-in for a step it built is written over the update, and
-  a dirt step stays cobblestone in its model for good. Live it's corrected a tick on. Written only
-  over an open cell, the slope wall, pit-fill and farm-in-a-hollow sims fail: they pass on dirt
-  steps read as stone. Left: the sim's server answering a tick later, as the real one does, and
-  those three made to pass on what's there.
 - **A pillar's stub.** A soldier stranded up its own pillar digs it down (`Recovery`, the pillar's
   episode), but the last block or two it steps off, building a step down beside them, and leaves
   both: in the squad simulation, a two-block stub and three steps by it. Left: its episode held

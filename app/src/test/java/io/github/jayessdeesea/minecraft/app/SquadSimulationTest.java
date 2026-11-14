@@ -2081,6 +2081,37 @@ class SquadSimulationTest {
     }
 
     /**
+     * A table and a chest left on the keep's site - a hasty workshop's, moved on from - are dug like
+     * any block, and the ground under them with them. Live, six tables and two chests held eight
+     * columns of the keep, and the strips round them waited at their height (operator, 2026-11-13).
+     */
+    @Test
+    void aTableAndAChestLeftOnTheKeepAreDugWithTheGroundUnderThem() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 1 ? SimServer.DIRT
+                : x == 3 && z == 3 && y == GROUND + 2 ? SimServer.CRAFTING_TABLE
+                : x == -5 && z == -5 && y == GROUND + 1 ? SimServer.CHEST : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(6 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        assertEquals(SimServer.AIR, server.block(3, GROUND + 2, 3), "the table; " + events);
+        assertEquals(SimServer.AIR, server.block(3, GROUND + 1, 3), "the ground the table stood on; " + events);
+        assertEquals(SimServer.AIR, server.block(-5, GROUND + 1, -5), "the chest; " + events);
+    }
+
+    /**
      * Stranded up a pillar of its own - too high to jump, nothing beside it - a soldier digs it down
      * from on top, a block's drop at a time onto known ground. Live, a builder called off its pillar
      * to feed itself stood at y=98 with no route down.
@@ -2440,6 +2471,7 @@ class SquadSimulationTest {
         assertTrue(harvested > 0, "wheat harvested, or baked; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
         // Nobody lands on the farmland: on flat ground by a pond, nobody comes down onto it.
+        server.dumpLog("hungrySquadFarms-" + trampledAtMost);
         List<String> trampled = server.log.stream().filter(l -> l.contains("trampled")).toList();
         assertTrue(trampled.size() <= trampledAtMost, "farmland trampled: " + trampled);
     }
@@ -2702,6 +2734,7 @@ class SquadSimulationTest {
         clock.advance(30 * 60_000); // its dirt dug off base, a trip at a time
 
         // Closed - of dirt, with no stone to hand, so the standard itself waits on stone.
+        server.dumpLog("aSquadWallsInTheCampOnASlope");
         Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
                 .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
         assertEquals(OptionalInt.of(0), runner.wallLeft("Alpha"), walled.status());
@@ -2730,6 +2763,7 @@ class SquadSimulationTest {
 
         clock.advance(25 * 60_000);
 
+        server.dumpLog("aSquadLevelsTheCampOnASlope");
         assertEquals(OptionalInt.of(0), runner.levellingLeft("Alpha"), "high ground and hollows left inside the wall");
     }
 

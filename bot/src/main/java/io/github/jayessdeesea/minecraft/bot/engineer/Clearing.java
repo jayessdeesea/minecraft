@@ -117,9 +117,12 @@ public final class Clearing {
      * Whether a clear digs the block at (x, y, z): a tree's, or any solid block that breaks by hand
      * inside {@link #MAX_DIG_TICKS} - soil, stone, sand, glass, planks, cobblestone put down over the
      * ground (operator, 2026-11-13: most material can be dug by hand; a soldier is never stuck for
-     * the want of a list). Never a chest or a workstation, never farmland, and never ground with water
-     * beside or over it, which would flow into the hole. The camp's kept structures are the caller's
-     * {@code except}. Live, glass high over the keep was left standing, and every block under it with it.
+     * the want of a list). A chest or a workstation too (operator, 2026-11-13): the squad's own are
+     * the caller's {@code except}, with the camp's kept structures; one left on the site stands on a
+     * pillar of ground the dig can't take - live, six tables and two chests left on the keep held
+     * eight columns of it, 126 blocks, and the strips round them waited at their height. Never
+     * farmland, and never ground with water beside or over it, which would flow into
+     * the hole. Live, glass high over the keep was left standing, and every block under it with it.
      */
     public static boolean diggable(WorldView world, int x, int y, int z) {
         if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
@@ -127,7 +130,7 @@ public final class Clearing {
         }
         boolean breaks = world.isSoil(x, y, z) && !world.isFarmland(x, y, z) || world.isStone(x, y, z) || world.isGravel(x, y, z)
                 || world.isCobblestone(x, y, z)
-                || world.isSolid(x, y, z) && !world.isFarmland(x, y, z) && world.workstation(x, y, z).isEmpty()
+                || world.isSolid(x, y, z) && !world.isFarmland(x, y, z)
                 && world.hardness(x, y, z).filter(h -> h.ticks(Hardness.HAND) <= MAX_DIG_TICKS).isPresent();
         return breaks && !letsInWater(world, new BlockPos(x, y, z));
     }
@@ -287,9 +290,12 @@ public final class Clearing {
             return true;
         }
         if (block.y() == stand.y() - 1) {
-            // Never the tree it stands on: a log or leaves is cut from the ground beside it.
+            // Never the tree it stands on: a log or leaves is cut from the ground beside it. Nor
+            // onto farmland: landing on it from a block up tramples it - in the squad simulation a
+            // farmer dug the dirt over its plot from on top, and fell onto the farmland under it.
             boolean tree = world.isLog(block.x(), block.y(), block.z()) || world.leaves(block.x(), block.y(), block.z()).isPresent();
-            return !tree && world.isSolid(block.x(), block.y() - 1, block.z()) && !world.isHazard(block.x(), block.y() - 1, block.z());
+            return !tree && world.isSolid(block.x(), block.y() - 1, block.z()) && !world.isHazard(block.x(), block.y() - 1, block.z())
+                    && !world.isFarmland(block.x(), block.y() - 1, block.z());
         }
         return block.y() > stand.y() && !world.falls(block.x(), block.y() + 1, block.z());
     }

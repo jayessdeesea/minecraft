@@ -68,6 +68,7 @@ import io.github.jayessdeesea.minecraft.command.Foreman;
 import io.github.jayessdeesea.minecraft.command.Groundwork;
 import io.github.jayessdeesea.minecraft.command.Interval;
 import io.github.jayessdeesea.minecraft.command.Keep;
+import io.github.jayessdeesea.minecraft.command.Logstat;
 import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
 import io.github.jayessdeesea.minecraft.command.Objective;
@@ -294,6 +295,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Objective workedFor;
         /** The squad's Class I at the last SITREP, logged when its rating changes. */
         Subsistence.Status classOne;
+        /** The squad's Class IV request as last said, to say it once when it starts and once when it's met. */
+        Optional<String> classFour = Optional.empty();
         /** The last progress measured, logged when its state changes. */
         Progress progress;
         /** Where the squad crafts on the surface, sited by the engineer near its objective; null with nowhere to put one. */
@@ -848,6 +851,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * measured: foothold check writes, squad loop reads.
      */
     private volatile boolean campWalled = true;
+    /**
+     * The steps the soldiers have built and not yet taken down - dirt or cobblestone, wherever a
+     * route or a pillar put one - ticks write, squad loops read and prune what's been dug. Known as
+     * scaffolding by where it went, not by its block: a dirt step reads as the ground's dirt.
+     */
+    private final Set<BlockPos> scaffolding = ConcurrentHashMap.newKeySet();
     /** How near the camp an objective is for its squad to craft at the camp's workshop. */
     private static final int CAMP_WORKSHOP_RANGE = 48;
     /** Ticks to each soldier's next stand-to check. */
@@ -1046,7 +1055,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     chainOfCommand.objective(p.squad()).map(Objective::location)), p.principalAt(),
                     () -> ResourceSurveyor.survey(world, pointMan), holdingBase,
                     holdingBase ? OptionalInt.of(0) : state.baseBlocksLeft, progress(p.squad(), state, p.statuses()),
-                    Optional.of(classOne(p.squad(), state, p.statuses())));
+                    Optional.of(classOne(p.squad(), state, p.statuses())), classFour(p.squad(), state, p.statuses()));
         }).toList());
         faults.run("cross-levelling across squads", () -> crossRations(present.stream().filter(p -> p.statuses().stream()
                 .noneMatch(s -> s.report() instanceof Report.InContact)).flatMap(p -> p.statuses().stream()).toList()));
@@ -1361,6 +1370,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     /**
+     * The squad's Class IV, construction materials, as a request to the general when its task wants
+     * logs it hasn't got: on the keep, {@link Keep#classFour} from the logs its soldiers carry, the
+     * stockpile's, and whether the keep's chest stands. Said in the log when it starts and when it's met.
+     */
+    private Optional<String> classFour(String squad, SquadState state, List<SoldierStatus> statuses) {
+        Optional<String> request = taskOf(squad, Objective.Task.Keep.class).isEmpty() ? Optional.empty()
+                : Keep.classFour(Logstat.of(statuses).logs(), chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
+                        keepWorkshop != null && keepWorkshop.chestStands(world));
+        if (!request.equals(state.classFour)) {
+            request.ifPresentOrElse(line -> LOG.warn("[{}] {}", squad, line),
+                    () -> LOG.info("[{}] Class IV: the keep's builders have their logs", squad));
+            state.classFour = request;
+        }
+        return request;
+    }
+
+    /**
      * The squad's surface workshop, sited by the engineer ({@code bot.engineer.Workshop}): the
      * camp's, for an objective within {@link #CAMP_WORKSHOP_RANGE} of it, else a hasty one at the
      * objective's ground - where the squad stands with no objective. Sited again only when that ground
@@ -1526,7 +1552,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean otherWork = (clearing.containsKey(n) || filling.containsKey(n) || groundGather.containsKey(n)) && !upkeeping.contains(n)
                     || walling.containsKey(n) || repointing.containsKey(n)
                     || farming.containsKey(n) && (Optional.ofNullable(farmers.get(n)).map(f -> f.active()).orElse(false)
-                            || Farmer.hasWork(world, farming.get(n)))
+                            || Farmer.hasWork(world, farming.get(n), scaffolding))
                     // Lighting is work only while it's lighting: live, a squad handed a light plan of
                     // one cell nobody could reach stood about rather than keep the camp.
                     || lighting.containsKey(n) && (Optional.ofNullable(lamplighters.get(n)).map(l -> l.active()).orElse(false)
@@ -1604,8 +1630,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }
         }
-        // Cobblestone over the floor only while no wall is going up: the masons' steps inside it are
-        // cobblestone, and dug out from under them the wall stood unfinished in the squad simulation.
+        // Cobblestone over the floor, and the steps the soldiers built, only while no wall is going
+        // up: the masons' steps inside it, and dug out from under them the wall stood unfinished in
+        // the squad simulation. A step is known by where it went, not its block - dirt before
+        // cobblestone, and read as the ground's dirt once the server's update replaces the stand-in.
+        scaffolding.removeIf(c -> !world.isSolid(c.x(), c.y(), c.z()));
         if (!campWalled) {
             for (int x = dig.minX(); x <= dig.maxX(); x++) {
                 for (int z = dig.minZ(); z <= dig.maxZ(); z++) {
@@ -1616,6 +1645,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                 }
             }
+            scaffolding.forEach(c -> except.add(new Cell(c.x(), c.y(), c.z())));
         }
         List<BlockPos> toDig = Clearing.toClear(world, dig, except);
         List<BlockPos> toFill = toDig.isEmpty()
@@ -3945,10 +3975,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             soldier.reportKit(made);
         });
         armourers.put(name, armourer);
-        Gatherer gatherer = new Gatherer(name, session, inventory, treeClaims);
+        Gatherer gatherer = new Gatherer(name, session, inventory, treeClaims, scaffolding);
         gatherers.put(name, gatherer);
         Farmer farmer = new Farmer(name, session,
-                inventory, treeClaims, farmCellsFailed);
+                inventory, treeClaims, farmCellsFailed, scaffolding);
         farmers.put(name, farmer);
         Forester forester = new Forester(name, session,
                 inventory, treeClaims);
@@ -4017,6 +4047,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         schedulers.add(scheduler);
         sessions.add(session);
         scheduler.scheduleAtFixedRate(loudly(name + "'s tick", () -> {
+            // A step's stand-in the server never confirmed is taken back before anyone plans on it.
+            int takenBack = chunkCache.expireStandIns(clockwork.millis());
+            if (takenBack > 0) {
+                LOG.warn("[World] {} stand-in block(s) the server never confirmed, taken back", takenBack);
+            }
             soldier.tick(world).ifPresent(target -> {
                 LOG.info("{} attacks entity {}", name, target);
                 session.attack(target);
@@ -4624,12 +4659,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     session.finishDigging(cell.x(), cell.y(), cell.z());
                 }
                 // A solid block in the model until the server's update says what landed, a tick on:
-                // stood on before the server confirms it. The squad simulation's server answers at
-                // once, so there the stand-in is written over its update and a dirt step stays
-                // cobblestone in the model; the sims that pass on that are noted in backlog/cells.md.
+                // stood on before the server confirms it - over an open cell only, and taken back if
+                // the server never does (ChunkCache.standIn).
                 Builder.support(world, cell)
                         .flatMap(face -> footing.placeStep(cell, face, builtCell(cell)))
-                        .ifPresent(block -> chunkCache.setBlock(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE));
+                        .ifPresent(block -> {
+                            chunkCache.standIn(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE, clockwork.millis());
+                            scaffolding.add(cell);
+                        });
             });
             footing.tick();
             session.endTick();
