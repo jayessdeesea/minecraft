@@ -41,11 +41,14 @@ public final class Keep {
     public static final int SKY_TOP = 319;
 
     /**
-     * The logs the keep's builders need between them: two for the chest at the depot (eight planks),
-     * and one each for a pickaxe or four torches - stone dug by hand drops nothing, and the slab is
-     * laid from what the dig drops.
+     * The logs a squad of the keep's builders needs between it and the stockpile to set up the depot
+     * and keep its tools (operator, 2026-11-14: a flattening campaign starts with its supply depot):
+     * two a chest (eight planks) for the chests the dig's stone wants, one for the table, and a
+     * handle each for a pickaxe and a shovel - stone dug by hand drops nothing, and the slab is laid
+     * from what the dig drops. Live, at four, squads carrying a dozen logs asked for none, the depot
+     * had no chest for days, and four builders of eight lacked a pickaxe or a shovel.
      */
-    public static final int LOGS_WANTED = 4;
+    public static final int LOGS_WANTED = 16;
 
     /**
      * The LOGSTAT's Class IV line for the keep's builders, said as the request it is when they're

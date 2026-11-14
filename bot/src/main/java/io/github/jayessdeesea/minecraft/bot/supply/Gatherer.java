@@ -49,6 +49,8 @@ public final class Gatherer {
     private Digger digger;
     /** How far the flood for stands it can walk to looks, in cells expanded. */
     static final int REACH_BUDGET = 40_000;
+    /** The same, for trees looked for out to three times the usual distance. */
+    static final int FAR_REACH_BUDGET = 150_000;
 
     /** Trees this soldier failed at (out of reach, or the log wouldn't break) - not tried again. */
     private final Set<BlockPos> avoid = new HashSet<>();
@@ -191,8 +193,14 @@ public final class Gatherer {
         // Stands it can get to from where it is - on foot, on the blocks it carries, or cutting steps,
         // as its route there would: a stand on paper can be shut off on every side, and one down a
         // pit it was filling gets out on its blocks.
-        int span = (int) Math.ceil(Math.hypot(around.x() - soldier.x(), around.z() - soldier.z())) + WIDER[WIDER.length - 1] + 4;
-        Set<BlockPos> walkable = Pathfinder.climbs(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), span, REACH_BUDGET,
+        // Trees further still: ground gathered over for days is bare a long way out - live, a squad
+        // sent for wood beside the keep found none within 48 blocks, with forest in sight - and a
+        // load of logs is worth a two-minute walk. Not for a handle's log, which the armourer looks for.
+        int[] rings = target == Digger.Target.SOIL ? new int[]{WIDER[0]}
+                : target == Digger.Target.LOG ? new int[]{WIDER[0], WIDER[1], WIDER[2], 2 * WIDER[2], 3 * WIDER[2]} : WIDER;
+        int span = (int) Math.ceil(Math.hypot(around.x() - soldier.x(), around.z() - soldier.z())) + rings[rings.length - 1] + 4;
+        Set<BlockPos> walkable = Pathfinder.climbs(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), span,
+                target == Digger.Target.LOG ? FAR_REACH_BUDGET : REACH_BUDGET,
                 inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT), inventory.slotOf(ItemClass.PICKAXE) >= 0).keySet();
         excluded.addAll(avoid);
         // Nearest first, then further out: none within reach of the objective is a reason to look
@@ -202,16 +210,21 @@ public final class Gatherer {
         // Not for dirt, which is everywhere: one with none near isn't sent a long way for it. Live,
         // a soldier digging dirt for its squad's hut by night went forty blocks off for it, met a
         // witch out there, and died.
-        int[] rings = target == Digger.Target.SOIL ? new int[]{WIDER[0]} : WIDER;
         for (int radius : rings) {
-            spot = Digger.findSpot(world, BlockPos.containing(around.x(), around.y(), around.z()), excluded, target, radius, walkable::contains);
+            // A tree from wherever it can walk to, at any height; soil, stone and the rest near the
+            // height asked, as before - in the squad simulation dirt taken from anywhere it could walk
+            // came off the rim of a farm's hollow, and the farmer stepped down onto its crop.
+            BlockPos asked = BlockPos.containing(around.x(), around.y(), around.z());
+            spot = target == Digger.Target.LOG ? Digger.findSpotAmong(world, asked, excluded, target, radius, walkable)
+                    : Digger.findSpot(world, asked, excluded, target, radius, walkable::contains);
             if (spot.isPresent()) {
                 break;
             }
         }
         if (spot.isEmpty()) {
             if (digger != null || retry == 0) {
-                LOG.info("{}: no {} within {} blocks of the objective", name, target, rings[rings.length - 1]);
+                LOG.info("{}: no {} within {} blocks of the objective, looked for from {} stands it can walk to", name, target,
+                        rings[rings.length - 1], walkable.size());
             }
             digger = null;
             retry = RETRY_TICKS;

@@ -340,7 +340,8 @@ public final class Armourer {
         int widest = Gatherer.WIDER[Gatherer.WIDER.length - 1];
         Set<BlockPos> reachable = Pathfinder.reachable(world, feet, widest + Clearer.REACH_MARGIN, Clearer.REACH_BUDGET);
         for (int radius : Gatherer.WIDER) {
-            Optional<Digger.Spot> spot = Digger.findSpot(world, feet, excluded, target, radius, reachable::contains);
+            Optional<Digger.Spot> spot = target == Digger.Target.LOG ? Digger.findSpotAmong(world, feet, excluded, target, radius, reachable)
+                    : Digger.findSpot(world, feet, excluded, target, radius, reachable::contains);
             if (spot.isPresent()) {
                 return spot;
             }

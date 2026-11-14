@@ -20,7 +20,8 @@ class KeepTest {
         assertTrue(line.startsWith("Class IV RED - request:"), line);
         assertTrue(line.contains("1 log between them") && line.contains("no chest at the keep's depot") && line.contains("WOOD"), line);
         assertTrue(!Keep.classFour(3, 0, true).orElseThrow().contains("chest"), "the chest stands: the pickaxes and torches are the want");
-        assertEquals(Optional.empty(), Keep.classFour(2, 2, false), "enough between them and the stockpile");
+        assertTrue(Keep.classFour(6, 6, false).isPresent(), "a dozen logs isn't a depot's: chests, a table, handles");
+        assertEquals(Optional.empty(), Keep.classFour(8, 8, false), "enough between them and the stockpile");
         assertEquals(Optional.empty(), Keep.classFour(Keep.LOGS_WANTED, 0, false));
     }
 }

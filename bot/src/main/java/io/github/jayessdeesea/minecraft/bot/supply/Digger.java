@@ -522,6 +522,45 @@ final class Digger {
         return Optional.ofNullable(best);
     }
 
+    /**
+     * As {@link #findSpot(WorldView, BlockPos, Set, Target, int)}, looked for from the {@code stands}
+     * the soldier can get to - at whatever height they lie - not from a slab of cells four blocks
+     * above and below {@code around}: on a hillside the trees stand ten blocks up the slope or down
+     * it. Live, squads sent for wood among trees found "no LOG within 48 blocks" all day, and the
+     * keep's depot went without a chest. Nearest by the stand's distance across from {@code around}.
+     */
+    static Optional<Spot> findSpotAmong(WorldView world, BlockPos around, Set<BlockPos> claimed, Target target, int radius,
+                                        java.util.Collection<BlockPos> stands) {
+        Spot best = null;
+        double bestDistance = Double.MAX_VALUE;
+        int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (BlockPos stand : stands) {
+            int dx = stand.x() - around.x(), dz = stand.z() - around.z();
+            if (Math.abs(dx) > radius || Math.abs(dz) > radius || claimed.contains(stand) || !standable(world, stand)) {
+                continue;
+            }
+            // Only a tree at any height: soil and stone are taken near the height asked - in the squad
+            // simulation, dirt for a pit's fill was dug out of the pit's own bottom.
+            if (target != Target.LOG && Math.abs(stand.y() - around.y()) > 4) {
+                continue;
+            }
+            for (int[] side : sides) {
+                for (int up = target == Target.SOIL ? -1 : 0; up <= target.reachUp; up++) {
+                    BlockPos block = stand.offset(side[0], up, side[1]);
+                    if (!claimed.contains(block) && target.at(world, block) && !letsInWater(world, block)) {
+                        // As the search by height does it, for all but a tree: nearest in height too.
+                        double distance = Math.hypot(dx, dz) + (target == Target.LOG ? 0 : Math.abs(stand.y() - around.y())) + up * 0.1;
+                        if (distance < bestDistance) {
+                            best = new Spot(target, stand, block);
+                            bestDistance = distance;
+                        }
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
     static boolean letsInWater(WorldView world, BlockPos block) {
         return Clearing.letsInWater(world, block);
     }

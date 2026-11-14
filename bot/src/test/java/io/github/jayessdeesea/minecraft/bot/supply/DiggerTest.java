@@ -121,6 +121,44 @@ class DiggerTest {
         assertEquals(far, tree.orElseThrow().block());
     }
 
+    /**
+     * A tree ten blocks down the slope from where the wood was asked for is found from the stands the
+     * soldier can walk to, though a search four blocks above and below the asking point sees none.
+     * Live, squads among trees on a hillside found "no LOG within 48 blocks" all day.
+     */
+    @Test
+    void aTreeDownTheSlopeIsFoundFromTheStandsItCanWalkTo() {
+        BlockPos tree = new BlockPos(9, GROUND - 10, 0);
+        // A cliff: ground at GROUND for x < 6, ten lower beyond, the tree on the low ground.
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < (x < 6 ? GROUND : GROUND - 10) || tree.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean isLog(int x, int y, int z) {
+                return tree.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        BlockPos asked = new BlockPos(0, GROUND, 0);
+
+        assertEquals(Optional.empty(), Digger.findSpot(world, asked, Set.of(), Digger.Target.LOG), "four blocks above and below: none");
+        Optional<Digger.Spot> found = Digger.findSpotAmong(world, asked, Set.of(), Digger.Target.LOG, Digger.SEARCH_RADIUS,
+                List.of(new BlockPos(3, GROUND, 0), new BlockPos(8, GROUND - 10, 0), new BlockPos(10, GROUND - 10, 0)));
+        assertEquals(tree, found.orElseThrow().block());
+    }
+
     @Test
     void aClaimedLogSendsTheNextSoldierToAnotherTree() {
         BlockPos near = new BlockPos(5, GROUND, 0);

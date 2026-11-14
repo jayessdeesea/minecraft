@@ -2481,6 +2481,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return objectiveOf(squad).map(o -> OrderTrace.taskName(o.task())).orElse("none");
     }
 
+    /** Logs that fit out a depot: one for its table, two for its chest. */
+    static final int DEPOT_LOGS = 3;
     /** How far above or below a soldier its goal can be for a wall between them to be what stops it. */
     static final int WAY_OUT_RISE = 3;
     /** How long a soldier sent to the camp's farm stays at it, whatever the squad's rating does meanwhile. */
@@ -4631,7 +4633,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Optional<Workshop> shop = Optional.ofNullable(workshops.get(name));
             // A full load and no chest to put it in: the workshop's is fitted first, at its stand.
             long fitNow = clockwork.millis();
-            boolean fitStore = (fullLoad || Depositor.surplusFood(inventory) || poolOre) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
+            // And on the keep, the logs for it carried: the depot's chest goes up as soon as a builder has
+            // them, not when its pack happens to fill (operator, 2026-11-14: a flattening campaign starts
+            // with its supply depot). Live, builders carried 20 logs past a depot with no chest for days.
+            boolean depotLogs = keepHands.contains(name) && inventory.count(ItemClass.LOG) >= DEPOT_LOGS;
+            boolean fitStore = (fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
             turns.put(Hands.Routine.DEPOSITOR, turn(() -> depositor.active() || chestFitter.active(), free -> {
                 if (free && fitStore && atStand(status.position(), shop.get())) {

@@ -189,7 +189,7 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
 Class IV, construction materials, goes up the same way (`Keep.classFour`, operator 2026-11-13:
 with no resources, the workers ask for supplies). The keep's builders need logs - two for the
 chest at the depot, one each for a pickaxe or four torches, and stone dug by hand drops nothing to
-lay the slab from - and get their own where a tree is in reach; with fewer than 4 between them and
+lay the slab from - and get their own where a tree is in reach; with fewer than 16 between them and
 the stockpile, the squad's LOGSTAT carries "Class IV RED - request: the keep's builders carry N
 logs between them and the stockpile holds M: no chest at the keep's depot, no pickaxe or torch to
 make. Request logs - send a squad for WOOD where trees are." The general answers it with a `WOOD`
