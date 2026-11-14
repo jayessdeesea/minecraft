@@ -170,20 +170,24 @@ public final class Stairway {
             if (!world.isSolid(step.x(), step.y() - 1, step.z()) || world.isHazard(step.x(), step.y() - 1, step.z())) {
                 stopped = "nothing to step up onto at " + step.offset(0, -1, 0);
             } else {
-                for (BlockPos cell : List.of(n.last().offset(0, 2, 0), step, step.offset(0, 1, 0))) {
+                List<BlockPos> cells = List.of(n.last().offset(0, 2, 0), step, step.offset(0, 1, 0));
+                for (BlockPos cell : cells) {
                     if (world.isHazard(cell.x(), cell.y(), cell.z())) {
                         stopped = "water or lava at " + cell;
                     } else if (world.isSolid(cell.x(), cell.y(), cell.z())) {
                         BlockPos over = cell.offset(0, 1, 0);
                         // A cell of sand or gravel is dug like any other - what matters is what's over the
                         // hole it leaves: live, a pocket walled in gravel had every heading stopped at its
-                        // first step. Gravel beside the digger falls only when the block under it goes.
+                        // first step. Gravel beside the digger falls only when the block under it goes; and
+                        // over a cell the stair digs anyway - the head room over a step's body - it falls
+                        // into the hole and is dug again, with its own over-cell the one that counts.
+                        boolean overDug = cells.contains(over) || dig.contains(over);
                         if (!Clearing.diggable(world, cell.x(), cell.y(), cell.z())) {
                             stopped = "a block no clear digs at " + cell;
-                        } else if (world.falls(over.x(), over.y(), over.z())) {
+                        } else if (!overDug && world.falls(over.x(), over.y(), over.z())) {
                             // Over the cut, what the dig leaves standing: nothing that falls or flows.
                             stopped = "sand or gravel over " + cell;
-                        } else if (world.isHazard(over.x(), over.y(), over.z())) {
+                        } else if (!overDug && world.isHazard(over.x(), over.y(), over.z())) {
                             stopped = "water or lava over " + cell;
                         } else {
                             dig.add(cell);

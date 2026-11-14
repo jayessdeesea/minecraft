@@ -260,6 +260,8 @@ its y is a depth.
 `LinkingUp` and moves it to the rear of the formation, so if the point man died the next soldier
 takes point. While anyone in the squad is in contact the replacement holds at the rally point,
 which is where the point man last stood with nobody in contact. Otherwise it closes on the nearest
+- never one the recovery drill (§7) has, whatever that one reports: live, a soldier rejoining closed
+on a builder in a dead end at a mine's bottom and stood on the stair above him at "no route" -
 squad member, and within 6 blocks it has linked up and gets a formation slot again. Recognition is
 just knowing where the squad is.
 
@@ -315,8 +317,10 @@ below - boxed in a pocket, with no stair down to lay - gets the engineer's stair
 steps - a tunnel to the surface from a dead end at a mine's bottom - winding left or right of its
 heading where a cave across the way or gravel over it stops it going straight (live, every one of
 the four straight flights was), and never under sand, gravel, water or lava (the operator's rule:
-cut above only toward what's known). With no way out, the log says for each heading how far it got
-and what stopped it there. Carrying a pickaxe, the
+cut above only toward what's known) - a cell of gravel itself is dug like any other, and gravel
+over a cell the stair digs anyway falls into the hole and is dug again; what counts is what's over
+the head room (live, the pocket at the mine's bottom was walled and roofed in gravel). With no way
+out, the log says for each heading how far it got and what stopped it there. Carrying a pickaxe, the
 stranded soldier digs it itself; otherwise the nearest squadmate with one digs it from the top, as
 an `Order.Dig`. Live, a soldier waited two runs in a pocket walled partly in cobblestone, and
 another, with a pickaxe and 263 cobblestone, stood a day in a dead end 30 blocks under the camp, a

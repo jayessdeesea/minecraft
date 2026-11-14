@@ -139,12 +139,16 @@ class StairwayTest {
      */
     @Test
     void aStairUpWindsRoundWhatStopsAStraightFlight() {
-        Set<BlockPos> gravel = Set.of(new BlockPos(3, 64, 0), new BlockPos(-3, 64, 0), new BlockPos(0, 64, 3), new BlockPos(0, 64, -3));
+        // Three steps out each way, a block of dirt stands on the ground with gravel on top of it: the
+        // dirt is the third step's head room, and the gravel over it is what the stair never digs under.
+        Set<BlockPos> dirt = Set.of(new BlockPos(3, 64, 0), new BlockPos(-3, 64, 0), new BlockPos(0, 64, 3), new BlockPos(0, 64, -3));
+        Set<BlockPos> gravel = dirt.stream().map(c -> c.offset(0, 1, 0)).collect(java.util.stream.Collectors.toSet());
         WorldView base = soil(StairwayTest::pocket, c -> false);
         WorldView world = new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
-                return base.isSolid(x, y, z) || gravel.contains(new BlockPos(x, y, z));
+                BlockPos c = new BlockPos(x, y, z);
+                return base.isSolid(x, y, z) || dirt.contains(c) || gravel.contains(c);
             }
 
             @Override
@@ -154,7 +158,7 @@ class StairwayTest {
 
             @Override
             public boolean isSoil(int x, int y, int z) {
-                return base.isSoil(x, y, z) && !gravel.contains(new BlockPos(x, y, z));
+                return base.isSoil(x, y, z) || dirt.contains(new BlockPos(x, y, z));
             }
 
             @Override
@@ -174,8 +178,51 @@ class StairwayTest {
 
         assertTrue(dig.stream().noneMatch(c -> gravel.contains(c.offset(0, 1, 0))), "round the gravel, never under it: " + dig);
         Set<BlockPos> dug = new HashSet<>(dig);
-        WorldView after = world(c -> (pocket(c) || gravel.contains(c)) && !dug.contains(c), c -> false);
+        WorldView after = world(c -> (pocket(c) || dirt.contains(c) || gravel.contains(c)) && !dug.contains(c), c -> false);
         assertTrue(Pathfinder.find(after, feet, new Goal(0.5, 64, 0.5, 12, 0.5), 20_000).reachesGoal(), "no way out up the stair: " + dig);
+    }
+
+    /**
+     * A pocket roofed in gravel: the first step's head room is gravel, over its body cell. The stair
+     * digs both - the gravel falls into the hole and is dug again - and only what's over the head
+     * room counts. Live, every heading out of the pocket at the mine's bottom was "sand or gravel over"
+     * a cell the stair would have dug anyway.
+     */
+    @Test
+    void gravelOverACellTheStairDigsAnywayDoesntStopIt() {
+        // Gravel at y=62 everywhere but the pocket's own column: each first step's head room, with stone over it.
+        WorldView base = soil(StairwayTest::pocket, c -> false);
+        WorldView gravelRoof = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return base.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return base.isSoil(x, y, z) && !isGravel(x, y, z);
+            }
+
+            @Override
+            public boolean isGravel(int x, int y, int z) {
+                return y == 62 && !(x == 0 && z == 0);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        java.util.Map<String, String> whyNot = new java.util.LinkedHashMap<>();
+
+        List<BlockPos> dig = Stairway.up(gravelRoof, new BlockPos(0, 60, 0), whyNot).orElseThrow(() -> new AssertionError("no stair: " + whyNot));
+
+        assertTrue(dig.stream().anyMatch(c -> c.y() == 62), "the gravel head room is in the dig: " + dig);
     }
 
     /** With no way out, each heading's deepest step and what stopped it is said, for the log. */
@@ -197,7 +244,7 @@ class StairwayTest {
     @Test
     void noStairUpIsCutUnderGravelOrWater() {
         WorldView base = soil(StairwayTest::pocket, c -> false);
-        // Gravel everywhere at y=62: every heading's first step's head room has it overhead.
+        // Gravel everywhere at y=63, the ground's top: over every heading's first step's head room.
         WorldView gravelled = new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
@@ -216,7 +263,7 @@ class StairwayTest {
 
             @Override
             public boolean isGravel(int x, int y, int z) {
-                return y == 62;
+                return y == 63;
             }
 
             @Override

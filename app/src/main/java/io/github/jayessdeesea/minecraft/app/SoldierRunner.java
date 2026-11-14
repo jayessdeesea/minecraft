@@ -2452,6 +2452,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** How far above or below a soldier its goal can be for a wall between them to be what stops it. */
     static final int WAY_OUT_RISE = 3;
+    /** How far over a squad's height the surface is looked for from, for the general's objectives. */
+    static final int SURFACE_ABOVE = 128;
     /** The flood fill for whether a soldier reporting no route is in a pocket: how far and how many steps. */
     static final int CUT_OFF_SPAN = 48, CUT_OFF_BUDGET = 20_000;
     /** A soldier that can walk no more cells than this is in a pocket - WayOut's measure of one. */
@@ -2574,7 +2576,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             .forEach(freed -> LOG.info("[{}] RECOVERY: the stair up for {} is dug - {} walks out", squadName, freed, freed)));
             List<SoldierStatus> reported = cutOff(statuses.stream().map(s -> ownReports.getOrDefault(s.name(), s)).toList());
             orders = ReactToContact.orders(statuses, state.recovery.orders(reported,
-                    Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, Formations.assign(order, statuses))),
+                    Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, Formations.assign(order, statuses), state.recovery::recovering)),
                             order.objective(), supplyPoint), stairDown(squadName), stairUp(squadName), pillarDown(squadName)));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
@@ -4082,8 +4084,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             chainOfCommand.setRadio(session::sendChatCommand);
             // The ground round the point, not the top of whatever stands on it: a heap of old huts
             // at the camp's centre isn't where an objective there is.
-            chainOfCommand.setGround((x, z, nearY) -> typicalGround(x, z, nearY)
-                    .map(cell -> OptionalInt.of(cell.y())).orElse(OptionalInt.empty()));
+            chainOfCommand.setGround(new ChainOfCommand.Ground() {
+                @Override
+                public OptionalInt heightAt(int x, int z, int nearY) {
+                    return typicalGround(x, z, nearY).map(cell -> OptionalInt.of(cell.y())).orElse(OptionalInt.empty());
+                }
+
+                @Override
+                public OptionalInt surfaceAt(int x, int z, int nearY) {
+                    return TerrainSurveyor.surface(world, x, z, nearY + SURFACE_ABOVE).map(cell -> OptionalInt.of(cell.y())).orElse(OptionalInt.empty());
+                }
+            });
         }
         activeSoldiers.put(name, soldier);
         chatLines.put(name, session::sendChatCommand);

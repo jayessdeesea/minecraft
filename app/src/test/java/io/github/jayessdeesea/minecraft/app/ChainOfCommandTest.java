@@ -36,6 +36,33 @@ class ChainOfCommandTest {
     private static final Objective WALL = new Objective("Wall the camp in", new Position(10, 64, 10), "Nothing walks in",
             new Objective.Task.Fortify());
 
+    /**
+     * From a squad down a mine, the ground near its height at the objective's column is the shaft's
+     * floor: the objective goes on the surface. Live, a wood-gathering objective at the keep mine's
+     * head was put at the shaft's bottom, 40 blocks down, and the squad found no tree there.
+     */
+    @Test
+    void anObjectiveOverAMineGoesOnTheSurfaceNotTheShaftsFloor() {
+        chain.setGround(new ChainOfCommand.Ground() {
+            @Override
+            public OptionalInt heightAt(int x, int z, int nearY) {
+                return OptionalInt.of(24); // the shaft's floor, near the squad's height
+            }
+
+            @Override
+            public OptionalInt surfaceAt(int x, int z, int nearY) {
+                return OptionalInt.of(70);
+            }
+        });
+        Objective wood = new Objective("Logs for the keep", new Position(-27, 65, -23), "The keep's chest",
+                new Objective.Task.Gather(Resource.WOOD));
+        List<SoldierStatus> down = List.of(new SoldierStatus("Alice", new Position(-26.5, 24, -22.5), new Order.Idle(), new Report.Mining(1, 9), Optional.empty()));
+
+        assertEquals(70, (int) chain.grounded(wood, down).location().y(), "the surface, not the shaft's floor");
+        chain.setGround((x, z, nearY) -> OptionalInt.of(24));
+        assertEquals(24, (int) chain.grounded(wood, down).location().y(), "with no surface known, the ground near the squad");
+    }
+
     @Test
     void underTheKeepRuleEverySquadBuildsTheKeepByDayAndShelterAtNight() {
         chain.setKeepByDay(true);

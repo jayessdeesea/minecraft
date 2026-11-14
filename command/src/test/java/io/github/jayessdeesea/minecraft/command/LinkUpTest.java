@@ -108,6 +108,24 @@ class LinkUpTest {
         assertInstanceOf(Report.LinkingUp.class, passing.get(2).report(), "passing stuck Carol isn't linking up");
     }
 
+    /**
+     * Nor on one the recovery drill has, whatever it reports: live, a soldier rejoining closed on a
+     * builder in a dead end at a mine's bottom, reporting the dig it couldn't reach, and stood on the
+     * stair above him at "no route".
+     */
+    @Test
+    void aReplacementDoesNotCloseOnOneTheRecoveryDrillHas() {
+        LinkUp linkUp = new LinkUp();
+        linkUp.reconstitute(List.of(soldier("Alice", 160, 150, new Report.Moving(), 0), soldier("Bob", 163, 153, new Report.Moving(), 0),
+                soldier("Carol", 84, 29, new Report.Working("dig the keep", 77), 0)));
+        List<SoldierStatus> formed = linkUp.reconstitute(List.of(soldier("Alice", 160, 150, new Report.Moving(), 0),
+                soldier("Bob", 0, 0, new Report.Idle(), 1), soldier("Carol", 84, 29, new Report.Working("dig the keep", 77), 0)));
+
+        Order.MoveTo bobs = (Order.MoveTo) linkUp.orders(formed, slots(3), "Carol"::equals).get(2);
+
+        assertEquals(160, bobs.x(), "closes on Alice, though Carol, in the drill's hands, is nearer");
+    }
+
     @Test
     void aWholeSquadRespawningReformsAsItStands() {
         LinkUp linkUp = new LinkUp();

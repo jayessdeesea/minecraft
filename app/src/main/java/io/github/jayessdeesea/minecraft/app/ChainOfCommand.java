@@ -142,7 +142,15 @@ public class ChainOfCommand implements DisposableBean {
     @FunctionalInterface
     public interface Ground {
         OptionalInt heightAt(int x, int z, int nearY);
+
+        /** The column's surface under open sky, if the world shows one: none by default. */
+        default OptionalInt surfaceAt(int x, int z, int nearY) {
+            return OptionalInt.empty();
+        }
     }
+
+    /** A ground this far under the surface is a cave's floor or a mine's, not where the objective is. */
+    static final int UNDERGROUND = 6;
     private volatile TimeOfDay time;
 
     /**
@@ -344,8 +352,16 @@ public class ChainOfCommand implements DisposableBean {
         // Near the squad's middle height, not its first soldier's: one stranded up a tower or down a
         // hole would take every objective there with it.
         double[] heights = soldiers.stream().mapToDouble(s -> s.position().y()).sorted().toArray();
-        OptionalInt height = ground.heightAt((int) Math.floor(at.x()), (int) Math.floor(at.z()),
-                (int) Math.floor(heights[heights.length / 2]));
+        int nearY = (int) Math.floor(heights[heights.length / 2]);
+        int x = (int) Math.floor(at.x()), z = (int) Math.floor(at.z());
+        OptionalInt height = ground.heightAt(x, z, nearY);
+        // From a squad down a mine, the ground near its height is the shaft's floor or a cave's: the
+        // objective goes on the surface when that's well above. Live, a wood-gathering objective at
+        // the keep mine's head went to the shaft's bottom, 40 blocks down, and the squad found no tree.
+        OptionalInt surface = ground.surfaceAt(x, z, nearY);
+        if (surface.isPresent() && (height.isEmpty() || surface.getAsInt() - height.getAsInt() > UNDERGROUND)) {
+            height = surface;
+        }
         if (height.isEmpty() || height.getAsInt() == (int) Math.floor(at.y())) {
             return objective;
         }

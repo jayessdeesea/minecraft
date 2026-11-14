@@ -57,7 +57,7 @@ public final class LinkUp {
             return squad;
         }
         for (SoldierStatus replacement : replacements) {
-            if (horizontalDistance(nearest(linkUpCandidates(formed), replacement.position()).position(), replacement.position()) <= LINKUP_DISTANCE) {
+            if (horizontalDistance(nearest(linkUpCandidates(formed, name -> false), replacement.position()).position(), replacement.position()) <= LINKUP_DISTANCE) {
                 markLinked(replacement);
             }
         }
@@ -82,6 +82,16 @@ public final class LinkUp {
      * member" otherwise.
      */
     public List<Order> orders(List<SoldierStatus> reconstituted, List<Order> formationOrders) {
+        return orders(reconstituted, formationOrders, name -> false);
+    }
+
+    /**
+     * As {@link #orders(List, List)}, and never closing on a squad member {@code stranded} - one the
+     * recovery drill has, whatever it reports: live, a soldier rejoining its squad closed on the nearest,
+     * a builder in a dead end at a mine's bottom reporting the dig it couldn't reach, and stood on the
+     * stair above him at "no route".
+     */
+    public List<Order> orders(List<SoldierStatus> reconstituted, List<Order> formationOrders, java.util.function.Predicate<String> stranded) {
         List<SoldierStatus> formed = reconstituted.stream().filter(s -> !(s.report() instanceof Report.LinkingUp)).toList();
         boolean inContact = formed.stream().anyMatch(s -> s.report() instanceof Report.InContact);
         List<Order> orders = new ArrayList<>(formationOrders);
@@ -89,7 +99,7 @@ public final class LinkUp {
             SoldierStatus soldier = reconstituted.get(i);
             // Nobody formed to close on - a one-man unit's soldier, respawned - it keeps its own order.
             if (soldier.report() instanceof Report.LinkingUp && !formed.isEmpty()) {
-                Position target = inContact && rallyPoint != null ? rallyPoint : nearest(linkUpCandidates(formed), soldier.position()).position();
+                Position target = inContact && rallyPoint != null ? rallyPoint : nearest(linkUpCandidates(formed, stranded), soldier.position()).position();
                 // A replacement rejoining is never worth more of its health than the squad's own order.
                 Risk risk = formationOrders.get(i) instanceof Order.MoveTo slot ? slot.risk() : Risk.LOW;
                 orders.set(i, new Order.MoveTo(target.x(), target.y(), target.z(), APPROACH_TOLERANCE, VERTICAL_TOLERANCE, risk));
@@ -99,11 +109,11 @@ public final class LinkUp {
     }
 
     /**
-     * Who a replacement may close on: squad members not reporting CANTCO - a stuck soldier is
-     * where nobody can get to - or, if every one of them is, the point man.
+     * Who a replacement may close on: squad members not reporting CANTCO and not {@code stranded} - a
+     * stuck soldier is where nobody can get to - or, if every one of them is, the point man.
      */
-    private static List<SoldierStatus> linkUpCandidates(List<SoldierStatus> formed) {
-        List<SoldierStatus> able = formed.stream().filter(s -> !(s.report() instanceof Report.Cantco)).toList();
+    private static List<SoldierStatus> linkUpCandidates(List<SoldierStatus> formed, java.util.function.Predicate<String> stranded) {
+        List<SoldierStatus> able = formed.stream().filter(s -> !(s.report() instanceof Report.Cantco) && !stranded.test(s.name())).toList();
         return able.isEmpty() ? List.of(formed.getFirst()) : able;
     }
 
