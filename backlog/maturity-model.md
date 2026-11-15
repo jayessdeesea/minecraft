@@ -184,7 +184,7 @@ today's `<foothold>`.
 - **Days of supply are measured** (`command.Supply`; docs/military-doctrine.md § 17): the camp's
   Class I and Class IV, upkeep from the stock's falls, the levels and the state, `[Supply]` on each
   change, the dawn AAR's list. What's left: by site, not the force's; Classes II, III and V; the
-  committed burn from the next work's bill of materials (mission-estimate.md); lead times measured
+  committed burn for classes other than Class IV, whose comes from the keep's estimate; lead times measured
   from the producers rather than first figures; and the state acted on - the gate, the PAUSE, the
   production check.
 - The keep: DIG doesn't start, and pauses, while the depot is below its objective in handles,

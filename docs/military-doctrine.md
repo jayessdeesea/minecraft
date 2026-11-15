@@ -1210,10 +1210,21 @@ two foothold checks is consumption (eaten, worn out, lost) and every rise produc
 counted; a day's upkeep is the falls of the last three in-game days over the time they span, at
 least one. Its levels follow: the safety level two days of upkeep; the reorder point that and what
 burns while more is made (a day, first figures, for wheat and for wood); the stockage objective that
-and a day of the work committed - none yet, until the mission estimates say what work draws. At the
+and a day of the work committed - for Class IV, the logs the keep's estimate draws a day (below). At the
 objective a class is ADVANCE, below the safety level PAUSE, HOLD between; the log says each change
 (`[Supply] Class I (rations): 340, 4.2 days at 81 a day; safety 162, reorder 243, objective 243 -
-ADVANCE`), and the dawn's after-action review lists them. Nothing acts on the state yet.
+ADVANCE`), and the dawn's after-action review lists them. The platoon sergeant acts on it (§ 4).
+
+The keep's mission estimate (`command.MissionEstimate`; ADP 5-0, FM 4-0's logistics estimate) is
+worked out at each foothold check: its work - the blocks left to dig and the slab's cells to fill,
+4,096 until the ground is flat - at the rate measured from that work's own falls; its bill of
+materials - a stone tool for every 132 blocks dug and a log's handles for every four tools, the
+slab's cobblestone kept in chests till it's laid, two logs a chest, and its days' rations at the
+force's measured burn a soldier; and its shortfall, the logs the bill draws beyond those above
+Class IV's reorder point. Feasible with none; otherwise "PREPARE first". The log says when it turns
+one way or the other (`[Estimate] the keep: 1846 blocks to dig, 4096 cells to fill - 2.3 days; bill
+...; PREPARE first: 6 logs`), the dawn's after-action review lists it, and the logs it draws a day
+are Class IV's committed burn.
 
 Every ten seconds the runner measures each phase's standards at the camp - from its ground, the
 typical height of the ground round it found once, so a heap of old huts at its centre is neither

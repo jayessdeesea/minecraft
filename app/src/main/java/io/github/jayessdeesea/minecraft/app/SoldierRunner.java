@@ -74,6 +74,7 @@ import io.github.jayessdeesea.minecraft.command.Logstat;
 import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Site;
 import io.github.jayessdeesea.minecraft.command.Supply;
+import io.github.jayessdeesea.minecraft.command.MissionEstimate;
 import io.github.jayessdeesea.minecraft.command.LevelPace;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
 import io.github.jayessdeesea.minecraft.command.Objective;
@@ -542,6 +543,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final double RATIONS_LEAD_DAYS = 1, LOGS_LEAD_DAYS = 1;
     /** Each class's measured burn - the main loop's. */
     private final Supply.Burn rationsBurn = new Supply.Burn(DAY_MILLIS), logsBurn = new Supply.Burn(DAY_MILLIS);
+    /** The keep's work left as measured, for its rate - the main loop's. */
+    private final Supply.Burn keepWorkBurn = new Supply.Burn(DAY_MILLIS);
+    /** The keep's estimate as last worked out, and whether it was feasible when last logged - the main loop's. */
+    private volatile MissionEstimate keepEstimate;
+    private Boolean keepFeasible;
     /** Class IV as last measured, for the platoon sergeant's wood party - the main loop writes, squad loops read. */
     private volatile Supply logsSupply;
     /** Class I as last measured, for the platoon sergeant's farmers - the main loop writes, squad loops read. */
@@ -563,7 +569,30 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int logs = kits.stream().mapToInt(Kit::logs).sum() + pile.map(Stockpile::logs).orElse(0);
         rationsBurn.stock(rations, now);
         logsBurn.stock(logs, now);
-        Supply logsNow = new Supply("Class IV (logs)", logs, logsBurn.perDay(), 0, LOGS_LEAD_DAYS);
+        // The keep's estimate (command.MissionEstimate): its work at the rate measured from that work's
+        // falls, its rations at the force's measured burn a soldier, its logs against the stock above
+        // Class IV's reorder point - and the logs it draws a day are Class IV's committed burn.
+        Supply logsWas = logsSupply;
+        double logsReorder = logsWas == null ? 0 : logsWas.reorderPoint();
+        double committedLogs = 0;
+        if (!keepDigLeftBySquad.isEmpty()) {
+            int digLeft = keepDigLeftBySquad.values().stream().mapToInt(Integer::intValue).sum();
+            boolean fillKnown = keepFillLeftBySquad.values().stream().anyMatch(n -> n >= 0);
+            int fillLeft = fillKnown ? keepFillLeftBySquad.values().stream().mapToInt(Integer::intValue).filter(n -> n >= 0).sum()
+                    : (int) Keep.slab().volume();
+            keepWorkBurn.stock(digLeft + fillLeft, now);
+            int crew = keepCrews.values().stream().mapToInt(List::size).sum();
+            int stone = kits.stream().mapToInt(Kit::stone).sum() + pile.map(Stockpile::stone).orElse(0);
+            MissionEstimate keep = MissionEstimate.keep(digLeft, fillLeft, keepWorkBurn.perDay(), Math.max(1, crew),
+                    rationsBurn.perDay() / Math.max(1, kits.size()), (int) Math.floor(logs - logsReorder), stone);
+            keepEstimate = keep;
+            if (keepFeasible == null || keepFeasible != keep.feasible()) {
+                keepFeasible = keep.feasible();
+                LOG.info("[Estimate] {}", keep.line());
+            }
+            committedLogs = Double.isInfinite(keep.days()) || keep.days() <= 0 ? 0 : keep.logs() / keep.days();
+        }
+        Supply logsNow = new Supply("Class IV (logs)", logs, logsBurn.perDay(), committedLogs, LOGS_LEAD_DAYS);
         Supply rationsNow = new Supply("Class I (rations)", rations, rationsBurn.perDay(), 0, RATIONS_LEAD_DAYS);
         logsSupply = logsNow;
         rationsSupply = rationsNow;
@@ -1133,6 +1162,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 afterActionReview.sites(sites);
                 List<Supply> supplies = measureSupply();
                 afterActionReview.supplies(supplies);
+                afterActionReview.estimates(Optional.ofNullable(keepEstimate).stream().toList());
                 supplies.forEach(supply -> {
                     if (supplyStates.put(supply.name(), supply.state()) != supply.state()) {
                         LOG.info("[Supply] {}", supply.line());

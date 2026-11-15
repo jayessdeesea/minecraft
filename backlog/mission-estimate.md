@@ -21,6 +21,12 @@ supply comes from. Whether the objective is in *operational reach* - near enough
 from an existing base - decides whether the plan needs a new base on the way.
 
 ## Done when
+- **The keep's estimate is built** (`command.MissionEstimate`; docs/military-doctrine.md § 17): its
+  work at the measured rate, its bill (tools, logs, chests, cobblestone, rations), its shortfall in
+  logs above Class IV's reorder point, FEASIBLE or PREPARE first, `[Estimate]` when that turns, the
+  dawn AAR's line, and Class IV's committed burn from it. What's left: the force and its work loads,
+  the supplying site by name, travel, and the shortfall's time to make good; estimates for other
+  missions (an outpost, an expedition); and the screening, phases and `<missions>` below.
 - **A mission estimate** (`command`, pure), worked out for any mission the platoon leader may take on, before
   it's given. The keep's campaign record (keep-campaign.md) is its first instance:
   - **The objective:** where, what end state, and the site that supplies it.
