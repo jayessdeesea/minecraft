@@ -59,6 +59,40 @@ class PlatoonSergeantTest {
                 "wheat growing in the farm");
     }
 
+    private static SoldierStatus carrying(String name, int rations, Optional<String> weapon, Report report) {
+        Kit kit = new Kit(weapon, 0, 0, 0, 0, 0, rations);
+        return new SoldierStatus(name, new Position(0, 64, 0), new Order.Idle(), report, Optional.of(new Condition(20, 20, 0, Optional.of(kit))));
+    }
+
+    /** Rations to one running low from one with plenty; none to or from one the recovery drill has. */
+    @Test
+    void rationsGoToOneRunningLowButNeverToOrFromOneRecovering() {
+        List<SoldierStatus> squad = List.of(carrying("Alice", 64, Optional.of("stone_sword"), new Report.InPosition()),
+                carrying("Bob", 1, Optional.of("stone_sword"), new Report.InPosition()));
+
+        assertTrue(PlatoonSergeant.crossLevel(squad, java.util.Map.of(), n -> false).stream()
+                .anyMatch(t -> t.item() == CrossLevel.Item.RATIONS && t.giver().equals("Alice") && t.receiver().equals("Bob")));
+        assertTrue(PlatoonSergeant.crossLevel(squad, java.util.Map.of(), "Bob"::equals).stream()
+                .noneMatch(t -> t.item() == CrossLevel.Item.RATIONS), "Bob recovering: none walked to him");
+        assertTrue(PlatoonSergeant.crossLevel(squad, java.util.Map.of(), "Alice"::equals).stream()
+                .noneMatch(t -> t.item() == CrossLevel.Item.RATIONS), "Alice recovering: none from her");
+    }
+
+    /** A spare weapon to one bare-handed - not to one making its kit, whose weapon may be on a cursor. */
+    @Test
+    void aSpareWeaponGoesToOneBareHandedButNotToOneRearming() {
+        SoldierStatus alice = new SoldierStatus("Alice", new Position(0, 64, 0), new Order.Idle(), new Report.InPosition(),
+                Optional.of(new Condition(20, 20, 0, Optional.of(new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, 0, 64, false, false,
+                        0, false, 1, 0, 0)))));
+        List<SoldierStatus> bare = List.of(alice, carrying("Bob", 64, Optional.empty(), new Report.InPosition()));
+        List<SoldierStatus> rearming = List.of(alice, carrying("Bob", 64, Optional.empty(), new Report.Rearming()));
+
+        assertTrue(PlatoonSergeant.crossLevel(bare, java.util.Map.of(), n -> false).stream()
+                .anyMatch(t -> t.item() == CrossLevel.Item.WEAPON && t.receiver().equals("Bob")), "Bob bare-handed: Alice's spare");
+        assertTrue(PlatoonSergeant.crossLevel(rearming, java.util.Map.of(), n -> false).stream()
+                .noneMatch(t -> t.item() == CrossLevel.Item.WEAPON), "Bob making his kit: none");
+    }
+
     @Test
     void shortOfLogsTwoCutAndNeverTheForeman() {
         PlatoonSergeant.WoodParty party = PlatoonSergeant.woodParty(EIGHT, "Hal", PlatoonSergeant.WoodParty.NONE, SHORT);

@@ -60,6 +60,57 @@ public final class PlatoonSergeant {
         return Subsistence.of(statuses, noMeans);
     }
 
+    /**
+     * Cross-leveling within a squad (docs/military-doctrine.md § 13), the hand-overs it makes from
+     * what its soldiers carry: logs to one that wants them for a tool ({@code logsWanted}) and can't
+     * chop any; rations to one running low ({@link Subsistence#low}), hungry yet or not - it asks
+     * before it goes hungry (the operator's); a spare weapon to one bare-handed, as a replacement
+     * respawns with nothing; and a pickaxe or a shovel to one short of the tool load
+     * ({@link CrossLevel#TOOLS_LOW}). Never to or from one {@code recovering}: a hand-over walks the
+     * giver to the receiver, and live the foreman spent a day on the stairs with rations for one in a
+     * dead end, and in the squad simulation one tunnelling out of a pocket left its stair nineteen
+     * times. Kit isn't asked for by one {@link Report.Rearming}: mid-craft its weapon can be on a
+     * window's cursor, uncounted, and in the squad simulation a sword went round the squad that way.
+     * The pairing itself is {@link CrossLevel#pair}.
+     */
+    public static List<CrossLevel.Transfer> crossLevel(List<SoldierStatus> statuses, Map<String, Integer> logsWanted,
+                                                       java.util.function.Predicate<String> recovering) {
+        List<SoldierStatus> able = statuses.stream().filter(s -> !recovering.test(s.name())).toList();
+        Map<String, Integer> wanted = new java.util.HashMap<>();
+        able.forEach(s -> Optional.ofNullable(logsWanted.get(s.name())).ifPresent(n -> wanted.put(s.name(), n)));
+        Map<String, Integer> fed = new java.util.HashMap<>();
+        able.forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> Subsistence.low(k.rations()))
+                .ifPresent(k -> fed.put(s.name(), CrossLevel.RATIONS_GIVEN)));
+        Map<String, Integer> disarmed = new java.util.HashMap<>();
+        Map<String, Integer> pickaxesShort = new java.util.HashMap<>();
+        Map<String, Integer> shovelsShort = new java.util.HashMap<>();
+        statuses.stream().filter(s -> !(s.report() instanceof Report.Rearming)).forEach(s -> s.condition().flatMap(Condition::kit).ifPresent(k -> {
+            if (k.weapon().isEmpty()) {
+                disarmed.put(s.name(), 1);
+            }
+            if (k.pickaxes() < CrossLevel.TOOLS_LOW) {
+                pickaxesShort.put(s.name(), 1);
+            }
+            if (k.shovels() < CrossLevel.TOOLS_LOW) {
+                shovelsShort.put(s.name(), 1);
+            }
+        }));
+        return CrossLevel.pair(able, wanted, fed, disarmed, pickaxesShort, shovelsShort);
+    }
+
+    /**
+     * Rations across squads (the operator's: across squads if need be), as a squad of its own would
+     * share them: to a soldier running low that no squadmate is sharing with, from the nearest of the
+     * force with rations to spare - of {@code outOfContact}, none {@code busy} with a hand-over of
+     * its own squad's.
+     */
+    public static List<CrossLevel.Transfer> crossRations(List<SoldierStatus> outOfContact, Set<String> busy) {
+        List<SoldierStatus> free = outOfContact.stream().filter(s -> !busy.contains(s.name())).toList();
+        List<SoldierStatus> short_ = free.stream().filter(s -> s.condition().flatMap(Condition::kit)
+                .filter(k -> Subsistence.low(k.rations())).isPresent()).toList();
+        return CrossLevel.across(short_, free);
+    }
+
     /** One builder the party may be drawn from: its name, and the logs and saplings it carries. */
     public record Hand(String name, int logs, int saplings) {
     }

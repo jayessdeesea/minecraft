@@ -1154,11 +1154,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             busy.add(t.receiver());
         }));
         Map<String, CrossLevel.Transfer> was = acrossSquads;
-        List<SoldierStatus> free = outOfContact.stream().filter(s -> !busy.contains(s.name())).toList();
-        List<SoldierStatus> short_ = free.stream().filter(s -> s.condition().flatMap(Condition::kit)
-                .filter(k -> Subsistence.low(k.rations())).isPresent()).toList();
         Map<String, CrossLevel.Transfer> now = new HashMap<>();
-        CrossLevel.across(short_, free).forEach(t -> now.put(t.giver(), t));
+        PlatoonSergeant.crossRations(outOfContact, busy).forEach(t -> now.put(t.giver(), t));
         now.values().stream().filter(t -> !was.containsValue(t))
                 .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL across squads: {} rations", t.giver(), t.receiver(), t.count()));
         acrossSquads = Map.copyOf(now);
@@ -2868,48 +2865,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         boolean squadInContact = statuses.stream().anyMatch(s -> s.report() instanceof Report.InContact);
         Map<String, DeterministicSoldier> byName = new HashMap<>();
         squad.forEach(soldier -> byName.put(soldier.status().name(), soldier));
-        // Cross-leveling (docs/military-doctrine.md §13): logs from a squadmate with some to spare
-        // to one that needs them for a tool and can't chop any, and food to one that wants it and
-        // has none.
-        // Never to one the recovery drill has: a hand-over walks the giver to where the receiver
-        // is, and live the foreman spent a day on the stairs with rations for one in a dead end.
-        Map<String, Integer> wanted = new HashMap<>();
-        statuses.stream().filter(s -> !state.recovery.recovering(s.name())).forEach(s -> {
-            Integer logs = logsWanted.get(s.name());
-            if (logs != null) {
-                wanted.put(s.name(), logs);
-            }
-        });
-        // Rations to one running low (command.Subsistence's resupply mark), hungry yet or not: it
-        // asks its squadmates before it goes hungry (the operator's).
-        Map<String, Integer> fed = new HashMap<>();
-        statuses.stream().filter(s -> !state.recovery.recovering(s.name()))
-                .forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> Subsistence.low(k.rations()))
-                .ifPresent(k -> fed.put(s.name(), CrossLevel.RATIONS_GIVEN)));
-        // And a spare weapon to one bare-handed: a replacement respawns with nothing. Not to one
-        // making its kit: mid-craft its weapon can be on a window's cursor, and it isn't counted -
-        // in the squad simulation a sword went round the squad from hand to hand that way.
-        Map<String, Integer> disarmed = new HashMap<>();
-        statuses.stream().filter(s -> !(s.report() instanceof Report.Rearming))
-                .forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> k.weapon().isEmpty())
-                        .ifPresent(k -> disarmed.put(s.name(), 1)));
-        // And the tool load: a pickaxe or a shovel to one short of them, from a squadmate with more than
-        // it keeps (the operator's, as for rations). A weapon only to one bare-handed, above: two
-        // soldiers each holding one would hand a sword back and forth.
-        Map<String, Integer> pickaxesShort = new HashMap<>();
-        Map<String, Integer> shovelsShort = new HashMap<>();
-        statuses.stream().filter(s -> !(s.report() instanceof Report.Rearming)).forEach(s -> s.condition().flatMap(Condition::kit).ifPresent(k -> {
-            if (k.pickaxes() < CrossLevel.TOOLS_LOW) {
-                pickaxesShort.put(s.name(), 1);
-            }
-            if (k.shovels() < CrossLevel.TOOLS_LOW) {
-                shovelsShort.put(s.name(), 1);
-            }
-        }));
-        // Nor from one: in the squad simulation a soldier tunnelling up out of a pocket left its stair
-        // nineteen times to take rations to a squadmate it had no route to.
-        List<CrossLevel.Transfer> transfers = CrossLevel.pair(statuses.stream().filter(s -> !state.recovery.recovering(s.name())).toList(),
-                wanted, fed, disarmed, pickaxesShort, shovelsShort);
+        // Cross-leveling (docs/military-doctrine.md §13), as the platoon sergeant pairs it.
+        List<CrossLevel.Transfer> transfers = PlatoonSergeant.crossLevel(statuses, logsWanted, state.recovery::recovering);
         Set<CrossLevel.Transfer> crossLeveling = Set.copyOf(transfers);
         crossLeveling.stream().filter(t -> !state.crossLeveling.contains(t))
                 .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL: {} {} to {}", t.giver(), squadName, t.count(),
