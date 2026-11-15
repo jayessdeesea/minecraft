@@ -24,10 +24,8 @@ Three sections, in this order, each a few short paragraphs at most:
 
    Also say what runs by default and what one setting changes it. Name the config key; the values
    themselves live in `application.yml`.
-2. **Why it exists.** The experiment, not the features. It collects data points on tiering AIs:
-   - A highly capable leader breaks a problem down.
-   - It socializes the result to less capable leaders, who break it down further.
-   - Status comes back up the chain.
+2. **Why it exists.** The goal, not the features: a fleet of bots that works (operator,
+   2026-11-14), and what the tiering it began with taught about where a model belongs.
 
    State which questions the project can answer. Don't state which answers it has found. Findings
    belong in `docs/` with how they were measured, and the README links to them.

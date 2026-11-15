@@ -19,19 +19,22 @@ model, set one key, `minecraft.general.chat-model: anthropic`
 
 ## Why it exists
 
-To collect data points on how to tier AIs:
-- A highly capable leader breaks a problem down and passes it to less capable leaders.
-- Those leaders have to break it down further for the people under them.
-- Status has to come back up the chain.
+To build a fleet of bots that works: a force that feeds, arms and shelters itself, and carries out
+an operator's missions - a keep built, an outpost founded, a region surveyed - in a world that runs
+in real time, is partly observable, and is hostile at night, so plans meet friction.
 
-The Minecraft world is the testbed. It runs in real time, it is partly observable, and it is
-hostile at night, so plans meet friction.
+It began as a way to collect data on tiering AI agents, a strong model handing down to weaker ones.
+What that taught shapes the fleet: the bad decisions came from a model doing arithmetic or working
+out state it should have been shown, and the deterministic parts - the drills, the equipment
+ladder, the foreman's share-out of a dig - do their jobs better than a model asked to. So judgement
+goes to one model at the top, with the cost of a call low and everything it needs computed for it;
+the rest is code organised as an infantry platoon is, so the doctrine for each job comes from the
+manual for that job.
 
 Questions it can answer:
-- What does a strong model have to hand down for a weaker one to act on it?
-- Where does the weaker one fail: misreading intent, losing track of terrain, or overcommitting?
-- What has to be in a report for the level above to re-plan well?
-- How far can deterministic code below the models carry an order without asking?
+- How much of a force's work can run on standing procedures, and what has to reach a commander?
+- What does a commander have to be shown, computed, to choose well among missions?
+- Where does a force overextend, and what gate, pause and fallback keep it within its supply?
 
 Every order, acknowledgement and report is logged as a radio net (`[General -> Alpha] OPORD`,
 `[Bravo -> General] CANTCO`). The squad leader and the general each have a repeatable evaluation

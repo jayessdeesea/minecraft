@@ -6,20 +6,21 @@ needs, and pointers. Everything else lives in `docs/`, read when the work needs 
 ## Objective
 
 A Minecraft Java Edition client built from scratch - protocol implemented ourselves, no Minecraft
-client/server libraries - that hosts a chain of command of AI-controlled agents:
+client/server libraries - that hosts a fleet of bots that works (operator, 2026-11-14): a force
+that sustains itself and carries out the operator's missions.
 
-- **General:** one instance, the smarter model. Long-horizon strategy, low call frequency. Gives
-  each squad an objective.
-- **Squad leader:** one per squad. A lighter model, tactical decisions, medium call frequency.
-  Commands its soldiers. Not a Minecraft entity or connection: a decision-making role only.
+- **General:** one instance, a model. Turns the operator's missions into objectives and intent,
+  chooses among missions already costed, and sets priorities. The one place judgement is needed.
+- **Squad leader:** one per squad. A lighter model today, being replaced by deterministic task
+  organisation (backlog/fleet-command.md). Not a Minecraft entity or connection: a role only.
 - **Soldier:** a player bot with its own connection, in the world. Executes its squad leader's
   orders. Never calls a model.
 
-The Minecraft client is the substrate. The subject is how a few AI agents at different levels of a
-hierarchy coordinate: make tradeoffs that keep the coordination layer legible, not ones that chase
-Minecraft feature completeness. How the echelons talk is borrowed from military doctrine on purpose
-(mission command, WILCO/CANTCO, SITREP, OPORD/FRAGO), to see where doctrine built for humans under
-stress overlaps with what works for LLM agents.
+The Minecraft client is the substrate; the subject is a force that works. Make tradeoffs that keep
+the command layer legible, not ones that chase Minecraft feature completeness. The force is
+organised and talks as an infantry platoon does (mission command, WILCO/CANTCO, SITREP,
+OPORD/FRAGO), so the doctrine for each job comes from the manual for that job, and a model is shown
+computed state, never asked to work it out.
 
 ## Rules every change needs
 Each points to its home, which has the reasons.
