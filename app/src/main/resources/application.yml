@@ -43,7 +43,7 @@ minecraft:
     user-prompt: classpath:prompts/squad-leader-user-prompt.md
   # The order of battle: "Squad:Soldier,Soldier,...;Squad:...", formation order, the first soldier
   # of the first squad carrying the radio. Soldiers' names are their usernames on the server.
-  roster: "Alpha:Alice,Bob,Carol,Gus;Bravo:Dana,Eli,Fran,Hal"
+  roster: "Alpha:Alice,Bob,Carol,Gus;Bravo:Dana,Eli,Fran,Hal;Charlie:Ivy,Jack,Kate,Liam;Delta:Mia,Ned,Olga,Pete"
   # Stand the squads still, asking no model anything, while a live experiment runs on this machine
   # (the scenario harness holds a lock file for each run) - for a garrison sharing the GPU.
   yield-to-experiments: false

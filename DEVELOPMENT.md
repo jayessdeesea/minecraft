@@ -139,9 +139,12 @@ mvn package -DskipTests
 java -jar app/target/app.jar
 ```
 
-This connects two squads (`app.Roster`, from `minecraft.roster`): Alpha (`Alice`, `Bob`, `Carol`,
-`Gus`) and Bravo (`Dana`, `Eli`, `Fran`, `Hal`), the first of each its point man, each under its own
-LLM squad leader, both under one LLM platoon leader (`ChainOfCommand`). The log reads as a radio net: `[PL -> Alpha] OPORD`,
+This connects four squads of four (`app.Roster`, from `minecraft.roster`): Alpha (`Alice`, `Bob`,
+`Carol`, `Gus`), Bravo (`Dana`, `Eli`, `Fran`, `Hal`), Charlie (`Ivy`, `Jack`, `Kate`, `Liam`) and
+Delta (`Mia`, `Ned`, `Olga`, `Pete`), the first of each its point man, each under its own squad
+leader (standing rules unless `minecraft.squad-leader.decides-with: model`), all under one LLM
+platoon leader (`ChainOfCommand`). Offline mode needs no accounts, only names; the dev server's
+`max-players` is 20. The log reads as a radio net: `[PL -> Alpha] OPORD`,
 `[Bravo -> squad] FRAGO`, `[Alpha -> PL] CANTCO`, and each squad's SITREP every 5 seconds.
 Orders and CANTCOs also appear in game chat (section 4), spoken by Alice as the radio operator. Soldiers reconnect on their own if a connection dies. The platoon leader's mission
 starts as `minecraft.platoon-leader.mission` in `application.yml`.

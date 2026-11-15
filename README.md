@@ -12,7 +12,7 @@ A chain of command of AI agents, fighting and working in a Minecraft world:
   game tick (50 ms). It moves, fights, gathers, builds and crafts on its own initiative, within its
   last order.
 
-Two squads of four are in the field. Out of the box the platoon leader runs on the local model
+Four squads of four are in the field. Out of the box the platoon leader runs on the local model
 (Ollama), so the project runs without an API key. To put the platoon leader on a frontier model, set
 one key, `minecraft.platoon-leader.chat-model: anthropic`; `minecraft.squad-leader.decides-with: model`
 puts the squad leaders back on a model, for comparison

@@ -22,8 +22,8 @@ equipment ladder, the drills - do their jobs better than a model asked to. So:
   and the rest runs on standing procedures.
 
 ## The organisation
-Two squads of four are an understrength platoon. Named for the platoon the roster grows into
-(four squads, cells.md):
+Four squads of four (the roster, operator 2026-11-15), still four like squads, not yet the
+elements below:
 
 | Role | Today | Becomes | Thinks with | Doctrine |
 |---|---|---|---|---|
@@ -128,8 +128,10 @@ and its decision (`[PL]`), so every model decision is accounted for.
 - **The squad leader's allocator is built** (`command.DrillSquadLeader`, the default; docs/echelons/
   squad-leader/decisions.md): `DrillSquadLeaderTest` passes every situation of the eval but the two
   detachments asked for in words. What's left:
-  - Live: a full day with the drills leading, then the model's code and prompt removed (with them
-    the squad leader's prompt's two "the general"s).
+  - Decided (operator, 2026-11-15): the model's code and prompt are removed once the data says
+    they're no longer needed (with them the squad leader's prompt's two "the general"s). The data:
+    a full live day with the drills leading - no more soldier-stuck alerts, idle soldiers or
+    standards held than under the model's days in the scoreboard.
   - Not now: detachments as data - the PL's `Objective` carrying "one MINER at a site" - since live
     the model's role taskings were rare (78 in 40 runs, 4 in the last ten, three of them back to
     rifleman), and the PSG's detachments and the objective's `Task` carry the work; a detachment in
@@ -140,8 +142,8 @@ and its decision (`[PL]`), so every model decision is accounted for.
   <cause>`. Still to come with the sites they need: a site entering PAUSE or RECONSTITUTE
   (maturity-model.md), a level behind its due day at dusk, deaths over a threshold in a day, the CCIR
   the PL sets itself, and a CANTCO carrying what the drills tried.
-- **Needs the operator:** the roster grown to sixteen - eight more accounts on the server, and its
-  load - before the four elements can be built. At sixteen soldiers, the four elements above; the sustainment section reassigned at dawn by
+- **The roster is sixteen** (`minecraft.roster`: Alpha, Bravo, Charlie, Delta). What's left: the
+  four elements above, from four like squads; the sustainment section reassigned at dawn by
   projected shortfall, no more than one move a decision outside a PAUSE, and a rifle squad surged
   into production on a PAUSE.
 - Live: a full day with the keep under way, the PL woken only at dawn and on escalations, and the
