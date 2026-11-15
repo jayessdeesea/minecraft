@@ -80,6 +80,28 @@ class WorkshopTest {
         assertTrue(!behind.contains(sited.chest().get()));
     }
 
+    /**
+     * A depot's chests: six cells on open ground, the workshop's own chest first, none beside the
+     * stand or beside another - two side by side would join into one - and all within reach of it.
+     */
+    @Test
+    void aDepotsChestsStandApartWithinReachOfItsStand() {
+        Workshop w = Workshop.hasty(flat(Map.of()), new BlockPos(0, 64, 0), Set.of()).orElseThrow();
+
+        List<BlockPos> cells = w.chestCells(flat(Map.of()), Set.of(), 6);
+
+        assertEquals(6, cells.size(), cells.toString());
+        assertEquals(w.chest().orElseThrow(), cells.getFirst());
+        for (BlockPos a : cells) {
+            assertTrue(Math.abs(a.x() - w.stand().x()) <= 3 && Math.abs(a.z() - w.stand().z()) <= 3, a + " out of reach");
+            assertTrue(!a.equals(w.table()) && !a.equals(w.furnace()) && !a.equals(w.stand()));
+            for (BlockPos b : cells) {
+                assertTrue(a.equals(b) || Math.abs(a.x() - b.x()) + Math.abs(a.z() - b.z()) != 1, a + " beside " + b);
+            }
+        }
+        assertEquals(cells.get(1), w.withChest(cells.get(1)).chest().orElseThrow());
+    }
+
     @Test
     void claimedCellsAreLeftAlone() {
         BlockPos ground = new BlockPos(0, 64, 0);

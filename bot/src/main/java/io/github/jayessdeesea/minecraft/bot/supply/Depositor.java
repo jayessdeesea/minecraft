@@ -81,6 +81,18 @@ public final class Depositor {
         return script != null;
     }
 
+    private static final String PUT_IN = "put the load in";
+    /** The chest its last trip reached and opened, and that wouldn't take the load. */
+    private Optional<Position> full = Optional.empty();
+
+    /**
+     * The chest that wouldn't take its load, if its last trip there ended so: reached, opened, and
+     * the load still in the pack - a full chest. Cleared by a trip that puts its load in.
+     */
+    public synchronized Optional<Position> full() {
+        return full;
+    }
+
     /** Whether a soldier at {@code soldier} reaches the chest at {@code chest} to open it. */
     public static boolean withinReach(Position soldier, Position chest) {
         return ChestWindow.withinReach(soldier, chest);
@@ -138,11 +150,15 @@ public final class Depositor {
                         seen.logs(), seen.stone(), seen.rations(), seen.rawIron(), seen.rawCopper());
                 stockpileSeen.accept(seen);
                 trips.worked(at);
+                full = Optional.empty();
                 finish();
             }
             case Script.Status.Interrupted _ -> finish();
             case Script.Status.Failed failed -> {
                 LOG.warn("{} couldn't stockpile its load: {}: {}", name, failed.step(), failed.reason());
+                if (failed.step().equals(PUT_IN)) {
+                    full = Optional.of(at);
+                }
                 trips.failed(at, ticks, failed.step() + ": " + failed.reason());
                 finish();
             }
@@ -242,7 +258,7 @@ public final class Depositor {
                     walking = false;
                     chest.open(at);
                 }, new Expect("the chest's contents", chest::isOpen), ChestWindow.ANSWER_TICKS),
-                new Step("put the load in", this::deposit,
+                new Step(PUT_IN, this::deposit,
                         new Expect("the load in the chest", () -> load.stream().allMatch(c -> inventory.count(c) == 0)
                                 && inventory.count(ItemClass.FOOD) <= foodLeft),
                         ChestWindow.ANSWER_TICKS)),

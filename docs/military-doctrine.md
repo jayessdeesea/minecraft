@@ -201,6 +201,20 @@ cell with ground under it near the slab's height: under a hill that's a cave's o
 and live it was a one-wide tunnel into the hill west of the keep, with nowhere beside a stand for a
 table, said every second for hours while the builders walked 50 blocks to a stray table for bread.
 
+The depot is a row of chests, not one (operator, 2026-11-14): six cells laid out round the
+workshop's stand, each within reach of it, none beside the stand or beside another chest - two
+side by side would join into one double chest (`Workshop.chestCells`). They're filled in turn: a
+keep builder's load that won't go into the chest it reached and opened marks that chest full
+(`Depositor.full`), and the depot's chest becomes the next cell, fitted by the first builder there
+with the logs for it or a full pack. A keep builder's pack is a full load with four slots still
+free (`SoldierRunner.KEEP_FULL_AT`), not two: a tool made at a table passes through planks, sticks
+and the table itself, a slot each, so a pack kept open is one that can still make things; with a
+full load it unloads before it makes the equipment ladder's next rung. While it's on its way to
+the workshop - to make kit, or to fit the chest - it takes no new block of the dig: neither walk
+holds its hands, so each block taken dropped the errand. Live, the one chest filled with the first
+builder's load (27 stacks against 13 of cobblestone in a pack) and every builder after it walked
+there, failed and walked back.
+
 GREEN is everyone carrying food, and AMBER is some short but each with a means. The rating is
 logged when it changes.
 
@@ -1216,7 +1230,8 @@ builds a dirt pillar up to (`Pathfinder` offers pillar steps in open air under a
 The pillar is dirt in its strip, so it's the next top layer, dug back down from on top of it. A
 builder carrying fewer than 4 blocks to climb on fetches a load of 32 dirt from a borrow pit off
 its squad's side of the keep first - on the ground's surface there, found from above - and when
-its fetchers find nothing left, the squad's next pit is off another side, round the keep in turn: live, one with a single block stood all day 15 under its
+its fetchers find nothing left, the squad's next pit is off another side, round the keep in turn
+(never west, the depot's side, where a pit takes the ground from under the workshop): live, one with a single block stood all day 15 under its
 strip's top, the hilltop it dug being stone. And one stranded up a pillar of its own - called off
 it, say, to feed itself - digs it down from on top (`Recovery`, `Stairway.pillarUnder`), its
 episode held until it's at the pillar's foot. The register follows the keep's dig and fill by

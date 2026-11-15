@@ -866,6 +866,37 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The depot ground last said to have nowhere for the workshop, so it's said once - squad loops. */
     private volatile BlockPos keepWorkshopNowhere;
     /**
+     * Free slots at which a keep builder's pack is a full load, to unload at the depot: room left to
+     * work with (operator, 2026-11-14: soldiers keep their packs open so they can move things around).
+     * A tool made at a table passes through planks, sticks and the table itself; in the squad
+     * simulation a builder with two slots free ran out of pack halfway through a sword.
+     */
+    static final int KEEP_FULL_AT = 4;
+    /** Chests a depot is laid out for: the dig's stone for the slab, its ore, wood and spare tools. */
+    static final int DEPOT_CHESTS = 6;
+    /** The cells of the keep's depot's chests, in the order they're filled - squad loops write, ticks read. */
+    private volatile List<BlockPos> keepChests = List.of();
+    /** Which of {@link #keepChests} is being filled. */
+    private volatile int keepChestAt;
+
+    /**
+     * A keep builder's load wouldn't go into the depot's chest at {@code full}
+     * ({@link Depositor#full}). The next of the depot's chests is the one to fit and fill - once, for
+     * the chest being filled. Live, the depot's first chest filled with one builder's load, and every
+     * builder after it walked to it, failed, and walked back.
+     */
+    private void depotChestFull(Position full) {
+        synchronized (keepPlanLock) {
+            List<BlockPos> cells = keepChests;
+            int at = keepChestAt;
+            if (at + 1 < cells.size() && cells.get(at).equals(BlockPos.containing(full.x(), full.y(), full.z()))) {
+                keepChestAt = at + 1;
+                LOG.info("[Keep] the depot's chest at {} is full - the next goes up at {} ({} of {})", cells.get(at), cells.get(at + 1), at + 2,
+                        cells.size());
+            }
+        }
+    }
+    /**
      * Whether no wall is going up round the camp - none laid out, or closed and all stone - as last
      * measured: foothold check writes, squad loop reads.
      */
@@ -1444,6 +1475,19 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     keepWorkshopNowhere = null;
                 }
                 keepWorkshop = keep;
+                // A depot is chests enough for what the dig turns out, not one (operator, 2026-11-14):
+                // their cells laid out round its stand, filled one after another.
+                keepChests = keep == null ? List.of() : keep.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS);
+                keepChestAt = 0;
+                if (keep != null) {
+                    LOG.info("[{}] the keep's depot: {} chest(s) laid out at {}", squad, keepChests.size(), keepChests);
+                }
+            }
+            // The chest being filled now: the next cell once the last is full.
+            List<BlockPos> depotCells = keepChests;
+            if (keep != null && keepChestAt < depotCells.size() && !keep.chest().equals(Optional.of(depotCells.get(keepChestAt)))) {
+                keep = keep.withChest(depotCells.get(keepChestAt));
+                keepWorkshop = keep;
             }
             // The camp's too, if no squad there has sited it since a restart: its chest is the common
             // stockpile a keep builder draws from until the keep's own chest stands. Live, both squads
@@ -1815,11 +1859,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // dirt from a borrow pit off its squad's side of the keep. Live, a builder sent to cut its
         // strip's top 15 blocks up carried one block of dirt - its steps had used the rest, and the
         // hilltop it dug was stone - and stood under it.
-        // West for the first share, east for the second - and when its fetchers find nothing left there,
+        // North for the first share, east for the second - and when its fetchers find nothing left there,
         // the next side round: live, two builders spent a day at a pit dug out, "nothing left to gather".
+        // Never west, the depot's side: a pit there is dug out of the depot's ground, and in the squad
+        // simulation the first load of dirt took the floor from under the workshop's stand.
         long now = clockwork.millis();
-        int[] sidesNow = share == 0 ? new int[]{1, 3, 0, 2} : new int[]{0, 2, 1, 3};
-        int sideNow = sidesNow[Math.floorMod(keepPitShift.getOrDefault(squad, 0), 4)];
+        int[] sidesNow = share == 0 ? PIT_SIDES_FIRST : PIT_SIDES_SECOND;
+        int sideNow = sidesNow[Math.floorMod(keepPitShift.getOrDefault(squad, 0), sidesNow.length)];
         int edgeNow = Keep.MAX + Groundwork.BORROW_GAP + 3;
         Position pitNow = new Position(sideNow == 0 ? edgeNow : sideNow == 1 ? -edgeNow : 0, 0, sideNow == 2 ? edgeNow : sideNow == 3 ? -edgeNow : 0);
         // Only a fetcher at the pit says it's dug out: one stuck far off finds nothing anywhere. Live,
@@ -1837,8 +1883,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             keepPitMovedAt.put(squad, now);
             LOG.info("[{}] the keep's borrow pit is dug out - the next is off another side of the keep ({})", squad, moved);
         }
-        int[] sidesInTurn = share == 0 ? new int[]{1, 3, 0, 2} : new int[]{0, 2, 1, 3};
-        int side = sidesInTurn[Math.floorMod(keepPitShift.getOrDefault(squad, 0), 4)];
+        int[] sidesInTurn = share == 0 ? PIT_SIDES_FIRST : PIT_SIDES_SECOND;
+        int side = sidesInTurn[Math.floorMod(keepPitShift.getOrDefault(squad, 0), sidesInTurn.length)];
         int edge = Keep.MAX + Groundwork.BORROW_GAP + 3;
         int pitX = side == 0 ? edge : side == 1 ? -edge : 0;
         int pitZ = side == 2 ? edge : side == 3 ? -edge : 0;
@@ -2045,6 +2091,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final double PIT_NEAR = 32;
     /** How many times each squad's keep borrow pit has moved on, and when it last did - squad loop only. */
     private final Map<String, Integer> keepPitShift = new ConcurrentHashMap<>();
+    /** The sides of the keep a share's borrow pit goes off, in turn - 0 east, 2 south, 3 north; never 1, west, the depot's. */
+    private static final int[] PIT_SIDES_FIRST = {3, 0, 2}, PIT_SIDES_SECOND = {0, 2, 3};
     private final Map<String, Long> keepPitMovedAt = new ConcurrentHashMap<>();
 
     /** Builders on the keep fetching dirt to climb on - squad loop only. */
@@ -4346,7 +4394,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             // The ladder's next rung, if allowed; a pickaxe, if sent for stone without one - both at one table.
             Set<Recipe> tools = new LinkedHashSet<>();
-            Optional<Recipe> rung = ladderStep.get();
+            // Not a keep builder's with a full load: it unloads first. A rung is made through planks,
+            // sticks and a table, each a slot; in the squad simulation a builder four slots from full
+            // made the tool load's swords until it had no slot for the next.
+            Optional<Recipe> rung = keepHands.contains(name) && Pack.freeSlots(inventory) <= KEEP_FULL_AT ? Optional.empty() : ladderStep.get();
             rung.ifPresent(tools::add);
             if (needsPickaxe) {
                 // A stone one from cobblestone carried: live, a cutter whose pickaxe wore out halfway
@@ -4434,7 +4485,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Kit carried = status.condition().flatMap(c -> c.kit()).orElse(null);
             // On the keep, a full load is a full pack: what it digs is the slab's fill or the chest's, and
             // carried while there's room - live, its builders walked a chest a load of 16 logs at a time.
-            boolean fullLoad = keepHands.contains(name) ? Pack.freeSlots(inventory) <= Pack.FULL_AT
+            boolean fullLoad = keepHands.contains(name) ? Pack.freeSlots(inventory) <= KEEP_FULL_AT
                     : carried != null && (carried.logs() >= Gatherer.CARRY_LOGS || carried.stone() >= Gatherer.CARRY_STONE);
             CrossLevel.Transfer giving = deliveries.get(name);
             boolean atBuildPlace = fort != null && fort.allInside() && !inContact
@@ -4644,6 +4695,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean depotLogs = keepHands.contains(name) && inventory.count(ItemClass.LOG) >= DEPOT_LOGS;
             boolean fitStore = (fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
+            if (keepHands.contains(name) && shop.isPresent()) {
+                depositor.full().ifPresent(this::depotChestFull);
+            }
             turns.put(Hands.Routine.DEPOSITOR, turn(() -> depositor.active() || chestFitter.active(), free -> {
                 if (free && fitStore && atStand(status.position(), shop.get())) {
                     if (!chestFitter.tickChest(status.position(), world, shop.get(), threatened)) {
@@ -4707,7 +4761,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<BlockPos> wall = walling.getOrDefault(name, List.of());
             pickaxeTiers.put(name, Clearer.bestPickaxeTier(inventory));
             turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
-                    clearing.getOrDefault(name, List.of()), free && !(keepHands.contains(name) ? inContact : threatened) && !foodCalls,
+                    // No new block while it's on its way to make kit: the walk to a workshop holds no hands,
+                    // so each block taken dropped the errand and each gap between blocks began it again.
+                    // Live, a builder whose pickaxe had worn out dug stone by hand, a block every nine
+                    // seconds, and never left for the depot's table 25 blocks off (operator, 2026-11-14:
+                    // fists are for when a better tool can't be had); in the squad simulation one with no
+                    // shovel set out for the workshop three times a second for as long as it dug. Nor while
+                    // it's on its way to fit the depot's chest, a walk as handless: there, one with a full
+                    // pack and the logs for the next chest dug on beside a full one.
+                    clearing.getOrDefault(name, List.of()), free && !(keepHands.contains(name) ? inContact : threatened) && !foodCalls
+                            && (clearingTunnel.contains(name) // its way out comes before any errand
+                            || armourer.standAt().isEmpty() && storeWalks.getOrDefault(name, Optional.empty()).isEmpty()),
                     // Its stands in its rectangle or a column beside it: the last block of a rectangle one
                     // wide is cut from the neighbour's edge, not from on top of itself.
                     keepHands.contains(name) ? Optional.ofNullable(clearingStrip.get(name))

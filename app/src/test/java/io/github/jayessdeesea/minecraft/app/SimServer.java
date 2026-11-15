@@ -126,6 +126,16 @@ final class SimServer {
         players.values().forEach(p -> p.listeners.onBlockChanges().accept(List.of(new BlockChange(x, y, z, state))));
     }
 
+    /** Stands a chest at the cell, every slot a stack of {@code item}: a full one, for a scenario to start from. */
+    void fullChest(int x, int y, int z, int item) {
+        set(x, y, z, CHEST);
+        int[][] held = new int[CHEST_SLOTS][];
+        for (int slot = 0; slot < CHEST_SLOTS; slot++) {
+            held[slot] = new int[]{item, 64};
+        }
+        chests.put(key(x, y, z), held);
+    }
+
     private static long key(int x, int y, int z) {
         return ((long) x & 0x3FFFFFF) << 38 | ((long) z & 0x3FFFFFF) << 12 | (y - MIN_Y) & 0xFFF;
     }

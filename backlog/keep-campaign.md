@@ -43,15 +43,19 @@ The keep's dig runs with no supply behind it (operator, 2026-11-14). Live:
   for its block.
 
 ## Notes
-- **One chest isn't a depot (field183, 2026-11-14).** The chest went up two minutes after the depot
-  was sited with room for one, and filled with the first builder's load: 27 stacks, against 13 of
-  cobblestone and 5 of dirt in one pack. Eight builders carry about 9,000 blocks and the dig has
-  5,500 to go; the slab wants about 4,000 cobblestone back. So: a row of chests sized from those
-  counts, cobblestone, logs, ore and spare tools stowed, and dirt past a couple of stacks for
-  scaffolding thrown away - it would take a dozen chests and nothing wants it. `Depositor` and
-  `Workshop` know one chest's cell; the stockpile becomes a list.
+- **The depot's row of chests is built** (docs/military-doctrine.md § 4, "The depot is a row of
+  chests"): six cells, filled in turn. What's left of it:
+  - Sized from the counts, not a fixed six: eight builders carry about 9,000 blocks, the dig had
+    5,500 to go, and the slab wants about 4,000 cobblestone back - three chests of it.
+  - Selective stowing: cobblestone, logs, ore and spare tools go in; dirt past a couple of stacks
+    for scaffolding is thrown away - it would take a dozen chests and nothing wants it. `Depositor`
+    stows only a full load of logs or cobblestone, so a pack full of dirt and odd blocks never
+    empties.
+  - Which chest is being filled isn't kept: after a restart the first is tried again, a failed trip
+    for each full chest. It belongs in the campaign record.
+  - Draws (logs, cobblestone for the slab) look in the chest being filled only, not along the row.
 - The depot's spot exists (`SoldierRunner.siteWorkshop`, the keep's branch): stand, table, furnace
-  and chest cells on the depot's surface. Nothing is built at it for want of logs.
+  and chest cells on the depot's surface.
 - `Depositor` stows at the squad's stockpile and reports what the chest holds; `MetalPool` pools
   ore through it. The keep's depot should be a stockpile like the camp's, not a second mechanism.
 - Iron's path is backlog/common-stockpile.md and backlog/mining.md: a tunnel to ore seen from the

@@ -2184,6 +2184,45 @@ class SquadSimulationTest {
     }
 
     /**
+     * A depot is chests, not a chest (operator, 2026-11-14): the keep's depot with its first chest
+     * full, and a builder with a full pack and the logs for another. It finds the first full, fits
+     * the next of the depot's row, and its load goes into that. Live, the depot's one chest filled
+     * with the first builder's load and every builder after walked to it, failed, and walked back.
+     */
+    @Test
+    void aDepotsNextChestGoesUpWhenItsFirstIsFull() {
+        int dx = (int) Math.floor(Keep.DEPOT.x()), dz = (int) Math.floor(Keep.DEPOT.z());
+        SimClock clock = new SimClock();
+        // The depot's table standing, east of its stand, and its first chest behind the table.
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= -6 && x <= 5 && z >= -6 && z <= 5 && y > GROUND && y <= GROUND + 3
+                ? SimServer.DIRT : x == dx + 1 && y == GROUND + 1 && z == dz ? SimServer.CRAFTING_TABLE : flat(x, y, z), 1000);
+        server.fullChest(dx + 2, GROUND + 1, dz, SimServer.itemNamedOrMinus("cobblestone"));
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        List<int[]> pack = new ArrayList<>(List.of(new int[]{36, SimServer.itemNamedOrMinus("stone_sword"), 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_sword"), 1},
+                new int[]{40, SimServer.itemNamedOrMinus("stone_shovel"), 1}, new int[]{41, SimServer.itemNamedOrMinus("oak_log"), 16}));
+        // Five slots free: the first dirt it digs leaves four, a keep builder's full load.
+        for (int slot = 9; slot <= 32; slot++) {
+            pack.add(new int[]{slot, SimServer.itemNamedOrMinus("cobblestone"), 64});
+        }
+        pack.add(new int[]{42, SimServer.itemNamedOrMinus("stone_pickaxe"), 1});
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(Keep.DEPOT.x(), GROUND + 1, Keep.DEPOT.z() + 3), pack))
+                .run();
+
+        clock.advance(8 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        assertEquals(2, server.chests.size(), "a second chest at the depot; " + events);
+        assertTrue(server.chests.values().stream().allMatch(c -> java.util.Arrays.stream(c).anyMatch(java.util.Objects::nonNull)),
+                "and the builder's load in it; " + events);
+    }
+
+    /**
      * A level wide enough for everyone is everyone's: four builders, a slab of dirt eight by eight on
      * the keep, and the foreman's plan puts all four on it, a rectangle each, and it's gone. Live,
      * with a fixed strip each and the high ground in two of eight, six builders stood by while two dug.
@@ -2337,8 +2376,8 @@ class SquadSimulationTest {
     void aBuildersDirtComesFromTheSurfaceOfAHillBesideTheKeep() {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 10 ? SimServer.GLASS
-                : x < Keep.MIN - 1 && y > GROUND && y <= GROUND + 12 ? SimServer.DIRT // the hill, west of the keep
-                : x == Keep.MIN - 1 && z > Keep.MAX + 2 && y > GROUND && y <= GROUND + Math.min(12, z - Keep.MAX - 2) ? SimServer.DIRT // its ramp
+                : z < Keep.MIN - 1 && y > GROUND && y <= GROUND + 12 ? SimServer.DIRT // the hill, north of the keep
+                : z == Keep.MIN - 1 && x > Keep.MAX + 2 && y > GROUND && y <= GROUND + Math.min(12, x - Keep.MAX - 2) ? SimServer.DIRT // its ramp
                 : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice");
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
@@ -2353,9 +2392,9 @@ class SquadSimulationTest {
 
         clock.advance(8 * 60_000);
 
-        assertTrue(server.log.stream().anyMatch(e -> e.matches("Alice dug " + SimServer.DIRT + " at -[0-9]+,.*")
-                        && Integer.parseInt(e.replaceAll(".* at (-[0-9]+),.*", "$1")) < Keep.MIN - 1),
-                "dirt dug off the hill west of the keep; last server events: "
+        assertTrue(server.log.stream().anyMatch(e -> e.matches("Alice dug " + SimServer.DIRT + " at -?[0-9]+,[0-9]+,-[0-9]+")
+                        && Integer.parseInt(e.replaceAll(".*,(-[0-9]+)$", "$1")) < Keep.MIN - 1),
+                "dirt dug off the hill north of the keep; last server events: "
                         + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
