@@ -1,6 +1,8 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.command.DrillSquadLeader;
 import io.github.jayessdeesea.minecraft.command.Foothold;
+import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Objective;
@@ -169,25 +171,47 @@ public class ChainOfCommand implements DisposableBean {
     /** How long before dark the platoon leader is asked anyway: time to plan the night before it starts. */
     static final long DUSK_DECIDE_TICKS = 1800;
 
+    /**
+     * The app's. Each squad leader decides as {@code decidesWith} says (minecraft.squad-leader.decides-with):
+     * "drills", by standing rules ({@link DrillSquadLeader}; backlog/fleet-command.md), or "model", the
+     * squad leader's model - anything else fails at the start, loudly.
+     */
     @Autowired
     public ChainOfCommand(PlatoonLeader platoonLeader, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient,
                           SquadLeaderPrompts squadLeaderPrompts, Roster roster,
-                          @Value("${minecraft.platoon-leader.shelter-at-night}") boolean shelterAtNight) {
-        this(platoonLeader, squadLeaderClient, squadLeaderPrompts, roster, shelterAtNight, Clockwork.REAL);
+                          @Value("${minecraft.platoon-leader.shelter-at-night}") boolean shelterAtNight,
+                          @Value("${minecraft.squad-leader.decides-with}") String decidesWith) {
+        this(platoonLeader, squadLeaders(decidesWith, squadLeaderClient, squadLeaderPrompts), roster, shelterAtNight, Clockwork.REAL);
     }
 
-    /** As the app's, on {@code clockwork}'s time and threads. */
+    /** As the app's with the squad leader's model, on {@code clockwork}'s time and threads. */
     ChainOfCommand(PlatoonLeader platoonLeader, ChatClient squadLeaderClient,
                    SquadLeaderPrompts squadLeaderPrompts, Roster roster,
+                   boolean shelterAtNight, Clockwork clockwork) {
+        this(platoonLeader, squadLeaders("model", squadLeaderClient, squadLeaderPrompts), roster, shelterAtNight, clockwork);
+    }
+
+    /** As the app's, each squad's leader made by {@code squadLeaders}, on {@code clockwork}'s time and threads. */
+    ChainOfCommand(PlatoonLeader platoonLeader, java.util.function.Function<String, SquadLeader> squadLeaders, Roster roster,
                    boolean shelterAtNight, Clockwork clockwork) {
         this.platoonLeader = platoonLeader;
         this.shelterAtNight = shelterAtNight;
         this.clockwork = clockwork;
         this.platoonLeaderThread = clockwork.thread("platoon-leader");
         for (Roster.Squad squad : roster.squads()) {
-            squads.put(squad.name(), new SquadCommand(squad.name(), new SpringAiSquadLeader(squad.name(), squadLeaderClient, squadLeaderPrompts), this::transmit,
+            squads.put(squad.name(), new SquadCommand(squad.name(), squadLeaders.apply(squad.name()), this::transmit,
                     modelCalls, clockwork));
         }
+    }
+
+    /** What each squad leader is made as, by {@code decidesWith}: "drills" or "model". */
+    static java.util.function.Function<String, SquadLeader> squadLeaders(String decidesWith, ChatClient client, SquadLeaderPrompts prompts) {
+        return switch (decidesWith) {
+            case "drills" -> DrillSquadLeader::new;
+            case "model" -> name -> new SpringAiSquadLeader(name, client, prompts);
+            default -> throw new IllegalArgumentException("minecraft.squad-leader.decides-with is \"" + decidesWith
+                    + "\": \"drills\" or \"model\"");
+        };
     }
 
     /** The time, in milliseconds, on the clock everything here runs on. */

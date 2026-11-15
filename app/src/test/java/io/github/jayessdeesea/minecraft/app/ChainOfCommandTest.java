@@ -32,7 +32,7 @@ class ChainOfCommandTest {
             ChatClient.create((ChatModel) prompt -> {
                 throw new AssertionError("no model call expected");
             }), new SquadLeaderPrompts("", ""),
-            new Roster("Alpha:Alice"), true);
+            new Roster("Alpha:Alice"), true, "model");
 
     private static final Objective WALL = new Objective("Wall the camp in", new Position(10, 64, 10), "Nothing walks in",
             new Objective.Task.Fortify());
@@ -123,7 +123,7 @@ class ChainOfCommandTest {
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
-                new Roster("Alpha:Alice;Bravo:Bob"), true);
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
         two.onTime(TimeOfDay.of(18000, true));
         two.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));

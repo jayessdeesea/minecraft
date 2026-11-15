@@ -1,0 +1,122 @@
+package io.github.jayessdeesea.minecraft.command;
+
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Stream;
+
+/**
+ * A squad leader that decides by standing rules, no model (backlog/fleet-command.md: the squad
+ * leader's allocation becomes a deterministic one, as the foreman shares out the keep). Each rule
+ * is one the model was told in words and followed most of the time; here it's followed always:
+ * <ul>
+ *   <li><b>Where:</b> the objective itself on the keep; else the surveyed spot nearest it that the
+ *       point man can walk to, or failing any, climb to - asked again each decision from where he
+ *       stands, so a far objective is reached spot by spot. Not the objective itself when it's beyond
+ *       the survey: behind a cliff or a ravine, that's an order nobody can reach.</li>
+ *   <li><b>How:</b> WEDGE, the default for moving; FILE once the point man reports his route
+ *       blocked (ATP 3-21.8: single file through close terrain). TIGHT at night and in a patrol
+ *       base, NORMAL by day.</li>
+ *   <li><b>Risk:</b> LOW, and MEDIUM for one soldier whose CANTCO says a MEDIUM route exists - a
+ *       stuck soldier freed for half his health at most.</li>
+ *   <li><b>Rearm:</b> by day, out of contact, and not building a patrol base.</li>
+ *   <li><b>Task organisation:</b> plans as they stand, but for one: with every soldier detached on a
+ *       role, the one nearest the objective comes back to the squad as a rifleman - live, a squad
+ *       of four miners left the platoon leader's FORTIFY to nobody all day.</li>
+ * </ul>
+ * It reports CANTCO only when no surveyed spot can be reached at all. What it can't do - a
+ * detachment asked for in the mission's words, "post Bob as a lookout" - it doesn't guess at: the
+ * platoon leader gives detachments as data (backlog/fleet-command.md).
+ */
+public final class DrillSquadLeader implements SquadLeader {
+
+    /** How far above or below the point's height the squad may end up. */
+    static final double VERTICAL_TOLERANCE = 3;
+
+    private final String name;
+    private volatile Objective objective;
+    private volatile TimeOfDay time;
+    private volatile Map<String, Plan> plans = Map.of();
+    private volatile Report report = new Report.Idle();
+
+    public DrillSquadLeader(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String name() {
+        return name;
+    }
+
+    @Override
+    public void receiveObjective(Objective objective) {
+        this.objective = objective;
+    }
+
+    @Override
+    public void receiveTime(TimeOfDay time) {
+        this.time = time;
+    }
+
+    @Override
+    public void receivePlans(Map<String, Plan> plans, Map<String, String> workOrders) {
+        this.plans = Map.copyOf(plans);
+    }
+
+    @Override
+    public Report report() {
+        return report;
+    }
+
+    @Override
+    public Optional<SquadOrder> decide(List<SoldierStatus> soldiers, TerrainSurvey terrain) {
+        Objective current = objective;
+        if (current == null || soldiers.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<Position> point = point(current, terrain);
+        report = point.isPresent() ? new Report.Moving() : new Report.Cantco("no surveyed ground the squad can reach toward the objective");
+        Position at = point.orElse(soldiers.getFirst().position());
+        boolean night = time != null && time.dark();
+        boolean inContact = soldiers.stream().anyMatch(s -> s.report() instanceof Report.InContact);
+        boolean blocked = soldiers.getFirst().report() instanceof Report.Cantco;
+        Formation formation = blocked && !(current.task() instanceof Objective.Task.Keep) ? Formation.FILE : Formation.WEDGE;
+        Interval interval = night || current.patrolBase() ? Interval.TIGHT : Interval.NORMAL;
+        Map<String, Risk> soldierRisk = new HashMap<>();
+        soldiers.stream().skip(1).filter(s -> s.report() instanceof Report.Cantco(String why) && why.contains("(MEDIUM risk)"))
+                .forEach(s -> soldierRisk.put(s.name(), Risk.MEDIUM));
+        boolean rearm = !night && !inContact && !current.patrolBase();
+        return Optional.of(new SquadOrder(at, formation, interval, VERTICAL_TOLERANCE, Risk.LOW, soldierRisk, rearm, current.intent(),
+                changes(soldiers, current)));
+    }
+
+    /** Where the squad moves: the objective, or the reachable spot nearest it in the survey - empty when none is. */
+    static Optional<Position> point(Objective objective, TerrainSurvey terrain) {
+        Position goal = objective.location();
+        if (objective.task() instanceof Objective.Task.Keep) {
+            return Optional.of(goal);
+        }
+        // Walked to before climbed to: a spot reached only by pillaring costs cobblestone and time, and
+        // is taken only when nothing is reachable on foot.
+        List<TerrainSurvey.Sample> reachable = Stream.concat(terrain.atObjective().stream(), terrain.samples().stream())
+                .filter(s -> s.ground() == TerrainSurvey.Ground.LAND && s.reachable()).toList();
+        List<TerrainSurvey.Sample> walked = reachable.stream().filter(s -> s.climb() == 0).toList();
+        return (walked.isEmpty() ? reachable : walked).stream()
+                .min(Comparator.comparingDouble(s -> Math.hypot(s.x() + 0.5 - goal.x(), s.z() + 0.5 - goal.z())))
+                .map(s -> new Position(s.x() + 0.5, s.height(), s.z() + 0.5));
+    }
+
+    /** One soldier back to the squad when every one is detached on a role; none otherwise. */
+    private List<Plan.Change> changes(List<SoldierStatus> soldiers, Objective current) {
+        Map<String, Plan> kept = plans;
+        boolean allDetached = soldiers.stream().allMatch(s -> kept.getOrDefault(s.name(), Plan.RIFLEMAN).role() != Role.RIFLEMAN);
+        if (!allDetached) {
+            return List.of();
+        }
+        Position goal = current.location();
+        return soldiers.stream().min(Comparator.comparingDouble(s -> Math.hypot(s.position().x() - goal.x(), s.position().z() - goal.z())))
+                .map(s -> List.of(Plan.Change.role(s.name(), Role.RIFLEMAN, goal))).orElse(List.of());
+    }
+}

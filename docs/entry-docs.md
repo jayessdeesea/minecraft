@@ -19,7 +19,7 @@ Three sections, in this order, each a few short paragraphs at most:
 
 1. **What it is.** The three echelons and what runs each one:
    - **Platoon leader:** a frontier model.
-   - **Squad leaders:** an open-weight model run locally.
+   - **Squad leaders:** standing rules, no model (a model selectable for comparison).
    - **Soldiers:** deterministic Minecraft bots that call no model.
 
    Also say what runs by default and what one setting changes it. Name the config key; the values

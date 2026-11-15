@@ -46,9 +46,10 @@ container). `ChainScenarioLiveIT` reads it there and fails on a command the serv
 waiting for night. In Git Bash, prefix any command that passes container paths with
 `MSYS_NO_PATHCONV=1`, or the paths get rewritten to Windows ones.
 
-**Choosing the model.** Each echelon picks its own provider in `app/src/main/resources/application.yml`:
-`minecraft.platoon-leader.chat-model` and `minecraft.squad-leader.chat-model`, each `ollama` or `anthropic`.
-Both default to `ollama` (`qwen3:14b`, thinking off), so nothing needs an API key. To put the platoon leader
+**Choosing the model.** The squad leaders decide by standing rules, `minecraft.squad-leader.decides-with:
+drills`; set it to `model` to put them on a model instead. Each echelon on a model picks its own
+provider in `app/src/main/resources/application.yml`: `minecraft.platoon-leader.chat-model` and
+`minecraft.squad-leader.chat-model`, each `ollama` or `anthropic`. Both default to `ollama` (`qwen3:14b`, thinking off), so nothing needs an API key. To put the platoon leader
 on a frontier model, as the project intends, set `ANTHROPIC_API_KEY` and run with
 `--minecraft.platoon-leader.chat-model=anthropic`. The startup log says which each echelon got
 (`The platoon leader thinks with anthropic`); a name with no provider behind it stops startup.

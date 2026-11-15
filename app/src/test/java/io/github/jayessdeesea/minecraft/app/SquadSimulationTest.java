@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.command.Foothold;
+import io.github.jayessdeesea.minecraft.command.DrillSquadLeader;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Objective;
@@ -2322,6 +2323,38 @@ class SquadSimulationTest {
         }
         assertTrue(plans.stream().anyMatch(l -> l.contains("4 of 4 builder(s) on it")), "all four on the level: " + plans);
         assertEquals(0, left, "the slab dug; the plans: " + plans);
+    }
+
+    /**
+     * The squad led by its drills, no model (backlog/fleet-command.md): from 8 blocks west of the keep,
+     * the drills move the squad onto it and its four builders dig the level, as the scripted model's
+     * order did.
+     */
+    @Test
+    void theSquadsDrillsLeadItOntoTheKeepWithNoModel() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= -4 && x <= 3 && z >= -4 && z <= 3 && y == GROUND + 1
+                ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), DrillSquadLeader::new, roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(-8.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(3 * 60_000);
+
+        int left = 0;
+        for (int x = -4; x <= 3; x++) {
+            for (int z = -4; z <= 3; z++) {
+                left += server.block(x, GROUND + 1, z) != SimServer.AIR ? 1 : 0;
+            }
+        }
+        assertEquals(0, left, "the slab dug under the drills' lead; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
     /**

@@ -125,8 +125,13 @@ and its decision (`[PL]`), so every model decision is accounted for.
   ladder and the ore pool read a soldier's inventory (`bot`), and move with kit by role
   (maturity-model.md); replacements after deaths aren't built. (docs/echelons/platoon-sergeant/decisions.md, which lists what's
   still elsewhere).
-- The squad leader's model is replaced by a deterministic allocator; `SquadLeaderScenarioIT`'s
-  situations become its tests, and each one it can't pass is an escalation to the PL instead.
+- **The squad leader's allocator is built** (`command.DrillSquadLeader`, the default; docs/echelons/
+  squad-leader/decisions.md): `DrillSquadLeaderTest` passes every situation of the eval but the two
+  detachments asked for in words. What's left:
+  - Detachments as data: the PL's `Objective` carries "one soldier to MINER at a site", "Bob to GO_TO
+    a point", so the allocator makes them; today a detachment in words reaches nobody.
+  - The decision every second rather than every 20: the drills cost no model call.
+  - Live: a full day with the drills leading, then the model's code and prompt removed.
 - The PL wakes only on the triggers above; the log shows each wake and its cause; a day with
   nothing escalated has only the dawn wake.
 - At sixteen soldiers, the four elements above; the sustainment section reassigned at dawn by

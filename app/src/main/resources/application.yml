@@ -33,7 +33,10 @@ minecraft:
       Reconnoitre the terrain around the squad's start point and establish an observation post
       on high ground within 80 blocks, from which the squad can watch for hostile activity.
   squad-leader:
-    # The model every squad leader thinks with: "ollama" or "anthropic", as for the platoon leader.
+    # How every squad leader decides: "drills", by standing rules (command.DrillSquadLeader), or
+    # "model", with the model below.
+    decides-with: drills
+    # The model a squad leader thinks with when it decides with one: "ollama" or "anthropic", as for the platoon leader.
     chat-model: ollama
     # Its prompts: the fixed system prompt and the user prompt's template, as for the platoon leader.
     system-prompt: classpath:prompts/squad-leader-system-prompt.md

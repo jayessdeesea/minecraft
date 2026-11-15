@@ -6,15 +6,16 @@ A chain of command of AI agents, fighting and working in a Minecraft world:
 
 - **The platoon leader** is a frontier model. It holds the mission, reads what each squad reports, and gives
   each squad an objective with its intent.
-- **Squad Leaders**, one per squad, are an open-weight model run locally. Each turns the platoon leader's
-  objective into orders for its soldiers: where to go, in what formation, at what interval.
+- **Squad leaders**, one per squad, decide by standing rules - drills, no model. Each turns the platoon
+  leader's objective into orders for its soldiers: where to go, in what formation, at what interval.
 - **Soldiers** are Minecraft player bots: deterministic Java that calls no model. Each runs every
   game tick (50 ms). It moves, fights, gathers, builds and crafts on its own initiative, within its
   last order.
 
-Two squads of four are in the field. Out of the box, both the platoon leader and the squad leaders run on
-the local model (Ollama), so the project runs without an API key. To put the platoon leader on a frontier
-model, set one key, `minecraft.platoon-leader.chat-model: anthropic`
+Two squads of four are in the field. Out of the box the platoon leader runs on the local model
+(Ollama), so the project runs without an API key. To put the platoon leader on a frontier model, set
+one key, `minecraft.platoon-leader.chat-model: anthropic`; `minecraft.squad-leader.decides-with: model`
+puts the squad leaders back on a model, for comparison
 ([DEVELOPMENT.md](DEVELOPMENT.md#1-start-the-dev-server-and-local-model)).
 
 ## Why it exists

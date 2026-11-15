@@ -11,8 +11,8 @@ that sustains itself and carries out the operator's missions.
 
 - **Platoon leader:** one instance, a model. Turns the operator's missions into objectives and intent,
   chooses among missions already costed, and sets priorities. The one place judgement is needed.
-- **Squad leader:** one per squad. A lighter model today, being replaced by deterministic task
-  organisation (backlog/fleet-command.md). Not a Minecraft entity or connection: a role only.
+- **Squad leader:** one per squad. Decides by standing rules (`command.DrillSquadLeader`), no
+  model; a model is selectable for comparison. Not a Minecraft entity or connection: a role only.
 - **Soldier:** a player bot with its own connection, in the world. Executes its squad leader's
   orders. Never calls a model.
 
