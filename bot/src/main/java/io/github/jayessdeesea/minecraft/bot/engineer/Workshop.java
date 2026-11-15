@@ -47,10 +47,12 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
 
     /**
      * Cells for a depot's chests, up to {@code count}, its own chest's first (operator, 2026-11-14: a
-     * supply depot is chests enough for what the work turns out, not one): level cells within
-     * {@link #CHEST_REACH} of the stand, nearest first, free or already holding a chest, never beside
-     * the stand - its way in - nor beside another, since two chests side by side join into one of
-     * twice the size, which nothing here opens.
+     * supply depot is chests enough for what the work turns out, not one): cells within
+     * {@link #CHEST_REACH} of the stand across and a step up or down from it - live, a depot on a
+     * hillside had two level cells and both chests full within minutes - nearest first, level before
+     * a step, free or already holding a chest, open above so its lid lifts. Never beside the stand -
+     * its way in - nor beside another, since two chests side by side join into one of twice the size,
+     * which nothing here opens.
      */
     public List<BlockPos> chestCells(WorldView world, Set<BlockPos> claimed, int count) {
         List<BlockPos> cells = new ArrayList<>();
@@ -58,18 +60,22 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
         List<BlockPos> around = new ArrayList<>();
         for (int dx = -CHEST_REACH; dx <= CHEST_REACH; dx++) {
             for (int dz = -CHEST_REACH; dz <= CHEST_REACH; dz++) {
-                around.add(stand.offset(dx, 0, dz));
+                for (int dy : new int[]{0, 1, -1}) {
+                    around.add(stand.offset(dx, dy, dz));
+                }
             }
         }
-        around.sort(Comparator.comparingInt(c -> Math.abs(c.x() - stand.x()) + Math.abs(c.z() - stand.z())));
+        around.sort(Comparator.comparingInt(c -> Math.abs(c.x() - stand.x()) + Math.abs(c.z() - stand.z()) + 2 * Math.abs(c.y() - stand.y())));
         for (BlockPos cell : around) {
             if (cells.size() >= count) {
                 break;
             }
-            boolean fixture = cell.equals(stand) || cell.equals(table) || cell.equals(furnace) || cells.contains(cell);
+            boolean fixture = cell.x() == stand.x() && cell.z() == stand.z() || cell.equals(table) || cell.equals(furnace) || cells.contains(cell);
             boolean besideStand = Math.abs(cell.x() - stand.x()) + Math.abs(cell.z() - stand.z()) == 1;
-            boolean besideAnother = cells.stream().anyMatch(c -> Math.abs(c.x() - cell.x()) + Math.abs(c.z() - cell.z()) == 1);
-            if (!fixture && !besideStand && !besideAnother && (free(world, cell, claimed) || world.isChest(cell.x(), cell.y(), cell.z()))) {
+            boolean besideAnother = cells.stream().anyMatch(c -> Math.abs(c.x() - cell.x()) + Math.abs(c.z() - cell.z()) <= 1);
+            boolean lidLifts = !world.isSolid(cell.x(), cell.y() + 1, cell.z());
+            if (!fixture && !besideStand && !besideAnother && lidLifts
+                    && (free(world, cell, claimed) || world.isChest(cell.x(), cell.y(), cell.z()))) {
                 cells.add(cell);
             }
         }

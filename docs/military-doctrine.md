@@ -202,7 +202,8 @@ and live it was a one-wide tunnel into the hill west of the keep, with nowhere b
 table, said every second for hours while the builders walked 50 blocks to a stray table for bread.
 
 The depot is a row of chests, not one (operator, 2026-11-14): six cells laid out round the
-workshop's stand, each within reach of it, none beside the stand or beside another chest - two
+workshop's stand, each within reach of it and a step up or down a slope from it at most, open
+above so its lid lifts, none beside the stand or beside another chest - two
 side by side would join into one double chest (`Workshop.chestCells`). They're filled in turn: a
 keep builder's load that won't go into the chest it reached and opened marks that chest full
 (`Depositor.full`), and the depot's chest becomes the next cell, fitted by the first builder there

@@ -102,6 +102,40 @@ class WorkshopTest {
         assertEquals(cells.get(1), w.withChest(cells.get(1)).chest().orElseThrow());
     }
 
+    /**
+     * On a hillside a depot's chests go a step up and down the slope too: live, level cells alone
+     * gave a depot two chests, both full within minutes of the second going up.
+     */
+    @Test
+    void onASlopeADepotsChestsGoAStepUpOrDown() {
+        // The ground climbs a block for every block east.
+        WorldView slope = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 + x;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Workshop w = new Workshop(new BlockPos(0, 64, 0), new BlockPos(0, 64, 1), new BlockPos(0, 64, -1));
+
+        List<BlockPos> cells = w.chestCells(slope, Set.of(), 6);
+
+        assertTrue(cells.size() >= 4, "a row of them on the slope: " + cells);
+        for (BlockPos c : cells) {
+            assertEquals(64 + c.x(), c.y(), c + " on the ground");
+            assertTrue(Math.abs(c.y() - 64) <= 1, c + " a step from the stand's height at most");
+        }
+    }
+
     @Test
     void claimedCellsAreLeftAlone() {
         BlockPos ground = new BlockPos(0, 64, 0);
