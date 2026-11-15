@@ -1189,6 +1189,17 @@ force builds a lodgment after the drop. Its phases:
    (backlog/cells.md).
 4. Armour: every soldier armoured (§11).
 
+Every site is measured the same way, in the lodgment's levels - SHELTER, AIRHEAD, BUILDUP,
+ESTABLISHED, SEMI-PERMANENT (`command.Site`; backlog/maturity-model.md) - each kind filling in what
+a level means there. A site is at the highest level whose standards, and every lower level's, are
+met, up to the highest level it's measured for; a level with no standards of its kind is met as it
+stands. The camp's are its phases above, phase 4 being ESTABLISHED. The keep's: AIRHEAD, the depot
+stocked - its chest standing and 16 logs between its builders and the stockpile; BUILDUP, the ground
+flattened and the slab laid. The mine base's: SHELTER, the stairs cut down; AIRHEAD, its landing's
+table and furnace. The log says each site's level when it changes (`[Sites] the keep: AIRHEAD;
+BUILDUP open: the ground flattened - 1846 blocks to dig`), and the dawn's after-action review lists
+them.
+
 Every ten seconds the runner measures each phase's standards at the camp - from its ground, the
 typical height of the ground round it found once, so a heap of old huts at its centre is neither
 where the wall is laid nor where the light is measured - from the world rather

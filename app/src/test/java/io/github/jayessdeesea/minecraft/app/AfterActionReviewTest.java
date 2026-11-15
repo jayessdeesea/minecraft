@@ -32,9 +32,15 @@ class AfterActionReviewTest {
         assertTrue(review.contains("casualties: 3") && review.contains("death.fell.accident.generic: Hal, Dana"), review);
         assertTrue(review.contains("idle by day: {Gus=1}"), review);
 
+        // Each site's level and what its next lacks (command.Site; backlog/maturity-model.md).
+        aar.sites(List.of(io.github.jayessdeesea.minecraft.command.Site.camp(camp)));
+        aar.time(true, Optional.of(camp));
+        String withSites = aar.time(false, Optional.of(camp)).orElseThrow().review();
+        assertTrue(withSites.contains("sites:\n    the camp: SHELTER; AIRHEAD open: the camp walled in - 40 wall blocks left"), withSites);
+
         aar.time(true, Optional.empty());
         String next = aar.time(false, Optional.empty()).orElseThrow().review();
-        assertTrue(next.contains("day 2") && next.contains("casualties: none") && next.contains("idle by day: none"), next);
+        assertTrue(next.contains("day 3") && next.contains("casualties: none") && next.contains("idle by day: none"), next);
     }
 
     @Test

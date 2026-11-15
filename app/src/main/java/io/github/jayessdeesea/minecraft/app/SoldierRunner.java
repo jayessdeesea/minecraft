@@ -72,6 +72,7 @@ import io.github.jayessdeesea.minecraft.command.Interval;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Logstat;
 import io.github.jayessdeesea.minecraft.command.Kit;
+import io.github.jayessdeesea.minecraft.command.Site;
 import io.github.jayessdeesea.minecraft.command.LevelPace;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
 import io.github.jayessdeesea.minecraft.command.Objective;
@@ -534,6 +535,45 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * The camp measured against the lodgment's phases (docs/military-doctrine.md §17): what's lit,
      * walled, growing, dug and carried - empty until the camp's ground has loaded.
      */
+    /** Each site's line as last logged, by site - the main loop's. */
+    private final Map<String, String> siteLines = new HashMap<>();
+
+    /**
+     * The force's sites and how far each is built up (command.Site; backlog/maturity-model.md): the
+     * camp from its foothold; the keep, by its depot, its dig and its slab; the mine base, by its stairs
+     * and its landing's workshop - what can be measured of each today.
+     */
+    private List<Site> measureSites(Foothold foothold) {
+        List<Site> sites = new ArrayList<>(List.of(Site.camp(foothold)));
+        boolean keepWorked = !keepDigLeftBySquad.isEmpty();
+        if (keepWorked) {
+            int digLeft = keepDigLeftBySquad.values().stream().mapToInt(Integer::intValue).sum();
+            int fillLeft = squadStates.values().stream().mapToInt(st -> st.keepFillLeft).filter(n -> n >= 0).sum();
+            boolean fillKnown = squadStates.values().stream().anyMatch(st -> st.keepFillLeft >= 0);
+            Workshop depot = keepWorkshop;
+            boolean chest = depot != null && depot.chestStands(world);
+            int logs = keepLogsCarried.values().stream().mapToInt(Integer::intValue).sum()
+                    + chainOfCommand.stockpile().map(Stockpile::logs).orElse(0);
+            sites.add(new Site(Site.Kind.KEEP, "the keep", List.of(
+                    new Site.Standard(Site.Level.AIRHEAD, "the depot stocked", chest && logs >= Keep.LOGS_WANTED,
+                            (chest ? "its chest stands" : "no chest standing") + ", " + logs + " of " + Keep.LOGS_WANTED + " logs"),
+                    new Site.Standard(Site.Level.BUILDUP, "the ground flattened", digLeft == 0, digLeft + " blocks to dig"),
+                    new Site.Standard(Site.Level.BUILDUP, "the slab laid", fillKnown && fillLeft == 0,
+                            fillKnown ? fillLeft + " cells to fill" : "not begun: the ground first"))));
+        }
+        Optional<Staircase> stairs = campStairs();
+        if (stairs.isPresent()) {
+            Workshop landing = Workshop.mine(stairs.get());
+            boolean fitted = landing.stands(world, Workstation.CRAFTING_TABLE) && landing.stands(world, Workstation.FURNACE);
+            boolean cut = stairsDone.get();
+            sites.add(new Site(Site.Kind.MINE_BASE, "the mine base", List.of(
+                    new Site.Standard(Site.Level.SHELTER, "the stairs cut down", cut, cut ? "down to y=" + stairs.get().bottom()
+                            : stairs.get().stepsCut(world) + " of " + stairs.get().steps() + " steps"),
+                    new Site.Standard(Site.Level.AIRHEAD, "the landing's table and furnace", fitted, fitted ? "both stand" : "not both standing"))));
+        }
+        return List.copyOf(sites);
+    }
+
     private Optional<Foothold> measureFoothold() {
         List<SoldierStatus> everyone = activeSoldiers.values().stream().map(DeterministicSoldier::status).toList();
         if (everyone.isEmpty()) {
@@ -1053,6 +1093,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             faults.run("the foothold's measure", () -> measureFoothold().ifPresent(f -> {
                 chainOfCommand.onFoothold(f);
                 afterActionReview.measured(f);
+                List<Site> sites = measureSites(f);
+                afterActionReview.sites(sites);
+                sites.forEach(site -> {
+                    String line = site.line();
+                    if (!line.equals(siteLines.put(site.name(), line))) {
+                        LOG.info("[Sites] {}", line);
+                    }
+                });
             }));
         }
         chainOfCommand.time().flatMap(t -> {

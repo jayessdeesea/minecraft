@@ -172,13 +172,18 @@ of its objective in days of supply, with production against requirement. The cam
 today's `<foothold>`.
 
 ## Done when
-- `command` has site kinds and levels as data, each kind supplying its levels' standards, and
-  `Foothold` is the camp's instance; the mine base and the keep are expressed in the same terms.
+- **Sites and levels as data are built** (`command.Site`; docs/military-doctrine.md § 17): the camp
+  from its foothold, the keep and the mine base by what can be measured of them today, `[Sites]` on
+  each change, the dawn AAR's list. What's left: `Foothold` folded into `Site` rather than read into
+  it; the mine base's sealed landing and water, the keep's fields and stores; outposts and the Nether
+  foothold; and the `<sites>` section in the platoon leader's view - a prompt change, measured with
+  `PlatoonLeaderScenarioIT`.
 - Each site's stock is measured by class in days of supply against its next work's bill of
   materials, with its state, and the log says each time a state changes (`[Supply]`).
 - The keep: DIG doesn't start, and pauses, while the depot is below its objective in handles,
   tool heads and chests for the next stretch of dig.
-- The dawn AAR and the scoreboard report each site's level, state and short classes.
+- The scoreboard reports each site's level, and both it and the dawn AAR its state and short classes
+  (the AAR lists each site's level now).
 - The work load for the other roles: a keep builder's is built (`bot.craft.WorkLoad`;
   docs/military-doctrine.md § 11); a miner's, a woodcutter's and a farmer's are to come, topped up at
   the site's depot rather than only from what's carried, and the ladder's own tool-load rungs then

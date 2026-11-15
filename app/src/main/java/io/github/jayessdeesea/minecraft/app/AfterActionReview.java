@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Foothold;
+import io.github.jayessdeesea.minecraft.command.Site;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -40,6 +41,14 @@ final class AfterActionReview {
             tally[0]++;
             tally[1] += s.met() ? 1 : 0;
         });
+    }
+
+    /** The force's sites as last measured (command.Site), for the dawn's review. */
+    private List<Site> sites = List.of();
+
+    /** The sites as a foothold check measured them. */
+    synchronized void sites(List<Site> measured) {
+        sites = List.copyOf(measured);
     }
 
     /** The share of the day's checks {@code standard} held, or its state now with none counted. */
@@ -98,6 +107,10 @@ final class AfterActionReview {
             f.standards().forEach(s -> review.append("\n    ").append(steady(s) ? "met: " : "OPEN: ").append(s.name())
                     .append(" - held ").append(percent(s)).append(s.met() ? "" : "; now " + s.status()));
         });
+        if (!sites.isEmpty()) {
+            review.append("\n  sites:");
+            sites.forEach(site -> review.append("\n    ").append(site.line()));
+        }
         int dead = deaths.values().stream().mapToInt(List::size).sum();
         int[] shares = commands.shares();
         Scoreboard.Score score = new Scoreboard.Score(now, day, phase,
