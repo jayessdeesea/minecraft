@@ -65,6 +65,11 @@ public final class Ladder {
             new Rung("a spare weapon", i -> i.meleeWeapons() >= 2, List.of(Recipe.STONE_SWORD)),
             new Rung("a spare pickaxe", i -> Stock.of(i).classes().getOrDefault(ItemClass.PICKAXE, 0) >= 2,
                     List.of(Recipe.STONE_PICKAXE)),
+            // The first iron to an iron pickaxe (operator, 2026-11-14): it digs what stone can't - the
+            // keep's emerald ore, diamonds - and what it digs pays for the armour after it. Live, with
+            // the pickaxe after four pieces of iron armour and an iron sword, 27 ingots off, nobody
+            // ever made one.
+            new Rung("an iron pickaxe", i -> bestPickaxe(i) >= 2, List.of(Recipe.IRON_PICKAXE)),
             new Rung("a shield", i -> Stock.of(i).classes().getOrDefault(ItemClass.SHIELD, 0) > 0, List.of(Recipe.SHIELD)),
             // Copper first, where there is copper: it's on the surface far more often than iron, and
             // a soldier in copper is better off than one in nothing while the iron is found.
@@ -77,7 +82,6 @@ public final class Ladder {
             new Rung("iron boots", i -> armour(i, Recipe.IRON_BOOTS), List.of(Recipe.IRON_BOOTS)),
             new Rung("an iron helmet", i -> armour(i, Recipe.IRON_HELMET), List.of(Recipe.IRON_HELMET)),
             new Rung("an iron sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("iron_sword"), List.of(Recipe.IRON_SWORD)),
-            new Rung("an iron pickaxe", i -> bestPickaxe(i) >= 2, List.of(Recipe.IRON_PICKAXE)),
             new Rung("an iron axe", i -> bestAxeSpeed(i) >= 6, List.of(Recipe.IRON_AXE)),
             // Diamond only after the iron armour, and only with the diamonds carried: they're ore
             // the miner takes beside its stairs, not something a soldier goes and fetches.

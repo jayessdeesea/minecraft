@@ -78,7 +78,10 @@ class LadderTest {
         assertEquals(Optional.of(Recipe.STONE_SHOVEL), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY),
                 "no ore in reach: no armour, so on to the tool load");
         assertEquals(Optional.of(Recipe.BOW), Ladder.next(inventory, Map.of(), NONE, ANYTHING), "string to be had, a bow first");
-        assertEquals(Optional.of(Recipe.SHIELD), Ladder.next(inventory, Map.of(), NONE, c -> c != ItemClass.STRING));
+        assertEquals(Optional.of(Recipe.IRON_PICKAXE), Ladder.next(inventory, Map.of(), NONE, c -> c != ItemClass.STRING),
+                "iron to be had: the first of it to an iron pickaxe (operator, 2026-11-14)");
+        carrying("iron_pickaxe", 1);
+        assertEquals(Optional.of(Recipe.SHIELD), Ladder.next(inventory, Map.of(), NONE, c -> c != ItemClass.STRING), "then the shield");
     }
 
     @Test
@@ -121,7 +124,7 @@ class LadderTest {
 
     @Test
     void armourGoesOnChestplateFirstAndWhatsWornCounts() {
-        carrying("stone_sword", 1).carrying("stone_sword", 1).carrying("stone_pickaxe", 1).carrying("stone_pickaxe", 1).carrying("shield", 1).carrying("iron_ingot", 30).carrying("oak_log", 4);
+        carrying("stone_sword", 1).carrying("stone_sword", 1).carrying("iron_pickaxe", 1).carrying("stone_pickaxe", 1).carrying("shield", 1).carrying("iron_ingot", 30).carrying("oak_log", 4);
 
         assertEquals(Optional.of(Recipe.IRON_CHESTPLATE), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY));
         wearing("iron_chestplate", 6).wearing("diamond_leggings", 7);
@@ -136,7 +139,8 @@ class LadderTest {
 
         assertEquals(Optional.empty(), Ladder.upTo(inventory, Map.of(), NONE, LOGS_ONLY, Ladder.rungOf(Recipe.STONE_PICKAXE)),
                 "a squadmate still wants a stone pickaxe: nothing above it");
-        assertEquals(Optional.of(Recipe.SHIELD), Ladder.upTo(inventory, Map.of(), NONE, LOGS_ONLY, Ladder.rungOf(Recipe.SHIELD)));
+        assertEquals(Optional.of(Recipe.IRON_PICKAXE), Ladder.upTo(inventory, Map.of(), NONE, LOGS_ONLY, Ladder.rungOf(Recipe.SHIELD)),
+                "up to the shield: the iron pickaxe below it first");
     }
 
     @Test
@@ -153,6 +157,9 @@ class LadderTest {
         carrying("stone_sword", 1).carrying("stone_sword", 1).carrying("wooden_pickaxe", 1).carrying("wooden_pickaxe", 1).carrying("shield", 1)
                 .carrying("iron_ingot", 4).carrying("oak_log", 4);
 
+        assertEquals(Optional.of(Recipe.IRON_PICKAXE), Ladder.next(inventory, Map.of(), Set.of(Workstation.CRAFTING_TABLE), LOGS_ONLY),
+                "the stone pickaxe passed over: the iron one comes next, and three of the four ingots make it");
+        carrying("iron_pickaxe", 1);
         assertEquals(Optional.of(Recipe.IRON_BOOTS), Ladder.next(inventory, Map.of(), Set.of(Workstation.CRAFTING_TABLE), LOGS_ONLY),
                 "short of ingots for a chestplate or leggings, but boots take four");
     }

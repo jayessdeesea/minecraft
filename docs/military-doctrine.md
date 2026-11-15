@@ -526,12 +526,13 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
    spare is in the pack. A
    piece of kit asked for is one more than carried when first asked, held to that while it's asked,
    so a spare is a second and not a third (`Armourer`).
-6. A shield, worn in the off hand and raised against arrows (§8).
-7. Copper armour - chestplate, leggings, boots, helmet - from copper ore mined with the stone
+6. An iron pickaxe, from the first three ingots (operator, 2026-11-14): it digs what stone can't
+   - emerald ore, diamonds - and what it digs pays for the armour after it.
+7. A shield, worn in the off hand and raised against arrows (§8).
+8. Copper armour - chestplate, leggings, boots, helmet - from copper ore mined with the stone
    pickaxe and smelted: copper lies near the surface far more often than iron.
-8. Iron armour: chestplate, leggings, boots, helmet.
-9. An iron sword.
-10. An iron pickaxe.
+9. Iron armour: chestplate, leggings, boots, helmet.
+10. An iron sword.
 11. An iron axe, which chops a log in a sixth of the bare-handed time.
 12. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
     the miner takes beside its stairs (§16) with an iron pickaxe, not something a soldier fetches.
@@ -1141,9 +1142,12 @@ At the bottom the cutter goes on into the tunnels the ore is mined from: a main 
 straight out from the last step, away from the shaft, then branches off it both ways every 3
 blocks, each 8 long, so every block between two branches is seen from one of them. All are two
 high, at the stairs' depth, with their floors left standing, and ore under a tunnel's floor is
-left so as not to hole it. A tunnel that would let in water or lava, or open onto a cave, is
-given up alone, and the rest are cut; so are branches off a stretch of main tunnel that was given
-up. The camp's mine standard (§ 17) is met once the stairs reach the bottom.
+left so as not to hole it. A tunnel over an open cave is floored: cobblestone put in the gap under
+its next cell from the cell before, as a bridge, and the tunnel goes on - 24 blocks a tunnel at the
+most (`Miner.BRIDGE_TRIES`); live, every branch met a cave and was given up, and the squads spent
+their nights with nothing left to cut. A tunnel that would let in water or lava, or whose cave is
+wider than that, is given up alone, and the rest are cut; so are branches off a stretch of main
+tunnel that was given up. The camp's mine standard (§ 17) is met once the stairs reach the bottom.
 
 ## 17. The lodgment
 
@@ -1167,8 +1171,10 @@ force builds a lodgment after the drop. Its phases:
    camp's farm ground is, so the squad is sent there. With no logs
    carried to make torches from and no tree in sight, the lit standard's task is TREE_FARM: the
    wood is grown first.
-3. The buildup: food while the force eats, wood that grows back (§12, TREE_FARM), stone and iron
-   from a mine (§16, MINE), and the camp's floor paved (FORTIFY): once the wall is closed and of
+3. The buildup, in this order: food while the force eats; wood that grows back (§12, TREE_FARM),
+   right after it - 16 trees growing in the camp's grove and the keep's together (operator,
+   2026-11-14: a camp goes through a lot of wood); stone and iron from a mine (§16, MINE); and
+   last the camp's floor paved (FORTIFY): once the wall is closed and of
    stone, its repointer replaces the soil of the floor inside it with cobblestone, block by block,
    at the camp's measured height - until the base is flattened to one height above sea level
    (backlog/cells.md).

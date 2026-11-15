@@ -23,6 +23,19 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
   as a squad sheltering down it at night does.
 
 ## Left
+- **The ore's chain of hands (operator, 2026-11-14)**, each link a job of its own, chests between:
+  1. *A mine stash.* Chests at the mine base's landing, beside its workshop: a miner unloads raw ore
+     there and goes on cutting, not up 54 steps with every pack.
+  2. *The haul.* The stash brought up in one big batch - one soldier, a full pack of ore - to the
+     surface depot's chests, at dawn when the squads come up anyway.
+  3. *The smelter.* Someone draws raw ore and fuel from the depot, smelts it at its furnace, and puts
+     the ingots back in a chest.
+  4. *The crafter.* Ingots drawn and turned into the ladder's next rung - armour, weapons, tools -
+     for whoever is short, the iron pickaxe first.
+  Today one soldier does all four for its own kit, and only from what it carries: raw ore stays in
+  the pack of whoever dug it unless `MetalPool` pools it.
+- Fuel: a smelt failed live for want of "planks or logs to burn". Coal from the mine, or charcoal
+  from the grove's logs, kept in the depot for the smelter.
 - The general isn't shown the ore in the stockpile: its line says logs and cobblestone only.
 - Ingots stay with whoever smelted them.
 

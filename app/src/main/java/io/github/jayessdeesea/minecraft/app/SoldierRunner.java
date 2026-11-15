@@ -597,11 +597,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 wall == null ? "not begun" : wallLeft > 0 ? wallLeft + " of " + wall.size() + " wall blocks still to place"
                         + (wallSoft > 0 ? ", and " + wallSoft + " of dirt to replace with stone" : "")
                         : wallSoft + " of its blocks dirt, to replace with stone", "FORTIFY"));
-        // Its floor paved at its own height (the operator's: not cut to sea level), once it's walled:
-        // FORTIFY's last work, the soil inside replaced with stone.
-        int unpaved = floorToPave().size();
-        standards.add(new Foothold.Standard(3, "the camp's floor paved", unpaved == 0,
-                unpaved + " cells of the floor inside the wall still soil, to pave with stone", "FORTIFY"));
         long hungry =everyone.stream().filter(s -> s.condition().map(SoldierRunner::wantsFood).orElse(false)).count();
         // The camp's farm, sited once and kept while its water is there: a farm is tended for days,
         // and live a farm sited again each check moved between ponds, and its crop was left to new ground.
@@ -656,10 +651,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM"));
         Optional<TreeFarm> grove = TreeFarm.site(world, at,
                 CAMP_RADIUS);
-        long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count())
-                .orElse(0L);
+        // Right after food (operator, 2026-11-14: tree farms just after the wheat farms - a camp goes
+        // through a lot of wood): the camp's grove and the keep's together.
+        TreeFarm keepTrees = keepGrove;
+        long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count()).orElse(0L)
+                + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
         standards.add(new Foothold.Standard(3, "wood that grows back", trees >= TREES_GROWING,
-                trees + " saplings or trees planted by the camp", "TREE_FARM"));
+                trees + " of " + TREES_GROWING + " saplings or trees planted by the camp and the keep's grove", "TREE_FARM"));
         // The camp's mine as the world shows it, as well as a cutter at work this run: live, after a
         // restart with no MINE order, a mine cut to the bottom read "no mine yet".
         Optional<Staircase> campMine = campStairs();
@@ -674,6 +672,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         standards.add(new Foothold.Standard(3, "stone and iron", mined,
                 cutNow == 0 ? "no mine yet" : mined ? "a mine cut down to the iron" : "a mine " + cutNow + " steps down",
                 "MINE"));
+        // Last of the buildup: food, then wood, then stone and iron come first. Its floor paved at its own height (the operator's: not cut to sea level), once it's walled:
+        // FORTIFY's last work, the soil inside replaced with stone.
+        int unpaved = floorToPave().size();
+        standards.add(new Foothold.Standard(3, "the camp's floor paved", unpaved == 0,
+                unpaved + " cells of the floor inside the wall still soil, to pave with stone", "FORTIFY"));
         int stoneSword = ItemClassRegistry.meleeRank("stone_sword");
         long armed = everyone.stream().filter(s -> s.condition().flatMap(c -> c.kit()).flatMap(k -> k.weapon())
                 .filter(w -> !w.equals("bow")).map(w -> {
@@ -756,7 +759,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Farm cells growing wheat for the camp's food to count as met. */
     private static final int FARM_GROWING = 12;
     /** Saplings or trees for the camp's wood to count as met. */
-    private static final int TREES_GROWING = 8;
+    /** Trees growing for wood to be no worry (operator, 2026-11-14: with 16 or 32 growing, zero problems with wood). */
+    private static final int TREES_GROWING = 16;
     /** How far out from a FORTIFY objective its wall stands. */
     static final int WALL_RADIUS = 8;
     /** How far above and below the camp's centre its ground is kept from digging. */
@@ -2126,15 +2130,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         String planter = keepPlanter;
+        // A planting that fails pauses the grove, not the planter: what failed it - no sapling, no
+        // leaves, no way to a cell - fails the next builder too. Live, five builders took the job in
+        // turn within a minute, each walking off and failing as the last had.
+        Optional<String> plantingFailed = Optional.ofNullable(planter).map(foresters::get).flatMap(Forester::failure);
+        if (plantingFailed.isPresent()) {
+            LOG.info("[Keep] the grove waits {} min: {}", PLANTER_RETRY_MILLIS / 60_000, plantingFailed.get());
+            keepGroveBarredUntil = now + PLANTER_RETRY_MILLIS;
+        }
         if (planter != null && (!bare || !present.contains(planter) || cutting.contains(planter) || cutting.size() >= size
-                || Optional.ofNullable(foresters.get(planter)).flatMap(Forester::failure).isPresent())) {
-            Optional.ofNullable(foresters.get(planter)).flatMap(Forester::failure)
-                    .ifPresent(why -> keepPlanterBarred.put(keepPlanter, now + PLANTER_RETRY_MILLIS));
+                || plantingFailed.isPresent())) {
             planter = null;
         }
-        if (bare && planter == null && cutting.size() < size) {
+        if (bare && planter == null && cutting.size() < size && now >= keepGroveBarredUntil) {
             planter = candidates.stream().filter(n -> !cutting.contains(n))
-                    .filter(n -> keepPlanterBarred.getOrDefault(n, Long.MIN_VALUE) <= now)
                     // One carrying saplings first: it plants at once.
                     .min(Comparator.comparing(n -> keepSaplingsCarried.getOrDefault(n, 0) > 0 ? 0 : 1)).orElse(null);
         }
@@ -2240,7 +2249,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final int WOOD_PARTY = 2;
     /** The logs a cutter brings back: a chest's two and a tool's handle for each of a few builders. */
     static final int WOOD_LOAD = 16;
-    /** How long a planter with no sapling to plant and no leaves to get one from is left off the grove. */
+    /** How long the keep's grove waits after a planting fails - no sapling, no leaves, no way to the cell. */
     static final long PLANTER_RETRY_MILLIS = 5 * 60_000;
     /** How far out from the depot the keep's grove is first looked for, and the steps out from there. */
     static final int GROVE_RING = 16;
@@ -2264,8 +2273,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private volatile Set<String> keepCutters = Set.of();
     /** The wood party's planter, if the grove has one - guarded by {@link #keepPlanLock}. */
     private volatile String keepPlanter;
-    /** When each builder whose planting failed may plant the grove again. */
-    private final Map<String, Long> keepPlanterBarred = new ConcurrentHashMap<>();
+    /** When the keep's grove, its last planting failed, is planted again - guarded by {@link #keepPlanLock}. */
+    private long keepGroveBarredUntil = Long.MIN_VALUE;
     /** The saplings each keep builder carries, at its squad's last look - squad loops. */
     private final Map<String, Integer> keepSaplingsCarried = new ConcurrentHashMap<>();
     /** The logs each keep builder carries, at its squad's last look - squad loops. */
@@ -3667,7 +3676,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 huntAllowed.remove(soldierName);
             }
-            TreeFarm grove = trees != null ? trees : soldierName.equals(keepPlanter) ? keepGrove : null;
+            // The keep's planter plants the keep's grove, whatever its squad's own plot: live, planters
+            // sent to a squad's plot 40 blocks up a hill failed the walk one after another.
+            TreeFarm grove = soldierName.equals(keepPlanter) && keepGrove != null ? keepGrove : trees;
             if (grove != null && !squadInContact) {
                 planting.put(soldierName, grove);
             } else {

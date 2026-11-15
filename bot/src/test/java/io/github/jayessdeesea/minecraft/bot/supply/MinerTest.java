@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import io.github.jayessdeesea.minecraft.protocol.BlockFace;
 import java.util.Set;
 import java.util.stream.IntStream;
 
@@ -35,13 +36,16 @@ class MinerTest {
     private final Set<BlockPos> water = new HashSet<>();
     private final Set<BlockPos> ore = new HashSet<>();
     private final Set<BlockPos> tree = new HashSet<>();
+    /** An open cave, and the blocks put into it. */
+    private final Set<BlockPos> cave = new HashSet<>();
+    private final Set<BlockPos> placed = new HashSet<>();
     private final List<Runnable> answers = new ArrayList<>();
 
     private final WorldView world = new WorldView() {
         @Override
         public boolean isSolid(int x, int y, int z) {
             BlockPos cell = new BlockPos(x, y, z);
-            return tree.contains(cell) || y < GROUND && !dug.contains(cell) && !water.contains(cell);
+            return tree.contains(cell) || placed.contains(cell) || y < GROUND && !dug.contains(cell) && !water.contains(cell) && !cave.contains(cell);
         }
 
         @Override
@@ -82,6 +86,11 @@ class MinerTest {
             new Class<?>[]{PlaySession.class}, (proxy, method, args) -> {
                 switch (method.getName()) {
                     case "startDigging", "selectHotbarSlot", "swapWithHotbar" -> {
+                    }
+                    case "useBlockFace" -> {
+                        BlockFace face = (BlockFace) args[3];
+                        BlockPos cell = new BlockPos((int) args[0] + face.dx, (int) args[1] + face.dy, (int) args[2] + face.dz);
+                        answers.add(() -> placed.add(cell));
                     }
                     case "finishDigging" -> {
                         BlockPos cell = new BlockPos((int) args[0], (int) args[1], (int) args[2]);
@@ -180,6 +189,30 @@ class MinerTest {
         assertTrue(cuts.stream().filter(c -> c.tunnel() >= 0).allMatch(c -> Math.abs(c.feet().x() - HEAD.x()) > 1 || Math.abs(c.feet().z() - HEAD.z()) > 1),
                 "no tunnel back through the shaft");
         assertEquals(bottom.y(), lastMain.feet().y(), "level with the last step");
+    }
+
+    /**
+     * A branch over an open cave is floored with cobblestone from the cell before it and cut on, not
+     * given up: live, every branch of the mine met a cave, and nobody mined at night.
+     */
+    @Test
+    void aTunnelOverACaveIsFlooredAndCutOn() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        List<Staircase.Cut> branch = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList();
+        // A cave under the branch's third and fourth cells: their floors and two below them open.
+        for (Staircase.Cut c : branch.subList(2, 4)) {
+            for (int down = 1; down <= 3; down++) {
+                cave.add(c.feet().offset(0, -down, 0));
+            }
+        }
+        Inventory inventory = new Inventory();
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{IntStream.range(0, 4096)
+                .filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of("cobblestone"))).findFirst().orElseThrow(), 64});
+
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000, inventory));
+
+        assertTrue(branch.subList(2, 4).stream().allMatch(c -> placed.contains(c.feet().offset(0, -1, 0))), "the gap floored: " + placed);
+        assertTrue(dug.containsAll(branch.getLast().cells()), "and the branch cut to its end");
     }
 
     /**

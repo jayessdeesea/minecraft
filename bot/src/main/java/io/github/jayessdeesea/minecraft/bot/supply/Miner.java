@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.protocol.BlockFace;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,7 +31,10 @@ import java.util.stream.Collectors;
  *
  * <p>It stops, loudly, where going on would be a fall or a flood: water or lava beside a cell it
  * would open, or no floor under a step - an open cave. Those are a squad leader's to route round,
- * not a soldier's to guess past.
+ * not a soldier's to guess past. A tunnel over a cave is floored instead: cobblestone put in the
+ * gap under its next cell from the one before, as a bridge over the cave, and the tunnel goes on
+ * ({@link #BRIDGE_TRIES} tries a tunnel). Live, every branch of the mine met a cave and was given
+ * up, and the squads spent their nights in a mine with nothing left to cut and no iron coming up.
  */
 public final class Miner {
 
@@ -60,6 +64,12 @@ public final class Miner {
     private final String name;
     private final Inventory inventory;
     private final Breacher breacher;
+    private final Footing footing;
+    /** Blocks put under each tunnel's floor so far, by tunnel. */
+    private final java.util.Map<Integer, Integer> bridged = new java.util.HashMap<>();
+
+    /** Blocks put under a tunnel's floor before it's given up: a cave too wide to bridge isn't worth it. */
+    static final int BRIDGE_TRIES = 24;
     private final Set<BlockPos> leftOre = new HashSet<>();
     private BlockPos ore;
     private int oreTicks;
@@ -70,6 +80,7 @@ public final class Miner {
         this.name = name;
         this.inventory = inventory;
         this.breacher = new Breacher(name, session, inventory);
+        this.footing = new Footing(session, inventory);
     }
 
     /** Where the soldier should stand: on the step above the one it cuts. */
@@ -139,6 +150,11 @@ public final class Miner {
                 stop();
                 return new Progress.Stopped(hazard.get());
             }
+            Optional<BlockFace> support = bridgeable(world, cut);
+            if (support.isPresent() && inventory.count(ItemClassRegistry.ItemClass.COBBLESTONE) > 0
+                    && bridged.getOrDefault(cut.tunnel(), 0) < BRIDGE_TRIES) {
+                return bridge(soldier, cut, next.getAsInt(), cuts.size(), support.get(), free);
+            }
             // A tunnel is one of many: give it up, and go on with the next.
             LOG.warn("{} gives up tunnel {} of the mine: {}", name, cut.tunnel(), hazard.get());
             blocked.add(cut.tunnel());
@@ -177,6 +193,42 @@ public final class Miner {
         }
         breacher.tick(world, cut.cells());
         return new Progress.Working(k, cuts.size());
+    }
+
+    /**
+     * The side of the gap under {@code cut}'s feet a block put there goes against, if the cut's only
+     * hazard is that gap: nothing liquid near, and a solid block beside the gap or under it - the
+     * floor the soldier stands on, mostly.
+     */
+    static Optional<BlockFace> bridgeable(WorldView world, Staircase.Cut cut) {
+        BlockPos floor = cut.feet().offset(0, -1, 0);
+        if (world.isSolid(floor.x(), floor.y(), floor.z()) || besideLiquid(world, floor)
+                || cut.cells().stream().anyMatch(c -> besideLiquid(world, c) || world.isHazard(c.x(), c.y(), c.z()))) {
+            return Optional.empty();
+        }
+        BlockPos under = cut.stand().offset(0, -1, 0);
+        List<BlockFace> sides = new ArrayList<>(List.of(BlockFace.NORTH, BlockFace.SOUTH,
+                BlockFace.WEST, BlockFace.EAST, BlockFace.DOWN));
+        // The stand's own floor first: in reach, and what the soldier looks at.
+        sides.sort(java.util.Comparator.comparing(f -> floor.offset(f.dx, f.dy, f.dz).equals(under) ? 0 : 1));
+        return sides.stream().filter(f -> world.isSolid(floor.x() + f.dx, floor.y() + f.dy, floor.z() + f.dz)).findFirst();
+    }
+
+    /** From the cut's stand, cobblestone in the gap under its feet, against {@code support}; the cut goes on once the world shows it. */
+    private Progress bridge(Position soldier, Staircase.Cut cut, int k, int steps, BlockFace support, boolean free) {
+        breacher.stop();
+        BlockPos from = cut.stand();
+        standAt = new Position(from.x() + 0.5, from.y(), from.z() + 0.5);
+        boolean on = Math.hypot(soldier.x() - standAt.x(), soldier.z() - standAt.z()) < ON_CELL && Math.abs(soldier.y() - from.y()) < ON_CELL;
+        if (free && on) {
+            BlockPos floor = cut.feet().offset(0, -1, 0);
+            int n = bridged.merge(cut.tunnel(), 1, Integer::sum);
+            LOG.info("{} floors {} of the mine over a cave at {} ({} of {})", name,
+                    cut.tunnel() == 0 ? "the main tunnel" : "branch " + cut.tunnel(), floor, n, BRIDGE_TRIES);
+            footing.place(floor, ItemClassRegistry.ItemClass.COBBLESTONE, support);
+        }
+        footing.tick();
+        return new Progress.Working(k, steps);
     }
 
     /** The first cut, all open, with ore in sight of its stand ({@link #oreInSight}) - empty when none has. */
