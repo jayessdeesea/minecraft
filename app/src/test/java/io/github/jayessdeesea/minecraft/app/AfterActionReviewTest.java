@@ -34,9 +34,12 @@ class AfterActionReviewTest {
 
         // Each site's level and what its next lacks (command.Site; backlog/maturity-model.md).
         aar.sites(List.of(io.github.jayessdeesea.minecraft.command.Site.camp(camp)));
+        aar.supplies(List.of(new io.github.jayessdeesea.minecraft.command.Supply("Class I (rations)", 300, 80, 20, 1)));
         aar.time(true, Optional.of(camp));
         String withSites = aar.time(false, Optional.of(camp)).orElseThrow().review();
         assertTrue(withSites.contains("sites:\n    the camp: SHELTER; AIRHEAD open: the camp walled in - 40 wall blocks left"), withSites);
+        assertTrue(withSites.contains("supply:\n    Class I (rations): 300, 3.0 days at 100 a day; safety 160, reorder 260, objective 280 - ADVANCE"),
+                withSites);
 
         aar.time(true, Optional.empty());
         String next = aar.time(false, Optional.empty()).orElseThrow().review();

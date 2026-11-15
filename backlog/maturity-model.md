@@ -178,8 +178,12 @@ today's `<foothold>`.
   it; the mine base's sealed landing and water, the keep's fields and stores; outposts and the Nether
   foothold; and the `<sites>` section in the platoon leader's view - a prompt change, measured with
   `PlatoonLeaderScenarioIT`.
-- Each site's stock is measured by class in days of supply against its next work's bill of
-  materials, with its state, and the log says each time a state changes (`[Supply]`).
+- **Days of supply are measured** (`command.Supply`; docs/military-doctrine.md § 17): the camp's
+  Class I and Class IV, upkeep from the stock's falls, the levels and the state, `[Supply]` on each
+  change, the dawn AAR's list. What's left: by site, not the force's; Classes II, III and V; the
+  committed burn from the next work's bill of materials (mission-estimate.md); lead times measured
+  from the producers rather than first figures; and the state acted on - the gate, the PAUSE, the
+  production check.
 - The keep: DIG doesn't start, and pauses, while the depot is below its objective in handles,
   tool heads and chests for the next stretch of dig.
 - The scoreboard reports each site's level, and both it and the dawn AAR its state and short classes

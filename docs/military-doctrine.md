@@ -1200,6 +1200,18 @@ table and furnace. The log says each site's level when it changes (`[Sites] the 
 BUILDUP open: the ground flattened - 1846 blocks to dig`), and the dawn's after-action review lists
 them.
 
+The force's supply is counted the Army's way, in days (`command.Supply`; FM 4-0, FM 10-27): each
+class's stock - Class I the rations every soldier carries and the stockpile holds, Class IV the
+logs - over its day's burn. Upkeep is measured, not guessed: every fall in a class's stock between
+two foothold checks is consumption (eaten, worn out, lost) and every rise production, which isn't
+counted; a day's upkeep is the falls of the last three in-game days over the time they span, at
+least one. Its levels follow: the safety level two days of upkeep; the reorder point that and what
+burns while more is made (a day, first figures, for wheat and for wood); the stockage objective that
+and a day of the work committed - none yet, until the mission estimates say what work draws. At the
+objective a class is ADVANCE, below the safety level PAUSE, HOLD between; the log says each change
+(`[Supply] Class I (rations): 340, 4.2 days at 81 a day; safety 162, reorder 243, objective 243 -
+ADVANCE`), and the dawn's after-action review lists them. Nothing acts on the state yet.
+
 Every ten seconds the runner measures each phase's standards at the camp - from its ground, the
 typical height of the ground round it found once, so a heap of old huts at its centre is neither
 where the wall is laid nor where the light is measured - from the world rather

@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.Site;
+import io.github.jayessdeesea.minecraft.command.Supply;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,6 +46,14 @@ final class AfterActionReview {
 
     /** The force's sites as last measured (command.Site), for the dawn's review. */
     private List<Site> sites = List.of();
+
+    /** The classes of supply as last measured (command.Supply). */
+    private List<Supply> supplies = List.of();
+
+    /** The classes of supply as a foothold check measured them. */
+    synchronized void supplies(List<Supply> measured) {
+        supplies = List.copyOf(measured);
+    }
 
     /** The sites as a foothold check measured them. */
     synchronized void sites(List<Site> measured) {
@@ -110,6 +119,10 @@ final class AfterActionReview {
         if (!sites.isEmpty()) {
             review.append("\n  sites:");
             sites.forEach(site -> review.append("\n    ").append(site.line()));
+        }
+        if (!supplies.isEmpty()) {
+            review.append("\n  supply:");
+            supplies.forEach(supply -> review.append("\n    ").append(supply.line()));
         }
         int dead = deaths.values().stream().mapToInt(List::size).sum();
         int[] shares = commands.shares();

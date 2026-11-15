@@ -73,6 +73,7 @@ import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Logstat;
 import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Site;
+import io.github.jayessdeesea.minecraft.command.Supply;
 import io.github.jayessdeesea.minecraft.command.LevelPace;
 import io.github.jayessdeesea.minecraft.command.LinkUp;
 import io.github.jayessdeesea.minecraft.command.Objective;
@@ -535,6 +536,33 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * The camp measured against the lodgment's phases (docs/military-doctrine.md §17): what's lit,
      * walled, growing, dug and carried - empty until the camp's ground has loaded.
      */
+    /** An in-game day on the clock: 24,000 ticks at 50 ms. */
+    static final long DAY_MILLIS = 24_000L * 50;
+    /** First figures for the days making more takes (backlog/maturity-model.md): wheat's ripening, a grove's cut and the wood party's run. */
+    static final double RATIONS_LEAD_DAYS = 1, LOGS_LEAD_DAYS = 1;
+    /** Each class's measured burn - the main loop's. */
+    private final Supply.Burn rationsBurn = new Supply.Burn(DAY_MILLIS), logsBurn = new Supply.Burn(DAY_MILLIS);
+    /** Each class's state as last logged - the main loop's. */
+    private final Map<String, Supply.State> supplyStates = new HashMap<>();
+
+    /**
+     * The force's classes of supply in days, at the camp (command.Supply; backlog/maturity-model.md):
+     * Class I, the rations every soldier carries and the stockpile holds; Class IV, the logs. Upkeep is
+     * measured from their falls; nothing is committed yet - the mission estimates are to say what is.
+     */
+    private List<Supply> measureSupply() {
+        List<Kit> kits = activeSoldiers.values().stream().map(DeterministicSoldier::status)
+                .flatMap(st -> st.condition().flatMap(Condition::kit).stream()).toList();
+        Optional<Stockpile> pile = chainOfCommand.stockpile();
+        long now = clockwork.millis();
+        int rations = kits.stream().mapToInt(Kit::rations).sum() + pile.map(Stockpile::rations).orElse(0);
+        int logs = kits.stream().mapToInt(Kit::logs).sum() + pile.map(Stockpile::logs).orElse(0);
+        rationsBurn.stock(rations, now);
+        logsBurn.stock(logs, now);
+        return List.of(new Supply("Class I (rations)", rations, rationsBurn.perDay(), 0, RATIONS_LEAD_DAYS),
+                new Supply("Class IV (logs)", logs, logsBurn.perDay(), 0, LOGS_LEAD_DAYS));
+    }
+
     /** Each site's line as last logged, by site - the main loop's. */
     private final Map<String, String> siteLines = new HashMap<>();
 
@@ -1096,6 +1124,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 afterActionReview.measured(f);
                 List<Site> sites = measureSites(f);
                 afterActionReview.sites(sites);
+                List<Supply> supplies = measureSupply();
+                afterActionReview.supplies(supplies);
+                supplies.forEach(supply -> {
+                    if (supplyStates.put(supply.name(), supply.state()) != supply.state()) {
+                        LOG.info("[Supply] {}", supply.line());
+                    }
+                });
                 sites.forEach(site -> {
                     String line = site.line();
                     if (!line.equals(siteLines.put(site.name(), line))) {
