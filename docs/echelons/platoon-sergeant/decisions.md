@@ -17,7 +17,8 @@ platoon leader sees what it decides only as state: specialists produce, missions
 | The keep's wood party | each time the keep's foreman plans, about every 5 seconds | each builder's logs and saplings, the stockpile's logs, whether the keep's squads have seen trees, whether the keep's grove has a bare cell and whether its planting waits | the builders off the dig to cut trees and the one planting the grove ([military-doctrine.md § 4](../../military-doctrine.md#4-reports-upward), "The keep's wood party") |
 
 The party is two builders at most and a third of the crew, never the foreman. It goes out to cut
-when the crew and the stockpile hold fewer than 8 logs, and comes back at 16; a cutter back with
+when the crew and the stockpile hold fewer logs than Class IV's reorder point (`command.Supply`),
+never under 8, and comes back at its stockage objective, never under 16; a cutter back with
 16 logs is on the dig again. A place left over plants the grove. With no trees seen and no sapling
 carried there is no party.
 

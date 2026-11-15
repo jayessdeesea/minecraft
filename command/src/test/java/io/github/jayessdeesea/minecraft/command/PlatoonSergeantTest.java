@@ -134,6 +134,22 @@ class PlatoonSergeantTest {
     }
 
     /** A cutter part-loaded stays out until its load is in. */
+    /**
+     * With the logs' burn measured, the party goes out at their reorder point and back at their stockage
+     * objective (backlog/maturity-model.md): a camp burning 40 logs a day reorders long before 8.
+     */
+    @Test
+    void theWoodPartyGoesOutAtTheLogsReorderPointAndBackAtTheirObjective() {
+        List<PlatoonSergeant.Hand> six = crew(0, "Alice", "Bob", "Carol", "Dana", "Eli", "Fran");
+        PlatoonSergeant.Wood burning = new PlatoonSergeant.Wood(60, true, false, false, 80, 120);
+
+        assertTrue(PlatoonSergeant.woodParty(six, "Alice", PlatoonSergeant.WoodParty.NONE, burning).cutting(), "60 logs under a reorder point of 80");
+        PlatoonSergeant.WoodParty out = new PlatoonSergeant.WoodParty(Set.of("Fran"), Optional.empty(), true);
+        assertTrue(PlatoonSergeant.woodParty(six, "Alice", out, new PlatoonSergeant.Wood(100, true, false, false, 80, 120)).cutting(),
+                "out until the objective, 120");
+        assertFalse(PlatoonSergeant.woodParty(six, "Alice", out, new PlatoonSergeant.Wood(120, true, false, false, 80, 120)).cutting());
+    }
+
     @Test
     void aCutterKeepsItsPlaceWhileItGathers() {
         List<PlatoonSergeant.Hand> crew = List.of(new PlatoonSergeant.Hand("Alice", 0, 0), new PlatoonSergeant.Hand("Bob", 0, 0),

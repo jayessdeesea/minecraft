@@ -122,8 +122,25 @@ public final class PlatoonSergeant {
      * @param treesSeen      whether a squad on the work has seen trees to cut
      * @param groveBare      whether the grove has a cell with nothing growing
      * @param groveWaits     whether the grove's planting is paused - its last planting failed
+     * @param reorder        the logs' reorder point as measured ({@link Supply#reorderPoint}), 0 with no burn yet
+     * @param objective      the logs' stockage objective as measured ({@link Supply#objective})
      */
-    public record Wood(int stockpileLogs, boolean treesSeen, boolean groveBare, boolean groveWaits) {
+    public record Wood(int stockpileLogs, boolean treesSeen, boolean groveBare, boolean groveWaits, double reorder, double objective) {
+
+        /** With no supply measured: the floors alone. */
+        public Wood(int stockpileLogs, boolean treesSeen, boolean groveBare, boolean groveWaits) {
+            this(stockpileLogs, treesSeen, groveBare, groveWaits, 0, 0);
+        }
+
+        /** Below this, the party goes out: the reorder point, and never under half the logs a depot wants. */
+        public double out() {
+            return Math.max(Keep.LOGS_WANTED / 2.0, reorder);
+        }
+
+        /** At this, it comes back: the stockage objective, and never under the logs a depot wants. */
+        public double back() {
+            return Math.max(Keep.LOGS_WANTED, objective);
+        }
     }
 
     /**
@@ -158,7 +175,9 @@ public final class PlatoonSergeant {
         boolean saplings = crew.stream().anyMatch(h -> h.saplings() > 0);
         // Out below half what's wanted, back at all of it: live and in the squad simulation, a party
         // that went at 15 and stopped at 16 came and went with every chest and handle made.
-        boolean out = wood.treesSeen() && (was.cutting() ? logs < Keep.LOGS_WANTED : logs < Keep.LOGS_WANTED / 2);
+        // The platoon sergeant tasks producers when the stock crosses its reorder point (backlog/
+        // maturity-model.md, the gate), and stands them down at the stockage objective.
+        boolean out = wood.treesSeen() && (was.cutting() ? logs < wood.back() : logs < wood.out());
         int size = Math.min(WOOD_PARTY, crew.size() / 3);
         List<String> candidates = crew.stream().map(Hand::name).filter(n -> !n.equals(foreman)).sorted(Comparator.reverseOrder()).toList();
         // Cutting first while the depot is short: wood now before trees later.

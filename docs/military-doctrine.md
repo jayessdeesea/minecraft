@@ -231,8 +231,9 @@ some, build crates at the depot and replant; a spruce every four blocks; the lum
 is the foreman's errand in place of a rectangle, two builders at most and a third of the crew,
 never the foreman. One
 plants the keep's grove while it has a cell with nothing growing, with a sapling carried or trees
-seen; when the builders and the stockpile hold fewer than 8 logs between them, and until they hold
-16, the party cuts trees instead, where a keep squad last saw them, 16 logs a builder - back with
+seen; when the builders and the stockpile hold fewer logs between them than Class IV's reorder point
+(below) - never under 8 - and until they hold its stockage objective - never under 16 - the party
+cuts trees instead, where a keep squad last saw them, 16 logs a builder - back with
 them it's on the dig again and another goes - after
 making itself a stone axe from the cobblestone it carries, a log in 15 ticks rather than the hand's
 60. The rest dig. The foreman says it on the net: "KEEP WOOD 16", "KEEP PLANT x z". The grove is a

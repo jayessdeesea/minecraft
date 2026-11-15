@@ -542,6 +542,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final double RATIONS_LEAD_DAYS = 1, LOGS_LEAD_DAYS = 1;
     /** Each class's measured burn - the main loop's. */
     private final Supply.Burn rationsBurn = new Supply.Burn(DAY_MILLIS), logsBurn = new Supply.Burn(DAY_MILLIS);
+    /** Class IV as last measured, for the platoon sergeant's wood party - the main loop writes, squad loops read. */
+    private volatile Supply logsSupply;
     /** Each class's state as last logged - the main loop's. */
     private final Map<String, Supply.State> supplyStates = new HashMap<>();
 
@@ -559,8 +561,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int logs = kits.stream().mapToInt(Kit::logs).sum() + pile.map(Stockpile::logs).orElse(0);
         rationsBurn.stock(rations, now);
         logsBurn.stock(logs, now);
-        return List.of(new Supply("Class I (rations)", rations, rationsBurn.perDay(), 0, RATIONS_LEAD_DAYS),
-                new Supply("Class IV (logs)", logs, logsBurn.perDay(), 0, LOGS_LEAD_DAYS));
+        Supply logsNow = new Supply("Class IV (logs)", logs, logsBurn.perDay(), 0, LOGS_LEAD_DAYS);
+        logsSupply = logsNow;
+        return List.of(new Supply("Class I (rations)", rations, rationsBurn.perDay(), 0, RATIONS_LEAD_DAYS), logsNow);
     }
 
     /** Each site's line as last logged, by site - the main loop's. */
@@ -2178,9 +2181,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         List<PlatoonSergeant.Hand> crew = onHand.stream().map(b -> new PlatoonSergeant.Hand(b.name(),
                 keepLogsCarried.getOrDefault(b.name(), 0), keepSaplingsCarried.getOrDefault(b.name(), 0))).toList();
         TreeFarm grove = keepGrove;
+        Supply logsMeasured = logsSupply;
         PlatoonSergeant.Wood wood = new PlatoonSergeant.Wood(chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
                 onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream()).anyMatch(r -> r.resource() == Resource.WOOD),
-                grove != null && !Forester.planted(world, grove), now < keepGroveBarredUntil);
+                grove != null && !Forester.planted(world, grove), now < keepGroveBarredUntil,
+                logsMeasured == null ? 0 : logsMeasured.reorderPoint(), logsMeasured == null ? 0 : logsMeasured.objective());
         PlatoonSergeant.WoodParty was = keepParty;
         PlatoonSergeant.WoodParty party = PlatoonSergeant.woodParty(crew, keepForeman, was, wood);
         if (!party.cutters().equals(was.cutters()) || !party.planter().equals(was.planter())) {

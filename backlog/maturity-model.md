@@ -88,7 +88,9 @@ fixed counts:
 **The gate.** Projected forward, not read off the stock:
 - A site starts new work - a mission supplied from it, the next level's work - only if its stock
   after that work's draw stays at or above the reorder point.
-- When the projection crosses the reorder point, the platoon sergeant tasks producers: it detaches
+- When the projection crosses the reorder point, the platoon sergeant tasks producers - built for
+  wood: the keep's wood party goes out at Class IV's reorder point and back at its objective
+  (`PlatoonSergeant.Wood`) - it detaches
   soldiers to the work within the platoon leader's priorities, as the foreman shares out the keep
   (backlog/fleet-command.md). The platoon leader sees it only as state - "wood: PAUSE, two on it" -
   under specialists produce, missions consume (tenets.md).
