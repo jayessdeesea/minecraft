@@ -15,12 +15,12 @@ them. Monsters don't spawn on the lit ground, and any that do burn at dawn. The 
 adding cells outward.
 
 ## The main base (decided, operator 2026-11-12)
-- **The keep is a raised platform**: chunks (-1,-1) to (0,0), x and z from -16 to 15, centred on
-  the origin. Solid cobblestone from y=64 to 67, all four layers - cobblestone because endermen
-  can't take it - standing on ground at y=63, so its floor is walked at feet y=68. Nothing over it:
-  the sky above it is cleared.
-- **Its edge is the wall.** A 4-block lip that zombies, skeletons and creepers can't climb; a
-  fence along it against spiders. Ramps down to the fields, a gate at the top of each. Lit, like
+- **The keep is level ground at y=63** (operator, 2026-11-15, replacing the raised slab of
+  2026-11-12): x and z from -16 to 16, centred on the origin, everything above y=63 dug out, its
+  floor walked at feet y=64. Nothing over it: the sky above it is cleared (built, `command.Keep`).
+- **Its edge needs a wall** now it isn't raised: the slab's 4-block lip was to be what zombies,
+  skeletons and creepers can't climb; on level ground that's a wall to build, and a fence against
+  spiders. Ramps down to the fields, a gate at the top of each. Lit, like
   any cell, so nothing spawns on it.
 - **The fields round it are at sea level**: ground top y=63, walked at feet 64, fenced and gated on
   the chunk boundaries. Farmland there needs water carried in - buckets and a two-by-two source -
@@ -48,8 +48,7 @@ adding cells outward.
   squads sections, the squad's tasking gives each soldier its chunk, the layer window keeps
   neighbours level. Left: more squads, and strips cut on chunk boundaries (today a share of 16 x 32
   splits four ways into 16 x 8).
-- Cost: 4,096 cobblestone for the keep alone, against 385 in the stockpile today - so the mine's
-  spoil is its supply.
+- Cost: cobblestone only for the ground's open cells now, not a 4,096-block slab.
 
 ## Design sketch
 - **Cells are chunk-aligned.** Fences run along chunk boundaries, the unit the server loads and

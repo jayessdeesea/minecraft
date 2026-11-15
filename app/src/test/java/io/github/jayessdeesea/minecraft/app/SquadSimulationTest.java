@@ -1963,14 +1963,18 @@ class SquadSimulationTest {
     }
 
     /**
-     * The keep (command.Keep): a squad sent to build it digs the site down to the slab's bottom -
-     * a mound on it dug away - and lays the slab in cobblestone, never the dirt it also carries.
+     * The keep (command.Keep), taken down to y=63 (operator, 2026-11-15): a squad sent to build it
+     * digs a mound on the site away to the ground's top, and fills a pit in the ground's top in
+     * cobblestone, never the dirt it also carries.
      */
     @Test
-    void aSquadOnTheKeepDigsItsSiteAndLaysTheSlabInCobblestone() {
+    void aSquadOnTheKeepDigsItsSiteDownAndFillsItsGroundInCobblestone() {
         SimClock clock = new SimClock();
+        java.util.function.IntPredicate pitX = x -> x >= -6 && x <= -4;
         SimServer server = new SimServer(clock, (x, y, z) -> x >= 4 && x <= 5 && z >= 4 && z <= 5 && (y == GROUND + 1 || y == GROUND + 2)
-                ? SimServer.DIRT : flat(x, y, z), 1000);
+                ? SimServer.DIRT
+                : pitX.test(x) && pitX.test(z) && y >= GROUND - 1 && y <= GROUND ? SimServer.AIR // a pit in the ground's top
+                : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice");
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
                 new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
@@ -1985,20 +1989,26 @@ class SquadSimulationTest {
 
         clock.advance(10 * 60_000);
 
+        String events = "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        for (int x = 4; x <= 5; x++) {
+            for (int z = 4; z <= 5; z++) {
+                for (int y = Keep.BOTTOM; y <= GROUND + 2; y++) {
+                    assertEquals(SimServer.AIR, server.block(x, y, z), "the mound dug away at " + x + "," + y + "," + z + events);
+                }
+            }
+        }
         int cobblestone = 0;
-        for (int x = Keep.MIN; x <= Keep.MAX; x++) {
-            for (int z = Keep.MIN; z <= Keep.MAX; z++) {
-                for (int y = Keep.BOTTOM; y <= Keep.TOP; y++) {
-                    assertNotEquals(SimServer.DIRT, server.block(x, y, z), "dirt in the slab at " + x + "," + y + "," + z
-                            + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+        for (int x = -6; x <= -4; x++) {
+            for (int z = -6; z <= -4; z++) {
+                for (int y = GROUND - 1; y <= Keep.TOP; y++) {
+                    assertNotEquals(SimServer.DIRT, server.block(x, y, z), "dirt in the keep's ground at " + x + "," + y + "," + z + events);
                     if (server.block(x, y, z) == SimServer.COBBLESTONE) {
                         cobblestone++;
                     }
                 }
             }
         }
-        assertTrue(cobblestone >= 48, cobblestone + " cobblestone laid in the slab; last server events: "
-                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+        assertEquals(18, cobblestone, "the pit's 18 cells filled in cobblestone" + events);
     }
 
     /**

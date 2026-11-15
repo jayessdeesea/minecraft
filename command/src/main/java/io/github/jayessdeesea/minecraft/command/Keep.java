@@ -2,23 +2,23 @@ package io.github.jayessdeesea.minecraft.command;
 
 
 /**
- * The main base's keep (backlog/cells.md): a raised slab of solid cobblestone on chunks (-1, -1)
- * to (0, 0) - x and z from -16 to 15, centred on the origin - four blocks deep, y=64 to 67, on
- * ground at sea level, its floor walked at feet y=68 and the sky over it cleared. Cobblestone,
- * because endermen can't take it. The heights are the plan's, never the ground's: what the
- * world differs from them by is the work.
+ * The main base's keep (backlog/cells.md): x and z from -16 to 16, centred on the origin, taken
+ * down to y=63 (operator, 2026-11-15) - everything above it dug out to the sky, the ground's top
+ * at y=63 solid, filled where it's open, its floor walked at feet y=64. The heights are the plan's,
+ * never the ground's: what the world differs from them by is the work.
  *
  * <p>Geometry only, as {@link Groundwork} is: which soldier works which strip is
  * {@link Tasking#keep}'s.
  */
 public final class Keep {
 
-    /** The keep's west and north edge, and its east and south: two chunks a side. */
+    /** The keep's west and north edge, and its east and south: 33 blocks a side. */
     public static final int MIN = -16;
-    public static final int MAX = 15;
-    /** The slab's bottom layer and its top: four deep, on ground at sea level, y=63. */
-    public static final int BOTTOM = 64;
-    public static final int TOP = 67;
+    public static final int MAX = 16;
+    /** The ground's top, y=63: the layer kept solid, filled where it's open. */
+    public static final int TOP = 63;
+    /** The dig's bottom: everything from here up is taken out. */
+    public static final int BOTTOM = TOP + 1;
     /** Feet height on the keep's floor. */
     public static final int FLOOR = TOP + 1;
     /** How far under the slab an open hollow - a pond, a pit - is filled from. */
@@ -49,22 +49,21 @@ public final class Keep {
     public static final int LOGS_WANTED = 16;
 
     /**
-     * Everything from the slab's bottom up to the top of the world: dug out, top down, but for the
-     * slab's own stone. Not to a fixed height over the floor: ground is dug only from an open top,
+     * Everything from the dig's bottom up to the top of the world: dug out, top down. Not to a fixed height over the floor: ground is dug only from an open top,
      * and a hill standing over the box would have kept every block under it.
      */
     public static Box dig() {
         return new Box(MIN, BOTTOM, MIN, MAX, SKY_TOP, MAX);
     }
 
-    /** The slab: four layers of cobblestone. */
+    /** The keep's ground: its top layer, kept solid. */
     public static Box slab() {
-        return new Box(MIN, BOTTOM, MIN, MAX, TOP, MAX);
+        return new Box(MIN, TOP, MIN, MAX, TOP, MAX);
     }
 
-    /** What's filled: the slab, and any hollow open under it down to {@link #FOOTING} below. */
+    /** What's filled: the ground's top, and any hollow open under it down to {@link #FOOTING} below. */
     public static Box fill() {
-        return new Box(MIN, BOTTOM - FOOTING, MIN, MAX, TOP, MAX);
+        return new Box(MIN, TOP - FOOTING, MIN, MAX, TOP, MAX);
     }
 
     /** Whether column ({@code x}, {@code z}) is the keep's. */

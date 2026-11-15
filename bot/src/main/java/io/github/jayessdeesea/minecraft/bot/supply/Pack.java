@@ -104,10 +104,14 @@ public final class Pack {
             Optional<Integer> bulk = surplus(inventory, ItemClass.DIRT, DIRT_KEPT)
                     .or(() -> surplusSeeds(inventory))
                     .or(() -> surplus(inventory, ItemClass.COBBLESTONE, COBBLESTONE_KEPT));
+            // Not one picked back up lately: live, thrown where the soldier stood, it was picked straight
+            // back up and thrown again, 56 times in four minutes.
+            bulk = bulk.filter(slot -> ticks - pickedBack.getOrDefault(inventory.itemAt(slot), Long.MIN_VALUE / 2) >= THROWN_FOR);
             if (bulk.isPresent()) {
                 int slot = bulk.get();
                 LOG.info("{} throws away {} of item {} - its pack is full, and it's worth least of what it carries", name,
                         inventory.countAt(slot), inventory.itemAt(slot));
+                leftAfter.put(inventory.itemAt(slot), countOf(inventory.itemAt(slot)) - inventory.countAt(slot));
                 session.throwStack(0, 0, slot); // stale state: the server resends the inventory
                 settle = SETTLE_TICKS;
                 return;

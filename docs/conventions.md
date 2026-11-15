@@ -115,6 +115,23 @@ with another:
 So the suite takes about as long as its slowest test, not the sum of them. While working on a
 change, run its own tests (`-Dtest=...`); the whole suite before a deploy or push.
 
+## Profile every sixteenth commit
+
+When the commit count on main (`git rev-list --count HEAD`) is a multiple of 16, the live
+garrison is profiled before the next change is started (operator, 2026-11-15), and the worst
+offenders are fixed where it makes sense to:
+- **Record** three minutes of the running garrison with Java Flight Recorder, which attaches to the
+  live JVM at about 1% cost: `jcmd <pid> JFR.start name=prof duration=180s settings=profile
+  filename=<file>.jfr` (the PID is in the garrison log's `with PID` line).
+- **Read** the self-time hot spots: `jfr print --events jdk.ExecutionSample --stack-depth 1` counted
+  by frame, then with `--stack-depth 25` attributed to the project's own caller - the JDK frame
+  on top (a map lookup, a sort) is rarely where the fix goes. `jfr summary` gives the sample count
+  to compare against.
+- **Fix** what dominates and has a cause in the code - a bad hash, a scan in a tick loop - not
+  what's merely first. Measure again after, and put both sample counts in the commit message.
+- A recording with almost no execution samples is a garrison doing nothing: check it's connected
+  before reading anything into it.
+
 ## Standard formats go through standard libraries
 
 XML, JSON, CSV and other standard formats are written and read with a library, never marshalled

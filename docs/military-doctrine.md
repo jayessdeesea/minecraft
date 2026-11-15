@@ -1259,8 +1259,8 @@ objective a class is ADVANCE, below the safety level PAUSE, HOLD between; the lo
 ADVANCE`), and the dawn's after-action review lists them. The platoon sergeant acts on it (§ 4).
 
 The keep's mission estimate (`command.MissionEstimate`; ADP 5-0, FM 4-0's logistics estimate) is
-worked out at each foothold check: its work - the blocks left to dig and the slab's cells to fill,
-4,096 until the ground is flat - at the rate measured from that work's own falls; its bill of
+worked out at each foothold check: its work - the blocks left to dig and the ground's open cells to
+fill, all 1,089 of its top until the ground is flat - at the rate measured from that work's own falls; its bill of
 materials - a stone tool for every 132 blocks dug and a log's handles for every four tools, the
 slab's cobblestone kept in chests till it's laid, two logs a chest, and its days' rations at the
 force's measured burn a soldier, and with ore set aside (§ 11) and no iron pickaxe in the force,
@@ -1311,11 +1311,10 @@ The log's `[Scoreboard]` line sets the day beside the day
 before and names the earliest open standard - the next thing to work on.
 
 The main base is built beside the foothold, which stays the base until it's done
-(backlog/cells.md): first its keep (`command.Keep`), the task `KEEP` - a slab of solid
-cobblestone on chunks (-1, -1) to (0, 0), x and z from -16 to 15, from y=64 to 67 on ground at sea
-level, its floor walked at feet 68. The heights are the plan's, not the ground's: everything from
-y=64 up into the sky over it is dug out, but rock and the slab's own cobblestone in its four
-layers; then the slab, and any hollow open under it within 8 blocks, is filled in cobblestone only
+(backlog/cells.md): first its keep (`command.Keep`), the task `KEEP` - x and z from -16 to 16,
+taken down to y=63 (operator, 2026-11-15), its floor walked at feet 64. The heights are the
+plan's, not the ground's: everything from y=64 up into the sky over it is dug out; then the
+ground's top at y=63, and any hollow open under it within 8 blocks, is filled in cobblestone only
 (`Order.Fill`'s `stoneOnly`, a filler of its own), never dirt, which endermen take. A strip each
 (`Tasking.keep`), each squad on it its own share of the site - west to east in the roster's order
 - and each of its soldiers a fixed strip of that, its own range of x and z (operator, 2026-11-13):

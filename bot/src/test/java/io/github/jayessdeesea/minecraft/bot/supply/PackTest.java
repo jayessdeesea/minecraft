@@ -78,6 +78,31 @@ class PackTest {
                 "nothing else: the pickaxes don't stack, the cobblestone's stacks are full");
     }
 
+    /** Dirt thrown from a full pack and picked straight back up isn't thrown again for a while. */
+    @Test
+    void bulkThrownAndPickedBackUpIsntThrownAgainForAWhile() {
+        Inventory inventory = new Inventory();
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            inventory.setSlot(slot, new int[]{item(ItemClass.DIRT), 64});
+        }
+        java.util.List<Integer> throws_ = new java.util.ArrayList<>();
+        io.github.jayessdeesea.minecraft.protocol.PlaySession session = (io.github.jayessdeesea.minecraft.protocol.PlaySession)
+                java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+                        new Class<?>[]{io.github.jayessdeesea.minecraft.protocol.PlaySession.class}, (proxy, method, args) -> {
+                            if (method.getName().equals("throwStack")) {
+                                throws_.add((Integer) args[2]); // picked straight back up: the pack stays as it was
+                            }
+                            return null;
+                        });
+        Pack pack = new Pack("Dana", session, inventory);
+
+        for (int tick = 0; tick < 2000; tick++) {
+            pack.tick(true);
+        }
+
+        assertTrue(throws_.size() <= 2, "thrown once or so in 100 s, not every time it came back: " + throws_.size());
+    }
+
     @Test
     void whatItThrewAndPickedBackUpIsntThrownAgainForAWhile() {
         Inventory inventory = new Inventory();

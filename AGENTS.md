@@ -45,6 +45,9 @@ Each points to its home, which has the reasons.
 - **Every commit closes its loop:** a backlog item it finishes is deleted, one it advances is
   trimmed to what's left, and the docs it touches are checked against the code and made current
   in the same commit. [docs/conventions.md](docs/conventions.md#docs)
+- **Profile every sixteenth commit:** at a commit count that's a multiple of 16, record the live
+  garrison with Flight Recorder and fix the worst offenders where it makes sense.
+  [docs/conventions.md](docs/conventions.md#profile-every-sixteenth-commit)
 - **Don't ask the order of work.** What needs doing, do; ask only what changes what gets built.
   [docs/conventions.md](docs/conventions.md#working-without-guidance)
 

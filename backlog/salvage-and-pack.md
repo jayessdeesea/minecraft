@@ -23,6 +23,14 @@ them, and wood is already the bottleneck. And nothing decides what a full pack t
   before a torch - unless it's wanted for something, such as trading with a villager - and a
   torch before diamonds.
 
+- **A full pack is the norm (operator, 2026-11-15):** "I keep my backpack full. If I can't pick
+  something up off the ground that I want, I shed something I don't care about." Shedding on
+  demand, not at a fill line: a routine about to break a block whose drop has no room - no free
+  slot, no part-stack of it - first sheds what's worth least (junk, dirt past two stacks, seeds,
+  cobblestone past five); otherwise the pack stays full. Today's pack sheds at two free slots
+  (`Pack.FULL_AT`), which this replaces. Seeing what's on the ground and wanting it needs a dropped
+  item's type, from its entity metadata, which isn't decoded yet.
+
 ## Design sketch
 - **One value per item class, computed, not listed.** Its worth is how short the force is of it:
   what's wanted (the basic load, the standards' needs - torches for dark cells, logs for fences,
