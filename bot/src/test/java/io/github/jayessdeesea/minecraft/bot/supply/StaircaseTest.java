@@ -120,6 +120,39 @@ class StaircaseTest {
         }
     }
 
+    /**
+     * The well standard (operator, 2026-11-15): every step in chunk-local 6..9, each beside the last,
+     * the north-east corner (9, 6) at every y = 12k, the pillar 7..8 never stepped on, the landing at
+     * a multiple of 12 on the corner - in a chunk on either side of zero, where chunk-local is floorMod.
+     */
+    @Test
+    void aWellIsFourByFourCentredInItsChunkWithItsCornerOnTwelves() {
+        for (int[] chunk : new int[][]{{0, 0}, {-1, -2}, {3, -1}}) {
+            Staircase well = Staircase.well(chunk[0], chunk[1], 70, 16);
+            assertTrue(well.bottom() == 12, "the landing at the deepest y = 12k no deeper than asked: " + well.bottom());
+            BlockPos last = null;
+            for (int k = -1; k < well.steps(); k++) {
+                BlockPos step = k < 0 ? well.head() : well.step(k);
+                int lx = Math.floorMod(step.x(), 16), lz = Math.floorMod(step.z(), 16);
+                assertTrue(lx >= 6 && lx <= 9 && lz >= 6 && lz <= 9, step + " in the 4x4");
+                assertFalse(lx >= 7 && lx <= 8 && lz >= 7 && lz <= 8, step + " off the pillar");
+                if (Math.floorMod(step.y(), 12) == 0) {
+                    assertTrue(lx == 9 && lz == 6, "at y=" + step.y() + " the north-east corner, not " + lx + "," + lz);
+                }
+                if (last != null) {
+                    assertTrue(Math.abs(step.x() - last.x()) + Math.abs(step.z() - last.z()) == 1 && step.y() == last.y() - 1,
+                            step + " one down and beside " + last);
+                }
+                last = step;
+            }
+            BlockPos landing = well.step(well.steps() - 1);
+            assertTrue(Math.floorMod(landing.x(), 16) == 9 && Math.floorMod(landing.z(), 16) == 6 && landing.y() == 12, "landing " + landing);
+            assertFalse(well.inShaft(well.landingStand().x(), well.landingStand().z()), "the main tunnel out of the well");
+            assertTrue(well.cuts().stream().filter(c -> c.tunnel() >= 0).allMatch(c -> !well.inShaft(c.feet().x(), c.feet().z())),
+                    "no tunnel back through the well");
+        }
+    }
+
     @Test
     void everyTorchStandsWhereABodyWalks() {
         Set<BlockPos> walkway = stairs.walkway();

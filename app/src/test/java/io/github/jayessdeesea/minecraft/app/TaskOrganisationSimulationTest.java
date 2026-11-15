@@ -193,8 +193,9 @@ class TaskOrganisationSimulationTest {
                 List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}), "0,0", 14_000, true);
         clock.advance(3 * 60_000);
 
+        // In the camp, or down its mine - a well centred in a chunk beside the camp's centre, a chunk off.
         PlayerPosition alice = server.position("Alice");
-        assertTrue(Math.hypot(alice.x(), alice.z()) <= 8, "in the camp by night, not at " + alice);
+        assertTrue(Math.hypot(alice.x(), alice.z()) <= 16, "in the camp or its mine by night, not at " + alice);
     }
 
     /** Flat, with a one-block pond six blocks east of the camp. */

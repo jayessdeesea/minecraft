@@ -14,21 +14,10 @@ y=-55, in veins a few blocks off any one shaft. A player at a camp near spawn di
 working base at each mining level - y=32 and y=0, say - and runs tunnels out from it.
 
 ## Done when
-- **The stairwell standard (operator, 2026-11-15):** a 4x4 well centred in its chunk -
-  chunk-local x and z 6..9 (`floorMod(x, 16)`: world 6..9 in chunk 0, -10..-7 in chunk -1), a 2x2
-  pillar at 7..8 and the 12-cell walkway round it, one step down a cell, 12 blocks a turn. The
-  north-east corner, chunk-local (9, 6), at every y = 12k (`floorMod(y, 12) == 0`), so it lines
-  up every turn; each mine level's landing there - y = 12, 0, -12, -24, -36, -48 - the turns
-  counted back up from it to the head; the main tunnel out of the landing, the landing's and the
-  store's recesses beside its first and second cells.
-- **The stair cutter keeps its well whole (operator, 2026-11-15):** a hole in the pillar or the
-  walls - a cave opening, a block missing - is filled as it's passed, with cobblestone; ore in the
-  walls is mined as it's seen and its vein followed, and each block taken out of a wall put back
-  when the vein's done, so the well stays closed; and the stairs lit as they're cut, as today
-  (`Staircase.lights`).
-  Mines already cut keep the 3x3 spiral they were cut to, by a layout kept with them on disk.
-  `StaircaseTest`: every step's footprint inside 6..9, the corner at (9, 6) at every multiple of 12,
-  walkable both ways; `MinerTest`: four miners share one cut to that standard.
+- **The stairwell standard and the cutter's upkeep are built** (docs/military-doctrine.md § 16):
+  the 4x4 well in chunk-local 6..9, its north-east corner at every y = 12k, holes filled and wall
+  ore put back. What's left: live, a mine sited to it and cut to its landing; the main tunnel's
+  and branches' walls kept whole the same way.
 - **Branch tunnels, the rest.** The tunnels are cut and lit (docs/military-doctrine.md § 16). What's
   left: the LOGSTAT counting raw iron and diamonds.
 - **Levels.** The landing at the bottom is cut, with the mine base's workshop, and the stairs are

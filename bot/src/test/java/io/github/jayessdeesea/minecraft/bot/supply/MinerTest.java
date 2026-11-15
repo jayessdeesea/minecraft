@@ -132,6 +132,72 @@ class MinerTest {
         return progress;
     }
 
+    /** A well to the standard is cut to its landing, walkable both ways, its 2x2 pillar standing. */
+    @Test
+    void aWellIsCutAndWalkableBothWaysItsPillarStanding() {
+        Staircase well = Staircase.wellAt(world, 0, 0, GROUND, GROUND - 16).orElseThrow();
+        assertEquals(48, well.bottom(), "the landing at y=48, the deepest twelve under the 52 asked");
+
+        assertInstanceOf(Miner.Progress.Done.class, dig(well, 60000, new Inventory(), new Position(well.head().x() + 0.5, well.head().y(), well.head().z() + 0.5)));
+
+        BlockPos bottom = well.step(well.steps() - 1);
+        assertEquals(new BlockPos(9, 48, 6), bottom);
+        assertTrue(Pathfinder.find(world, well.head(), new Goal(bottom.x() + 0.5, bottom.y(), bottom.z() + 0.5, 0.4, 0), 5000).reachesGoal(),
+                "down the well");
+        assertTrue(Pathfinder.find(world, bottom, new Goal(well.head().x() + 0.5, well.head().y(), well.head().z() + 0.5, 0.4, 0), 5000).reachesGoal(),
+                "and back up");
+        for (int y = bottom.y(); y < GROUND; y++) {
+            for (int x = 7; x <= 8; x++) {
+                for (int z = 7; z <= 8; z++) {
+                    assertTrue(world.isSolid(x, y, z), "the pillar at " + x + "," + y + "," + z);
+                }
+            }
+        }
+    }
+
+    /**
+     * The stair cutter keeps its well whole (operator, 2026-11-15): a gap in the pillar and a hole in
+     * the wall beside a step - a cave's mouth - are filled as it passes, in cobblestone.
+     */
+    @Test
+    void holesInTheWellsPillarAndWallsAreFilledAsTheStairsAreCut() {
+        Staircase well = Staircase.wellAt(world, 0, 0, GROUND, GROUND - 16).orElseThrow();
+        BlockPos step = well.step(4);
+        BlockPos pillarGap = java.util.stream.Stream.of(step.offset(1, 0, 0), step.offset(-1, 0, 0), step.offset(0, 0, 1), step.offset(0, 0, -1))
+                .filter(c -> well.inPillar(c.x(), c.z())).findFirst().orElseThrow();
+        // Out of the shaft from the step: east if it's on the east side, west if west, else north or south.
+        int lx = step.x(), lz = step.z();
+        BlockPos wallHole = lx == 9 ? step.offset(1, 0, 0) : lx == 6 ? step.offset(-1, 0, 0) : lz == 6 ? step.offset(0, 0, -1) : step.offset(0, 0, 1);
+        cave.add(pillarGap);
+        cave.add(wallHole);
+        Inventory stone = new Inventory();
+        stone.setSlot(Inventory.MAIN_FIRST, new int[]{IntStream.range(0, 4096)
+                .filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(ItemClassRegistry.ItemClass.COBBLESTONE))).findFirst().orElseThrow(), 64});
+
+        dig(well, 60000, stone, new Position(well.head().x() + 0.5, well.head().y(), well.head().z() + 0.5));
+
+        assertTrue(placed.contains(pillarGap), "the pillar's gap at " + pillarGap + " filled");
+        assertTrue(placed.contains(wallHole), "the wall's hole at " + wallHole + " filled");
+    }
+
+    /** Ore in the well's wall is mined, and its cell put back once the vein's done, so the well stays closed. */
+    @Test
+    void oreInTheWellsWallIsMinedAndItsCellPutBack() {
+        Staircase well = Staircase.wellAt(world, 0, 0, GROUND, GROUND - 16).orElseThrow();
+        BlockPos step = well.step(4);
+        BlockPos vein = step.x() == 9 ? step.offset(1, 0, 0) : step.x() == 6 ? step.offset(-1, 0, 0) : step.z() == 6 ? step.offset(0, 0, -1) : step.offset(0, 0, 1);
+        ore.add(vein);
+        Inventory kit = new Inventory();
+        kit.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(1), 1});
+        kit.setSlot(Inventory.MAIN_FIRST, new int[]{IntStream.range(0, 4096)
+                .filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(ItemClassRegistry.ItemClass.COBBLESTONE))).findFirst().orElseThrow(), 64});
+
+        dig(well, 60000, kit, new Position(well.head().x() + 0.5, well.head().y(), well.head().z() + 0.5));
+
+        assertTrue(dug.contains(vein), "the ore at " + vein + " mined");
+        assertTrue(placed.contains(vein), "and its cell put back");
+    }
+
     @Test
     void cutsEveryStepAndTheStairsAreWalkableBothWays() {
         Staircase stairs = new Staircase(HEAD, GROUND - 12);

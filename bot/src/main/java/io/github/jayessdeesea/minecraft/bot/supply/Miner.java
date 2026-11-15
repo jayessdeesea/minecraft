@@ -237,7 +237,36 @@ public final class Miner {
             breacher.stop();
             return new Progress.Working(k, cuts.size());
         }
+        // On the stairs, its well kept whole: holes in the pillar, the walls and the floor round the
+        // step it cuts noted to fill (operator, 2026-11-15).
+        if (cut.tunnel() < 0) {
+            holesBeside(world, stairs, cut).forEach(refill::add);
+        }
         Optional<BlockPos> seen = oreInSight(world, stairs, from, cut);
+        // The ore it took the last tick, gone now: on the stairs, its cell is a hole to put back.
+        if (ore != null && !world.isOre(ore.x(), ore.y(), ore.z()) && !Staircase.uncut(world, ore) && cut.tunnel() < 0) {
+            refill.add(ore);
+        }
+        if (seen.isEmpty()) {
+            // The vein done: what it took out of the well's walls put back, last taken first, and the holes
+            // it found filled - each against a solid face, in cobblestone, else dirt.
+            refill.removeIf(c -> world.isSolid(c.x(), c.y(), c.z()) || world.isHazard(c.x(), c.y(), c.z()) || !reach(from, c));
+            Optional<BlockPos> hole = refill.isEmpty() ? Optional.empty() : Optional.of(refill.getLast());
+            Optional<BlockFace> face = hole.flatMap(h -> faceOf(world, h));
+            if (hole.isPresent() && refillTicks.merge(hole.get(), 1, Integer::sum) > ORE_PATIENCE_TICKS) {
+                LOG.warn("{} leaves the hole at {} in the well: not filled in {} ticks", name, hole.get(), ORE_PATIENCE_TICKS);
+                refill.remove(hole.get());
+            } else if (hole.isPresent() && face.isPresent() && bridging.isPresent()) {
+                breacher.stop();
+                if (refillTicks.get(hole.get()) == 1) {
+                    LOG.info("{} fills the hole at {} in the well", name, hole.get());
+                }
+                footing.place(hole.get(), bridging.get(), face.get());
+                footing.tick();
+                return new Progress.Working(k, cuts.size());
+            }
+            hole.filter(h -> face.isEmpty()).ifPresent(refill::remove);
+        }
         if (seen.isPresent()) {
             if (!seen.get().equals(ore)) {
                 ore = seen.get();
@@ -255,6 +284,50 @@ public final class Miner {
         }
         breacher.tick(world, cut.cells());
         return new Progress.Working(k, cuts.size());
+    }
+
+    /** Holes to fill in the well, last found last: what was taken out of its walls, and what it found open. */
+    private final java.util.LinkedHashSet<BlockPos> refill = new java.util.LinkedHashSet<>();
+    /** Ticks spent filling each hole: one the server won't take is left after {@link #ORE_PATIENCE_TICKS}. */
+    private final java.util.Map<BlockPos, Integer> refillTicks = new java.util.HashMap<>();
+
+    /**
+     * The open cells round step {@code cut} that should be solid: its pillar beside it, the wall
+     * outside the shaft, and the floor under its feet - not any cell the mine cuts, which is meant
+     * to be open.
+     */
+    static List<BlockPos> holesBeside(WorldView world, Staircase stairs, Staircase.Cut cut) {
+        Set<BlockPos> cutCells = stairs.cutCells();
+        List<BlockPos> holes = new ArrayList<>();
+        List<BlockPos> around = new ArrayList<>();
+        for (BlockPos cell : cut.cells()) {
+            for (int[] d : FACES) {
+                if (d[1] == 0) {
+                    around.add(cell.offset(d[0], 0, d[2]));
+                }
+            }
+        }
+        around.add(cut.feet().offset(0, -1, 0));
+        for (BlockPos at : around) {
+            boolean shouldStand = stairs.inPillar(at.x(), at.z()) || !stairs.inShaft(at.x(), at.z()) || at.equals(cut.feet().offset(0, -1, 0));
+            if (shouldStand && !cutCells.contains(at) && !world.isSolid(at.x(), at.y(), at.z()) && !world.isHazard(at.x(), at.y(), at.z())
+                    && !holes.contains(at)) {
+                holes.add(at);
+            }
+        }
+        return holes;
+    }
+
+    /** A face of {@code cell} with a solid block against it, to put a block there against: the floor first. */
+    private static Optional<BlockFace> faceOf(WorldView world, BlockPos cell) {
+        return java.util.stream.Stream.of(BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.WEST, BlockFace.EAST, BlockFace.UP)
+                .filter(f -> world.isSolid(cell.x() + f.dx, cell.y() + f.dy, cell.z() + f.dz)).findFirst();
+    }
+
+    /** Whether {@code cell} is in reach of the eyes of one standing on {@code from}. */
+    private static boolean reach(BlockPos from, BlockPos cell) {
+        return Math.sqrt(Math.pow(cell.x() + 0.5 - (from.x() + 0.5), 2) + Math.pow(cell.y() + 0.5 - (from.y() + EYES), 2)
+                + Math.pow(cell.z() + 0.5 - (from.z() + 0.5), 2)) <= ORE_REACH;
     }
 
     /** A block to put in the bridge over a tunnel's cave: its cell, and the side of it the block it goes against is on. */
@@ -381,7 +454,7 @@ public final class Miner {
         int tier = bestPickaxe();
         Set<BlockPos> floors = stairs.cuts().stream().filter(c -> c.tunnel() >= 0)
                 .map(c -> c.feet().offset(0, -1, 0)).collect(Collectors.toSet());
-        java.util.function.Predicate<BlockPos> takeable = at -> (Math.abs(at.x() - stairs.head().x()) > 1 || Math.abs(at.z() - stairs.head().z()) > 1)
+        java.util.function.Predicate<BlockPos> takeable = at -> !stairs.inShaft(at.x(), at.z())
                 && !floors.contains(at) && !leftOre.contains(at) && world.isOre(at.x(), at.y(), at.z())
                 && world.hardness(at.x(), at.y(), at.z()).map(h -> h.drops(tier)).orElse(false)
                 && !besideLiquid(world, at);

@@ -21,6 +21,11 @@ public final class Keep {
     public static final int BOTTOM = TOP + 1;
     /** Feet height on the keep's floor. */
     public static final int FLOOR = TOP + 1;
+    /**
+     * Whether the keep's ground is built up - its open cells filled - once it's dug down: not for
+     * now (operator, 2026-11-15: "don't bother building it up"); taken down to y=63 and left.
+     */
+    public static final boolean FILL = false;
     /** How far under the slab an open hollow - a pond, a pit - is filled from. */
     public static final int FOOTING = 8;
 

@@ -47,7 +47,7 @@ import java.util.stream.IntStream;
 final class SimServer {
 
     static final int AIR = 0, STONE = 1, GRASS = 9, DIRT = 10, COBBLESTONE = 14, BEDROCK = 88, WATER = 89,
-            IRON_ORE = 134, COAL_ORE = 136, GLASS = 661, TORCH = 4926, OAK_LOG = 140, CRAFTING_TABLE = 6866, FURNACE = 6884, CHEST = 5544,
+            IRON_ORE = 134, COAL_ORE = 136, EMERALD_ORE = 11315, GLASS = 661, TORCH = 4926, OAK_LOG = 140, CRAFTING_TABLE = 6866, FURNACE = 6884, CHEST = 5544,
             SPRUCE_LOG = 143, SPRUCE_SAPLING = 32;
     /** A chest's own slots, as vanilla's single chest. */
     static final int CHEST_SLOTS = 27;
@@ -342,7 +342,10 @@ final class SimServer {
             case GLASS -> Optional.empty(); // glass drops nothing without silk touch
             case STONE, COBBLESTONE -> pickaxe ? Optional.of(ITEM_COBBLESTONE) : Optional.empty();
             case COAL_ORE -> pickaxe ? Optional.of(ITEM_COAL) : Optional.empty();
-            case IRON_ORE -> stonePick ? Optional.of(ITEM_RAW_IRON) : Optional.empty();
+            case IRON_ORE -> stonePick || held.filter(i -> i == itemNamedOrMinus("iron_pickaxe")).isPresent() ? Optional.of(ITEM_RAW_IRON) : Optional.empty();
+            // Emerald ore drops its emerald only to an iron pickaxe or better.
+            case EMERALD_ORE -> held.filter(i -> i == itemNamedOrMinus("iron_pickaxe")).isPresent()
+                    ? Optional.of(itemNamedOrMinus("emerald")).filter(i -> i >= 0) : Optional.empty();
             case TORCH -> Optional.of(ITEM_TORCH);
             case OAK_LOG -> Optional.of(ITEM_OAK_LOG);
             case SPRUCE_LOG -> Optional.of(itemNamed("spruce_log"));

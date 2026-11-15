@@ -1963,12 +1963,12 @@ class SquadSimulationTest {
     }
 
     /**
-     * The keep (command.Keep), taken down to y=63 (operator, 2026-11-15): a squad sent to build it
-     * digs a mound on the site away to the ground's top, and fills a pit in the ground's top in
-     * cobblestone, never the dirt it also carries.
+     * The keep (command.Keep), taken down to y=63 and not built up (operator, 2026-11-15): a squad
+     * sent to build it digs a mound on the site away to the ground's top, and leaves a pit in it as
+     * it is - nothing laid, dirt or cobblestone.
      */
     @Test
-    void aSquadOnTheKeepDigsItsSiteDownAndFillsItsGroundInCobblestone() {
+    void aSquadOnTheKeepDigsItsSiteDownAndBuildsNothingUp() {
         SimClock clock = new SimClock();
         java.util.function.IntPredicate pitX = x -> x >= -6 && x <= -4;
         SimServer server = new SimServer(clock, (x, y, z) -> x >= 4 && x <= 5 && z >= 4 && z <= 5 && (y == GROUND + 1 || y == GROUND + 2)
@@ -1997,18 +1997,43 @@ class SquadSimulationTest {
                 }
             }
         }
-        int cobblestone = 0;
         for (int x = -6; x <= -4; x++) {
             for (int z = -6; z <= -4; z++) {
                 for (int y = GROUND - 1; y <= Keep.TOP; y++) {
-                    assertNotEquals(SimServer.DIRT, server.block(x, y, z), "dirt in the keep's ground at " + x + "," + y + "," + z + events);
-                    if (server.block(x, y, z) == SimServer.COBBLESTONE) {
-                        cobblestone++;
-                    }
+                    assertEquals(SimServer.AIR, server.block(x, y, z), "the pit left as it is at " + x + "," + y + "," + z + events);
                 }
             }
         }
-        assertEquals(18, cobblestone, "the pit's 18 cells filled in cobblestone" + events);
+    }
+
+    /**
+     * Ore set aside for a better pickaxe is taken by the keep's hand who carries one, whatever its
+     * squad: live, the emerald was in one squad's share and the one iron pickaxe in the other's.
+     */
+    @Test
+    void theKeepsEmeraldIsTakenByTheOneWithTheIronPickaxeFromAnotherSquad() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 12 && z == 0 && y == GROUND + 1 ? SimServer.EMERALD_ORE
+                : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice;Bravo:Bob");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        Map<String, PlayerPosition> spawns = Map.of(
+                "Alice", new PlayerPosition(-8.5, GROUND + 1, 0.5), "Bob", new PlayerPosition(8.5, GROUND + 1, 0.5));
+        Map<String, List<int[]>> kits = Map.of(
+                "Alice", List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("iron_pickaxe"), 1}),
+                "Bob", List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}));
+        SoldierRunner.Connector connector = server.connector(spawns::get, kits::get);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString()).simulated(clock, connector).run();
+
+        clock.advance(5 * 60_000);
+
+        assertEquals(SimServer.AIR, server.block(12, GROUND + 1, 0), "the emerald taken; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
     /**

@@ -1992,7 +1992,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .forEach(c -> tops.merge(((long) c.x() << 32) ^ (c.z() & 0xffffffffL), c.y(), Math::max));
         java.util.function.IntBinaryOperator top = (x, z) -> tops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
         int layer = tops.values().stream().mapToInt(Integer::intValue).max().orElse(Keep.BOTTOM);
-        List<BlockPos> toFill = toDig.isEmpty() ? Clearing.toFill(world, fillShare, kept) : List.of();
+        // Not built up for now (operator, 2026-11-15): taken down to its ground and left.
+        List<BlockPos> toFill = toDig.isEmpty() && Keep.FILL ? Clearing.toFill(world, fillShare, kept) : List.of();
         state.keepDigLeft = toDig.size();
         keepDigLeftBySquad.put(squad, toDig.size());
         state.keepFillLeft = toDig.isEmpty() ? toFill.size() : -1;
@@ -2089,6 +2090,26 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 keepDrawing.remove(hand.name());
             }
         }
+        // Ore set aside for a better pickaxe, at or over the level - in reach on its pillar, or all
+        // that's left: taken by the keep's nearest hand who carries one, whatever its squad. Live, the
+        // keep's emerald was in one squad's share and the one iron pickaxe in another's, and it stood.
+        Map<String, Position> on = new HashMap<>();
+        hands.forEach(h -> on.put(h.name(), h.position()));
+        keepHandsAt.put(squad, Map.copyOf(on));
+        KeepPlan levelled = keepPlan;
+        int level = levelled != null && levelled.level() != Integer.MIN_VALUE && !keepCrews.isEmpty() ? levelled.level() : Keep.BOTTOM;
+        for (SoldierStatus h : hands) {
+            Optional<Cell> errand = oreErrand(h.name(), level);
+            if (errand.isPresent()) {
+                Cell c = errand.get();
+                Set<Cell> open = new HashSet<>(digExcept);
+                open.remove(c);
+                if (!(orders.get(h.name()) instanceof Order.Dig d && d.box().minX() == c.x() && d.box().minY() == c.y() && d.box().minZ() == c.z())) {
+                    LOG.info("[{}] {} takes the ore set aside at {} {} {} - it carries the pickaxe for it", squad, h.name(), c.x(), c.y(), c.z());
+                }
+                orders.put(h.name(), new Order.Dig(new Box(c.x(), c.y(), c.z(), c.x(), c.y(), c.z()), open));
+            }
+        }
         if (toDig.isEmpty() && !toFill.isEmpty() && orders.isEmpty() && !stocked && !"waiting".equals(state.keepWaiting)) {
             LOG.warn("[{}] the keep waits on cobblestone: {} cells to fill, none carried, none in the stockpile", squad, toFill.size());
             state.keepWaiting = "waiting";
@@ -2097,6 +2118,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         return orders;
     }
+
+    /** Each squad's hands on the keep and where they stand, as its last keep cycle saw them - the squad loop's. */
+    private final Map<String, Map<String, Position>> keepHandsAt = new ConcurrentHashMap<>();
 
     /** Soldiers whose dig or fill is the keep's, not the camp's - squad loop writes, tick reads. */
     private final Set<String> keepHands = ConcurrentHashMap.newKeySet();
@@ -2228,6 +2252,34 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         return orders;
+    }
+
+    /**
+     * The set-aside ore {@code hand} is to take: at or over {@code level}, its drop got with
+     * {@code hand}'s pickaxe, and {@code hand} the nearest of the keep's hands - every squad's - who
+     * could get it. Empty for one with none.
+     */
+    private Optional<Cell> oreErrand(String hand, int level) {
+        Map<String, Position> on = new HashMap<>();
+        keepHandsAt.values().forEach(on::putAll);
+        if (!on.containsKey(hand) || level == Integer.MIN_VALUE) {
+            return Optional.empty();
+        }
+        Set<Cell> aside = new HashSet<>();
+        squadStates.values().forEach(s -> aside.addAll(s.keepOreAside));
+        return aside.stream().filter(c -> c.y() >= level - 1)
+                .filter(c -> {
+                    Optional<Hardness> hardness = world.hardness(c.x(), c.y(), c.z());
+                    java.util.function.Predicate<String> can = n -> hardness.map(hd -> hd.drops(pickaxeTiers.getOrDefault(n, Hardness.HAND))).orElse(false);
+                    if (!can.test(hand)) {
+                        return false;
+                    }
+                    // The nearest who can.
+                    return on.entrySet().stream().filter(e -> can.test(e.getKey()))
+                            .min(Comparator.comparingDouble(e -> Math.hypot(e.getValue().x() - c.x(), e.getValue().z() - c.z())))
+                            .map(e -> e.getKey().equals(hand)).orElse(false);
+                })
+                .min(Comparator.comparingDouble(c -> Math.hypot(on.get(hand).x() - c.x(), on.get(hand).z() - c.z())));
     }
 
     /** The foreman's plan for a level: who's on it, their rectangles, and when it was made. */
@@ -2726,16 +2778,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The camp's mine, as kept on disk: empty for no camp, or no mine sited. */
     private Optional<Staircase> campStairs() {
         if (campStairs == null) {
-            campStairs = camp == null ? Optional.empty() : mineStore.load(camp[0] + "," + camp[1])
-                    .filter(kept -> kept.size() == 2 || kept.size() == 3)
-                    .map(SoldierRunner::keptStairs);
+            campStairs = camp == null ? Optional.empty() : keptMine(camp[0] + "," + camp[1]);
         }
         return campStairs;
     }
 
     /** A staircase as kept on disk: its head, its last step, and - once run on - its main tunnel's end. */
-    private static Staircase keptStairs(List<BlockPos> kept) {
-        return Staircase.kept(kept.get(0), kept.get(1), kept.size() == 3 ? Optional.of(kept.get(2)) : Optional.empty());
+    private static Staircase keptStairs(List<BlockPos> kept, boolean well) {
+        return Staircase.kept(kept.get(0), kept.get(1), kept.size() == 3 ? Optional.of(kept.get(2)) : Optional.empty(), well);
+    }
+
+    /** Where a mine is kept on disk by {@code base}: a well's under its own key, a spiral's under the base. */
+    private static String mineKey(String base, boolean well) {
+        return well ? "well " + base : base;
+    }
+
+    /** The mine kept on disk by {@code base}: a well's first, else a spiral cut before the standard. */
+    private Optional<Staircase> keptMine(String base) {
+        return mineStore.load(mineKey(base, true)).filter(k -> k.size() == 2 || k.size() == 3).map(k -> keptStairs(k, true))
+                .or(() -> mineStore.load(base).filter(k -> k.size() == 2 || k.size() == 3).map(k -> keptStairs(k, false)));
     }
 
     /** What's kept on disk of {@code stairs}: see {@link #keptStairs}. */
@@ -3511,7 +3572,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         mineExtendedAt.put(state.stairs.head(), now);
                         stairsProgress.clear();
                         if (!nearCamp(x, z)) {
-                            mineStore.save("mine" + x + "," + z, toKeep(longer.get())); // the camp's is saved with it below
+                            mineStore.save(mineKey("mine" + x + "," + z, longer.get().well()), toKeep(longer.get())); // the camp's is saved with it below
                         }
                         treeClaims.addAll(longer.get().walkway());
                         LOG.info("[{}] MINE: worked out, the force short of iron - its main tunnel run on to {} blocks", squadName,
@@ -3543,11 +3604,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Optional<Staircase> kept = campStairs().filter(k ->
                     (Math.max(Math.abs(k.head().x() - x), Math.abs(k.head().z() - z)) <= Staircase.SITE_RADIUS
                             || nearCamp(x, z))
-                            && k.bottom() == Math.max(Staircase.DEEPEST, Math.min(depth, k.head().y() - 1)));
+                            && k.bottom() == (k.well() ? Staircase.wellBottom(depth, k.head().y())
+                            : Math.max(Staircase.DEEPEST, Math.min(depth, k.head().y() - 1))));
             // A mine off the camp is kept on disk by the x and z it was ordered at: after a restart it's
             // cut on down, not sited again over its own half-cut steps.
             if (kept.isEmpty() && !nearCamp(x, z)) {
-                kept = mineStore.load("mine" + x + "," + z).filter(k -> k.size() == 2 || k.size() == 3).map(SoldierRunner::keptStairs);
+                kept = keptMine("mine" + x + "," + z);
             }
             if (kept.isPresent()) {
                 LOG.info("[{}] MINE: the staircase kept on disk: down from {} to y={}", squadName, kept.get().head(), kept.get().bottom());
@@ -3559,13 +3621,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (failedHere && clockwork.millis() < state.stairsRetryAt) {
                 return null;
             }
-            Optional<Staircase> sited = Staircase.site(
-                    world, x, z, nearY, depth);
+            // To the standard: a 4x4 well centred in the chunk (Staircase.well; operator, 2026-11-15).
+            Optional<Staircase> sited = Staircase.siteWell(world, x, z, nearY, depth);
             if (sited.isEmpty()) {
                 if (!failedHere) {
-                    LOG.warn("[{}] MINE: nowhere within {} blocks of x={} z={} a staircase can be cut down clear of water and lava - there itself, {}",
-                            squadName, Staircase.SITE_RADIUS, x, z,
-                            Staircase.whyNot(world, x, z, nearY, depth));
+                    LOG.warn("[{}] MINE: no chunk at or round x={} z={} a well can be cut down clear of water and lava - there itself, {}",
+                            squadName, x, z, Staircase.whyNotWell(world, x, z, nearY, depth));
                 }
                 state.stairsFor = new int[]{x, z};
                 state.stairsRetryAt = clockwork.millis() + STAIRS_RETRY_MILLIS;
@@ -3574,7 +3635,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             LOG.info("[{}] MINE: a staircase down from {} to y={}", squadName, sited.get().head(), sited.get().bottom());
             state.stairsFor = new int[]{x, z};
             if (!nearCamp(x, z)) {
-                mineStore.save("mine" + x + "," + z, List.of(sited.get().head(), sited.get().step(sited.get().steps() - 1)));
+                mineStore.save(mineKey("mine" + x + "," + z, true), toKeep(sited.get()));
             }
             // Its stairs and tunnels are claimed: no table, furnace or other digger goes in them.
             treeClaims.addAll(sited.get().walkway());
@@ -3590,7 +3651,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             nightBelow.remove(squadName);
         }
         if (stairs != null && camp != null && nearCamp(stairs.head().x(), stairs.head().z()) && !campStairs().equals(Optional.of(stairs))) {
-            mineStore.save(camp[0] + "," + camp[1], toKeep(stairs));
+            mineStore.save(mineKey(camp[0] + "," + camp[1], stairs.well()), toKeep(stairs));
             campStairs = Optional.of(stairs);
         }
         siteWorkshop(squadName, state, statuses, plan == null ? List.of()
@@ -4366,9 +4427,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .forEach(c -> taken.add(column(c.x(), c.z())));
         }
         campStairs().ifPresent(st -> {
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    taken.add(column(st.head().x() + dx, st.head().z() + dz));
+            for (int dx = -3; dx <= 3; dx++) {
+                for (int dz = -3; dz <= 3; dz++) {
+                    if (st.inShaft(st.head().x() + dx, st.head().z() + dz)) {
+                        taken.add(column(st.head().x() + dx, st.head().z() + dz));
+                    }
                 }
             }
         });

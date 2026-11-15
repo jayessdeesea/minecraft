@@ -25,15 +25,83 @@ import java.util.Set;
  * so every block of it is seen from one tunnel or the next. All two high, floors left standing. A
  * mine worked out is run on a stretch at a time ({@link #extended}), up to {@link #MAX_STRETCHES}.
  *
- * @param head       the cell a soldier stands in at the top, on the pillar
+ * <p>Or a <b>well</b> ({@link #well}; operator, 2026-11-15): 4x4, centred in its chunk -
+ * chunk-local x and z 6..9 - round a 2x2 pillar at 7..8, its walkway the twelve cells round it,
+ * one step down a cell, twelve blocks a turn, its north-east corner (9, 6) at every y = 12k, and
+ * its landing there. Mines cut before keep the spiral they were cut to.
+ *
+ * @param head       the cell a soldier stands in at the top: on the pillar, or a well's first cell
  * @param bottom     the height the feet reach on the last step
  * @param stretches  the main tunnel's length, in stretches of {@link #MAIN_TUNNEL}
+ * @param well       a 4x4 well to the standard, not the 3x3 spiral
  */
-public record Staircase(BlockPos head, int bottom, int stretches) {
+public record Staircase(BlockPos head, int bottom, int stretches, boolean well) {
 
-    /** A staircase whose main tunnel is one stretch. */
+    /** A spiral staircase whose main tunnel is one stretch. */
     public Staircase(BlockPos head, int bottom) {
-        this(head, bottom, 1);
+        this(head, bottom, 1, false);
+    }
+
+    /** A spiral staircase. */
+    public Staircase(BlockPos head, int bottom, int stretches) {
+        this(head, bottom, stretches, false);
+    }
+
+    /**
+     * The well's walkway, chunk-local, in the order the stairs go down it: clockwise from the
+     * north-east corner, each beside the last.
+     */
+    private static final int[][] WELL_RING = {{9, 6}, {9, 7}, {9, 8}, {9, 9}, {8, 9}, {7, 9}, {6, 9}, {6, 8}, {6, 7}, {6, 6}, {7, 6}, {8, 6}};
+    /** Every so many blocks the well's north-east corner comes round: a turn of its twelve. */
+    public static final int WELL_TURN = 12;
+    /** The well's first and last chunk-local x and z, and its pillar's. */
+    public static final int WELL_MIN = 6, WELL_MAX = 9, PILLAR_MIN = 7, PILLAR_MAX = 8;
+
+    /** The well's walkway cell the feet are in at height {@code y}, in chunk ({@code chunkX}, {@code chunkZ}). */
+    static BlockPos wellCell(int chunkX, int chunkZ, int y) {
+        int[] local = WELL_RING[Math.floorMod(-y, WELL_TURN)];
+        return new BlockPos(chunkX * 16 + local[0], y, chunkZ * 16 + local[1]);
+    }
+
+    /**
+     * A well in chunk ({@code chunkX}, {@code chunkZ}), its head at height {@code headY}, its
+     * landing at the deepest y = 12k no deeper than {@code depth} nor {@link #DEEPEST}.
+     */
+    public static Staircase well(int chunkX, int chunkZ, int headY, int depth) {
+        return new Staircase(wellCell(chunkX, chunkZ, headY), wellBottom(depth, headY), 1, true);
+    }
+
+    /** A well's landing: the deepest y = 12k at or above {@code depth}, {@link #DEEPEST} and under the head. */
+    public static int wellBottom(int depth, int headY) {
+        int floor = Math.floorDiv(DEEPEST + WELL_TURN - 1, WELL_TURN) * WELL_TURN;
+        return Math.max(floor, Math.floorDiv(Math.min(depth, headY - 1), WELL_TURN) * WELL_TURN);
+    }
+
+    /** Whether column ({@code x}, {@code z}) is in the shaft: a well's 4x4, a spiral's 3x3. */
+    public boolean inShaft(int x, int z) {
+        if (well) {
+            int lx = x - Math.floorDiv(head.x(), 16) * 16, lz = z - Math.floorDiv(head.z(), 16) * 16;
+            return lx >= WELL_MIN && lx <= WELL_MAX && lz >= WELL_MIN && lz <= WELL_MAX;
+        }
+        return Math.abs(x - head.x()) <= 1 && Math.abs(z - head.z()) <= 1;
+    }
+
+    /** Whether column ({@code x}, {@code z}) is the pillar's: a well's 2x2, a spiral's one. */
+    public boolean inPillar(int x, int z) {
+        if (well) {
+            int lx = x - Math.floorDiv(head.x(), 16) * 16, lz = z - Math.floorDiv(head.z(), 16) * 16;
+            return lx >= PILLAR_MIN && lx <= PILLAR_MAX && lz >= PILLAR_MIN && lz <= PILLAR_MAX;
+        }
+        return x == head.x() && z == head.z();
+    }
+
+    /** Out from the shaft from the last step, along an axis it's already off centre on: never back through it. */
+    private int[] outward() {
+        if (well) {
+            return new int[]{1, 0}; // east, out of the north-east corner
+        }
+        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
+        return d[0] != 0 ? new int[]{d[0], 0} : new int[]{0, d[1]};
     }
 
     /** The most stretches a main tunnel runs to: 96 blocks, a walk of half a minute from the landing. */
@@ -46,7 +114,7 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
 
     /** This mine with its main tunnel run on a stretch, its branches with it; empty at {@link #MAX_STRETCHES}. */
     public java.util.Optional<Staircase> extended() {
-        return stretches >= MAX_STRETCHES ? java.util.Optional.empty() : java.util.Optional.of(new Staircase(head, bottom, stretches + 1));
+        return stretches >= MAX_STRETCHES ? java.util.Optional.empty() : java.util.Optional.of(new Staircase(head, bottom, stretches + 1, well));
     }
 
     /**
@@ -78,17 +146,21 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
     /** The main tunnel's far cell, where the feet are: kept on disk, it says how far it was run. */
     public BlockPos tunnelEnd() {
         BlockPos last = step(steps() - 1);
-        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
-        int dx = d[0] != 0 ? d[0] : 0;
-        int dz = d[0] != 0 ? 0 : d[1];
+        int[] out = outward();
+        int dx = out[0], dz = out[1];
         return last.offset(dx * tunnel(), 0, dz * tunnel());
     }
 
     /** The staircase from {@code head} down to {@code lastStep}, its main tunnel run to {@code end}: as kept on disk. */
     public static Staircase kept(BlockPos head, BlockPos lastStep, java.util.Optional<BlockPos> end) {
-        Staircase one = new Staircase(head, lastStep.y());
+        return kept(head, lastStep, end, false);
+    }
+
+    /** As {@link #kept(BlockPos, BlockPos, Optional)}, a well's or a spiral's. */
+    public static Staircase kept(BlockPos head, BlockPos lastStep, java.util.Optional<BlockPos> end, boolean well) {
+        Staircase one = new Staircase(head, lastStep.y(), 1, well);
         return end.map(e -> new Staircase(head, lastStep.y(), Math.max(1, Math.min(MAX_STRETCHES,
-                Math.round((Math.abs(e.x() - lastStep.x()) + Math.abs(e.z() - lastStep.z())) / (float) MAIN_TUNNEL))))).orElse(one);
+                Math.round((Math.abs(e.x() - lastStep.x()) + Math.abs(e.z() - lastStep.z())) / (float) MAIN_TUNNEL))), well)).orElse(one);
     }
 
     /** The eight cells round the pillar, each beside the last: north, then clockwise. */
@@ -118,9 +190,8 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
     /** The landing's two recesses, either side of the main tunnel's first cell: off the walkway. */
     public List<BlockPos> landing() {
         BlockPos first = landingStand();
-        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
-        int dx = d[0] != 0 ? d[0] : 0;
-        int dz = d[0] != 0 ? 0 : d[1];
+        int[] out = outward();
+        int dx = out[0], dz = out[1];
         return List.of(first.offset(-dz, 0, dx), first.offset(dz, 0, -dx));
     }
 
@@ -131,9 +202,8 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
      */
     public List<BlockPos> store() {
         BlockPos first = landingStand();
-        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
-        int dx = d[0] != 0 ? d[0] : 0;
-        int dz = d[0] != 0 ? 0 : d[1];
+        int[] out = outward();
+        int dx = out[0], dz = out[1];
         BlockPos second = first.offset(dx, 0, dz);
         return List.of(second.offset(-dz, 0, dx), second.offset(dz, 0, -dx));
     }
@@ -149,9 +219,8 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
 
     /** Where a soldier stands to work at the landing: the main tunnel's first cell, between the recesses. */
     public BlockPos landingStand() {
-        BlockPos last = step(steps() - 1);
-        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
-        return d[0] != 0 ? last.offset(d[0], 0, 0) : last.offset(0, 0, d[1]);
+        int[] out = outward();
+        return step(steps() - 1).offset(out[0], 0, out[1]);
     }
 
     /**
@@ -163,14 +232,15 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
      */
     public List<BlockPos> lights() {
         List<BlockPos> lights = new ArrayList<>();
-        for (int k = RING.length / 2; k < steps(); k += RING.length) {
+        // A spiral's once a turn, halfway round; a well's every half turn, its walkway half as long again.
+        int every = well ? WELL_TURN / 2 : RING.length;
+        for (int k = every / 2; k < steps(); k += every) {
             lights.add(step(k));
         }
         lights.add(landingStand());
         BlockPos last = step(steps() - 1);
-        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
-        int dx = d[0] != 0 ? d[0] : 0;
-        int dz = d[0] != 0 ? 0 : d[1];
+        int[] out = outward();
+        int dx = out[0], dz = out[1];
         for (int i = TUNNEL_LIGHT_EVERY; i <= tunnel(); i += TUNNEL_LIGHT_EVERY) {
             lights.add(last.offset(dx * i, 0, dz * i));
         }
@@ -236,6 +306,13 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
         return cells;
     }
 
+    /** Every cell the mine cuts, meant to be open. */
+    public Set<BlockPos> cutCells() {
+        Set<BlockPos> cells = new HashSet<>();
+        cuts().forEach(c -> cells.addAll(c.cells()));
+        return cells;
+    }
+
     /** Every cut, in order: the steps down, the main tunnel, then the branches nearest the shaft first. */
     public List<Cut> cuts() {
         List<Cut> cuts = new ArrayList<>();
@@ -243,10 +320,8 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
             cuts.add(new Cut(above(k), cells(k), -1));
         }
         BlockPos last = step(steps() - 1);
-        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
-        // Out from the shaft along an axis it's already off centre on: never back through the 3x3.
-        int dx = d[0] != 0 ? d[0] : 0;
-        int dz = d[0] != 0 ? 0 : d[1];
+        int[] out = outward();
+        int dx = out[0], dz = out[1];
         List<BlockPos> main = new ArrayList<>();
         for (int i = 1; i <= tunnel(); i++) {
             BlockPos feet = last.offset(dx * i, 0, dz * i);
@@ -289,6 +364,11 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
         if (bottom >= head.y() || bottom < DEEPEST) {
             throw new IllegalArgumentException("a staircase from " + head + " goes down, to no deeper than " + DEEPEST + ", not " + bottom);
         }
+        if (well && (!head.equals(wellCell(Math.floorDiv(head.x(), 16), Math.floorDiv(head.z(), 16), head.y()))
+                || Math.floorMod(bottom, WELL_TURN) != 0)) {
+            throw new IllegalArgumentException("a well's head is its walkway's cell at its height, and its landing at y = 12k: "
+                    + head + " to " + bottom);
+        }
     }
 
     /** How many steps down. */
@@ -298,6 +378,9 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
 
     /** Where the feet are on step {@code k} (0 the first down from the head): one block lower each step. */
     public BlockPos step(int k) {
+        if (well) {
+            return wellCell(Math.floorDiv(head.x(), 16), Math.floorDiv(head.z(), 16), head.y() - 1 - k);
+        }
         int[] d = RING[Math.floorMod(k, RING.length)];
         return new BlockPos(head.x() + d[0], head.y() - 1 - k, head.z() + d[1]);
     }
@@ -354,6 +437,41 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
         return Optional.empty();
     }
 
+    /**
+     * A well (the standard: {@link #well}) in the chunk holding ({@code x}, {@code z}), else the
+     * nearest of the eight round it, that can be cut all the way down to its landing by the world as
+     * it shows it - its head the first walkway cell, from {@code nearY} up and down 24, a soldier
+     * can stand in. Empty with none.
+     */
+    public static Optional<Staircase> siteWell(WorldView world, int x, int z, int nearY, int depth) {
+        int cx = Math.floorDiv(x, 16), cz = Math.floorDiv(z, 16);
+        List<int[]> chunks = new ArrayList<>();
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                chunks.add(new int[]{cx + dx, cz + dz});
+            }
+        }
+        chunks.sort(java.util.Comparator.comparingDouble(c -> Math.hypot(c[0] * 16 + 8 - x, c[1] * 16 + 8 - z)));
+        for (int[] c : chunks) {
+            Optional<Staircase> well = wellAt(world, c[0], c[1], nearY, depth);
+            if (well.isPresent() && well.get().clear(world)) {
+                return well;
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** The well chunk ({@code chunkX}, {@code chunkZ}) would have, its head the highest walkway cell a soldier stands in near {@code nearY}. */
+    static Optional<Staircase> wellAt(WorldView world, int chunkX, int chunkZ, int nearY, int depth) {
+        for (int y = nearY + 24; y >= nearY - 24; y--) {
+            BlockPos head = wellCell(chunkX, chunkZ, y);
+            if (Pathfinder.standable(world, head) && !world.isLog(head.x(), y - 1, head.z()) && world.leaves(head.x(), y - 1, head.z()).isEmpty()) {
+                return wellBottom(depth, y) < y ? Optional.of(well(chunkX, chunkZ, y, depth)) : Optional.empty();
+            }
+        }
+        return Optional.empty();
+    }
+
     /** Whether every step can be cut as the world shows it: no water or lava beside one, and a floor under each. */
     boolean clear(WorldView world) {
         return blocked(world).isEmpty();
@@ -369,6 +487,13 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
             }
         }
         return Optional.empty();
+    }
+
+    /** The well {@link #siteWell} tries in the chunk at ({@code x}, {@code z}) itself, and why it won't do. */
+    public static String whyNotWell(WorldView world, int x, int z, int nearY, int depth) {
+        return wellAt(world, Math.floorDiv(x, 16), Math.floorDiv(z, 16), nearY, depth)
+                .map(w -> "from " + w.head() + " to y=" + w.bottom() + ": " + w.blocked(world).orElse("clear"))
+                .orElse("no walkway cell to stand on within 24 blocks of y=" + nearY);
     }
 
     /** The staircase {@link #site} tries at ({@code x}, {@code z}) itself, and why it won't do - for saying why none was sited. */

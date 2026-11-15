@@ -589,7 +589,10 @@ such ore is set aside with the ground under it, by its strip's builder's pickaxe
 on down past it - left in the dig it would hold the whole site at its level in lock step (§17) - and
 with the pickaxe carried it's the strip's top again, cleared like any block. Set aside isn't done:
 the keep's ground isn't flattened while any stands (operator, 2026-11-15), and its estimate (§ 17)
-bills the iron pickaxe it waits on. A drop fallen where no
+bills the iron pickaxe it waits on. Once ore set aside is at or over the level - in reach on its
+pillar, or all that's left - the keep's nearest hand who carries the pickaxe for it takes it,
+whatever its squad (`[Squad] Alice takes the ore set aside at 12 64 0`): live, the emerald was in
+one squad's share and the one iron pickaxe in another's. A drop fallen where no
 body can stand - into a gap a block high - is lost, not walked to: live, three builders in turn
 stood a minute over one. A step or pillar it builds is of
 dirt before cobblestone (`Footing.placeStep`): scaffolding, while cobblestone is a floor's and a
@@ -1101,9 +1104,9 @@ raised anew every cycle.
 
 *How we use it:* stone near the surface runs out round a camp, and iron and diamonds lie deep.
 An objective's task can be `MINE`: the squad cuts a staircase down to its y, the only task whose
-y is a depth rather than the ground's height. The stairs go at the objective's x and z, or the
-nearest head within 12 blocks where every step can be cut clear of water and lava and over a floor,
-as the loaded chunks show them (`Staircase.site`). Beside a pond, the shaft moves off it rather
+y is a depth rather than the ground's height. The stairs go in the chunk holding the objective's
+x and z, or the nearest of the eight round it, where every step can be cut clear of water and lava
+and over a floor, as the loaded chunks show them (`Staircase.siteWell`). Beside a pond, the shaft moves off it rather
 than stopping at its first step. A head is on the ground: the highest standing cell near the
 camp's ground level that isn't on a tree, so an oak grown over the head doesn't lift it onto the
 canopy. When none can be sited, the log says why at the objective itself - the first step's
@@ -1117,11 +1120,18 @@ inside the wall was kept in place of the one cut to the bottom. Sited afresh eac
 a block dropped on the head, a soldier standing down the shaft - and each new staircase is
 started across the old ones, until no clear one is left near the head.
 
-The staircase (`bot.supply.Staircase`) is a spiral round a central pillar: one block down a
-step, round the eight cells about the pillar, so the shaft stays inside 3x3 and passes under its
-own top every eight steps with five blocks of rock between turns. Each step clears three cells:
-the feet, the head, and the head room a body needs to step down onto it. Its floor is left
-standing. A soldier walks down it and jumps back up it, with no ladder, and a slip is a fall of
+The staircase (`bot.supply.Staircase`) is cut to a standard (operator, 2026-11-15): a 4x4 well
+centred in its chunk - chunk-local x and z 6..9, as `floorMod(x, 16)` reads them, so world 6..9 in
+chunk 0 and -10..-7 in chunk -1 - round a 2x2 pillar at 7..8, its walkway the twelve cells round
+the pillar, one block down a step, twelve a turn. Its north-east corner, chunk-local (9, 6), comes
+round at every y = 12k, and the landing is there: the deepest y = 12k no deeper than asked, so a
+mine ordered to y=16 lands at y=12. Each step clears three cells: the feet, the head, and the head
+room a body needs to step down onto it. Its floor is left standing. Mines cut before the standard
+keep the 3x3 spiral they were cut to - eight cells round a one-block pillar - kept on disk under a
+key of their own (`well ` before a well's). The cutter keeps its well whole: an open cell in the
+pillar, the wall or the floor beside a step it cuts is filled as it passes, and ore in the wall is
+mined, its vein followed, and its cell put back in cobblestone once nothing more is in sight - a
+hole the server won't take is left after 30 seconds. A soldier walks down it and jumps back up it, with no ladder, and a slip is a fall of
 one block. It's cut no deeper than y=-58, clear of bedrock.
 
 One soldier, the first in squad order carrying a pickaxe, cuts it (`bot.supply.Miner`). It stands
@@ -1313,7 +1323,8 @@ before and names the earliest open standard - the next thing to work on.
 The main base is built beside the foothold, which stays the base until it's done
 (backlog/cells.md): first its keep (`command.Keep`), the task `KEEP` - x and z from -16 to 16,
 taken down to y=63 (operator, 2026-11-15), its floor walked at feet 64. The heights are the
-plan's, not the ground's: everything from y=64 up into the sky over it is dug out; then the
+plan's, not the ground's: everything from y=64 up into the sky over it is dug out, and the
+ground left as it is - not built up for now (operator, 2026-11-15; `Keep.FILL`). Built up, the
 ground's top at y=63, and any hollow open under it within 8 blocks, is filled in cobblestone only
 (`Order.Fill`'s `stoneOnly`, a filler of its own), never dirt, which endermen take. A strip each
 (`Tasking.keep`), each squad on it its own share of the site - west to east in the roster's order
