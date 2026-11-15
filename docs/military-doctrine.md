@@ -89,8 +89,9 @@ for a day) - raises
 an alert in the log, once a spell (`[Alert]`, `app.IdleWatch`): its report, its order, which
 routine has its hands, and its squad's task. It's logged again when it moves on. A soldier held at
 a table or furnace shows its routine; one with free hands and a task its routines can't start on is
-the chain of command's gap; one jumping in place is stuck. Beside it, one within a body's width of
-another for half a minute, moving or not, outside a rest (`app.CrowdWatch`), is alerted too, with
+the chain of command's gap; one jumping in place is stuck. Beside it, the space bubble (operator,
+2026-11-15): one within a body's width (0.6 blocks) of another for 10 seconds, moving or not,
+outside a rest (`app.CrowdWatch`), is alerted too, with
 what it's at, and logged again when it has room: two soldiers in one cell that long are working one
 job, or walking into each other.
 
@@ -1129,7 +1130,8 @@ mine ordered to y=16 lands at y=12. Each step clears three cells: the feet, the 
 room a body needs to step down onto it. Its floor is left standing. Mines cut before the standard
 keep the 3x3 spiral they were cut to - eight cells round a one-block pillar - kept on disk under a
 key of their own (`well ` before a well's). The cutter keeps its well whole: an open cell in the
-pillar, the wall or the floor beside a step it cuts is filled as it passes, and ore in the wall is
+pillar, the wall or the floor beside a step it cuts, under rock - something solid over it within
+24 blocks, so a cave's mouth and not the open hillside the top steps cut into - is filled as it passes, and ore in the wall is
 mined, its vein followed, and its cell put back in cobblestone once nothing more is in sight - a
 hole the server won't take is left after 30 seconds. A soldier walks down it and jumps back up it, with no ladder, and a slip is a fall of
 one block. It's cut no deeper than y=-58, clear of bedrock.

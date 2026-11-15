@@ -2865,6 +2865,27 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return w.chest().map(c -> new Position(c.x() + 0.5, c.y(), c.z() + 0.5)).orElse(new Position(0, Integer.MIN_VALUE, 0));
     }
 
+    /**
+     * {@code soldier}'s step on {@code stairs} for the night, holding no cut: a step of its own in a
+     * line of every squad's soldiers on the mine but its cutters, by name, below the cutters' own
+     * waiting steps - from three behind the cut while the stairs go down, from above the landing once
+     * they're down. Empty past the top: it waits where its squad's cutter is.
+     */
+    private Optional<Position> nightPlace(Staircase stairs, String soldier) {
+        Set<String> cutters = new HashSet<>(mineCrew(stairs));
+        List<String> line = squadStairs.entrySet().stream().filter(e -> e.getValue().head().equals(stairs.head()))
+                .flatMap(e -> presentSoldiers(e.getKey()).stream().map(DeterministicSoldier::status).map(SoldierStatus::name))
+                .filter(n -> !cutters.contains(n)).sorted().distinct().toList();
+        int rank = line.indexOf(soldier);
+        if (rank < 0) {
+            return Optional.empty();
+        }
+        int cut = stairs.stepsCut(world);
+        int from = cut >= stairs.steps() ? stairs.steps() - 2 : cut - Miner.WAIT_BEHIND;
+        int k = from - cutters.size() - rank;
+        return k < 0 ? Optional.empty() : Optional.of(centre(stairs.step(k)));
+    }
+
     /** When each mine, by its head, was last run on a stretch - squad loops write and read. */
     private final Map<BlockPos, Long> mineExtendedAt = new ConcurrentHashMap<>();
 
@@ -4031,8 +4052,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     byName.get(soldierName).receiveOrder(new Order.MoveTo(errand.get().x(), errand.get().y(), errand.get().z(), 0.3, 0.5, Risk.LOW));
                     continue;
                 }
+                // By night each a step of its own down the stairs, every squad's on the mine in a line by
+                // name - not on its cutter's cell: live, ten soldiers of four squads stood in one cell on
+                // the stairs and moved as one (operator, 2026-11-15: everyone needs their space bubble).
                 Position place = isCutter ? cutterAt
-                        : dark ? cutterAt
+                        : dark ? nightPlace(stairs, soldierName).orElse(cutterAt)
                         : new Position(stairs.head().x() - 1.5 + i, stairs.head().y(), stairs.head().z() + 3.5);
                 // Exactly where a cut wants it - or the head, where the next cut starts; but waiting the
                 // night out at the landing, as loosely as the rest: live, the landing's stand lost its
@@ -4040,7 +4064,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // reported itself stranded a block below.
                 boolean cutting = isCutter && !(dark && cutterAt.equals(rest) && !rest.equals(centre(stairs.head())));
                 byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(),
-                        cutting ? 0.3 : dark ? MINE_FOLLOW : 1.5, cutting ? 0.5 : dark ? MINE_FOLLOW : 4, Risk.LOW));
+                        // Its own step by night, held to it: a body's width, so two don't settle in one cell.
+                        cutting ? 0.3 : dark ? (isCutter ? MINE_FOLLOW : 0.6) : 1.5, cutting ? 0.5 : dark ? MINE_FOLLOW : 4, Risk.LOW));
                 continue;
             }
             Order given = eased.get(i);

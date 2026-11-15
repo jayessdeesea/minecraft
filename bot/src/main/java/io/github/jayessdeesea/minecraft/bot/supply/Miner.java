@@ -311,11 +311,28 @@ public final class Miner {
         for (BlockPos at : around) {
             boolean shouldStand = stairs.inPillar(at.x(), at.z()) || !stairs.inShaft(at.x(), at.z()) || at.equals(cut.feet().offset(0, -1, 0));
             if (shouldStand && !cutCells.contains(at) && !world.isSolid(at.x(), at.y(), at.z()) && !world.isHazard(at.x(), at.y(), at.z())
-                    && !holes.contains(at)) {
+                    && underground(world, at) && !holes.contains(at)) {
                 holes.add(at);
             }
         }
         return holes;
+    }
+
+    /** How far up a hole looks for the rock over it. */
+    static final int COVER = 24;
+
+    /**
+     * Whether {@code cell} is under rock - something solid over it in its column within
+     * {@link #COVER}: a cave's mouth or a gap in the pillar, not the open air of a hillside the stairs'
+     * top steps cut into. Live, the cutter walled the open air round the mine's head.
+     */
+    static boolean underground(WorldView world, BlockPos cell) {
+        for (int y = cell.y() + 1; y <= cell.y() + COVER; y++) {
+            if (world.isSolid(cell.x(), y, cell.z())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** A face of {@code cell} with a solid block against it, to put a block there against: the floor first. */
@@ -409,7 +426,7 @@ public final class Miner {
     }
 
     /** Steps behind the stairs' cutter a miner waiting for its share stands. */
-    static final int WAIT_BEHIND = 3;
+    public static final int WAIT_BEHIND = 3;
 
     /** The tunnels it cuts this tick ({@link #tick(Position, WorldView, Staircase, boolean, Optional)}). */
     private Optional<Set<Integer>> share = Optional.empty();

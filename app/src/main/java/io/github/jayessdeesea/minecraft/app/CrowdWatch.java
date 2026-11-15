@@ -10,7 +10,8 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
- * Soldiers on top of one another (docs/military-doctrine.md § 3), the idle watch's twin: one within
+ * Soldiers on top of one another - the space bubble (docs/military-doctrine.md § 3; operator,
+ * 2026-11-15: everyone needs their space bubble), the idle watch's twin: one within
  * a body's width ({@value #CROWD_BLOCKS} blocks across, {@value #CROWD_HEIGHT} up or down) of
  * another for {@value #CROWD_MILLIS} ms - moving or not - other than while its squad rests, raises
  * an alert once a spell, and is logged again when it has room. Two soldiers in one cell that long
@@ -20,8 +21,8 @@ import java.util.function.Supplier;
  */
 final class CrowdWatch {
 
-    static final long CROWD_MILLIS = 30_000;
-    static final double CROWD_BLOCKS = 0.8;
+    static final long CROWD_MILLIS = 10_000;
+    static final double CROWD_BLOCKS = 0.6;
     static final double CROWD_HEIGHT = 1.5;
 
     private record Spell(long since, boolean alarmed) {

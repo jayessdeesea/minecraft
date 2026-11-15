@@ -19,16 +19,16 @@ class CrowdWatchTest {
         CrowdWatch watch = new CrowdWatch();
         Optional<String> line = Optional.empty();
         for (long t = 0; t <= CrowdWatch.CROWD_MILLIS; t += 1_000) {
-            Position jiggle = new Position(0.5 + (t % 2_000 == 0 ? 0.2 : -0.2), 16, 0.5);
+            Position jiggle = new Position(0.5 + (t % 2_000 == 0 ? 0.1 : -0.1), 16, 0.5);
             Optional<String> said = watch.update("Alice", jiggle, t, false, Map.of("Bob", HERE), () -> "cutting");
             if (said.isPresent()) {
                 assertTrue(line.isEmpty(), "once a spell");
                 line = said;
             }
         }
-        assertTrue(line.orElseThrow().startsWith("Alice crowded 30 s within a body's width of Bob"), line.get());
+        assertTrue(line.orElseThrow().startsWith("Alice crowded 10 s within a body's width of Bob"), line.get());
         assertTrue(watch.update("Alice", HERE, CrowdWatch.CROWD_MILLIS + 2_000, false, Map.of("Bob", HERE), () -> "").isEmpty());
-        assertEquals("Alice has room again after 32 s",
+        assertEquals("Alice has room again after 12 s",
                 watch.update("Alice", new Position(3.5, 16, 0.5), CrowdWatch.CROWD_MILLIS + 2_000, false, Map.of("Bob", HERE), () -> "").orElseThrow());
     }
 
