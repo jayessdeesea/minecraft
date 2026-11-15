@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.command;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -26,6 +27,37 @@ public final class PlatoonSergeant {
     public static final int WOOD_LOAD = 16;
 
     private PlatoonSergeant() {
+    }
+
+    /**
+     * The LOGSTAT's Class IV line for the keep's builders, said as the request it is when they're
+     * short (FM 4-0: construction materials are requisitioned, or obtained locally; operator,
+     * 2026-11-13: with no resources, the workers ask for supplies): fewer than {@link Keep#LOGS_WANTED}
+     * logs between {@code logsCarried} by the squad and {@code logsStockpiled} in the stockpile, so
+     * with no chest standing at the depot ({@code chestStands}) none can be made, nor a pickaxe
+     * nor a torch. Live, the keep's builders worked a day with no tree within 48 blocks, no chest to
+     * stow in, and no pickaxe to dig stone for the slab. Empty when they have enough.
+     */
+    public static Optional<String> classFour(int logsCarried, int logsStockpiled, boolean chestStands) {
+        if (logsCarried + logsStockpiled >= Keep.LOGS_WANTED) {
+            return Optional.empty();
+        }
+        return Optional.of(String.format(Locale.ROOT, "Class IV RED - request: the keep's builders carry %d log%s between them and the"
+                + " stockpile holds %d: %sno pickaxe or torch to make. Request logs - send a squad for WOOD where trees are.",
+                logsCarried, logsCarried == 1 ? "" : "s", logsStockpiled, chestStands ? "" : "no chest at the keep's depot, "));
+    }
+
+    /**
+     * A squad's Class I ({@link Subsistence}): who is short of food, and of them who has no means
+     * of getting any - {@code foodless}, with no wheat and no game in sight - and isn't being shared
+     * some by a squadmate ({@code sharedTo}). Wheat growing in the camp's farm is a means for all:
+     * its bread is on the way, and live, squads with a farm growing raised Class I RED to the general
+     * all night, which it can't answer better than the farm already does.
+     */
+    public static Subsistence.Status classOne(List<SoldierStatus> statuses, Set<String> foodless, Set<String> sharedTo, boolean farmGrowing) {
+        Set<String> noMeans = farmGrowing ? Set.of() : statuses.stream().map(SoldierStatus::name)
+                .filter(n -> foodless.contains(n) && !sharedTo.contains(n)).collect(Collectors.toSet());
+        return Subsistence.of(statuses, noMeans);
     }
 
     /** One builder the party may be drawn from: its name, and the logs and saplings it carries. */

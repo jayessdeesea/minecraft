@@ -1403,21 +1403,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     /**
-     * The squad's Class I ({@code command.Subsistence}): who is short of food, and of them who has no
-     * means of getting any - no wheat, no game in sight - and isn't being shared some by a squadmate.
-     * Logged when its rating changes.
+     * The squad's Class I, as the platoon sergeant rates it ({@link PlatoonSergeant#classOne}), logged
+     * when its rating changes.
      */
     private Subsistence.Status classOne(String squad, SquadState state, List<SoldierStatus> statuses) {
         Set<String> shared = state.crossLeveling.stream().filter(t -> t.item() == CrossLevel.Item.RATIONS)
                 .map(CrossLevel.Transfer::receiver).collect(Collectors.toSet());
-        // Wheat growing in the camp's farm is a means: the squad keeps it (field feeding, half of a
-        // hungry squad on it), and its bread is on the way. Live, squads with a farm growing raised
-        // Class I RED to the general all night, which it can't answer better than the farm already does.
         FarmPlan farm = campFarm;
         boolean farmGrowing = farm != null && farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent());
-        Set<String> noMeans = farmGrowing ? Set.of() : statuses.stream().map(SoldierStatus::name)
-                .filter(n -> foodless.contains(n) && !shared.contains(n)).collect(Collectors.toSet());
-        Subsistence.Status status = Subsistence.of(statuses, noMeans);
+        Subsistence.Status status = PlatoonSergeant.classOne(statuses, Set.copyOf(foodless), shared, farmGrowing);
         if (state.classOne == null || state.classOne.rating() != status.rating()) {
             LOG.info("[{}] {}", squad, status.line());
         }
@@ -1427,13 +1421,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /**
      * The squad's Class IV, construction materials, as a request to the general when its task wants
-     * logs it hasn't got: on the keep, {@link Keep#classFour} from the logs its soldiers carry, the
+     * logs it hasn't got: on the keep, {@link PlatoonSergeant#classFour} from the logs its soldiers carry, the
      * stockpile's, and whether the keep's chest stands. Said in the log when it starts and when it's met.
      */
     private Optional<String> classFour(String squad, SquadState state, List<SoldierStatus> statuses) {
         boolean onKeep = taskOf(squad, Objective.Task.Keep.class).isPresent();
         Optional<String> request = !onKeep ? Optional.empty()
-                : Keep.classFour(Logstat.of(statuses).logs(), chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
+                : PlatoonSergeant.classFour(Logstat.of(statuses).logs(), chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
                         keepWorkshop != null && keepWorkshop.chestStands(world));
         if (!request.equals(state.classFour)) {
             request.ifPresentOrElse(line -> LOG.warn("[{}] {}", squad, line), () -> {

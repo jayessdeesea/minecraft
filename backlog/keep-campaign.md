@@ -14,7 +14,7 @@ The keep's dig runs with no supply behind it (operator, 2026-11-14). Live:
 - No iron in any pack: the mine stopped at its planned depth, so no iron pickaxe, and the keep's
   emerald ore stands set aside for one.
 - Excess thrown away for want of a chest; hundreds of cobblestone carried that the slab will want.
-- The Class IV request (`Keep.classFour`) asks only for logs, only under four, and nothing asks
+- The Class IV request (`PlatoonSergeant.classFour`) asks only for logs, only under four, and nothing asks
   for iron.
 - Nothing remembers the campaign: each dawn the squads are put back on the keep by the operator's
   rule, and what was prepared, what's short and what phase it's in is worked out again or not at all.

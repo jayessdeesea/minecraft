@@ -18,7 +18,7 @@ import java.util.OptionalInt;
  * while it has none laid out), {@code progress} how the standing order's task stands (empty
  * with no task to measure), {@code classOne} its food (empty where not measured): RED is its
  * request for food ({@link Subsistence}) - and {@code classFour} its construction materials, said
- * only as a request, when its task wants logs it hasn't got ({@link Keep#classFour}).
+ * only as a request, when its task wants logs it hasn't got ({@link PlatoonSergeant#classFour}).
  */
 public record SquadStatus(String squadName, Report report, List<SoldierStatus> soldiers, List<ResourceSite> resources,
                           Optional<Objective> standing, boolean holdingBase, OptionalInt baseBlocksLeft,

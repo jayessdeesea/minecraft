@@ -8,6 +8,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlatoonSergeantTest {
@@ -18,6 +19,45 @@ class PlatoonSergeantTest {
 
     private static final List<PlatoonSergeant.Hand> EIGHT = crew(0, "Alice", "Bob", "Carol", "Dana", "Eli", "Fran", "Gus", "Hal");
     private static final PlatoonSergeant.Wood SHORT = new PlatoonSergeant.Wood(0, true, false, false);
+
+    /**
+     * Short of logs between the builders and the stockpile, the keep's Class IV is a request to the
+     * general, naming what can't be made; with enough, nothing is said. Live, the builders worked a
+     * day with no tree within reach, no chest and no pickaxe, and nobody was asked for logs.
+     */
+    @Test
+    void theKeepsBuildersAskForLogsWhenTheyAndTheStockpileAreShort() {
+        String line = PlatoonSergeant.classFour(1, 0, false).orElseThrow();
+        assertTrue(line.startsWith("Class IV RED - request:"), line);
+        assertTrue(line.contains("1 log between them") && line.contains("no chest at the keep's depot") && line.contains("WOOD"), line);
+        assertTrue(!PlatoonSergeant.classFour(3, 0, true).orElseThrow().contains("chest"), "the chest stands: the pickaxes and torches are the want");
+        assertTrue(PlatoonSergeant.classFour(6, 6, false).isPresent(), "a dozen logs isn't a depot's: chests, a table, handles");
+        assertEquals(Optional.empty(), PlatoonSergeant.classFour(8, 8, false), "enough between them and the stockpile");
+        assertEquals(Optional.empty(), PlatoonSergeant.classFour(Keep.LOGS_WANTED, 0, false));
+    }
+
+    private static SoldierStatus hungry(String name) {
+        Kit kit = new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, 0, 0);
+        return new SoldierStatus(name, new Position(0, 64, 0), new Order.Idle(), new Report.InPosition(),
+                Optional.of(new Condition(20, 3, 0, Optional.of(kit))));
+    }
+
+    /**
+     * Class I: a hungry soldier with no means of food is RED, unless a squadmate is sharing some or
+     * wheat grows in the camp's farm - its bread is on the way, and the general can't answer better.
+     */
+    @Test
+    void noMeansOfFoodIsRedUnlessShareOrWheatIsComing() {
+        List<SoldierStatus> squad = List.of(hungry("Alice"), hungry("Bob"));
+
+        assertEquals(Subsistence.Rating.RED, PlatoonSergeant.classOne(squad, Set.of("Alice", "Bob"), Set.of(), false).rating());
+        assertEquals(Subsistence.Rating.RED, PlatoonSergeant.classOne(squad, Set.of("Alice", "Bob"), Set.of("Alice"), false).rating(),
+                "Bob still has no means");
+        assertNotEquals(Subsistence.Rating.RED, PlatoonSergeant.classOne(squad, Set.of("Alice", "Bob"), Set.of("Alice", "Bob"), false).rating(),
+                "both being shared some");
+        assertNotEquals(Subsistence.Rating.RED, PlatoonSergeant.classOne(squad, Set.of("Alice", "Bob"), Set.of(), true).rating(),
+                "wheat growing in the farm");
+    }
 
     @Test
     void shortOfLogsTwoCutAndNeverTheForeman() {

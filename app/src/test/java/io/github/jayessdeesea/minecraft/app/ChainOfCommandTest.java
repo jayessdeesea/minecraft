@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.General;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Keep;
+import io.github.jayessdeesea.minecraft.command.PlatoonSergeant;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -95,7 +96,7 @@ class ChainOfCommandTest {
         SquadStatus asking = new SquadStatus("Alpha", new Report.InPosition(),
                 List.of(new SoldierStatus("Alice", new Position(0.5, 64, 0.5), new Order.Idle(), new Report.InPosition(), Optional.empty())),
                 List.of(), Optional.empty(), false, OptionalInt.empty(), Optional.empty(), Optional.empty(),
-                Keep.classFour(1, 0, false));
+                PlatoonSergeant.classFour(1, 0, false));
 
         assertEquals(wood, chain.byDay(wood, asking), "its request answered: the order stands");
         assertTrue(chain.byDay(wood, squad("Bravo", "Bob")).task() instanceof Objective.Task.Keep, "no request: the keep");

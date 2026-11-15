@@ -186,7 +186,7 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    the company. Its answer to RED is a `FARM` task at ground by water, which harvests what's ripe
    and bakes it, or an objective where game is.
 
-Class IV, construction materials, goes up the same way (`Keep.classFour`, operator 2026-11-13:
+Class IV, construction materials, goes up the same way (`PlatoonSergeant.classFour`, operator 2026-11-13:
 with no resources, the workers ask for supplies). The keep's builders need logs - two for the
 chest at the depot, one each for a pickaxe or four torches, and stone dug by hand drops nothing to
 lay the slab from - and get their own where a tree is in reach; with fewer than 16 between them and
