@@ -216,6 +216,34 @@ class MinerTest {
     }
 
     /**
+     * A gap in a wide cave with no solid block beside it, the stand diagonal to it - as live, off the
+     * stairs' last step into the main tunnel: a block goes beside the gap first, against the stand's
+     * floor it touches, and the gap against that.
+     */
+    @Test
+    void aGapWithNothingBesideItIsBridgedFromTheBlockNextToIt() {
+        // The stand on (1, 64, 1), its floor at y=63; the gap under (0, 64, 0), diagonal to it.
+        BlockPos stand = new BlockPos(1, GROUND, 1), feet = new BlockPos(0, GROUND, 0), gap = feet.offset(0, -1, 0);
+        Staircase.Cut cut = new Staircase.Cut(stand, List.of(feet.offset(0, 1, 0), feet), 0);
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                for (int dy = 1; dy <= 3; dy++) {
+                    if (!(dx == 1 && dz == 1 && dy == 1)) { // the stand's floor stays
+                        cave.add(new BlockPos(dx, GROUND - dy, dz));
+                    }
+                }
+            }
+        }
+
+        Optional<Miner.Bridge> first = Miner.bridgeable(world, cut);
+        assertTrue(first.isPresent(), "a way to build out to the gap");
+        assertTrue(!first.get().cell().equals(gap) && Math.abs(first.get().cell().x() - gap.x()) + Math.abs(first.get().cell().z() - gap.z()) == 1,
+                "a block beside the gap first: " + first.get());
+        placed.add(first.get().cell());
+        assertEquals(gap, Miner.bridgeable(world, cut).orElseThrow().cell(), "then the gap, against it");
+    }
+
+    /**
      * With nothing to floor a cave with, the tunnel over it waits rather than being given up: the
      * mine's other tunnels are cut meanwhile, and the stone they give floors it after.
      */

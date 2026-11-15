@@ -164,7 +164,7 @@ public final class Miner {
                 stop();
                 return new Progress.Stopped(hazard.get());
             }
-            Optional<BlockFace> support = bridgeable(world, cut);
+            Optional<Bridge> support = bridgeable(world, cut);
             if (support.isPresent() && bridged.getOrDefault(cut.tunnel(), 0) < BRIDGE_TRIES) {
                 if (bridging.isPresent()) {
                     return bridge(soldier, cut, next.getAsInt(), cuts.size(), support.get(), bridging.get(), free);
@@ -179,7 +179,8 @@ public final class Miner {
                 continue;
             }
             // A tunnel is one of many: give it up, and go on with the next.
-            LOG.warn("{} gives up tunnel {} of the mine: {}", name, cut.tunnel(), hazard.get());
+            LOG.warn("{} gives up tunnel {} of the mine: {}{}", name, cut.tunnel(), hazard.get(),
+                    hazard.get().startsWith("no floor") ? " - not floored: " + whyNotBridgeable(world, cut, bridged.getOrDefault(cut.tunnel(), 0)) : "");
             blocked.add(cut.tunnel());
         }
         int k = next.getAsInt();
@@ -218,37 +219,79 @@ public final class Miner {
         return new Progress.Working(k, cuts.size());
     }
 
+    /** A block to put in the bridge over a tunnel's cave: its cell, and the side of it the block it goes against is on. */
+    record Bridge(BlockPos cell, BlockFace support) {
+    }
+
     /**
-     * The side of the gap under {@code cut}'s feet a block put there goes against, if the cut's only
-     * hazard is that gap: nothing liquid near, and a solid block beside the gap or under it - the
-     * floor the soldier stands on, mostly.
+     * The next block of the bridge over the gap under {@code cut}'s feet, if the cut's only hazard
+     * is that gap - nothing liquid near. The gap itself, against a solid block beside or under it;
+     * with none - a wide cave, the stand diagonal to the gap, as off the stairs' last step - a block
+     * beside the gap first, against the solid it touches, and the gap against that next. Empty
+     * when neither can go anywhere.
      */
-    static Optional<BlockFace> bridgeable(WorldView world, Staircase.Cut cut) {
+    static Optional<Bridge> bridgeable(WorldView world, Staircase.Cut cut) {
         BlockPos floor = cut.feet().offset(0, -1, 0);
         if (world.isSolid(floor.x(), floor.y(), floor.z()) || besideLiquid(world, floor)
                 || cut.cells().stream().anyMatch(c -> besideLiquid(world, c) || world.isHazard(c.x(), c.y(), c.z()))) {
             return Optional.empty();
         }
         BlockPos under = cut.stand().offset(0, -1, 0);
-        List<BlockFace> sides = new ArrayList<>(List.of(BlockFace.NORTH, BlockFace.SOUTH,
-                BlockFace.WEST, BlockFace.EAST, BlockFace.DOWN));
-        // The stand's own floor first: in reach, and what the soldier looks at.
-        sides.sort(java.util.Comparator.comparing(f -> floor.offset(f.dx, f.dy, f.dz).equals(under) ? 0 : 1));
-        return sides.stream().filter(f -> world.isSolid(floor.x() + f.dx, floor.y() + f.dy, floor.z() + f.dz)).findFirst();
+        Optional<BlockFace> direct = supportOf(world, floor, under);
+        if (direct.isPresent()) {
+            return Optional.of(new Bridge(floor, direct.get()));
+        }
+        // A block beside the gap, nearest the stand's floor first: in reach, and on the way to it.
+        List<BlockFace> sides = new ArrayList<>(List.of(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.WEST, BlockFace.EAST, BlockFace.DOWN));
+        sides.sort(java.util.Comparator.comparingInt(f -> Math.abs(floor.x() + f.dx - under.x()) + Math.abs(floor.y() + f.dy - under.y())
+                + Math.abs(floor.z() + f.dz - under.z())));
+        for (BlockFace side : sides) {
+            BlockPos beside = floor.offset(side.dx, side.dy, side.dz);
+            if (world.isSolid(beside.x(), beside.y(), beside.z()) || world.isHazard(beside.x(), beside.y(), beside.z()) || besideLiquid(world, beside)) {
+                continue;
+            }
+            Optional<BlockFace> support = supportOf(world, beside, under);
+            if (support.isPresent()) {
+                return Optional.of(new Bridge(beside, support.get()));
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** A side of {@code cell} with a solid block on it - {@code near}'s side first - for a block put in {@code cell}. */
+    private static Optional<BlockFace> supportOf(WorldView world, BlockPos cell, BlockPos near) {
+        List<BlockFace> sides = new ArrayList<>(List.of(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.WEST, BlockFace.EAST, BlockFace.DOWN));
+        sides.sort(java.util.Comparator.comparing(f -> cell.offset(f.dx, f.dy, f.dz).equals(near) ? 0 : 1));
+        return sides.stream().filter(f -> world.isSolid(cell.x() + f.dx, cell.y() + f.dy, cell.z() + f.dz)).findFirst();
+    }
+
+    /** Why {@code cut}'s gap isn't floored, for the log: which of {@link #bridgeable}'s checks failed. */
+    static String whyNotBridgeable(WorldView world, Staircase.Cut cut, int bridgedSoFar) {
+        BlockPos floor = cut.feet().offset(0, -1, 0);
+        if (bridgedSoFar >= BRIDGE_TRIES) {
+            return bridgedSoFar + " blocks put under it already";
+        }
+        for (BlockPos c : List.of(floor, cut.cells().get(0), cut.cells().get(cut.cells().size() - 1))) {
+            for (int[] d : new int[][]{{0, 0, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+                if (world.isHazard(c.x() + d[0], c.y() + d[1], c.z() + d[2])) {
+                    return "a hazard at " + c.offset(d[0], d[1], d[2]) + " beside " + c;
+                }
+            }
+        }
+        return "nothing solid within two blocks of the gap at " + floor + " to build out from";
     }
 
     /** From the cut's stand, cobblestone in the gap under its feet, against {@code support}; the cut goes on once the world shows it. */
-    private Progress bridge(Position soldier, Staircase.Cut cut, int k, int steps, BlockFace support, ItemClassRegistry.ItemClass block, boolean free) {
+    private Progress bridge(Position soldier, Staircase.Cut cut, int k, int steps, Bridge next, ItemClassRegistry.ItemClass block, boolean free) {
         breacher.stop();
         BlockPos from = cut.stand();
         standAt = new Position(from.x() + 0.5, from.y(), from.z() + 0.5);
         boolean on = Math.hypot(soldier.x() - standAt.x(), soldier.z() - standAt.z()) < ON_CELL && Math.abs(soldier.y() - from.y()) < ON_CELL;
         if (free && on) {
-            BlockPos floor = cut.feet().offset(0, -1, 0);
             int n = bridged.merge(cut.tunnel(), 1, Integer::sum);
             LOG.info("{} floors {} of the mine over a cave at {} ({} of {})", name,
-                    cut.tunnel() == 0 ? "the main tunnel" : "branch " + cut.tunnel(), floor, n, BRIDGE_TRIES);
-            footing.place(floor, block, support);
+                    cut.tunnel() == 0 ? "the main tunnel" : "branch " + cut.tunnel(), next.cell(), n, BRIDGE_TRIES);
+            footing.place(next.cell(), block, next.support());
         }
         footing.tick();
         return new Progress.Working(k, steps);
