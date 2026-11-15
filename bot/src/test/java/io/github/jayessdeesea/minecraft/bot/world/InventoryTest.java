@@ -70,4 +70,25 @@ class InventoryTest {
         inventory.setSlot(8, null);
         assertEquals(0, inventory.kit().fallProtection());
     }
+
+    /**
+     * A hotbar of nine weapons and tools still has a slot to swap food or a block into: a second of
+     * a kind carried, not the one in hand. Live, a soldier with such a hotbar couldn't eat or build.
+     */
+    @Test
+    void aHotbarFullOfToolsGivesUpASecondOfAKindForAMoment() {
+        Inventory inventory = new Inventory();
+        int sword = java.util.stream.IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id)
+                .equals(java.util.Optional.of(ItemClassRegistry.ItemClass.WEAPON))).findFirst().orElseThrow();
+        int pickaxe = java.util.stream.IntStream.range(0, 4096).filter(id -> ItemClassRegistry.classOf(id)
+                .equals(java.util.Optional.of(ItemClassRegistry.ItemClass.PICKAXE))).findFirst().orElseThrow();
+        for (int hotbar = 0; hotbar < 9; hotbar++) {
+            inventory.setSlot(Inventory.HOTBAR_FIRST + hotbar, new int[]{hotbar == 0 ? sword : pickaxe, 1});
+        }
+        inventory.selectHotbar(0);
+
+        int spare = inventory.spareHotbarSlot();
+        org.junit.jupiter.api.Assertions.assertTrue(spare != 0, "not the sword in hand");
+        org.junit.jupiter.api.Assertions.assertEquals(pickaxe, inventory.itemAt(Inventory.HOTBAR_FIRST + spare), "a second pickaxe");
+    }
 }

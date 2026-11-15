@@ -1054,6 +1054,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Integer> standTo = new ConcurrentHashMap<>();
     /** Soldiers stood still by day: an alarm each spell. */
     private final IdleWatch idleWatch = new IdleWatch();
+    /** Soldiers whose last position wasn't sent for a value that isn't finite: said once a spell - ticks write. */
+    private final Set<String> badPositionLogged = ConcurrentHashMap.newKeySet();
+
     /** Soldiers on top of one another - every connection's tick. */
     private final CrowdWatch crowdWatch = new CrowdWatch();
     /**
@@ -5650,7 +5653,19 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     session.releaseUseItem();
                 }
             }
-            session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
+            // Never a position the server kicks for: a coordinate or an angle that isn't a finite number
+            // is "Invalid move player packet received" - live, Bob was kicked and rejoined 671 times in
+            // forty minutes. Not sent, and said loudly with what the soldier was at, so it can be found.
+            if (!Double.isFinite(current.x()) || !Double.isFinite(current.y()) || !Double.isFinite(current.z())
+                    || !Float.isFinite(soldier.yaw()) || !Float.isFinite(soldier.pitch())) {
+                if (badPositionLogged.add(name)) {
+                    LOG.error("{} would send a position the server kicks for - not sent: at {}, yaw {}, pitch {}, order {}, report {}, hands {}",
+                            name, current, soldier.yaw(), soldier.pitch(), status.order(), status.report(), hands.map(Enum::name).orElse("free"));
+                }
+            } else {
+                badPositionLogged.remove(name);
+                session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
+            }
             // The bow: drawn with Use Item once it's in hand, loosed with its release - after the
             // position, so the server has the aim the arrow flies on.
             if (soldier.takeLoose()) {

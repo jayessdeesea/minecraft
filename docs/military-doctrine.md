@@ -753,7 +753,18 @@ or tools (operator, 2026-11-15: almost never dirt over iron; live, a soldier wit
 carried 586 dirt and had no slot for the pickaxe it was crafting). And part-stacks of one item are
 merged, the smaller onto the larger (`Pack.mergeable`), for what stacks to 64 only - a tool put on
 a tool swaps them - and an item merged isn't merged again for 5 minutes, so one the server
-didn't merge never holds off the rest of the pack's keeping.
+didn't merge never holds off the rest of the pack's keeping. The hotbar is kept as the operator keeps
+his (2026-11-15; `bot.supply.Hotbar`): the best weapon in the first slot, the best pickaxe in the
+second, food in the second to last, torches in the last - only what's switched to in a hurry. The
+slots between hold the quick tools (shovel, axe, hoe, bucket) and what a routine swaps in for the
+moment - building blocks while it builds; anything else there, an emerald or a spare sword, goes
+to the main pack. With its hands free a soldier makes a swap a tick till it's laid out. Food to
+eat, a block to place, a hoe are swapped into a slot between first (`Inventory.spareHotbarSlot`,
+one rule for every routine), else a second of a kind carried elsewhere - never the one in hand:
+live, a soldier whose hotbar was nine weapons and tools couldn't eat or build. And no
+position goes to the server with a coordinate or angle that isn't a finite number: it's said as an
+error with what the soldier was at, and not sent - the server kicks for it, and live one soldier
+was kicked and rejoined 671 times in forty minutes.
 
 Wood is grown when it runs out. An objective's task can be `TREE_FARM`: the squad plants saplings
 round the objective, on the world's grid of every fourth block both ways - x and z each two past a

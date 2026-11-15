@@ -47,7 +47,8 @@ leaves for (§ 12, TREE_FARM). What's left:
   it stands.
 - 16 to 32 trees growing at once, so wood is never short (operator, 2026-11-14): one grove of
   radius 8 on the four-block grid is 16.
-- Nether wart and animal pens.
+- Nether wart and animal pens - a chicken pen first: feathers are the one part of an arrow with no other
+  source but skeletons, and the bow joins every load plan at BUILDUP (backlog/load-plans.md).
 - The general's choice follows the terrain. A scenario test with no water nearby never yields a
   wheat order.
 

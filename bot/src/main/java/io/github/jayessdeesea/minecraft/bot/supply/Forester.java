@@ -205,13 +205,7 @@ public final class Forester {
     }
 
     private int spareHotbarSlot() {
-        for (int hotbar = 8; hotbar >= 0; hotbar--) {
-            Optional<ItemClass> held = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + hotbar));
-            if (held.isEmpty() || held.get() != ItemClass.WEAPON && held.get() != ItemClass.PICKAXE) {
-                return hotbar;
-            }
-        }
-        throw new IllegalStateException("every hotbar slot holds a weapon or a tool");
+        return inventory.spareHotbarSlot(); // Inventory.spareHotbarSlot: one rule for every routine
     }
 
     private void fail(String why) {

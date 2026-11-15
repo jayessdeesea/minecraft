@@ -107,7 +107,7 @@ class RationsTest {
 
         run(rations, MEAL_TICKS + 5, true);
 
-        assertEquals(List.of("swap 20 to hotbar 8", "select 8", "eat", "select 0"), calls);
+        assertEquals(List.of("swap 20 to hotbar 6", "select 6", "eat", "select 0"), calls);
         assertFalse(rations.active());
         assertEquals(0, inventory.heldHotbarSlot());
     }
@@ -118,7 +118,7 @@ class RationsTest {
 
         run(rations, 1, true); // the swap is sent; the server hasn't answered
 
-        assertEquals(List.of("swap 20 to hotbar 8", "select 8"), calls);
+        assertEquals(List.of("swap 20 to hotbar 6", "select 6"), calls);
         run(rations, 2, true); // the answer, then the meal
         assertEquals("eat", calls.getLast());
     }
@@ -143,11 +143,11 @@ class RationsTest {
         assertTrue(rations.active());
         run(rations, 1, false); // a hostile came near
 
-        assertEquals(List.of("swap 20 to hotbar 8", "select 8", "eat", "select 0"), calls);
+        assertEquals(List.of("swap 20 to hotbar 6", "select 6", "eat", "select 0"), calls);
         assertFalse(rations.active());
 
         run(rations, 3, true); // no backoff, and the food is still in the hotbar: no swap this time
-        assertEquals(List.of("select 8", "eat"), calls.subList(4, 6));
+        assertEquals(List.of("select 6", "eat"), calls.subList(4, 6));
     }
 
     @Test
@@ -158,7 +158,7 @@ class RationsTest {
         run(rations, Rations.ANSWER_TICKS + 2, true);
 
         assertFalse(rations.active());
-        assertEquals(List.of("swap 20 to hotbar 8", "select 8", "select 0"), calls);
+        assertEquals(List.of("swap 20 to hotbar 6", "select 6", "select 0"), calls);
         run(rations, 10, true);
         assertEquals(3, calls.size()); // backing off, not retrying
     }
@@ -171,6 +171,6 @@ class RationsTest {
         run(rations, Rations.EAT_TICKS + 3, true);
 
         assertFalse(rations.active());
-        assertEquals(List.of("swap 20 to hotbar 8", "select 8", "eat", "select 0"), calls);
+        assertEquals(List.of("swap 20 to hotbar 6", "select 6", "eat", "select 0"), calls);
     }
 }

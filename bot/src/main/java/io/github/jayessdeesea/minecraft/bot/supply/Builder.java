@@ -318,7 +318,8 @@ public final class Builder {
                 return hotbar;
             }
         }
-        throw new IllegalStateException("every hotbar slot holds a weapon or a tool");
+        // Every slot a weapon or a tool: a second of one carried, swapped out to the pack (Inventory.spareHotbarSlot).
+        return inventory.spareHotbarSlot();
     }
 
     private static boolean solid(WorldView world, BlockPos cell) {

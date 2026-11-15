@@ -124,12 +124,6 @@ public final class Footing {
     }
 
     private int spareHotbarSlot() {
-        for (int hotbar = 8; hotbar >= 0; hotbar--) {
-            Optional<ItemClass> item = ItemClassRegistry.classOf(inventory.itemAt(Inventory.HOTBAR_FIRST + hotbar));
-            if (item.isEmpty() || item.get() != ItemClass.WEAPON && item.get() != ItemClass.PICKAXE) {
-                return hotbar;
-            }
-        }
-        throw new IllegalStateException("every hotbar slot holds a weapon or a tool");
+        return inventory.spareHotbarSlot(); // Inventory.spareHotbarSlot: one rule for every routine
     }
 }

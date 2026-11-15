@@ -69,6 +69,14 @@ public final class Pack {
         if (!free) {
             return;
         }
+        // The hotbar as a player keeps it (Hotbar): the sword, the pickaxe, food, torches in their
+        // places, nothing there that isn't switched to in a hurry. A swap at a time.
+        Optional<Hotbar.Swap> swap = Hotbar.next(inventory);
+        if (swap.isPresent()) {
+            session.swapWithHotbar(0, 0, swap.get().slot(), swap.get().hotbar()); // stale state: the server resends the inventory
+            settle = SETTLE_TICKS;
+            return;
+        }
         // Part-stacks of one item merged into one: two slots for a few blocks each is a slot wasted
         // (operator, 2026-11-15).
         Optional<int[]> merge = mergeable(inventory, (a, b) -> ticks - mergeTried.getOrDefault(inventory.itemAt(a), Long.MIN_VALUE / 2) < THROWN_FOR);

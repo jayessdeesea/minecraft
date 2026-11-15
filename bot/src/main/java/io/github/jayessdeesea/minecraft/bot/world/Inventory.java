@@ -248,4 +248,35 @@ public final class Inventory {
                 slotOf(ItemClassRegistry.ItemClass.PICKAXE) >= 0, dirt, slotOfNamed("bow") >= 0, Math.max(0, meleeWeapons() - 1),
                 count(ItemClassRegistry.ItemClass.PICKAXE), count(ItemClassRegistry.ItemClass.SHOVEL));
     }
+
+    /**
+     * The hotbar slot (0-8) to swap something into for a moment - food to eat, a block to place, a
+     * hoe: one holding no weapon or pickaxe, the last first; with every slot a weapon or a pickaxe, one
+     * holding a second of a kind carried elsewhere in the pack or the hotbar; else the last but the
+     * one in hand. Swapped out, it goes to the main pack, still carried. Live, a soldier whose
+     * hotbar was nine weapons and tools couldn't eat or place a block, and every try threw.
+     */
+    public synchronized int spareHotbarSlot() {
+        // The slots between the pickaxe and the food first, then the rest (bot.supply.Hotbar's layout).
+        for (int hotbar : new int[]{6, 5, 4, 3, 2, 8, 7, 1, 0}) {
+            java.util.Optional<ItemClassRegistry.ItemClass> item = ItemClassRegistry.classOf(itemAt(HOTBAR_FIRST + hotbar));
+            if (item.isEmpty() || item.get() != ItemClassRegistry.ItemClass.WEAPON && item.get() != ItemClassRegistry.ItemClass.PICKAXE) {
+                return hotbar;
+            }
+        }
+        int held = heldHotbarSlot();
+        for (int hotbar = 8; hotbar >= 0; hotbar--) {
+            if (hotbar == held) {
+                continue;
+            }
+            java.util.Optional<ItemClassRegistry.ItemClass> item = ItemClassRegistry.classOf(itemAt(HOTBAR_FIRST + hotbar));
+            int slot = HOTBAR_FIRST + hotbar;
+            boolean another = java.util.stream.IntStream.rangeClosed(MAIN_FIRST, HOTBAR_LAST).filter(s -> s != slot)
+                    .anyMatch(s -> ItemClassRegistry.classOf(itemAt(s)).equals(item));
+            if (another) {
+                return hotbar;
+            }
+        }
+        return held == 8 ? 7 : 8;
+    }
 }
