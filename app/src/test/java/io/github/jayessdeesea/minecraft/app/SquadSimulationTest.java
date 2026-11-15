@@ -2565,6 +2565,54 @@ class SquadSimulationTest {
     }
 
     /**
+     * The keep's haul road (docs/military-doctrine.md § 17, rule 5; operator, 2026-11-15): the depot
+     * on a hill off the keep's west edge, eight blocks over its floor, gets one way down carved into
+     * the hill - so a walk from beside the depot to the floor needs nothing dug and nothing placed.
+     */
+    @Test
+    void theKeepsDepotOnAHillGetsAHaulRoadCarvedDownToTheFloor() {
+        int dx = (int) Math.floor(Keep.DEPOT.x()), dz = (int) Math.floor(Keep.DEPOT.z());
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x < Keep.MIN && x >= dx - 8 && z >= dz - 10 && z <= dz + 10
+                && y > GROUND && y <= GROUND + 8 ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_shovel"), 1})))
+                .run();
+
+        clock.advance(8 * 60_000);
+
+        io.github.jayessdeesea.minecraft.bot.world.WorldView seen = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                int b = server.block(x, y, z);
+                return b != SimServer.AIR && b != SimServer.WATER;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return server.block(x, y, z) == SimServer.WATER;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        io.github.jayessdeesea.minecraft.bot.nav.BlockPos top = new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(dx, GROUND + 9, dz);
+        boolean walk = java.util.stream.IntStream.rangeClosed(dz - 10, dz + 10).anyMatch(z -> io.github.jayessdeesea.minecraft.bot.nav.Pathfinder
+                .find(seen, top, new io.github.jayessdeesea.minecraft.bot.nav.Goal(Keep.MIN + 0.5, GROUND + 1, z + 0.5, 0.5, 0.5), 20_000).reachesGoal());
+        assertTrue(walk, "a walk from the hilltop by the depot down to the keep's floor, nothing dug or placed; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+    }
+
+    /**
      * The rules of a clearing (docs/military-doctrine.md § 17; operator, 2026-11-15): the highest
      * block first, built up to on scaffolding, and nothing lower till it's gone - a block left high
      * is where zombies hide under. A block ten up over the keep is taken before a mound a block high

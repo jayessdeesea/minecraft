@@ -1357,7 +1357,12 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
    the dig rather than built, so the pathfinder prefers it to any stairs of its own; cut again as
    the floor goes down, and taken out last (2026-11-15). As an excavation's ramp is (29 CFR
    1926.651(c)(2): a stairway, ladder or ramp within 25 feet of every worker in a trench 4 feet
-   deep or more).
+   deep or more). Built for the keep (`bot.engineer.AccessRoute`): planned every half minute from
+   the depot's stand to a standing cell on the keep's floor - the cheapest walk of one-block steps,
+   a block dug costing three steps and one put down twenty, never through water, lava or the
+   depot's table, furnace and chests, out of the keep's dig till its last cell; while any of it is
+   uncut, the keep's hand nearest its start cuts it and has no rectangle meanwhile (`[Keep] the
+   haul road: 9 steps from the depot at ... to ..., 16 block(s) to cut`).
 6. **Benched edges.** The ground just round the dig may be lowered as it goes - benched, as an
    excavation's sides are cut back in steps or sloped (29 CFR 1926.652) - so its edge is never a
    cliff over the work (2026-11-15).

@@ -8,6 +8,7 @@ import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import io.github.jayessdeesea.minecraft.bot.craft.WorkLoad;
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.engineer.Stairway;
+import io.github.jayessdeesea.minecraft.bot.engineer.AccessRoute;
 import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.farm.TreeFarm;
@@ -2090,6 +2091,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 keepDrawing.remove(hand.name());
             }
         }
+        // The haul road (operator, 2026-11-15; docs/military-doctrine.md § 17, rule 5): one carved way
+        // from the depot to the keep's floor, planned again every half minute as the floor goes down;
+        // while any of it is uncut, the builder nearest it cuts it, and has no rectangle meanwhile.
+        // Every squad's hands on the keep, so the nearest of all of them cuts it, whichever squad's cycle runs.
+        Map<String, Position> handsOn = new HashMap<>();
+        hands.stream().filter(h -> !keepFighting.contains(h.name()) && !farming.containsKey(h.name()))
+                .forEach(h -> handsOn.put(h.name(), h.position()));
+        keepRoadHands.put(squad, Map.copyOf(handsOn));
+        synchronized (keepPlanLock) {
+            List<LevelPlan.Builder> everyone = new ArrayList<>();
+            keepRoadHands.values().forEach(m -> m.forEach((n2, p2) -> everyone.add(new LevelPlan.Builder(n2, p2))));
+            everyone.sort(Comparator.comparing(LevelPlan.Builder::name));
+            haulRoad(everyone, clockwork.millis());
+        }
+        AccessRoute road = keepRoad;
+        String roadCutter = keepRoadCutter;
+        if (road != null && roadCutter != null && !road.toCut().isEmpty() && handsOn.containsKey(roadCutter)) {
+            orders.put(roadCutter, roadDig(road));
+        }
         // Ore set aside for a better pickaxe, at or over the level - in reach on its pillar, or all
         // that's left: taken by the keep's nearest hand who carries one, whatever its squad. Live, the
         // keep's emerald was in one squad's share and the one iron pickaxe in another's, and it stood.
@@ -2117,6 +2137,72 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             state.keepWaiting = null;
         }
         return orders;
+    }
+
+    /** The keep's haul road as last planned, when, and who cuts it - guarded by {@link #keepPlanLock}. */
+    private volatile AccessRoute keepRoad;
+    private long keepRoadAt = Long.MIN_VALUE / 2;
+    private volatile String keepRoadCutter;
+
+    /** Each squad's hands free for the haul road, by squad - the squad loop's. */
+    private final Map<String, Map<String, Position>> keepRoadHands = new ConcurrentHashMap<>();
+
+    /** How often the haul road is planned again: the floor it leads to goes down as the keep is dug. */
+    static final long ROAD_PLAN_MILLIS = 30_000;
+
+    /**
+     * The keep's haul road: planned from the depot's stand to a standing cell on the keep's floor
+     * ({@link AccessRoute}), out of the keep's dig till its last cell, every {@link #ROAD_PLAN_MILLIS};
+     * its cutter the builder on hand nearest its start while any of it is left to cut, nobody once
+     * it's cut. Said when it changes.
+     */
+    private void haulRoad(List<LevelPlan.Builder> onHand, long now) {
+        Workshop depot = keepWorkshop;
+        if (depot == null || onHand.isEmpty()) {
+            keepRoadCutter = null;
+            return;
+        }
+        if (now - keepRoadAt >= ROAD_PLAN_MILLIS || keepRoad == null) {
+            keepRoadAt = now;
+            java.util.function.Predicate<BlockPos> inKeep = c -> Keep.contains(c.x(), c.z());
+            Optional<AccessRoute> planned = AccessRoute.plan(world, depot.stand(), c -> inKeep.test(c) && Pathfinder.standable(world, c), inKeep);
+            AccessRoute was = keepRoad;
+            keepRoad = planned.orElse(null);
+            if (planned.isEmpty() && was != null) {
+                LOG.warn("[Keep] no haul road from the depot at {} to the keep's floor within reach of the search", depot.stand());
+            } else if (planned.isPresent() && (was == null || !was.feet().equals(planned.get().feet()))) {
+                LOG.info("[Keep] the haul road: {} steps from the depot at {} to {}, {} block(s) to cut, {} floor(s) to put down",
+                        planned.get().feet().size(), depot.stand(), planned.get().feet().getLast(), planned.get().toCut().size(),
+                        planned.get().floors().size());
+            }
+        }
+        AccessRoute road = keepRoad;
+        String cutter = road == null || road.toCut().isEmpty() ? null : onHand.stream().filter(b -> !inWoodParty(b.name()))
+                .min(Comparator.comparingDouble(b -> Math.hypot(b.at().x() - road.feet().getFirst().x(), b.at().z() - road.feet().getFirst().z())))
+                .map(LevelPlan.Builder::name).orElse(null);
+        if (!Objects.equals(cutter, keepRoadCutter) && cutter != null) {
+            LOG.info("[Keep] {} cuts the haul road: {} block(s) left", cutter, road.toCut().size());
+        }
+        keepRoadCutter = cutter;
+    }
+
+    /** A dig of the haul road's cells and no others: a tunnel dig, cell by cell from where the cutter stands. */
+    private static Order.Dig roadDig(AccessRoute road) {
+        int minX = road.toCut().stream().mapToInt(BlockPos::x).min().orElseThrow(), maxX = road.toCut().stream().mapToInt(BlockPos::x).max().orElseThrow();
+        int minY = road.toCut().stream().mapToInt(BlockPos::y).min().orElseThrow(), maxY = road.toCut().stream().mapToInt(BlockPos::y).max().orElseThrow();
+        int minZ = road.toCut().stream().mapToInt(BlockPos::z).min().orElseThrow(), maxZ = road.toCut().stream().mapToInt(BlockPos::z).max().orElseThrow();
+        Set<BlockPos> cut = new HashSet<>(road.toCut());
+        Set<Cell> except = new HashSet<>();
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    if (!cut.contains(new BlockPos(x, y, z))) {
+                        except.add(new Cell(x, y, z));
+                    }
+                }
+            }
+        }
+        return new Order.Dig(new Box(minX, minY, minZ, maxX, maxY, maxZ), except, true);
     }
 
     /** Each squad's hands on the keep and where they stand, as its last keep cycle saw them - the squad loop's. */
@@ -2158,7 +2244,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<LevelPlan.Builder> onHand = onKeep.stream().flatMap(u -> keepCrews.getOrDefault(u, List.of()).stream())
                     .sorted(Comparator.comparing(LevelPlan.Builder::name)).toList();
             woodParty(onKeep, onHand, now);
-            List<LevelPlan.Builder> all = onHand.stream().filter(b -> !inWoodParty(b.name())).toList();
+            // The haul road's cutter has no rectangle while it cuts it (keepwork).
+            String roadCutter = keepRoadCutter;
+            List<LevelPlan.Builder> all = onHand.stream().filter(b -> !inWoodParty(b.name()) && !b.name().equals(roadCutter)).toList();
             Set<String> names = all.stream().map(LevelPlan.Builder::name).collect(Collectors.toUnmodifiableSet());
             Box site = Keep.dig();
             // Ground under a fight is nobody's until it's over: not shared out - in the squad

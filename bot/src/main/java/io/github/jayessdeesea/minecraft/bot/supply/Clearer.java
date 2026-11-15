@@ -257,7 +257,10 @@ public final class Clearer {
                 : world.isStone(b.x(), b.y(), b.z()) ? Digger.Target.STONE
                 : world.isCobblestone(b.x(), b.y(), b.z()) ? Digger.Target.COBBLESTONE
                 : world.isGravel(b.x(), b.y(), b.z()) ? Digger.Target.GRAVEL
-                : world.isSoil(b.x(), b.y(), b.z()) ? Digger.Target.SOIL : Digger.Target.OTHER;
+                // Soil under a block - a tunnel's, a road cut into a hillside - is no SOIL to its digger,
+                // which takes soil only from an open top: dug as any block. Live in the squad simulation,
+                // the keep's haul road was given up 53 times, each "the SOIL is gone" a tick in.
+                : world.isSoil(b.x(), b.y(), b.z()) && !world.isSolid(b.x(), b.y() + 1, b.z()) ? Digger.Target.SOIL : Digger.Target.OTHER;
     }
 
     /** Stops the cut under way, its claims given up. */
