@@ -550,6 +550,11 @@ keep's dig still to do, halved between the two, over a stone tool's 132 uses, pl
 four of each at most. Only from what it carries, cobblestone and wood, never quarried or chopped
 for. Live, builders climbed through copper armour while the dig's tools wore out with no spare.
 
+No rung past what the camp's level authorises is made (backlog/maturity-model.md, basis of issue;
+`Ladder.authorised`): at SHELTER nothing that costs iron; at AIRHEAD iron only for the enabler, the
+iron pickaxe; at BUILDUP a shield, armour and an iron axe too; diamond, and an iron sword, only once
+it's ESTABLISHED (§ 17). Copper costs no iron, so copper armour comes at any level.
+
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
 Against a skeleton, a stone sword over a wooden one saves 0.3 health a fight. A shield saves
 2.1 more for one iron ingot, about what a chestplate saves for eight, and full iron armour 5.9:

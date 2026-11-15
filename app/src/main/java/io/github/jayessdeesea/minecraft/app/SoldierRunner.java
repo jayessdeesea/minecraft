@@ -599,6 +599,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return List.of(rationsNow, logsNow);
     }
 
+    /** The camp's level as last measured, for the basis of issue - the main loop writes, ticks read; SHELTER's ceiling before. */
+    private volatile Optional<Site.Level> campLevel = Optional.empty();
+
     /** Each site's line as last logged, by site - the main loop's. */
     private final Map<String, String> siteLines = new HashMap<>();
 
@@ -608,7 +611,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * and its landing's workshop - what can be measured of each today.
      */
     private List<Site> measureSites(Foothold foothold) {
-        List<Site> sites = new ArrayList<>(List.of(Site.camp(foothold)));
+        Site campSite = Site.camp(foothold);
+        campLevel = campSite.level();
+        List<Site> sites = new ArrayList<>(List.of(campSite));
         boolean keepWorked = !keepDigLeftBySquad.isEmpty();
         if (keepWorked) {
             int digLeft = keepDigLeftBySquad.values().stream().mapToInt(Integer::intValue).sum();
@@ -5437,8 +5442,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims)
                         || nearStockpile && pool.map(st -> material == ItemClass.RAW_COPPER ? st.rawCopper()
                         : material == ItemClass.RAW_IRON ? st.rawIron() : 0).orElse(0) > 0;
+        // Past no rung the camp's level doesn't authorise (backlog/maturity-model.md, basis of issue);
+        // with no camp there's no level to go by.
         Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig,
-                upgradeAllowed.getOrDefault(name, false) ? highest : Math.min(highest, Ladder.BASIC_LOAD));
+                upgradeAllowed.getOrDefault(name, false) ? highest : Math.min(highest, Ladder.BASIC_LOAD),
+                camp == null ? Optional.empty() : Optional.of(campLevel));
         next.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));
         return next;
     }

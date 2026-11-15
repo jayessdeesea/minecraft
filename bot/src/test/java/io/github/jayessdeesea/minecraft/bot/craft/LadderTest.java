@@ -13,6 +13,8 @@ import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LadderTest {
 
@@ -69,6 +71,29 @@ class LadderTest {
         carrying("iron_sword", 1).carrying("oak_log", 2).carrying("cobblestone", 16);
 
         assertEquals(Optional.of(Recipe.STONE_PICKAXE), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY));
+    }
+
+    /**
+     * The basis of issue (backlog/maturity-model.md): a camp at AIRHEAD makes the iron pickaxe, the
+     * enabler, but no iron armour or sword; at BUILDUP the shield and the armour too; diamond only once
+     * ESTABLISHED; at SHELTER nothing that costs iron.
+     */
+    @Test
+    void eachSiteLevelAuthorisesItsEquipmentAndNoMore() {
+        java.util.Optional<io.github.jayessdeesea.minecraft.command.Site.Level> shelter = Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.SHELTER),
+                airhead = Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.AIRHEAD),
+                buildup = Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.BUILDUP),
+                established = Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.ESTABLISHED);
+        assertTrue(Ladder.authorised(Recipe.STONE_PICKAXE, shelter));
+        assertFalse(Ladder.authorised(Recipe.IRON_PICKAXE, shelter), "nothing that costs iron at SHELTER");
+        assertTrue(Ladder.authorised(Recipe.IRON_PICKAXE, airhead), "the enabler at AIRHEAD");
+        assertFalse(Ladder.authorised(Recipe.IRON_CHESTPLATE, airhead));
+        assertTrue(Ladder.authorised(Recipe.COPPER_CHESTPLATE, airhead), "copper costs no iron");
+        assertTrue(Ladder.authorised(Recipe.IRON_CHESTPLATE, buildup));
+        assertTrue(Ladder.authorised(Recipe.SHIELD, buildup));
+        assertFalse(Ladder.authorised(Recipe.IRON_SWORD, buildup), "an iron sword is ESTABLISHED's");
+        assertFalse(Ladder.authorised(Recipe.DIAMOND_SWORD, buildup));
+        assertTrue(Ladder.authorised(Recipe.DIAMOND_SWORD, established));
     }
 
     @Test

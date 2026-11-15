@@ -140,6 +140,9 @@ ceiling - nothing above it is made yet:
 materials allow: copper armour now over none while it waits for iron (operator: materials are
 traded off, not waited for).
 
+*Built:* the ceilings, by the camp's level (`Ladder.authorised`; docs/military-doctrine.md § 11).
+The floors - what every soldier at a level must have first - and the priority of use below aren't.
+
 **When a material is scarce, its uses are ranked** - a controlled supply rate, which doctrine
 sets so that issues never take a stock below its safety level:
 1. **The survival floor:** no soldier below its floor goes without the cheapest thing that lifts it.
@@ -168,6 +171,10 @@ ladder gives it a second shovel, and a dig that wears out ~42 tools has a spare 
   armour first. The priority of use above decides when the two claim the same iron.
 
 ## What a model sees
+*Not yet:* the `<sites>` view waits on the platoon leader having a decision it informs - choosing
+among costed missions (mission-estimate.md) - as the keep rule decides its days today; a section it
+can't act on is tokens and a distraction (docs/prompting.md).
+
 No prose ladder in a system prompt (docs/prompting.md: a rule in prose loses to the state it
 describes). An escalation to the platoon leader carries, and its standing view shows, a `<sites>` section, as `<foothold>` is now. A line for each site: its kind, its level
 and the level due by the timetable, its state (ADVANCE, PAUSE, RECONSTITUTE), and each class short

@@ -147,12 +147,51 @@ public final class Ladder {
     /** {@link #next}, looking no higher than rung {@code highest} (from 0). */
     public static Optional<Recipe> upTo(Inventory inventory, Map<ItemClass, Integer> setAside, Set<Workstation> inReach,
                                         Predicate<ItemClass> canGather, int highest) {
+        return upTo(inventory, setAside, inReach, canGather, highest, Optional.empty());
+    }
+
+    /**
+     * Whether a site at {@code level} authorises {@code recipe} (backlog/maturity-model.md, basis of
+     * issue: each level a ceiling, nothing above it made yet). SHELTER: nothing that costs iron.
+     * AIRHEAD: iron only for an enabler - the iron pickaxe, which opens diamonds and emerald ore.
+     * BUILDUP: a shield, armour, and iron tools for producers - an iron axe - as well. ESTABLISHED and
+     * above: iron for all, diamond for weapons and armour. Below SHELTER, as SHELTER.
+     */
+    public static boolean authorised(Recipe recipe, Optional<io.github.jayessdeesea.minecraft.command.Site.Level> level) {
+        boolean iron = recipe.key().containsValue(ItemClass.IRON_INGOT);
+        boolean diamond = recipe.key().containsValue(ItemClass.DIAMOND);
+        int at = level.map(Enum::ordinal).orElse(0);
+        int airhead = io.github.jayessdeesea.minecraft.command.Site.Level.AIRHEAD.ordinal();
+        int buildup = io.github.jayessdeesea.minecraft.command.Site.Level.BUILDUP.ordinal();
+        int established = io.github.jayessdeesea.minecraft.command.Site.Level.ESTABLISHED.ordinal();
+        if (at >= established) {
+            return true;
+        }
+        if (diamond) {
+            return false;
+        }
+        if (!iron) {
+            return true;
+        }
+        if (recipe == Recipe.IRON_PICKAXE) {
+            return at >= airhead;
+        }
+        return at >= buildup && (recipe == Recipe.SHIELD || recipe == Recipe.IRON_AXE || recipe.makes() == ItemClass.ARMOUR);
+    }
+
+    /** As {@link #upTo(Inventory, Map, Set, Predicate, int)}, past no rung its site's {@code level} doesn't authorise ({@link #authorised}); empty: every rung. */
+    public static Optional<Recipe> upTo(Inventory inventory, Map<ItemClass, Integer> setAside, Set<Workstation> inReach,
+                                        Predicate<ItemClass> canGather, int highest,
+                                        Optional<Optional<io.github.jayessdeesea.minecraft.command.Site.Level>> level) {
         Stock stock = Stock.of(inventory).less(setAside);
         for (Rung rung : LADDER.subList(0, Math.max(0, Math.min(LADDER.size(), highest + 1)))) {
             if (rung.held().test(inventory)) {
                 continue;
             }
             for (Recipe option : rung.options()) {
+                if (level.isPresent() && !authorised(option, level.get())) {
+                    continue;
+                }
                 // One more than carried: a spare is a second of what's held.
                 CraftPlan plan = CraftPlan.of(Map.of(option, stock.count(option) + 1), stock, inReach);
                 if (rung.carriedOnly() ? plan.short_().isEmpty() : plan.short_().keySet().stream().allMatch(canGather)) {
