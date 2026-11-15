@@ -39,6 +39,8 @@ public record MissionEstimate(String mission, String work, double days, List<Lin
     static final int CHEST_HOLDS = 27 * 64;
     /** Logs a chest takes: eight planks. */
     static final int LOGS_A_CHEST = 2;
+    /** Iron an iron pickaxe takes: three ingots, a raw iron smelted each. */
+    static final int IRON_A_PICKAXE = 3;
 
     /** Whether the supplying site can spare everything it draws. */
     public boolean feasible() {
@@ -62,6 +64,17 @@ public record MissionEstimate(String mission, String work, double days, List<Lin
      */
     public static MissionEstimate keep(int toDig, int toFill, double digPerDay, int crew, double rationsPerSoldierDay,
                                        int logsSpare, int stoneOnHand) {
+        return keep(toDig, toFill, digPerDay, crew, rationsPerSoldierDay, logsSpare, stoneOnHand, 0, false, 0);
+    }
+
+    /**
+     * As {@link #keep(int, int, double, int, double, int, int)}, with {@code oreAside} ore blocks on
+     * the site that no builder's pickaxe gets the drop from - emerald, diamond: part of the dig, not
+     * done until they're broken (operator, 2026-11-15). With no iron pickaxe in the force, the bill
+     * has one, and the shortfall the iron {@code ironOnHand} - raw and smelted - doesn't cover.
+     */
+    public static MissionEstimate keep(int toDig, int toFill, double digPerDay, int crew, double rationsPerSoldierDay,
+                                       int logsSpare, int stoneOnHand, int oreAside, boolean ironPickaxe, int ironOnHand) {
         double days = digPerDay <= 0 ? Double.POSITIVE_INFINITY : (toDig + Math.max(0, toFill)) / digPerDay;
         int tools = (int) Math.ceil(toDig / (double) TOOL_USES);
         int handleLogs = (int) Math.ceil(tools / (double) TOOLS_A_LOG);
@@ -69,14 +82,23 @@ public record MissionEstimate(String mission, String work, double days, List<Lin
         int chests = (int) Math.ceil(Math.max(0, stone - stoneOnHand) / (double) CHEST_HOLDS);
         int logs = handleLogs + chests * LOGS_A_CHEST;
         int rations = Double.isInfinite(days) ? 0 : (int) Math.ceil(days * crew * rationsPerSoldierDay);
-        List<Line> bill = List.of(new Line("II", "stone tools", tools), new Line("IV", "logs", logs), new Line("IV", "chests", chests),
-                new Line("IV", "cobblestone", stone), new Line("I", "rations", rations));
+        List<Line> bill = new ArrayList<>(List.of(new Line("II", "stone tools", tools), new Line("IV", "logs", logs), new Line("IV", "chests", chests),
+                new Line("IV", "cobblestone", stone), new Line("I", "rations", rations)));
         List<Line> short_ = new ArrayList<>();
         if (logs > logsSpare) {
             short_.add(new Line("IV", "logs", logs - Math.max(0, logsSpare)));
         }
-        return new MissionEstimate("the keep", String.format(Locale.ROOT, "%d blocks to dig, %d cells to fill", toDig, Math.max(0, toFill)),
-                days, bill, short_);
+        boolean wantsIron = oreAside > 0 && !ironPickaxe;
+        if (wantsIron) {
+            bill.add(new Line("II", "iron pickaxe", 1));
+            if (ironOnHand < IRON_A_PICKAXE) {
+                short_.add(new Line("II", "iron", IRON_A_PICKAXE - Math.max(0, ironOnHand)));
+            }
+        }
+        String work = String.format(Locale.ROOT, "%d blocks to dig, %d cells to fill", toDig, Math.max(0, toFill))
+                + (oreAside > 0 ? String.format(Locale.ROOT, ", %d ore set aside for %s", oreAside,
+                ironPickaxe ? "the iron pickaxe" : "an iron pickaxe") : "");
+        return new MissionEstimate("the keep", work, days, bill, short_);
     }
 
     /** "the keep: 1846 blocks to dig, 0 cells to fill - 2.3 days; bill 14 stone tools, ...; PREPARE first: 3 logs". */

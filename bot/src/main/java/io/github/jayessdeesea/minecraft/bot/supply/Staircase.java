@@ -19,15 +19,51 @@ import java.util.Set;
  * no ladder, and a slip is a fall of one block. Nothing is crafted on the stairs: the mine base's
  * workshop is at the landing ({@code bot.engineer.Workshop}), and above it the squad's own.
  *
- * <p>At the bottom, the tunnels the ore is mined from: a main tunnel {@value #MAIN_TUNNEL} long
- * straight out from the last step, away from the shaft, then branches off it both ways every
+ * <p>At the bottom, the tunnels the ore is mined from: a main tunnel {@value #MAIN_TUNNEL} long a
+ * stretch straight out from the last step, away from the shaft, then branches off it both ways every
  * {@value #BRANCH_EVERY} blocks, each {@value #BRANCH} long - two blocks of rock between branches,
- * so every block of it is seen from one tunnel or the next. All two high, floors left standing.
+ * so every block of it is seen from one tunnel or the next. All two high, floors left standing. A
+ * mine worked out is run on a stretch at a time ({@link #extended}), up to {@link #MAX_STRETCHES}.
  *
- * @param head    the cell a soldier stands in at the top, on the pillar
- * @param bottom  the height the feet reach on the last step
+ * @param head       the cell a soldier stands in at the top, on the pillar
+ * @param bottom     the height the feet reach on the last step
+ * @param stretches  the main tunnel's length, in stretches of {@link #MAIN_TUNNEL}
  */
-public record Staircase(BlockPos head, int bottom) {
+public record Staircase(BlockPos head, int bottom, int stretches) {
+
+    /** A staircase whose main tunnel is one stretch. */
+    public Staircase(BlockPos head, int bottom) {
+        this(head, bottom, 1);
+    }
+
+    /** The most stretches a main tunnel runs to: 96 blocks, a walk of half a minute from the landing. */
+    public static final int MAX_STRETCHES = 4;
+
+    /** The main tunnel's length in blocks. */
+    public int tunnel() {
+        return stretches * MAIN_TUNNEL;
+    }
+
+    /** This mine with its main tunnel run on a stretch, its branches with it; empty at {@link #MAX_STRETCHES}. */
+    public java.util.Optional<Staircase> extended() {
+        return stretches >= MAX_STRETCHES ? java.util.Optional.empty() : java.util.Optional.of(new Staircase(head, bottom, stretches + 1));
+    }
+
+    /** The main tunnel's far cell, where the feet are: kept on disk, it says how far it was run. */
+    public BlockPos tunnelEnd() {
+        BlockPos last = step(steps() - 1);
+        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
+        int dx = d[0] != 0 ? d[0] : 0;
+        int dz = d[0] != 0 ? 0 : d[1];
+        return last.offset(dx * tunnel(), 0, dz * tunnel());
+    }
+
+    /** The staircase from {@code head} down to {@code lastStep}, its main tunnel run to {@code end}: as kept on disk. */
+    public static Staircase kept(BlockPos head, BlockPos lastStep, java.util.Optional<BlockPos> end) {
+        Staircase one = new Staircase(head, lastStep.y());
+        return end.map(e -> new Staircase(head, lastStep.y(), Math.max(1, Math.min(MAX_STRETCHES,
+                Math.round((Math.abs(e.x() - lastStep.x()) + Math.abs(e.z() - lastStep.z())) / (float) MAIN_TUNNEL))))).orElse(one);
+    }
 
     /** The eight cells round the pillar, each beside the last: north, then clockwise. */
     private static final int[][] RING = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
@@ -86,10 +122,10 @@ public record Staircase(BlockPos head, int bottom) {
         int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
         int dx = d[0] != 0 ? d[0] : 0;
         int dz = d[0] != 0 ? 0 : d[1];
-        for (int i = TUNNEL_LIGHT_EVERY; i <= MAIN_TUNNEL; i += TUNNEL_LIGHT_EVERY) {
+        for (int i = TUNNEL_LIGHT_EVERY; i <= tunnel(); i += TUNNEL_LIGHT_EVERY) {
             lights.add(last.offset(dx * i, 0, dz * i));
         }
-        for (int i = BRANCH_EVERY; i <= MAIN_TUNNEL; i += 2 * BRANCH_EVERY) {
+        for (int i = BRANCH_EVERY; i <= tunnel(); i += 2 * BRANCH_EVERY) {
             BlockPos root = last.offset(dx * i, 0, dz * i);
             for (int side : new int[]{1, -1}) {
                 lights.add(root.offset(-dz * side * BRANCH_LIGHT, 0, dx * side * BRANCH_LIGHT));
@@ -163,7 +199,7 @@ public record Staircase(BlockPos head, int bottom) {
         int dx = d[0] != 0 ? d[0] : 0;
         int dz = d[0] != 0 ? 0 : d[1];
         List<BlockPos> main = new ArrayList<>();
-        for (int i = 1; i <= MAIN_TUNNEL; i++) {
+        for (int i = 1; i <= tunnel(); i++) {
             BlockPos feet = last.offset(dx * i, 0, dz * i);
             cuts.add(new Cut(i == 1 ? last : main.getLast(), List.of(feet.offset(0, 1, 0), feet), 0));
             main.add(feet);
@@ -176,7 +212,7 @@ public record Staircase(BlockPos head, int bottom) {
             }
         }
         int tunnel = 1;
-        for (int i = BRANCH_EVERY; i <= MAIN_TUNNEL; i += BRANCH_EVERY) {
+        for (int i = BRANCH_EVERY; i <= tunnel(); i += BRANCH_EVERY) {
             BlockPos root = main.get(i - 1);
             for (int side : new int[]{1, -1}) {
                 BlockPos stand = root;
@@ -192,6 +228,9 @@ public record Staircase(BlockPos head, int bottom) {
     }
 
     public Staircase {
+        if (stretches < 1 || stretches > MAX_STRETCHES) {
+            throw new IllegalArgumentException("a main tunnel of 1 to " + MAX_STRETCHES + " stretches, not " + stretches);
+        }
         if (bottom >= head.y() || bottom < DEEPEST) {
             throw new IllegalArgumentException("a staircase from " + head + " goes down, to no deeper than " + DEEPEST + ", not " + bottom);
         }

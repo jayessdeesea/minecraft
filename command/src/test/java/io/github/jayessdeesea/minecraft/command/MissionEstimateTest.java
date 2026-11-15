@@ -31,6 +31,25 @@ class MissionEstimateTest {
         assertTrue(keep.line().endsWith("PREPARE first: 6 logs"), keep.line());
     }
 
+    /**
+     * Ore no builder's pickaxe gets the drop from is dig left, not done (operator, 2026-11-15: the
+     * emerald still stood): with no iron pickaxe in the force, the bill has one and the shortfall
+     * the iron it lacks.
+     */
+    @Test
+    void oreSetAsideWantsAnIronPickaxeFirst() {
+        MissionEstimate keep = MissionEstimate.keep(0, 0, 2_000, 8, 10, 100, 1_000, 3, false, 1);
+
+        assertFalse(keep.feasible());
+        assertTrue(keep.bill().stream().anyMatch(l -> l.what().equals("iron pickaxe")), keep.line());
+        assertEquals("2 iron", keep.short_().getFirst().toString(), "3 for the pickaxe, 1 on hand");
+        assertTrue(keep.line().contains("3 ore set aside for an iron pickaxe"), keep.line());
+
+        MissionEstimate armed = MissionEstimate.keep(0, 0, 2_000, 8, 10, 100, 1_000, 3, true, 0);
+        assertTrue(armed.feasible(), "the iron pickaxe made: only its holder's walk to the ore");
+        assertTrue(armed.line().contains("3 ore set aside for the iron pickaxe"), armed.line());
+    }
+
     @Test
     void withNoRateMeasuredItSaysSo() {
         assertTrue(MissionEstimate.keep(100, 0, 0, 8, 10, 100, 0).line().contains("no rate measured yet"));

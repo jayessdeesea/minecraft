@@ -275,6 +275,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         long torchesChangedAt;
         /** When a staircase nobody could site at {@code stairsFor} is looked for again. */
         long stairsRetryAt;
+        /** When the squad's mine was last run on a stretch. */
+        long stairsExtendedAt;
         /** Who in the squad is on what, followed to completion and checked against the world. */
         final TaskRegister register = new TaskRegister();
         /**
@@ -583,8 +585,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             keepWorkBurn.stock(digLeft + fillLeft, now);
             int crew = keepCrews.values().stream().mapToInt(List::size).sum();
             int stone = kits.stream().mapToInt(Kit::stone).sum() + pile.map(Stockpile::stone).orElse(0);
+            int iron = soldierIron.values().stream().mapToInt(Integer::intValue).sum() + pile.map(Stockpile::rawIron).orElse(0);
             MissionEstimate keep = MissionEstimate.keep(digLeft, fillLeft, keepWorkBurn.perDay(), Math.max(1, crew),
-                    rationsBurn.perDay() / Math.max(1, kits.size()), (int) Math.floor(logs - logsReorder), stone);
+                    rationsBurn.perDay() / Math.max(1, kits.size()), (int) Math.floor(logs - logsReorder), stone,
+                    keepOreAside(), ironPickaxe(), iron);
             keepEstimate = keep;
             if (keepFeasible == null || keepFeasible != keep.feasible()) {
                 keepFeasible = keep.feasible();
@@ -598,6 +602,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         rationsSupply = rationsNow;
         return List.of(rationsNow, logsNow);
     }
+
+    /** Ore on the keep's site no builder's pickaxe gets the drop from, by squad - each squad's loop writes its own. */
+    private final Map<String, Integer> keepOreAsideBySquad = new ConcurrentHashMap<>();
+
+    /** Raw iron and iron ingots each soldier carries - its tick writes, the main loop reads. */
+    private final Map<String, Integer> soldierIron = new ConcurrentHashMap<>();
+
+    /** The keep's ore set aside: the whole site's, so every squad's count is the same; the largest. */
+    private int keepOreAside() {
+        return keepOreAsideBySquad.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+    }
+
+    /** Whether any soldier carries an iron pickaxe or better. */
+    private boolean ironPickaxe() {
+        return pickaxeTiers.values().stream().anyMatch(t -> t >= IRON_TIER);
+    }
+
+    /** An iron pickaxe's tier (bot.world.Hardness): wood 0, stone 1, iron 2. */
+    private static final int IRON_TIER = 2;
 
     /** The camp's level as last measured, for the basis of issue - the main loop writes, ticks read; SHELTER's ceiling before. */
     private volatile Optional<Site.Level> campLevel = Optional.empty();
@@ -626,7 +649,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             sites.add(new Site(Site.Kind.KEEP, "the keep", List.of(
                     new Site.Standard(Site.Level.AIRHEAD, "the depot stocked", chest && logs >= Keep.LOGS_WANTED,
                             (chest ? "its chest stands" : "no chest standing") + ", " + logs + " of " + Keep.LOGS_WANTED + " logs"),
-                    new Site.Standard(Site.Level.BUILDUP, "the ground flattened", digLeft == 0, digLeft + " blocks to dig"),
+                    new Site.Standard(Site.Level.BUILDUP, "the ground flattened", digLeft == 0 && keepOreAside() == 0,
+                            digLeft + " blocks to dig" + (keepOreAside() > 0 ? ", " + keepOreAside() + " ore set aside for "
+                                    + (ironPickaxe() ? "the iron pickaxe" : "an iron pickaxe, which nobody carries") : "")),
                     new Site.Standard(Site.Level.BUILDUP, "the slab laid", fillKnown && fillLeft == 0,
                             fillKnown ? fillLeft + " cells to fill" : "not begun: the ground first"))));
         }
@@ -1953,6 +1978,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             state.keepOreAside = oreAside;
         }
+        keepOreAsideBySquad.put(squad, oreAside.size());
         digExcept.addAll(oreAside);
         List<BlockPos> wholeDig = Clearing.toClear(world, Keep.dig(), digExcept);
         List<BlockPos> toDig = wholeDig.stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX()
@@ -2697,11 +2723,39 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Optional<Staircase> campStairs() {
         if (campStairs == null) {
             campStairs = camp == null ? Optional.empty() : mineStore.load(camp[0] + "," + camp[1])
-                    .filter(kept -> kept.size() == 2)
-                    .map(kept -> new Staircase(kept.get(0), kept.get(1).y()));
+                    .filter(kept -> kept.size() == 2 || kept.size() == 3)
+                    .map(SoldierRunner::keptStairs);
         }
         return campStairs;
     }
+
+    /** A staircase as kept on disk: its head, its last step, and - once run on - its main tunnel's end. */
+    private static Staircase keptStairs(List<BlockPos> kept) {
+        return Staircase.kept(kept.get(0), kept.get(1), kept.size() == 3 ? Optional.of(kept.get(2)) : Optional.empty());
+    }
+
+    /** What's kept on disk of {@code stairs}: see {@link #keptStairs}. */
+    private static List<BlockPos> toKeep(Staircase stairs) {
+        return stairs.stretches() == 1 ? List.of(stairs.head(), stairs.step(stairs.steps() - 1))
+                : List.of(stairs.head(), stairs.step(stairs.steps() - 1), stairs.tunnelEnd());
+    }
+
+    /** The iron an iron pickaxe takes. */
+    private static final int IRON_A_PICKAXE = 3;
+
+    /**
+     * Whether the force is short of iron: nobody carries an iron pickaxe, and there isn't the iron to
+     * make one (backlog/maturity-model.md, basis of issue: at AIRHEAD the iron pickaxe is the iron
+     * authorised - it opens the keep's emerald and the diamonds). A mine worked out is run on while it is.
+     */
+    private boolean ironShort() {
+        int iron = soldierIron.values().stream().mapToInt(Integer::intValue).sum()
+                + chainOfCommand.stockpile().map(Stockpile::rawIron).orElse(0);
+        return !ironPickaxe() && iron < IRON_A_PICKAXE;
+    }
+
+    /** How long after one stretch is added before a mine read done again may have another: its miners' ticks catch up. */
+    private static final long EXTEND_SETTLE_MILLIS = 30_000;
 
     /** The camp's mine's walkway and landing, as kept on disk: empty for no camp, or no mine sited. */
     private List<BlockPos> campMine() {
@@ -3378,6 +3432,29 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             int x = (int) Math.floor(o.location().x());
             int z = (int) Math.floor(o.location().z());
             if (state.stairs != null && state.stairsFor != null && state.stairsFor[0] == x && state.stairsFor[1] == z) {
+                // Worked out with the force short of iron: run on a stretch (operator, 2026-11-15: iron
+                // everywhere, and no iron pickaxe made). Live, the mine read DONE all night with one raw
+                // iron in the force, and the keep's emerald stood.
+                long now = clockwork.millis();
+                // One mine, several squads on it: each works the longest any of them has run it.
+                Staircase mine = state.stairs;
+                state.stairs = squadStairs.values().stream().filter(o2 -> o2.head().equals(mine.head()) && o2.bottom() == mine.bottom())
+                        .max(Comparator.comparingInt(Staircase::stretches)).filter(o2 -> o2.stretches() > mine.stretches()).orElse(mine);
+                boolean workedOut = statuses.stream().anyMatch(s -> stairsProgress.get(s.name()) instanceof Miner.Progress.Done);
+                if (workedOut && ironShort() && now - state.stairsExtendedAt >= EXTEND_SETTLE_MILLIS) {
+                    Optional<Staircase> longer = state.stairs.extended();
+                    if (longer.isPresent()) {
+                        state.stairsExtendedAt = now;
+                        statuses.forEach(s -> stairsProgress.remove(s.name()));
+                        if (!nearCamp(x, z)) {
+                            mineStore.save("mine" + x + "," + z, toKeep(longer.get())); // the camp's is saved with it below
+                        }
+                        treeClaims.addAll(longer.get().walkway());
+                        LOG.info("[{}] MINE: worked out, the force short of iron - its main tunnel run on to {} blocks", squadName,
+                                longer.get().tunnel());
+                        return longer.get();
+                    }
+                }
                 return state.stairs;
             }
             // Where the stairs can be cut all the way down: the objective's x and z can be beside
@@ -3406,7 +3483,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // A mine off the camp is kept on disk by the x and z it was ordered at: after a restart it's
             // cut on down, not sited again over its own half-cut steps.
             if (kept.isEmpty() && !nearCamp(x, z)) {
-                kept = mineStore.load("mine" + x + "," + z).filter(k -> k.size() == 2).map(k -> new Staircase(k.get(0), k.get(1).y()));
+                kept = mineStore.load("mine" + x + "," + z).filter(k -> k.size() == 2 || k.size() == 3).map(SoldierRunner::keptStairs);
             }
             if (kept.isPresent()) {
                 LOG.info("[{}] MINE: the staircase kept on disk: down from {} to y={}", squadName, kept.get().head(), kept.get().bottom());
@@ -3449,7 +3526,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             nightBelow.remove(squadName);
         }
         if (stairs != null && camp != null && nearCamp(stairs.head().x(), stairs.head().z()) && !campStairs().equals(Optional.of(stairs))) {
-            mineStore.save(camp[0] + "," + camp[1], List.of(stairs.head(), stairs.step(stairs.steps() - 1)));
+            mineStore.save(camp[0] + "," + camp[1], toKeep(stairs));
             campStairs = Optional.of(stairs);
         }
         siteWorkshop(squadName, state, statuses, plan == null ? List.of()
@@ -5045,6 +5122,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }));
             List<BlockPos> wall = walling.getOrDefault(name, List.of());
             pickaxeTiers.put(name, Clearer.bestPickaxeTier(inventory));
+            soldierIron.put(name, inventory.count(ItemClassRegistry.ItemClass.RAW_IRON) + inventory.count(ItemClassRegistry.ItemClass.IRON_INGOT));
             turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
                     // No new block while it's on its way to make kit: the walk to a workshop holds no hands,
                     // so each block taken dropped the errand and each gap between blocks began it again.

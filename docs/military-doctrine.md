@@ -583,7 +583,9 @@ ore, iron for diamond), for a squadmate's pickaxe or until one is made, since du
 drop is lost for good (`Clearer`, "leaves N ore block(s) its tools can't dig for their drop"). On the keep
 such ore is set aside with the ground under it, by its strip's builder's pickaxe, and the site goes
 on down past it - left in the dig it would hold the whole site at its level in lock step (§17) - and
-with the pickaxe carried it's the strip's top again, cleared like any block. A drop fallen where no
+with the pickaxe carried it's the strip's top again, cleared like any block. Set aside isn't done:
+the keep's ground isn't flattened while any stands (operator, 2026-11-15), and its estimate (§ 17)
+bills the iron pickaxe it waits on. A drop fallen where no
 body can stand - into a gap a block high - is lost, not walked to: live, three builders in turn
 stood a minute over one. A step or pillar it builds is of
 dirt before cobblestone (`Footing.placeStep`): scaffolding, while cobblestone is a floor's and a
@@ -1165,6 +1167,12 @@ while the others are cut, and their stone floors it. Live, every branch met a ca
 up, and the squads spent their nights with nothing left to cut. A tunnel that would let in water or lava, or whose cave is
 wider than that, is given up alone, and the rest are cut; so are branches off a stretch of main
 tunnel that was given up. The camp's mine standard (§ 17) is met once the stairs reach the bottom.
+A mine worked out - every tunnel cut, the ore in sight of them taken - while nobody carries an iron
+pickaxe and the force hasn't the three iron for one is run on: its main tunnel 24 blocks further,
+branches along it, up to 96 (`Staircase.extended`, `[Squad] MINE: worked out, the force short of
+iron - its main tunnel run on to 48 blocks`), and kept on disk by the tunnel's end. Live, the mine
+read DONE all night with one raw iron in the force. Squads sharing a mine each work the longest any
+has run it.
 
 ## 17. The lodgment
 
@@ -1225,8 +1233,9 @@ worked out at each foothold check: its work - the blocks left to dig and the sla
 4,096 until the ground is flat - at the rate measured from that work's own falls; its bill of
 materials - a stone tool for every 132 blocks dug and a log's handles for every four tools, the
 slab's cobblestone kept in chests till it's laid, two logs a chest, and its days' rations at the
-force's measured burn a soldier; and its shortfall, the logs the bill draws beyond those above
-Class IV's reorder point. Feasible with none; otherwise "PREPARE first". The log says when it turns
+force's measured burn a soldier, and with ore set aside (§ 11) and no iron pickaxe in the force,
+an iron pickaxe; and its shortfall, the logs the bill draws beyond those above Class IV's reorder
+point, and the iron the pickaxe takes beyond what's carried and stockpiled. Feasible with none; otherwise "PREPARE first". The log says when it turns
 one way or the other (`[Estimate] the keep: 1846 blocks to dig, 4096 cells to fill - 2.3 days; bill
 ...; PREPARE first: 6 logs`), the dawn's after-action review lists it, and the logs it draws a day
 are Class IV's committed burn.

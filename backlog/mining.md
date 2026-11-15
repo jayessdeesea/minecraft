@@ -17,8 +17,10 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
 - **Branch tunnels, the rest.** The tunnels are cut and lit (docs/military-doctrine.md § 16). What's
   left: the LOGSTAT counting raw iron and diamonds.
 - **Levels.** The landing at the bottom is cut, with the mine base's workshop, and the stairs are
-  lit (docs/military-doctrine.md § 16), and with nothing left to cut the night shift waits at
-  the landing. What's left: the rest of the mine base (backlog/sites.md), and a next level once
+  lit (docs/military-doctrine.md § 16); a mine worked out while the force is short of iron is run
+  on a stretch, to 96 blocks. Past that, with nothing left to cut, the night shift waits at
+  the landing. What's left: iron wanted past the first pickaxe (armour at BUILDUP) running the mine
+  on as well; the rest of the mine base (backlog/sites.md), and a next level once
   the first is cut - live, the camp's mine was cut to y=16 in under a quarter of an hour, and the
   night rule sent the squad back to it every night after with nothing left to do there. With every
   squad on the night shift (field149, 2026-11-13), 846 of 1,450 soldier-reports at the landing were

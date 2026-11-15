@@ -56,6 +56,28 @@ class StaircaseTest {
         assertTrue(stairs.landingCut(ground(open)), "cut all the way down");
     }
 
+    /**
+     * A mine worked out is run on a stretch: every cut it had is still in it, in the same tunnel - so
+     * a tunnel given up stays given up - and the main tunnel and its branches reach a stretch further.
+     * Kept on disk by its main tunnel's end, it comes back as long as it was run.
+     */
+    @Test
+    void aMineRunOnKeepsItsCutsAndComesBackFromDiskAsLong() {
+        Staircase one = new Staircase(new BlockPos(0, 64, 0), 16);
+        Staircase two = one.extended().orElseThrow();
+
+        assertTrue(two.cuts().containsAll(one.cuts()), "every cut of the first stretch, in its own tunnel");
+        assertTrue(two.cuts().size() > one.cuts().size());
+        assertTrue(two.cuts().stream().anyMatch(c -> c.feet().equals(two.tunnelEnd())), "the tunnel reaches its end");
+        assertTrue(Staircase.kept(two.head(), two.step(two.steps() - 1), java.util.Optional.of(two.tunnelEnd())).equals(two));
+        assertTrue(Staircase.kept(one.head(), one.step(one.steps() - 1), java.util.Optional.empty()).equals(one));
+        Staircase last = two;
+        while (last.extended().isPresent()) {
+            last = last.extended().get();
+        }
+        assertTrue(last.stretches() == Staircase.MAX_STRETCHES);
+    }
+
     @Test
     void everyTorchStandsWhereABodyWalks() {
         Set<BlockPos> walkway = stairs.walkway();
