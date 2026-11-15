@@ -377,6 +377,19 @@ public final class Farmer {
         throw new IllegalStateException("every hotbar slot holds a weapon or a tool");
     }
 
+    /**
+     * The walk to where it stands has no route: the cell is passed over now, and the next taken at
+     * once - not after the walk's whole allowance and a cooldown. Live, farmers stood a minute and
+     * more at a time over a farm's four or five cells nobody could reach.
+     */
+    public synchronized void unreachable(String why) {
+        if (standAt().isEmpty()) {
+            return;
+        }
+        fail(why);
+        cooldown = 0;
+    }
+
     private void fail(String why) {
         // Its cell out of reach - across water, behind a wall - or its job refused: the rest first.
         // A harvest is a dig, its spot the crop over the plot cell: live, with no cell passed over

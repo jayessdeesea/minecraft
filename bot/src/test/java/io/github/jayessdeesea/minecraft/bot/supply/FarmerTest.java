@@ -133,6 +133,21 @@ class FarmerTest {
         assertEquals(Set.of(PLOT.get(1)), farmland, "the other cell only");
     }
 
+    /** A cell with no route to it is passed over at once, and the next taken in the same few ticks. */
+    @Test
+    void aCellWithNoRouteToItIsPassedOverAtOnce() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.HOE), 1});
+        Farmer farmer = new Farmer("Bob", session, inventory, new HashSet<>());
+        Position soldier = new Position(0.5, GROUND + 1, 1.5);
+        farmer.tick(soldier, world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+        Position first = farmer.standAt().orElseThrow();
+
+        farmer.unreachable("no route from here to within 0 of it");
+        farmer.tick(soldier, world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+
+        assertTrue(farmer.standAt().filter(next -> !next.equals(first)).isPresent(), "another cell at once, not " + first);
+    }
+
     @Test
     void aFarmerFarFromThePlotIsGivenTheWalkThere() {
         inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.HOE), 1});

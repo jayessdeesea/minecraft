@@ -48,7 +48,7 @@ The formations we implement:
 
 *How we use it:* the squad leader picks the **formation** and an **interval** (tight, normal,
 extended). Each soldier's slot is a fixed offset from the **point man** - the lead soldier, who
-heads for the objective - in the direction of travel (¶3-47: leader in front, others echeloned
+heads for the objective, the first not detached to the farm or the wood party - in the direction of travel (¶3-47: leader in front, others echeloned
 behind). The slot is a *zone*, not a point: the soldier routes into it however the ground allows
 (¶3-46 "expands and contracts depending on the terrain", ¶3-47 "positions for all but the leader
 may vary"). Blocks are metres, so doctrine's 10 m wedge interval is our *extended* interval; normal
@@ -89,7 +89,10 @@ for a day) - raises
 an alert in the log, once a spell (`[Alert]`, `app.IdleWatch`): its report, its order, which
 routine has its hands, and its squad's task. It's logged again when it moves on. A soldier held at
 a table or furnace shows its routine; one with free hands and a task its routines can't start on is
-the chain of command's gap; one jumping in place is stuck.
+the chain of command's gap; one jumping in place is stuck. Beside it, one within a body's width of
+another for half a minute, moving or not, outside a rest (`app.CrowdWatch`), is alerted too, with
+what it's at, and logged again when it has room: two soldiers in one cell that long are working one
+job, or walking into each other.
 
 ## 4. Reports upward
 
@@ -551,8 +554,9 @@ four of each at most. Only from what it carries, cobblestone and wood, never qua
 for. Live, builders climbed through copper armour while the dig's tools wore out with no spare.
 
 No rung past what the camp's level authorises is made (backlog/maturity-model.md, basis of issue;
-`Ladder.authorised`): at SHELTER nothing that costs iron; at AIRHEAD iron only for the enabler, the
-iron pickaxe; at BUILDUP a shield, armour and an iron axe too; diamond, and an iron sword, only once
+`Ladder.authorised`): the iron pickaxe, the enabler, at any level (operator, 2026-11-15: it breaks the
+keep's emerald - live, the camp fell to SHELTER when eight soldiers joined unarmed, with twelve raw
+iron in a pack); at SHELTER nothing else that costs iron; at BUILDUP a shield, armour and an iron axe too; diamond, and an iron sword, only once
 it's ESTABLISHED (§ 17). Copper costs no iron, so copper armour comes at any level.
 
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
@@ -722,7 +726,8 @@ one cell at a time (`bot.supply.Farmer`), in this order:
 
 A plot cell whose job fails - its place not walked to, the server not answering, a ripe crop it
 can't reach - is passed over for two minutes, longer each time it fails again, by every soldier
-farming there, and the rest of the plot is worked first. A cell with a block at head height over
+farming there, and the rest of the plot is worked first. A walk to a cell with no route at all is
+given up at once (`Farmer.unreachable`), not after the walk's allowance. A cell with a block at head height over
 it - a hut's wall over the farm's edge - isn't tried at all: no one can stand on it.
 
 Each job is an expect script: stand on the cell - landed, not still coming down onto it - item in hand, use it on the cell, and done when
@@ -737,7 +742,14 @@ farmers carried up to 580 seeds, packs full, and a harvest's wheat had no slot t
 pack down to 2 free slots throws away its smallest stack of what no routine uses - rotten flesh,
 bones, gravel, phantom membrane: an item of no class (`bot.world.ItemClassRegistry`) - never the
 one in hand, and an item it threw away and picked back up isn't thrown again for 5 minutes, a drop's life on the ground:
-live, one standing still picked it straight back up, and threw it 454 times.
+live, one standing still picked it straight back up, and threw it 454 times. With none of that to
+shed, a full pack sheds its bulk, worth least first: dirt past two stacks (`Pack.DIRT_KEPT`), then
+seeds past theirs, then cobblestone past five stacks (`Pack.COBBLESTONE_KEPT`) - never ore, ingots
+or tools (operator, 2026-11-15: almost never dirt over iron; live, a soldier with twelve raw iron
+carried 586 dirt and had no slot for the pickaxe it was crafting). And part-stacks of one item are
+merged, the smaller onto the larger (`Pack.mergeable`), for what stacks to 64 only - a tool put on
+a tool swaps them - and an item merged isn't merged again for 5 minutes, so one the server
+didn't merge never holds off the rest of the pack's keeping.
 
 Wood is grown when it runs out. An objective's task can be `TREE_FARM`: the squad plants saplings
 round the objective, on the world's grid of every fourth block both ways - x and z each two past a
@@ -1126,7 +1138,13 @@ the landing. Until one of them has a pickaxe, every one makes one.
 
 Nothing is crafted on the stairs. At the bottom, beside the main tunnel's first cell, the cutter
 cuts a **landing**: a recess each side (`Staircase.landing`), the mine base's table and furnace
-(§11), never dug out again once they stand. The stairs and tunnels are lit as they're cut, so the
+(§11), never dug out again once they stand. A step on, beside the main tunnel's second cell, it cuts
+the **store** (`Staircase.store`): the mine's stash, a chest in its recess. A soldier down the mine
+carrying 8 or more raw iron, raw copper and diamonds fits the chest if it isn't standing - as a
+workshop's is (§ 12), from a chest carried down or with 4 logs or more, so a pickaxe's handles are
+left - and puts them all in, and goes back to the cutting, rather than up the stairs
+with every pack; coal stays in its pack for torches. What the stash holds is the mine's, logged as
+`[Mine] the stash at ... holds ...`, not the camp's stockpile, and nothing is drawn from it. The stairs and tunnels are lit as they're cut, so the
 mine spawns nothing: a torch on a step once a turn, halfway round, one at the landing's stand, one
 every 6 blocks along the main tunnel and one 4 blocks into every other pair of branches - within 7
 blocks of every tunnel cell (`Staircase.lights`), put down by the squad holding the top - those carrying torches, or the
@@ -1158,7 +1176,10 @@ would let in water or lava, or would leave a step with no floor over an open cav
 At the bottom the cutter goes on into the tunnels the ore is mined from: a main tunnel 24 blocks
 straight out from the last step, away from the shaft, then branches off it both ways every 3
 blocks, each 8 long, so every block between two branches is seen from one of them. All are two
-high, at the stairs' depth, with their floors left standing, and ore under a tunnel's floor is
+high, at the stairs' depth, with their floors left standing. Ore is taken as it's seen: touching a
+cut, or anywhere in reach (4.5 blocks, two across) with a face open - the rest of a vein behind its
+first block, a cave's wall - nearest first, so a vein of coal or copper is mined out, not just
+where it meets the tunnel. Ore under a tunnel's floor is
 left so as not to hole it. A tunnel over an open cave is floored: cobblestone put in the gap under
 its next cell, against the solid block beside it - or, in a wide cave with none, against a block put
 beside the gap first, built out from the stone it touches - and the tunnel goes on - 24 blocks a tunnel at the
@@ -1173,6 +1194,15 @@ branches along it, up to 96, a stretch at most every half minute a mine (`Stairc
 iron - its main tunnel run on to 48 blocks`), and kept on disk by the tunnel's end. Live, the mine
 read DONE all night with one raw iron in the force. Squads sharing a mine each work the longest any
 has run it.
+
+A mine is shared among the cutters on it - every squad's, in order by name (`Staircase.share`):
+the first cuts the stairs and the main tunnel, and the branch roots along the main tunnel are cut
+into contiguous stretches, one a cutter, both sides, so each works a part of the mine of its own.
+The rest wait on the stairs, each a step of its own - three behind its cutter and up, then the
+last steps above the landing - until the main tunnel is cut through - started from
+a root its cutter still stood on, two stood on one cell - and the mine is worked out only when
+every cutter's share is. Live, four squads' cutters each worked the whole mine and stood on one
+another.
 
 ## 17. The lodgment
 

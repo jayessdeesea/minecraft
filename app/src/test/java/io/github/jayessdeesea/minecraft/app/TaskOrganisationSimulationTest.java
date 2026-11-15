@@ -275,8 +275,11 @@ class TaskOrganisationSimulationTest {
                   "resource": "WOOD", "amount": 0, "x2": 0, "z2": 0}]""");
         clock.advance(10 * 60_000);
 
+        // Got there and went on to mine: its stairs cut, and its role kept. Not its directives at the
+        // end - the scripted squad leader gives the GO_TO again with every answer, so whether it's
+        // there at the last look is the timing of the last answer, not the soldier's.
         assertTrue(cutBelow(server) >= 20, "the miner cut its stairs: " + cutBelow(server) + " cells cut below y=53");
-        assertEquals(List.of(), new PlanBook(state).of("Alice").directives(), "the GO_TO is done");
+        assertEquals(Role.MINER, new PlanBook(state).of("Alice").role(), "still the miner");
     }
 
     /** A role is kept on disk: after a restart, with nothing new said, the miner goes on mining. */

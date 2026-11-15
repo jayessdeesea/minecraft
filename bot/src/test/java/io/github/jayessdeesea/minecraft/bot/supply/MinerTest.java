@@ -39,13 +39,15 @@ class MinerTest {
     /** An open cave, and the blocks put into it. */
     private final Set<BlockPos> cave = new HashSet<>();
     private final Set<BlockPos> placed = new HashSet<>();
+    /** Chests standing - a stash in the store's recess. */
+    private final Set<BlockPos> chests = new HashSet<>();
     private final List<Runnable> answers = new ArrayList<>();
 
     private final WorldView world = new WorldView() {
         @Override
         public boolean isSolid(int x, int y, int z) {
             BlockPos cell = new BlockPos(x, y, z);
-            return tree.contains(cell) || placed.contains(cell) || y < GROUND && !dug.contains(cell) && !water.contains(cell) && !cave.contains(cell);
+            return tree.contains(cell) || placed.contains(cell) || chests.contains(cell) || y < GROUND && !dug.contains(cell) && !water.contains(cell) && !cave.contains(cell);
         }
 
         @Override
@@ -57,6 +59,11 @@ class MinerTest {
         @Override
         public boolean isLog(int x, int y, int z) {
             return x == 3 && z == 0 && tree.contains(new BlockPos(x, y, z));
+        }
+
+        @Override
+        public boolean isChest(int x, int y, int z) {
+            return chests.contains(new BlockPos(x, y, z));
         }
 
         @Override
@@ -295,6 +302,118 @@ class MinerTest {
         BlockPos landing = stairs.step(stairs.steps() - 1);
         assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000, stonePickaxe, new Position(landing.x() + 0.5, landing.y(), landing.z() + 0.5)));
         assertTrue(dug.contains(above), "from the bottom, the ore over branch 1 at " + above + " is mined");
+    }
+
+    /**
+     * A vein running back into the wall is followed: the block touching the tunnel opens the next,
+     * and that one the next, while they're in reach (operator, 2026-11-15: coal and copper left
+     * behind).
+     */
+    @Test
+    void aVeinIsFollowedIntoTheWallWhileItsInReach() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 20);
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 120000));
+        Staircase.Cut cut = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList().get(3);
+        Staircase.Cut next = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList().get(4);
+        // Out of the branch's side, at head height: across the branch from the way it runs.
+        int sx = next.feet().z() - cut.feet().z(), sz = cut.feet().x() - next.feet().x();
+        BlockPos first = cut.feet().offset(sx, 1, sz), second = first.offset(sx, 0, sz);
+        for (BlockPos vein : List.of(first, second)) {
+            dug.remove(vein);
+            ore.add(vein);
+        }
+        Inventory stonePickaxe = new Inventory();
+        stonePickaxe.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(1), 1});
+
+        BlockPos landing = stairs.step(stairs.steps() - 1);
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000, stonePickaxe, new Position(landing.x() + 0.5, landing.y(), landing.z() + 0.5)));
+        assertTrue(dug.contains(first), "the vein's first block, touching the branch, at " + first);
+        assertTrue(dug.contains(second), "and the one behind it, opened by the first, at " + second);
+    }
+
+    /**
+     * Four miners on one mine, each its share (operator, 2026-11-15: they stood on one another): the
+     * whole mine is cut, each cuts only in its own tunnels, and no two ever stand on one cell, cutting
+     * or waiting. Those whose stretch the main tunnel hasn't reached wait on steps of their own.
+     */
+    @Test
+    void fourMinersShareOneMineAndNeverStandOnOneAnother() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        int miners = 4;
+        List<Miner> crew = new ArrayList<>();
+        List<Position> at = new ArrayList<>();
+        List<Set<BlockPos>> cutBy = new ArrayList<>();
+        for (int m = 0; m < miners; m++) {
+            Set<BlockPos> mine = new HashSet<>();
+            cutBy.add(mine);
+            crew.add(new Miner("Miner" + m, recording(mine), new Inventory()));
+            at.add(new Position(0.5, GROUND, 0.5));
+        }
+        boolean[] done = new boolean[miners];
+        for (int tick = 0; tick < 200_000 && !allTrue(done); tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            for (int m = 0; m < miners; m++) {
+                if (done[m]) {
+                    continue;
+                }
+                Miner.Progress progress = crew.get(m).tick(at.get(m), world, stairs, true, Optional.of(stairs.share(m, miners)), m);
+                done[m] = progress instanceof Miner.Progress.Done;
+                at.set(m, crew.get(m).standAt().orElse(at.get(m)));
+            }
+            for (int m = 0; m < miners; m++) {
+                for (int o = m + 1; o < miners; o++) {
+                    BlockPos a = BlockPos.containing(at.get(m).x(), at.get(m).y(), at.get(m).z());
+                    BlockPos b = BlockPos.containing(at.get(o).x(), at.get(o).y(), at.get(o).z());
+                    // Only at the head, before there's a step to wait on, may two stand in one cell.
+                    assertTrue(a.equals(stairs.head()) || !a.equals(b), "miners " + m + " and " + o + " both on " + a + " at tick " + tick);
+                }
+            }
+        }
+        assertTrue(allTrue(done), "every share cut");
+        assertTrue(stairs.cuts().stream().allMatch(c -> c.cells().stream().noneMatch(cell -> world.isSolid(cell.x(), cell.y(), cell.z()))),
+                "the whole mine cut; left: " + stairs.cuts().stream().filter(c -> c.cells().stream().anyMatch(cell -> world.isSolid(cell.x(), cell.y(), cell.z())))
+                .map(c -> c.tunnel() + "@" + c.feet()).toList());
+        for (int m = 0; m < miners; m++) {
+            Set<Integer> share = stairs.share(m, miners);
+            Set<BlockPos> theirs = new HashSet<>();
+            stairs.cuts().stream().filter(c -> share.contains(c.tunnel())).forEach(c -> theirs.addAll(c.cells()));
+            int miner = m;
+            assertTrue(theirs.containsAll(cutBy.get(m)), "miner " + miner + " cut only its own tunnels");
+            assertTrue(!cutBy.get(m).isEmpty(), "and every miner cut some");
+        }
+    }
+
+    private static boolean allTrue(boolean[] flags) {
+        for (boolean f : flags) {
+            if (!f) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** A session like the shared one, that also notes each block it breaks in {@code cut}. */
+    private PlaySession recording(Set<BlockPos> cut) {
+        return (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(), new Class<?>[]{PlaySession.class}, (proxy, method, args) -> {
+            if (method.getName().equals("finishDigging")) {
+                cut.add(new BlockPos((int) args[0], (int) args[1], (int) args[2]));
+            }
+            return method.invoke(session, args);
+        });
+    }
+
+    /** A chest standing in the store's recess - the mine's stash - is left standing, not cut out again. */
+    @Test
+    void theStashsChestInTheStoreIsNeverCutOut() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000));
+        BlockPos stash = stairs.store().getFirst();
+        dug.remove(stash);
+        chests.add(stash);
+
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000));
+        assertTrue(!dug.contains(stash), "the chest at " + stash + " stands");
     }
 
     private static int pickaxe(int tier) {

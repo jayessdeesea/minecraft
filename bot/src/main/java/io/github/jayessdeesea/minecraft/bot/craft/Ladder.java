@@ -152,8 +152,10 @@ public final class Ladder {
 
     /**
      * Whether a site at {@code level} authorises {@code recipe} (backlog/maturity-model.md, basis of
-     * issue: each level a ceiling, nothing above it made yet). SHELTER: nothing that costs iron.
-     * AIRHEAD: iron only for an enabler - the iron pickaxe, which opens diamonds and emerald ore.
+     * issue: each level a ceiling, nothing above it made yet). The iron pickaxe at any level: the
+     * enabler, three iron, and what breaks the keep's emerald and opens diamonds (operator,
+     * 2026-11-15) - live, the camp fell to SHELTER when eight soldiers joined unarmed, and twelve
+     * raw iron sat in a pack with no pickaxe made. SHELTER: nothing else that costs iron.
      * BUILDUP: a shield, armour, and iron tools for producers - an iron axe - as well. ESTABLISHED and
      * above: iron for all, diamond for weapons and armour. Below SHELTER, as SHELTER.
      */
@@ -161,7 +163,6 @@ public final class Ladder {
         boolean iron = recipe.key().containsValue(ItemClass.IRON_INGOT);
         boolean diamond = recipe.key().containsValue(ItemClass.DIAMOND);
         int at = level.map(Enum::ordinal).orElse(0);
-        int airhead = io.github.jayessdeesea.minecraft.command.Site.Level.AIRHEAD.ordinal();
         int buildup = io.github.jayessdeesea.minecraft.command.Site.Level.BUILDUP.ordinal();
         int established = io.github.jayessdeesea.minecraft.command.Site.Level.ESTABLISHED.ordinal();
         if (at >= established) {
@@ -174,7 +175,7 @@ public final class Ladder {
             return true;
         }
         if (recipe == Recipe.IRON_PICKAXE) {
-            return at >= airhead;
+            return true;
         }
         return at >= buildup && (recipe == Recipe.SHIELD || recipe == Recipe.IRON_AXE || recipe.makes() == ItemClass.ARMOUR);
     }

@@ -85,7 +85,8 @@ class LadderTest {
                 buildup = Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.BUILDUP),
                 established = Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.ESTABLISHED);
         assertTrue(Ladder.authorised(Recipe.STONE_PICKAXE, shelter));
-        assertFalse(Ladder.authorised(Recipe.IRON_PICKAXE, shelter), "nothing that costs iron at SHELTER");
+        assertTrue(Ladder.authorised(Recipe.IRON_PICKAXE, shelter), "the enabler at any level");
+        assertFalse(Ladder.authorised(Recipe.IRON_SWORD, shelter), "nothing else that costs iron at SHELTER");
         assertTrue(Ladder.authorised(Recipe.IRON_PICKAXE, airhead), "the enabler at AIRHEAD");
         assertFalse(Ladder.authorised(Recipe.IRON_CHESTPLATE, airhead));
         assertTrue(Ladder.authorised(Recipe.COPPER_CHESTPLATE, airhead), "copper costs no iron");

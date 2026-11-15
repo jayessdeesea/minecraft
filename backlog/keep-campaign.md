@@ -42,13 +42,18 @@ The keep's dig runs with no supply behind it (operator, 2026-11-14). Live:
 ## Notes
 - **The depot's row of chests is built** (docs/military-doctrine.md § 4, "The depot is a row of
   chests"): six cells, filled in turn. What's left of it:
-  - Sized from the counts, not a fixed six: eight builders carry about 9,000 blocks, the dig had
-    5,500 to go, and the slab wants about 4,000 cobblestone back - three chests of it.
+  - **A base's stockpile is big (operator, 2026-11-15):** "a lot of chests" - about 32 double
+    chests at a base, to dump a lot into. Double chests need `ChestWindow` to open a 54-slot window
+    (today two chests side by side are kept apart because nothing opens the pair). Sized from the
+    counts beside that: eight builders carry about 9,000 blocks.
+  - **Caps on bulk (operator, 2026-11-15):** no more than 4,096 dirt, and no more than 4,096
+    cobblestone, in the 32-double-chest stockpile, unless an active plan wants more (the slab, a
+    wall) - past that it's thrown away, not carried. Needs the dirt count in `Stockpile` and `Depositor` stowing dirt.
+    The pack's own order when full is built (docs/military-doctrine.md § 4, the pack): dirt past two
+    stacks, then seeds, then cobblestone past five stacks; never ore, ingots or tools.
   - Selective stowing: cobblestone, logs, ore, spare tools, the lumberjacks' axes and saplings go in
-    (operator, 2026-11-14: they aren't needed all the time); dirt past a couple of stacks
-    for scaffolding is thrown away - it would take a dozen chests and nothing wants it. `Depositor`
-    stows only a full load of logs or cobblestone, so a pack full of dirt and odd blocks never
-    empties.
+    (operator, 2026-11-14: they aren't needed all the time). `Depositor` stows only a full load of
+    logs or cobblestone, so a pack full of dirt and odd blocks never empties.
   - Which chest is being filled isn't kept: after a restart the first is tried again, a failed trip
     for each full chest. It belongs in the campaign record.
   - Draws (logs, cobblestone for the slab) look in the chest being filled only, not along the row.

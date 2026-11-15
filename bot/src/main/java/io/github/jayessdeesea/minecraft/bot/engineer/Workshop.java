@@ -86,10 +86,14 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
     static final int SEARCH = 6;
     private static final int[][] SIDES = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
 
-    /** The mine base's workshop: the landing's stand, its table in one recess and its furnace in the other. */
+    /**
+     * The mine base's workshop: the landing's stand, its table in one recess and its furnace in the
+     * other, and the stash's chest in the store's recess a step on (operator, 2026-11-15: chests in
+     * the mines, so the ore is stashed and the work goes on).
+     */
     public static Workshop mine(Staircase stairs) {
         List<BlockPos> recesses = stairs.landing();
-        return new Workshop(stairs.landingStand(), recesses.get(0), recesses.get(1));
+        return new Workshop(stairs.landingStand(), recesses.get(0), recesses.get(1)).withChest(stairs.store().get(0));
     }
 
     /**

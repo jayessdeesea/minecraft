@@ -153,9 +153,9 @@ public final class Breacher {
                 .orElse(Hardness.HAND);
     }
 
-    /** Solid, and to be broken: a workshop's table or furnace in a cut - the landing's recesses - is left standing. */
+    /** Solid, and to be broken: a workshop's table, furnace or chest in a cut - the landing's recesses - is left standing. */
     private boolean solid(BlockPos cell) {
-        return world.isSolid(cell.x(), cell.y(), cell.z()) && world.workstation(cell.x(), cell.y(), cell.z()).isEmpty();
+        return Staircase.uncut(world, cell);
     }
 
     private boolean pickaxeInHand() {

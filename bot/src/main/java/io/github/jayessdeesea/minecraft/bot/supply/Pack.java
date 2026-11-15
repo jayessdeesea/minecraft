@@ -69,6 +69,21 @@ public final class Pack {
         if (!free) {
             return;
         }
+        // Part-stacks of one item merged into one: two slots for a few blocks each is a slot wasted
+        // (operator, 2026-11-15).
+        Optional<int[]> merge = mergeable(inventory, (a, b) -> ticks - mergeTried.getOrDefault(inventory.itemAt(a), Long.MIN_VALUE / 2) < THROWN_FOR);
+        if (merge.isPresent()) {
+            int from = merge.get()[0], onto = merge.get()[1];
+            LOG.info("{} puts its {} of item {} onto the {} in slot {}", name, inventory.countAt(from), inventory.itemAt(from),
+                    inventory.countAt(onto), onto);
+            mergeTried.put(inventory.itemAt(from), ticks);
+            // Picked up, put onto the other - the stack takes what it can - and what's left put back.
+            session.click(0, 0, from, false); // stale state: the server resends the inventory
+            session.click(0, 0, onto, false);
+            session.click(0, 0, from, false);
+            settle = SETTLE_TICKS;
+            return;
+        }
         // A pack near full sheds what no routine uses - rotten flesh, bones, gravel - before seeds.
         Optional<Integer> junk = freeSlots(inventory) <= FULL_AT
                 ? unused(inventory, item -> ticks - pickedBack.getOrDefault(item, Long.MIN_VALUE / 2) < THROWN_FOR) : Optional.empty();
@@ -80,6 +95,23 @@ public final class Pack {
             session.throwStack(0, 0, slot); // stale state: the server resends the inventory
             settle = SETTLE_TICKS;
             return;
+        }
+        // Then the bulk it carries beyond what its work wants, worth least first: dirt, then seeds,
+        // then cobblestone. Never ore, ingots or tools: live, a soldier with twelve raw iron had 586
+        // dirt in its pack and no slot for the pickaxe it was crafting (operator, 2026-11-15:
+        // almost never dirt over iron).
+        if (freeSlots(inventory) <= FULL_AT) {
+            Optional<Integer> bulk = surplus(inventory, ItemClass.DIRT, DIRT_KEPT)
+                    .or(() -> surplusSeeds(inventory))
+                    .or(() -> surplus(inventory, ItemClass.COBBLESTONE, COBBLESTONE_KEPT));
+            if (bulk.isPresent()) {
+                int slot = bulk.get();
+                LOG.info("{} throws away {} of item {} - its pack is full, and it's worth least of what it carries", name,
+                        inventory.countAt(slot), inventory.itemAt(slot));
+                session.throwStack(0, 0, slot); // stale state: the server resends the inventory
+                settle = SETTLE_TICKS;
+                return;
+            }
         }
         if (inventory.count(ItemClass.SEEDS) < THROW_FROM) {
             return;
@@ -101,6 +133,44 @@ public final class Pack {
             }
         }
         return count;
+    }
+
+    /**
+     * When a merge was last tried, by item: an item merged once isn't again for a while - one the
+     * server didn't merge, tried pair after pair, would hold off the rest of the pack's keeping.
+     */
+    private final java.util.Map<Integer, Long> mergeTried = new java.util.HashMap<>();
+
+    /** What stacks to 64 and merges as one: what a soldier gathers, mines, smelts and makes in bulk. */
+    static final java.util.Set<ItemClass> STACKS = java.util.EnumSet.of(ItemClass.DIRT, ItemClass.COBBLESTONE, ItemClass.LOG,
+            ItemClass.PLANKS, ItemClass.STICK, ItemClass.SEEDS, ItemClass.WHEAT, ItemClass.COAL, ItemClass.RAW_IRON,
+            ItemClass.RAW_COPPER, ItemClass.IRON_INGOT, ItemClass.COPPER_INGOT, ItemClass.TORCH, ItemClass.DIAMOND,
+            ItemClass.STRING, ItemClass.FLINT, ItemClass.FEATHER, ItemClass.LADDER);
+    static final int STACK = 64;
+
+    /**
+     * Two part-stacks of one item that merge - the smaller, put onto the larger - or empty with
+     * none, passing over the pairs {@code triedLately}. Only what's in {@link #STACKS}: a tool put
+     * onto a tool swaps the two, and would be clicked for ever.
+     */
+    static Optional<int[]> mergeable(Inventory inventory, java.util.function.BiPredicate<Integer, Integer> triedLately) {
+        for (int a = Inventory.MAIN_FIRST; a <= Inventory.HOTBAR_LAST; a++) {
+            int item = inventory.itemAt(a);
+            if (item < 0 || inventory.countAt(a) >= STACK || ItemClassRegistry.classOf(item).filter(STACKS::contains).isEmpty()) {
+                continue;
+            }
+            for (int b = a + 1; b <= Inventory.HOTBAR_LAST; b++) {
+                if (inventory.itemAt(b) != item || inventory.countAt(b) >= STACK) {
+                    continue;
+                }
+                int from = inventory.countAt(a) <= inventory.countAt(b) ? a : b;
+                int onto = from == a ? b : a;
+                if (!triedLately.test(from, onto)) {
+                    return Optional.of(new int[]{from, onto});
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     /** Free slots at or under which the pack counts as full: room kept for a harvest's wheat and seeds. */
@@ -133,6 +203,29 @@ public final class Pack {
         for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
             int item = inventory.itemAt(slot);
             if (slot != held && item >= 0 && ItemClassRegistry.classOf(item).isEmpty() && !recentlyThrown.test(item)
+                    && (best == null || inventory.countAt(slot) < inventory.countAt(best))) {
+                best = slot;
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** Dirt a soldier keeps with its pack full: two stacks, to pillar, bridge and fill with. */
+    public static final int DIRT_KEPT = 128;
+    /** Cobblestone it keeps with its pack full: five stacks, a wall's or a stretch of slab's load. */
+    public static final int COBBLESTONE_KEPT = 320;
+
+    /**
+     * A slot of {@code bulk} that can go and leave {@code kept} or more: the smallest such stack,
+     * never the one in hand.
+     */
+    static Optional<Integer> surplus(Inventory inventory, ItemClass bulk, int kept) {
+        int carried = inventory.count(bulk);
+        int held = Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot();
+        Integer best = null;
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            if (slot != held && ItemClassRegistry.classOf(inventory.itemAt(slot)).equals(Optional.of(bulk))
+                    && carried - inventory.countAt(slot) >= kept
                     && (best == null || inventory.countAt(slot) < inventory.countAt(best))) {
                 best = slot;
             }

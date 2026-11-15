@@ -24,8 +24,9 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
 
 ## Left
 - **The ore's chain of hands (operator, 2026-11-14)**, each link a job of its own, chests between:
-  1. *A mine stash.* Chests at the mine base's landing, beside its workshop: a miner unloads raw ore
-     there and goes on cutting, not up 54 steps with every pack.
+  1. *A mine stash* - built (docs/military-doctrine.md § 16, the store): the chest beside the
+     landing a miner unloads raw ore into. What's left: its second chest when the first is full,
+     and the stash shown in the mine base's site line.
   2. *The haul.* The stash brought up in one big batch - one soldier, a full pack of ore - to the
      surface depot's chests, at dawn when the squads come up anyway.
   3. *The smelter.* Someone draws raw ore and fuel from the depot, smelts it at its furnace, and puts

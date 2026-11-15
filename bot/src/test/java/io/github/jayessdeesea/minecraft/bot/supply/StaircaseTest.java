@@ -78,6 +78,48 @@ class StaircaseTest {
         assertTrue(last.stretches() == Staircase.MAX_STRETCHES);
     }
 
+    /**
+     * Shared among miners, every tunnel is one miner's and no more than one's, and each miner's
+     * branches are a stretch of the main tunnel of their own: no miner's root between another's.
+     */
+    @Test
+    void aMineSharedAmongMinersGivesEachItsOwnStretch() {
+        Staircase stairs = new Staircase(new BlockPos(0, 64, 0), 16).extended().orElseThrow();
+        Set<Integer> all = new HashSet<>();
+        stairs.cuts().forEach(c -> all.add(c.tunnel()));
+        for (int miners = 1; miners <= 6; miners++) {
+            Set<Integer> seen = new HashSet<>();
+            int lastRoot = -1;
+            for (int miner = 0; miner < miners; miner++) {
+                Set<Integer> share = stairs.share(miner, miners);
+                for (int tunnel : share) {
+                    assertTrue(seen.add(tunnel), "tunnel " + tunnel + " is one miner's, of " + miners);
+                }
+                List<Integer> roots = share.stream().filter(t -> t > 0).map(t -> (t - 1) / 2).sorted().toList();
+                if (!roots.isEmpty()) {
+                    assertTrue(roots.getFirst() > lastRoot, "miner " + miner + "'s stretch lies past the last one's");
+                    lastRoot = roots.getLast();
+                }
+            }
+            assertTrue(seen.equals(all), "every tunnel someone's, with " + miners + " miners");
+        }
+        assertTrue(stairs.share(1, 4).stream().noneMatch(t -> t <= 0), "the stairs and main tunnel are the first miner's");
+    }
+
+    /** The store's recesses are cut with the main tunnel, clear of the landing's and of every branch. */
+    @Test
+    void theStoreIsCutBesideTheSecondCellClearOfTheLandingAndTheBranches() {
+        Staircase stairs = new Staircase(new BlockPos(0, 64, 0), 16);
+        Set<BlockPos> mainCells = new HashSet<>();
+        Set<BlockPos> branchCells = new HashSet<>();
+        stairs.cuts().forEach(c -> (c.tunnel() == 0 ? mainCells : c.tunnel() > 0 ? branchCells : new HashSet<BlockPos>()).addAll(c.cells()));
+        for (BlockPos recess : stairs.store()) {
+            assertTrue(mainCells.contains(recess), recess + " is cut with the main tunnel");
+            assertFalse(branchCells.contains(recess), recess + " is no branch's");
+            assertFalse(stairs.landing().contains(recess), recess + " is not the landing's");
+        }
+    }
+
     @Test
     void everyTorchStandsWhereABodyWalks() {
         Set<BlockPos> walkway = stairs.walkway();

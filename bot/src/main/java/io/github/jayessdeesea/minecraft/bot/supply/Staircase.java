@@ -49,6 +49,32 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
         return stretches >= MAX_STRETCHES ? java.util.Optional.empty() : java.util.Optional.of(new Staircase(head, bottom, stretches + 1));
     }
 
+    /**
+     * The tunnels miner {@code miner} of {@code miners} on this mine cuts: -1 the stairs, 0 the main
+     * tunnel, then the branches. The first cuts the stairs and the main tunnel; the branches go in
+     * contiguous stretches along the main tunnel, one to each miner, both sides of it - so each
+     * works its own stretch of the mine, never at another's root. One with no stretch - more miners
+     * than branch roots - has nothing. Live, four squads' cutters on one mine each worked the whole
+     * of it and stood on one another (operator, 2026-11-15).
+     */
+    public Set<Integer> share(int miner, int miners) {
+        if (miners < 1 || miner < 0 || miner >= miners) {
+            throw new IllegalArgumentException("miner " + miner + " of " + miners);
+        }
+        Set<Integer> tunnels = new java.util.HashSet<>();
+        if (miner == 0) {
+            tunnels.add(-1);
+            tunnels.add(0);
+        }
+        int roots = tunnel() / BRANCH_EVERY;
+        for (int root = miner * roots / miners; root < (miner + 1) * roots / miners; root++) {
+            // Tunnel 2r+1 is root r's branch to one side, 2r+2 the other's (cuts()).
+            tunnels.add(2 * root + 1);
+            tunnels.add(2 * root + 2);
+        }
+        return Set.copyOf(tunnels);
+    }
+
     /** The main tunnel's far cell, where the feet are: kept on disk, it says how far it was run. */
     public BlockPos tunnelEnd() {
         BlockPos last = step(steps() - 1);
@@ -96,6 +122,29 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
         int dx = d[0] != 0 ? d[0] : 0;
         int dz = d[0] != 0 ? 0 : d[1];
         return List.of(first.offset(-dz, 0, dx), first.offset(dz, 0, -dx));
+    }
+
+    /**
+     * The store's two recesses, either side of the main tunnel's second cell: where the mine's stash
+     * of ore is kept in chests, off the walkway, a step from the landing's table and furnace
+     * (backlog/sites.md, the mine base's store).
+     */
+    public List<BlockPos> store() {
+        BlockPos first = landingStand();
+        int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
+        int dx = d[0] != 0 ? d[0] : 0;
+        int dz = d[0] != 0 ? 0 : d[1];
+        BlockPos second = first.offset(dx, 0, dz);
+        return List.of(second.offset(-dz, 0, dx), second.offset(dz, 0, -dx));
+    }
+
+    /**
+     * Whether {@code cell} is still to cut: solid, and not something put there - a table, a furnace
+     * or a chest in a recess is left standing.
+     */
+    public static boolean uncut(WorldView world, BlockPos cell) {
+        return world.isSolid(cell.x(), cell.y(), cell.z()) && world.workstation(cell.x(), cell.y(), cell.z()).isEmpty()
+                && !world.isChest(cell.x(), cell.y(), cell.z());
     }
 
     /** Where a soldier stands to work at the landing: the main tunnel's first cell, between the recesses. */
@@ -146,7 +195,7 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
     public int stepsCut(WorldView world) {
         for (int k = 0; k < steps(); k++) {
             for (BlockPos cell : cells(k)) {
-                if (world.isSolid(cell.x(), cell.y(), cell.z()) && world.workstation(cell.x(), cell.y(), cell.z()).isEmpty()) {
+                if (uncut(world, cell)) {
                     return k;
                 }
             }
@@ -163,7 +212,7 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
     public boolean landingCut(WorldView world) {
         for (int k = 0; k < steps(); k++) {
             for (BlockPos cell : cells(k)) {
-                if (world.isSolid(cell.x(), cell.y(), cell.z()) && world.workstation(cell.x(), cell.y(), cell.z()).isEmpty()) {
+                if (uncut(world, cell)) {
                     return false;
                 }
             }
@@ -207,6 +256,12 @@ public record Staircase(BlockPos head, int bottom, int stretches) {
                 // The landing: a recess each side of the tunnel's first cell, off the walkway, where
                 // a table and a furnace stand - there's no room for one anywhere on the stairs.
                 for (BlockPos recess : landing()) {
+                    cuts.add(new Cut(feet, List.of(recess.offset(0, 1, 0), recess), 0));
+                }
+            }
+            if (i == 2) {
+                // The store: a recess each side of the second cell, for the stash's chests.
+                for (BlockPos recess : store()) {
                     cuts.add(new Cut(feet, List.of(recess.offset(0, 1, 0), recess), 0));
                 }
             }

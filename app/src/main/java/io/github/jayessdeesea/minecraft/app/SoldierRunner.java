@@ -1053,6 +1053,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Integer> standTo = new ConcurrentHashMap<>();
     /** Soldiers stood still by day: an alarm each spell. */
     private final IdleWatch idleWatch = new IdleWatch();
+    /** Soldiers on top of one another - every connection's tick. */
+    private final CrowdWatch crowdWatch = new CrowdWatch();
     /**
      * Each squad down its mine for the night, by its stairs' head height: below it, a soldier
      * waiting is hiding, as one in a patrol base is - not stuck. Written by the squad loop, read by
@@ -1738,7 +1740,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (supplyPoint.isPresent()) {
             return supplyPoint;
         }
-        return stockpileOf(chestOf(workshops.get(soldier)), chestOf(campWorkshop));
+        // A mine's chest is its stash of ore (stashOre), not a stockpile drawn from.
+        Workshop own = workshops.get(soldier);
+        return stockpileOf(own != null && mineOfChest(chestCentre(own)).isPresent() ? Optional.empty() : chestOf(own), chestOf(campWorkshop));
     }
 
     /**
@@ -2757,6 +2761,42 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How long after one stretch is added before a mine read done again may have another: its miners' ticks catch up. */
     private static final long EXTEND_SETTLE_MILLIS = 30_000;
 
+    /**
+     * {@code cutter}'s share of {@code stairs} ({@link Staircase#share}): the mine's cutters - every
+     * squad's on it - in order by name, and its place among them.
+     */
+    private Set<Integer> mineShare(String cutter, Staircase stairs) {
+        List<String> crew = mineCrew(stairs);
+        int at = crew.indexOf(cutter);
+        return at < 0 ? stairs.share(0, 1) : stairs.share(at, crew.size());
+    }
+
+    /** The soldiers cutting {@code stairs}, every squad's, by name. */
+    private List<String> mineCrew(Staircase stairs) {
+        return cutting.entrySet().stream().filter(e -> e.getValue().head().equals(stairs.head()))
+                .map(Map.Entry::getKey).sorted().toList();
+    }
+
+    /** What a miner stashes at the landing, and how much of it makes a trip. Coal stays in the pack, for torches. */
+    static final Set<ItemClass> STASHED = Set.of(ItemClass.RAW_IRON, ItemClass.RAW_COPPER, ItemClass.DIAMOND);
+    static final int STASH_ORE = 8;
+    /** Logs a miner carries before it fits the stash's chest from them: the chest's two, and a log of handles to spare. */
+    static final int STASH_LOGS = 4;
+
+    /** Each mine's stash, by the mine's head, as last seen - written by the connection that stowed it. */
+    private final Map<BlockPos, Stockpile> mineStash = new ConcurrentHashMap<>();
+
+    /** The mine whose stash chest stands at {@code chest} - centred as a stockpile's position is. */
+    private Optional<Staircase> mineOfChest(Position chest) {
+        BlockPos cell = BlockPos.containing(chest.x(), chest.y(), chest.z());
+        return squadStairs.values().stream().filter(s -> s.store().getFirst().equals(cell)).findFirst();
+    }
+
+    /** {@code w}'s chest cell, centred. */
+    private static Position chestCentre(Workshop w) {
+        return w.chest().map(c -> new Position(c.x() + 0.5, c.y(), c.z() + 0.5)).orElse(new Position(0, Integer.MIN_VALUE, 0));
+    }
+
     /** When each mine, by its head, was last run on a stretch - squad loops write and read. */
     private final Map<BlockPos, Long> mineExtendedAt = new ConcurrentHashMap<>();
 
@@ -3006,6 +3046,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         };
     }
 
+    /**
+     * The formation's slots ({@link Formations#assign}), led by the first soldier not detached to
+     * the farm or the wood party: live, Delta's point man was sent to farm, and the squad formed its
+     * wedge on her at the farm, 90 blocks from the keep it was ordered to, and stood there. Each
+     * order back in the statuses' order.
+     */
+    private List<Order> formation(SquadOrder order, List<SoldierStatus> statuses) {
+        java.util.function.Predicate<SoldierStatus> detached = s -> farming.containsKey(s.name()) || inWoodParty(s.name());
+        List<SoldierStatus> formed = Stream.concat(statuses.stream().filter(detached.negate()), statuses.stream().filter(detached)).toList();
+        List<Order> slots = Formations.assign(order, formed);
+        Map<String, Order> byName = new HashMap<>();
+        for (int i = 0; i < formed.size(); i++) {
+            byName.put(formed.get(i).name(), slots.get(i));
+        }
+        return statuses.stream().map(s -> byName.get(s.name())).toList();
+    }
+
     private void orderSquad(String squadName, SquadState state, List<DeterministicSoldier> squad, List<SoldierStatus> statuses,
                             SquadOrder order, Optional<Position> principalAt) {
         // Formation slots, then replacements' link-up, then pace control (the point man halts for
@@ -3035,7 +3092,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             .forEach(freed -> LOG.info("[{}] RECOVERY: the stair up for {} is dug - {} walks out", squadName, freed, freed)));
             List<SoldierStatus> reported = cutOff(statuses.stream().map(s -> ownReports.getOrDefault(s.name(), s)).toList());
             orders = ReactToContact.orders(statuses, state.recovery.orders(reported,
-                    Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, Formations.assign(order, statuses), state.recovery::recovering)),
+                    Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, formation(order, statuses), state.recovery::recovering)),
                             order.objective(), supplyPoint), stairDown(squadName), stairUp(squadName), pillarDown(squadName)));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
@@ -3443,7 +3500,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Staircase mine = state.stairs;
                 state.stairs = squadStairs.values().stream().filter(o2 -> o2.head().equals(mine.head()) && o2.bottom() == mine.bottom())
                         .max(Comparator.comparingInt(Staircase::stretches)).filter(o2 -> o2.stretches() > mine.stretches()).orElse(mine);
-                boolean workedOut = statuses.stream().anyMatch(s -> stairsProgress.get(s.name()) instanceof Miner.Progress.Done);
+                // Worked out when every cutter on it - every squad's - has its share cut, not when one has.
+                List<String> crew = mineCrew(state.stairs);
+                boolean workedOut = !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done);
                 // Settled by mine, not by squad: live, four squads on one mine each took the others' stale
                 // DONE for their own, and it ran on from 24 blocks to 96 in seconds with nothing cut.
                 if (workedOut && ironShort() && now - mineExtendedAt.getOrDefault(state.stairs.head(), 0L) >= EXTEND_SETTLE_MILLIS) {
@@ -4631,7 +4690,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Forester forester = new Forester(name, session,
                 inventory, treeClaims);
         foresters.put(name, forester);
-        Depositor depositor = new Depositor(name, session, inventory, chainOfCommand::onStockpile);
+        AtomicReference<Depositor> stashing = new AtomicReference<>();
+        // What a chest held once a load went in: a mine's stash is kept as the mine's, the rest is the stockpile.
+        Depositor depositor = new Depositor(name, session, inventory, seen -> {
+            Optional<Staircase> mine = Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).flatMap(this::mineOfChest);
+            if (mine.isPresent()) {
+                mineStash.put(mine.get().head(), seen);
+                LOG.info("[Mine] the stash at {} holds {} raw iron, {} raw copper", mine.get().head(), seen.rawIron(), seen.rawCopper());
+            } else {
+                chainOfCommand.onStockpile(seen);
+            }
+        });
+        stashing.set(depositor);
         Fitter storeFitter = new Fitter(name, session,
                 inventory, furnaces);
         storeFitters.put(name, storeFitter);
@@ -4659,6 +4729,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Torchmaker torchmaker = new Torchmaker(name, session, inventory, furnaces);
         torchmakers.put(name, torchmaker);
         AtomicInteger ladderTicks = new AtomicInteger();
+        AtomicInteger crowdTicks = new AtomicInteger(); // the crowd watch looks once a second
         // Looks in a row at which this soldier stood with a solid block at its feet and air at its head.
         AtomicInteger feetInBlock = new AtomicInteger();
         // Boxed in with no doorway anyone knows to cut - a hut it was sealed in before a restart -
@@ -4816,6 +4887,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 rung.ifPresent(tools::remove);
             }
             boolean poolOre = metal.stocking(inventory) >= POOL_TRIP;
+            // Down the mine with a load of ore: into the stash at the landing, and back to the cutting.
+            Workshop working = workshops.get(name);
+            boolean stashOre = working != null && mineOfChest(chestCentre(working)).isPresent()
+                    && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;
             // A farmer's hoe, and its wheat baked into bread three at a time.
             FarmPlan field = farming.get(name);
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
@@ -5085,7 +5160,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // them, not when its pack happens to fill (operator, 2026-11-14: a flattening campaign starts
             // with its supply depot). Live, builders carried 20 logs past a depot with no chest for days.
             boolean depotLogs = keepHands.contains(name) && inventory.count(ItemClass.LOG) >= DEPOT_LOGS;
-            boolean fitStore = (fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
+            // A mine's chest is the stash's, fitted for ore only, from logs to spare beyond a pickaxe's
+            // handles or a chest carried down: in the squad simulation a miner spent its logs on it,
+            // climbed out for wood for a pickaxe, and stood at the top.
+            boolean atMine = working != null && mineOfChest(chestCentre(working)).isPresent();
+            boolean fitStore = (atMine ? stashOre && (inventory.count(ItemClass.CHEST) > 0 || inventory.count(ItemClass.LOG) >= STASH_LOGS)
+                    : fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
             if (keepHands.contains(name) && shop.isPresent()) {
                 depositor.full().ifPresent(this::depotChestFull);
@@ -5103,7 +5183,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     return;
                 }
                 chestFitter.stop(status.position(), world);
-                Optional<Position> stockpile = stockpileFor(name);
+                Optional<Position> stockpile = stashOre && !depositor.active() || depositor.chestAt().flatMap(this::mineOfChest).isPresent() && depositor.active()
+                        ? chestOf(working) : stockpileFor(name);
                 if (drawingStone.contains(name) || keepDrawing.contains(name)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
                 } else if (drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile)
@@ -5119,8 +5200,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     depositor.tickDraw(status.position(), stockpile, ore, metalDraw.map(MetalPool.Draw::carry).orElse(inventory.count(ore)),
                             free && !threatened && fort == null && metalDraw.isPresent());
                 } else {
-                    depositor.tick(status.position(), stockpile, free && (fullLoad || Depositor.surplusFood(inventory) || poolOre)
-                            && !threatened && fort == null, metal.stock());
+                    Set<ItemClass> pooled = new HashSet<>(metal.stock());
+                    if (stashOre) {
+                        pooled.addAll(STASHED);
+                    }
+                    depositor.tick(status.position(), stockpile, free && (fullLoad || Depositor.surplusFood(inventory) || poolOre || stashOre)
+                            && !threatened && fort == null, pooled);
                 }
             }));
             storeWalks.put(name, fitStore && !atStand(status.position(), shop.get())
@@ -5138,7 +5223,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     miner.stop();
                 } else {
                     Miner.Progress cut = miner.tick(status.position(), world, stairs,
-                            free && !threatened && armourer.standAt().isEmpty());
+                            free && !threatened && armourer.standAt().isEmpty(), Optional.of(mineShare(name, stairs)),
+                            Math.max(0, mineCrew(stairs).indexOf(name)));
                     stairsProgress.put(name, cut);
                     if (cut instanceof Miner.Progress.Working(int step, int steps)) {
                         stairsCut.accumulateAndGet(Math.min(step, stairs.steps()), Math::max);
@@ -5195,8 +5281,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             TreeFarm grove = planting.get(name);
             turns.put(Hands.Routine.FORESTER, turn(forester::active,
                     free -> forester.tick(status.position(), world, Optional.ofNullable(grove), free && !threatened && !foodCalls)));
-            turns.put(Hands.Routine.FARMER, turn(farmer::active,
-                    free -> farmer.tick(status.position(), world, Optional.ofNullable(field), free && !threatened && !foodCalls)));
+            turns.put(Hands.Routine.FARMER, turn(farmer::active, free -> {
+                // Its stand has no route: the farmer is told, and takes the next cell (Farmer.unreachable).
+                if (status.report() instanceof Report.Cantco(String why) && why.startsWith("no route")
+                        && status.order() instanceof Order.MoveTo to && farmer.standAt()
+                        .filter(stand -> Math.hypot(stand.x() - to.x(), stand.z() - to.z()) < 0.5 && Math.abs(stand.y() - to.y()) < 1).isPresent()) {
+                    farmer.unreachable(why);
+                }
+                farmer.tick(status.position(), world, Optional.ofNullable(field), free && !threatened && !foodCalls);
+            }));
             // A supply run from the ground work's drill first: so much of a resource, from that box.
             Order.Gather groundRun = groundGather.get(name);
             turns.put(Hands.Routine.GATHERER, turn(gatherer::active, free -> {
@@ -5263,6 +5356,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                 afterActionReview.idle(name);
                             }
                         });
+                // And on top of another soldier, moving or not (CrowdWatch) - looked at once a second.
+                Map<String, Position> everyone = new HashMap<>();
+                if (crowdTicks.getAndIncrement() % 20 == 0) {
+                    activeSoldiers.forEach((other, s) -> everyone.put(other, s.status().position()));
+                }
+                if (!everyone.isEmpty()) {
+                    crowdWatch.update(name, status.position(), clockwork.millis(), resting, everyone,
+                                    () -> "report " + status.report() + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free"))
+                            .ifPresent(line -> LOG.warn("[Alert] {}", line));
+                }
                 Optional<String> nearest = world.nearbyHostiles(status.position(), RECORDED_HOSTILE_RADIUS).stream()
                         .min(Comparator.comparingDouble(h -> distance(h.position(), status.position())))
                         .map(h -> String.format(Locale.ROOT, "%s %.1f away",

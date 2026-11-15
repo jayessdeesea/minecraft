@@ -26,7 +26,7 @@ smelts.
 | Capability | Fixture | Bill of materials | Phase | |
 |---|---|---|---|---|
 | Craft, smelt | table and furnace in the landing's recesses | 4 planks; 8 cobblestone | 1 | built |
-| Store | 2 chests, recesses beside the main tunnel's second cell | 16 planks | 1 | the surface workshops' chest built (docs/military-doctrine.md § 12); the mine base's not |
+| Store | 2 chests, recesses beside the main tunnel's second cell | 16 planks | 1 | the surface workshops' chest built (docs/military-doctrine.md § 12); the mine base's first, its stash of ore (§ 16); its second not |
 | Light | torches down the stairs and at the landing's stand | coal or charcoal, sticks | 1 | built; the tunnels unlit |
 | Water | an infinite source: two buckets | 3 iron a bucket | 2 | |
 | Food | 3x3 wheat round the water, under torches (light 9+) | seeds, a hoe | 3 | |

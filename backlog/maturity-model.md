@@ -134,8 +134,8 @@ ceiling - nothing above it is made yet:
 
 | Level | Floor | Ceiling |
 |---|---|---|
-| SHELTER | a weapon (wooden at least) | stone; nothing that costs iron |
-| AIRHEAD | stone sword and pickaxe | iron only for an enabler (below) |
+| SHELTER | a weapon (wooden at least) | stone; nothing that costs iron but the iron pickaxe, the enabler, at any level (operator, 2026-11-15) |
+| AIRHEAD | stone sword and pickaxe | as SHELTER |
 | BUILDUP | a shield; the best armour to hand | iron tools for producers |
 | ESTABLISHED | iron for all | diamond for weapons and armour, never hoes |
 

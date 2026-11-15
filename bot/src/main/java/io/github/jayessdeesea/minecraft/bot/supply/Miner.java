@@ -100,7 +100,7 @@ public final class Miner {
     static OptionalInt firstUncut(WorldView world, List<Staircase.Cut> cuts, Set<Integer> blocked) {
         for (int k = 0; k < cuts.size(); k++) {
             Staircase.Cut cut = cuts.get(k);
-            if (blocked.contains(cut.tunnel()) || cut.cells().stream().noneMatch(c -> world.isSolid(c.x(), c.y(), c.z()) && world.workstation(c.x(), c.y(), c.z()).isEmpty())) {
+            if (blocked.contains(cut.tunnel()) || cut.cells().stream().noneMatch(c -> Staircase.uncut(world, c))) {
                 continue;
             }
             BlockPos stand = cut.stand();
@@ -128,6 +128,26 @@ public final class Miner {
 
     /** Each tick: cuts {@code stairs} while {@code free}; anything else stops the dig under way. */
     public synchronized Progress tick(Position soldier, WorldView world, Staircase stairs, boolean free) {
+        return tick(soldier, world, stairs, free, Optional.empty());
+    }
+
+    /**
+     * As {@link #tick(Position, WorldView, Staircase, boolean)}, cutting only the tunnels of
+     * {@code share} ({@link Staircase#share}) - empty: all of them. Its tunnels cut, and its ore
+     * taken, it's done; with tunnels of its share not reached yet - the main tunnel not cut to their
+     * roots - it waits at the landing, out of the way, rather than read done.
+     */
+    public synchronized Progress tick(Position soldier, WorldView world, Staircase stairs, boolean free, Optional<Set<Integer>> share) {
+        return tick(soldier, world, stairs, free, share, 0);
+    }
+
+    /**
+     * As {@link #tick(Position, WorldView, Staircase, boolean, Optional)}, {@code place} its place
+     * among the mine's cutters (0 the first): waiting, each stands a step of its own, so two waiting
+     * aren't on one cell.
+     */
+    public synchronized Progress tick(Position soldier, WorldView world, Staircase stairs, boolean free, Optional<Set<Integer>> share, int place) {
+        this.share = share;
         List<Staircase.Cut> cuts = stairs.cuts();
         OptionalInt next;
         Staircase.Cut cut;
@@ -138,7 +158,25 @@ public final class Miner {
         while (true) {
             Set<Integer> skipped = new HashSet<>(blocked);
             skipped.addAll(waiting);
-            next = firstUncut(world, cuts, skipped);
+            share.ifPresent(mine -> cuts.stream().map(Staircase.Cut::tunnel).filter(t -> !mine.contains(t)).forEach(skipped::add));
+            // Its branches only once the main tunnel's cut through, by the first: started from a root
+            // the main tunnel's cutter still stands on, two stood on one cell.
+            boolean mainOpen = !blocked.contains(0) && share.filter(mine -> !mine.contains(0)).isPresent()
+                    && notReached(world, cuts.stream().filter(c -> c.tunnel() <= 0).toList(), Set.of());
+            next = mainOpen ? OptionalInt.empty() : firstUncut(world, cuts, skipped);
+            if (next.isEmpty() && share.isPresent() && (mainOpen || notReached(world, cuts, skipped))) {
+                // Its tunnels' roots not cut to yet: it waits at the landing once the stairs are down;
+                // before, on the stairs a few steps behind the one cutting, down the mine with it - at
+                // the head, its squad waited on it at the top by night.
+                breacher.stop();
+                OptionalInt step = firstUncut(world, cuts.stream().filter(c -> c.tunnel() < 0).toList(), Set.of());
+                int behind = Math.max(0, place - 1);
+                // The last step is where the main tunnel's cutter starts from: the waiting stand above it.
+                int k = step.isEmpty() ? stairs.steps() - 2 - behind : step.getAsInt() - WAIT_BEHIND - behind;
+                BlockPos wait = k >= 0 ? stairs.step(k) : stairs.head();
+                standAt = new Position(wait.x() + 0.5, wait.y(), wait.z() + 0.5);
+                return new Progress.Working(0, cuts.size());
+            }
             if (next.isEmpty()) {
                 // All cut: worked again for the ore in sight of what was cut - passed by, or not
                 // harvestable then. Live, no miner mined ore in twelve runs: the tunnels were cut,
@@ -297,12 +335,24 @@ public final class Miner {
         return new Progress.Working(k, steps);
     }
 
+    /** Steps behind the stairs' cutter a miner waiting for its share stands. */
+    static final int WAIT_BEHIND = 3;
+
+    /** The tunnels it cuts this tick ({@link #tick(Position, WorldView, Staircase, boolean, Optional)}). */
+    private Optional<Set<Integer>> share = Optional.empty();
+
+    /** Whether a cut of a tunnel not {@code skipped} is still to cut - its stand not open yet. */
+    private static boolean notReached(WorldView world, List<Staircase.Cut> cuts, Set<Integer> skipped) {
+        return cuts.stream().anyMatch(c -> !skipped.contains(c.tunnel())
+                && c.cells().stream().anyMatch(cell -> Staircase.uncut(world, cell)));
+    }
+
     /** The first cut, all open, with ore in sight of its stand ({@link #oreInSight}) - empty when none has. */
     private OptionalInt prospect(WorldView world, Staircase stairs, List<Staircase.Cut> cuts) {
         for (int k = 0; k < cuts.size(); k++) {
             Staircase.Cut cut = cuts.get(k);
-            if (blocked.contains(cut.tunnel())
-                    || cut.cells().stream().anyMatch(c -> world.isSolid(c.x(), c.y(), c.z()) && world.workstation(c.x(), c.y(), c.z()).isEmpty())) {
+            if (blocked.contains(cut.tunnel()) || share.filter(mine -> !mine.contains(cut.tunnel())).isPresent()
+                    || cut.cells().stream().anyMatch(c -> Staircase.uncut(world, c))) {
                 continue;
             }
             if (oreInSight(world, stairs, cut.stand(), cut).isPresent()) {
@@ -312,29 +362,67 @@ public final class Miner {
         return OptionalInt.empty();
     }
 
+    /** How far from the eyes ore is broken: the server's block reach. */
+    static final double ORE_REACH = 4.5;
+    /** How far out across from the stand ore is followed: its drop near enough to be picked up. */
+    static final int ORE_ACROSS = 2;
+    /** Eye height over the feet. */
+    private static final double EYES = 1.62;
+
     /**
-     * Ore beside the body standing on {@code from}, or beside the cut's cells: outside the shaft's
-     * 3x3, not under a tunnel's floor, not left before, its drop got with the pickaxe carried,
-     * nothing liquid beside it.
+     * Ore beside the body standing on {@code from}, or beside the cut's cells - and any other ore in
+     * reach of it with a face open, nearest first: the next block of a vein whose first block was
+     * just mined, or the wall of a cave the tunnel crosses (operator, 2026-11-15: miners left coal
+     * and copper behind - a vein runs eight to twenty blocks, and only those touching the tunnel were
+     * taken). Outside the shaft's 3x3, not under a tunnel's floor, not left before, its drop got with
+     * the pickaxe carried, nothing liquid beside it.
      */
     Optional<BlockPos> oreInSight(WorldView world, Staircase stairs, BlockPos from, Staircase.Cut cut) {
         int tier = bestPickaxe();
         Set<BlockPos> floors = stairs.cuts().stream().filter(c -> c.tunnel() >= 0)
                 .map(c -> c.feet().offset(0, -1, 0)).collect(Collectors.toSet());
+        java.util.function.Predicate<BlockPos> takeable = at -> (Math.abs(at.x() - stairs.head().x()) > 1 || Math.abs(at.z() - stairs.head().z()) > 1)
+                && !floors.contains(at) && !leftOre.contains(at) && world.isOre(at.x(), at.y(), at.z())
+                && world.hardness(at.x(), at.y(), at.z()).map(h -> h.drops(tier)).orElse(false)
+                && !besideLiquid(world, at);
         List<BlockPos> near = new ArrayList<>(List.of(from, from.offset(0, 1, 0)));
         near.addAll(cut.cells());
         for (BlockPos cell : near) {
-            for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+            for (int[] d : FACES) {
                 BlockPos at = cell.offset(d[0], d[1], d[2]);
-                boolean outside = Math.abs(at.x() - stairs.head().x()) > 1 || Math.abs(at.z() - stairs.head().z()) > 1;
-                if (outside && !floors.contains(at) && !leftOre.contains(at) && world.isOre(at.x(), at.y(), at.z())
-                        && world.hardness(at.x(), at.y(), at.z()).map(h -> h.drops(tier)).orElse(false)
-                        && !besideLiquid(world, at)) {
+                if (takeable.test(at)) {
                     return Optional.of(at);
                 }
             }
         }
-        return Optional.empty();
+        double ex = from.x() + 0.5, ey = from.y() + EYES, ez = from.z() + 0.5;
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int dx = -ORE_ACROSS; dx <= ORE_ACROSS; dx++) {
+            for (int dy = -1; dy <= 3; dy++) {
+                for (int dz = -ORE_ACROSS; dz <= ORE_ACROSS; dz++) {
+                    BlockPos at = from.offset(dx, dy, dz);
+                    double distance = Math.sqrt(Math.pow(at.x() + 0.5 - ex, 2) + Math.pow(at.y() + 0.5 - ey, 2) + Math.pow(at.z() + 0.5 - ez, 2));
+                    if (distance <= ORE_REACH && distance < bestDistance && open(world, at) && takeable.test(at)) {
+                        best = at;
+                        bestDistance = distance;
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    private static final int[][] FACES = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+
+    /** Whether a face of {@code cell} is open to the air: a block can be got at, and what it drops falls out. */
+    private static boolean open(WorldView world, BlockPos cell) {
+        for (int[] d : FACES) {
+            if (!world.isSolid(cell.x() + d[0], cell.y() + d[1], cell.z() + d[2])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean besideLiquid(WorldView world, BlockPos cell) {

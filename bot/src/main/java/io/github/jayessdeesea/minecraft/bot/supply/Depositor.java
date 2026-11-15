@@ -99,6 +99,11 @@ public final class Depositor {
     }
 
     /** Where the soldier should go while it carries its load in. */
+    /** The chest its trip is to, or was last to. */
+    public synchronized Optional<Position> chestAt() {
+        return Optional.ofNullable(at);
+    }
+
     public synchronized Optional<Position> standAt() {
         return script != null && walking ? Optional.of(at) : Optional.empty();
     }
