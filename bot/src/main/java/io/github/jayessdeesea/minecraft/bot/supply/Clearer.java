@@ -73,6 +73,16 @@ public final class Clearer {
         return slot < 0 ? Hardness.HAND : ItemClassRegistry.miningTier(inventory.itemAt(slot)).orElse(Hardness.HAND);
     }
 
+    /** Each finished dig's time since the last {@link #drainTimes}, for the level's pace. */
+    private final java.util.List<io.github.jayessdeesea.minecraft.command.LevelPace.Tally> times = new java.util.ArrayList<>();
+
+    /** The finished digs' times since the last call, oldest first: one dig each (command.LevelPace). */
+    public synchronized java.util.List<io.github.jayessdeesea.minecraft.command.LevelPace.Tally> drainTimes() {
+        java.util.List<io.github.jayessdeesea.minecraft.command.LevelPace.Tally> out = java.util.List.copyOf(times);
+        times.clear();
+        return out;
+    }
+
     public synchronized boolean active() {
         return digger != null;
     }
@@ -139,6 +149,9 @@ public final class Clearer {
                 }
                 case Digger.Progress.Done _ -> {
                     failed.worked(digger.spot().block());
+                    Digger.Time t = digger.time();
+                    times.add(new io.github.jayessdeesea.minecraft.command.LevelPace.Tally(1, t.bestBreak(), t.bestWalk(), t.walk(), t.hand(),
+                            t.breaking(), t.ack(), t.pickup()));
                     stop();
                 }
                 // The block gone is the cut done, whatever became of its drop: live, a leaf's sapling

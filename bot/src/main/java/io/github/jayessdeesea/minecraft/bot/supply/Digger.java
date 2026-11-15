@@ -87,7 +87,9 @@ final class Digger {
         GRAVEL(25, 1, null, 0, ItemClass.FLINT, false),
         /** Dirt or grass at the feet or the ground beside them, by hand in about a second: dirt, for a patrol base's walls. */
         SOIL(25, 0, null, 0, ItemClass.DIRT),
-        /** Spruce leaves - the pine the camp prefers - by hand: a spruce sapling, one time in twenty. */
+        /** Birch leaves - the tree farm's first choice - by hand: a birch sapling, one time in twenty. */
+        BIRCH_LEAVES(10, 3, null, 0, ItemClass.SAPLING, false),
+        /** Spruce leaves - the pine, its second - by hand: a spruce sapling, one time in twenty. */
         SPRUCE_LEAVES(10, 3, null, 0, ItemClass.SAPLING, false),
         /** Any tree's leaves, by hand: its sapling, one time in twenty (oak, one in twenty too, and an apple). */
         LEAVES(10, 3, null, 0, ItemClass.SAPLING, false),
@@ -135,6 +137,7 @@ final class Digger {
                 case WHEAT -> world.wheatAge(block.x(), block.y(), block.z()).orElse(-1) == RIPE;
                 case SOIL -> world.isSoil(block.x(), block.y(), block.z()) && !world.isFarmland(block.x(), block.y(), block.z())
                         && !world.isSolid(block.x(), block.y() + 1, block.z());
+                case BIRCH_LEAVES -> world.leaves(block.x(), block.y(), block.z()).filter("birch"::equals).isPresent();
                 case SPRUCE_LEAVES -> world.leaves(block.x(), block.y(), block.z()).filter("spruce"::equals).isPresent();
                 case LEAVES -> world.leaves(block.x(), block.y(), block.z()).isPresent();
                 case OTHER -> world.isSolid(block.x(), block.y(), block.z()) && world.hardness(block.x(), block.y(), block.z()).isPresent();
@@ -269,6 +272,40 @@ final class Digger {
     private int pickupStarted;
     /** Whether the drop has been seen on the ground since the block broke. */
     private boolean dropSeen;
+    /** Where the soldier stood when the dig began, for its best walk. */
+    private Position startedAt;
+    /** The ticks each part of the dig has taken: walk, hand, break, the server's word, pickup. */
+    private final int[] phases = new int[5];
+    /** The block's break time with the best tool carried, as vanilla gives it, without a margin. */
+    private int bestBreak;
+
+    /** Walking speed, blocks a tick: 4.317 a second, no sprint on a routine walk. */
+    static final double WALK_PER_TICK = 4.317 / 20;
+
+    /**
+     * Where a finished dig's ticks went, against its best (command.LevelPace): {@code bestBreak} is
+     * the block's break time with the best tool carried, {@code bestWalk} the straight walk to its
+     * stand at walking speed.
+     */
+    public record Time(int bestBreak, int bestWalk, int walk, int hand, int breaking, int ack, int pickup) {
+    }
+
+    /** The dig's time, once it's done. */
+    public Time time() {
+        int bestWalk = startedAt == null ? 0 : (int) Math.ceil((Math.hypot(spot.stand().x() + 0.5 - startedAt.x(), spot.stand().z() + 0.5 - startedAt.z())
+                + Math.abs(spot.stand().y() - startedAt.y())) / WALK_PER_TICK);
+        return new Time(bestBreak, bestWalk, phases[0], phases[1], phases[2], phases[3], phases[4]);
+    }
+
+    /** The block's break time with the best tool carried for it, vanilla's, with no margin. */
+    private int bestBreakTicks() {
+        BlockPos b = spot.block();
+        return world == null ? 0 : world.hardness(b.x(), b.y(), b.z()).map(h -> {
+            int slot = Target.toolFor(h, inventory);
+            int item = slot < 0 ? 0 : inventory.itemAt(slot);
+            return h.ticks(ItemClassRegistry.miningTier(item).orElse(Hardness.HAND), Target.speedFor(h, item));
+        }).orElse(0);
+    }
 
     /** Starts a dig at {@code spot}, claiming its block and stand cell until {@link #release}. */
     Digger(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Spot spot) {
@@ -389,6 +426,12 @@ final class Digger {
         this.soldierAt = soldier;
         this.world = world;
         ticks++;
+        if (startedAt == null) {
+            startedAt = soldier;
+            bestBreak = bestBreakTicks();
+        }
+        String now = script.currentStep();
+        phases[now.startsWith("walk") ? 0 : now.startsWith("take") ? 1 : now.startsWith("dig") ? 2 : now.startsWith("break") ? 3 : 4]++;
         return switch (script.tick()) {
             case Script.Status.Running _ -> new Progress.Working();
             case Script.Status.Done _ -> new Progress.Done();

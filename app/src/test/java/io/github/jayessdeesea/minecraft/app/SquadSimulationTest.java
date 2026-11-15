@@ -2184,6 +2184,67 @@ class SquadSimulationTest {
     }
 
     /**
+     * The keep's wood party (operator, 2026-11-14: trees are everywhere; a sapling every four
+     * blocks): three builders, no logs between them, a dirt mound on the keep and a row of spruce
+     * well west of the depot. The foreman sends one to cut trees and one to plant the keep's grove,
+     * and the third digs. Live, eight builders with one chest's logs between them stood a depot at
+     * two chests, both full.
+     */
+    @Test
+    void theKeepsWoodPartyCutsTreesAndPlantsAGroveWhileTheRestDig() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= -6 && x <= 5 && z >= -6 && z <= 5 && y > GROUND && y <= GROUND + 3
+                ? SimServer.DIRT
+                : x == -64 && Math.floorMod(z, 5) == 0 && Math.abs(z) <= 20 && y > GROUND && y <= GROUND + 5 ? SimServer.SPRUCE_LOG
+                : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(-8.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.itemNamedOrMinus("stone_sword"), 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{39, SimServer.itemNamedOrMinus("stone_shovel"), 1},
+                        new int[]{40, SimServer.itemNamedOrMinus("cobblestone"), 16},
+                        new int[]{42, SimServer.itemNamedOrMinus("oak_log"), 1},
+                        new int[]{41, SimServer.itemNamedOrMinus("spruce_sapling"), 8},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(12 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        long saplings = 0;
+        for (int x = -80; x <= -20; x++) {
+            for (int z = -30; z <= 30; z++) {
+                saplings += server.block(x, GROUND + 1, z) == SimServer.SPRUCE_SAPLING ? 1 : 0;
+            }
+        }
+        assertTrue(saplings >= 4, "saplings planted in the keep's grove: " + saplings + "; " + events);
+        assertTrue(server.log.stream().anyMatch(e -> e.matches(".* dug " + SimServer.SPRUCE_LOG + " at .*")), "a tree cut; " + events);
+        assertTrue(Files.exists(Path.of("target/sim/theKeepsWoodPartyCutsTreesAndPlantsAGroveWhileTheRestDig.log")));
+        List<String> made;
+        try {
+            made = Files.readAllLines(Path.of("target/sim/theKeepsWoodPartyCutsTreesAndPlantsAGroveWhileTheRestDig.log")).stream()
+                    .filter(l -> l.contains("made 1 stone axe")).toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        assertTrue(!made.isEmpty(), "the cutter made itself a stone axe first");
+        int left = 0;
+        for (int x = -6; x <= 5; x++) {
+            for (int z = -6; z <= 5; z++) {
+                for (int y = GROUND + 1; y <= GROUND + 3; y++) {
+                    left += server.block(x, y, z) != SimServer.AIR ? 1 : 0;
+                }
+            }
+        }
+        assertTrue(left < 432 / 2, "and the mound dug meanwhile: " + left + " of 432 left; " + events);
+    }
+
+    /**
      * A depot is chests, not a chest (operator, 2026-11-14): the keep's depot with its first chest
      * full, and a builder with a full pack and the logs for another. It finds the first full, fits
      * the next of the depot's row, and its load goes into that. Live, the depot's one chest filled

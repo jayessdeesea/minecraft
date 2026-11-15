@@ -33,9 +33,20 @@ light requirement.
 ## Done when
 Built: wheat (docs/military-doctrine.md § 12, FARM) and a tree farm planted from saplings it breaks
 leaves for (§ 12, TREE_FARM). What's left:
-- **Trees regrown and cut.** A live run that sees saplings in a squad's tree farm grow and a WOOD
-  squad chop them, and soldiers picking up the saplings that fall while they chop, rather than
-  breaking leaves for them.
+- **The grove's harvest cycle (operator, 2026-11-14).** A pass that cuts every log in the grove, a
+  wait for the leaves to decay (leaves with no log within six blocks drop their saplings over the
+  next random ticks - a minute or two), then a pass that picks the dropped saplings up off the ground
+  and plants them back on the grid. The planter's forester breaks leaves for a sapling today, and
+  outranks the scavenger that would pick dropped ones up: it should take the ones lying in the grove
+  first. Large groves, or several, so one is grown while another is cut and nobody waits on a crop.
+  Done when: a live run sees the keep's grove grow, cut in one pass, and planted again from its own
+  drops.
+- **A flat grove at sea level (operator, 2026-11-14).** The grove's ground flattened before it's
+  planted, as the keep's is - the foreman's level-by-level plan over a second site - at sea level
+  where the depot's ground allows. Today the grove is sited on the flattest ground near the depot as
+  it stands.
+- 16 to 32 trees growing at once, so wood is never short (operator, 2026-11-14): one grove of
+  radius 8 on the four-block grid is 16.
 - Nether wart and animal pens.
 - The general's choice follows the terrain. A scenario test with no water nearby never yields a
   wheat order.

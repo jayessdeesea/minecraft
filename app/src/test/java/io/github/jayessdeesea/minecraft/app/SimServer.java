@@ -47,7 +47,8 @@ import java.util.stream.IntStream;
 final class SimServer {
 
     static final int AIR = 0, STONE = 1, GRASS = 9, DIRT = 10, COBBLESTONE = 14, BEDROCK = 88, WATER = 89,
-            IRON_ORE = 134, COAL_ORE = 136, GLASS = 661, TORCH = 4926, OAK_LOG = 140, CRAFTING_TABLE = 6866, FURNACE = 6884, CHEST = 5544;
+            IRON_ORE = 134, COAL_ORE = 136, GLASS = 661, TORCH = 4926, OAK_LOG = 140, CRAFTING_TABLE = 6866, FURNACE = 6884, CHEST = 5544,
+            SPRUCE_LOG = 143, SPRUCE_SAPLING = 32;
     /** A chest's own slots, as vanilla's single chest. */
     static final int CHEST_SLOTS = 27;
     /** What each chest holds, by its cell's key. */
@@ -344,6 +345,8 @@ final class SimServer {
             case IRON_ORE -> stonePick ? Optional.of(ITEM_RAW_IRON) : Optional.empty();
             case TORCH -> Optional.of(ITEM_TORCH);
             case OAK_LOG -> Optional.of(ITEM_OAK_LOG);
+            case SPRUCE_LOG -> Optional.of(itemNamed("spruce_log"));
+            case SPRUCE_SAPLING -> Optional.of(itemNamed("spruce_sapling"));
             case CRAFTING_TABLE -> Optional.of(itemOf(ItemClass.CRAFTING_TABLE));
             case CHEST -> Optional.of(itemOf(ItemClass.CHEST));
             case FURNACE -> pickaxe ? Optional.of(itemOf(ItemClass.FURNACE)) : Optional.empty();
@@ -361,7 +364,7 @@ final class SimServer {
             case ITEM_DIRT -> Optional.of(DIRT);
             case ITEM_OAK_LOG -> Optional.of(OAK_LOG);
             case ITEM_TORCH -> Optional.of(TORCH);
-            default -> Optional.empty();
+            default -> item == itemNamed("spruce_sapling") ? Optional.of(SPRUCE_SAPLING) : Optional.empty();
         };
     }
 

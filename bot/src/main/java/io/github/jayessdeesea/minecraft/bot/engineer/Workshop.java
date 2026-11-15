@@ -43,7 +43,7 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
     }
 
     /** How far from its stand a depot's chests go: within reach of a soldier standing at it. */
-    static final int CHEST_REACH = 3;
+    public static final int CHEST_REACH = 3;
 
     /**
      * Cells for a depot's chests, up to {@code count}, its own chest's first (operator, 2026-11-14: a

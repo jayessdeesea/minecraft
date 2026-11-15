@@ -27,9 +27,6 @@ The keep's dig runs with no supply behind it (operator, 2026-11-14). Live:
 - **The depot's standard**, sized from the dig: chests enough for the slab's cobblestone (the
   fill's cell count over a chest's 1,728) and one more for wood and tools; a crafting table and a
   furnace beside them; a starting stock of logs; every builder a pickaxe and a shovel.
-- **Not a gate.** The dig goes on while the depot comes up: a wood party of two is detached at the
-  campaign's start, as the foreman's errand in place of a rectangle (`command.LevelPlan`), to where
-  the squads have seen trees; the rest dig.
 - **Requests from the record**: what the campaign lacks goes up as the squad's Class IV line -
   chests, logs, iron for one iron pickaxe - and the general answers with WOOD or MINE as it answers
   the log request now.
@@ -47,13 +44,19 @@ The keep's dig runs with no supply behind it (operator, 2026-11-14). Live:
   chests"): six cells, filled in turn. What's left of it:
   - Sized from the counts, not a fixed six: eight builders carry about 9,000 blocks, the dig had
     5,500 to go, and the slab wants about 4,000 cobblestone back - three chests of it.
-  - Selective stowing: cobblestone, logs, ore and spare tools go in; dirt past a couple of stacks
+  - Selective stowing: cobblestone, logs, ore, spare tools, the lumberjacks' axes and saplings go in
+    (operator, 2026-11-14: they aren't needed all the time); dirt past a couple of stacks
     for scaffolding is thrown away - it would take a dozen chests and nothing wants it. `Depositor`
     stows only a full load of logs or cobblestone, so a pack full of dirt and odd blocks never
     empties.
   - Which chest is being filled isn't kept: after a restart the first is tried again, a failed trip
     for each full chest. It belongs in the campaign record.
   - Draws (logs, cobblestone for the slab) look in the chest being filled only, not along the row.
+- **The wood party and the keep's grove are built** (docs/military-doctrine.md § 4, "The keep's
+  wood party"). What's left: a lumberjack who draws its axe and saplings from the depot's chest and
+  puts them back, rather than making an axe each time; the grove grown to 16-32 trees with more than
+  one plot once the first is planted; the general's whole-squad WOOD answer to Class IV RED dropped
+  for the keep's squads, now the foreman sends a party.
 - The depot's spot exists (`SoldierRunner.siteWorkshop`, the keep's branch): stand, table, furnace
   and chest cells on the depot's surface.
 - `Depositor` stows at the squad's stockpile and reports what the chest holds; `MetalPool` pools

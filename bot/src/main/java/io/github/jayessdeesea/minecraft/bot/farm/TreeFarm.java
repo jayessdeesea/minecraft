@@ -11,7 +11,7 @@ import java.util.Optional;
 
 /**
  * Where a squad plants trees round a point, so a camp that has cut down what grew near it has
- * logs again (docs/military-doctrine.md §12): a grid of cells {@link #SPACING} apart - room for a
+ * logs again (docs/military-doctrine.md §12): the world's grid of cells {@link #SPACING} apart ({@link #onGrid}) - room for a
  * spruce, the camp's tree, to grow beside its neighbours - each on dirt or grass, with
  * {@link #HEADROOM} blocks of open air over it for the trunk. The cells are where the saplings go;
  * standing in one, a soldier plants on the ground under it.
@@ -21,8 +21,11 @@ import java.util.Optional;
  */
 public record TreeFarm(BlockPos centre, List<BlockPos> plot) {
 
-    /** Blocks between saplings, both ways: a spruce's crown is about five across. */
-    public static final int SPACING = 3;
+    /**
+     * Blocks from sapling to sapling, both ways (operator, 2026-11-14: a spruce every four blocks):
+     * a small spruce's crown is about five across, so neighbours' crowns touch without shading out.
+     */
+    public static final int SPACING = 4;
     /** Open air a sapling needs above it to grow into a small spruce. */
     public static final int HEADROOM = 7;
     /** Fewest cells worth calling a tree farm. */
@@ -34,7 +37,7 @@ public record TreeFarm(BlockPos centre, List<BlockPos> plot) {
         List<BlockPos> plot = new ArrayList<>();
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                if (Math.floorMod(dx, SPACING) != 0 || Math.floorMod(dz, SPACING) != 0) {
+                if (!onGrid(centre.x() + dx, centre.z() + dz)) {
                     continue;
                 }
                 for (int dy = VERTICAL; dy >= -VERTICAL; dy--) {
@@ -68,6 +71,16 @@ public record TreeFarm(BlockPos centre, List<BlockPos> plot) {
             }
         }
         return true;
+    }
+
+    /**
+     * Whether a sapling goes in column x, z: the world's own grid, x and z each two past a multiple of
+     * {@link #SPACING} (operator, 2026-11-14), not one laid from wherever a grove's centre fell - so a
+     * grove sited again, or after a restart, or beside another, lines up with the trees already
+     * growing.
+     */
+    public static boolean onGrid(int x, int z) {
+        return Math.floorMod(x + 2, SPACING) == 0 && Math.floorMod(z + 2, SPACING) == 0;
     }
 
     /** Whether {@code cell} holds a sapling, or the trunk it grew into. */

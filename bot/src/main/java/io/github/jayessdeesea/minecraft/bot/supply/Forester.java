@@ -23,9 +23,9 @@ import java.util.Set;
 /**
  * One soldier planting its squad's {@link TreeFarm}: each tick it does the most pressing job left -
  * <ol>
- *   <li>plant a sapling in a plot cell with nothing growing, a spruce one if it carries any;</li>
- *   <li>with no sapling, break leaves for one - spruce leaves first, since spruce is the camp's tree -
- *       one in twenty drops its sapling.</li>
+ *   <li>plant a sapling in a plot cell with nothing growing, birch if it carries any, then spruce;</li>
+ *   <li>with no sapling, break leaves for one - birch leaves first, then spruce - one in twenty drops
+ *       its sapling.</li>
  * </ol>
  * The trees that grow are logs like any others: a squad sent for WOOD there chops them.
  *
@@ -40,8 +40,12 @@ public final class Forester {
     static final int WALK_TICKS = 400;
     static final int ANSWER_TICKS = 40;
     static final int COOLDOWN_TICKS = 200;
-    /** The camp's tree. */
-    static final String PREFERRED = "spruce";
+    /**
+     * The trees a farm is planted with, first choice first (operator, 2026-11-14): birch, which grows
+     * one straight trunk to a predictable height with no giant form, so a lumberjack's pass over the
+     * grove is the same at every tree; then spruce, the pine.
+     */
+    static final List<String> PREFERRED = List.of("birch", "spruce");
 
     private final String name;
     private final PlaySession session;
@@ -128,7 +132,8 @@ public final class Forester {
             return;
         }
         BlockPos at = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
-        Optional<Digger.Spot> leaves = Digger.findSpot(world, at, claims, Digger.Target.SPRUCE_LEAVES)
+        Optional<Digger.Spot> leaves = Digger.findSpot(world, at, claims, Digger.Target.BIRCH_LEAVES)
+                .or(() -> Digger.findSpot(world, at, claims, Digger.Target.SPRUCE_LEAVES))
                 .or(() -> Digger.findSpot(world, at, claims, Digger.Target.LEAVES));
         if (leaves.isEmpty()) {
             fail("no sapling, and no leaves within " + Digger.SEARCH_RADIUS + " blocks to get one from");
@@ -137,19 +142,22 @@ public final class Forester {
         digger = new Digger(name, session, inventory, claims, leaves.get(), Digger.walkTicks(soldier, leaves.get().stand()));
     }
 
-    /** The slot of a sapling to plant: a spruce one if carried, any other if not. */
+    /** The slot of a sapling to plant: the first choice of {@link #PREFERRED} carried, any other if none is. */
     private Optional<Integer> saplingSlot() {
-        Integer any = null;
+        Integer best = null;
+        int bestRank = Integer.MAX_VALUE;
         for (int slot = 0; slot < Inventory.SLOTS; slot++) {
             int item = inventory.itemAt(slot);
             if (ItemClassRegistry.classOf(item).equals(Optional.of(ItemClass.SAPLING))) {
-                if (ItemClassRegistry.nameOf(item).filter((PREFERRED + "_sapling")::equals).isPresent()) {
-                    return Optional.of(slot);
+                String tree = ItemClassRegistry.nameOf(item).map(n -> n.replace("_sapling", "")).orElse("");
+                int rank = PREFERRED.contains(tree) ? PREFERRED.indexOf(tree) : PREFERRED.size();
+                if (rank < bestRank) {
+                    best = slot;
+                    bestRank = rank;
                 }
-                any = any == null ? slot : any;
             }
         }
-        return Optional.ofNullable(any);
+        return Optional.ofNullable(best);
     }
 
     private void plant(WorldView world, BlockPos cell, int slot) {

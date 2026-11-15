@@ -216,6 +216,31 @@ holds its hands, so each block taken dropped the errand. Live, the one chest fil
 builder's load (27 stacks against 13 of cobblestone in a pack) and every builder after it walked
 there, failed and walked back.
 
+Each level of the keep's dig is timed against the fastest it could have gone (operator, 2026-11-14:
+predict the theoretical maximum from the route, the tool's break time and the travel; below 90%,
+dig in and find out why; `command.LevelPace`). Every dig a builder finishes records the ticks its
+parts took - the walk to its stand, the tool taken in hand, the break, the server's word the block
+is gone, the pickup of its drop - against its best: the block's break time as vanilla gives it with
+the best tool the builder carries, and the straight walk to its stand at walking speed. When the
+level falls, the log says what it took against its slowest builder's best, each builder's ticks
+taken against best, and the ticks it spent not digging at all; below 90% the line is a warning,
+"BELOW 90%, look into it".
+
+The keep's wood party (operator, 2026-11-14: trees are everywhere - break from the dig, harvest
+some, build crates at the depot and replant; a spruce every four blocks; the lumberjacks use axes)
+is the foreman's errand in place of a rectangle, two builders at most and a third of the crew,
+never the foreman. One
+plants the keep's grove while it has a cell with nothing growing, with a sapling carried or trees
+seen; when the builders and the stockpile hold fewer than 8 logs between them, and until they hold
+16, the party cuts trees instead, where a keep squad last saw them, 16 logs a builder - back with
+them it's on the dig again and another goes - after
+making itself a stone axe from the cobblestone it carries, a log in 15 ticks rather than the hand's
+60. The rest dig. The foreman says it on the net: "KEEP WOOD 16", "KEEP PLANT x z". The grove is a
+tree farm (§ 12) sited once with the depot: of the ground in rings round the depot's stand, clear of
+the slab and its borrow pits, the depot, the mine's head, the farm and the camp, with room for 16
+saplings or more, the flattest, then the nearest sea level, then the nearest. Live, eight builders
+with a chest's worth of logs between them stood the depot at two chests, both full.
+
 GREEN is everyone carrying food, and AMBER is some short but each with a means. The rating is
 logged when it changes.
 
@@ -697,10 +722,13 @@ one in hand, and an item it threw away and picked back up isn't thrown again for
 live, one standing still picked it straight back up, and threw it 454 times.
 
 Wood is grown when it runs out. An objective's task can be `TREE_FARM`: the squad plants saplings
-round the objective, on every third block both ways of open dirt or grass within 8 blocks, with
-seven blocks of air above each for the trunk (`bot.farm.TreeFarm`). Spruce is the camp's tree. A
-soldier plants a spruce sapling if it carries one, any other if not, and with none breaks leaves
-for one, spruce leaves first; one leaf block in twenty drops a sapling (`bot.supply.Forester`).
+round the objective, on the world's grid of every fourth block both ways - x and z each two past a
+multiple of four, so groves sited apart or again line up (operator, 2026-11-14) - of open dirt or
+grass within 8 blocks, with seven blocks of air above each for the trunk (`bot.farm.TreeFarm`).
+Birch is the farm's first tree - one straight trunk to a predictable height, with no giant form -
+and spruce its second. A soldier plants birch if it carries any, then spruce, then any other, and
+with no sapling breaks leaves for one, birch leaves first, then spruce; one leaf block in twenty
+drops a sapling (`bot.supply.Forester`).
 Planting is an expect script like the farm's. The trees that grow are logs like any others, for a
 squad sent for WOOD there. A squad that sees no trees is told, on its resources line, that its
 wood has to be grown. The soldier at it reports `Planting`.

@@ -29,6 +29,8 @@ class ForesterTest {
     private static final BlockPos CENTRE = new BlockPos(0, GROUND, 0);
 
     private final Map<BlockPos, String> saplings = new HashMap<>();
+    /** The trees planted, in the order they went in. */
+    private final List<String> plantedInTurn = new java.util.ArrayList<>();
     private final List<Runnable> answers = new ArrayList<>();
     private final Inventory inventory = new Inventory();
 
@@ -68,6 +70,7 @@ class ForesterTest {
                         String tree = ItemClassRegistry.nameOf(inventory.itemAt(held)).orElseThrow().replace("_sapling", "");
                         answers.add(() -> {
                             saplings.put(cell, tree);
+                            plantedInTurn.add(tree);
                             int left = inventory.countAt(held) - 1;
                             inventory.setSlot(held, left == 0 ? null : new int[]{inventory.itemAt(held), left});
                         });
@@ -95,29 +98,31 @@ class ForesterTest {
 
     @Test
     void laysTheFarmOutOnAGridWithRoomToGrow() {
-        TreeFarm farm = TreeFarm.site(grass, CENTRE, 6).orElseThrow();
+        TreeFarm farm = TreeFarm.site(grass, CENTRE, 8).orElseThrow();
 
-        assertEquals(25, farm.plot().size(), "every third cell of a 13x13 square");
-        assertEquals(CENTRE, farm.plot().getFirst(), "nearest the centre first");
-        assertTrue(farm.plot().stream().allMatch(c -> Math.floorMod(c.x(), TreeFarm.SPACING) == 0 && Math.floorMod(c.z(), TreeFarm.SPACING) == 0));
+        assertEquals(16, farm.plot().size(), "x and z each 2 past a multiple of 4 in a 17x17 square: -6, -2, 2, 6 each way");
+        assertEquals(4, Math.abs(farm.plot().getFirst().x()) + Math.abs(farm.plot().getFirst().z()), "nearest the centre first");
+        assertTrue(farm.plot().stream().allMatch(c -> Math.floorMod(c.x() + 2, TreeFarm.SPACING) == 0 && Math.floorMod(c.z() + 2, TreeFarm.SPACING) == 0),
+                "on the world's grid, not the centre's");
     }
 
     @Test
-    void plantsTheSpruceFirstThenWhateverElseItCarries() {
+    void plantsBirchFirstThenSpruceThenWhateverElseItCarries() {
         inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item("oak_sapling"), 1});
         inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item("spruce_sapling"), 1});
-        TreeFarm farm = new TreeFarm(CENTRE, List.of(CENTRE, CENTRE.offset(3, 0, 0)));
+        inventory.setSlot(Inventory.MAIN_FIRST + 2, new int[]{item("birch_sapling"), 1});
+        TreeFarm farm = new TreeFarm(CENTRE, List.of(CENTRE, CENTRE.offset(3, 0, 0), CENTRE.offset(-3, 0, 0)));
         Forester forester = new Forester("Alice", session, inventory, new HashSet<>());
         Position soldier = new Position(0.5, GROUND, 0.5);
 
-        for (int tick = 0; tick < 400 && saplings.size() < 2; tick++) {
+        for (int tick = 0; tick < 600 && saplings.size() < 3; tick++) {
             answers.forEach(Runnable::run);
             answers.clear();
             forester.tick(soldier, grass, Optional.of(farm), true);
             soldier = forester.standAt().orElse(soldier); // walks there at once
         }
 
-        assertEquals(Map.of(CENTRE, "spruce", CENTRE.offset(3, 0, 0), "oak"), saplings);
+        assertEquals(List.of("birch", "spruce", "oak"), plantedInTurn, "birch, then spruce, then the oak: " + saplings);
         assertTrue(forester.failure().isEmpty(), forester.failure().orElse(""));
     }
 }
