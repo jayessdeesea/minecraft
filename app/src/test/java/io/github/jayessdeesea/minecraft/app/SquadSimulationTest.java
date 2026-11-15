@@ -2565,6 +2565,47 @@ class SquadSimulationTest {
     }
 
     /**
+     * The rules of a clearing (docs/military-doctrine.md § 17; operator, 2026-11-15): the highest
+     * block first, built up to on scaffolding, and nothing lower till it's gone - a block left high
+     * is where zombies hide under. A block ten up over the keep is taken before a mound a block high
+     * elsewhere on it.
+     */
+    @Test
+    void theHighestBlockIsTakenFirstOnScaffoldingAndNothingLowerBeforeIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 3 && z == 3 && y == GROUND + 10 ? SimServer.GLASS
+                : x >= 6 && x <= 7 && z >= 6 && z <= 7 && y == GROUND + 1 ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(8 * 60_000);
+
+        List<String> log = List.copyOf(server.log);
+        int high = indexOf(log, " dug " + SimServer.GLASS + " at 3," + (GROUND + 10) + ",3");
+        int low = java.util.stream.IntStream.range(0, log.size())
+                .filter(i -> log.get(i).matches(".* dug " + SimServer.DIRT + " at [67]," + (GROUND + 1) + ",[67]")).findFirst().orElse(Integer.MAX_VALUE);
+        assertTrue(high >= 0, "the block ten up taken, on scaffolding; last server events: " + log.subList(Math.max(0, log.size() - 15), log.size()));
+        assertTrue(high < low, "the high block before any of the mound under it: high at " + high + ", the mound's first at " + low);
+    }
+
+    private static int indexOf(List<String> log, String suffix) {
+        for (int i = 0; i < log.size(); i++) {
+            if (log.get(i).endsWith(suffix)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
      * The borrow pit for a builder's dirt is on the ground's surface, wherever that is: live, the pit
      * was put at a guessed y=68 under a hill, and every fetch found no soil all day.
      */

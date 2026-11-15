@@ -1224,6 +1224,9 @@ another.
 | **Lodgment** | An area in hostile territory that, seized and held, makes the continuous landing of troops and materiel possible and gives maneuver space for subsequent operations. | JP 3-18 |
 | **After-action review** | A review at the end of an action of what was meant to happen, what did, why, and what to do differently. | TC 25-20 |
 | **Unit status** | A unit reports its readiness as a C-rating, C-1 (fully ready) to C-4 (not), from the share of its personnel and equipment on hand and fit: at least 90, 80 and 70 per cent for C-1 to C-3. | AR 220-1 |
+| **Excavation protective systems** | Each worker in an excavation is protected from cave-ins by sloping (its sides cut back by soil type: vertical in stable rock, 3/4:1 in Type A, 1:1 in Type B, 1 1/2:1 in Type C, under 20 feet deep), benching (its sides cut in steps), shoring or shielding - unless it's entirely in stable rock, or under 5 feet deep with no sign of cave-in to a competent person. | 29 CFR 1926.652(a)(1) and Appendix B, Table B-1 (OSHA) |
+| **Means of egress** | A trench 4 feet deep or more has a stairway, ladder, ramp or other safe way out within 25 feet of lateral travel of every worker in it. | 29 CFR 1926.651(c)(2) (OSHA) |
+| **Spoil and loads at the edge** | What's dug out, and equipment, is kept back from the edge - at least 2 feet - so it can't fall or roll in. | 29 CFR 1926.651(j)(2) (OSHA) |
 
 *How we use it:* a garrison's camp (`minecraft.camp`, as `x,z`) is built up the way an airborne
 force builds a lodgment after the drop. Its phases:
@@ -1332,6 +1335,33 @@ ground's top at y=63, and any hollow open under it within 8 blocks, is filled in
 (`Tasking.keep`), each squad on it its own share of the site - west to east in the roster's order
 - and each of its soldiers a fixed strip of that, its own range of x and z (operator, 2026-11-13):
 the sky over it cleared to the top of the world, top down, as ground is dug only from an open top.
+**We follow the excavation standard** (operator, 2026-11-15): OSHA's 29 CFR 1926 Subpart P
+(1926.650-652), the rules US construction digs to - protected sides, a way out within reach of
+every worker, spoil kept back from the edge - read for a world of one-block steps and builders
+who fight. Where a rule of a clearing below meets the standard, it says which part.
+
+**The rules of a clearing (operator; standing - don't trade them away for a fix elsewhere):**
+1. **The highest block first.** A region is cleared from its highest block down, a level at a
+   time, every builder on the same level, nobody lower till the level's gone (2026-11-13/14).
+2. **Fair slices each level.** Each level is shared out fresh among the builders on hand in
+   rectangles that don't overlap, near-equal in work - a scheduler's slices, not regions kept from
+   level to level, which go uneven: last level's full region is empty this one (2026-11-14/15).
+3. **Scaffolding to reach.** A builder builds up to a high block - steps, a pillar - to take it.
+   Scaffolding is part of the job; it's ground in the dig, and comes down top first with the
+   levels (2026-11-13, 2026-11-15).
+4. **Never leave a high block.** The level doesn't move on past a block over it - not for one
+   that's out of reach, not for one nobody can get to yet: a block left high is where zombies hide
+   under. A block hard to reach is the problem to solve, not to skip (2026-11-15).
+5. **One haul road.** A site has one way in and out that everyone takes - from its depot down to
+   its working floor, steps no more than a block, carved into the hillside or the ground round
+   the dig rather than built, so the pathfinder prefers it to any stairs of its own; cut again as
+   the floor goes down, and taken out last (2026-11-15). As an excavation's ramp is (29 CFR
+   1926.651(c)(2): a stairway, ladder or ramp within 25 feet of every worker in a trench 4 feet
+   deep or more).
+6. **Benched edges.** The ground just round the dig may be lowered as it goes - benched, as an
+   excavation's sides are cut back in steps or sloped (29 CFR 1926.652) - so its edge is never a
+   cliff over the work (2026-11-15).
+
 Level by level, in lock step, planned by the keep's foreman (`command.LevelPlan`, operator
 2026-11-14): one soldier the squad leader appoints - the first builder of the first squad on the
 keep, again whenever that one is off it. The site's level is the highest ground left anywhere on
@@ -1350,9 +1380,7 @@ the net, point to point (`/msg`), a line a second at most since the server cuts 
 that chats faster; the log reads "[Keep] level y=77: 41 block(s) left, 6 of 8 builder(s) on it"
 and "[Keep] Alice -> Bob: KEEP DIG 77 3 -4 9 2". Ground within 12 blocks of a builder's fight, and
 for half a minute after it, is nobody's and isn't counted for the level: the rest go on, and when
-the fight's done that ground is the highest again. So is a column whose top a builder passed over -
-out of reach for now - till it's tried again (`Clearer.passedOver`): live, the keep stood at one
-level for a hilltop corner block nobody could get to, and every builder waited on it. A builder with ground work isn't sent to
+the fight's done that ground is the highest again. A builder with ground work isn't sent to
 support a squadmate's fight (§8), and digs on with a hostile in sight that isn't on it. Tried
 first: a fixed strip each, a step under its neighbours' edges - builders walled each other in with
 the steps they built to climb the terraces; then fixed strips in lock step - with the high ground
@@ -1470,3 +1498,4 @@ stays set. Each order's changes are made once. It sees each soldier's plan at th
 - FM 4-93.51 ch. 9 (cross-leveling ammunition within the company) - [GlobalSecurity](https://www.globalsecurity.org/military/library/policy/army/fm/4-93-51/ch9.htm)
 - ATP 3-39.35, *Protective Services* - [Army Publishing Directorate](https://armypubs.army.mil/)
 - ATP 1-02.1 multi-service brevity codes (CANTCO) - [ALSSA](https://www.alssa.mil/MTTPs/Brevity/)
+- 29 CFR 1926 Subpart P, *Excavations* (OSHA; 1926.650 scope, 1926.651 general requirements including means of egress, 1926.652 protective systems and Appendix B sloping and benching) - [eCFR](https://www.ecfr.gov/current/title-29/subtitle-B/chapter-XVII/part-1926/subpart-P); [1926.651](https://www.osha.gov/laws-regs/regulations/standardnumber/1926/1926.651), [1926.652](https://www.osha.gov/laws-regs/regulations/standardnumber/1926/1926.652), [Appendix B](https://www.osha.gov/laws-regs/regulations/standardnumber/1926/1926SubpartPAppB) (osha.gov)
