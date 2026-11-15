@@ -548,8 +548,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         boolean keepWorked = !keepDigLeftBySquad.isEmpty();
         if (keepWorked) {
             int digLeft = keepDigLeftBySquad.values().stream().mapToInt(Integer::intValue).sum();
-            int fillLeft = squadStates.values().stream().mapToInt(st -> st.keepFillLeft).filter(n -> n >= 0).sum();
-            boolean fillKnown = squadStates.values().stream().anyMatch(st -> st.keepFillLeft >= 0);
+            int fillLeft = keepFillLeftBySquad.values().stream().mapToInt(Integer::intValue).filter(n -> n >= 0).sum();
+            boolean fillKnown = keepFillLeftBySquad.values().stream().anyMatch(n -> n >= 0);
             Workshop depot = keepWorkshop;
             boolean chest = depot != null && depot.chestStands(world);
             int logs = keepLogsCarried.values().stream().mapToInt(Integer::intValue).sum()
@@ -561,11 +561,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     new Site.Standard(Site.Level.BUILDUP, "the slab laid", fillKnown && fillLeft == 0,
                             fillKnown ? fillLeft + " cells to fill" : "not begun: the ground first"))));
         }
-        Optional<Staircase> stairs = campStairs();
+        // The mine the squads work - the keep's, sited by a squad - else the camp's.
+        Optional<Staircase> stairs = squadStairs.values().stream().findFirst().or(this::campStairs);
         if (stairs.isPresent()) {
             Workshop landing = Workshop.mine(stairs.get());
             boolean fitted = landing.stands(world, Workstation.CRAFTING_TABLE) && landing.stands(world, Workstation.FURNACE);
-            boolean cut = stairsDone.get();
+            boolean cut = stairsDone.get() || stairs.get().stepsCut(world) == stairs.get().steps();
             sites.add(new Site(Site.Kind.MINE_BASE, "the mine base", List.of(
                     new Site.Standard(Site.Level.SHELTER, "the stairs cut down", cut, cut ? "down to y=" + stairs.get().bottom()
                             : stairs.get().stepsCut(world) + " of " + stairs.get().steps() + " steps"),
@@ -1888,6 +1889,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         state.keepDigLeft = toDig.size();
         keepDigLeftBySquad.put(squad, toDig.size());
         state.keepFillLeft = toDig.isEmpty() ? toFill.size() : -1;
+        keepFillLeftBySquad.put(squad, state.keepFillLeft);
         String said = "the keep: " + toDig.size() + " blocks to dig" + (toDig.isEmpty() ? ", " + toFill.size() + " cells to fill"
                 : ", its top y=" + toDig.stream().mapToInt(BlockPos::y).max().orElse(Keep.BOTTOM) + ", the keep's y=" + layer) + " in its share " + digShare;
         if (!said.equals(state.keepSaid)) {
@@ -3359,6 +3361,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return sited.get();
         }).orElse(null);
         state.stairs = stairs;
+        if (stairs == null) {
+            squadStairs.remove(squadName);
+        } else {
+            squadStairs.put(squadName, stairs);
+        }
         if (stairs == null) {
             nightBelow.remove(squadName);
         }
@@ -5359,6 +5366,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         next.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));
         return next;
     }
+
+    /** Each keep squad's cells still to fill, -1 while it's still digging - squad loops write, the site measure reads. */
+    private final Map<String, Integer> keepFillLeftBySquad = new ConcurrentHashMap<>();
+    /** Each squad's staircase, while it has one - squad loops write, the site measure reads. */
+    private final Map<String, Staircase> squadStairs = new ConcurrentHashMap<>();
 
     /** Each keep squad's blocks still to dig in its share, at its last look - squad loops write, ticks read. */
     private final Map<String, Integer> keepDigLeftBySquad = new ConcurrentHashMap<>();
