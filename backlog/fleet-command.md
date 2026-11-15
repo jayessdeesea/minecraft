@@ -119,7 +119,9 @@ and its decision (`[PL]`), so every model decision is accounted for.
   prompt edit is measured, not assumed safe (docs/prompting.md).
 - The PSG owns sustainment as one component: the supply gate and reorder points
   (maturity-model.md), producers detached within the PL's priorities, kit by role, cross-leveling,
-  replacements - pulled together from where they live now.
+  replacements - pulled together from where they live now. Built: `command.PlatoonSergeant`
+  decides the keep's wood party (docs/echelons/platoon-sergeant/decisions.md, which lists what's
+  still elsewhere).
 - The squad leader's model is replaced by a deterministic allocator; `SquadLeaderScenarioIT`'s
   situations become its tests, and each one it can't pass is an escalation to the PL instead.
 - The PL wakes only on the triggers above; the log shows each wake and its cause; a day with

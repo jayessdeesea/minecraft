@@ -226,7 +226,7 @@ level falls, the log says what it took against its slowest builder's best, each 
 taken against best, and the ticks it spent not digging at all; below 90% the line is a warning,
 "BELOW 90%, look into it".
 
-The keep's wood party (operator, 2026-11-14: trees are everywhere - break from the dig, harvest
+The keep's wood party - the platoon sergeant's, `command.PlatoonSergeant` (operator, 2026-11-14: trees are everywhere - break from the dig, harvest
 some, build crates at the depot and replant; a spruce every four blocks; the lumberjacks use axes)
 is the foreman's errand in place of a rectangle, two builders at most and a third of the crew,
 never the foreman. One

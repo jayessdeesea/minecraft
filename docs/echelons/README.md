@@ -9,6 +9,7 @@ come from, and that each bad outcome is checked against, are the [tenets](tenets
 | Echelon | Thinks with | Decides every | Gives | Files |
 |---|---|---|---|---|
 | General | a model | 2 minutes | an `Objective` per squad: place, words, `Task` | [decisions](general/decisions.md), [operator rules](general/operator-rules.md) |
+| Platoon sergeant | plain Java | each keep plan (about 5 seconds) | producers detached: the keep's wood party | [decisions](platoon-sergeant/decisions.md) |
 | Squad leader | a model, then drills | 20 seconds (drills: 1 second) | a `SquadOrder`, then an `Order` per soldier | [decisions](squad-leader/decisions.md), [drills](squad-leader/drills.md) |
 | Soldier | plain Java | every tick (50 ms) | moves, fights, and works with its hands | [capabilities](soldier/capabilities.md), [orders and reports](soldier/orders.md), [routines](soldier/routines.md) |
 

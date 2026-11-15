@@ -77,6 +77,7 @@ import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.PatrolBase;
 import io.github.jayessdeesea.minecraft.command.Plan;
+import io.github.jayessdeesea.minecraft.command.PlatoonSergeant;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Progress;
 import io.github.jayessdeesea.minecraft.command.ReactToContact;
@@ -2054,13 +2055,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (!inCrew.contains(h.name())) {
                 continue;
             }
-            if (keepCutters.contains(h.name())) {
+            if (keepParty.cutters().contains(h.name())) {
                 Position trees = keepWoodAt(onKeep, grove);
                 int tx = (int) Math.floor(trees.x()), ty = (int) Math.floor(trees.y()), tz = (int) Math.floor(trees.z());
-                orders.put(h.name(), new Order.Gather(Resource.WOOD, new Box(tx - 4, ty - 4, tz - 4, tx + 4, ty + 4, tz + 4), WOOD_LOAD));
+                orders.put(h.name(), new Order.Gather(Resource.WOOD, new Box(tx - 4, ty - 4, tz - 4, tx + 4, ty + 4, tz + 4), PlatoonSergeant.WOOD_LOAD));
                 continue;
             }
-            if (h.name().equals(keepPlanter) && grove != null) {
+            if (keepParty.planter().filter(h.name()::equals).isPresent() && grove != null) {
                 // Its forester stands where its next sapling goes; between saplings it waits at the grove.
                 orders.put(h.name(), new Order.MoveTo(grove.centre().x() + 0.5, grove.centre().y(), grove.centre().z() + 0.5,
                         TREE_FARM_RADIUS, 6, Risk.LOW, false));
@@ -2084,90 +2085,44 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     /**
-     * The keep's wood party (operator, 2026-11-14: trees are everywhere - take a break from the dig,
-     * harvest some, build crates at the depot, and replant; a sapling every four blocks). The
-     * foreman's errand in place of a rectangle, for {@link #WOOD_PARTY} builders at most and a third
-     * of the crew: while the builders and the stockpile hold fewer than {@link Keep#LOGS_WANTED} logs
-     * between them and a keep squad has seen trees, the party cuts them, {@link #WOOD_LOAD} logs a
-     * builder - back with them it's on the dig again, and another goes; a place in the party left
-     * over plants the keep's grove ({@link #keepGrove}) while it has a cell with nothing growing.
-     * The rest dig. Live, eight builders and one chest's logs between them
-     * stood a depot at two chests, both full. Guarded by {@link #keepPlanLock}.
+     * The keep's wood party, as the platoon sergeant decides it ({@link PlatoonSergeant#woodParty}):
+     * fed what the builders carry, the stockpile's logs, the trees the keep's squads have seen and
+     * the grove's state. A planting that fails pauses the grove {@link #PLANTER_RETRY_MILLIS}, not
+     * the planter - what failed it fails the next builder too: live, five took the job in turn within
+     * a minute. Changes are logged and said on the net. Guarded by {@link #keepPlanLock}.
      */
     private void woodParty(List<String> onKeep, List<LevelPlan.Builder> onHand, long now) {
-        Set<String> present = onHand.stream().map(LevelPlan.Builder::name).collect(Collectors.toSet());
-        int logs = onHand.stream().mapToInt(b -> keepLogsCarried.getOrDefault(b.name(), 0)).sum()
-                + chainOfCommand.stockpile().map(Stockpile::logs).orElse(0);
-        // Trees to cut, and a sapling to plant or leaves to get one from: with neither there's no
-        // errand, and the request goes up the chain. In the squad simulation, builders on bare
-        // ground were sent for trees that weren't there and the level stood half-dug.
-        boolean treesSeen = onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream()).anyMatch(r -> r.resource() == Resource.WOOD);
-        boolean saplings = onHand.stream().anyMatch(b -> keepSaplingsCarried.getOrDefault(b.name(), 0) > 0);
-        // Out below half what's wanted, back at all of it: live and in the squad simulation, a party
-        // that went at 15 and stopped at 16 came and went with every chest and handle made.
-        keepWoodShort = treesSeen && (keepWoodShort ? logs < Keep.LOGS_WANTED : logs < Keep.LOGS_WANTED / 2);
-        boolean short_ = keepWoodShort;
-        TreeFarm grove = keepGrove;
-        boolean bare = grove != null && !Forester.planted(world, grove) && (treesSeen || saplings);
-        // A third of the crew at most, so the dig goes on.
-        int size = Math.min(WOOD_PARTY, onHand.size() / 3);
-        // Not the foreman, who says the plan; the rest from the end of the roster, so it stays put.
-        List<String> candidates = onHand.stream().map(LevelPlan.Builder::name).filter(n -> !n.equals(keepForeman))
-                .sorted(Comparator.reverseOrder()).toList();
-        // Cutting first while the depot is short: wood now before trees later.
-        int cutters = short_ ? size : 0;
-        List<String> cutting = new ArrayList<>(keepCutters.stream()
-                .filter(n -> present.contains(n) && keepLogsCarried.getOrDefault(n, 0) < WOOD_LOAD).sorted().toList());
-        while (cutting.size() > cutters) {
-            cutting.removeLast();
-        }
-        for (String n : candidates) {
-            if (cutting.size() >= cutters) {
-                break;
-            }
-            if (!cutting.contains(n) && keepLogsCarried.getOrDefault(n, 0) < WOOD_LOAD / 2) {
-                cutting.add(n);
-            }
-        }
-        String planter = keepPlanter;
-        // A planting that fails pauses the grove, not the planter: what failed it - no sapling, no
-        // leaves, no way to a cell - fails the next builder too. Live, five builders took the job in
-        // turn within a minute, each walking off and failing as the last had.
-        Optional<String> plantingFailed = Optional.ofNullable(planter).map(foresters::get).flatMap(Forester::failure);
+        Optional<String> plantingFailed = keepParty.planter().map(foresters::get).flatMap(Forester::failure);
         if (plantingFailed.isPresent()) {
             LOG.info("[Keep] the grove waits {} min: {}", PLANTER_RETRY_MILLIS / 60_000, plantingFailed.get());
             keepGroveBarredUntil = now + PLANTER_RETRY_MILLIS;
         }
-        if (planter != null && (!bare || !present.contains(planter) || cutting.contains(planter) || cutting.size() >= size
-                || plantingFailed.isPresent())) {
-            planter = null;
-        }
-        if (bare && planter == null && cutting.size() < size && now >= keepGroveBarredUntil) {
-            planter = candidates.stream().filter(n -> !cutting.contains(n))
-                    // One carrying saplings first: it plants at once.
-                    .min(Comparator.comparing(n -> keepSaplingsCarried.getOrDefault(n, 0) > 0 ? 0 : 1)).orElse(null);
-        }
-        String plants = planter;
-        Set<String> cutSet = Set.copyOf(cutting);
-        if (!cutSet.equals(keepCutters) || !Objects.equals(plants, keepPlanter)) {
+        List<PlatoonSergeant.Hand> crew = onHand.stream().map(b -> new PlatoonSergeant.Hand(b.name(),
+                keepLogsCarried.getOrDefault(b.name(), 0), keepSaplingsCarried.getOrDefault(b.name(), 0))).toList();
+        TreeFarm grove = keepGrove;
+        PlatoonSergeant.Wood wood = new PlatoonSergeant.Wood(chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
+                onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream()).anyMatch(r -> r.resource() == Resource.WOOD),
+                grove != null && !Forester.planted(world, grove), now < keepGroveBarredUntil);
+        PlatoonSergeant.WoodParty was = keepParty;
+        PlatoonSergeant.WoodParty party = PlatoonSergeant.woodParty(crew, keepForeman, was, wood);
+        if (!party.cutters().equals(was.cutters()) || !party.planter().equals(was.planter())) {
+            int logs = crew.stream().mapToInt(PlatoonSergeant.Hand::logs).sum() + wood.stockpileLogs();
             LOG.info("[Keep] the wood party: {} cut(s) trees for the depot ({} logs between the builders and the stockpile, {} wanted){}",
-                    cutSet.isEmpty() ? "nobody" : cutSet, logs, Keep.LOGS_WANTED,
-                    plants == null ? "" : ", " + plants + " plants the keep's grove");
+                    party.cutters().isEmpty() ? "nobody" : party.cutters(), logs, Keep.LOGS_WANTED,
+                    party.planter().map(n -> ", " + n + " plants the keep's grove").orElse(""));
             String chief = keepForeman;
             if (chief != null) {
-                cutSet.stream().filter(n -> !keepCutters.contains(n)).forEach(n -> say(chief, n, "KEEP WOOD " + WOOD_LOAD));
-                if (plants != null && !plants.equals(keepPlanter)) {
-                    say(chief, plants, "KEEP PLANT " + grove.centre().x() + " " + grove.centre().z());
-                }
+                party.cutters().stream().filter(n -> !was.cutters().contains(n)).forEach(n -> say(chief, n, "KEEP WOOD " + PlatoonSergeant.WOOD_LOAD));
+                party.planter().filter(n -> !was.planter().equals(Optional.of(n)))
+                        .ifPresent(n -> say(chief, n, "KEEP PLANT " + grove.centre().x() + " " + grove.centre().z()));
             }
         }
-        keepCutters = cutSet;
-        keepPlanter = plants;
+        keepParty = party;
     }
 
     /** Whether {@code name} is off the dig in the keep's wood party. */
     private boolean inWoodParty(String name) {
-        return keepCutters.contains(name) || name.equals(keepPlanter);
+        return keepParty.has(name);
     }
 
     /** Where the wood party cuts: the trees nearest the depot a keep squad last saw, else round the grove, else the depot. */
@@ -2245,10 +2200,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return a.minX() <= b.maxX() && b.minX() <= a.maxX() && a.minZ() <= b.maxZ() && b.minZ() <= a.maxZ();
     }
 
-    /** Builders off the dig in the keep's wood party at most, cutting and planting together. */
-    static final int WOOD_PARTY = 2;
-    /** The logs a cutter brings back: a chest's two and a tool's handle for each of a few builders. */
-    static final int WOOD_LOAD = 16;
     /** How long the keep's grove waits after a planting fails - no sapling, no leaves, no way to the cell. */
     static final long PLANTER_RETRY_MILLIS = 5 * 60_000;
     /** How far out from the depot the keep's grove is first looked for, and the steps out from there. */
@@ -2267,12 +2218,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private volatile TreeFarm keepGrove;
     /** Whether the keep's grove has been looked for since the start: once, whatever it found. */
     private volatile boolean keepGroveSought;
-    /** Whether the wood party is out cutting - guarded by {@link #keepPlanLock}. */
-    private boolean keepWoodShort;
-    /** The wood party's cutters - guarded by {@link #keepPlanLock}, read by squad loops. */
-    private volatile Set<String> keepCutters = Set.of();
-    /** The wood party's planter, if the grove has one - guarded by {@link #keepPlanLock}. */
-    private volatile String keepPlanter;
+    /** The keep's wood party, as the platoon sergeant last decided it - guarded by {@link #keepPlanLock}, read by ticks. */
+    private volatile PlatoonSergeant.WoodParty keepParty = PlatoonSergeant.WoodParty.NONE;
     /** When the keep's grove, its last planting failed, is planted again - guarded by {@link #keepPlanLock}. */
     private long keepGroveBarredUntil = Long.MIN_VALUE;
     /** The saplings each keep builder carries, at its squad's last look - squad loops. */
@@ -3678,7 +3625,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             // The keep's planter plants the keep's grove, whatever its squad's own plot: live, planters
             // sent to a squad's plot 40 blocks up a hill failed the walk one after another.
-            TreeFarm grove = soldierName.equals(keepPlanter) && keepGrove != null ? keepGrove : trees;
+            TreeFarm grove = keepParty.planter().filter(soldierName::equals).isPresent() && keepGrove != null ? keepGrove : trees;
             if (grove != null && !squadInContact) {
                 planting.put(soldierName, grove);
             } else {
@@ -4645,7 +4592,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             rung.ifPresent(tools::add);
             // A lumberjack's axe: a builder sent to cut trees for the keep makes a stone one first, from
             // the cobblestone it carries (operator, 2026-11-14: the lumberjacks use axes).
-            if (keepCutters.contains(name) && java.util.stream.IntStream.range(0, Inventory.SLOTS).mapToDouble(s -> ItemClassRegistry.axeSpeed(inventory.itemAt(s)).orElse(0)).max().orElse(0) < 4 && inventory.count(ItemClass.COBBLESTONE) >= 3) {
+            if (keepParty.cutters().contains(name) && java.util.stream.IntStream.range(0, Inventory.SLOTS).mapToDouble(s -> ItemClassRegistry.axeSpeed(inventory.itemAt(s)).orElse(0)).max().orElse(0) < 4 && inventory.count(ItemClass.COBBLESTONE) >= 3) {
                 tools.add(Recipe.STONE_AXE);
             }
             if (needsPickaxe) {
