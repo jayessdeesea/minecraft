@@ -18,7 +18,7 @@ platoon leader's to give as data.
 
 ## What it decides: `command.SquadOrder`
 - **Where:** the objective point the squad moves on. By the rules: the surveyed spot nearest the
-  objective the point man can walk to, or failing any climb to, asked again each decision from
+  objective, counting height (a MINE objective's is a depth), that the point man can walk to, or failing any climb to, asked again each decision from
   where he stands, so a far objective is reached spot by spot - the objective itself beyond the
   survey is an order nobody can reach behind a cliff or a ravine. Always the objective itself on the
   keep, where each soldier's strip is assigned at the site

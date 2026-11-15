@@ -104,7 +104,9 @@ public final class DrillSquadLeader implements SquadLeader {
                 .filter(s -> s.ground() == TerrainSurvey.Ground.LAND && s.reachable()).toList();
         List<TerrainSurvey.Sample> walked = reachable.stream().filter(s -> s.climb() == 0).toList();
         return (walked.isEmpty() ? reachable : walked).stream()
-                .min(Comparator.comparingDouble(s -> Math.hypot(s.x() + 0.5 - goal.x(), s.z() + 0.5 - goal.z())))
+                // Nearest counting height too: a MINE objective's height is the depth to reach, and by x and
+                // z alone, live, the squad was sent up a hill 66 blocks over the mine it was to go down.
+                .min(Comparator.comparingDouble(s -> Math.hypot(Math.hypot(s.x() + 0.5 - goal.x(), s.z() + 0.5 - goal.z()), s.height() - goal.y())))
                 .map(s -> new Position(s.x() + 0.5, s.height(), s.z() + 0.5));
     }
 
