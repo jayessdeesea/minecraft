@@ -1348,7 +1348,9 @@ the net, point to point (`/msg`), a line a second at most since the server cuts 
 that chats faster; the log reads "[Keep] level y=77: 41 block(s) left, 6 of 8 builder(s) on it"
 and "[Keep] Alice -> Bob: KEEP DIG 77 3 -4 9 2". Ground within 12 blocks of a builder's fight, and
 for half a minute after it, is nobody's and isn't counted for the level: the rest go on, and when
-the fight's done that ground is the highest again. A builder with ground work isn't sent to
+the fight's done that ground is the highest again. So is a column whose top a builder passed over -
+out of reach for now - till it's tried again (`Clearer.passedOver`): live, the keep stood at one
+level for a hilltop corner block nobody could get to, and every builder waited on it. A builder with ground work isn't sent to
 support a squadmate's fight (§8), and digs on with a hostile in sight that isn't on it. Tried
 first: a fixed strip each, a step under its neighbours' edges - builders walled each other in with
 the steps they built to climb the terraces; then fixed strips in lock step - with the high ground

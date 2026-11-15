@@ -92,6 +92,11 @@ public final class Clearer {
         return digger == null ? Optional.empty() : Optional.of(digger.standAt());
     }
 
+    /** The blocks it's passing over for now - each cut that failed, until its setback runs out. */
+    public synchronized Set<BlockPos> passedOver() {
+        return failed.barredNow(ticks);
+    }
+
     /** Why it needs its squad leader's help, if it's out of ways of its own ({@link Setbacks#stuck}). */
     public synchronized Optional<String> stuck() {
         return failed.stuck().map(s -> "can't clear the camp: " + s);

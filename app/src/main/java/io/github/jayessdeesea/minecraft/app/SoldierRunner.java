@@ -2167,8 +2167,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // ground is the highest again, and the level comes back up to it.
             List<Position> fights = keepFightingAt.entrySet().stream().filter(e -> keepFighting.contains(e.getKey()))
                     .map(Map.Entry::getValue).toList();
+            // And a column whose top a builder passed over - out of reach for now - is nobody's till it's
+            // tried again: live, the keep stood at one level for one hilltop corner block nobody could
+            // get to, and every builder waited on it.
+            Set<Long> passed = new HashSet<>();
+            onHand.forEach(b -> Optional.ofNullable(clearers.get(b.name())).ifPresent(c -> c.passedOver()
+                    .forEach(p -> passed.add(((long) p.x() << 32) ^ (p.z() & 0xffffffffL)))));
             java.util.function.IntBinaryOperator calm = (x, z) -> fights.stream()
-                    .anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR) ? Integer.MIN_VALUE : top.applyAsInt(x, z);
+                    .anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR)
+                    || passed.contains(((long) x << 32) ^ (z & 0xffffffffL)) ? Integer.MIN_VALUE : top.applyAsInt(x, z);
             int level = Integer.MIN_VALUE;
             for (int x = site.minX(); x <= site.maxX(); x++) {
                 for (int z = site.minZ(); z <= site.maxZ(); z++) {
