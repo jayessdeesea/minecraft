@@ -117,14 +117,28 @@ public final class Miner {
 
     /** Tunnels given up for water, lava or a cave beside them. */
     private final Set<Integer> blocked = new HashSet<>();
+    /** Tunnels over a cave left until the miner carries blocks to floor it. */
+    private final Set<Integer> waiting = new HashSet<>();
+
+    /** What a cave is floored with: cobblestone, else dirt - empty with neither. */
+    private Optional<ItemClassRegistry.ItemClass> bridgeBlock() {
+        return inventory.count(ItemClassRegistry.ItemClass.COBBLESTONE) > 0 ? Optional.of(ItemClassRegistry.ItemClass.COBBLESTONE)
+                : inventory.count(ItemClassRegistry.ItemClass.DIRT) > 0 ? Optional.of(ItemClassRegistry.ItemClass.DIRT) : Optional.empty();
+    }
 
     /** Each tick: cuts {@code stairs} while {@code free}; anything else stops the dig under way. */
     public synchronized Progress tick(Position soldier, WorldView world, Staircase stairs, boolean free) {
         List<Staircase.Cut> cuts = stairs.cuts();
         OptionalInt next;
         Staircase.Cut cut;
+        Optional<ItemClassRegistry.ItemClass> bridging = bridgeBlock();
+        if (bridging.isPresent()) {
+            waiting.clear(); // blocks again: the tunnels that waited on them are cut on
+        }
         while (true) {
-            next = firstUncut(world, cuts, blocked);
+            Set<Integer> skipped = new HashSet<>(blocked);
+            skipped.addAll(waiting);
+            next = firstUncut(world, cuts, skipped);
             if (next.isEmpty()) {
                 // All cut: worked again for the ore in sight of what was cut - passed by, or not
                 // harvestable then. Live, no miner mined ore in twelve runs: the tunnels were cut,
@@ -151,9 +165,18 @@ public final class Miner {
                 return new Progress.Stopped(hazard.get());
             }
             Optional<BlockFace> support = bridgeable(world, cut);
-            if (support.isPresent() && inventory.count(ItemClassRegistry.ItemClass.COBBLESTONE) > 0
-                    && bridged.getOrDefault(cut.tunnel(), 0) < BRIDGE_TRIES) {
-                return bridge(soldier, cut, next.getAsInt(), cuts.size(), support.get(), free);
+            if (support.isPresent() && bridged.getOrDefault(cut.tunnel(), 0) < BRIDGE_TRIES) {
+                if (bridging.isPresent()) {
+                    return bridge(soldier, cut, next.getAsInt(), cuts.size(), support.get(), bridging.get(), free);
+                }
+                // Nothing to floor it with yet: it waits, not given up - the next tunnel's stone is
+                // the bridge. Live, a miner with no cobblestone gave up the main tunnel at its first
+                // gap, and every branch off it with it.
+                if (waiting.add(cut.tunnel())) {
+                    LOG.info("{} leaves {} of the mine until it carries blocks to floor the cave at {}", name,
+                            cut.tunnel() == 0 ? "the main tunnel" : "branch " + cut.tunnel(), cut.feet().offset(0, -1, 0));
+                }
+                continue;
             }
             // A tunnel is one of many: give it up, and go on with the next.
             LOG.warn("{} gives up tunnel {} of the mine: {}", name, cut.tunnel(), hazard.get());
@@ -215,7 +238,7 @@ public final class Miner {
     }
 
     /** From the cut's stand, cobblestone in the gap under its feet, against {@code support}; the cut goes on once the world shows it. */
-    private Progress bridge(Position soldier, Staircase.Cut cut, int k, int steps, BlockFace support, boolean free) {
+    private Progress bridge(Position soldier, Staircase.Cut cut, int k, int steps, BlockFace support, ItemClassRegistry.ItemClass block, boolean free) {
         breacher.stop();
         BlockPos from = cut.stand();
         standAt = new Position(from.x() + 0.5, from.y(), from.z() + 0.5);
@@ -225,7 +248,7 @@ public final class Miner {
             int n = bridged.merge(cut.tunnel(), 1, Integer::sum);
             LOG.info("{} floors {} of the mine over a cave at {} ({} of {})", name,
                     cut.tunnel() == 0 ? "the main tunnel" : "branch " + cut.tunnel(), floor, n, BRIDGE_TRIES);
-            footing.place(floor, ItemClassRegistry.ItemClass.COBBLESTONE, support);
+            footing.place(floor, block, support);
         }
         footing.tick();
         return new Progress.Working(k, steps);

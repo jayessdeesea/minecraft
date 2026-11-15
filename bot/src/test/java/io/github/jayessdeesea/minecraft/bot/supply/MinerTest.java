@@ -216,6 +216,36 @@ class MinerTest {
     }
 
     /**
+     * With nothing to floor a cave with, the tunnel over it waits rather than being given up: the
+     * mine's other tunnels are cut meanwhile, and the stone they give floors it after.
+     */
+    @Test
+    void aTunnelOverACaveWaitsForBlocksToFloorItRatherThanBeingGivenUp() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        List<Staircase.Cut> branch = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList();
+        cave.add(branch.get(2).feet().offset(0, -1, 0));
+        Inventory inventory = new Inventory();
+        Miner miner = new Miner("Alice", session, inventory);
+        Position soldier = new Position(0.5, GROUND, 0.5);
+        for (int tick = 0; tick < 60000; tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            // The stone the other tunnels give, carried once some are cut.
+            if (dug.size() > 40 && inventory.count(ItemClassRegistry.ItemClass.COBBLESTONE) == 0 && placed.isEmpty()) {
+                inventory.setSlot(Inventory.MAIN_FIRST, new int[]{IntStream.range(0, 4096)
+                        .filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of("cobblestone"))).findFirst().orElseThrow(), 8});
+            }
+            if (!(miner.tick(soldier, world, stairs, true) instanceof Miner.Progress.Working)) {
+                break;
+            }
+            soldier = miner.standAt().orElse(soldier);
+        }
+
+        assertTrue(placed.contains(branch.get(2).feet().offset(0, -1, 0)), "the cave floored once it had the stone");
+        assertTrue(dug.containsAll(branch.getLast().cells()), "and the branch cut to its end");
+    }
+
+    /**
      * A mine long cut is worked again for its ore: ore in sight of a tunnel the miner cut before -
      * passed by, or one it couldn't harvest then - is mined before the mine counts as done. Live,
      * no miner mined ore in twelve runs: the tunnels were cut, and nobody went back down them.
