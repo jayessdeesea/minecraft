@@ -90,7 +90,8 @@ fixed counts:
   after that work's draw stays at or above the reorder point.
 - When the projection crosses the reorder point, the platoon sergeant tasks producers - built for
   wood: the keep's wood party goes out at Class IV's reorder point and back at its objective
-  (`PlatoonSergeant.Wood`) - it detaches
+  (`PlatoonSergeant.Wood`); and food: a farmer a squad under Class I's reorder point, half of it
+  under its safety level (`PlatoonSergeant.farmers`) - it detaches
   soldiers to the work within the platoon leader's priorities, as the foreman shares out the keep
   (backlog/fleet-command.md). The platoon leader sees it only as state - "wood: PAUSE, two on it" -
   under specialists produce, missions consume (tenets.md).

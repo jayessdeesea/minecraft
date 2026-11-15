@@ -150,6 +150,25 @@ class PlatoonSergeantTest {
         assertFalse(PlatoonSergeant.woodParty(six, "Alice", out, new PlatoonSergeant.Wood(120, true, false, false, 80, 120)).cutting());
     }
 
+    /**
+     * Field feeding by the force's rations as well as the squad's: one farmer below the reorder
+     * point, half the squad below the safety level - a squad fed today still farms for a force running
+     * down; with no burn measured, the squad's rating alone.
+     */
+    @Test
+    void farmersFollowTheForcesRationsAsWellAsTheSquads() {
+        Supply plenty = new Supply("Class I (rations)", 400, 80, 0, 1);
+        Supply reordering = new Supply("Class I (rations)", 200, 80, 0, 1);
+        Supply paused = new Supply("Class I (rations)", 100, 80, 0, 1);
+
+        assertEquals(PlatoonSergeant.Farmers.NONE, PlatoonSergeant.farmers(false, false, Optional.of(plenty)));
+        assertEquals(PlatoonSergeant.Farmers.ONE, PlatoonSergeant.farmers(false, false, Optional.of(reordering)), "under the reorder point, 240");
+        assertEquals(PlatoonSergeant.Farmers.HALF, PlatoonSergeant.farmers(false, false, Optional.of(paused)), "under the safety level, 160");
+        assertEquals(PlatoonSergeant.Farmers.HALF, PlatoonSergeant.farmers(true, false, Optional.of(plenty)), "a hungry squad, whatever the force holds");
+        assertEquals(PlatoonSergeant.Farmers.NONE, PlatoonSergeant.farmers(false, false, Optional.of(new Supply("c", 0, 0, 0, 1))),
+                "no burn measured: its levels say nothing");
+    }
+
     @Test
     void aCutterKeepsItsPlaceWhileItGathers() {
         List<PlatoonSergeant.Hand> crew = List.of(new PlatoonSergeant.Hand("Alice", 0, 0), new PlatoonSergeant.Hand("Bob", 0, 0),

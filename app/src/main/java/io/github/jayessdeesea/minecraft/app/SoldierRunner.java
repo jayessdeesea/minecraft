@@ -544,6 +544,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Supply.Burn rationsBurn = new Supply.Burn(DAY_MILLIS), logsBurn = new Supply.Burn(DAY_MILLIS);
     /** Class IV as last measured, for the platoon sergeant's wood party - the main loop writes, squad loops read. */
     private volatile Supply logsSupply;
+    /** Class I as last measured, for the platoon sergeant's farmers - the main loop writes, squad loops read. */
+    private volatile Supply rationsSupply;
     /** Each class's state as last logged - the main loop's. */
     private final Map<String, Supply.State> supplyStates = new HashMap<>();
 
@@ -562,8 +564,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         rationsBurn.stock(rations, now);
         logsBurn.stock(logs, now);
         Supply logsNow = new Supply("Class IV (logs)", logs, logsBurn.perDay(), 0, LOGS_LEAD_DAYS);
+        Supply rationsNow = new Supply("Class I (rations)", rations, rationsBurn.perDay(), 0, RATIONS_LEAD_DAYS);
         logsSupply = logsNow;
-        return List.of(new Supply("Class I (rations)", rations, rationsBurn.perDay(), 0, RATIONS_LEAD_DAYS), logsNow);
+        rationsSupply = rationsNow;
+        return List.of(rationsNow, logsNow);
     }
 
     /** Each site's line as last logged, by site - the main loop's. */
@@ -3548,7 +3552,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // live, their order changed cycle to cycle, and a farmer was taken off its harvest every
             // few seconds and never reached it.
             int rosterPlace = statuses.stream().map(SoldierStatus::name).sorted().toList().indexOf(soldierName);
-            boolean farmHalf = hungrySquad ? rosterPlace % 2 == 0 : shortSquad && rosterPlace == 0;
+            // As the platoon sergeant sets it, by the squad's Class I and the force's rations.
+            PlatoonSergeant.Farmers feeding = PlatoonSergeant.farmers(hungrySquad, shortSquad, Optional.ofNullable(rationsSupply));
+            boolean farmHalf = feeding == PlatoonSergeant.Farmers.HALF ? rosterPlace % 2 == 0 : feeding == PlatoonSergeant.Farmers.ONE && rosterPlace == 0;
             // Ordered to farm where there's no ground to: the camp's farm, saying why it's there. Live,
             // a farmer's CANTCO for a dry site went unanswered all day, and it stood there.
             Optional<Objective> farmOrdered = taskOf(squadName, Objective.Task.Farm.class);
@@ -3559,7 +3565,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean onStint = since != null && clockwork.millis() - since < FARM_STINT_MILLIS && farmDay && !squadInContact;
             FarmPlan kept = farm != null ? farm
                     : siteDry && campFarm != null ? campFarm
-                    : ((hungrySquad || shortSquad) && farmDay && farmHalf || onStint) ? campFarm : null;
+                    : (feeding != PlatoonSergeant.Farmers.NONE && farmDay && farmHalf || onStint) ? campFarm : null;
             if (kept != null && !squadInContact) {
                 if (kept == campFarm && farm == null) {
                     farmSince.putIfAbsent(soldierName, clockwork.millis());

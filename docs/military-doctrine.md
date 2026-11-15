@@ -165,7 +165,9 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    the camp's farm by day, whatever its task - harvesting what's ripe, sowing and tilling (§12) -
    as feeding is a unit's first priority of work, not only the platoon leader's to order; while it's
    merely AMBER, short of rations but fed, one soldier keeps the farm and the rest work - live,
-   two squads AMBER on rations alone had half of each at the farm and the keep stood. Neither while
+   two squads AMBER on rations alone had half of each at the farm and the keep stood. The force's
+   rations, counted in days (§ 17), send farmers too: one a squad while they're under their reorder
+   point, half of it under their safety level, however its own squad is fed (`PlatoonSergeant.farmers`). Neither while
    the squad carries ten rations a head between them (`Subsistence.canShare`): then the short one is
    fed by a hand-over of seconds, and the farm is a walk of minutes - live, a builder with an empty
    pack walked 80 blocks to the farm, baked four loaves for itself and walked 80 back while three

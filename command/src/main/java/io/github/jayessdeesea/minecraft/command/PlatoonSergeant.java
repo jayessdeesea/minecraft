@@ -111,6 +111,29 @@ public final class PlatoonSergeant {
         return CrossLevel.across(short_, free);
     }
 
+    /** How much of a squad keeps the farm: half, one soldier, or none. */
+    public enum Farmers { HALF, ONE, NONE }
+
+    /**
+     * Field feeding (FM 4-0): how much of a squad keeps the camp's farm by day, whatever its task.
+     * Half of it while the squad is {@code hungry} (RED, or one hungry with nothing to eat and no
+     * squadmate to share) or the force's rations are below their safety level (PAUSE: stop and fill
+     * up); one soldier while the squad is merely {@code short} or the force's rations are below their
+     * reorder point (backlog/maturity-model.md: the platoon sergeant tasks producers when the stock
+     * crosses it); none otherwise. {@code rations} is the force's Class I as measured, empty before
+     * the first look; with no burn measured yet its levels say nothing.
+     */
+    public static Farmers farmers(boolean hungry, boolean short_, Optional<Supply> rations) {
+        Optional<Supply> measured = rations.filter(r -> r.burn() > 0);
+        if (hungry || measured.filter(r -> r.state() == Supply.State.PAUSE).isPresent()) {
+            return Farmers.HALF;
+        }
+        if (short_ || measured.filter(r -> r.stock() < r.reorderPoint()).isPresent()) {
+            return Farmers.ONE;
+        }
+        return Farmers.NONE;
+    }
+
     /** One builder the party may be drawn from: its name, and the logs and saplings it carries. */
     public record Hand(String name, int logs, int saplings) {
     }
