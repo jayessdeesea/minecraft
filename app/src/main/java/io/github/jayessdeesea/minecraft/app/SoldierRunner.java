@@ -275,8 +275,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         long torchesChangedAt;
         /** When a staircase nobody could site at {@code stairsFor} is looked for again. */
         long stairsRetryAt;
-        /** When the squad's mine was last run on a stretch. */
-        long stairsExtendedAt;
         /** Who in the squad is on what, followed to completion and checked against the world. */
         final TaskRegister register = new TaskRegister();
         /**
@@ -1162,6 +1160,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     @Override
     public void run(String... args) {
+        reconnects = clockwork.scheduler("reconnect");
+        schedulers.add(reconnects);
         for (SoldierDefinition definition : soldierDefinitions) {
             connect(definition);
         }
@@ -2757,6 +2757,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How long after one stretch is added before a mine read done again may have another: its miners' ticks catch up. */
     private static final long EXTEND_SETTLE_MILLIS = 30_000;
 
+    /** When each mine, by its head, was last run on a stretch - squad loops write and read. */
+    private final Map<BlockPos, Long> mineExtendedAt = new ConcurrentHashMap<>();
+
     /** The camp's mine's walkway and landing, as kept on disk: empty for no camp, or no mine sited. */
     private List<BlockPos> campMine() {
         return campStairs().map(s -> {
@@ -3441,11 +3444,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 state.stairs = squadStairs.values().stream().filter(o2 -> o2.head().equals(mine.head()) && o2.bottom() == mine.bottom())
                         .max(Comparator.comparingInt(Staircase::stretches)).filter(o2 -> o2.stretches() > mine.stretches()).orElse(mine);
                 boolean workedOut = statuses.stream().anyMatch(s -> stairsProgress.get(s.name()) instanceof Miner.Progress.Done);
-                if (workedOut && ironShort() && now - state.stairsExtendedAt >= EXTEND_SETTLE_MILLIS) {
+                // Settled by mine, not by squad: live, four squads on one mine each took the others' stale
+                // DONE for their own, and it ran on from 24 blocks to 96 in seconds with nothing cut.
+                if (workedOut && ironShort() && now - mineExtendedAt.getOrDefault(state.stairs.head(), 0L) >= EXTEND_SETTLE_MILLIS) {
                     Optional<Staircase> longer = state.stairs.extended();
                     if (longer.isPresent()) {
-                        state.stairsExtendedAt = now;
-                        statuses.forEach(s -> stairsProgress.remove(s.name()));
+                        mineExtendedAt.put(state.stairs.head(), now);
+                        stairsProgress.clear();
                         if (!nearCamp(x, z)) {
                             mineStore.save("mine" + x + "," + z, toKeep(longer.get())); // the camp's is saved with it below
                         }
@@ -4519,12 +4524,37 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 },
                 cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
-        joined.thenAcceptBoth(firstPosition, (session, spawn) -> onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, armourerRef, depositorRef, torchmakerRef))
+        joined.thenAcceptBoth(firstPosition, (session, spawn) -> {
+                    joinAttempts.remove(name);
+                    onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, armourerRef, depositorRef, torchmakerRef);
+                })
                 .exceptionally(cause -> {
-                    LOG.error("{} failed to join {}:{} - {}", name, HOST, PORT, cause.getMessage(), cause);
+                    if (stopping) {
+                        return null;
+                    }
+                    // Tried again, backing off, for as long as it takes: a server restarting after its
+                    // watchdog takes a minute, and one try left the whole garrison off the field.
+                    int attempt = joinAttempts.merge(name, 1, Integer::sum);
+                    long delay = Math.min(REJOIN_MAX_MILLIS, REJOIN_FIRST_MILLIS << Math.min(attempt - 1, 10));
+                    LOG.error("{} failed to join {}:{} - {} - trying again in {} s (attempt {})", name, HOST, PORT, cause.getMessage(),
+                            delay / 1000, attempt, cause);
+                    ScheduledExecutorService retry = reconnects;
+                    if (retry == null) {
+                        return null; // never run(): a test's one connection, not the garrison
+                    }
+                    retry.schedule(loudly(name + "'s rejoin", () -> connect(definition)), delay, TimeUnit.MILLISECONDS);
                     return null;
                 });
     }
+
+    /** The first wait before a failed join is tried again, doubled each failure up to the most. */
+    static final long REJOIN_FIRST_MILLIS = 5_000, REJOIN_MAX_MILLIS = 60_000;
+
+    /** Failed joins in a row, by soldier - cleared on a join; written from each connection's event loop. */
+    private final Map<String, Integer> joinAttempts = new ConcurrentHashMap<>();
+
+    /** Where failed joins are tried again from; set by {@link #run}. */
+    private volatile ScheduledExecutorService reconnects;
 
     /** One inventory slot, its enchantments named through this session's synced registry. */
     private static Kit setSlot(Inventory inventory, int slot, Optional<ItemSlot> item, List<String> enchantmentNames) {
@@ -5592,10 +5622,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * Fires from {@code protocol}'s watchdog (or any other unexpected close - see {@code
      * PlaySessionListeners.onDisconnect}): stops this soldier's now-dead tick loop and reconnects
      * from scratch via {@link #connect}, which re-seeds a brand new {@link DeterministicSoldier}
-     * from the new session's own spawn position. Deliberately a single immediate attempt, not a
-     * retry loop with backoff - if the server is actually down, {@code connect}'s own {@code
-     * exceptionally} already logs that loudly and stops, per docs/conventions.md's revisit-on-real-pressure
-     * tenet this can grow a backoff/retry-limit policy if a real deployment ever needs one.
+     * from the new session's own spawn position. One immediate attempt; a join that fails - the
+     * server down, or closing the connection mid-login as it restarts - is tried again by
+     * {@code connect}'s {@code exceptionally}, backing off from {@link #REJOIN_FIRST_MILLIS} to
+     * {@link #REJOIN_MAX_MILLIS}, logged each time, for as long as it takes.
      */
     private void onDisconnected(SoldierDefinition definition,
                                  AtomicReference<ScheduledExecutorService> activeScheduler, Throwable cause) {

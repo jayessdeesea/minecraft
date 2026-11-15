@@ -11,6 +11,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ChunkCacheTest {
 
+    /**
+     * The chunks round the origin - sixteen soldiers' views - get distinct keys and spread hashes:
+     * packed alone they hashed to chunkX ^ chunkZ, a few dozen values, and lookups walked collision
+     * trees. In a table of 4,096 buckets, no bucket holds more than a handful.
+     */
+    @Test
+    void chunksRoundTheOriginSpreadAcrossTheMap() {
+        java.util.Set<Long> keys = new java.util.HashSet<>();
+        int[] buckets = new int[4_096];
+        for (int x = -32; x < 32; x++) {
+            for (int z = -32; z < 32; z++) {
+                long key = ChunkCache.chunkKey(x, z);
+                keys.add(key);
+                int h = Long.hashCode(key);
+                buckets[(h ^ (h >>> 16)) & (buckets.length - 1)]++;
+            }
+        }
+        assertEquals(64 * 64, keys.size(), "a key a chunk");
+        assertTrue(Arrays.stream(buckets).max().orElseThrow() <= 8, "no bucket long enough to turn into a tree");
+    }
+
     private static final int AIR = 0;
     private static final int STONE = 1;
 

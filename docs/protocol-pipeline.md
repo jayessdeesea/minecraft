@@ -244,7 +244,9 @@ whether the connection is "probably still fine." `PlayClientHandler.channelInact
 that termination into a signal a caller can act on: `PlaySessionListeners.onDisconnect` fires for
 this closure (and any other unannounced one) but not for a caller's own deliberate
 `PlaySession.close()` - see that record's javadoc and `PlayClientHandler`'s `INTENTIONAL_CLOSE`
-channel attribute for how the two are told apart. `protocol` stops at signaling; reconnecting is an
+channel attribute for how the two are told apart. A closure before play is reached - the server
+closing the connection mid-login as it restarts - fails the join's future instead, so a join never
+waits for ever. `protocol` stops at signaling; reconnecting is an
 `app`-level decision (see `SoldierRunner.onDisconnected`), same rationale as `ClientInformationPacket`
 staying out of the control plane - deciding *whether and how* to rejoin needs input `protocol` has
 no business holding.

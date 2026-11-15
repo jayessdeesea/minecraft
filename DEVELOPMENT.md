@@ -146,7 +146,8 @@ leader (standing rules unless `minecraft.squad-leader.decides-with: model`), all
 platoon leader (`ChainOfCommand`). Offline mode needs no accounts, only names; the dev server's
 `max-players` is 20. The log reads as a radio net: `[PL -> Alpha] OPORD`,
 `[Bravo -> squad] FRAGO`, `[Alpha -> PL] CANTCO`, and each squad's SITREP every 5 seconds.
-Orders and CANTCOs also appear in game chat (section 4), spoken by Alice as the radio operator. Soldiers reconnect on their own if a connection dies. The platoon leader's mission
+Orders and CANTCOs also appear in game chat (section 4), spoken by Alice as the radio operator. Soldiers reconnect on their own if a connection dies, and keep trying - every 5 seconds, backing off
+to a minute - while the server is down or restarting. The platoon leader's mission
 starts as `minecraft.platoon-leader.mission` in `application.yml`.
 
 **The models' queue.** Every decision sent to a model is timed (`app.ModelCalls`): `[Model]

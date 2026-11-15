@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Covers {@link PlayClientHandler#channelInactive}'s {@code onDisconnect} signal without a live
@@ -59,6 +60,17 @@ class PlayClientHandlerTest {
         channel.close();
 
         assertNull(disconnectCause.get(), "onDisconnect should not fire if Play was never reached");
+    }
+
+    /** Closed mid-login - a server restarting - the join fails, rather than waits for ever. */
+    @Test
+    void failsTheJoinWhenTheChannelClosesBeforePlayIsReached() {
+        CompletableFuture<PlaySession> result = new CompletableFuture<>();
+        EmbeddedChannel channel = newChannel(new AtomicReference<>(), result);
+
+        channel.close();
+
+        assertTrue(result.isCompletedExceptionally(), "the join should fail when the connection closes before Play");
     }
 
     private static EmbeddedChannel newChannel(AtomicReference<Throwable> disconnectCause) {

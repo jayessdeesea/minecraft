@@ -1169,7 +1169,7 @@ wider than that, is given up alone, and the rest are cut; so are branches off a 
 tunnel that was given up. The camp's mine standard (§ 17) is met once the stairs reach the bottom.
 A mine worked out - every tunnel cut, the ore in sight of them taken - while nobody carries an iron
 pickaxe and the force hasn't the three iron for one is run on: its main tunnel 24 blocks further,
-branches along it, up to 96 (`Staircase.extended`, `[Squad] MINE: worked out, the force short of
+branches along it, up to 96, a stretch at most every half minute a mine (`Staircase.extended`, `[Squad] MINE: worked out, the force short of
 iron - its main tunnel run on to 48 blocks`), and kept on disk by the tunnel's end. Live, the mine
 read DONE all night with one raw iron in the force. Squads sharing a mine each work the longest any
 has run it.

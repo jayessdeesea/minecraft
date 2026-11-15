@@ -100,8 +100,10 @@ server, filled once when their class loads and only read after, so they behave a
 
 ## Tests run in parallel
 
-Every test class and method runs at once (`junit-platform.properties`, in `app` and `bot`), so
-a test is written to share nothing with another:
+Every test class and method runs concurrently (`junit-platform.properties`, in `app` and `bot`),
+four at a time - the dev server and the garrison share the machine, and at a thread a
+core the server's watchdog killed it for a 60-second tick - so a test is written to share nothing
+with another:
 - **No mutable static state** (above), in tests or in the code they run.
 - **Each test owns its world:** its own `SimClock`, `SimServer`, runner and chain of command, and a
   `@TempDir` for anything on disk - never a fixed path, a working-directory file or a system

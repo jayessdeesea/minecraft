@@ -351,8 +351,18 @@ public final class ChunkCache {
         return chunk.sectionBlockStates.get(sectionIndex)[index];
     }
 
-    private static long chunkKey(int chunkX, int chunkZ) {
-        return ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+    /**
+     * The map key for chunk ({@code chunkX}, {@code chunkZ}): the two packed, then mixed (the
+     * SplitMix64 finaliser, a bijection, so no two chunks share a key). Packed alone, a {@code Long}
+     * hashes to {@code chunkX ^ chunkZ}, a few dozen values over the chunks round the origin: live,
+     * with sixteen soldiers' views loaded, every block lookup walked a collision tree, and that was
+     * 72% of the garrison's CPU.
+     */
+    static long chunkKey(int chunkX, int chunkZ) {
+        long k = ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+        k = (k ^ (k >>> 30)) * 0xBF58476D1CE4E5B9L;
+        k = (k ^ (k >>> 27)) * 0x94D049BB133111EBL;
+        return k ^ (k >>> 31);
     }
 
     private static final class LoadedChunk {

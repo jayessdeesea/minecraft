@@ -273,6 +273,11 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
                     ? failureCause
                     : new IOException("Connection closed unexpectedly (idle timeout or the server closed it)");
             listeners.onDisconnect().accept(cause);
+        } else if (!intentional) {
+            // Closed before play: the join fails rather than waits for ever. Live, a server's
+            // watchdog restart closed sixteen reconnects mid-login, and none was heard of again.
+            result.completeExceptionally(failureCause != null ? failureCause
+                    : new IOException("Connection closed before the join completed (the server closed it during login)"));
         }
     }
 }
