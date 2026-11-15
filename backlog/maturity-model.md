@@ -85,7 +85,10 @@ fixed counts:
   to run before more can be made?
 - **The stockage objective:** the reorder point plus one day of committed work.
 
-**The gate.** Projected forward, not read off the stock:
+**The gate.** Projected forward, not read off the stock. Decided (operator, 2026-11-15): the force
+is prepared before it expands - a new mission, or a site's next level, waits on the gate - and work
+under way doesn't wait for better kit: it goes on with inferior tools (stone, or none) until it's
+safe to expand, as the basis of issue below caps them.
 - A site starts new work - a mission supplied from it, the next level's work - only if its stock
   after that work's draw stays at or above the reorder point.
 - When the projection crosses the reorder point, the platoon sergeant tasks producers - built for
@@ -109,7 +112,7 @@ shortfall producers - a second grove, a second miner - rather than waiting on it
 | State | When | What it does | Doctrine |
 |---|---|---|---|
 | ADVANCE | every class at its stockage objective, held over the day | the site may take on its next level's work, and supply another | operational reach |
-| PAUSE | any class projected below its safety level within its lead time | no new work that draws that class; work under way that draws it stops; everyone not on security produces it | operational pause |
+| PAUSE | any class projected below its safety level within its lead time | no new work that draws that class; work under way goes on with what it has, inferior tools rather than none; everyone spare produces it | operational pause |
 | RECONSTITUTE | a loss that takes a class below its operating level at once: a creeper at the depot, deaths that drop the kit | contract to the sites that can be supplied; mothball the rest; build back up | reconstitution (ATP 3-94.4) |
 
 Between the safety level and the objective the site carries on with the work it has, and starts
@@ -194,8 +197,9 @@ today's `<foothold>`.
   committed burn for classes other than Class IV, whose comes from the keep's estimate; lead times measured
   from the producers rather than first figures; and the state acted on - the gate, the PAUSE, the
   production check.
-- The keep: DIG doesn't start, and pauses, while the depot is below its objective in handles,
-  tool heads and chests for the next stretch of dig.
+- The next mission (mission-estimate.md, the operator's order of missions) doesn't start while the
+  camp's projected stock after its draw is below the reorder point; the keep's dig, under way, never
+  stops for a short depot.
 - The scoreboard reports each site's level, and both it and the dawn AAR its state and short classes
   (the AAR lists each site's level now).
 - The work load for the other roles: a keep builder's is built (`bot.craft.WorkLoad`;

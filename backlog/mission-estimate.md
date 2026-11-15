@@ -81,7 +81,12 @@ How far a squad can work from a site, measured rather than fixed:
 - **Running estimates.** A staff keeps its estimates current as the operation goes (FM 5-0). Here:
   the estimate is worked out again each foothold check against the measured rate, so a mission
   running slow says so, and its days left and shortfall move with it.
-- **Needs decision:** what makes a candidate mission - the operator's list only - the operator as company commander - or the platoon leader
-  proposing them (an outpost where the reach runs out, an expedition for a material the camp
-  lacks)? Proposed: the operator's list first, the platoon leader's proposals once the estimate works.
+- **Decided (operator, 2026-11-15): the missions, in order.**
+  1. Build the keep - the force bootstrapped far enough to sustain itself.
+  2. Establish trade with the villagers - outposts first, so the distances are safe to travel.
+  3. Explore the other realms, the Nether and the End, and trade there as appropriate.
+
+  The platoon leader makes up no missions of its own: what it chooses among is the operator's
+  current mission and what its estimate adds - a preparation, an outpost where the reach runs out.
+  Each mission starts only when it's prepared for (maturity-model.md, the gate).
 - First figures - walking speed, work rates - are to be measured in the scoreboard and refined.
