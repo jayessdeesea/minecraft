@@ -144,13 +144,12 @@ public class ChainOfCommand implements DisposableBean {
      * minute after the last decision. Each wake is logged with its cause ({@code [PL] wakes:}).
      * Otherwise it sleeps, and the platoon runs on its standing orders.
      */
-    private volatile String wakeCause;
+    private final java.util.Set<String> wakeCauses = java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<>());
     private volatile boolean wakeAtOnce;
 
     /** Asks the platoon leader to decide, for {@code cause}; {@code atOnce} at the next SITREP, else at most a minute after its last. */
     private void wake(String cause, boolean atOnce) {
-        String was = wakeCause;
-        wakeCause = was == null || was.equals(cause) ? cause : was + "; " + cause;
+        wakeCauses.add(cause);
         wakeAtOnce |= atOnce;
     }
     private volatile Consumer<String> radio;
@@ -758,12 +757,13 @@ public class ChainOfCommand implements DisposableBean {
             if (squad.newCantco()) {
                 wake("a CANTCO from " + sitrep.squad() + "'s squad leader: " + squad.report(), false);
             }
-            if (!squad.hasObjective()) {
+            // Not while it decides: the decision under way gives it one - live, each SITREP of the 20
+            // seconds a decision took woke it again, for a second decision straight after.
+            if (!squad.hasObjective() && !platoonLeaderBusy.get()) {
                 wake(sitrep.squad() + " has no objective", true);
             }
         }
-        String cause = wakeCause;
-        if (!underPlatoonLeader.isEmpty() && cause != null && (wakeAtOnce || now - lastPlatoonLeaderMillis >= WAKE_GAP_MILLIS)) {
+        if (!underPlatoonLeader.isEmpty() && !wakeCauses.isEmpty() && (wakeAtOnce || now - lastPlatoonLeaderMillis >= WAKE_GAP_MILLIS)) {
             askPlatoonLeader(underPlatoonLeader, now);
         }
         for (Sitrep sitrep : sitreps) {
@@ -782,8 +782,10 @@ public class ChainOfCommand implements DisposableBean {
         if (!platoonLeaderBusy.compareAndSet(false, true)) {
             return;
         }
-        LOG.info("[PL] wakes: {}", wakeCause);
-        wakeCause = null;
+        synchronized (wakeCauses) {
+            LOG.info("[PL] wakes: {}", String.join("; ", wakeCauses));
+            wakeCauses.clear();
+        }
         wakeAtOnce = false;
         lastPlatoonLeaderMillis = now;
         int missionAsked = missionVersion.get();
