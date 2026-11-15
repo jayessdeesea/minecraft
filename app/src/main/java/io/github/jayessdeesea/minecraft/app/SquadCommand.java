@@ -62,8 +62,6 @@ final class SquadCommand {
     private volatile Set<String> cantcosAnswered = Set.of();
     /** The soldiers in contact when the squad leader last decided - a new one is a contact report. */
     private volatile Set<String> contactsAnswered = Set.of();
-    /** Whether any soldier was in contact at the last SITREP the platoon leader's trigger looked at. */
-    private volatile boolean contactReported;
     /** The player this squad is escorting, or null - set by the operator's thread. */
     private volatile String escort;
     private volatile boolean principalOutOfSight;
@@ -236,17 +234,6 @@ final class SquadCommand {
         Report report = report();
         boolean fresh = report instanceof Report.Cantco && !(reportAnswered instanceof Report.Cantco);
         reportAnswered = report;
-        return fresh;
-    }
-
-    /**
-     * True the first time a SITREP shows the squad in contact after one that didn't - the platoon leader's
-     * early trigger, as a contact report goes up the chain (docs/military-doctrine.md § 8).
-     */
-    boolean newContact(List<SoldierStatus> squad) {
-        boolean inContact = squad.stream().anyMatch(s -> s.report() instanceof Report.InContact);
-        boolean fresh = inContact && !contactReported;
-        contactReported = inContact;
         return fresh;
     }
 

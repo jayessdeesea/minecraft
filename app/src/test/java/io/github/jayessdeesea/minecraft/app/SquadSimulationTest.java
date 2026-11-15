@@ -2326,6 +2326,37 @@ class SquadSimulationTest {
     }
 
     /**
+     * The platoon leader wakes on events, not on a clock (backlog/fleet-command.md): a squad digging a
+     * big mound on the keep by day for eight minutes, nothing finished, nothing asked - it's woken once,
+     * for the squad that had no objective, where every two minutes it was asked again.
+     */
+    @Test
+    void aQuietDaysWorkWakesThePlatoonLeaderOnlyForWhatNeedsIt() throws IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= -12 && x <= 11 && z >= -12 && z <= 11 && y > GROUND && y <= GROUND + 3
+                ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol,Dana");
+        java.util.concurrent.atomic.AtomicInteger asked = new java.util.concurrent.atomic.AtomicInteger();
+        ChainOfCommand chain = new ChainOfCommand(scripted(st -> {
+            asked.incrementAndGet();
+            return new Objective("Build the keep", Keep.CENTRE, "The main base's keep", new Objective.Task.Keep());
+        }), DrillSquadLeader::new, roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(-14.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(8 * 60_000);
+
+        List<String> wakes = Files.readAllLines(Path.of("target/sim/aQuietDaysWorkWakesThePlatoonLeaderOnlyForWhatNeedsIt.log")).stream()
+                .filter(l -> l.contains("[PL] wakes:")).toList();
+        assertEquals(1, wakes.size(), "woken once, for the squad with no objective: " + wakes);
+        assertTrue(wakes.getFirst().contains("has no objective"), wakes.toString());
+    }
+
+    /**
      * The squad led by its drills, no model (backlog/fleet-command.md): from 8 blocks west of the keep,
      * the drills move the squad onto it and its four builders dig the level, as the scripted model's
      * order did.

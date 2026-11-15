@@ -58,7 +58,10 @@ It keeps nothing between calls but each squad's current objective (backlog/opera
 | `KEEP` | Build the main base's keep at the origin, wherever the objective points ([military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)). |
 
 ## When it decides
-Every 2 minutes, at once on a new mission from the operator or a squad with no objective, and on a
-squad's new CANTCO or contact if a minute has passed since the last - contact is the squad's to
-handle, and live, a new contact every few seconds at night asked the platoon leader every ten. A failed call (a malformed
+When woken, never on a clock (backlog/fleet-command.md): at once on an operator's mission or
+remark, dawn, dusk and dusk near, a squad with no objective, and an escort attached or ended; and,
+if a minute has passed since its last decision, on a squad's task finished or stalled, its Class I
+RED, or its squad leader's CANTCO. Contact wakes nobody: it's the squad's to handle, and live, a new
+contact every few seconds at night asked the platoon leader every ten. Each wake is a log line with
+its cause, `[PL] wakes: dusk near`; a day with nothing asked has only dawn's. A failed call (a malformed
 reply, the model down) is logged loudly, and the squads keep their last objectives.

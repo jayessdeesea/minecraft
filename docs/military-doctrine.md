@@ -113,8 +113,8 @@ those that poison or are too precious to eat (`tools/item-class-generator`).
 *Requests up the chain, timed* (`app.RequestLedger`). A soldier asks its squad leader for help by
 reporting CANTCO with its reason; a squad asks the platoon leader by its task's progress (DONE or
 STALLED) and by its Class I RED. There's no queue to wait in: each SITREP carries them, every
-second to the squad leader's drills and every squad-leader cycle to its model, and to the platoon leader
-at its next decision, two minutes at most, sooner at dusk, dawn or a CANTCO. Each request is
+second to the squad leader's drills and every squad-leader cycle, and to the platoon leader,
+which the request wakes, at most a minute after its last decision. Each request is
 logged when raised (`[Request] Bob of Alpha -> squad leader: CANTCO: ...`). It's answered when the
 echelon it went to changes the order it was about: the soldier's to another kind, or to a place
 more than 4 blocks off (a formation's places shift a block or two every cycle, which answers

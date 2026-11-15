@@ -78,15 +78,14 @@ public class ChainOfCommand implements DisposableBean {
 
     private static final Logger LOG = LogManager.getLogger(ChainOfCommand.class);
 
-    private static final long GENERAL_PERIOD_MILLIS = 120_000;
     /** Least time between decisions, however many CANTCOs arrive - stops a stuck soldier spamming the model. */
     private static final long MIN_GAP_MILLIS = 8_000;
     /**
-     * The least time between the platoon leader's decisions that a new contact or CANTCO brings forward:
-     * the platoon leader thinks on a slow clock, and contact is the squad's drill to handle - live, at
-     * night, every new contact asked it again, a call every ten seconds rewriting the same order.
+     * The least time between the platoon leader's decisions that a request or a CANTCO wakes it for:
+     * it thinks on a slow clock - live, when every new contact woke it, it was asked every ten seconds
+     * at night to rewrite the same order. Contact is the squad's drill to handle, and wakes nobody.
      */
-    private static final long GENERAL_URGENT_GAP_MILLIS = 60_000;
+    private static final long WAKE_GAP_MILLIS = 60_000;
     /** Vanilla chat's own limit is 256 characters. */
     static final int CHAT_LINE_LIMIT = 250;
 
@@ -136,6 +135,24 @@ public class ChainOfCommand implements DisposableBean {
     private final AtomicInteger missionVersion = new AtomicInteger();
 
     private volatile long lastPlatoonLeaderMillis = Long.MIN_VALUE / 2;
+
+    /**
+     * Why the platoon leader is to decide next, if it is (backlog/fleet-command.md: it wakes on events,
+     * not on a clock, as a commander is told what he's asked to be told): an operator order, dawn,
+     * dusk and dusk near, a squad with no objective, an escort attached or ended - at once - and a
+     * squad's task finished or stalled, its Class I RED, or its squad leader's CANTCO, at most a
+     * minute after the last decision. Each wake is logged with its cause ({@code [PL] wakes:}).
+     * Otherwise it sleeps, and the platoon runs on its standing orders.
+     */
+    private volatile String wakeCause;
+    private volatile boolean wakeAtOnce;
+
+    /** Asks the platoon leader to decide, for {@code cause}; {@code atOnce} at the next SITREP, else at most a minute after its last. */
+    private void wake(String cause, boolean atOnce) {
+        String was = wakeCause;
+        wakeCause = was == null || was.equals(cause) ? cause : was + "; " + cause;
+        wakeAtOnce |= atOnce;
+    }
     private volatile Consumer<String> radio;
     /** The ground's height at an x and z, looked for near a height - the world's, as the soldiers see it. */
     private volatile Ground ground = (x, z, nearY) -> OptionalInt.empty();
@@ -407,7 +424,7 @@ public class ChainOfCommand implements DisposableBean {
         platoonLeader.receiveMission(mission);
         squads.values().forEach(squad -> squad.escort(null));
         int version = missionVersion.incrementAndGet();
-        lastPlatoonLeaderMillis = Long.MIN_VALUE / 2;
+        wake("the operator's mission", true);
         OrderTrace trace = trace(operator, "!mission " + mission, version);
         LOG.info("[{} -> PL] MISSION ({}): {}", operator, trace.id, mission);
         transmit("[PL -> " + operator + "] WILCO (" + trace.id + "): " + mission);
@@ -449,7 +466,7 @@ public class ChainOfCommand implements DisposableBean {
      */
     public void onOperatorRemark(String operator, String remark) {
         platoonLeader.receiveRemark(remark);
-        lastPlatoonLeaderMillis = Long.MIN_VALUE / 2;
+        wake("the operator's remark", true);
         LOG.info("[{} -> PL] REMARK: {}", operator, remark);
         transmit("[PL -> " + operator + "] ROGER: " + remark);
     }
@@ -463,7 +480,7 @@ public class ChainOfCommand implements DisposableBean {
         SquadCommand escort = squads.values().iterator().next();
         escort.escort(principal);
         int version = missionVersion.incrementAndGet(); // a platoon leader's decision in flight may have included this squad
-        lastPlatoonLeaderMillis = Long.MIN_VALUE / 2; // the others are re-planned without it
+        wake("an escort attached: the others are re-planned without it", true);
         OrderTrace trace = trace(operator, "!escort " + principal, version);
         LOG.info("[{} -> {}] ESCORT ({}): {}", operator, escort.name, trace.id, principal);
         transmit("[" + escort.name + " -> " + operator + "] WILCO (" + trace.id + "): escorting " + principal);
@@ -556,7 +573,10 @@ public class ChainOfCommand implements DisposableBean {
                     .filter(p -> p.state() != Progress.State.UNDER_WAY);
             if (finished.isPresent()) {
                 requests.raise(task, RequestLedger.Echelon.PLATOON_LEADER, sitrep.squad(), "task " + finished.get().state() + ": " + finished.get().detail(), now)
-                        .ifPresent(LOG::info);
+                        .ifPresent(line -> {
+                            LOG.info(line);
+                            wake(sitrep.squad() + "'s task " + finished.get().state(), false);
+                        });
             } else {
                 requests.settle(task);
             }
@@ -564,7 +584,10 @@ public class ChainOfCommand implements DisposableBean {
             Optional<Subsistence.Status> red = sitrep.classOne()
                     .filter(c -> c.rating() == Subsistence.Rating.RED);
             if (red.isPresent()) {
-                requests.raise(food, RequestLedger.Echelon.PLATOON_LEADER, sitrep.squad(), red.get().line(), now).ifPresent(LOG::info);
+                requests.raise(food, RequestLedger.Echelon.PLATOON_LEADER, sitrep.squad(), red.get().line(), now).ifPresent(line -> {
+                    LOG.info(line);
+                    wake(sitrep.squad() + "'s Class I RED", false);
+                });
             } else {
                 requests.settle(food);
             }
@@ -610,12 +633,12 @@ public class ChainOfCommand implements DisposableBean {
         this.time = time;
         if (last == null || last.dark() != time.dark()) {
             LOG.info("[Clock] {} - tick {} of the day, the chain of command told", time.dark() ? "NIGHT" : "DAY", time.ticks());
-            lastPlatoonLeaderMillis = Long.MIN_VALUE / 2; // dusk and dawn change what every squad should be doing
+            wake(time.dark() ? "dusk" : "dawn", true); // they change what every squad should be doing
         }
         boolean nearDark = !time.dark() && time.ticksUntilDark() <= DUSK_DECIDE_TICKS;
         if (last != null && nearDark && !(!last.dark() && last.ticksUntilDark() <= DUSK_DECIDE_TICKS)) {
             LOG.info("[Clock] DUSK NEAR - dark in {} ticks, the platoon leader decides now", time.ticksUntilDark());
-            lastPlatoonLeaderMillis = Long.MIN_VALUE / 2;
+            wake("dusk near", true);
         }
         platoonLeader.receiveTime(time);
         squads.values().forEach(squad -> squad.receiveTime(time));
@@ -730,17 +753,17 @@ public class ChainOfCommand implements DisposableBean {
         traces.removeIf(OrderTrace::closed);
         long now = clockwork.millis();
         List<Sitrep> underPlatoonLeader = sitreps.stream().filter(s -> squads.get(s.squad()).escort().isEmpty()).toList();
-        boolean newCantco = false;
-        boolean newContact = false;
-        boolean unordered = false;
         for (Sitrep sitrep : underPlatoonLeader) {
             SquadCommand squad = squads.get(sitrep.squad());
-            newCantco |= squad.newCantco();
-            newContact |= squad.newContact(sitrep.soldiers());
-            unordered |= !squad.hasObjective();
+            if (squad.newCantco()) {
+                wake("a CANTCO from " + sitrep.squad() + "'s squad leader: " + squad.report(), false);
+            }
+            if (!squad.hasObjective()) {
+                wake(sitrep.squad() + " has no objective", true);
+            }
         }
-        if (!underPlatoonLeader.isEmpty() && (unordered || now - lastPlatoonLeaderMillis >= GENERAL_PERIOD_MILLIS
-                || ((newCantco || newContact) && now - lastPlatoonLeaderMillis >= GENERAL_URGENT_GAP_MILLIS))) {
+        String cause = wakeCause;
+        if (!underPlatoonLeader.isEmpty() && cause != null && (wakeAtOnce || now - lastPlatoonLeaderMillis >= WAKE_GAP_MILLIS)) {
             askPlatoonLeader(underPlatoonLeader, now);
         }
         for (Sitrep sitrep : sitreps) {
@@ -749,7 +772,7 @@ public class ChainOfCommand implements DisposableBean {
             squad.takeEscortEnded().ifPresent(principal -> {
                 // Back under the platoon leader, who decides for it now rather than at its routine interval.
                 missionVersion.incrementAndGet();
-                lastPlatoonLeaderMillis = Long.MIN_VALUE / 2;
+                wake("an escort ended", true);
                 transmit("[" + squad.name + " -> PL] escort of " + principal + " ended: out of sight");
             });
         }
@@ -759,6 +782,9 @@ public class ChainOfCommand implements DisposableBean {
         if (!platoonLeaderBusy.compareAndSet(false, true)) {
             return;
         }
+        LOG.info("[PL] wakes: {}", wakeCause);
+        wakeCause = null;
+        wakeAtOnce = false;
         lastPlatoonLeaderMillis = now;
         int missionAsked = missionVersion.get();
         ModelCalls.Ticket ticket = modelCalls.queued("PL");
@@ -773,7 +799,7 @@ public class ChainOfCommand implements DisposableBean {
                 List<Objective> objectives = platoonLeader.decide(statuses);
                 if (missionVersion.get() != missionAsked) {
                     LOG.info("[PL] discarding a decision made under superseded orders");
-                    return; // lastPlatoonLeaderMillis was reset: the next SITREP asks again
+                    return; // the order that superseded it woke the platoon leader: the next SITREP asks again
                 }
                 long millis = clockwork.millis() - started;
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();

@@ -25,7 +25,7 @@ final class RequestLedger {
     enum Echelon {
         /** A soldier's request: its squad leader's drills and model run every second to 20 seconds. */
         SQUAD_LEADER(60_000),
-        /** A squad's request: the platoon leader decides every two minutes, and at dusk and dawn. */
+        /** A squad's request: it wakes the platoon leader, at most a minute after its last decision. */
         PLATOON_LEADER(300_000);
 
         final long deadlineMillis;

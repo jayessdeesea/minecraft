@@ -132,8 +132,11 @@ and its decision (`[PL]`), so every model decision is accounted for.
     a point", so the allocator makes them; today a detachment in words reaches nobody.
   - The decision every second rather than every 20: the drills cost no model call.
   - Live: a full day with the drills leading, then the model's code and prompt removed.
-- The PL wakes only on the triggers above; the log shows each wake and its cause; a day with
-  nothing escalated has only the dawn wake.
+- **The PL's wakes are built** (docs/echelons/platoon-leader/decisions.md, "When it decides";
+  `SquadSimulationTest.aQuietDaysWorkWakesThePlatoonLeaderOnlyForWhatNeedsIt`): no clock, `[PL] wakes:
+  <cause>`. Still to come with the sites they need: a site entering PAUSE or RECONSTITUTE
+  (maturity-model.md), a level behind its due day at dusk, deaths over a threshold in a day, the CCIR
+  the PL sets itself, and a CANTCO carrying what the drills tried.
 - At sixteen soldiers, the four elements above; the sustainment section reassigned at dawn by
   projected shortfall, no more than one move a decision outside a PAUSE, and a rifle squad surged
   into production on a PAUSE.
