@@ -1,6 +1,6 @@
 # Military doctrine this project emulates
 
-The chain of command here (General → Squad Leader → Soldier) deliberately borrows real military
+The chain of command here (platoon leader → squad leader → soldier) deliberately borrows real military
 doctrine for *how* echelons talk to each other, not just what they're called. The point is to see
 where a doctrine refined over a century for humans under stress - limited bandwidth, partial
 information, subordinates who must act without asking - overlaps with what works for LLM agents
@@ -73,11 +73,11 @@ garbled channel can't create ambiguity:
 the push-back channel: the squad leader orders a spot that can't be reached and the squad *says
 so*, rather than silently stalling. A soldier that can't reach its slot (fell into a pit, cut off
 by water) reports CANTCO with the reason; the squad leader decides what to do about it - the same
-loop a human squad runs. At the top of the chain, the general answers a new mission from the human
+loop a human squad runs. At the top of the chain, the platoon leader answers a new mission from the human
 operator with WILCO on the radio net, and an order it doesn't recognise with SAY AGAIN.
 
 An order is acknowledged at every echelon it passes, and the last acknowledgement is the soldiers
-doing it: each operator order is traced (`app.OrderTrace`) from the general's decision through
+doing it: each operator order is traced (`app.OrderTrace`) from the platoon leader's decision through
 each squad leader's FRAGO to a SITREP showing the squad's soldiers at the task - Fortifying for
 FORTIFY, Securing for SECURE, and so on - each hop timed, and each one late raising an alarm.
 
@@ -111,19 +111,19 @@ meal, and the weapon comes back to hand. Rations are the food items it carries, 
 those that poison or are too precious to eat (`tools/item-class-generator`).
 
 *Requests up the chain, timed* (`app.RequestLedger`). A soldier asks its squad leader for help by
-reporting CANTCO with its reason; a squad asks the general by its task's progress (DONE or
+reporting CANTCO with its reason; a squad asks the platoon leader by its task's progress (DONE or
 STALLED) and by its Class I RED. There's no queue to wait in: each SITREP carries them, every
-second to the squad leader's drills and every squad-leader cycle to its model, and to the general
+second to the squad leader's drills and every squad-leader cycle to its model, and to the platoon leader
 at its next decision, two minutes at most, sooner at dusk, dawn or a CANTCO. Each request is
 logged when raised (`[Request] Bob of Alpha -> squad leader: CANTCO: ...`). It's answered when the
 echelon it went to changes the order it was about: the soldier's to another kind, or to a place
 more than 4 blocks off (a formation's places shift a block or two every cycle, which answers
 nothing); the squad's objective, for a task; and only a `FARM` objective for a request for food -
-another order is logged as not answering it, and the request stays open. In the general's prompt
+another order is logged as not answering it, and the request stays open. In the platoon leader's prompt
 a RED request heads the squad's section.
 The answer is logged with how long it took. One settles by itself when what raised it clears
 first. One still open past its echelon's deadline - 60 seconds for a squad leader, 5 minutes for
-the general - raises `[Request] ALARM`, once. The dawn review gives each echelon's answers, their
+the platoon leader - raises `[Request] ALARM`, once. The dawn review gives each echelon's answers, their
 median and longest time, the alarms, and what's still open.
 
 *Supervise and refine: the squad's task register* (`command.TaskRegister`; ATP 3-21.8, the last
@@ -163,7 +163,7 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    beside a squadmate with one ration, kept as its own. And while the squad is RED, or a soldier
    of it is hungry with nothing to eat (`Subsistence.mustFeed`), every other soldier of it keeps
    the camp's farm by day, whatever its task - harvesting what's ripe, sowing and tilling (§12) -
-   as feeding is a unit's first priority of work, not only the general's to order; while it's
+   as feeding is a unit's first priority of work, not only the platoon leader's to order; while it's
    merely AMBER, short of rations but fed, one soldier keeps the farm and the rest work - live,
    two squads AMBER on rations alone had half of each at the farm and the keep stood. Neither while
    the squad carries ten rations a head between them (`Subsistence.canShare`): then the short one is
@@ -182,7 +182,7 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    no rations in the stockpile, nobody sharing, and no wheat growing in the camp's farm, whose bread is on the way - makes the
    squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
    I RED - request: ... The squad can't feed itself."
-4. **The general answers.** Feeding a force is planned above the squad, as field feeding is above
+4. **The platoon leader answers.** Feeding a force is planned above the squad, as field feeding is above
    the company. Its answer to RED is a `FARM` task at ground by water, which harvests what's ripe
    and bakes it, or an objective where game is.
 
@@ -192,7 +192,7 @@ chest at the depot, one each for a pickaxe or four torches, and stone dug by han
 lay the slab from - and get their own where a tree is in reach; with fewer than 16 between them and
 the stockpile, the squad's LOGSTAT carries "Class IV RED - request: the keep's builders carry N
 logs between them and the stockpile holds M: no chest at the keep's depot, no pickaxe or torch to
-make. Request logs - send a squad for WOOD where trees are." The general answers it with a `WOOD`
+make. Request logs - send a squad for WOOD where trees are." The platoon leader answers it with a `WOOD`
 task at trees a squad has reported, after food and before the building the logs are for. Live, the
 builders worked a day with no tree within 48 blocks, no chest and no pickaxe, and nobody was asked.
 The depot's workshop - the keep's table, furnace and chest, one for every squad on it - is sited on
@@ -256,13 +256,13 @@ a soldier below food 18 with a ration in its pack, or wanting food with game in 
 its day's work - gathering, lighting, walling, farming, planting - at its next step, and eats or
 hunts. Raw meat is a ration
 like any other. It reports `Hunting`. Squad leaders aggregate their
-soldiers' SITREPs into one for the general, with a LOGSTAT summed from the soldiers' LACE
+soldiers' SITREPs into one for the platoon leader, with a LOGSTAT summed from the soldiers' LACE
 (`command.Logstat`): hungry soldiers and the rations they carry (Class I), empty armour slots (Class II), bare-handed
 soldiers and arrows (Class V), and casualties. These are the structured inputs the LLM-backed
 echelons read - the same economy of attention doctrine optimizes for.
 
 *Resupply:* the operator can set up a supply point - a chest at `minecraft.supply.point` - and
-the general sees it next to the LOGSTAT. When the general gives a squad an objective there, the
+the platoon leader sees it next to the LOGSTAT. When the platoon leader gives a squad an objective there, the
 `command.Resupply` drill sends each soldier short of a weapon or armour to the chest. A soldier
 short of kit who comes within reach of the chest draws from it on its own initiative, whatever its
 order (`bot.supply.SupplyRun`). It takes only what fills a gap - the best melee weapon if it has
@@ -276,20 +276,20 @@ armour and holds the weapon. Nothing restocks the chest but the operator.
 | **OPORD** | Full order, five paragraphs: **S**ituation, **M**ission, **E**xecution (incl. commander's intent), **S**ustainment, **C**ommand and signal ("SMEAC"). | FM 6-0 |
 | **FRAGO** (fragmentary order) | Changes to an existing order - only what's different. | FM 6-0 |
 
-*How we use it:* the general's objective to a squad is OPORD-shaped but small - situation, mission
+*How we use it:* the platoon leader's objective to a squad is OPORD-shaped but small - situation, mission
 (who / what / where / why), intent. The squad leader's frequent re-tasking is FRAGO-shaped: a new
-objective, formation, or interval against the standing mission. The general orders every squad in
+objective, formation, or interval against the standing mission. The platoon leader orders every squad in
 one decision, so it divides the mission between them; its prompt says one squad can hold or
 observe while another moves, and that a squad beside one in contact or weak brings it help.
 
-An order stands until changed, and changed for a reason. The general sees each squad's standing
+An order stands until changed, and changed for a reason. The platoon leader sees each squad's standing
 order and how it is going (for a patrol base: not laid out yet, how many blocks are still to place,
 or sealed with the squad inside), and for
 each squad either keeps it, exactly as given, or gives a new objective with the reason why, which
-is logged (`[General -> Bravo] changing the objective: ...`). A change with no reason is rejected
+is logged (`[PL -> Bravo] changing the objective: ...`). A change with no reason is rejected
 and the squads keep their orders. A kept order isn't re-sent: the log says `holds`.
 
-The general's heights are guesses, so an objective is put on the ground at its x and z: the
+The platoon leader's heights are guesses, so an objective is put on the ground at its x and z: the
 typical height of the ground round it - not the top of a heap of old huts at a camp's centre -
 looked for within 24 blocks of the squad's middle height - not one soldier's, which
 might be stranded up a tower
@@ -352,7 +352,7 @@ stands on a block of its own, so it's two blocks a step, built from the ground u
 has it, the squad leader is shown the stranded soldier as `Recovering`, at the rear of the
 squad, not its CANTCO: shown the CANTCO, the squad leader took it for the mission's and reported
 the mission one (in `SquadLeaderScenarioIT`'s `stranded` variant, 6 of 14 right; 14 of 14 shown
-`Recovering`), and live the general spent the squad's days moving it to "resolve movement
+`Recovering`), and live the platoon leader spent the squad's days moving it to "resolve movement
 issues". Nor is the squad's ground surveyed from where it stands: from one in a canopy, or in a
 hole under the mine's landing, the squad was shown none of its ground reachable. A stranded
 soldier carrying the blocks for its own stair - stone, dirt or logs - builds it itself from the
@@ -478,8 +478,8 @@ The squad leader's prompt shows each soldier's distance from the point man, and 
 | **Protective detail** | A team assigned to a principal moves with them, keeps a perimeter around them, and meets a threat before it reaches them. | ATP 3-39.35, *Protective Services* |
 
 *How we use it:* the operator attaches the first squad (Alpha) to a player with `!escort` (or
-`!escort <player>`) in game chat. `ChainOfCommand` takes it out of the general's command - the
-general goes on commanding the other squads - and gives its squad leader the principal's
+`!escort <player>`) in game chat. `ChainOfCommand` takes it out of the platoon leader's command - the
+platoon leader goes on commanding the other squads - and gives its squad leader the principal's
 position as its objective, re-issued whenever the principal has moved 8 blocks. The principal
 moves every tick, faster than any LLM decides, so `command.Escort` - a drill like the others - is
 recomputed each squad cycle from where the principal is now:
@@ -499,8 +499,8 @@ An urgent one sprints: the ring's moves, an intercept, a teammate going to suppo
 below, where vanilla won't let a player, or with a shield raised. The squad leader still chooses the interval and the risk. The soldiers find the principal by its
 offline-mode UUID among the entities they see; if none of them can see it, the squad holds the last
 known position. Out of sight for 30 seconds - a principal who has left the game is gone from the
-world - the escort ends, said on the net, and the general decides for the squad at once. `!mission`
-ends the escort too and hands the squad back to the general.
+world - the escort ends, said on the net, and the platoon leader decides for the squad at once. `!mission`
+ends the escort too and hands the squad back to the platoon leader.
 
 ## 11. Pre-combat checks
 
@@ -641,7 +641,7 @@ LOGSTAT already shows it bare-handed. A failed pickaxe is, when the order is to 
 |---|---|---|
 | **Class IV supply** | Construction and barrier materials - lumber, sandbags, wire - requisitioned or, in the field, obtained locally. | FM 4-0, *Sustainment Operations* |
 
-*How we use it:* the general can give a squad an objective with `gather: WOOD` or `STONE`
+*How we use it:* the platoon leader can give a squad an objective with `gather: WOOD` or `STONE`
 (`command.Objective.gather`). Its soldiers gather nearest the objective on their own - within 16 blocks, and
 when that's bare within 32, then 48, before reporting nothing left - dirt, which is everywhere, only
 within 16: live, one dug dirt for its squad's hut forty blocks off by night and met a witch there;
@@ -655,8 +655,8 @@ faster. Stone needs a pickaxe, or it drops nothing: a soldier without one makes 
 first, the way it makes a sword (§11), from logs it carries or chops. Break times are the
 server's - hardness over tool speed - with a margin, since the server times each dig. A soldier at it reports `Gathering`. One that finds nothing left in reach goes, while that order
 stands, to one of the places its squad saw the resource, as for torch-makings (§15); with none seen
-beyond the objective's reach it reports CANTCO, which the squad leader passes up so the general
-can choose another place. To choose, the general
+beyond the objective's reach it reports CANTCO, which the squad leader passes up so the platoon leader
+can choose another place. To choose, the platoon leader
 reads what each squad can see within 64 blocks of the soldier at its middle height: for trees and for stone open to
 the sky, the nearest site and the two biggest (not cave walls, which no gatherer can
 reach), each with its count, distance and direction (`bot.supply.ResourceSurveyor`,
@@ -669,7 +669,7 @@ put it - crafted from 8 planks at the workshop's table, placed in its cell. A so
 the material it has a full load of (`bot.supply.Depositor`), and the rations beyond its basic load
 (§4, Class I) - only that, so a soldier quarrying stone keeps the logs for its next pickaxe, which
 wears out in 59 blocks. What the chest holds when it's
-opened goes to the general (`General.receiveStockpile`), shown with the supply point. It's drawn on
+opened goes to the platoon leader (`PlatoonLeader.receiveStockpile`), shown with the supply point. It's drawn on
 too: a mason out of blocks, when the stockpile was last seen holding a load of cobblestone, walks
 over and shift-clicks stacks out until it carries a load (`Depositor.tickDraw`) before it digs any
 dirt - so one squad's quarrying walls another's camp. Raw ore goes through it the same way
@@ -773,22 +773,22 @@ asked: pairing is bookkeeping, done deterministically like the other drills.
 | **Patrol base** | A defensible position held for a set time. Security first, then the leader's *priorities of work*, each a task with a time and a measurable standard. | ATP 3-21.8 ch. 7; FM 3-21.8 (2007) |
 | **Survivability** | Positions start hasty and are improved toward deliberate; overhead cover matters most. | ATP 3-37.34 |
 
-*How we use it:* the general knows the time of day: Set Time's overworld clock, advanced with the
+*How we use it:* the platoon leader knows the time of day: Set Time's overworld clock, advanced with the
 game time between the updates that carry it (`app.OverworldClock`), becomes `command.TimeOfDay`. Dark runs from when the server's day timeline dims sky light enough for monsters to
 spawn in the open, tick 13178, to sunrise, tick 24000: spawning stops at 22822, but what spawned
-walks until the sun burns it, so a squad stays in until then - the stand-to before first light. The general's and squad leaders' prompts say how many
+walks until the sun burns it, so a squad stays in until then - the stand-to before first light. The platoon leader's and squad leaders' prompts say how many
 minutes until that changes. At night, each squad not sealed in a patrol base is told so on its own
-line of the general's prompt, rather than left to be worked out from the time and its state; by
+line of the platoon leader's prompt, rather than left to be worked out from the time and its state; by
 day, with more than two minutes of light left, each squad still in or ordered to a patrol base is
 told the night is over.
 
 An objective's task can be `PATROL_BASE`. `command.PatrolBase` lays out a hasty hut around the
 squad: a 2x2 floor for up to four soldiers (3x3 for up to nine), walls two high, and a roof over
 walls and floor, so each roof block has a neighbour to go against. That's 40 blocks for a squad of
-four. The site is the nearest level footing within 8 blocks of the general's point: every floor
+four. The site is the nearest level footing within 8 blocks of the platoon leader's point: every floor
 cell standable at one height and walkable to from where the squad is - not an old hut's roof two
 blocks up - never rubble or a slope, since the model's point is a guess - and a
-block clear of any other squad's hut, since the general may send two squads to one point. Each
+block clear of any other squad's hut, since the platoon leader may send two squads to one point. Each
 block of the hut already standing counts as a block nearer (`PatrolBase.Plan.standing`), so a hut
 built before a restart, its doorway cut on the way out, is taken back and only the doorway rebuilt.
 A re-issued objective whose search square holds the site already laid out keeps it, so the
@@ -799,11 +799,11 @@ Each soldier goes to its own floor cell. Once all are inside, each builds from w
 less than its share of the hut's blocks first digs dirt by hand a few blocks off the site, clear of
 the walls (`Resource.SOIL`), and one that runs out with the hut still open goes out for more, so a
 squad with nothing to build with still shelters by night; the
-general's LOGSTAT counts dirt, and tells it so. Each block is placed against a
+platoon leader's LOGSTAT counts dirt, and tells it so. Each block is placed against a
 solid neighbour's face and checked against the server's block updates; a cell that won't take a
 block after three tries is skipped; after the first miss the soldier digs the cell, since a flower
 or sapling there blocks a placement until it is broken. A soldier at it reports `Fortifying`, or CANTCO when it runs
-out of blocks. The general's LOGSTAT says whether the squad carries enough for the base it still
+out of blocks. The platoon leader's LOGSTAT says whether the squad carries enough for the base it still
 has to build - a whole one, what's left of one under way, or nothing once it's built - so the model
 never has to add up the numbers itself, nor read blocks spent on walls as a shortage.
 
@@ -819,7 +819,7 @@ CANTCO.
 
 Where the operator sets it, no squad spends the night in the open: every squad works the night
 shift down the camp's mine, and comes up as the sun does. The rule and its timing are in
-docs/echelons/general/operator-rules.md.
+docs/echelons/platoon-leader/operator-rules.md.
 
 The base is lit as well as sealed. Light is checked alongside breaches (`PatrolBase.Plan.unlit`):
 a torch gives its cell block light 14, which falls by one a block through open cells. A floor cell
@@ -848,8 +848,8 @@ The log reports "SEALED and LIT", or "UNLIT at" with the dark cells. While the s
 base, its walls and roof are off-limits to digging: a soldier short of wood looks for a tree, not
 the log wall it shelters behind.
 
-When the general moves the squad on, the soldier inside nearest the doorway breaks a doorway out
-(`bot.supply.Breacher`): two wall blocks, on the side facing the general's new objective, preferring
+When the platoon leader moves the squad on, the soldier inside nearest the doorway breaks a doorway out
+(`bot.supply.Breacher`): two wall blocks, on the side facing the platoon leader's new objective, preferring
 a side whose outside cell has room to stand and ground under it (`PatrolBase.Plan.doorway`). It
 uses a pickaxe if it has one (1.5 seconds a block), bare hands if not (10). A fight only pauses the
 base: the squad doesn't cut its way out mid-contact, and it keeps the site, so when the fight is
@@ -884,7 +884,7 @@ lays a round out: the corners and midpoints of a square 6 blocks out from the ca
 inside its wall line, each on the ground there. Each soldier starts at its own point of the round,
 spread round it by its place in the squad, and walks waypoint to waypoint, turning for the next
 within 2.5 blocks of one, reporting `Patrolling`. Contact interrupts it like any order. It never
-reports DONE: the general gives the squad other work when the camp needs it more.
+reports DONE: the platoon leader gives the squad other work when the camp needs it more.
 
 | Practice | Content | Source |
 |---|---|---|
@@ -1082,7 +1082,7 @@ water, lava or open cave.
 
 The camp's staircase is kept on disk, as the wall and the farm are (its head and last step,
 `app.WallStore` kind `stairs`), and after a restart it's cut on down where it was sited rather
-than sited again - as it is for any mine ordered within 24 blocks of the camp, the general's
+than sited again - as it is for any mine ordered within 24 blocks of the camp, the platoon leader's
 point being a guess: live, it moved the order to the camp's centre, and a new staircase started
 inside the wall was kept in place of the one cut to the bottom. Sited afresh each time, the ground over a part-cut shaft reads differently -
 a block dropped on the head, a soldier standing down the shaft - and each new staircase is
@@ -1128,7 +1128,7 @@ The foothold's stone-and-iron standard (§ 17) reads the camp's kept staircase f
 the steps from the top that stand open (`Staircase.stepsCut`) - as well as a cutter at work, so a
 mine cut before a restart counts after it.
 
-The camp's mine is the night shift's work (docs/echelons/general/operator-rules.md). Once the
+The camp's mine is the night shift's work (docs/echelons/platoon-leader/operator-rules.md). Once the
 stairs reach the iron, their tunnels are the mining. The stairs' state is the world's, so a run stopped by a fight or a restart picks up
 where they end. A dig waits out the block's own break time: its hardness, and the pickaxe in hand
 against the least tier that gets its drop. Both come from the server jar (`bot.world.Hardness`;
@@ -1167,8 +1167,8 @@ force builds a lodgment after the drop. Its phases:
    (§15, FORTIFY), and every soldier armed with a stone sword or better (§11, STONE). Food that
    grows (§12, FARM) is buildup, unless survival is at stake - more than half the soldiers hungry
    with nothing to eat, or one starving at death's door (food 0, health 6 or less, no rations) -
-   when it stands here beside the wall, and the general does what it takes to eat
-   (GeneralScenarioIT's `starving-airhead`). Food isn't met while more than half are hungry,
+   when it stands here beside the wall, and the platoon leader does what it takes to eat
+   (PlatoonLeaderScenarioIT's `starving-airhead`). Food isn't met while more than half are hungry,
    however much is planted - wheat feeds nobody for days - and the standard names where the
    camp's farm ground is, so the squad is sent there. With no logs
    carried to make torches from and no tree in sight, the lit standard's task is TREE_FARM: the
@@ -1187,7 +1187,7 @@ typical height of the ground round it found once, so a heap of old huts at its c
 where the wall is laid nor where the light is measured - from the world rather
 than from reports: dark cells left, wall blocks left, farm cells growing wheat and soldiers hungry
 with nothing to eat, saplings and trees planted, steps cut down the mine, swords and armour
-carried (`command.Foothold`). The general reads them in `<foothold>`, which ends by naming the
+carried (`command.Foothold`). The platoon leader reads them in `<foothold>`, which ends by naming the
 earliest phase not met and its open standards, one squad on each, by day. The log says each time a
 standard moves (`[Foothold]`). Like the squad leader's terrain lookup, this is the arithmetic done for the
 model, so its judgement goes into who does what, not into working out where the camp stands.
@@ -1199,8 +1199,8 @@ patrol base and otherwise EXPOSED, the first night of an air drop, whatever the 
 is a C-rating, the worst of the shares of the squad armed, armoured, fed (at food 18, where health
 comes back) and above half health. Both are worked out from where the soldiers stand and what they
 carry, and the log says each time either changes and the change holds three SITREPs running
-(`[Readiness]`) - soldiers ranging in and out of the camp would flip it back and forth. The general isn't shown them:
-with the foothold in view it already keeps an exposed squad near shelter (GeneralScenarioIT's
+(`[Readiness]`) - soldiers ranging in and out of the camp would flip it back and forth. The platoon leader isn't shown them:
+with the foothold in view it already keeps an exposed squad near shelter (PlatoonLeaderScenarioIT's
 `exposed-far-out`).
 
 Each dawn the log carries an after-action review (TC 25-20) of the day and night before (`[AAR]`,
@@ -1289,7 +1289,7 @@ some; with none there it's free for other work, and the log says the keep waits 
 
 It ends with the commands' scorecard (`app.CommandScorecard`). Each soldier is sampled once a
 second, and each kind of command is scored by how its soldiers spent their time: each task the
-general gave (FORTIFY, MINE ...), and each kind of order a soldier carried (`MoveTo`, `Place`).
+platoon leader gave (FORTIFY, MINE ...), and each kind of order a soldier carried (`MoveTo`, `Place`).
 The score is soldier-minutes, the share of them under each report, the most frequent CANTCO
 reasons, and the deaths. Places and numbers are taken out of a reason, so the same failure counts
 as one. A command that doesn't work shows as a large share of CANTCO, or of `InPosition` while
@@ -1308,8 +1308,8 @@ kept until changed: one **role** at a site, and the **directives** it does first
 are kept on disk (`app.PlanBook`, `plans.json` in the state directory), so a restart finds every
 soldier where its squad leader put it; a soldier with none is a rifleman.
 
-- **Roles** (`command.Role`): a `RIFLEMAN` goes with the squad - the formation and the general's
-  task. Each other role is a task at its site, whatever the general's: `MINER` (§ 16, the site's y
+- **Roles** (`command.Role`): a `RIFLEMAN` goes with the squad - the formation and the platoon leader's
+  task. Each other role is a task at its site, whatever the platoon leader's: `MINER` (§ 16, the site's y
   its depth - one on or over the ground, down to the iron at y=16), `FARMER` (§ 4), `MASON` (§ 15's ground work and wall), `FORESTER`, `WOODCUTTER` and
   `QUARRYMAN` (§ 12), `SENTRY` (§ 15's patrol). Everyone in a squad with one role works one site: a
   new site for one moves them all.
@@ -1327,7 +1327,7 @@ Each soldier's plan names its **unit** (`Plan.unit`): a rifleman with nothing di
 squad's main body; one in another role in its squad's detachment for that role ("Alpha/miner"); one
 with a directive in a detachment of one until it's done ("Alpha/Bob"). Every unit is led as a squad
 is (`app.SoldierRunner`): the same drills (docs/echelons/squad-leader/drills.md), the same
-routines, to its own objective - the main body's the general's, a detachment's its role's task at its
+routines, to its own objective - the main body's the platoon leader's, a detachment's its role's task at its
 site or its directive's point - under the squad leader's risk, rearm and intent, in file at a tight
 interval. Contact, link-up, recovery and cross-levelling run within a unit; camp upkeep for every
 unit but a soldier on a directive. An escorting squad is all escort, whatever its plans.

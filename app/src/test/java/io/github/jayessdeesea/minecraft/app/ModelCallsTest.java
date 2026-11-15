@@ -11,7 +11,7 @@ class ModelCallsTest {
     @Test
     void countsWhatsInFlightAndShedsRoutineDecisionsOnceBackedUp() {
         ModelCalls calls = new ModelCalls();
-        ModelCalls.Ticket general = calls.queued("General");
+        ModelCalls.Ticket platoonLeader = calls.queued("PL");
         ModelCalls.Ticket alpha = calls.queued("Alpha's squad leader");
 
         assertEquals(2, calls.inFlight());
@@ -19,8 +19,8 @@ class ModelCallsTest {
         ModelCalls.Ticket bravo = calls.queued("Bravo's squad leader");
         assertTrue(calls.shed("Charlie's squad leader"), "three in flight: a routine one waits");
 
-        general.started();
-        general.finished();
+        platoonLeader.started();
+        platoonLeader.finished();
         alpha.finished(); // failed before it started: still out of flight
         bravo.started();
         bravo.finished();

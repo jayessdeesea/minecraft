@@ -14,7 +14,7 @@ import java.util.Set;
  * (cross-leveling, § 13) - and below {@link #FOOD_FIRST} food comes before its work: it hunts and
  * draws from the stockpile wherever it is. One still short with none of those means makes the squad's
  * Class I {@link Rating#RED}: the squad can't feed itself, and asks. Feeding a force is planned above
- * the squad, as field feeding is above the company, so the request goes to the general, whose answer
+ * the squad, as field feeding is above the company, so the request goes to the platoon leader, whose answer
  * is a farm or a move to game. Bread beyond the basic load goes into the stockpile, for whoever's short.
  */
 public final class Subsistence {

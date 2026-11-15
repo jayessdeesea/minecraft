@@ -53,7 +53,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
     private final ChatClient chatClient;
     private final SquadLeaderPrompts prompts;
 
-    // volatile, not locked: receiveObjective comes from the general's thread, decide from this
+    // volatile, not locked: receiveObjective comes from the platoon leader's thread, decide from this
     // squad's command thread - each field has one writer.
     private volatile Objective objective;
     private volatile SquadOrder lastOrder;
@@ -141,7 +141,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
                     .append(Optional.ofNullable(workOrders.get(soldier.name())).map(w -> " (" + w + ")").orElse("")).append('\n');
         }
         Map<String, Object> params = new HashMap<>();
-        params.put("time", time.<Object>map(SpringAiGeneral::describe).orElse(false));
+        params.put("time", time.<Object>map(SpringAiPlatoonLeader::describe).orElse(false));
         params.put("mission", objective.mission());
         params.put("location", describe(objective.location()));
         params.put("intent", objective.intent());
@@ -276,7 +276,7 @@ public final class SpringAiSquadLeader implements SquadLeader {
 
     /**
      * The table's answer to "where can we actually go near the objective", precomputed: models
-     * read a 2D grid poorly and tend to echo the general's coordinates back even when the table
+     * read a 2D grid poorly and tend to echo the platoon leader's coordinates back even when the table
      * marks them unreachable, so - like formation geometry - the lookup is done here and the model
      * keeps only the judgement of which candidate serves the intent.
      */

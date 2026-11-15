@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The squad leader's task organisation, run as {@link SquadSimulationTest} runs a squad: a
  * soldier's role and directives, set in the squad leader's reply, kept in its plan, and carried
- * out by its detachment while the rest of the squad holds with the general's objective
+ * out by its detachment while the rest of the squad holds with the platoon leader's objective
  * (docs/military-doctrine.md § 18).
  */
 class TaskOrganisationSimulationTest {
@@ -69,7 +69,7 @@ class TaskOrganisationSimulationTest {
                 new ChatResponse(List.of(new Generation(new AssistantMessage(reply)))));
     }
 
-    /** Alpha, Alice and Bob, holding the camp for the general, their squad leader's reply as given; started. */
+    /** Alpha, Alice and Bob, holding the camp for the platoon leader, their squad leader's reply as given; started. */
     private SimServer run(SimClock clock, SimServer.Terrain ground, String roles, String orders) {
         return run(clock, ground, roles, orders, List.of());
     }
@@ -91,7 +91,7 @@ class TaskOrganisationSimulationTest {
                 new Objective("Hold the camp", CAMP, "A foothold", new Objective.Task.None()));
     }
 
-    /** As {@link #run(SimClock, SimServer.Terrain, String, String, List, String, long, boolean)}, the general's {@code objective} given. */
+    /** As {@link #run(SimClock, SimServer.Terrain, String, String, List, String, long, boolean)}, the platoon leader's {@code objective} given. */
     private SimServer run(SimClock clock, SimServer.Terrain ground, String roles, String orders, List<int[]> more, String camp,
                           long timeOfDay, boolean shelterAtNight, Objective objective) {
         List<int[]> kit = new ArrayList<>(List.of(

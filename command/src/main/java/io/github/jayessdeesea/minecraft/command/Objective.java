@@ -4,10 +4,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * What a {@link General} hands a {@link SquadLeader} - OPORD-shaped but small
+ * What a {@link PlatoonLeader} hands a {@link SquadLeader} - OPORD-shaped but small
  * (docs/military-doctrine.md §5): the mission (what), where, and the commander's intent (why,
  * §1). The intent is what lets the squad leader adapt - pick a different spot near the location,
- * report CANTCO with a useful reason - without another round trip to the general. The
+ * report CANTCO with a useful reason - without another round trip to the platoon leader. The
  * {@link Task} is the one thing the squad does there, besides being there.
  */
 public record Objective(String mission, Position location, String intent, Task task) {

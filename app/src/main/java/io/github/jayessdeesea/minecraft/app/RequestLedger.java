@@ -11,13 +11,13 @@ import java.util.TreeMap;
 /**
  * Every request going up the chain of command, from when it's raised to when it's answered
  * (docs/military-doctrine.md § 4): a soldier's CANTCO to its squad leader, a squad's finished or
- * stalled task and its request for food to the general. A request is answered when the echelon it
+ * stalled task and its request for food to the platoon leader. A request is answered when the echelon it
  * went to changes the order it was about, or settles by itself when what raised it clears. One
  * still open past its echelon's deadline raises an alarm, once - so a request is never dropped
  * without its being said, and how long each echelon takes to answer is measured, not guessed.
  *
  * <p>Pure bookkeeping over the times it's given; thread-safe, since the squad loop raises and the
- * general's thread answers.
+ * platoon leader's thread answers.
  */
 final class RequestLedger {
 
@@ -25,8 +25,8 @@ final class RequestLedger {
     enum Echelon {
         /** A soldier's request: its squad leader's drills and model run every second to 20 seconds. */
         SQUAD_LEADER(60_000),
-        /** A squad's request: the general decides every two minutes, and at dusk and dawn. */
-        GENERAL(300_000);
+        /** A squad's request: the platoon leader decides every two minutes, and at dusk and dawn. */
+        PLATOON_LEADER(300_000);
 
         final long deadlineMillis;
 
@@ -121,6 +121,6 @@ final class RequestLedger {
     }
 
     private static String label(Echelon to) {
-        return to == Echelon.GENERAL ? "General" : "squad leader";
+        return to == Echelon.PLATOON_LEADER ? "platoon leader" : "squad leader";
     }
 }

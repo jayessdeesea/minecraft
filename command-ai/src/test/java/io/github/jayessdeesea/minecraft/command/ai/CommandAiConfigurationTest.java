@@ -19,14 +19,14 @@ class CommandAiConfigurationTest {
     void eachEchelonGetsTheProviderItNames() {
         Map<String, ChatModel> models = Map.of("ollamaChatModel", LOCAL, "anthropicChatModel", FRONTIER);
 
-        assertSame(FRONTIER, CommandAiConfiguration.chatModel("general", "anthropic", models));
+        assertSame(FRONTIER, CommandAiConfiguration.chatModel("platoon-leader", "anthropic", models));
         assertSame(LOCAL, CommandAiConfiguration.chatModel("squad leader", "ollama", models));
     }
 
     @Test
     void anUnknownProviderStopsStartup() {
         IllegalStateException thrown = assertThrows(IllegalStateException.class,
-                () -> CommandAiConfiguration.chatModel("general", "gpt", Map.of("ollamaChatModel", LOCAL)));
+                () -> CommandAiConfiguration.chatModel("platoon-leader", "gpt", Map.of("ollamaChatModel", LOCAL)));
 
         assertTrue(thrown.getMessage().contains("[ollama]"), thrown.getMessage());
     }

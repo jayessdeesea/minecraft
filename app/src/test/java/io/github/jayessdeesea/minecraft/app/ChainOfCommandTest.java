@@ -1,7 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Foothold;
-import io.github.jayessdeesea.minecraft.command.General;
+import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.PlatoonSergeant;
@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ChainOfCommandTest {
 
     private final ChainOfCommand chain = new ChainOfCommand(
-            (General) Proxy.newProxyInstance(General.class.getClassLoader(), new Class<?>[]{General.class}, (proxy, method, args) -> null),
+            (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
             ChatClient.create((ChatModel) prompt -> {
                 throw new AssertionError("no model call expected");
             }), new SquadLeaderPrompts("", ""),
@@ -82,7 +82,7 @@ class ChainOfCommandTest {
     }
 
     /**
-     * A request outranks the standing rule, or it's never answered: under the keep rule the general's
+     * A request outranks the standing rule, or it's never answered: under the keep rule the platoon leader's
      * WOOD for a squad whose Class IV is RED stands; the same order for one with no request is put
      * on the keep. Live, the keep's builders asked for logs all day and the rule put every squad back.
      */
@@ -119,7 +119,7 @@ class ChainOfCommandTest {
     @Test
     void atNightEverySquadGoesDownTheCampsMineAndComesUpBeforeSunrise() {
         ChainOfCommand two = new ChainOfCommand(
-                (General) Proxy.newProxyInstance(General.class.getClassLoader(), new Class<?>[]{General.class}, (proxy, method, args) -> null),
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
                 ChatClient.create((ChatModel) prompt -> {
                     throw new AssertionError("no model call expected");
                 }), new SquadLeaderPrompts("", ""),
@@ -136,7 +136,7 @@ class ChainOfCommandTest {
         assertEquals(new Position(-44, ChainOfCommand.MINE_DEPTH, 40), bravo.location());
         assertEquals(bravo, two.sheltered(bravo, squad("Bravo", "Bob")), "a squad down the mine stays there");
         Objective hut = new Objective("Build a patrol base", new Position(0, 64, 0), "Safe", new Objective.Task.PatrolBase());
-        assertEquals(bravo, two.sheltered(hut, squad("Bravo", "Bob")), "the general's patrol base doesn't take it off the night shift");
+        assertEquals(bravo, two.sheltered(hut, squad("Bravo", "Bob")), "the platoon leader's patrol base doesn't take it off the night shift");
 
         two.setKeepByDay(true);
         assertEquals(ChainOfCommand.KEEP_MINE, two.sheltered(WALL, squad("Bravo", "Bob")).location(),

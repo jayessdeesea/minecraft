@@ -3,7 +3,7 @@
 The platoon's sustainment, as code: `command.PlatoonSergeant`, pure decisions over what the
 soldiers carry and what the platoon needs, called from `app.SoldierRunner` (ATP 3-21.8: the
 platoon sergeant is the platoon's primary sustainment operator). It never calls a model, and the
-general sees what it decides only as state: specialists produce, missions consume
+platoon leader sees what it decides only as state: specialists produce, missions consume
 ([tenets](../tenets.md)).
 
 ## Decides

@@ -48,7 +48,7 @@ and the directives it does first ([military-doctrine.md § 18](../../military-do
 
 ## The work: its unit's task
 Apart from `Place` and the ground work's commands, the work it does with its hands isn't in its
-order. It comes from its unit's objective - the general's `Objective.Task` for a rifleman, its
+order. It comes from its unit's objective - the platoon leader's `Objective.Task` for a rifleman, its
 role's task at its site for a detachment - read by the runner (`app.SoldierRunner`), which hands
 each routine the site and the cells it works on ([routines.md](routines.md)).
 

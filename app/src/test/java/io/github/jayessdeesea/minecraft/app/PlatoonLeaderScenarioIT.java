@@ -14,8 +14,8 @@ import io.github.jayessdeesea.minecraft.command.ResourceSite;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
-import io.github.jayessdeesea.minecraft.command.ai.GeneralPrompts;
-import io.github.jayessdeesea.minecraft.command.ai.SpringAiGeneral;
+import io.github.jayessdeesea.minecraft.command.ai.PlatoonLeaderPrompts;
+import io.github.jayessdeesea.minecraft.command.ai.SpringAiPlatoonLeader;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
@@ -33,16 +33,16 @@ import java.util.OptionalInt;
 import java.util.function.BiFunction;
 
 /**
- * General evaluation: the real {@link SpringAiGeneral}, with the real system prompt, against a local
+ * PlatoonLeader evaluation: the real {@link SpringAiPlatoonLeader}, with the real system prompt, against a local
  * model, on fixed situations that each ask one policy question - chiefly whether it holds an order
  * that's done its job (docs/military-doctrine.md § 5). Seconds per decision, against minutes for
  * the same question asked live (`ChainScenarioLiveIT`). Reports a pass rate rather than asserting
  * one, so it's an {@code *IT}, run on demand. Needs Ollama (DEVELOPMENT.md § 1), not the server.
  *
- * <pre>mvn -pl app -am test -Dtest=GeneralScenarioIT -Dsurefire.failIfNoSpecifiedTests=false
+ * <pre>mvn -pl app -am test -Dtest=PlatoonLeaderScenarioIT -Dsurefire.failIfNoSpecifiedTests=false
  *     [-Deval.runs=5] [-Deval.model=qwen3:14b] [-Deval.situation=name [-Deval.prompt=true]]</pre>
  */
-class GeneralScenarioIT {
+class PlatoonLeaderScenarioIT {
 
     private static final String BASE_MISSION = "Each squad builds a patrol base on the stone platform around x=3000 z=3000 "
             + "and is sealed inside it before dark, and stays inside until dawn. Stay on the platform.";
@@ -108,7 +108,7 @@ class GeneralScenarioIT {
 
     /**
      * One policy question: the mission, the time, each squad's state, and what a right answer is,
-     * from the squads as given and the objectives the general returned (in the same order).
+     * from the squads as given and the objectives the platoon leader returned (in the same order).
      */
     private record Situation(String name, String mission, TimeOfDay time, List<SquadStatus> squads,
                              BiFunction<List<SquadStatus>, List<Objective>, List<String>> judge) {
@@ -116,15 +116,15 @@ class GeneralScenarioIT {
 
     private static final List<Situation> SITUATIONS = List.of(
             new Situation("fresh-start", BASE_MISSION, TimeOfDay.of(6000, true),
-                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())), GeneralScenarioIT::buildsOnThePlatform),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())), PlatoonLeaderScenarioIT::buildsOnThePlatform),
             // The live failure: the base ordered at the height of the trees below the platform.
             new Situation("fresh-start-trees-below", BASE_MISSION, TimeOfDay.of(6000, true),
                     List.of(withTrees(fresh("Alpha", 2996, Optional.empty())), withTrees(fresh("Bravo", 3004, Optional.empty()))),
-                    GeneralScenarioIT::buildsOnThePlatform),
+                    PlatoonLeaderScenarioIT::buildsOnThePlatform),
             // The live failure: orders given under the operator's earlier mission outlive it.
             new Situation("mission-replaced", BASE_MISSION, TimeOfDay.of(6200, true),
                     List.of(fresh("Alpha", 2996, Optional.of(GATHER_WOOD)), fresh("Bravo", 3004, Optional.of(GATHER_WOOD))),
-                    GeneralScenarioIT::buildsOnThePlatform),
+                    PlatoonLeaderScenarioIT::buildsOnThePlatform),
             // The live failure: a mission to stay put read as "keep" a standing order that isn't there.
             new Situation("stay-with-no-orders", "No fight is expected today. Both squads stay on the stone platform around "
                     + "x=3000 z=3000 and use the time to rearm.", TimeOfDay.of(1000, true),
@@ -134,14 +134,14 @@ class GeneralScenarioIT {
             // The live failure: night already fallen on squads out gathering, ordered to gather on.
             new Situation("gathering-at-night", BASE_MISSION, TimeOfDay.of(18000, true),
                     List.of(fresh("Alpha", 2996, Optional.of(GATHER_WOOD)), fresh("Bravo", 3004, Optional.of(GATHER_WOOD))),
-                    GeneralScenarioIT::buildsOnThePlatform),
+                    PlatoonLeaderScenarioIT::buildsOnThePlatform),
             // The live failure: the garrison's mission names SECURE among the day's work, and at night
-            // the general kept a squad in the open lighting the camp until it died.
+            // the platoon leader kept a squad in the open lighting the camp until it died.
             new Situation("securing-at-night", "Make camp on the stone platform around x=3000 z=3000 and stay within 16 blocks "
                     + "of it. Each squad spends the night sealed inside a patrol base there, until dawn. By day, secure the camp's "
                     + "ground with torches and gather the wood and stone the camp needs.", TimeOfDay.of(18000, true),
                     List.of(fresh("Alpha", 2996, Optional.of(SECURE_CAMP)), fresh("Bravo", 3004, Optional.of(GATHER_WOOD))),
-                    GeneralScenarioIT::buildsOnThePlatform),
+                    PlatoonLeaderScenarioIT::buildsOnThePlatform),
             // The live gap: the trees round the camp all cut, and every squad sent for wood finding none.
             new Situation("no-trees-left", "The camp is on the stone platform around x=3000 z=3000. Gather the wood the camp "
                     + "needs; where there is none left near the camp, plant a tree farm by it.", TimeOfDay.of(2000, true),
@@ -149,7 +149,7 @@ class GeneralScenarioIT {
                     (squads, given) -> given.stream().anyMatch(o -> o.treeFarm() && distance(o.location(), new Position(3000, 151, 3000)) <= 24)
                             ? List.of() : List.of("no squad set to plant a tree farm by the camp: " + given.stream()
                                     .map(o -> o.task() + " at " + o.location()).toList())),
-            // The foothold's airhead not yet met: the general splits its two standards between the squads.
+            // The foothold's airhead not yet met: the platoon leader splits its two standards between the squads.
             new Situation("foothold-airhead", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
                     TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
@@ -200,7 +200,7 @@ class GeneralScenarioIT {
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
                     (squads, given) -> given.stream().filter(o -> !o.secure() || distance(o.location(), new Position(3000, 151, 3000)) > 16)
                             .map(o -> "not set to secure the camp: " + o.task() + " " + o.mission() + " at " + o.location()).toList()),
-            // The live flip-flop: soldiers out of torches go for the makings, the general sends the
+            // The live flip-flop: soldiers out of torches go for the makings, the platoon leader sends the
             // squad for stone, then the unlit camp sends it back to SECURE, every minute or so.
             new Situation("securing-short-of-makings", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
                     TimeOfDay.of(2000, true),
@@ -246,21 +246,21 @@ class GeneralScenarioIT {
                     }),
             new Situation("walking-to-site", BASE_MISSION, TimeOfDay.of(7000, true),
                     List.of(fresh("Alpha", 2996, Optional.of(ALPHA_BASE)), fresh("Bravo", 3004, Optional.of(BRAVO_BASE))),
-                    GeneralScenarioIT::buildsOnThePlatform),
+                    PlatoonLeaderScenarioIT::buildsOnThePlatform),
             new Situation("sealed-at-dusk", BASE_MISSION, TimeOfDay.of(11800, true),
-                    List.of(sealed("Alpha", ALPHA_BASE, 3000), sealed("Bravo", BRAVO_BASE, 3008)), GeneralScenarioIT::keepsEvery),
+                    List.of(sealed("Alpha", ALPHA_BASE, 3000), sealed("Bravo", BRAVO_BASE, 3008)), PlatoonLeaderScenarioIT::keepsEvery),
             // Bare-handed with trees in sight: re-arming is tempting, and not worth leaving shelter for at dusk.
             new Situation("sealed-unarmed-trees-near", BASE_MISSION, TimeOfDay.of(11800, true),
                     List.of(withTrees(sealed("Alpha", ALPHA_BASE, 3000)), withTrees(sealed("Bravo", BRAVO_BASE, 3008))),
-                    GeneralScenarioIT::keepsEvery),
-            // The live failure: the night over, the general kept both squads in their bases.
+                    PlatoonLeaderScenarioIT::keepsEvery),
+            // The live failure: the night over, the platoon leader kept both squads in their bases.
             new Situation("sealed-at-dawn", "Make camp on the stone platform around x=3000 z=3000. Each squad spends the night "
                     + "sealed inside a patrol base there, until dawn. By day, light the camp's ground with torches.", TimeOfDay.of(500, true),
                     List.of(sealed("Alpha", ALPHA_BASE, 3000), sealed("Bravo", BRAVO_BASE, 3008)),
                     (squads, given) -> given.stream().filter(Objective::patrolBase)
                             .map(o -> "kept in its patrol base after dawn: " + o.mission()).toList()),
             new Situation("sealed-at-night", BASE_MISSION, TimeOfDay.of(18000, true),
-                    List.of(sealed("Alpha", ALPHA_BASE, 3000), sealed("Bravo", BRAVO_BASE, 3008)), GeneralScenarioIT::keepsEvery),
+                    List.of(sealed("Alpha", ALPHA_BASE, 3000), sealed("Bravo", BRAVO_BASE, 3008)), PlatoonLeaderScenarioIT::keepsEvery),
             new Situation("building-at-dusk", BASE_MISSION, TimeOfDay.of(11800, true),
                     List.of(building("Alpha", ALPHA_BASE, 3000), sealed("Bravo", BRAVO_BASE, 3008)),
                     (squads, given) -> {
@@ -292,9 +292,9 @@ class GeneralScenarioIT {
                 .options(OllamaChatOptions.builder().model(model).temperature(0.3).disableThinking().build())
                 .build();
         ChatClient client = ChatClient.builder(ollama).build();
-        GeneralPrompts prompts = GeneralPrompts.read(
-                new ClassPathResource("prompts/general-system-prompt.md"), new ClassPathResource("prompts/general-user-prompt.md"),
-                new ClassPathResource("prompts/general-squad-prompt.md"));
+        PlatoonLeaderPrompts prompts = PlatoonLeaderPrompts.read(
+                new ClassPathResource("prompts/platoon-leader-system-prompt.md"), new ClassPathResource("prompts/platoon-leader-user-prompt.md"),
+                new ClassPathResource("prompts/platoon-leader-squad-prompt.md"));
 
         int passed = 0;
         List<String> summary = new ArrayList<>();
@@ -304,19 +304,19 @@ class GeneralScenarioIT {
                 continue;
             }
             if (Boolean.getBoolean("eval.prompt")) {
-                SpringAiGeneral shown = new SpringAiGeneral(client, prompts, situation.mission(), "");
+                SpringAiPlatoonLeader shown = new SpringAiPlatoonLeader(client, prompts, situation.mission(), "");
                 shown.receiveTime(situation.time());
                 System.out.println(shown.prompt(situation.squads()));
             }
             int situationPassed = 0;
             for (int run = 1; run <= runs; run++) {
-                SpringAiGeneral general = new SpringAiGeneral(client, prompts, situation.mission(), "");
-                general.receiveTime(situation.time());
-                Optional.ofNullable(FOOTHOLDS.get(situation.name())).ifPresent(general::receiveFoothold);
+                SpringAiPlatoonLeader platoonLeader = new SpringAiPlatoonLeader(client, prompts, situation.mission(), "");
+                platoonLeader.receiveTime(situation.time());
+                Optional.ofNullable(FOOTHOLDS.get(situation.name())).ifPresent(platoonLeader::receiveFoothold);
                 long start = System.nanoTime();
                 List<String> failures;
                 try {
-                    failures = situation.judge().apply(situation.squads(), general.decide(situation.squads()));
+                    failures = situation.judge().apply(situation.squads(), platoonLeader.decide(situation.squads()));
                 } catch (IllegalStateException e) {
                     failures = List.of("invalid reply: " + e.getMessage());
                 }

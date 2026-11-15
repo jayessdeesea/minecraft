@@ -181,7 +181,7 @@ today's `<foothold>`.
 - The dawn AAR and the scoreboard report each site's level, state and short classes.
 - `bot.craft.Ladder` is split: the protection ladder, and a work load per role sized from its task;
   a builder on the keep carries its role's tools before anything past the protection floor.
-- `GeneralScenarioIT`: a site in PAUSE on wood, where the platoon sergeant tasks producers, and the platoon leader sends nobody
+- `PlatoonLeaderScenarioIT`: a site in PAUSE on wood, where the platoon sergeant tasks producers, and the platoon leader sends nobody
   further out; a creeper-struck depot, where it contracts; a material short with two claims on it,
   where the enabler gets it.
 - Live: the keep levels a full layer without a builder standing idle for want of a tool.

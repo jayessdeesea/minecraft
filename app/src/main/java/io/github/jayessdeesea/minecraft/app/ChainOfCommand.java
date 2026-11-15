@@ -2,7 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.Keep;
-import io.github.jayessdeesea.minecraft.command.General;
+import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Plan;
@@ -47,7 +47,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * The LLM echelons' imperative shell: decides <em>when</em> the general and each squad leader
+ * The LLM echelons' imperative shell: decides <em>when</em> the platoon leader and each squad leader
  * think, runs their model calls off every soldier-facing thread, and hands each squad's
  * {@link SquadOrder} to {@code SoldierRunner}'s squad loop. Cadence follows docs/architecture.md's latency
  * architecture - the higher the echelon, the less often - plus events: a new objective, or a
@@ -56,9 +56,9 @@ import java.util.stream.Collectors;
  * standing after the echelon has answered it waits for the routine interval - re-asking every few
  * seconds about the same report just churns orders.
  *
- * <p>One general commands every squad in the {@link Roster} at once, so it can split the work
+ * <p>One platoon leader commands every squad in the {@link Roster} at once, so it can split the work
  * between them. A squad the operator attached to a player as an escort ({@code !escort}) is set
- * aside from the general until the next {@code !mission}; its objective follows the player
+ * aside from the platoon leader until the next {@code !mission}; its objective follows the player
  * instead (see {@link SquadCommand}).
  *
  * <p>Every exchange is logged like a radio net - orders down, reports up - so a run reads as a
@@ -80,8 +80,8 @@ public class ChainOfCommand implements DisposableBean {
     /** Least time between decisions, however many CANTCOs arrive - stops a stuck soldier spamming the model. */
     private static final long MIN_GAP_MILLIS = 8_000;
     /**
-     * The least time between the general's decisions that a new contact or CANTCO brings forward:
-     * the general thinks on a slow clock, and contact is the squad's drill to handle - live, at
+     * The least time between the platoon leader's decisions that a new contact or CANTCO brings forward:
+     * the platoon leader thinks on a slow clock, and contact is the squad's drill to handle - live, at
      * night, every new contact asked it again, a call every ten seconds rewriting the same order.
      */
     private static final long GENERAL_URGENT_GAP_MILLIS = 60_000;
@@ -90,7 +90,7 @@ public class ChainOfCommand implements DisposableBean {
 
     /**
      * One squad's SITREP for a cycle: its soldiers, its terrain (surveyed only if its leader
-     * decides), its principal, what it can see to gather (surveyed only if the general decides), and
+     * decides), its principal, what it can see to gather (surveyed only if the platoon leader decides), and
      * how its patrol base and its task stand.
      */
     public record Sitrep(String squad, List<SoldierStatus> soldiers, Supplier<TerrainSurvey> terrain,
@@ -121,19 +121,19 @@ public class ChainOfCommand implements DisposableBean {
         }
     }
 
-    private final General general;
+    private final PlatoonLeader platoonLeader;
     private final Map<String, SquadCommand> squads = new LinkedHashMap<>();
-    /** What each squad last saw round it - the survey the general was last shown. */
+    /** What each squad last saw round it - the survey the platoon leader was last shown. */
     private final Map<String, List<ResourceSite>> resourcesSeen =
             new ConcurrentHashMap<>();
-    private final ExecutorService generalThread;
+    private final ExecutorService platoonLeaderThread;
     /** The clock and threads everything here runs on: the real ones, or a simulation's. */
     private final Clockwork clockwork;
-    private final AtomicBoolean generalBusy = new AtomicBoolean();
-    /** Bumped on each operator order, so a general's decision already in flight is known to be stale. */
+    private final AtomicBoolean platoonLeaderBusy = new AtomicBoolean();
+    /** Bumped on each operator order, so a platoon leader's decision already in flight is known to be stale. */
     private final AtomicInteger missionVersion = new AtomicInteger();
 
-    private volatile long lastGeneralMillis = Long.MIN_VALUE / 2;
+    private volatile long lastPlatoonLeaderMillis = Long.MIN_VALUE / 2;
     private volatile Consumer<String> radio;
     /** The ground's height at an x and z, looked for near a height - the world's, as the soldiers see it. */
     private volatile Ground ground = (x, z, nearY) -> OptionalInt.empty();
@@ -166,24 +166,24 @@ public class ChainOfCommand implements DisposableBean {
      * ninety seconds of the day are worked rather than spent waiting in a hut (operator, 2026-11-08).
      */
     static final long SHELTER_LEAD_TICKS = 0;
-    /** How long before dark the general is asked anyway: time to plan the night before it starts. */
+    /** How long before dark the platoon leader is asked anyway: time to plan the night before it starts. */
     static final long DUSK_DECIDE_TICKS = 1800;
 
     @Autowired
-    public ChainOfCommand(General general, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient,
+    public ChainOfCommand(PlatoonLeader platoonLeader, @Qualifier("squadLeaderChatClient") ChatClient squadLeaderClient,
                           SquadLeaderPrompts squadLeaderPrompts, Roster roster,
-                          @Value("${minecraft.general.shelter-at-night}") boolean shelterAtNight) {
-        this(general, squadLeaderClient, squadLeaderPrompts, roster, shelterAtNight, Clockwork.REAL);
+                          @Value("${minecraft.platoon-leader.shelter-at-night}") boolean shelterAtNight) {
+        this(platoonLeader, squadLeaderClient, squadLeaderPrompts, roster, shelterAtNight, Clockwork.REAL);
     }
 
     /** As the app's, on {@code clockwork}'s time and threads. */
-    ChainOfCommand(General general, ChatClient squadLeaderClient,
+    ChainOfCommand(PlatoonLeader platoonLeader, ChatClient squadLeaderClient,
                    SquadLeaderPrompts squadLeaderPrompts, Roster roster,
                    boolean shelterAtNight, Clockwork clockwork) {
-        this.general = general;
+        this.platoonLeader = platoonLeader;
         this.shelterAtNight = shelterAtNight;
         this.clockwork = clockwork;
-        this.generalThread = clockwork.thread("general");
+        this.platoonLeaderThread = clockwork.thread("platoon-leader");
         for (Roster.Squad squad : roster.squads()) {
             squads.put(squad.name(), new SquadCommand(squad.name(), new SpringAiSquadLeader(squad.name(), squadLeaderClient, squadLeaderPrompts), this::transmit,
                     modelCalls, clockwork));
@@ -199,7 +199,7 @@ public class ChainOfCommand implements DisposableBean {
      * Where radio traffic is keyed out - the radio operator's connection. Until one is set (no
      * soldier connected yet), traffic is only logged.
      */
-    /** How the general's objectives find the ground: their heights are its guesses, the world's are known. */
+    /** How the platoon leader's objectives find the ground: their heights are its guesses, the world's are known. */
     public void setGround(Ground ground) {
         this.ground = ground;
     }
@@ -211,9 +211,9 @@ public class ChainOfCommand implements DisposableBean {
     }
 
     /**
-     * {@code objective}, or - at night, under {@link #shelterAtNight}, when the general's order
+     * {@code objective}, or - at night, under {@link #shelterAtNight}, when the platoon leader's order
      * would leave a squad in the open or take it out of the base it is sealed in - the patrol base it was already
-     * ordered to build, or else one where the squad's point man stands. A guardrail, and a loud one: the general's own order is logged beside it.
+     * ordered to build, or else one where the squad's point man stands. A guardrail, and a loud one: the platoon leader's own order is logged beside it.
      */
     Objective sheltered(Objective objective, SquadStatus squad) {
         TimeOfDay now = time;
@@ -222,7 +222,7 @@ public class ChainOfCommand implements DisposableBean {
             return objective;
         }
         // The night isn't wasted: every squad goes down the camp's mine (operator, 2026-11-13) -
-        // whatever the general orders, a patrol base included: seeing the squad out of one, it
+        // whatever the platoon leader orders, a patrol base included: seeing the squad out of one, it
         // ordered one two minutes into the shift. Its shift ends in time to climb out at sunrise.
         Optional<Objective> nightShift = nightShift(squad.squadName());
         if (nightShift.isPresent() && surfacing()) {
@@ -232,13 +232,13 @@ public class ChainOfCommand implements DisposableBean {
             return objective;
         }
         // With no camp to go down the mine of, a squad already sealed in is the one most to keep there,
-        // and a base the general orders is the night's.
+        // and a base the platoon leader orders is the night's.
         Position at = squad.soldiers().getFirst().position();
         if (nightShift.isEmpty() && objective.patrolBase()) {
             return objective;
         }
         if (nightShift.isPresent()) {
-            LOG.warn("[General -> {}] at or near night, ordered '{}' ({}) - the operator's rule sends it down the camp's mine instead, at {}",
+            LOG.warn("[PL -> {}] at or near night, ordered '{}' ({}) - the operator's rule sends it down the camp's mine instead, at {}",
                     squad.squadName(), objective.mission(), objective.task(), at(nightShift.get().location()));
             return nightShift.get();
         }
@@ -246,30 +246,30 @@ public class ChainOfCommand implements DisposableBean {
         // each decision, a squad starts hut after hut and finishes none before dawn.
         Optional<Objective> standing = squads.get(squad.squadName()).objective().filter(Objective::patrolBase);
         if (standing.isPresent()) {
-            LOG.warn("[General -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule keeps it on the patrol base it has",
+            LOG.warn("[PL -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule keeps it on the patrol base it has",
                     squad.squadName(), objective.mission(), objective.task());
             return standing.get();
         }
         Objective shelter = grounded(new Objective("Build a patrol base where you stand and spend the night in it",
                 new Position(Math.floor(at.x()), at.y(), Math.floor(at.z())), "Squad safe from monsters until dawn",
                 new Objective.Task.PatrolBase()), squad.soldiers());
-        LOG.warn("[General -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule shelters it instead, at {}",
+        LOG.warn("[PL -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule shelters it instead, at {}",
                 squad.squadName(), objective.mission(), objective.task(), at(shelter.location()));
         return shelter;
     }
 
-    /** Under the operator's day rule, every squad builds the keep by day (minecraft.general.keep-by-day). */
+    /** Under the operator's day rule, every squad builds the keep by day (minecraft.platoon-leader.keep-by-day). */
     private volatile boolean keepByDay;
 
     @Autowired
-    void setKeepByDay(@Value("${minecraft.general.keep-by-day:false}") boolean keepByDay) {
+    void setKeepByDay(@Value("${minecraft.platoon-leader.keep-by-day:false}") boolean keepByDay) {
         this.keepByDay = keepByDay;
     }
 
     /**
      * {@code objective}, or - by day, under {@link #keepByDay} - the keep (command.Keep): the
-     * operator's order for every squad, whatever the general would have it do - but for the
-     * general's answer to a request the squad raised: WOOD to its Class IV RED, FARM to its Class I
+     * operator's order for every squad, whatever the platoon leader would have it do - but for the
+     * platoon leader's answer to a request the squad raised: WOOD to its Class IV RED, FARM to its Class I
      * RED. A request outranks the standing rule, or it's never answered: live, the keep's builders
      * asked for logs all day and the rule put every squad back on the keep. Loud, like the night's
      * rule, which still comes first at dusk.
@@ -282,13 +282,13 @@ public class ChainOfCommand implements DisposableBean {
         boolean answersFood = objective.task() instanceof Objective.Task.Farm
                 && squad.classOne().filter(c -> c.rating() == Subsistence.Rating.RED).isPresent();
         if (answersWood || answersFood) {
-            LOG.info("[General -> {}] by day, ordered '{}' ({}) answering the squad's {} request: it stands over the keep rule",
+            LOG.info("[PL -> {}] by day, ordered '{}' ({}) answering the squad's {} request: it stands over the keep rule",
                     squad.squadName(), objective.mission(), objective.task(), answersWood ? "Class IV" : "Class I");
             return objective;
         }
         Objective keep = new Objective("Build the main base's keep: flatten the ground at the origin and lay its slab",
                 Keep.CENTRE, "The main base's keep, as the operator ordered", new Objective.Task.Keep());
-        LOG.warn("[General -> {}] by day, ordered '{}' ({}) - the operator's rule puts it on the keep instead",
+        LOG.warn("[PL -> {}] by day, ordered '{}' ({}) - the operator's rule puts it on the keep instead",
                 squad.squadName(), objective.mission(), objective.task());
         return keep;
     }
@@ -341,7 +341,7 @@ public class ChainOfCommand implements DisposableBean {
 
     /**
      * {@code objective} with its height the ground's at its x and z, looked for near the squad's
-     * middle height: the general guesses heights, and a guess copied from elsewhere in its prompt
+     * middle height: the platoon leader guesses heights, and a guess copied from elsewhere in its prompt
      * lands an objective in the sky or underground. MINE keeps its own: that y is a depth.
      */
     Objective grounded(Objective objective, List<SoldierStatus> soldiers) {
@@ -365,7 +365,7 @@ public class ChainOfCommand implements DisposableBean {
         if (height.isEmpty() || height.getAsInt() == (int) Math.floor(at.y())) {
             return objective;
         }
-        LOG.info("[General] objective at x={} z={} put on the ground at y={}, not the y={} given", (int) Math.floor(at.x()),
+        LOG.info("[PL] objective at x={} z={} put on the ground at y={}, not the y={} given", (int) Math.floor(at.x()),
                 (int) Math.floor(at.z()), height.getAsInt(), (int) Math.floor(at.y()));
         return new Objective(objective.mission(), new Position(at.x(), height.getAsInt(), at.z()), objective.intent(), objective.task());
     }
@@ -375,25 +375,25 @@ public class ChainOfCommand implements DisposableBean {
     }
 
     /**
-     * A new mission from a human operator (see {@code OperatorOrders}): the general takes it and
+     * A new mission from a human operator (see {@code OperatorOrders}): the platoon leader takes it and
      * re-plans at the next SITREP rather than at its routine interval, for every squad - an escort
      * ends. Acknowledged on the radio.
      */
     public void onOperatorMission(String operator, String mission) {
-        general.receiveMission(mission);
+        platoonLeader.receiveMission(mission);
         squads.values().forEach(squad -> squad.escort(null));
         int version = missionVersion.incrementAndGet();
-        lastGeneralMillis = Long.MIN_VALUE / 2;
+        lastPlatoonLeaderMillis = Long.MIN_VALUE / 2;
         OrderTrace trace = trace(operator, "!mission " + mission, version);
-        LOG.info("[{} -> General] MISSION ({}): {}", operator, trace.id, mission);
-        transmit("[General -> " + operator + "] WILCO (" + trace.id + "): " + mission);
+        LOG.info("[{} -> PL] MISSION ({}): {}", operator, trace.id, mission);
+        transmit("[PL -> " + operator + "] WILCO (" + trace.id + "): " + mission);
     }
 
     /** An order from the operator that isn't one: answered on the radio, with what the orders are. */
     public void onOperatorUnknown(String operator, String command) {
-        LOG.warn("[{} -> General] {} - not an order", operator, command);
-        transmit("[General -> " + operator + "] SAY AGAIN: " + command + " is not an order. Orders: " + OperatorOrders.MISSION
-                + " <what to do>, " + OperatorOrders.ESCORT + " [player]; anything else is passed to the general as a remark");
+        LOG.warn("[{} -> PL] {} - not an order", operator, command);
+        transmit("[PL -> " + operator + "] SAY AGAIN: " + command + " is not an order. Orders: " + OperatorOrders.MISSION
+                + " <what to do>, " + OperatorOrders.ESCORT + " [player]; anything else is passed to the platoon leader as a remark");
     }
 
     /** Operator orders being followed down the chain - each is dropped once carried out or superseded. */
@@ -416,30 +416,30 @@ public class ChainOfCommand implements DisposableBean {
         } else {
             LOG.info("[Trace] {}", line);
         }
-        transmit("[General -> " + operator + "] " + line);
+        transmit("[PL -> " + operator + "] " + line);
     }
 
     /**
-     * Something the operator said that isn't an order: the general hears it at its next decision,
+     * Something the operator said that isn't an order: the platoon leader hears it at its next decision,
      * brought forward - an operator who speaks up has usually seen something. Acknowledged on the radio.
      */
     public void onOperatorRemark(String operator, String remark) {
-        general.receiveRemark(remark);
-        lastGeneralMillis = Long.MIN_VALUE / 2;
-        LOG.info("[{} -> General] REMARK: {}", operator, remark);
-        transmit("[General -> " + operator + "] ROGER: " + remark);
+        platoonLeader.receiveRemark(remark);
+        lastPlatoonLeaderMillis = Long.MIN_VALUE / 2;
+        LOG.info("[{} -> PL] REMARK: {}", operator, remark);
+        transmit("[PL -> " + operator + "] ROGER: " + remark);
     }
 
     /**
      * The operator attaches the first squad in the {@link Roster} to {@code principal} as its
-     * escort (docs/military-doctrine.md §10): until the next {@code !mission}, the general leaves
+     * escort (docs/military-doctrine.md §10): until the next {@code !mission}, the platoon leader leaves
      * it out and its squad leader's objective follows the principal. Acknowledged on the radio.
      */
     public void onOperatorEscort(String operator, String principal) {
         SquadCommand escort = squads.values().iterator().next();
         escort.escort(principal);
-        int version = missionVersion.incrementAndGet(); // a general's decision in flight may have included this squad
-        lastGeneralMillis = Long.MIN_VALUE / 2; // the others are re-planned without it
+        int version = missionVersion.incrementAndGet(); // a platoon leader's decision in flight may have included this squad
+        lastPlatoonLeaderMillis = Long.MIN_VALUE / 2; // the others are re-planned without it
         OrderTrace trace = trace(operator, "!escort " + principal, version);
         LOG.info("[{} -> {}] ESCORT ({}): {}", operator, escort.name, trace.id, principal);
         transmit("[" + escort.name + " -> " + operator + "] WILCO (" + trace.id + "): escorting " + principal);
@@ -447,7 +447,7 @@ public class ChainOfCommand implements DisposableBean {
                 .forEach(line -> traced(operator, line));
     }
 
-    /** The camp's progress through the lodgment's phases, measured - the general is told, and the log when it moves. */
+    /** The camp's progress through the lodgment's phases, measured - the platoon leader is told, and the log when it moves. */
     public void onFoothold(Foothold foothold) {
         String standing = foothold.standards().stream().map(s -> s.name() + (s.met() ? " met" : ": " + s.status()))
                 .collect(Collectors.joining("; "));
@@ -455,7 +455,7 @@ public class ChainOfCommand implements DisposableBean {
             LOG.info("[Foothold] phase {}: {}", foothold.nextPhase().isPresent() ? foothold.nextPhase().getAsInt() : "all met", standing);
             lastFoothold = standing;
         }
-        general.receiveFoothold(foothold);
+        platoonLeader.receiveFoothold(foothold);
         this.foothold = foothold;
     }
 
@@ -505,7 +505,7 @@ public class ChainOfCommand implements DisposableBean {
 
     /**
      * Requests raised and settled from this cycle's SITREPs: each soldier's CANTCO to its squad
-     * leader, each squad's finished or stalled task and its Class I RED to the general. Overdue ones alarm.
+     * leader, each squad's finished or stalled task and its Class I RED to the platoon leader. Overdue ones alarm.
      */
     private void trackRequests(List<Sitrep> sitreps, long now) {
         for (Sitrep sitrep : sitreps) {
@@ -531,7 +531,7 @@ public class ChainOfCommand implements DisposableBean {
             Optional<Progress> finished = sitrep.progress()
                     .filter(p -> p.state() != Progress.State.UNDER_WAY);
             if (finished.isPresent()) {
-                requests.raise(task, RequestLedger.Echelon.GENERAL, sitrep.squad(), "task " + finished.get().state() + ": " + finished.get().detail(), now)
+                requests.raise(task, RequestLedger.Echelon.PLATOON_LEADER, sitrep.squad(), "task " + finished.get().state() + ": " + finished.get().detail(), now)
                         .ifPresent(LOG::info);
             } else {
                 requests.settle(task);
@@ -540,7 +540,7 @@ public class ChainOfCommand implements DisposableBean {
             Optional<Subsistence.Status> red = sitrep.classOne()
                     .filter(c -> c.rating() == Subsistence.Rating.RED);
             if (red.isPresent()) {
-                requests.raise(food, RequestLedger.Echelon.GENERAL, sitrep.squad(), red.get().line(), now).ifPresent(LOG::info);
+                requests.raise(food, RequestLedger.Echelon.PLATOON_LEADER, sitrep.squad(), red.get().line(), now).ifPresent(LOG::info);
             } else {
                 requests.settle(food);
             }
@@ -567,10 +567,10 @@ public class ChainOfCommand implements DisposableBean {
         return requests.review(clockwork.millis());
     }
 
-    /** A soldier saw what the stockpile holds - the general is told, for its next decision. */
+    /** A soldier saw what the stockpile holds - the platoon leader is told, for its next decision. */
     public void onStockpile(Stockpile stockpile) {
         this.stockpile = stockpile;
-        general.receiveStockpile(stockpile);
+        platoonLeader.receiveStockpile(stockpile);
     }
 
     private volatile Stockpile stockpile;
@@ -580,27 +580,27 @@ public class ChainOfCommand implements DisposableBean {
         return Optional.ofNullable(stockpile);
     }
 
-    /** The server sent the time of day - the general plans around nightfall. Dusk and dawn are logged. */
+    /** The server sent the time of day - the platoon leader plans around nightfall. Dusk and dawn are logged. */
     public void onTime(TimeOfDay time) {
         TimeOfDay last = this.time;
         this.time = time;
         if (last == null || last.dark() != time.dark()) {
             LOG.info("[Clock] {} - tick {} of the day, the chain of command told", time.dark() ? "NIGHT" : "DAY", time.ticks());
-            lastGeneralMillis = Long.MIN_VALUE / 2; // dusk and dawn change what every squad should be doing
+            lastPlatoonLeaderMillis = Long.MIN_VALUE / 2; // dusk and dawn change what every squad should be doing
         }
         boolean nearDark = !time.dark() && time.ticksUntilDark() <= DUSK_DECIDE_TICKS;
         if (last != null && nearDark && !(!last.dark() && last.ticksUntilDark() <= DUSK_DECIDE_TICKS)) {
-            LOG.info("[Clock] DUSK NEAR - dark in {} ticks, the general decides now", time.ticksUntilDark());
-            lastGeneralMillis = Long.MIN_VALUE / 2;
+            LOG.info("[Clock] DUSK NEAR - dark in {} ticks, the platoon leader decides now", time.ticksUntilDark());
+            lastPlatoonLeaderMillis = Long.MIN_VALUE / 2;
         }
-        general.receiveTime(time);
+        platoonLeader.receiveTime(time);
         squads.values().forEach(squad -> squad.receiveTime(time));
     }
 
-    /** Stops the general's and the squad leaders' threads - a decision in flight is abandoned. */
+    /** Stops the platoon leader's and the squad leaders' threads - a decision in flight is abandoned. */
     @Override
     public void destroy() {
-        generalThread.shutdownNow();
+        platoonLeaderThread.shutdownNow();
         squads.values().forEach(SquadCommand::stop);
     }
 
@@ -625,7 +625,7 @@ public class ChainOfCommand implements DisposableBean {
                 : objective.gather().map(r -> ", gather " + r.name().toLowerCase(Locale.ROOT)).orElse("");
     }
 
-    /** The general's objective for {@code squad}, once it has one. */
+    /** The platoon leader's objective for {@code squad}, once it has one. */
     public Optional<Objective> objective(String squad) {
         return squads.get(squad).objective();
     }
@@ -705,40 +705,40 @@ public class ChainOfCommand implements DisposableBean {
         }
         traces.removeIf(OrderTrace::closed);
         long now = clockwork.millis();
-        List<Sitrep> underGeneral = sitreps.stream().filter(s -> squads.get(s.squad()).escort().isEmpty()).toList();
+        List<Sitrep> underPlatoonLeader = sitreps.stream().filter(s -> squads.get(s.squad()).escort().isEmpty()).toList();
         boolean newCantco = false;
         boolean newContact = false;
         boolean unordered = false;
-        for (Sitrep sitrep : underGeneral) {
+        for (Sitrep sitrep : underPlatoonLeader) {
             SquadCommand squad = squads.get(sitrep.squad());
             newCantco |= squad.newCantco();
             newContact |= squad.newContact(sitrep.soldiers());
             unordered |= !squad.hasObjective();
         }
-        if (!underGeneral.isEmpty() && (unordered || now - lastGeneralMillis >= GENERAL_PERIOD_MILLIS
-                || ((newCantco || newContact) && now - lastGeneralMillis >= GENERAL_URGENT_GAP_MILLIS))) {
-            askGeneral(underGeneral, now);
+        if (!underPlatoonLeader.isEmpty() && (unordered || now - lastPlatoonLeaderMillis >= GENERAL_PERIOD_MILLIS
+                || ((newCantco || newContact) && now - lastPlatoonLeaderMillis >= GENERAL_URGENT_GAP_MILLIS))) {
+            askPlatoonLeader(underPlatoonLeader, now);
         }
         for (Sitrep sitrep : sitreps) {
             SquadCommand squad = squads.get(sitrep.squad());
             squad.onSitrep(sitrep.soldiers(), sitrep.terrain(), sitrep.principalAt(), sitrep.holdingBase(), now, MIN_GAP_MILLIS);
             squad.takeEscortEnded().ifPresent(principal -> {
-                // Back under the general, who decides for it now rather than at its routine interval.
+                // Back under the platoon leader, who decides for it now rather than at its routine interval.
                 missionVersion.incrementAndGet();
-                lastGeneralMillis = Long.MIN_VALUE / 2;
-                transmit("[" + squad.name + " -> General] escort of " + principal + " ended: out of sight");
+                lastPlatoonLeaderMillis = Long.MIN_VALUE / 2;
+                transmit("[" + squad.name + " -> PL] escort of " + principal + " ended: out of sight");
             });
         }
     }
 
-    private void askGeneral(List<Sitrep> sitreps, long now) {
-        if (!generalBusy.compareAndSet(false, true)) {
+    private void askPlatoonLeader(List<Sitrep> sitreps, long now) {
+        if (!platoonLeaderBusy.compareAndSet(false, true)) {
             return;
         }
-        lastGeneralMillis = now;
+        lastPlatoonLeaderMillis = now;
         int missionAsked = missionVersion.get();
-        ModelCalls.Ticket ticket = modelCalls.queued("General");
-        generalThread.execute(() -> {
+        ModelCalls.Ticket ticket = modelCalls.queued("PL");
+        platoonLeaderThread.execute(() -> {
             ticket.started();
             try {
                 long started = clockwork.millis();
@@ -746,10 +746,10 @@ public class ChainOfCommand implements DisposableBean {
                         squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
                         s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList();
                 statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
-                List<Objective> objectives = general.decide(statuses);
+                List<Objective> objectives = platoonLeader.decide(statuses);
                 if (missionVersion.get() != missionAsked) {
-                    LOG.info("[General] discarding a decision made under superseded orders");
-                    return; // lastGeneralMillis was reset: the next SITREP asks again
+                    LOG.info("[PL] discarding a decision made under superseded orders");
+                    return; // lastPlatoonLeaderMillis was reset: the next SITREP asks again
                 }
                 long millis = clockwork.millis() - started;
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
@@ -757,28 +757,28 @@ public class ChainOfCommand implements DisposableBean {
                     String name = statuses.get(i).squadName();
                     Objective given = sheltered(grounded(byDay(objectives.get(i), statuses.get(i)), statuses.get(i).soldiers()), statuses.get(i));
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
-                        LOG.info("[General -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
+                        LOG.info("[PL -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
                         // The feedback not taken: the squad said its task is finished or stuck, and it was kept.
                         statuses.get(i).progress().filter(p -> p.state() != Progress.State.UNDER_WAY)
-                                .ifPresent(p -> LOG.warn("[Feedback] the general kept {}'s task though it reported {}: {}", name, p.state(), p.detail()));
+                                .ifPresent(p -> LOG.warn("[Feedback] the platoon leader kept {}'s task though it reported {}: {}", name, p.state(), p.detail()));
                         decided.put(name, Optional.empty());
                         continue;
                     }
                     decided.put(name, Optional.of(given));
-                    // The general's answer to what the squad asked, if it asked: any new order answers a
+                    // The platoon leader's answer to what the squad asked, if it asked: any new order answers a
                     // finished or stalled task; only a farm answers a request for food - live, the
-                    // general answered a starving squad with torches, and that was counted an answer.
+                    // platoon leader answered a starving squad with torches, and that was counted an answer.
                     long answeredAt = clockwork.millis();
                     requests.answer(name + ":task", answeredAt).ifPresent(LOG::info);
                     if (given.task() instanceof Objective.Task.Farm) {
                         requests.answer(name + ":food", answeredAt).ifPresent(LOG::info);
                     } else if (requests.isOpen(name + ":food")) {
-                        LOG.warn("[Request] the General's order for {} doesn't answer its Class I RED: {} ({})", name, given.mission(),
+                        LOG.warn("[Request] the platoon leader's order for {} doesn't answer its Class I RED: {} ({})", name, given.mission(),
                                 OrderTrace.taskName(given.task()));
                     }
-                    LOG.info("[General -> {}] ({} ms, {}) OPORD: {} at {}{}. Intent: {}", name, millis, phase(time), given.mission(),
+                    LOG.info("[PL -> {}] ({} ms, {}) OPORD: {} at {}{}. Intent: {}", name, millis, phase(time), given.mission(),
                             at(given.location()), task(given), given.intent());
-                    transmit("[General -> " + name + "] OPORD: " + given.mission() + " at " + at(given.location())
+                    transmit("[PL -> " + name + "] OPORD: " + given.mission() + " at " + at(given.location())
                             + task(given) + ". Intent: " + given.intent());
                     squads.get(name).receiveObjective(given);
                 }
@@ -786,10 +786,10 @@ public class ChainOfCommand implements DisposableBean {
                 traces.stream().filter(t -> t.version == missionAsked)
                         .forEach(t -> t.decided(decided, decidedAt).forEach(line -> traced(t.operator, line)));
             } catch (RuntimeException e) {
-                LOG.error("[General] no decision - keeping the current objectives: {}", e.getMessage(), e);
+                LOG.error("[PL] no decision - keeping the current objectives: {}", e.getMessage(), e);
             } finally {
                 ticket.finished();
-                generalBusy.set(false);
+                platoonLeaderBusy.set(false);
             }
         });
     }

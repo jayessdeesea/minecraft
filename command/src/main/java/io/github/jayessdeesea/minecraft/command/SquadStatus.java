@@ -5,15 +5,15 @@ import java.util.Optional;
 import java.util.OptionalInt;
 
 /**
- * What a squad reports upward to a {@link General} - the input a {@code General}'s decision core
+ * What a squad reports upward to a {@link PlatoonLeader} - the input a {@code PlatoonLeader}'s decision core
  * builds its LLM prompt context from, mirroring how {@link SoldierStatus} feeds a
  * {@link SquadLeader}. Built by the caller (the imperative shell that owns the squad's
  * {@link Soldier} instances), not returned by {@link SquadLeader} itself - a {@code SquadLeader}
  * never holds its soldiers' state. {@code report} is the squad leader's own line - CANTCO when it
  * judged the objective impossible (see {@link SquadLeader#report}). {@code resources} are the
  * materials the squad can see from where it is (docs/military-doctrine.md §12), nearest first.
- * {@code standing} is the objective the general last gave it, if any - an order stands until the
- * general changes it - {@code holdingBase} whether the squad is sealed inside its patrol base, and
+ * {@code standing} is the objective the platoon leader last gave it, if any - an order stands until the
+ * platoon leader changes it - {@code holdingBase} whether the squad is sealed inside its patrol base, and
  * {@code baseBlocksLeft} how many blocks of the base it has laid out are still to place (empty
  * while it has none laid out), {@code progress} how the standing order's task stands (empty
  * with no task to measure), {@code classOne} its food (empty where not measured): RED is its

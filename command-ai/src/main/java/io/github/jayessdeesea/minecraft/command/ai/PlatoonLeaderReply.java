@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import java.util.List;
 
 /**
- * The general model's structured reply. A wrapper object rather than a bare list: provider-native
+ * The platoon leader model's structured reply. A wrapper object rather than a bare list: provider-native
  * structured output generally rejects a top-level JSON array as the response schema.
  */
-record GeneralReply(@JsonPropertyDescription("Exactly one objective per squad") List<ObjectiveReply> objectives) {
+record PlatoonLeaderReply(@JsonPropertyDescription("Exactly one objective per squad") List<ObjectiveReply> objectives) {
 
     record ObjectiveReply(
             @JsonPropertyDescription("The squad's name, exactly as listed") String squad,

@@ -10,7 +10,7 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.Keep;
-import io.github.jayessdeesea.minecraft.command.General;
+import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Resource;
@@ -62,7 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A squad run through a task with the app's own code - runner, chain of command, drills, routines -
- * on simulated time, against {@link SimServer}, with a scripted general and squad leader: no
+ * on simulated time, against {@link SimServer}, with a scripted platoon leader and squad leader: no
  * Docker, no model (backlog/echelon-contracts.md). A simulated hour runs in seconds.
  */
 class SquadSimulationTest {
@@ -100,9 +100,9 @@ class SquadSimulationTest {
         return y == GROUND ? SimServer.GRASS : SimServer.AIR;
     }
 
-    /** A general that gives every squad the same objective, every time it's asked. */
-    static General scripted(Function<SquadStatus, Objective> objective) {
-        return new General() {
+    /** A platoon leader that gives every squad the same objective, every time it's asked. */
+    static PlatoonLeader scripted(Function<SquadStatus, Objective> objective) {
+        return new PlatoonLeader() {
             @Override
             public void receiveMission(String mission) {
             }
@@ -230,7 +230,7 @@ class SquadSimulationTest {
 
     /**
      * The operator's night rule with two squads: dusk falls, Alpha holds the camp and Bravo goes down
-     * the camp's mine (docs/echelons/general/operator-rules.md). In the dark nobody of Bravo stands
+     * the camp's mine (docs/echelons/platoon-leader/operator-rules.md). In the dark nobody of Bravo stands
      * at the top of the stairs.
      */
     @Test
@@ -548,7 +548,7 @@ class SquadSimulationTest {
     }
 
     /**
-     * A mine ordered anywhere near the camp is the camp's: live, the general moved its order to the
+     * A mine ordered anywhere near the camp is the camp's: live, the platoon leader moved its order to the
      * camp's centre, 13 blocks from the mine already cut, and a new staircase was started inside the
      * wall and kept in the cut one's place.
      */
@@ -806,7 +806,7 @@ class SquadSimulationTest {
         Path log = Path.of("target/sim/aSquadSentFromItsPatrolBaseToTheMineStopsBuildingTheBase.log");
         assertTrue(Files.readAllLines(log).stream().anyMatch(l -> l.contains("Fortifying")), "the base begun");
         mine.set(true);
-        clock.advance(6 * 60_000); // the general's next call, and the squad on its way
+        clock.advance(6 * 60_000); // the platoon leader's next call, and the squad on its way
         List<String> lines = Files.readAllLines(log);
         List<String> last = lines.subList(Math.max(0, lines.size() - 40), lines.size()).stream()
                 .filter(l -> l.contains("Fortifying")).toList();
@@ -1377,7 +1377,7 @@ class SquadSimulationTest {
 
     /**
      * FORTIFY ordered a little off the camp's centre: the squad finishes the camp's own wall, the
-     * one its standard measures, not a new one round the general's point. Live, the masons
+     * one its standard measures, not a new one round the platoon leader's point. Live, the masons
      * repointed a wall with 23 dirt blocks while the camp's, with 1, stayed open for days.
      */
     @Test
@@ -1447,7 +1447,7 @@ class SquadSimulationTest {
     }
 
     /**
-     * SECURE ordered at the camp, the general's point a few blocks off its centre and above its
+     * SECURE ordered at the camp, the platoon leader's point a few blocks off its centre and above its
      * ground, as live: the squad lights the camp's ground, and the camp's standard is met. Live,
      * SECURE lit a disc round the point and reported DONE, while the camp's own disc had 8 cells dark
      * for days - two measures of one standard, and nobody working the one that was open.

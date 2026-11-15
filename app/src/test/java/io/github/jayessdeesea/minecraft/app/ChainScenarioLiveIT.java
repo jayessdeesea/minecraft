@@ -27,12 +27,12 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * The whole chain of command - real general, real squad leaders, real soldiers - against the dev
+ * The whole chain of command - real platoon leader, real squad leaders, real soldiers - against the dev
  * server, on a named scenario with a measurable end state (backlog/scenario-matrix.md). Needs
  * {@code docker compose up -d}: the server and the local model.
  *
  * <p>Each run sets the world up from the server console, starts the app in-process, hands the
- * general its mission as an operator order, and polls what the app knows until the scenario is
+ * platoon leader its mission as an operator order, and polls what the app knows until the scenario is
  * met or its deadline passes. The models are nondeterministic, so it reports a pass rate over
  * {@code -Dscenario.runs} runs (default 1) rather than failing on one bad run; it fails only if
  * none pass.
@@ -67,7 +67,7 @@ class ChainScenarioLiveIT {
      * @param kit     console commands per soldier, {@code %s} for its name, once all have joined
      * @param arena   console commands that furnish the arena once it's built
      * @param time    the time of day to set before the mission is given
-     * @param mission the operator's mission to the general
+     * @param mission the operator's mission to the platoon leader
      * @param judge   a fresh judge for each run, giving the verdict from what the app knows now
      * @param limit   wall-clock time before the run is judged failed
      */
@@ -288,7 +288,7 @@ class ChainScenarioLiveIT {
         // Held for the run: an app yielding to experiments - a garrison - stands still meanwhile.
         try (ExperimentLock lock = ExperimentLock.hold();
              ConfigurableApplicationContext app = SpringApplication.run(Application.class, "--minecraft.roster=" + ROSTER,
-                "--minecraft.general.mission=Hold your positions and wait for orders. Build nothing and gather nothing until then.")) {
+                "--minecraft.platoon-leader.mission=Hold your positions and wait for orders. Build nothing and gather nothing until then.")) {
             Harness harness = new Harness(app.getBean(SoldierRunner.class), app.getBean(ChainOfCommand.class), app.getBean(Roster.class));
             List<String> soldiers = harness.roster().squads().stream().flatMap(squad -> squad.soldiers().stream()).toList();
             awaitUntil(Duration.ofMinutes(2), "every soldier connected", () -> harness.runner.connected().containsAll(soldiers));
@@ -314,7 +314,7 @@ class ChainScenarioLiveIT {
             console("time set " + scenario.time());
             awaitUntil(Duration.ofSeconds(30), "the new time of day", () -> harness.chain.time()
                     .filter(t -> Math.abs(t.ticks() - scenario.time()) < 400).isPresent());
-            // The kit goes out just before the mission: early enough that the general's first look
+            // The kit goes out just before the mission: early enough that the platoon leader's first look
             // at the mission sees it, late enough that orders under the harness's holding mission
             // don't spend it.
             for (String name : soldiers) {

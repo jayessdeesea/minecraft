@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 /**
  * How each kind of command went in the field, for the dawn review (TC 25-20, sustain and improve;
  * backlog/command-scorecard.md). Each soldier is sampled once a second: the task its squad holds
- * (the general's command) and the order it carries (its own), with what it reports. A task's
+ * (the platoon leader's command) and the order it carries (its own), with what it reports. A task's
  * share of soldier-time spent unable (CANTCO) or standing about is what a command that doesn't
  * work looks like - live, a wall left with 39 open cells while its masons stood holding blocks.
  * Pure: samples in, the review out, and the tally starts again.

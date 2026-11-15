@@ -1,7 +1,7 @@
 package io.github.jayessdeesea.minecraft.command.ai;
 
 import io.github.jayessdeesea.minecraft.command.Foothold;
-import io.github.jayessdeesea.minecraft.command.General;
+import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Logstat;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.PatrolBase;
@@ -32,35 +32,35 @@ import java.util.OptionalInt;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
- * The {@link General}: same {@link #buildContext} (pure) -&gt; {@link #callModel} (impure) -&gt;
+ * The {@link PlatoonLeader}: same {@link #buildContext} (pure) -&gt; {@link #callModel} (impure) -&gt;
  * {@link #toObjectives} (pure validation) split as {@link SpringAiSquadLeader}. Its own orders come
  * from the operator - the one piece of intent that originates outside the chain of command:
- * {@code minecraft.general.mission} at start, replaced by {@link #receiveMission} during a run.
+ * {@code minecraft.platoon-leader.mission} at start, replaced by {@link #receiveMission} during a run.
  *
- * <p>A {@code @Component}: exactly one general exists (AGENTS.md's Objective section).
+ * <p>A {@code @Component}: exactly one platoon leader exists (AGENTS.md's Objective section).
  */
 @Component
-public final class SpringAiGeneral implements General {
+public final class SpringAiPlatoonLeader implements PlatoonLeader {
 
-    private static final Logger LOG = LogManager.getLogger(SpringAiGeneral.class);
+    private static final Logger LOG = LogManager.getLogger(SpringAiPlatoonLeader.class);
 
     private final ChatClient chatClient;
-    private final GeneralPrompts prompts;
-    private volatile String mission; // written by the operator's thread, read by the general's
+    private final PlatoonLeaderPrompts prompts;
+    private volatile String mission; // written by the operator's thread, read by the platoon leader's
     private final Optional<Position> supplyPoint;
-    private volatile Stockpile stockpile; // a soldier's thread writes, the general's reads
-    private volatile TimeOfDay time; // a connection's thread writes, the general's reads
-    /** The operator's last few remarks, oldest first - a connection's thread writes, the general's reads. */
+    private volatile Stockpile stockpile; // a soldier's thread writes, the platoon leader's reads
+    private volatile TimeOfDay time; // a connection's thread writes, the platoon leader's reads
+    /** The operator's last few remarks, oldest first - a connection's thread writes, the platoon leader's reads. */
     private final Deque<String> remarks = new ConcurrentLinkedDeque<>();
-    /** The camp's progress through the lodgment's phases - a soldier's thread writes, the general's reads. */
+    /** The camp's progress through the lodgment's phases - a soldier's thread writes, the platoon leader's reads. */
     private volatile Foothold foothold;
     /** Daylight left, in ticks, above which a squad still in its patrol base is told the night is over: two minutes. */
     static final long MORNING_AT_LEAST = 2400;
-    /** How many of the operator's remarks the general keeps in view. */
+    /** How many of the operator's remarks the platoon leader keeps in view. */
     static final int REMARKS_KEPT = 3;
 
-    public SpringAiGeneral(@Qualifier("generalChatClient") ChatClient chatClient, GeneralPrompts prompts,
-                           @Value("${minecraft.general.mission}") String mission,
+    public SpringAiPlatoonLeader(@Qualifier("platoonLeaderChatClient") ChatClient chatClient, PlatoonLeaderPrompts prompts,
+                           @Value("${minecraft.platoon-leader.mission}") String mission,
                            @Value("${minecraft.supply.point}") String supplyPoint) {
         this.chatClient = chatClient;
         this.prompts = prompts;
@@ -151,12 +151,12 @@ public final class SpringAiGeneral implements General {
         return minutes < 1 ? "under a minute" : minutes == 1 ? "about 1 minute" : "about " + minutes + " minutes";
     }
 
-    static PromptContext buildContext(GeneralPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
+    static PromptContext buildContext(PlatoonLeaderPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
                                       Optional<Stockpile> stockpile, List<SquadStatus> squadStatuses) {
         return buildContext(prompts, mission, time, supplyPoint, stockpile, List.of(), squadStatuses);
     }
 
-    static PromptContext buildContext(GeneralPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
+    static PromptContext buildContext(PlatoonLeaderPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
                                       Optional<Stockpile> stockpile, List<String> remarks,
                                       List<SquadStatus> squadStatuses) {
         return buildContext(prompts, mission, time, supplyPoint, stockpile, remarks, Optional.empty(), squadStatuses);
@@ -167,7 +167,7 @@ public final class SpringAiGeneral implements General {
      * lately ({@link #receiveRemark}) and the camp's progress, when there's any, and each squad's
      * section filled in from the squad template.
      */
-    static PromptContext buildContext(GeneralPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
+    static PromptContext buildContext(PlatoonLeaderPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
                                       Optional<Stockpile> stockpile, List<String> remarks,
                                       Optional<Foothold> foothold, List<SquadStatus> squadStatuses) {
         StringBuilder squads = new StringBuilder();
@@ -203,11 +203,11 @@ public final class SpringAiGeneral implements General {
         Map<String, Object> params = new HashMap<>();
         params.put("mission", mission);
         params.put("remarks", remarks.isEmpty() ? false : said.toString());
-        params.put("time", time.<Object>map(SpringAiGeneral::describe).orElse(false));
+        params.put("time", time.<Object>map(SpringAiPlatoonLeader::describe).orElse(false));
         params.put("supplyPoint", supplyPoint.<Object>map(SpringAiSquadLeader::describe).orElse(false));
         params.put("stockpile", stockpile.map(s -> "Last seen holding " + s.logs() + " logs and " + s.stone() + " cobblestone.")
                 .orElse("Nobody has looked inside yet."));
-        params.put("foothold", foothold.<Object>map(SpringAiGeneral::describe).orElse(false));
+        params.put("foothold", foothold.<Object>map(SpringAiPlatoonLeader::describe).orElse(false));
         params.put("squads", squads.toString());
         return new PromptContext(prompts.user(), params);
     }
@@ -354,32 +354,32 @@ public final class SpringAiGeneral implements General {
         return line.toString();
     }
 
-    GeneralReply callModel(PromptContext context) {
-        LOG.debug("General prompt:\n{}", context.prompt());
-        GeneralReply reply = chatClient.prompt()
+    PlatoonLeaderReply callModel(PromptContext context) {
+        LOG.debug("PL prompt:\n{}", context.prompt());
+        PlatoonLeaderReply reply = chatClient.prompt()
                 .templateRenderer(PromptTemplate.RENDERER)
                 .system(prompts.system())
                 .user(user -> user.text(context.template()).params(context.params()))
                 .call()
-                .entity(GeneralReply.class, spec -> spec.useProviderStructuredOutput().validateSchema());
-        LOG.debug("General reply: {}", reply);
+                .entity(PlatoonLeaderReply.class, spec -> spec.useProviderStructuredOutput().validateSchema());
+        LOG.debug("PL reply: {}", reply);
         return reply;
     }
 
     /** One objective per listed squad, in the same order - anything else is a violated contract. */
-    static List<Objective> toObjectives(GeneralReply reply, List<SquadStatus> squadStatuses) {
+    static List<Objective> toObjectives(PlatoonLeaderReply reply, List<SquadStatus> squadStatuses) {
         if (reply == null || reply.objectives() == null) {
-            throw new IllegalStateException("general model returned no objectives");
+            throw new IllegalStateException("platoon leader model returned no objectives");
         }
-        Map<String, GeneralReply.ObjectiveReply> bySquad = new HashMap<>();
-        for (GeneralReply.ObjectiveReply objective : reply.objectives()) {
+        Map<String, PlatoonLeaderReply.ObjectiveReply> bySquad = new HashMap<>();
+        for (PlatoonLeaderReply.ObjectiveReply objective : reply.objectives()) {
             if (bySquad.put(objective.squad(), objective) != null) {
                 throw new IllegalStateException("two objectives for squad " + objective.squad() + ": " + reply);
             }
         }
         List<Objective> objectives = new ArrayList<>(squadStatuses.size());
         for (SquadStatus squad : squadStatuses) {
-            GeneralReply.ObjectiveReply objective = bySquad.get(squad.squadName());
+            PlatoonLeaderReply.ObjectiveReply objective = bySquad.get(squad.squadName());
             if (objective == null) {
                 throw new IllegalStateException("no objective for squad " + squad.squadName() + ": " + reply);
             }
@@ -392,7 +392,7 @@ public final class SpringAiGeneral implements General {
                 if (objective.reason() == null || objective.reason().isBlank()) {
                     throw new IllegalStateException("changed squad " + squad.squadName() + "'s objective without a reason: " + reply);
                 }
-                LOG.info("[General -> {}] changing the objective: {}", squad.squadName(), objective.reason());
+                LOG.info("[PL -> {}] changing the objective: {}", squad.squadName(), objective.reason());
             }
             if (!Double.isFinite(objective.x()) || !Double.isFinite(objective.y()) || !Double.isFinite(objective.z())
                     || objective.y() < -64 || objective.y() > 320) {

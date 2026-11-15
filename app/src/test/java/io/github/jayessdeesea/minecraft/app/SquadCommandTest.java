@@ -33,7 +33,7 @@ class SquadCommandTest {
     @Test
     void aContactIsReportedUpOnceWhenItStartsNotEverySitrepWhileItLasts() {
         assertFalse(squad.newContact(soldiers(new Report.Moving())));
-        assertTrue(squad.newContact(soldiers(new Report.InContact(2))), "contact: the general hears of it now");
+        assertTrue(squad.newContact(soldiers(new Report.InContact(2))), "contact: the platoon leader hears of it now");
         assertFalse(squad.newContact(soldiers(new Report.InContact(1))), "the same fight, still going");
         assertFalse(squad.newContact(soldiers(new Report.InPosition())));
         assertTrue(squad.newContact(soldiers(new Report.InContact(1))), "a new contact after the last ended");

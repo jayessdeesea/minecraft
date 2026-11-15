@@ -11,7 +11,7 @@ command or two, reading the log. Three offline suites exist:
 - `SoldierScenarioTest`: terrain families, seeded.
 - `CombatScenarioTest`: simulated zombie, skeleton, creeper, and a pack.
 - `SquadLeaderScenarioIT`: the real squad leader model against those scenarios, as a pass rate.
-- `GeneralScenarioIT`: the real general model on fixed policy situations, as a pass rate.
+- `PlatoonLeaderScenarioIT`: the real general model on fixed policy situations, as a pass rate.
 
 Nothing covers variation in biome, time of day, difficulty, squad size or number of squads.
 

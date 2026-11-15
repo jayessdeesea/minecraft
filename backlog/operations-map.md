@@ -44,7 +44,7 @@ remembers it; it's written down, and the commander reads it before deciding.
 ## Done when
 - The general's prompt carries the nearest of each station and stock with its place, and each
   squad's progress and intent line.
-- A `GeneralScenarioIT` situation where the right answer depends on a remembered station (send a
+- A `PlatoonLeaderScenarioIT` situation where the right answer depends on a remembered station (send a
   squad with raw iron to the furnace by the mine) passes 5 of 5.
 
 ## Notes

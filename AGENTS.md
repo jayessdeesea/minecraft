@@ -9,7 +9,7 @@ A Minecraft Java Edition client built from scratch - protocol implemented oursel
 client/server libraries - that hosts a fleet of bots that works (operator, 2026-11-14): a force
 that sustains itself and carries out the operator's missions.
 
-- **General:** one instance, a model. Turns the operator's missions into objectives and intent,
+- **Platoon leader:** one instance, a model. Turns the operator's missions into objectives and intent,
   chooses among missions already costed, and sets priorities. The one place judgement is needed.
 - **Squad leader:** one per squad. A lighter model today, being replaced by deterministic task
   organisation (backlog/fleet-command.md). Not a Minecraft entity or connection: a role only.
@@ -55,7 +55,7 @@ Each points to its home, which has the reasons.
 | [docs/conventions.md](docs/conventions.md) | Before changing structure or docs: the legibility tenets, failing loud, docs and backlog rules, working without guidance. |
 | [docs/architecture.md](docs/architecture.md) | Before changing how an echelon decides or acts, or where code lives: timescales, behaviour modelling, modules, the pipeline's rule, and the squad simulation that tests a change with no server. |
 | [docs/stack.md](docs/stack.md) | Before touching dependencies, the protocol pin or the model providers. |
-| [docs/echelons/](docs/echelons/README.md) | What the general, squad leader and soldier can each do, are told and report. Its [tenets](docs/echelons/tenets.md) after every live run, and before changing what an echelon owns. |
+| [docs/echelons/](docs/echelons/README.md) | What the platoon leader, squad leader and soldier can each do, are told and report. Its [tenets](docs/echelons/tenets.md) after every live run, and before changing what an echelon owns. |
 | [docs/prompting.md](docs/prompting.md) | Before changing a prompt or what goes into one. |
 | [docs/military-doctrine.md](docs/military-doctrine.md) | The doctrine each behaviour emulates, with manual citations and how it maps onto code. |
 | [docs/protocol-spec.md](docs/protocol-spec.md) | Wire protocol: packets, states, compression, encryption. |

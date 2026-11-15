@@ -1,6 +1,6 @@
 # Writing the echelons' prompts
 
-The general's and the squad leader's prompts, and what's been measured about writing them. Their
+The platoon leader's and the squad leader's prompts, and what's been measured about writing them. Their
 place in each decision (`buildContext` -> `callModel` -> validate) is in
 [architecture.md](architecture.md#behavior-modeling-functional-core-imperative-shell).
 
@@ -16,9 +16,9 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   the model a grid to decode. Measured: no local model that fits on a 16 GB GPU read reachability
   off the terrain table, and with the lookup done for it `qwen3:14b` chose correctly.
 - **When an echelon decides wrongly, read its prompt before blaming the model.** Every bad
-  hold-or-leave call the local general made traced to a line that misled it (a built base reported
+  hold-or-leave call the local platoon leader made traced to a line that misled it (a built base reported
   as a shortage, a soldier's failed sword reported as the squad's CANTCO), and with those fixed it
-  passed every `GeneralScenarioIT` situation. Turn each live miss into a situation there first.
+  passed every `PlatoonLeaderScenarioIT` situation. Turn each live miss into a situation there first.
 - **A coordinate written out is a coordinate the model copies.** Give positions it shouldn't reuse
   (an old order's, a resource's) relative to the squad, not as a y.
 - **A far objective is not an unreachable one.** Told its objective was "outside the surveyed
@@ -31,7 +31,7 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   for an objective beyond the survey, only that instruction.
 - **Worked examples are copied the same way**, their coordinates and their choices: one example of
   a sealed squad sent to SECURE pulled every sealed squad out.
-- **Put a rule in the paragraph of the task it sets**, not in a general section after it.
+- **Put a rule in the paragraph of the task it sets**, not in a platoon leader section after it.
 - **Show the state, don't add a rule about it.** Shown a stranded soldier's CANTCO, the squad
   leader reported the mission CANTCO (6 of 14). A rule that he's the recovery drill's made it
   worse (3 of 14): the model wrote the rule's own words into its CANTCO. Shown him as
@@ -42,13 +42,13 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   and the mission left with nobody (`SquadLeaderScenarioIT`'s `alldetached`), `qwen3:14b` put none
   back with the squad: 0 of 7 shown the state ("every soldier has a role of its own"), and 0 of 7
   with the role paragraph saying to put one back - which also cost the miner situation 3 of 7. The
-  situation stays in the evaluation as the open miss. The general won't make the same call one
-  echelon up: in `GeneralScenarioIT`'s `wall-open-alpha-detached`, with the wall open and every
+  situation stays in the evaluation as the open miss. The platoon leader won't make the same call one
+  echelon up: in `PlatoonLeaderScenarioIT`'s `wall-open-alpha-detached`, with the wall open and every
   soldier of Alpha in a role, it gave the wall to Bravo 3 of 5 shown nothing, 3 of 10 shown a line
   saying so, and 0 of 3 shown Alpha's CANTCO - it takes the wall off Alpha and gives Bravo none.
 - **Food beside the wall costs the morning.** With food met but standing in phase 2 beside the lit
   ground and the wall, `morning-wall-open` - the wall open just after dawn - passed 5 of 20: the
-  general sends the squads to a patrol base in the morning. Calling phase 2 "first needs" made no
+  platoon leader sends the squads to a patrol base in the morning. Calling phase 2 "first needs" made no
   difference (4 of 10). With food in the buildup, and in phase 2 only when survival is at stake,
   it passes 8 of 10, and `starving-airhead` 10 of 10.
 - **The squad leader's miner situation moves with any edit to its paragraphs of standing kit.**

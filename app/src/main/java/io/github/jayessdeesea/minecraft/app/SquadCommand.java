@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * One squad's half of {@link ChainOfCommand}: its squad leader, its own decision thread, the
  * objective and order it's working to, and its escort if the operator attached it to a player.
- * {@code ChainOfCommand} decides when the general thinks and hands objectives down; this decides
+ * {@code ChainOfCommand} decides when the platoon leader thinks and hands objectives down; this decides
  * when its squad leader thinks.
  */
 final class SquadCommand {
@@ -62,7 +62,7 @@ final class SquadCommand {
     private volatile Set<String> cantcosAnswered = Set.of();
     /** The soldiers in contact when the squad leader last decided - a new one is a contact report. */
     private volatile Set<String> contactsAnswered = Set.of();
-    /** Whether any soldier was in contact at the last SITREP the general's trigger looked at. */
+    /** Whether any soldier was in contact at the last SITREP the platoon leader's trigger looked at. */
     private volatile boolean contactReported;
     /** The player this squad is escorting, or null - set by the operator's thread. */
     private volatile String escort;
@@ -84,7 +84,7 @@ final class SquadCommand {
         squadLeader.receivePlans(plans, workOrders);
     }
 
-    /** Each soldier's standing role other than rifleman, as its plan last stood: for the general's picture. */
+    /** Each soldier's standing role other than rifleman, as its plan last stood: for the platoon leader's picture. */
     Map<String, Role> roles() {
         Map<String, Role> roles = new HashMap<>();
         plans.forEach((name, plan) -> {
@@ -95,7 +95,7 @@ final class SquadCommand {
         return roles;
     }
 
-    /** The squad's plans, as the squad loop last gave them - squad loop writes, the general's decision reads. */
+    /** The squad's plans, as the squad loop last gave them - squad loop writes, the platoon leader's decision reads. */
     private volatile Map<String, Plan> plans = Map.of();
 
     private final ModelCalls modelCalls;
@@ -142,7 +142,7 @@ final class SquadCommand {
                 && roles.stream().allMatch(r -> r != Role.RIFLEMAN && !r.task().equals(Optional.of(task)));
     }
 
-    /** The squad's CANTCO when nobody is free for its task: who has which job, so the general can send another squad. */
+    /** The squad's CANTCO when nobody is free for its task: who has which job, so the platoon leader can send another squad. */
     static Report noneFree(Map<String, Role> roles, Objective objective) {
         StringBuilder jobs = new StringBuilder();
         new java.util.TreeMap<>(roles).forEach((name, role) -> jobs.append(jobs.isEmpty() ? "" : ", ")
@@ -158,7 +158,7 @@ final class SquadCommand {
         return Optional.ofNullable(order);
     }
 
-    /** The general's objective for the squad, once it has one. */
+    /** The platoon leader's objective for the squad, once it has one. */
     Optional<Objective> objective() {
         return Optional.ofNullable(objective);
     }
@@ -231,7 +231,7 @@ final class SquadCommand {
         principalOutOfSight = false;
     }
 
-    /** True the first time the squad leader's own report turns to CANTCO - the general's early trigger. */
+    /** True the first time the squad leader's own report turns to CANTCO - the platoon leader's early trigger. */
     boolean newCantco() {
         Report report = report();
         boolean fresh = report instanceof Report.Cantco && !(reportAnswered instanceof Report.Cantco);
@@ -240,7 +240,7 @@ final class SquadCommand {
     }
 
     /**
-     * True the first time a SITREP shows the squad in contact after one that didn't - the general's
+     * True the first time a SITREP shows the squad in contact after one that didn't - the platoon leader's
      * early trigger, as a contact report goes up the chain (docs/military-doctrine.md § 8).
      */
     boolean newContact(List<SoldierStatus> squad) {
@@ -349,8 +349,8 @@ final class SquadCommand {
                     radio.accept("[" + name + " -> squad] FRAGO: " + decided.formation() + " to " + ChainOfCommand.at(decided.objective())
                             + ", " + decided.risk() + " risk" + soldierRisk(decided) + ". Intent: " + decided.intent());
                     if (squadLeader.report() instanceof Report.Cantco cantco) {
-                        LOG.warn("[{} -> General] CANTCO: {}", name, cantco.reason());
-                        radio.accept("[" + name + " -> General] CANTCO: " + cantco.reason());
+                        LOG.warn("[{} -> PL] CANTCO: {}", name, cantco.reason());
+                        radio.accept("[" + name + " -> PL] CANTCO: " + cantco.reason());
                     }
                     order = decided;
                     lastFragoMillis = clockwork.millis();

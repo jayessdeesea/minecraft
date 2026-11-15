@@ -10,9 +10,9 @@ import java.util.Optional;
 
 /**
  * How a squad's task stands, measured rather than claimed (docs/military-doctrine.md § 4): under
- * way with what's left, done, or stalled with why. It's the squad's answer to the general's task -
+ * way with what's left, done, or stalled with why. It's the squad's answer to the platoon leader's task -
  * without it a finished task and a blocked one both read as an order to keep, and live, a squad
- * stood by a finished mine for an hour while the general kept MINE.
+ * stood by a finished mine for an hour while the platoon leader kept MINE.
  */
 public record Progress(State state, String detail) {
 

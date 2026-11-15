@@ -13,7 +13,7 @@ facts drive the entire control-loop design:
 - **Squad leaders invoke the LLM periodically** (interval TBD — start conservative, e.g. every
   few seconds or triggered by a notable squad-level event) to (re)issue orders to their soldiers.
   Soldiers keep executing the last order between invocations.
-- **The general invokes the LLM even less frequently**, issuing higher-level objectives down to
+- **The platoon leader invokes the LLM even less frequently**, issuing higher-level objectives down to
   squad leaders.
 
 This is deliberate: intelligence is stratified by decision timescale as much as by rank. Don't
@@ -35,7 +35,7 @@ in as an argument, never held as ambient/global state. This is deliberate, not i
   network at all — a deliberate contrast with `StatusPingLiveIT`/`JoinObservationLiveIT`, which
   stay necessary for exercising the actual wire protocol, but shouldn't be the only way to verify
   decision logic.
-- **`SquadLeader`/`General` follow the identical shape one level up** (`SpringAiSquadLeader`/
+- **`SquadLeader`/`PlatoonLeader` follow the identical shape one level up** (`SpringAiSquadLeader`/
   `SpringAiGeneral` in `command-ai`), with one real difference from `Soldier`: an LLM call is
   inherently non-deterministic, so that decision core can't be fully pure. Each `decide(...)`
   splits into three pieces so only the middle one is impure: `buildContext(...) -> PromptContext`
@@ -117,9 +117,9 @@ modules:
   see below).
 - **`command`** — the chain-of-command *interfaces*, deliberately framework-free (no Spring, no
   Netty). This is the "interface package" both `command-ai` (an implementation of
-  `General`/`SquadLeader`) and `bot` (a consumer of those interfaces, and the implementation of
+  `PlatoonLeader`/`SquadLeader`) and `bot` (a consumer of those interfaces, and the implementation of
   `Soldier`) depend on, so that neither has to know about the other.
-- **`command-ai`** — Spring AI-backed implementations of `General`/`SquadLeader` from `command`
+- **`command-ai`** — Spring AI-backed implementations of `PlatoonLeader`/`SquadLeader` from `command`
   (`SpringAiGeneral`/`SpringAiSquadLeader`). Depends on `command`, not the other way around.
 - **`bot`** — the deterministic per-tick soldier runtime. Depends on `protocol` (to actually
   connect and act) and `command` (interfaces only) — never on `command-ai`. A soldier must not
@@ -127,7 +127,7 @@ modules:
 - **`app`** — the Spring Boot composition root: `main()`, DI wiring of concrete beans from every
   other module, and the ArchUnit tests that enforce the boundaries above.
 
-**This is a first cut, not a commitment** — the general form of this test is stated once, in
+**This is a first cut, not a commitment** — the platoon leader form of this test is stated once, in
 [conventions.md](conventions.md#how-this-project-stays-legible-as-it-grows) (tenet 3); here's what it looks like applied to module
 granularity specifically. Per-module granularity was chosen deliberately small: package-level
 interface/impl separation (`command` vs `command.ai`) gives most of the decoupling benefit already,
@@ -188,7 +188,7 @@ command, drills and routines, in seconds:
   vanilla server does - blocks broken and placed, drops picked up, slots swapped, the time of day,
   ground tilled and sown, wheat that ripens a stage every 10 seconds (far faster than the server's
   random ticks) - and refusing what's out of reach. What it doesn't model throws, naming the action.
-- **The general and squad leader are scripted**: a `General` that hands out a fixed objective, and
+- **The platoon leader and squad leader are scripted**: a `PlatoonLeader` that hands out a fixed objective, and
   a `ChatModel` that answers a fixed `SquadOrder`.
 
 A live failure becomes a scenario there first: the world that caused it, and the outcome the

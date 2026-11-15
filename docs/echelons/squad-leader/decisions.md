@@ -5,7 +5,7 @@ call (`command.ai.SpringAiSquadLeader`, any Spring AI `ChatModel`) decides; dete
 then turn the decision into each soldier's order ([drills.md](drills.md)).
 
 ## What it's given
-- **The objective** from the general: a place, the mission and intent in words, and the `Task`.
+- **The objective** from the platoon leader: a place, the mission and intent in words, and the `Task`.
 - **Each soldier's status:** position, order, report, health, food and kit.
 - **The terrain round the objective, surveyed:** which ground is reachable from where the squad
   stands (`bot.nav.TerrainSurveyor`), so it never has to read a grid.
@@ -26,7 +26,7 @@ then turn the decision into each soldier's order ([drills.md](drills.md)).
   soldier's role and site; `detached`, a soldier sent off on a job of his own: `GO_TO`, `FETCH`, `LEVEL`, or
   `CANCEL` ([military-doctrine.md § 18](../../military-doctrine.md#18-task-organisation)).
 
-The work is its soldiers' roles': a rifleman's is the general's `Task`, any other role's that
+The work is its soldiers' roles': a rifleman's is the platoon leader's `Task`, any other role's that
 role's task at its site (docs/echelons/soldier/routines.md). It sees each soldier's plan at the end
 of his line.
 

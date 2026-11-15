@@ -113,14 +113,17 @@ and its decision (`[PL]`), so every model decision is accounted for.
 ## Done when
 - The README's "What it is" names the organisation above, as each part of it lands (its goal, a
   fleet of bots that works, is stated: README, AGENTS.md).
-- The echelons are named as above in code, docs and prompts (`General` → `PlatoonLeader`;
-  `docs/echelons/general` → `platoon-leader`; a `platoon-sergeant` echelon added), with
-  `GeneralScenarioIT` run before and after the rename: the name is in the system prompt, and a
-  prompt edit is measured, not assumed safe (docs/prompting.md).
+- The squad leader's prompt still says "the general" twice: left unedited, its model being replaced
+  (below), and an unmeasured prompt edit isn't safe (docs/prompting.md). The rest of the naming is
+  done: `PlatoonLeader`, `docs/echelons/platoon-leader`, `minecraft.platoon-leader.*`, `[PL]`, and a
+  `platoon-sergeant` echelon; `PlatoonLeaderScenarioIT` passed 120 of 135 before the rename and 122
+  after.
 - The PSG owns sustainment as one component: the supply gate and reorder points
   (maturity-model.md), producers detached within the PL's priorities, kit by role, cross-leveling,
   replacements - pulled together from where they live now. Built: `command.PlatoonSergeant`
-  rates Class I and the keep's Class IV, cross-levels, and decides the keep's wood party (docs/echelons/platoon-sergeant/decisions.md, which lists what's
+  rates Class I and the keep's Class IV, cross-levels, and decides the keep's wood party The equipment
+  ladder and the ore pool read a soldier's inventory (`bot`), and move with kit by role
+  (maturity-model.md); replacements after deaths aren't built. (docs/echelons/platoon-sergeant/decisions.md, which lists what's
   still elsewhere).
 - The squad leader's model is replaced by a deterministic allocator; `SquadLeaderScenarioIT`'s
   situations become its tests, and each one it can't pass is an escalation to the PL instead.

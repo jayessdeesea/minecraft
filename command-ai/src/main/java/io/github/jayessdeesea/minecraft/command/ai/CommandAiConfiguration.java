@@ -13,10 +13,10 @@ import java.util.Map;
 import java.util.TreeSet;
 
 /**
- * One {@link ChatClient} per echelon, each on its own model provider, and each echelon's prompts: the general can think on a frontier model while the squad leaders run on a local
+ * One {@link ChatClient} per echelon, each on its own model provider, and each echelon's prompts: the platoon leader can think on a frontier model while the squad leaders run on a local
  * open-weight one - the tiering this project measures. Which provider each echelon uses, and
- * which files its prompts are, is configuration ({@code minecraft.general.chat-model},
- * {@code minecraft.general.system-prompt} and so on), never code, and has no default. A client
+ * which files its prompts are, is configuration ({@code minecraft.platoon-leader.chat-model},
+ * {@code minecraft.platoon-leader.system-prompt} and so on), never code, and has no default. A client
  * carries no default system prompt either: each call names its own. Every provider whose starter is on the classpath is auto-configured as a
  * {@code <provider>ChatModel} bean; each echelon picks one by name.
  *
@@ -35,9 +35,9 @@ public class CommandAiConfiguration {
     }
 
     @Bean
-    ChatClient generalChatClient(Map<String, ChatModel> models,
-                                 @Value("${minecraft.general.chat-model}") String provider) {
-        return ChatClient.builder(chatModel("general", provider, models)).build();
+    ChatClient platoonLeaderChatClient(Map<String, ChatModel> models,
+                                 @Value("${minecraft.platoon-leader.chat-model}") String provider) {
+        return ChatClient.builder(chatModel("platoon-leader", provider, models)).build();
     }
 
     @Bean
@@ -47,10 +47,10 @@ public class CommandAiConfiguration {
     }
 
     @Bean
-    GeneralPrompts generalPrompts(@Value("${minecraft.general.system-prompt}") Resource system,
-                                  @Value("${minecraft.general.user-prompt}") Resource user,
-                                  @Value("${minecraft.general.squad-prompt}") Resource squad) {
-        return GeneralPrompts.read(system, user, squad);
+    PlatoonLeaderPrompts platoonLeaderPrompts(@Value("${minecraft.platoon-leader.system-prompt}") Resource system,
+                                  @Value("${minecraft.platoon-leader.user-prompt}") Resource user,
+                                  @Value("${minecraft.platoon-leader.squad-prompt}") Resource squad) {
+        return PlatoonLeaderPrompts.read(system, user, squad);
     }
 
     /**

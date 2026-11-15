@@ -1,14 +1,14 @@
-# General: the operator's standing rules
+# Platoon leader: the operator's standing rules
 
-Rules the operator sets in configuration, applied to the general's objectives after it decides
-(`app.ChainOfCommand.sheltered`). Every override is logged as a WARN beside what the general had
+Rules the operator sets in configuration, applied to the platoon leader's objectives after it decides
+(`app.ChainOfCommand.sheltered`). Every override is logged as a WARN beside what the platoon leader had
 ordered.
 
-## Shelter at night (`minecraft.general.shelter-at-night`)
+## Shelter at night (`minecraft.platoon-leader.shelter-at-night`)
 From nightfall until dawn - a hut goes up in a minute or two, faster than the night's first
-monsters spawn and walk in, so the day is worked to its end. The general is still asked 90 seconds
+monsters spawn and walk in, so the day is worked to its end. The platoon leader is still asked 90 seconds
 before dark, to plan the night:
-- **Every squad is on the night shift** (operator, 2026-11-13): whatever the general orders, a
+- **Every squad is on the night shift** (operator, 2026-11-13): whatever the platoon leader orders, a
   patrol base included, it's sent down the mine, every squad by the one stairway. Under the keep
   rule it's the keep's own mine, off its north-west corner (`ChainOfCommand.KEEP_MINE`): from the
   camp's, the climb out and the walk were two-fifths of the day. Otherwise the camp's: 4 blocks
@@ -26,13 +26,13 @@ before dark, to plan the night:
   soldier with any other role, and no order of its own, is in its squad's main body by night, and
   shelters with it (`ChainOfCommand.sheltering`).
 
-## The keep by day (`minecraft.general.keep-by-day`)
+## The keep by day (`minecraft.platoon-leader.keep-by-day`)
 By day, every squad builds the main base's keep (task `KEEP`, [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)),
-whatever the general orders; a squad already on it holds it - but for the general's answer to a
+whatever the platoon leader orders; a squad already on it holds it - but for the platoon leader's answer to a
 request the squad raised, which stands: `WOOD` to its Class IV RED, `FARM` to its Class I RED
 (a request outranks the standing rule, or it's never answered). The night rule still comes first,
 but for the night shift's last 30 seconds, when the squads climb out to it. A squad's miner, with no
 order of its own, builds the keep with it by day: the whole squad mines by night.
 
 ## The camp (`minecraft.camp`)
-The x,z the foothold's standards are measured round (docs/echelons/general/decisions.md).
+The x,z the foothold's standards are measured round (docs/echelons/platoon-leader/decisions.md).

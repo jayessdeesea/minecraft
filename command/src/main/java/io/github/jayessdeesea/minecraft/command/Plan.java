@@ -108,7 +108,7 @@ public record Plan(Role role, Optional<Position> site, List<Directive> directive
     /**
      * The objective a detachment works to under this plan, with {@code intent} its squad leader's:
      * its directive's point, or its role's task at its site. Empty for a rifleman with nothing
-     * directed, who has the general's.
+     * directed, who has the platoon leader's.
      */
     public Optional<Objective> objective(String intent) {
         Optional<Directive> directive = current();

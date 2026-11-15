@@ -4,8 +4,8 @@ import java.util.Optional;
 
 /**
  * A soldier's standing job, held until its squad leader changes it: one at a time. A rifleman goes
- * with its squad - the formation, and the general's task. Any other role works its own site as
- * the squad's detachment for that role, whatever the general's task (docs/military-doctrine.md
+ * with its squad - the formation, and the platoon leader's task. Any other role works its own site as
+ * the squad's detachment for that role, whatever the platoon leader's task (docs/military-doctrine.md
  * § 18): the miner cuts the mine at its site, the farmer keeps the farm there.
  *
  * <p>A role is the work, not survival: a soldier in any role eats, fights back and gets clear of

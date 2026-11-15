@@ -18,10 +18,10 @@ import java.util.stream.Collectors;
  * Which chat lines are orders from a human operator - from a player named in
  * {@code minecraft.operators}:
  * <ul>
- *   <li>{@code !mission <text>} - a new mission for the general (and the end of any escort);</li>
+ *   <li>{@code !mission <text>} - a new mission for the platoon leader (and the end of any escort);</li>
  *   <li>{@code !escort} - the squad escorts the operator; {@code !escort <player>} - that player.</li>
  * </ul>
- * Anything else an operator says is a remark for the general, but a word starting with {@code !}
+ * Anything else an operator says is a remark for the platoon leader, but a word starting with {@code !}
  * that isn't one of these is an order not understood - answered SAY AGAIN on the radio, never
  * dropped. Everything else in chat - the squad's own radio net, other players talking - is
  * ignored; an order from anyone not on the list is logged and ignored.
@@ -49,7 +49,7 @@ public class OperatorOrders {
         record Escort(String operator, String principal) implements Order {
         }
 
-        /** Anything else an operator says: not an order, but worth the general's hearing. */
+        /** Anything else an operator says: not an order, but worth the platoon leader's hearing. */
         record Remark(String operator, String remark) implements Order {
         }
 

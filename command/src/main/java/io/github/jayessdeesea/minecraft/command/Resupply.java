@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Resupply at the supply point (docs/military-doctrine.md §4): when the general has sent the squad
+ * Resupply at the supply point (docs/military-doctrine.md §4): when the platoon leader has sent the squad
  * there - its objective within {@link #SUPPLY_RADIUS} of the point - each soldier short of kit goes
  * to the chest and draws what it lacks, on its own initiative within that intent. The drawing
  * itself is the soldier's ({@code bot.supply}); this drill only gets it there.

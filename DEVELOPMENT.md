@@ -47,11 +47,11 @@ waiting for night. In Git Bash, prefix any command that passes container paths w
 `MSYS_NO_PATHCONV=1`, or the paths get rewritten to Windows ones.
 
 **Choosing the model.** Each echelon picks its own provider in `app/src/main/resources/application.yml`:
-`minecraft.general.chat-model` and `minecraft.squad-leader.chat-model`, each `ollama` or `anthropic`.
-Both default to `ollama` (`qwen3:14b`, thinking off), so nothing needs an API key. To put the general
+`minecraft.platoon-leader.chat-model` and `minecraft.squad-leader.chat-model`, each `ollama` or `anthropic`.
+Both default to `ollama` (`qwen3:14b`, thinking off), so nothing needs an API key. To put the platoon leader
 on a frontier model, as the project intends, set `ANTHROPIC_API_KEY` and run with
-`--minecraft.general.chat-model=anthropic`. The startup log says which each echelon got
-(`The general thinks with anthropic`); a name with no provider behind it stops startup.
+`--minecraft.platoon-leader.chat-model=anthropic`. The startup log says which each echelon got
+(`The platoon leader thinks with anthropic`); a name with no provider behind it stops startup.
 On a 16 GB GPU, `qwen3:14b` takes 1-2.5 s per decision; with thinking on it takes ~20 s. Larger local
 models (`gpt-oss:20b`, `qwen3:30b-a3b`) chose no better on the squad leader's prompt.
 
@@ -88,16 +88,16 @@ mvn -q install -DskipTests
 mvn -pl app test -Dtest=SquadLeaderScenarioIT -Dsurefire.failIfNoSpecifiedTests=false -Deval.seeds=5 [-Deval.model=...]
 ```
 
-**General evaluation.** `app`'s `GeneralScenarioIT` does the same for the general: fixed
+**Platoon leader evaluation.** `app`'s `PlatoonLeaderScenarioIT` does the same for the platoon leader: fixed
 situations, each asking one policy question (build before dark, hold a sealed base, leave it when
-the mission says so), at a few seconds a decision. Try a change to the general's prompt or context
+the mission says so), at a few seconds a decision. Try a change to the platoon leader's prompt or context
 here before spending a whole-chain run on it:
 
 ```bash
-mvn -pl app test -Dtest=GeneralScenarioIT -Dsurefire.failIfNoSpecifiedTests=false -Deval.runs=5 [-Deval.model=...]
+mvn -pl app test -Dtest=PlatoonLeaderScenarioIT -Dsurefire.failIfNoSpecifiedTests=false -Deval.runs=5 [-Deval.model=...]
 ```
 
-**Whole-chain scenarios.** `app`'s `ChainScenarioLiveIT` runs the real general, squad leaders and
+**Whole-chain scenarios.** `app`'s `ChainScenarioLiveIT` runs the real platoon leader, squad leaders and
 soldiers against the dev server on a named scenario, and prints a pass rate. Each run makes these
 changes to the dev world:
 - builds a stone arena in open air at x=500 z=500, far enough from spawn that nothing there is
@@ -125,9 +125,9 @@ sets armed, shielded squads against two skeletons in daylight (a few minutes), a
 `-Dscenario=climb-soil-terrace` and `climb-stone-terrace` set a 3-high terrace in their way, with no
 blocks to pillar with: they cut steps into it, by hand or with wooden pickaxes. Add
 `-Dlogging.level.io.github.jayessdeesea.minecraft.command.ai.SpringAiGeneral=DEBUG` to log every
-prompt the general sees and its reply.
+prompt the platoon leader sees and its reply.
 
-Add `-Dminecraft.general.chat-model=anthropic` (with `ANTHROPIC_API_KEY`) to run the general on a
+Add `-Dminecraft.platoon-leader.chat-model=anthropic` (with `ANTHROPIC_API_KEY`) to run the platoon leader on a
 frontier model.
 
 ## 3. Run the chain of command
@@ -140,25 +140,25 @@ java -jar app/target/app.jar
 
 This connects two squads (`app.Roster`, from `minecraft.roster`): Alpha (`Alice`, `Bob`, `Carol`,
 `Gus`) and Bravo (`Dana`, `Eli`, `Fran`, `Hal`), the first of each its point man, each under its own
-LLM squad leader, both under one LLM general (`ChainOfCommand`). The log reads as a radio net: `[General -> Alpha] OPORD`,
-`[Bravo -> squad] FRAGO`, `[Alpha -> General] CANTCO`, and each squad's SITREP every 5 seconds.
-Orders and CANTCOs also appear in game chat (section 4), spoken by Alice as the radio operator. Soldiers reconnect on their own if a connection dies. The general's mission
-starts as `minecraft.general.mission` in `application.yml`.
+LLM squad leader, both under one LLM platoon leader (`ChainOfCommand`). The log reads as a radio net: `[PL -> Alpha] OPORD`,
+`[Bravo -> squad] FRAGO`, `[Alpha -> PL] CANTCO`, and each squad's SITREP every 5 seconds.
+Orders and CANTCOs also appear in game chat (section 4), spoken by Alice as the radio operator. Soldiers reconnect on their own if a connection dies. The platoon leader's mission
+starts as `minecraft.platoon-leader.mission` in `application.yml`.
 
 **The models' queue.** Every decision sent to a model is timed (`app.ModelCalls`): `[Model]
-General: waited 0 ms, ran 5600 ms, 1 ahead of it when queued`. One that waited 5 seconds to start,
+Platoon leader: waited 0 ms, ran 5600 ms, 1 ahead of it when queued`. One that waited 5 seconds to start,
 took 20 seconds all told, or was queued behind three others logs as `[Model] ALARM`. With three
 or more in flight, a squad leader's routine look - nothing new to answer - is skipped that cycle
 (`routine decision shed`), so a contact or a CANTCO isn't queued behind it.
 
 **Giving orders from game chat.** A player named in `minecraft.operators` (comma-separated, empty
-by default) can replace the mission by typing `!mission <text>` in plain chat. The general answers
+by default) can replace the mission by typing `!mission <text>` in plain chat. The platoon leader answers
 WILCO on the net and re-plans at once. Anything else an operator says - "it's night", "skeletons on
-the ridge" - is a remark: the general answers ROGER, hears it at a decision brought forward, and
+the ridge" - is a remark: the platoon leader answers ROGER, hears it at a decision brought forward, and
 keeps the last three in view; the mission stays the mission. Commands from anyone else are logged
 and ignored, and their chat is just chat. Offline mode
 doesn't authenticate names, so the list guards against accidents, not impostors. Give missions in
-absolute coordinates ("hold x=-40 z=0"): the general re-reads the mission at every re-plan, so
+absolute coordinates ("hold x=-40 z=0"): the platoon leader re-reads the mission at every re-plan, so
 "40 blocks west of here" moves the objective another 40 blocks each time.
 
 `!escort` attaches Alpha to you as a protective detail, and `!escort <player>` to another
@@ -171,9 +171,9 @@ orders (`!fortify the base`) is answered SAY AGAIN, with the orders there are - 
 `!mission fortify the base` instead.
 
 Each order is followed down the chain and reported back on the net as it goes, under an id from
-its WILCO (`OP-3`): the general's decision and what each squad was given, each squad leader's
+its WILCO (`OP-3`): the platoon leader's decision and what each squad was given, each squad leader's
 FRAGO, and each squad's soldiers seen at the task - a squad's WILCO is them doing it, not just
-being told. A hop that takes too long - the general past 30 s, a squad leader past 45 s, the
+being told. A hop that takes too long - the platoon leader past 30 s, a squad leader past 45 s, the
 soldiers past 3 minutes - is an `ALARM` naming what they're doing instead. The log has the same
 lines under `[Trace]`.
 
@@ -187,11 +187,11 @@ use the arena. Start them there and give them a mission about it:
 ```bash
 docker compose exec minecraft console "spreadplayers 0 0 2 8 false @a[name=!YourName]"   # once they've joined
 java -jar app/target/app.jar --minecraft.operators=YourName --minecraft.yield-to-experiments=true \
-  --minecraft.general.shelter-at-night=true --minecraft.camp=0,0 \
-  "--minecraft.general.mission=Make camp around x=0 z=0 and stay within 48 blocks of it, and build it up into a lodgment. Each squad spends the night sealed inside a patrol base near there, until dawn."
+  --minecraft.platoon-leader.shelter-at-night=true --minecraft.camp=0,0 \
+  "--minecraft.platoon-leader.mission=Make camp around x=0 z=0 and stay within 48 blocks of it, and build it up into a lodgment. Each squad spends the night sealed inside a patrol base near there, until dawn."
 ```
 
-`minecraft.camp` has the general build the camp up phase by phase, each phase measured
+`minecraft.camp` has the platoon leader build the camp up phase by phase, each phase measured
 (docs/military-doctrine.md § 17), so the mission needn't list the work. What the garrison must
 remember across a restart - each camp wall's layout - is kept under `minecraft.state-dir`
 (`garrison-state/`, git-ignored).
@@ -224,7 +224,7 @@ mvn -pl app test -Dtest=WorldProbeLiveIT -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
 **Setting up a supply point.** Place a chest, stock it with weapons and armour, and start the app
-with `--minecraft.supply.point=x,y,z` (the chest's block). Soldiers draw from it when the general
+with `--minecraft.supply.point=x,y,z` (the chest's block). Soldiers draw from it when the platoon leader
 sends the squad there, or when they pass within reach. Stocking from the console, with a player
 nearby so the chunk is loaded:
 

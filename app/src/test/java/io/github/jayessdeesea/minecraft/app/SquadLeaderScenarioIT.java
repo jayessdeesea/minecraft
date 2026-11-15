@@ -79,7 +79,7 @@ class SquadLeaderScenarioIT {
      * the squad leader sees it once the drill has it: Recovering, at the rear.
      */
     /**
-     * The task organisation (docs/military-doctrine.md § 18): MINER, the general asks for one soldier
+     * The task organisation (docs/military-doctrine.md § 18): MINER, the platoon leader asks for one soldier
      * on a mine at a point - one role change, MINER, at that site; POST, for Bob posted as a lookout
      * at a point - his GO_TO there; KEPT, Carol already the squad's miner and nothing asked - her role
      * left as it is. In every other variant, no plan changes at all.
@@ -152,7 +152,7 @@ class SquadLeaderScenarioIT {
         boolean stranded = variant == Variant.STRANDED;
         // STRUGGLING as live (field54): one refusing a job it can't start, one starving at 1 health,
         // and the squad's mission still in reach - the squad leader called it CANTCO "but the squad
-        // can still proceed", and the general moved the squad on for it.
+        // can still proceed", and the platoon leader moved the squad on for it.
         boolean struggling = variant == Variant.STRUGGLING;
         Report settled = variant == Variant.RETASKED ? new Report.InPosition() : new Report.Idle();
         SyntheticWorld world = scenario.world();
@@ -204,8 +204,8 @@ class SquadLeaderScenarioIT {
         if (variant == Variant.KEPT) {
             leader.receivePlans(Map.of("Carol", carolMining), Map.of());
         }
-        // ALLDETACHED: every soldier a miner, and the general wants the squad moved: someone goes. Live,
-        // all four of Bravo's soldiers had roles, and the general's FORTIFY reached nobody all day. Open:
+        // ALLDETACHED: every soldier a miner, and the platoon leader wants the squad moved: someone goes. Live,
+        // all four of Bravo's soldiers had roles, and the platoon leader's FORTIFY reached nobody all day. Open:
         // 0 of 7 (docs/prompting.md).
         Map<String, Plan> allMining = new HashMap<>();
         squad.forEach(s -> allMining.put(s.name(), carolMining));

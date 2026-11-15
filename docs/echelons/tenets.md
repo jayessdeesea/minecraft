@@ -29,9 +29,9 @@ review). Most of the time nothing changes; the point is to look.
   queued.
 - **Never steers a soldier's feet.** Its orders are points, boxes, amounts and roles.
 
-## General
+## Platoon leader
 - **Owns where each squad works and why**: an objective per squad, with intent
-  ([general/decisions.md](general/decisions.md)).
+  ([platoon-leader/decisions.md](platoon-leader/decisions.md)).
 - **Measures, doesn't guess.** It decides on the camp's standards and the squads' reports, never
   on raw world data.
 - **Never names a soldier.** Who does the work is its squad leader's.
@@ -44,7 +44,7 @@ The operator's (2026-11-12). The force's materials are the force's, not a squad'
 - **Consumers draw what their mission needs.** Whoever's task needs a material - a mason's stone,
   an armourer's ingots, a hungry soldier's bread - takes it from the stockpile, whichever squad put
   it there: one squad's mining can armour the other.
-- **The general balances it, as a cross-squad matter.** It sees what the stockpile holds against
+- **The platoon leader balances it, as a cross-squad matter.** It sees what the stockpile holds against
   what the standards still need, and gives some squad the production a shortfall calls for -
   never a soldier's own errand to make up.
 - Built so far: logs, cobblestone, bread and raw ore. Ingots, and the mine worked for ore, are

@@ -13,7 +13,7 @@ import java.util.Optional;
 
 /**
  * One operator order followed down the chain of command until the soldiers are at it
- * (docs/military-doctrine.md § 3): received, then the general's orders to each squad, then each
+ * (docs/military-doctrine.md § 3): received, then the platoon leader's orders to each squad, then each
  * squad leader's FRAGO under them, then the squad's soldiers seen doing the task - the positive
  * acknowledgement that it arrived, not just that it was sent. Each hop is timed, and one that takes
  * too long raises an alarm, once. Pure: the clock is passed in, and what it has to say comes back
@@ -21,11 +21,11 @@ import java.util.Optional;
  */
 final class OrderTrace {
 
-    /** The general's decision on an operator's order: after this long, an alarm. */
+    /** The platoon leader's decision on an operator's order: after this long, an alarm. */
     static final long GENERAL_ALARM_MILLIS = 30_000;
-    /** A squad leader's FRAGO under the general's order. */
+    /** A squad leader's FRAGO under the platoon leader's order. */
     static final long FRAGO_ALARM_MILLIS = 45_000;
-    /** A squad's soldiers seen doing the task, from the general's order. */
+    /** A squad's soldiers seen doing the task, from the platoon leader's order. */
     static final long WORKING_ALARM_MILLIS = 180_000;
 
     /** One squad's part: what it was told (empty: it holds the order it had), and when each hop came. */
@@ -47,10 +47,10 @@ final class OrderTrace {
     final String operator;
     final String order;
     final long receivedAt;
-    /** The chain of command's mission version the order made: the general's decision under it is the one traced. */
+    /** The chain of command's mission version the order made: the platoon leader's decision under it is the one traced. */
     final int version;
     private long decidedAt = -1;
-    private boolean generalAlarmed;
+    private boolean platoonLeaderAlarmed;
     private final Map<String, Leg> legs = new LinkedHashMap<>();
     private boolean closed;
 
@@ -62,14 +62,14 @@ final class OrderTrace {
         this.version = version;
     }
 
-    /** An order that goes straight to a squad, no general between: an escort. */
+    /** An order that goes straight to a squad, no platoon leader between: an escort. */
     synchronized List<String> direct(String squad, Optional<Objective.Task> task, long now) {
         decidedAt = now;
         legs.put(squad, new Leg(task, now));
         return List.of(id + ": " + squad + " ordered directly");
     }
 
-    /** The general decided under this order: what each squad was given, empty where it holds what it had. */
+    /** The platoon leader decided under this order: what each squad was given, empty where it holds what it had. */
     synchronized List<String> decided(Map<String, Optional<Objective>> given, long now) {
         if (decidedAt >= 0 || closed) {
             return List.of();
@@ -80,7 +80,7 @@ final class OrderTrace {
             legs.put(squad, new Leg(objective.map(Objective::task), now));
             parts.add(squad + (objective.isPresent() ? " " + taskName(objective.get().task()) : " holds its order"));
         });
-        return List.of(id + ": the general decided in " + seconds(now - receivedAt) + " - " + String.join(", ", parts));
+        return List.of(id + ": the platoon leader decided in " + seconds(now - receivedAt) + " - " + String.join(", ", parts));
     }
 
     /**
@@ -93,9 +93,9 @@ final class OrderTrace {
             return lines;
         }
         if (decidedAt < 0) {
-            if (!generalAlarmed && now - receivedAt > GENERAL_ALARM_MILLIS) {
-                generalAlarmed = true;
-                lines.add("ALARM " + id + ": no decision from the general " + seconds(now - receivedAt) + " after the order");
+            if (!platoonLeaderAlarmed && now - receivedAt > GENERAL_ALARM_MILLIS) {
+                platoonLeaderAlarmed = true;
+                lines.add("ALARM " + id + ": no decision from the platoon leader " + seconds(now - receivedAt) + " after the order");
             }
             return lines;
         }

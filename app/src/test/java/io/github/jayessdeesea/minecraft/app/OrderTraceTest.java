@@ -26,12 +26,12 @@ class OrderTraceTest {
     }
 
     @Test
-    void anOrderIsFollowedFromTheGeneralToTheSoldiersAtIt() {
+    void anOrderIsFollowedFromThePlatoonLeaderToTheSoldiersAtIt() {
         OrderTrace trace = new OrderTrace("OP-1", "Jake", "!mission wall the camp", 0, 1);
         Map<String, Optional<Objective>> given = new LinkedHashMap<>();
         given.put("Alpha", Optional.of(WALL));
 
-        assertTrue(trace.decided(given, 6_000).getFirst().contains("the general decided in 6.0 s - Alpha FORTIFY"));
+        assertTrue(trace.decided(given, 6_000).getFirst().contains("the platoon leader decided in 6.0 s - Alpha FORTIFY"));
         assertEquals(List.of(), trace.sitrep("Alpha", -1, doing(new Report.Moving()), 8_000), "nothing new: no FRAGO, not at it yet");
         List<String> frago = trace.sitrep("Alpha", 9_000, doing(new Report.Moving()), 10_000);
         assertTrue(frago.getFirst().contains("FRAGO) 9.0 s"), frago.toString());
@@ -46,7 +46,7 @@ class OrderTraceTest {
         OrderTrace trace = new OrderTrace("OP-2", "Jake", "!mission wall the camp", 0, 1);
 
         assertTrue(trace.sitrep("Alpha", -1, doing(new Report.Moving()), OrderTrace.GENERAL_ALARM_MILLIS + 1).getFirst()
-                .startsWith("ALARM OP-2: no decision from the general"));
+                .startsWith("ALARM OP-2: no decision from the platoon leader"));
         assertEquals(List.of(), trace.sitrep("Alpha", -1, doing(new Report.Moving()), OrderTrace.GENERAL_ALARM_MILLIS + 2), "once");
 
         trace.decided(Map.of("Alpha", Optional.of(WALL)), 40_000);

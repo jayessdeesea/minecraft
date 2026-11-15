@@ -4,17 +4,17 @@
 
 A chain of command of AI agents, fighting and working in a Minecraft world:
 
-- **The General** is a frontier model. It holds the mission, reads what each squad reports, and gives
+- **The platoon leader** is a frontier model. It holds the mission, reads what each squad reports, and gives
   each squad an objective with its intent.
-- **Squad Leaders**, one per squad, are an open-weight model run locally. Each turns the general's
+- **Squad Leaders**, one per squad, are an open-weight model run locally. Each turns the platoon leader's
   objective into orders for its soldiers: where to go, in what formation, at what interval.
 - **Soldiers** are Minecraft player bots: deterministic Java that calls no model. Each runs every
   game tick (50 ms). It moves, fights, gathers, builds and crafts on its own initiative, within its
   last order.
 
-Two squads of four are in the field. Out of the box, both the general and the squad leaders run on
-the local model (Ollama), so the project runs without an API key. To put the general on a frontier
-model, set one key, `minecraft.general.chat-model: anthropic`
+Two squads of four are in the field. Out of the box, both the platoon leader and the squad leaders run on
+the local model (Ollama), so the project runs without an API key. To put the platoon leader on a frontier
+model, set one key, `minecraft.platoon-leader.chat-model: anthropic`
 ([DEVELOPMENT.md](DEVELOPMENT.md#1-start-the-dev-server-and-local-model)).
 
 ## Why it exists
@@ -36,8 +36,8 @@ Questions it can answer:
 - What does a commander have to be shown, computed, to choose well among missions?
 - Where does a force overextend, and what gate, pause and fallback keep it within its supply?
 
-Every order, acknowledgement and report is logged as a radio net (`[General -> Alpha] OPORD`,
-`[Bravo -> General] CANTCO`). The squad leader and the general each have a repeatable evaluation
+Every order, acknowledgement and report is logged as a radio net (`[PL -> Alpha] OPORD`,
+`[Bravo -> PL] CANTCO`). The squad leader and the platoon leader each have a repeatable evaluation
 of their decisions, and whole-chain scenarios run the full hierarchy against the dev server.
 
 ## How it's built
@@ -57,7 +57,7 @@ LLM agents. The doctrine, its manuals, and how each piece maps onto code:
 tick is 50 ms:
 - Soldiers never call a model.
 - Squad leaders think every few seconds.
-- The general thinks less often than that.
+- The platoon leader thinks less often than that.
 
 Why: [docs/architecture.md § Latency architecture](docs/architecture.md#latency-architecture--why-the-hierarchy-is-stratified-by-timescale-not-just-rank).
 

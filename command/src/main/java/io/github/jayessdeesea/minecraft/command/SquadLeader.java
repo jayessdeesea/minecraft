@@ -32,7 +32,7 @@ public interface SquadLeader {
 
     /**
      * The squad leader's own SITREP line upward - notably {@link Report.Cantco} when it judged the
-     * objective impossible (docs/military-doctrine.md §3), so the general can re-task the squad.
+     * objective impossible (docs/military-doctrine.md §3), so the platoon leader can re-task the squad.
      */
     Report report();
 

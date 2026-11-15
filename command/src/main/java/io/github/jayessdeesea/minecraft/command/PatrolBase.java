@@ -17,7 +17,7 @@ import java.util.stream.IntStream;
 /**
  * The hasty patrol base (docs/military-doctrine.md §14): a hut just big enough for the squad, walls
  * two high and a roof, built around its soldiers where they stand. Pure geometry, like
- * {@link Formations}: the general decides where; this decides which blocks.
+ * {@link Formations}: the platoon leader decides where; this decides which blocks.
  *
  * <p>Cells are block corners - integer coordinates. The roof covers the walls as well as the floor,
  * so every roof block has one to be placed against: wall tops first, then inward.

@@ -6,7 +6,7 @@ import java.util.OptionalInt;
 /**
  * Where a camp stands in building a lodgment, the way an airborne force builds one after the drop
  * (docs/military-doctrine.md §17): measured, not judged - each phase's standards checked against
- * the world, so the general works on the earliest phase not yet met instead of reading progress
+ * the world, so the platoon leader works on the earliest phase not yet met instead of reading progress
  * off a mission sentence.
  *
  * @param camp      the camp's ground
@@ -21,7 +21,7 @@ public record Foothold(Position camp, List<Standard> standards) {
      * @param name   what's measured: "the camp's ground lit"
      * @param met    whether it's met
      * @param status how it stands, in plain words: "18 cells still dark"
-     * @param task   the general's task that advances it: "SECURE"
+     * @param task   the platoon leader's task that advances it: "SECURE"
      */
     public record Standard(int phase, String name, boolean met, String status, String task) {
     }

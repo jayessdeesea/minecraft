@@ -13,7 +13,7 @@ import java.util.function.LongSupplier;
  * Every periodic task's faults, so none dies of one (docs/conventions.md, "No fallbacks"). A
  * scheduled task that throws is cancelled by its executor for good: live, the squad loop died at
  * midnight on one bad read, and for seven hours the soldiers worked their last orders with no squad
- * leader or general. So each tick runs guarded: an exception is logged with its stack trace the
+ * leader or platoon leader. So each tick runs guarded: an exception is logged with its stack trace the
  * first time, counted after that and summed up once a {@link #SUMMARY_MILLIS}, its recovery said,
  * and every fault is in the dawn review. The next tick starts again from the world and the chain
  * of command as they stand, so nothing half-done is carried over. An {@link Error} - the VM itself

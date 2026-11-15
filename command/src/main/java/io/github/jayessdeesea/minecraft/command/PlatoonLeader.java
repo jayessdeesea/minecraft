@@ -3,13 +3,13 @@ package io.github.jayessdeesea.minecraft.command;
 import java.util.List;
 
 /**
- * The chain-of-command view of the general: decide an {@link Objective} for each squad. Above it
+ * The chain-of-command view of the platoon leader: decide an {@link Objective} for each squad. Above it
  * is only the human operator, whose mission it carries out ({@link #receiveMission}). Like
  * {@link SquadLeader#decide}, this holds no squad state itself - the imperative shell passes
  * current {@link SquadStatus}es in and applies the returned {@link Objective}s back out to each
  * {@link SquadLeader}.
  */
-public interface General {
+public interface PlatoonLeader {
 
     /** A new mission from the operator, replacing the current one from the next decision on. */
     void receiveMission(String mission);

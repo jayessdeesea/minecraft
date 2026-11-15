@@ -156,7 +156,7 @@ import java.util.stream.Stream;
  * from the server's own {@code PlayerPosition} confirmation, and run each one's tick loop - plus one
  * squad loop that keeps every soldier's formation slot current ({@link Formations}).
  *
- * <p>The squad's {@link SquadOrder} comes from the {@link ChainOfCommand} (general and squad
+ * <p>The squad's {@link SquadOrder} comes from the {@link ChainOfCommand} (platoon leader and squad
  * leader, both LLM-backed). Every second the squad loop hands the squad's SITREPs up to it and
  * re-derives each soldier's slot from the standing order and where the point man actually is; every
  * few seconds it logs the squad's SITREPs.
@@ -562,7 +562,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // The cells SECURE lights, no others: one measure for the standard and the task that meets it.
         int dark = offTheWall(Lighting.darkCells(world, at, SECURE_RADIUS)).size();
         // Torches are made from logs: with none carried and no tree in sight, lighting waits on wood
-        // grown first - the lookup done for the general, which otherwise sends squads to SECURE with
+        // grown first - the lookup done for the platoon leader, which otherwise sends squads to SECURE with
         // nothing to make torches from.
         int logs = everyone.stream().mapToInt(s -> s.condition().flatMap(c -> c.kit()).map(Kit::logs).orElse(0)).sum();
         int torches = torchesCarried.values().stream().mapToInt(Integer::intValue).sum();
@@ -637,7 +637,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
         // Safety first: food is buildup, behind the wall and the weapons (the operator's). Unless
         // the force's survival is at stake - most of it hungry with nothing to eat, or one starving
-        // one hit from death - then food stands beside the wall, and the general does what it takes.
+        // one hit from death - then food stands beside the wall, and the platoon leader does what it takes.
         // Live, both squads walled the camp while all eight soldiers went hungry, health falling to 1.
         boolean starving = hungry * 2 > everyone.size()
                 || everyone.stream().anyMatch(CrossLevel::critical);
@@ -955,7 +955,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Objective> gathering = new ConcurrentHashMap<>();
     /** No hostile this close to a soldier, nor any squadmate in contact, before it stops to make a sword. */
     private static final double REARM_CLEAR_RADIUS = 16;
-    /** How far from the general's farm objective the plot's water may be, across and up or down. */
+    /** How far from the platoon leader's farm objective the plot's water may be, across and up or down. */
     private static final int FARM_SITE_RADIUS = 8;
     /** How far from its hut a soldier short of blocks digs dirt: clear of the walls and the ground under them. */
     private static final int SOIL_OFFSET = 6;
@@ -1093,7 +1093,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         chainOfCommand.onSitreps(present.stream().map(p -> {
             SquadState state = squadStates.get(p.squad());
             // A soldier the recovery drill has is shown to the squad leader as Recovering, at the rear:
-            // shown its CANTCO, the squad leader reported the mission one, and the general spent the
+            // shown its CANTCO, the squad leader reported the mission one, and the platoon leader spent the
             // squad's days moving it to "resolve movement issues".
             List<SoldierStatus> shown = state.recovery.asRecovering(p.statuses());
             // Surveyed from where the squad is: the soldier at its middle height, so one stranded up a
@@ -1383,7 +1383,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         level.y() - LEVEL_BELOW, level.minZ(), level.maxX(), level.y() - 1, level.maxZ()), except).size();
     }
 
-    /** The objective {@code unit} works to: a detachment's own, or its squad's from the general. */
+    /** The objective {@code unit} works to: a detachment's own, or its squad's from the platoon leader. */
     private Optional<Objective> objectiveOf(String unit) {
         return Plan.detachment(unit) ? Optional.ofNullable(detached.get(unit)) : chainOfCommand.objective(unit);
     }
@@ -1417,7 +1417,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     /**
-     * The squad's Class IV, construction materials, as a request to the general when its task wants
+     * The squad's Class IV, construction materials, as a request to the platoon leader when its task wants
      * logs it hasn't got: on the keep, {@link PlatoonSergeant#classFour} from the logs its soldiers carry, the
      * stockpile's, and whether the keep's chest stands. Said in the log when it starts and when it's met.
      */
@@ -2615,7 +2615,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /**
      * How the squad's task stands, from the world where the task leaves a mark - the wall's open
      * cells, the torches still to put down, the stairs cut - and from its soldiers' reports: the
-     * acknowledgement the general decides on. Empty with no task, or a patrol base, whose own status
+     * acknowledgement the platoon leader decides on. Empty with no task, or a patrol base, whose own status
      * line says how it stands.
      */
     private Optional<Progress> progress(String squad, SquadState state, List<SoldierStatus> statuses) {
@@ -2685,7 +2685,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /**
      * Whether to sit this cycle out because a live experiment holds the machine's models: every
-     * soldier told to stand still, and no SITREP sent - so neither the general nor a squad leader is
+     * soldier told to stand still, and no SITREP sent - so neither the platoon leader nor a squad leader is
      * asked anything. A lock left by a run that died is said loudly and not obeyed.
      */
     private boolean yieldingToAnExperiment() {
@@ -2723,7 +2723,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Long> farmSince = new ConcurrentHashMap<>();
     /** Looks (one a second) a block at the feet alone must last to be one the soldier stands in, not a step mid-jump. */
     static final int FEET_IN_BLOCK_LOOKS = 2;
-    /** How far over a squad's height the surface is looked for from, for the general's objectives. */
+    /** How far over a squad's height the surface is looked for from, for the platoon leader's objectives. */
     static final int SURFACE_ABOVE = 128;
     /** The flood fill for whether a soldier reporting no route is in a pocket: how far and how many steps. */
     static final int CUT_OFF_SPAN = 48, CUT_OFF_BUDGET = 20_000;
@@ -2878,7 +2878,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // outline; once all are in, they build its walls and roof around themselves.
         Optional<Objective> base = squadInContact
                 ? Optional.empty() : taskOf(squadName, Objective.Task.PatrolBase.class);
-        // A squad that has laid out its base stays on it: the general re-plans every few seconds and
+        // A squad that has laid out its base stays on it: the platoon leader re-plans every few seconds and
         // nudges the objective a block or two, and an outline that moves keeps the soldiers walking.
         Position site = base.map(o -> o.location()).orElse(null);
         // Within the square the site was searched in: an old hut taken back can stand at its corner.
@@ -3029,7 +3029,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             state.builtBase = plan;
         } else if (state.builtBase != null && (newSite || taskOf(squadName, Objective.Task.PatrolBase.class).isEmpty())) {
             PatrolBase.Plan built = state.builtBase;
-            // Toward where the general is sending the squad: the squad leader's own order can still
+            // Toward where the platoon leader is sending the squad: the squad leader's own order can still
             // point inside the hut, since from in there it sees no ground it can reach.
             List<Position> door = built.doorway(objectiveOf(squadName).orElseThrow().location(), this::walkable);
             boolean open = door.stream().noneMatch(c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z()));
@@ -3058,7 +3058,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         treeClaims.addAll(held);
         state.baseCells = held;
         boolean baseOrdered = taskOf(squadName, Objective.Task.PatrolBase.class).isPresent();
-        // The farm: the plot round the water nearest the general's objective, kept while the
+        // The farm: the plot round the water nearest the platoon leader's objective, kept while the
         // objective stays put - a farm is tended for days, not re-sited each cycle.
         FarmPlan farm = taskOf(squadName, Objective.Task.Farm.class).map(o -> {
             BlockPos at = BlockPos.containing(
@@ -3265,7 +3265,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // the camp's height was taken for its depth, and three miners stood over one step.
             int asked = (int) Math.floor(o.location().y());
             int depth = asked >= nearY - 1 ? ChainOfCommand.MINE_DEPTH : asked;
-            // Any mine ordered near the camp is the camp's: the general's point is a guess - live, it
+            // Any mine ordered near the camp is the camp's: the platoon leader's point is a guess - live, it
             // moved the order to the camp's centre, 13 blocks from the mine cut to the bottom, and a
             // new staircase was started inside the wall and kept in its place.
             Optional<Staircase> kept = campStairs().filter(k ->
@@ -3324,7 +3324,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .filter(st -> st.condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false))
                 .map(SoldierStatus::name).findFirst().orElse(null);
         // Securing: the torches still to put down round the objective, worked out again each cycle -
-        // every torch put down, by anyone, changes what's left. Read once: the general's thread may
+        // every torch put down, by anyone, changes what's left. Read once: the platoon leader's thread may
         // change the squad's task mid-cycle - live, a second read found SECURE gone and the squad
         // loop died on it.
         Optional<Objective> secureTask = taskOf(squadName, Objective.Task.Secure.class);
@@ -3333,7 +3333,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // live, the ground found from the objective's height was a hut roof, and SECURE reported
             // done with 371 cells of the camp still dark.
             // At the camp, the camp's own ground, as the foothold measures it: live, SECURE lit a disc
-            // round the general's point, 3 blocks off the camp's centre and 2 above its ground, and
+            // round the platoon leader's point, 3 blocks off the camp's centre and 2 above its ground, and
             // reported DONE for days with 8 of the camp's cells dark.
             if (campGround != null && Math.hypot(o.location().x() - campGround.x(), o.location().z() - campGround.z()) <= SECURE_RADIUS) {
                 return torchPlan(campGround);
@@ -3404,7 +3404,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             stoneSetAside.put(soldierName, stoneShare);
             Optional<Objective> gather = squadInContact
                     ? Optional.empty() : taskOf(squadName, Objective.Task.Gather.class);
-            // Nothing left round the general's point: to where the squad saw some, while that order
+            // Nothing left round the platoon leader's point: to where the squad saw some, while that order
             // stands - live, a squad sent to gather at a camp long since cleared stood reporting CANTCO.
             int nth = i;
             gather = gather.map(ordered -> {
@@ -3991,7 +3991,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private static final int GROUND_SEARCH = 8;
 
     /**
-    /** How far from the general's point to look for level ground for a patrol base. */
+    /** How far from the platoon leader's point to look for level ground for a patrol base. */
     private static final int SITE_SEARCH = 8;
     /**
      * How close to its place's centre a soldier stands inside a hut: a body 0.6 wide is clear of the
@@ -4000,7 +4000,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private static final double HUT_PLACE_TOLERANCE = 0.15;
 
     /**
-     * The columns each squad's patrol base stands on, walls included - squad loop only. The general
+     * The columns each squad's patrol base stands on, walls included - squad loop only. The platoon leader
      * may send two squads to one point; their huts go side by side, not one inside the other.
      */
     private final Map<String, Set<Long>> baseFootprints = new ConcurrentHashMap<>();
@@ -4347,7 +4347,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         activeSoldier.set(soldier);
         if (definition == soldierDefinitions.getFirst()) {
-            // The point man carries the squad's radio: the squad leader and general aren't in the
+            // The point man carries the squad's radio: the squad leader and platoon leader aren't in the
             // world, so their traffic is keyed out over his connection (rebound on reconnect).
             chainOfCommand.setRadio(session::sendChatCommand);
             // The ground round the point, not the top of whatever stands on it: a heap of old huts

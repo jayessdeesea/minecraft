@@ -17,7 +17,7 @@ import java.util.List;
  * {@link #STAND_RADIUS} of one another, reported at their middle with their count, nearest first.
  * Stone counts only where it's exposed to the open sky - beside or under an open cell with nothing
  * solid over it for {@link #SKY_CLEARANCE} blocks - since buried stone, or a cave wall, takes a mine
- * to reach. Precomputed for the general - like the squad
+ * to reach. Precomputed for the platoon leader - like the squad
  * leader's terrain survey - rather than handing a model a block scan to read.
  */
 public final class ResourceSurveyor {

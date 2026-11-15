@@ -17,7 +17,7 @@ after that a squad should come back to a shelter that stands.
   the engineer lays out a deliberate shelter at the camp - cobblestone, roofed, lit inside - with a
   gate: a **fence gate**, or an iron door with a button - never a wooden door, which zombies break
   on hard difficulty and vindicators in a raid (backlog/building-guide.md). A fence gate is 4
-  sticks and 2 planks. A squad goes in at nightfall (docs/echelons/general/operator-rules.md),
+  sticks and 2 planks. A squad goes in at nightfall (docs/echelons/platoon-leader/operator-rules.md),
   closes it behind it, and opens it at dawn. Soldiers can't open gates yet
   (docs/echelons/soldier/capabilities.md): one is used by a click on it, like a table, and the
   server's block update says whether it's open.

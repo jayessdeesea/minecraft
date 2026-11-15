@@ -8,12 +8,12 @@ scope.
 - **Java 25** (Amazon Corretto)
 - **Maven**
 - **Spring AI 2.0** — all LLM calls go through the `ChatModel`/`ChatClient` abstraction. Each
-  echelon picks its provider in config (`minecraft.general.chat-model`,
+  echelon picks its provider in config (`minecraft.platoon-leader.chat-model`,
   `minecraft.squad-leader.chat-model`: a local model served by Ollama, `compose.yaml`, or
-  Anthropic Claude). The intended split is a frontier general over open-weight squad leaders.
+  Anthropic Claude). The intended split is a frontier platoon leader over open-weight squad leaders.
   Because of that: keep provider selection in config, never hardcode
   Anthropic-specific request/response shapes, message formats, or tool-call conventions into
-  General/Squad Leader logic. If it only works with Claude, it's not written against the
+  platoon leader and squad leader logic. If it only works with Claude, it's not written against the
   abstraction correctly.
 - **Tests: JUnit 6 and ArchUnit; no property-testing library.** Variation testing uses our own
   seeded scenario generators (`bot`'s `scenario` test package, shared with `app` as a test jar).

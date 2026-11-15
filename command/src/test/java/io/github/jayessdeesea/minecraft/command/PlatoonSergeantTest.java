@@ -22,7 +22,7 @@ class PlatoonSergeantTest {
 
     /**
      * Short of logs between the builders and the stockpile, the keep's Class IV is a request to the
-     * general, naming what can't be made; with enough, nothing is said. Live, the builders worked a
+     * platoon leader, naming what can't be made; with enough, nothing is said. Live, the builders worked a
      * day with no tree within reach, no chest and no pickaxe, and nobody was asked for logs.
      */
     @Test
@@ -44,7 +44,7 @@ class PlatoonSergeantTest {
 
     /**
      * Class I: a hungry soldier with no means of food is RED, unless a squadmate is sharing some or
-     * wheat grows in the camp's farm - its bread is on the way, and the general can't answer better.
+     * wheat grows in the camp's farm - its bread is on the way, and the platoon leader can't answer better.
      */
     @Test
     void noMeansOfFoodIsRedUnlessShareOrWheatIsComing() {

@@ -1,11 +1,11 @@
-# General: what it decides
+# Platoon leader: what it decides
 
 One instance, the slowest-thinking echelon. A model call (`command.ai.SpringAiGeneral`, any Spring
 AI `ChatModel`) gives each squad one objective. The operator's standing rules then apply on top,
 loudly ([operator-rules.md](operator-rules.md)).
 
 ## What it's given
-In its user prompt (`command-ai/src/main/resources/prompts/general-user-prompt.md`):
+In its user prompt (`command-ai/src/main/resources/prompts/platoon-leader-user-prompt.md`):
 - **The mission**, and anything the operator said since.
 - **The time of day.**
 - **The supply point and stockpile**, when there is one.
@@ -18,9 +18,9 @@ In its user prompt (`command-ai/src/main/resources/prompts/general-user-prompt.m
   for ..." with each soldier's role (`SquadCommand.report`): nobody goes with it on the task. A
   patrol base and a plain move are exempt - everyone comes in for the night. No soldier is held
   back from a role for the task (the operator's): one at work turns to fight as soon as it sees a
-  hostile, so moving the task to a squad with soldiers free is the general's call.
+  hostile, so moving the task to a squad with soldiers free is the platoon leader's call.
 - **Each squad's Class I** (`command.Subsistence`): GREEN, AMBER, or RED with the request for
-  food the squad can't get itself, which the general answers with a farm or game
+  food the squad can't get itself, which the platoon leader answers with a farm or game
   ([military-doctrine.md § 4](../../military-doctrine.md#4-reports-upward)).
 - **A squad's Class IV request** (`PlatoonSergeant.classFour`): the keep's builders short of logs, between
   them and the stockpile, for the depot's chest, pickaxes and torches - answered with a `WOOD` task
@@ -39,7 +39,7 @@ In its user prompt (`command-ai/src/main/resources/prompts/general-user-prompt.m
 It keeps nothing between calls but each squad's current objective (backlog/operations-map.md).
 
 ## What it decides: `command.Objective`, one per squad
-- **Where:** a location. Its height is the general's guess, and is put on the ground there
+- **Where:** a location. Its height is the platoon leader's guess, and is put on the ground there
   (`ChainOfCommand.grounded`), except for `MINE`, where it's the depth to reach.
 - **What, in words:** the mission and the intent, logged and passed to the squad leader.
 - **The task**, the only part that reaches the soldiers' hands:
@@ -60,5 +60,5 @@ It keeps nothing between calls but each squad's current objective (backlog/opera
 ## When it decides
 Every 2 minutes, at once on a new mission from the operator or a squad with no objective, and on a
 squad's new CANTCO or contact if a minute has passed since the last - contact is the squad's to
-handle, and live, a new contact every few seconds at night asked the general every ten. A failed call (a malformed
+handle, and live, a new contact every few seconds at night asked the platoon leader every ten. A failed call (a malformed
 reply, the model down) is logged loudly, and the squads keep their last objectives.

@@ -18,7 +18,7 @@ matters more than keeping them complete: everything else has a home of its own a
 Three sections, in this order, each a few short paragraphs at most:
 
 1. **What it is.** The three echelons and what runs each one:
-   - **General:** a frontier model.
+   - **Platoon leader:** a frontier model.
    - **Squad leaders:** an open-weight model run locally.
    - **Soldiers:** deterministic Minecraft bots that call no model.
 

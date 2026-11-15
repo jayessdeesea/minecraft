@@ -12,30 +12,30 @@ spring:
           temperature: 0.3
 
 minecraft:
-  general:
-    # The model the general thinks with: "anthropic" (a frontier model; needs ANTHROPIC_API_KEY)
+  platoon-leader:
+    # The model the platoon leader thinks with: "anthropic" (a frontier model; needs ANTHROPIC_API_KEY)
     # or "ollama" (the local open-weight model, see compose.yaml).
     chat-model: ollama
     # Its prompts: the fixed system prompt, the user prompt's template, and the template each
     # squad's section of it is filled in from (parameters marked «name»).
-    system-prompt: classpath:prompts/general-system-prompt.md
-    user-prompt: classpath:prompts/general-user-prompt.md
-    squad-prompt: classpath:prompts/general-squad-prompt.md
+    system-prompt: classpath:prompts/platoon-leader-system-prompt.md
+    user-prompt: classpath:prompts/platoon-leader-user-prompt.md
+    squad-prompt: classpath:prompts/platoon-leader-squad-prompt.md
     # The operator's standing rule that no squad spends the night outside a patrol base: an order
     # that leaves one in the open after dark is replaced by a patrol base where it stands. A garrison
     # wants it; a scenario that sends squads out at night doesn't.
     shelter-at-night: false
     # The operator's day rule: by day, every squad builds the main base's keep (command.Keep),
-    # whatever the general orders - logged beside its order. The night rule still comes first.
+    # whatever the platoon leader orders - logged beside its order. The night rule still comes first.
     keep-by-day: false
     # The operator's intent - the one order that comes from outside the chain of command.
     mission: >-
       Reconnoitre the terrain around the squad's start point and establish an observation post
       on high ground within 80 blocks, from which the squad can watch for hostile activity.
   squad-leader:
-    # The model every squad leader thinks with: "ollama" or "anthropic", as for the general.
+    # The model every squad leader thinks with: "ollama" or "anthropic", as for the platoon leader.
     chat-model: ollama
-    # Its prompts: the fixed system prompt and the user prompt's template, as for the general.
+    # Its prompts: the fixed system prompt and the user prompt's template, as for the platoon leader.
     system-prompt: classpath:prompts/squad-leader-system-prompt.md
     user-prompt: classpath:prompts/squad-leader-user-prompt.md
   # The order of battle: "Squad:Soldier,Soldier,...;Squad:...", formation order, the first soldier
@@ -49,12 +49,12 @@ minecraft:
   # Offline mode doesn't authenticate names, so this guards against accidents, not impostors.
   operators: ""
   # The camp the squads build up as a lodgment (docs/military-doctrine.md §17), as "x,z": its
-  # progress through the phases is measured and shown to the general. Empty: no camp.
+  # progress through the phases is measured and shown to the platoon leader. Empty: no camp.
   camp: ""
   # Where what the garrison builds is remembered across restarts - each camp wall's layout.
   state-dir: "garrison-state"
   supply:
     # The supply point: a chest the operator places and stocks, as "x,y,z" (the chest's block).
-    # The general can send a squad there; soldiers short of a weapon or armour draw from it.
+    # The platoon leader can send a squad there; soldiers short of a weapon or armour draw from it.
     # Empty: no supply point.
     point: ""

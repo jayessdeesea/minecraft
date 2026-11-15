@@ -46,7 +46,7 @@ from an existing base - decides whether the plan needs a new base on the way.
 - **Phases from the estimate.** A mission's phases are PREPARE (the shortfall made good, the depot
   stocked), EXECUTE, and CONSOLIDATE (the site's level raised, stores returned). Each phase's entry
   is the gate: EXECUTE starts only when PREPARE leaves the supplying site above its reorder point.
-- `GeneralScenarioIT`: offered the keep with no depot stock and a nearer grove, the platoon leader takes the
+- `PlatoonLeaderScenarioIT`: offered the keep with no depot stock and a nearer grove, the platoon leader takes the
   preparation first; offered an objective out of reach, it takes the outpost first.
 - Live: the next big mission after the keep starts with its depot stocked, and no worker stands
   idle for a tool in its first day.

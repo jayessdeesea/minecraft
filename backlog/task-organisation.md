@@ -61,8 +61,8 @@ Each a squad-simulation scenario, then seen live:
 - **The general's tasking.** The general can ask a squad for a detachment ("one soldier on the
   mine"); SquadLeaderScenarioIT's MINER and POST variants are that case. A system-prompt line
   telling the general it can (detail soldiers by job, with labelled coordinates) took
-  GeneralScenarioIT from 71/72 to 67/72 - sheltering by day, pulling a squad from its base - so
-  it waits until a standard needs a detachment, and then wants its own GeneralScenarioIT situation.
+  PlatoonLeaderScenarioIT from 71/72 to 67/72 - sheltering by day, pulling a squad from its base - so
+  it waits until a standard needs a detachment, and then wants its own PlatoonLeaderScenarioIT situation.
 - **Overruling self-preservation.** An order that says hold under fire (`risk` HIGH, or its own
   flag) keeps a soldier on its work in contact.
 
