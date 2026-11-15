@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.Hands;
 import io.github.jayessdeesea.minecraft.bot.craft.Crafter;
 import io.github.jayessdeesea.minecraft.bot.craft.Ladder;
 import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
+import io.github.jayessdeesea.minecraft.bot.craft.WorkLoad;
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.engineer.Stairway;
 import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
@@ -1837,6 +1838,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int layer = tops.values().stream().mapToInt(Integer::intValue).max().orElse(Keep.BOTTOM);
         List<BlockPos> toFill = toDig.isEmpty() ? Clearing.toFill(world, fillShare, kept) : List.of();
         state.keepDigLeft = toDig.size();
+        keepDigLeftBySquad.put(squad, toDig.size());
         state.keepFillLeft = toDig.isEmpty() ? toFill.size() : -1;
         String said = "the keep: " + toDig.size() + " blocks to dig" + (toDig.isEmpty() ? ", " + toFill.size() + " cells to fill"
                 : ", its top y=" + toDig.stream().mapToInt(BlockPos::y).max().orElse(Keep.BOTTOM) + ", the keep's y=" + layer) + " in its share " + digShare;
@@ -5267,13 +5269,29 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * aside and not dug for.
      */
     private Optional<Recipe> nextRung(String name, Inventory inventory, Position at) {
+        String squad = soldierDefinitions.stream().filter(d -> d.name().equals(name)).findFirst().orElseThrow().squad();
+        // A keep builder's work load before the protection ladder past its floor (operator, 2026-11-14:
+        // kit by role, protection and work apart): a stone sword, then the pickaxes and shovels its share
+        // of the dig wears out (bot.craft.WorkLoad), then the rest. Live, builders climbed through copper
+        // armour while the dig's tools wore out with no spare.
+        // Not one in the wood party: its work is the trees, and its load the axe - in the squad
+        // simulation a cutter spent its one log on a spare pickaxe's sticks and had none for the axe.
+        if (keepHands.contains(name) && !keepParty.has(name)) {
+            int share = keepDigLeftBySquad.getOrDefault(squad, 0) / Math.max(1, keepCrews.getOrDefault(squad, List.of()).size());
+            boolean floored = Ladder.upTo(inventory, Map.of(), Set.of(), m -> false, Ladder.rungOf(Recipe.STONE_SWORD)).isEmpty()
+                    && Ladder.bestMelee(inventory) >= ItemClassRegistry.meleeRank("stone_sword");
+            Optional<Recipe> work = floored ? WorkLoad.builder(inventory, share) : Optional.empty();
+            if (work.isPresent()) {
+                rungsWanted.put(name, Ladder.rungOf(work.get()));
+                return work;
+            }
+        }
         if (!rearmAllowed.getOrDefault(name, false)) {
             rungsWanted.remove(name);
             return Optional.empty();
         }
         // The squad climbs together: nobody works above the lowest rung a squadmate is working toward,
         // so the first up the ladder doesn't dig out the ore the rest need for theirs.
-        String squad = soldierDefinitions.stream().filter(d -> d.name().equals(name)).findFirst().orElseThrow().squad();
         int highest = soldierDefinitions.stream().filter(d -> d.squad().equals(squad) && !d.name().equals(name))
                 .map(d -> rungsWanted.get(d.name())).filter(Objects::nonNull)
                 .mapToInt(Integer::intValue).min().orElse(Ladder.RUNGS - 1);
@@ -5293,6 +5311,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         next.ifPresentOrElse(r -> rungsWanted.put(name, Ladder.rungOf(r)), () -> rungsWanted.remove(name));
         return next;
     }
+
+    /** Each keep squad's blocks still to dig in its share, at its last look - squad loops write, ticks read. */
+    private final Map<String, Integer> keepDigLeftBySquad = new ConcurrentHashMap<>();
 
     /** The rung of the ladder each soldier is working toward, by name, while it is - tick loops write and read. */
     private final Map<String, Integer> rungsWanted = new ConcurrentHashMap<>();

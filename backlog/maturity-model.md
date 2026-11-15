@@ -179,18 +179,21 @@ today's `<foothold>`.
 - The keep: DIG doesn't start, and pauses, while the depot is below its objective in handles,
   tool heads and chests for the next stretch of dig.
 - The dawn AAR and the scoreboard report each site's level, state and short classes.
-- `bot.craft.Ladder` is split: the protection ladder, and a work load per role sized from its task;
-  a builder on the keep carries its role's tools before anything past the protection floor.
+- The work load for the other roles: a keep builder's is built (`bot.craft.WorkLoad`;
+  docs/military-doctrine.md § 11); a miner's, a woodcutter's and a farmer's are to come, topped up at
+  the site's depot rather than only from what's carried, and the ladder's own tool-load rungs then
+  dropped.
 - `PlatoonLeaderScenarioIT`: a site in PAUSE on wood, where the platoon sergeant tasks producers, and the platoon leader sends nobody
   further out; a creeper-struck depot, where it contracts; a material short with two claims on it,
   where the enabler gets it.
 - Live: the keep levels a full layer without a builder standing idle for want of a tool.
 
 ## Notes
-- **First check the waste.** Rough arithmetic says the dig needs little wood: about 5,500 blocks
-  at 131 uses a stone tool is some 42 tools, 84 sticks, about 11 logs; three or four chests is 8
-  more. keep-campaign.md records "half a log a handle", twice what a handle should cost. Log logs
-  spent per tool made; above a quarter, the crafting is the fix.
+- **The waste, checked (2026-11-15):** the crafting is not the fix. From the Crafter lines of
+  field160-202, logs spent per item made: a stone pickaxe 0.13 (the 0.125 its sticks need), a stone
+  shovel 0.06, a stone sword nothing, a crafting table 3 in all against 106 tools. "Half a log a
+  handle" was wrong. Wood goes into chests (two logs each) and smelting fuel (about a log a piece of
+  copper armour): Class III, budgeted with the rest of the wood.
 - **Decided (operator, 2026-11-14): lead time.** The roadmap plants a farm on day 2; § 17 puts food
   in the BUILDUP. A standard may carry a lead - the farm planted by AIRHEAD, feeding by BUILDUP - so
   the cheap first step comes early without making food an AIRHEAD target, which cost the morning

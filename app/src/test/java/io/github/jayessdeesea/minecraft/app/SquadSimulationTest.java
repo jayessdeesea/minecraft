@@ -2326,6 +2326,42 @@ class SquadSimulationTest {
     }
 
     /**
+     * Kit by role (operator, 2026-11-14: protection and work apart): a keep builder with a stone sword,
+     * one pickaxe and one shovel, a big dig ahead, and the makings of copper armour in its pack. It
+     * makes its spare pickaxes and shovels before any armour past the protection floor. Live, builders
+     * climbed through copper armour while the dig's tools wore out with no spare.
+     */
+    @Test
+    void aKeepBuilderCarriesItsWorkLoadBeforeArmourPastTheFloor() throws IOException {
+        SimClock clock = new SimClock();
+        int dx = (int) Math.floor(Keep.DEPOT.x()), dz = (int) Math.floor(Keep.DEPOT.z());
+        // The depot's table standing, east of its stand, as in the depot's own scenario.
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= -12 && x <= 11 && z >= -12 && z <= 11 && y > GROUND && y <= GROUND + 3
+                ? SimServer.DIRT : x == dx + 1 && y == GROUND + 1 && z == dz ? SimServer.CRAFTING_TABLE : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(st -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), DrillSquadLeader::new, roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(-14.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.itemNamedOrMinus("stone_sword"), 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{39, SimServer.itemNamedOrMinus("stone_shovel"), 1},
+                        new int[]{10, SimServer.itemNamedOrMinus("cobblestone"), 64},
+                        new int[]{11, SimServer.itemNamedOrMinus("oak_log"), 8},
+                        new int[]{12, SimServer.itemNamedOrMinus("copper_ingot"), 24})))
+                .run();
+
+        clock.advance(4 * 60_000);
+
+        List<String> made = Files.readAllLines(Path.of("target/sim/aKeepBuilderCarriesItsWorkLoadBeforeArmourPastTheFloor.log")).stream()
+                .filter(l -> l.contains("Crafter") && l.contains(" made "))
+                .map(l -> l.substring(l.indexOf(" made ") + 6)).map(m -> m.substring(m.indexOf(' ') + 1, m.indexOf(" - "))).toList();
+        int firstArmour = java.util.stream.IntStream.range(0, made.size()).filter(i -> made.get(i).startsWith("copper")).findFirst().orElse(made.size());
+        long tools = made.subList(0, firstArmour).stream().filter(m -> m.equals("stone pickaxe") || m.equals("stone shovel")).count();
+        assertTrue(tools >= 2, "spare pickaxes and shovels before any armour: " + made);
+    }
+
+    /**
      * The platoon leader wakes on events, not on a clock (backlog/fleet-command.md): a squad digging a
      * big mound on the keep by day for eight minutes, nothing finished, nothing asked - it's woken once,
      * for the squad that had no objective, where every two minutes it was asked again.

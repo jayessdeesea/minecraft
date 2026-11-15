@@ -128,16 +128,20 @@ and its decision (`[PL]`), so every model decision is accounted for.
 - **The squad leader's allocator is built** (`command.DrillSquadLeader`, the default; docs/echelons/
   squad-leader/decisions.md): `DrillSquadLeaderTest` passes every situation of the eval but the two
   detachments asked for in words. What's left:
-  - Detachments as data: the PL's `Objective` carries "one soldier to MINER at a site", "Bob to GO_TO
-    a point", so the allocator makes them; today a detachment in words reaches nobody.
-  - The decision every second rather than every 20: the drills cost no model call.
-  - Live: a full day with the drills leading, then the model's code and prompt removed.
+  - Live: a full day with the drills leading, then the model's code and prompt removed (with them
+    the squad leader's prompt's two "the general"s).
+  - Not now: detachments as data - the PL's `Objective` carrying "one MINER at a site" - since live
+    the model's role taskings were rare (78 in 40 runs, 4 in the last ten, three of them back to
+    rifleman), and the PSG's detachments and the objective's `Task` carry the work; a detachment in
+    words reaches nobody until a mission needs one. Nor the squad leader's decision every second:
+    the soldiers' own drills react every tick, and each decision is a FRAGO on the net.
 - **The PL's wakes are built** (docs/echelons/platoon-leader/decisions.md, "When it decides";
   `SquadSimulationTest.aQuietDaysWorkWakesThePlatoonLeaderOnlyForWhatNeedsIt`): no clock, `[PL] wakes:
   <cause>`. Still to come with the sites they need: a site entering PAUSE or RECONSTITUTE
   (maturity-model.md), a level behind its due day at dusk, deaths over a threshold in a day, the CCIR
   the PL sets itself, and a CANTCO carrying what the drills tried.
-- At sixteen soldiers, the four elements above; the sustainment section reassigned at dawn by
+- **Needs the operator:** the roster grown to sixteen - eight more accounts on the server, and its
+  load - before the four elements can be built. At sixteen soldiers, the four elements above; the sustainment section reassigned at dawn by
   projected shortfall, no more than one move a decision outside a PAUSE, and a rifle squad surged
   into production on a PAUSE.
 - Live: a full day with the keep under way, the PL woken only at dawn and on escalations, and the

@@ -164,7 +164,7 @@ public final class Ladder {
     }
 
     /** The best melee rank carried, or -1. */
-    private static int bestMelee(Inventory inventory) {
+    public static int bestMelee(Inventory inventory) {
         int best = -1;
         for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
             OptionalInt rank = ItemClassRegistry.meleeRank(inventory.itemAt(slot));

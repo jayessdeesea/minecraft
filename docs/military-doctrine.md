@@ -540,6 +540,13 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
     stone - they wear out, and the next is in the pack (operator, 2026-11-12). Last, after the
     armour: protection first, and a rung whose makings can't be had is passed over.
 
+A keep builder's work load - not the wood party's, whose load is its axe - comes before the ladder past its protection floor (operator,
+2026-11-14: kit by role, protection and work apart; `bot.craft.WorkLoad`): once it holds a stone
+sword, it makes stone pickaxes and shovels, whichever it's further short of, up to its share of the
+keep's dig still to do, halved between the two, over a stone tool's 132 uses, plus one in hand,
+four of each at most. Only from what it carries, cobblestone and wood, never quarried or chopped
+for. Live, builders climbed through copper armour while the dig's tools wore out with no spare.
+
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
 Against a skeleton, a stone sword over a wooden one saves 0.3 health a fight. A shield saves
 2.1 more for one iron ingot, about what a chestplate saves for eight, and full iron armour 5.9:
