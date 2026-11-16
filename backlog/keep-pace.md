@@ -59,8 +59,10 @@ crew's ticks:
 - **A metal draw that starts and stops (field270, 13:34).** Jack, at the site's north end
   (5.5, 74, 65.5), set out for 5 raw copper at the main depot every 30 s and called it off within
   seconds ("the trip is no longer wanted"), its order Idle meanwhile - the walk never steered it -
-  and stood a minute; then gave up the copper helmet, "no COPPER_ORE within 48 blocks". Find why
-  the MetalPool draw comes and goes, and why a draw under way leaves the soldier's order Idle.
+  and stood a minute; then gave up the copper helmet, "no COPPER_ORE within 48 blocks". Found: the
+  force's view of the stockpile took every chest opened, the outposts' too, so the draw came and
+  went with it - fixed, only the stockpile draws come from sets it. Left: watch that the draw now
+  holds, and why the soldier's order read Idle between its tries.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done

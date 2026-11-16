@@ -5594,7 +5594,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (mine.isPresent()) {
                 mineStash.put(mine.get().head(), seen);
                 LOG.info("[Mine] the stash at {} holds {} raw iron, {} raw copper", mine.get().head(), seen.rawIron(), seen.rawCopper());
-            } else {
+            } else if (Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).equals(stockpileFor(name))) {
+                // Only the stockpile draws come from: an outpost depot's chest, or another the load went
+                // into, isn't it. Live, with the flatten's outposts, the force's view of its stockpile
+                // took each chest opened in turn, raw copper there one look and none the next, and a
+                // draw for it began and was called off every half minute.
                 chainOfCommand.onStockpile(seen);
             }
         });
