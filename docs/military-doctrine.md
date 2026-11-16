@@ -1375,7 +1375,12 @@ taken down to y=63 (operator, 2026-11-15), its floor walked at feet 64. Flatteni
 of its own, not the keep's (operator, 2026-11-15): the task digs whatever ground is set to flatten
 (`command.Flatten`, a rectangle and a level) - the keep's first ground to begin with, then any the
 operator names with `!flatten` - with its depot off the site's west edge, sited again when the
-site moves away from the one standing. The heights are the
+site moves away from the one standing. Its crew is sized to its level (backlog/flatten-campaign.md):
+at each new level the foreman says the builders its blocks want, one to 24 blocks
+(`SoldierRunner.BLOCKS_A_BUILDER`), and only as many squads as that takes are sent to the ground, in
+the order of battle, the farm squad never; the rest are released - to the platoon leader's own
+objective for them, or the camp's work where that's the ground too - and called back as the
+levels widen (`ChainOfCommand.onFlattenCrew`, "[PL] the ground's level wants N builder(s)"). The heights are the
 plan's, not the ground's: everything from y=64 up into the sky over it is dug out, and the
 ground left as it is - not built up for now (operator, 2026-11-15; `Keep.FILL`). Built up, the
 ground's top at y=63, and any hollow open under it within 8 blocks, is filled in cobblestone only

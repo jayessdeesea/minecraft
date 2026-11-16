@@ -328,6 +328,22 @@ public class ChainOfCommand implements DisposableBean {
             }
             return new Objective("Keep the camp's farm", at, "Food for the force: the farm squad's standing job", new Objective.Task.None());
         }
+        // Only as many squads on the ground as its level wants (backlog/flatten-campaign.md): the rest
+        // released - to the platoon leader's own objective for them, or the camp's work where that's
+        // the ground too - and called back as the levels widen. Live, every squad stood on a level
+        // of a few blocks, a third of the crew's time spent with nothing to dig.
+        List<String> builders = squads.keySet().stream().filter(n -> farmSquad.filter(n::equals).isEmpty()).toList();
+        int wanted = flattenBuilders;
+        int perSquad = Math.max(1, squad.soldiers().size());
+        int squadsWanted = wanted == Integer.MAX_VALUE ? builders.size() : Math.max(1, (wanted + perSquad - 1) / perSquad);
+        if (builders.indexOf(squad.squadName()) >= squadsWanted) {
+            if (!(objective.task() instanceof Objective.Task.Keep)) {
+                return objective;
+            }
+            Foothold base = foothold;
+            return new Objective("Work the camp while the ground's level is small", base != null ? base.camp() : objective.location(),
+                    "Released from the flatten: its level wants " + wanted + " builder(s)", new Objective.Task.None());
+        }
         if (objective.task() instanceof Objective.Task.Keep) {
             return objective;
         }
@@ -481,6 +497,17 @@ public class ChainOfCommand implements DisposableBean {
         int k = Math.max(0, List.copyOf(squads.keySet()).indexOf(squadName));
         double dx = k % 2 == 0 ? -SPREAD : SPREAD, dz = k % 4 < 2 ? -SPREAD : SPREAD;
         return new Position(at.x() + dx, at.y(), at.z() + dz);
+    }
+
+    /** Builders the ground's level under way wants, as its foreman last planned it; {@code Integer.MAX_VALUE} before the first. */
+    private volatile int flattenBuilders = Integer.MAX_VALUE;
+
+    /** The foreman's word on its new level: {@code builders} wanted on it, the squads to send sized from it. */
+    public void onFlattenCrew(int builders) {
+        if (builders != flattenBuilders) {
+            LOG.info("[PL] the ground's level wants {} builder(s) - squads on it sized to that", builders);
+        }
+        flattenBuilders = builders;
     }
 
     /** The farm squad, if one is named. */

@@ -92,6 +92,34 @@ class ChainOfCommandTest {
     }
 
     /**
+     * Only as many squads on the ground as its level wants (backlog/flatten-campaign.md): a level for
+     * one builder keeps the first squad and releases the other to the camp's work; a full floor
+     * calls it back.
+     */
+    @Test
+    void theSquadsOnTheGroundAreSizedToItsLevel() {
+        ChainOfCommand two = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+        two.setKeepByDay(true);
+        two.setGround((x, z, nearY) -> OptionalInt.of(64));
+        two.onTime(TimeOfDay.of(1000, true));
+        two.onFlattenCrew(1);
+
+        assertTrue(two.byDay(WALL, squad("Alpha", "Alice")).task() instanceof Objective.Task.Keep, "the first squad on the ground");
+        Objective released = two.byDay(WALL, squad("Bravo", "Bob"));
+        assertEquals(WALL, released, "the other to the platoon leader's own objective");
+        Objective keep = two.byDay(WALL, squad("Alpha", "Alice"));
+        assertTrue(two.byDay(keep, squad("Bravo", "Bob")).task() instanceof Objective.Task.None, "the ground given it, the camp's work instead");
+
+        two.onFlattenCrew(40);
+        assertTrue(two.byDay(WALL, squad("Bravo", "Bob")).task() instanceof Objective.Task.Keep, "a full floor: called back");
+    }
+
+    /**
      * The farm squad keeps the camp's farm by day whatever it's given, the keep included; the others
      * flatten (operator, 2026-11-15: a dedicated squad for the farming).
      */

@@ -2353,6 +2353,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             if (plan == null || plan.level() != level) {
                 keepLevelAt = now;
+                // The crew its blocks want, for the squads sent (backlog/flatten-campaign.md): a standard
+                // share a builder, the whole force for a full floor.
+                if (level != Integer.MIN_VALUE) {
+                    chainOfCommand.onFlattenCrew(Math.max(1, (columns.size() + BLOCKS_A_BUILDER - 1) / BLOCKS_A_BUILDER));
+                }
             }
             if (plan == null || plan.level() != level || !plan.crew().equals(names) || idleHand || old) {
                 Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of() : LevelPlan.plan(level, site.maxY(), columns, all);
@@ -2567,6 +2572,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final int SEA_LEVEL = 63;
     /** Half the side of the square round the keep's centre its grove keeps out of: the slab and its borrow pits. */
     static final int GROVE_KEEP_CLEAR = 12;
+
+    /** A builder's standard share of a level, the crew sized from it: one builder to a level of 24 blocks or fewer. */
+    static final int BLOCKS_A_BUILDER = 24;
 
     /** How far the ground to flatten's depot spot may be from the depot standing before it's sited again, by the new ground. */
     static final int DEPOT_MOVE = 24;

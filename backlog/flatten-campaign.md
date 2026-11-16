@@ -39,9 +39,11 @@ the world, not from reports, and shown to the squad leader and the platoon leade
    more hands.
 
 ## Done when
+- **Built:** the crew sized to the level under way, squads released and called back
+  (docs/military-doctrine.md § 17, "Its crew is sized to its level").
 - The campaign record and its phases, with the measured standard for each.
-- A sparse level's crew is sized to it and the released squads do other work (Question below);
-  a full level has everyone.
+- The survey ahead: the next levels' blocks, so squads are called back before a wide level starts,
+  not when it has.
 - Simulation: a site with a spire and then a full floor - one builder takes the spire while the
   other squad works elsewhere, and both are on the floor.
 - Live: `[Keep] pace` shows "waiting, no rectangle" under 5% across a flatten, and the dig so far
