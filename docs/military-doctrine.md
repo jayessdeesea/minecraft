@@ -1437,8 +1437,9 @@ one or more touching rectangles and keeps them till they're cleared - its comple
 "[Keep] Bob done with ..." - or till they're due: a minute to get there and six seconds a block
 (`SoldierRunner.dueMillis`); due and not done, they're given to the nearest builder who's done
 ("[Keep] Bob's ... timed out - given to Carol"), as a builder's are when it goes off the crew. A
-builder come onto a level once it's dealt - a squad called back to a wide one - takes half of the
-most that's left of one builder's, the one time held work is split. Nothing is dealt again while
+builder given nothing yet on the level - come onto it once it was dealt, a squad called back to a
+wide one, or not there when it was - takes half of the most that's left of one builder's, the one
+time held work is split; one done with its own waits for a timeout. Nothing is dealt again while
 it's held: live, the level was shared out again every half minute and each time a builder
 finished, and builders walked lane to lane and never finished one. Supplies come between levels:
 a builder low on rations with food in the stockpile, or with no pickaxe, sits the new level out

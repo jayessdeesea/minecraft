@@ -2378,6 +2378,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 plan = new KeepPlan(level, names, boxes, now);
                 keepPlan = plan;
                 keepDue.clear();
+                keepDealt.clear();
+                keepDealt.addAll(boxes.keySet());
                 boxes.forEach((n, bs) -> keepDue.put(n, now + dueMillis(bs, columns)));
                 LOG.info("[Keep] level y={}: {} block(s) left, {} of {} builder(s) on it - {}", level, columns.size(), boxes.size(), all.size(),
                         boxes.entrySet().stream().map(e -> e.getKey() + " " + boxesSaid(e.getValue())).toList());
@@ -2438,21 +2440,24 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     mine.addAll(work);
                     boxes.put(to, List.copyOf(mine));
                     keepDue.put(to, now + dueMillis(mine, columns));
+                    keepDealt.add(to);
                     given.add(to);
                     LOG.info("[Keep] {}'s {} {} - given to {}", orphan.getKey(), boxesSaid(work),
                             names.contains(orphan.getKey()) ? "timed out" : "left behind", to);
                 }
-                // One come onto the level once it's dealt - a squad called back to a wide level: half
-                // of the most that's left of one builder's, split between them. The one split held work.
+                // One given nothing yet this level - come onto it once it was dealt, a squad called back
+                // to a wide level, or not there when it was: half of the most that's left of one builder's,
+                // split between them. The one split of held work; one done with its own waits. Live, a
+                // builder on hand but not dealt in at the level's start stood the level out.
                 for (LevelPlan.Builder newcomer : all) {
-                    if (plan.crew().contains(newcomer.name()) || boxes.getOrDefault(newcomer.name(), List.of()).stream().anyMatch(hasWork)) {
+                    if (keepDealt.contains(newcomer.name()) || boxes.getOrDefault(newcomer.name(), List.of()).stream().anyMatch(hasWork)) {
                         continue;
                     }
                     Optional<Map.Entry<String, List<LevelPlan.Column>>> most = boxes.entrySet().stream()
                             .map(e -> Map.entry(e.getKey(), columns.stream().filter(c -> e.getValue().stream().anyMatch(b -> c.x() >= b.minX()
                                     && c.x() <= b.maxX() && c.z() >= b.minZ() && c.z() <= b.maxZ())).toList()))
                             .max(Comparator.comparingInt(e -> e.getValue().size()));
-                    if (most.isEmpty() || most.get().getValue().size() < 2 * BLOCKS_A_BUILDER) {
+                    if (most.isEmpty() || most.get().getValue().size() < BLOCKS_A_BUILDER) {
                         continue;
                     }
                     String holder = most.get().getKey();
@@ -2465,6 +2470,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     boxes.put(newcomer.name(), split.get(newcomer.name()));
                     keepDue.put(holder, now + dueMillis(split.get(holder), columns));
                     keepDue.put(newcomer.name(), now + dueMillis(split.get(newcomer.name()), columns));
+                    keepDealt.add(newcomer.name());
                     given.add(holder);
                     given.add(newcomer.name());
                     LOG.info("[Keep] {} comes onto the level: {}'s split, {} - {} keeps {}", newcomer.name(), holder,
@@ -2545,6 +2551,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** When each builder's rectangles on the level under way are due done - guarded by {@link #keepPlanLock}. */
     private final Map<String, Long> keepDue = new HashMap<>();
+    /** The builders given work on the level under way, done or not - guarded by {@link #keepPlanLock}. */
+    private final Set<String> keepDealt = new HashSet<>();
 
     /** The time a builder is given for a block of its rectangles, on top of {@link #DUE_SLACK_MILLIS}: a walk, a break, a pickup at a good pace. */
     static final long DUE_MILLIS_A_BLOCK = 6_000;

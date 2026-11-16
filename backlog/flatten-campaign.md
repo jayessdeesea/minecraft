@@ -55,6 +55,14 @@ the world, not from reports, and shown to the squad leader and the platoon leade
   `Flatten` as the site.
 - **Built (2026-11-15):** the foreman's protocol - rectangles held till done or due, reassigned on
   timeout, split only for a builder come late; supplies between levels.
+- **Depots by the site's size (operator, 2026-11-15: a site this big needs more than one):** one
+  depot every 48 blocks along the site's long edge, so none of it is more than about 24 blocks from
+  one - three for x=-16..16 z=-64..64. A builder uses the nearest; the depots are one stockpile,
+  any drawn from, surplus moved to where it's short (docs/echelons/tenets.md, "work in parallel");
+  each its haul road. Resource checks every depot's standard before the crew is sent.
+- **Flatten, not the keep, in the code's names:** `keepwork`, `foremansNet`'s keep fields, the
+  `[Keep]` log tag and `Objective.Task.Keep` are the flatten's; the keep is one use of it
+  (operator, 2026-11-15). The task's name in the platoon leader's prompt changes with it.
 - **Errands held till a builder's rectangles are done:** a depot trip with surplus, a draw of food
   while fed, a tool made with one still in hand - none mid-assignment; hunger first, always.
 - **Traversal in the split:** blocks weighted by the walk and climb to them, so a builder with a
