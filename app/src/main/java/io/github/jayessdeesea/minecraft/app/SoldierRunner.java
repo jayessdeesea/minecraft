@@ -1108,7 +1108,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * builder after it walked to it, failed, and walked back.
      */
     /**
-     * The camp workshop's chest that wouldn't take a load it reached and opened: its chest is the
+     * A workshop's chest that wouldn't take a load it reached and opened: its chest is the
      * next of its row ({@link Workshop#chestCells}), fitted by the next soldier there with a full
      * pack, as the depot's is. Live, the camp's one chest filled and five soldiers of two squads
      * walked their loads to it and back, one failed trip after another.
@@ -1124,13 +1124,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return;
         }
         Workshop next = shop.withChest(row.get(at + 1));
-        // The camp's: the common stockpile, re-read by every squad loop at the camp.
-        if (!shop.equals(campWorkshop)) {
-            return;
+        // The camp's: the common stockpile, re-read by every squad loop at the camp. A squad's own,
+        // its squad loop's to change: noted here, moved on there (nextChestIfFull).
+        fullChests.add(cell);
+        if (shop.equals(campWorkshop)) {
+            campWorkshop = next;
         }
-        campWorkshop = next;
-        workshops.replaceAll((n, w) -> w.equals(shop) ? next : w);
         LOG.info("[Workshop] the chest at {} is full - the next goes up at {} ({} of {})", cell, row.get(at + 1), at + 2, row.size());
+    }
+
+    /** Workshop chests found full - ticks add, squad loops read. */
+    private final Set<BlockPos> fullChests = ConcurrentHashMap.newKeySet();
+
+    /** {@code shop}, its chest the next of its row while the one it has is full. */
+    private Workshop nextChestIfFull(Workshop shop) {
+        if (shop == null || shop.chest().filter(fullChests::contains).isEmpty()) {
+            return shop;
+        }
+        List<BlockPos> row = shop.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS);
+        return row.stream().filter(c -> !fullChests.contains(c)).findFirst().map(shop::withChest).orElse(shop);
     }
 
     private void depotChestFull(Position full) {
@@ -4340,6 +4352,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         siteWorkshop(squadName, state, statuses, plan == null ? List.of()
                 : Stream.of(plan.cells(), plan.floor(), plan.floor().stream().map(f -> new Position(f.x(), f.y() + 1, f.z())).toList())
                         .flatMap(List::stream).map(c -> BlockPos.containing(c.x(), c.y(), c.z())).toList());
+        state.workshop = nextChestIfFull(state.workshop);
         // The one who cuts it: the first soldier carrying a pickaxe. Until one does, all make one.
         String cutter = stairs == null || squadInContact ? null : statuses.stream()
                 .filter(st -> st.condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false))

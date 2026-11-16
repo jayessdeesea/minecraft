@@ -219,8 +219,9 @@ above so its lid lifts, none beside the stand or beside another chest - two
 side by side would join into one double chest (`Workshop.chestCells`). They're filled in turn: a
 keep builder's load that won't go into the chest it reached and opened marks that chest full
 (`Depositor.full`), and the depot's chest becomes the next cell, fitted by the first builder there
-with the logs for it or a full pack. The camp's stockpile chest grows the same way, along its
-workshop's row: live, it filled, and five soldiers of two squads carried loads to it and back. A keep builder's pack is a full load with four slots still
+with the logs for it or a full pack. Every workshop's chest - the camp's stockpile, a squad's
+own - grows the same way, along its row: live, the camp's filled, and five soldiers of two squads
+carried loads to it and back; then the mine head's, and its miner did the same. A keep builder's pack is a full load with four slots still
 free (`SoldierRunner.KEEP_FULL_AT`), not two: a tool made at a table passes through planks, sticks
 and the table itself, a slot each, so a pack kept open is one that can still make things; with a
 full load it unloads before it makes the equipment ladder's next rung. While it's on its way to
