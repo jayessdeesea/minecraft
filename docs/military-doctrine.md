@@ -1431,7 +1431,11 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
    haul road: 9 steps from the depot at ... to ..., 16 block(s) to cut`).
 6. **Benched edges.** The ground just round the dig may be lowered as it goes - benched, as an
    excavation's sides are cut back in steps or sloped (29 CFR 1926.652) - so its edge is never a
-   cliff over the work (2026-11-15).
+   cliff over the work (2026-11-15). Built (`Flatten.bench`): a ring three wide round the site, its
+   row d out dug down to d over the floor - Table B-1's 1:1 slope for Type B soil, a walkable
+   staircase - its ground the level's like the site's, highest first, and in the squads' shares;
+   past the ring the ground stands. Three, clear of the depot four off the west edge. Live, soldiers
+   put steps up the wall the big site was cut against, each one a level of its own.
 
 Level by level, in lock step, planned by the keep's foreman (`command.LevelPlan`, operator
 2026-11-14): one soldier the squad leader appoints - the first builder of the first squad on the

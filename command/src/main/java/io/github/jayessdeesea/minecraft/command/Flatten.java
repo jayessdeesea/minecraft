@@ -74,6 +74,32 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
         return new Box(minX, bottom(), minZ, maxX, Keep.SKY_TOP, maxZ);
     }
 
+    /**
+     * How far round the site its edge is benched (clearing rule 6; 29 CFR 1926.652, Appendix B Table
+     * B-1's 1:1 slope for Type B soil): the ground {@code d} out from the edge may stand {@code d} over
+     * the site's top, no higher, so the edge is a walkable slope and never a cliff over the work.
+     * Three, clear of the depot four blocks off the west edge.
+     */
+    public static final int BENCH = 3;
+
+    /**
+     * The bench's row {@code d} out from the edge (1 to {@link #BENCH}), as boxes - the ring of
+     * columns that far out - each from {@code d} over the site's floor up: what's in them is dug.
+     */
+    public java.util.List<Box> bench(int d) {
+        int lo = bottom() + d;
+        return java.util.List.of(
+                new Box(minX - d, lo, minZ - d, maxX + d, Keep.SKY_TOP, minZ - d),      // north
+                new Box(minX - d, lo, maxZ + d, maxX + d, Keep.SKY_TOP, maxZ + d),      // south
+                new Box(minX - d, lo, minZ - d + 1, minX - d, Keep.SKY_TOP, maxZ + d - 1), // west
+                new Box(maxX + d, lo, minZ - d + 1, maxX + d, Keep.SKY_TOP, maxZ + d - 1)); // east
+    }
+
+    /** Whether column ({@code x}, {@code z}) is the site's or its bench's. */
+    public boolean benchedContains(int x, int z) {
+        return x >= minX - BENCH && x <= maxX + BENCH && z >= minZ - BENCH && z <= maxZ + BENCH;
+    }
+
     /** Its ground's top layer. */
     public Box slab() {
         return new Box(minX, top, minZ, maxX, top, maxZ);

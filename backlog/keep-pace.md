@@ -28,7 +28,8 @@ crew's ticks:
   plans, the road's cutter - and give each one ground.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
-  plan time; one that empties fast is shared out again only after `KEEP_REPLAN_MILLIS`.
+  plan time and the foreman holds them till done or due (the operator's protocol); whether one done
+  takes part of a slow one's is backlog/questions-overnight.md's question 2.
 - **Breaks at three times vanilla's.** A dig waits its target's fixed time plus
   `Breacher.MARGIN_TICKS` (5): dirt with a stone shovel 12 ticks against vanilla's 4. The server
   finishes a dig once 70% of its time has gone by, so vanilla's own time for the tool in hand plus
@@ -37,13 +38,6 @@ crew's ticks:
   wait it fails (the soldier builds back up its pillar), as it does with a guard that holds a new
   cut while the soldier is in the air, so the pillar's recovery depends on the time between cuts.
 - **Pickups.** About 10 ticks a dig waiting for the drop.
-- **One-block levels at the edges: the benched edge (clearing rule 6) isn't built.** Where the
-  site meets ground higher than its floor - the big site's east edge, x=16, against a hillside -
-  soldiers crossing between the two put steps in the edge column to climb the wall (field245:
-  Dana and Fran, four in a minute), and each is a level of its own while it stands. Set-aside ore
-  and unloaded chunks also moved the level, and are fixed (one answer for the site; a column's last
-  known top). Done when the ground just round the dig is lowered as it goes - benched, a walkable
-  slope, docs/military-doctrine.md § 17 rule 6 - and the edge needs no steps.
 
 ## Done when
 - The dig so far (`[Keep] pace: the dig so far`) holds within 90% across a day's levels.

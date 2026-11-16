@@ -2726,6 +2726,47 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
+    /**
+     * The benched edge (clearing rule 6; 29 CFR 1926.652's 1:1): a site cut against a hill six high
+     * leaves no cliff at its edge - the ring d out is down to d over the floor, a walkable slope, and
+     * the hill past the bench stands. Live, soldiers put steps up the edge's wall, each a level.
+     */
+    @Test
+    void aSiteCutIntoAHillLeavesItsEdgeBenched() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= 40 && x <= 52 && z >= 36 && z <= 47 && y > GROUND && y <= GROUND + 6
+                ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Flatten site = new Flatten(38, 38, 45, 45, GROUND);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Flatten it", site.centre(), "The operator's ground",
+                new Objective.Task.Keep())), squadLeader(site.centre()),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        chain.onOperatorFlatten("Pat", site);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(36.5, GROUND + 1, 41.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{39, SimServer.itemNamedOrMinus("stone_shovel"), 1},
+                        new int[]{10, SimServer.ITEM_DIRT, 32})))
+                .run();
+
+        clock.advance(20 * 60_000);
+
+        List<String> high = new ArrayList<>();
+        for (int d = 1; d <= Flatten.BENCH; d++) {
+            for (int z = 40; z <= 43; z++) {
+                for (int y = GROUND + d + 1; y <= GROUND + 6; y++) {
+                    if (server.block(45 + d, y, z) == SimServer.DIRT) {
+                        high.add((45 + d) + "," + y + "," + z);
+                    }
+                }
+            }
+        }
+        assertEquals(List.of(), high, "the bench east of the site down to d over the floor; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
+        assertEquals(SimServer.DIRT, server.block(45 + Flatten.BENCH + 1, GROUND + 6, 41), "the hill past the bench stands");
+    }
+
     private static int indexOf(List<String> log, String suffix) {
         for (int i = 0; i < log.size(); i++) {
             if (log.get(i).endsWith(suffix)) {

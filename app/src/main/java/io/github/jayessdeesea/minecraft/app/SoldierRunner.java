@@ -441,7 +441,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 return cells;
             }
         }
-        List<BlockPos> cells = Clearing.toClear(world, ground.dig(), except);
+        // The site and its benched edge (clearing rule 6): each row of the ring round it, d out, dug down
+        // to d over the floor, so the edge is a walkable slope - live, soldiers put steps in the edge
+        // column to climb the hillside the site was cut into, each one a level of its own.
+        List<BlockPos> cells = new ArrayList<>(Clearing.toClear(world, ground.dig(), except));
+        for (int d = 1; d <= Flatten.BENCH; d++) {
+            for (Box row : ground.bench(d)) {
+                cells.addAll(Clearing.toClear(world, row, except));
+            }
+        }
+        cells = List.copyOf(cells);
         synchronized (siteClears) {
             siteClears.put(Set.copyOf(except), new Object[]{ground, now, cells});
             // Only the last few kept: one for each squad's two scans.
@@ -2025,7 +2034,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // splitting the whole site each, every strip was two soldiers'.
         List<String> onKeep = squadStates.keySet().stream().filter(s -> taskOf(s, Objective.Task.Keep.class).isPresent()).sorted().toList();
         int share = Math.max(0, onKeep.indexOf(squad));
-        Box digShare = ground.dig().strips(Math.max(1, onKeep.size())).get(share);
+        // Shares of the site with its bench round it, so the ring is some squad's ground too.
+        Box siteDig = ground.dig();
+        Box digShare = new Box(siteDig.minX() - Flatten.BENCH, siteDig.minY(), siteDig.minZ() - Flatten.BENCH,
+                siteDig.maxX() + Flatten.BENCH, siteDig.maxY(), siteDig.maxZ() + Flatten.BENCH)
+                .strips(Math.max(1, onKeep.size())).get(share);
         Box fillShare = ground.fill().strips(Math.max(1, onKeep.size())).get(share);
         // Level by level, strip by strip: each soldier's floor is two under the highest ground left in
         // and round its strip (Tasking.keepDig), every squad's share counted - the seam between two
@@ -2097,8 +2110,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // site's east edge is the first column of a chunk mostly off it, loaded and let go as builders
         // moved, and the level went 86, 87, 86 a minute, dealt out again each time.
         synchronized (keepColumnTops) {
-            for (int x = ground.minX(); x <= ground.maxX(); x++) {
-                for (int z = ground.minZ(); z <= ground.maxZ(); z++) {
+            for (int x = ground.minX() - Flatten.BENCH; x <= ground.maxX() + Flatten.BENCH; x++) {
+                for (int z = ground.minZ() - Flatten.BENCH; z <= ground.maxZ() + Flatten.BENCH; z++) {
                     long key = ((long) x << 32) ^ (z & 0xffffffffL);
                     if (world.isLoaded(x, z)) {
                         Integer now = tops.get(key);
@@ -2401,7 +2414,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             String roadCutter = keepRoadCutter;
             List<LevelPlan.Builder> all = onHand.stream().filter(b -> !inWoodParty(b.name()) && !b.name().equals(roadCutter)).toList();
             Set<String> names = all.stream().map(LevelPlan.Builder::name).collect(Collectors.toUnmodifiableSet());
-            Box site = chainOfCommand.flatten().dig();
+            // The site and its bench round it: the ring's ground is the level's too, highest first.
+            Box dug = chainOfCommand.flatten().dig();
+            Box site = new Box(dug.minX() - Flatten.BENCH, dug.minY(), dug.minZ() - Flatten.BENCH,
+                    dug.maxX() + Flatten.BENCH, dug.maxY(), dug.maxZ() + Flatten.BENCH);
             // Ground under a fight is nobody's until it's over: not shared out - in the squad
             // simulation the fighter's rectangle went to its squadmate, who walked into the fight -
             // and not counted for the level, or the site would wait on it. When the fight's done its
