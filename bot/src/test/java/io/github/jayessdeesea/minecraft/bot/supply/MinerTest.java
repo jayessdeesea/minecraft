@@ -289,6 +289,28 @@ class MinerTest {
     }
 
     /**
+     * A step over an open cave is floored and the stairs go on: live, the stairs met a cave at step
+     * 11 and stopped, and the mine under it was out of everyone's reach for an hour.
+     */
+    @Test
+    void aStepOverACaveIsFlooredAndTheStairsGoOn() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        List<Staircase.Cut> steps = stairs.cuts().stream().filter(c -> c.tunnel() < 0).toList();
+        Staircase.Cut over = steps.get(3);
+        for (int down = 1; down <= 3; down++) {
+            cave.add(over.feet().offset(0, -down, 0));
+        }
+        Inventory inventory = new Inventory();
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{IntStream.range(0, 4096)
+                .filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of("cobblestone"))).findFirst().orElseThrow(), 64});
+
+        assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 60000, inventory));
+
+        assertTrue(placed.contains(over.feet().offset(0, -1, 0)), "the gap under the step floored: " + placed);
+        assertTrue(dug.containsAll(steps.getLast().cells()), "and the stairs cut to the bottom");
+    }
+
+    /**
      * A gap in a wide cave with no solid block beside it, the stand diagonal to it - as live, off the
      * stairs' last step into the main tunnel: a block goes beside the gap first, against the stand's
      * floor it touches, and the gap against that.

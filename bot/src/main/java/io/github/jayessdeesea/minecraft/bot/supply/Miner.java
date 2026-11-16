@@ -29,11 +29,11 @@ import java.util.stream.Collectors;
  * 3x3, where taking it holes no step and no pillar - it mines first, when its pickaxe gets the drop
  * and nothing liquid lies behind it. That's how the stairs pay in iron and diamonds, not only stone.
  *
- * <p>It stops, loudly, where going on would be a fall or a flood: water or lava beside a cell it
- * would open, or no floor under a step - an open cave. Those are a squad leader's to route round,
- * not a soldier's to guess past. A tunnel over a cave is floored instead: cobblestone put in the
- * gap under its next cell from the one before, as a bridge over the cave, and the tunnel goes on
- * ({@link #BRIDGE_TRIES} tries a tunnel). Live, every branch of the mine met a cave and was given
+ * <p>It stops, loudly, where going on would be a flood - water or lava beside a cell it would open
+ * - or a fall it can't floor. A step or a tunnel over a cave is floored: cobblestone put in the
+ * gap under its next cell from the one before, as a bridge over the cave, and the cut goes on
+ * ({@link #BRIDGE_TRIES} tries for the stairs, and for each tunnel). The stairs, with nothing to
+ * floor with or a cave too wide, stop; a tunnel waits for blocks, or is given up for the next. Live, every branch of the mine met a cave and was given
  * up, and the squads spent their nights in a mine with nothing left to cut and no iron coming up.
  */
 public final class Miner {
@@ -198,11 +198,19 @@ public final class Miner {
             if (hazard.isEmpty()) {
                 break;
             }
-            if (cut.tunnel() < 0) {
-                stop();
-                return new Progress.Stopped(hazard.get());
-            }
             Optional<Bridge> support = bridgeable(world, cut);
+            if (cut.tunnel() < 0) {
+                // A step over a cave is floored like a tunnel - the stairs are the only way down, so
+                // with nothing to floor it with, or too wide a cave, they stop. Live, the stairs met
+                // a cave at step 11 and stopped; the CANTCO went unanswered for an hour and the mine
+                // below was out of everyone's reach.
+                if (support.isPresent() && bridging.isPresent() && bridged.getOrDefault(cut.tunnel(), 0) < BRIDGE_TRIES) {
+                    return bridge(soldier, cut, next.getAsInt(), cuts.size(), support.get(), bridging.get(), free);
+                }
+                stop();
+                return new Progress.Stopped(hazard.get() + (hazard.get().startsWith("no floor")
+                        ? " - not floored: " + (bridging.isEmpty() ? "no blocks carried" : whyNotBridgeable(world, cut, bridged.getOrDefault(cut.tunnel(), 0))) : ""));
+            }
             if (support.isPresent() && bridged.getOrDefault(cut.tunnel(), 0) < BRIDGE_TRIES) {
                 if (bridging.isPresent()) {
                     return bridge(soldier, cut, next.getAsInt(), cuts.size(), support.get(), bridging.get(), free);
@@ -418,7 +426,7 @@ public final class Miner {
         if (free && on) {
             int n = bridged.merge(cut.tunnel(), 1, Integer::sum);
             LOG.info("{} floors {} of the mine over a cave at {} ({} of {})", name,
-                    cut.tunnel() == 0 ? "the main tunnel" : "branch " + cut.tunnel(), next.cell(), n, BRIDGE_TRIES);
+                    cut.tunnel() < 0 ? "the stairs" : cut.tunnel() == 0 ? "the main tunnel" : "branch " + cut.tunnel(), next.cell(), n, BRIDGE_TRIES);
             footing.place(next.cell(), block, next.support());
         }
         footing.tick();

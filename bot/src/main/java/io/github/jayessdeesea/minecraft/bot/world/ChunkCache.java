@@ -47,17 +47,17 @@ public final class ChunkCache {
     private final java.util.concurrent.atomic.AtomicInteger version = new java.util.concurrent.atomic.AtomicInteger();
 
     /**
-     * Each thread's last chunk looked up, by its packed coordinates, and the {@link #version} it was
-     * looked up at. Live (commit 480's profile), the map's {@code get} was 47% of the garrison's CPU:
-     * every block a path search reads looked its chunk up again, and nearly all are the chunk of the
-     * block before. The memo is the cache's own, per thread, not shared state.
+     * The chunks last looked up, a slot each by their key's low bits, with the {@link #version} each
+     * was looked up at. Live (commit 480's profile), the map's {@code get} was 47% of the garrison's
+     * CPU: every block a path search reads looked its chunk up again, and nearly all are the chunk of
+     * the block before. A slot holds an immutable record, so a thread reads one whole or not at all;
+     * threads on different chunks keep different slots. Kept per thread instead (commit 512's
+     * profile), the thread-local lookup was itself 21% of the CPU.
      */
-    private final ThreadLocal<Memo> memo = ThreadLocal.withInitial(Memo::new);
+    private final Memo[] memo = new Memo[MEMO_SLOTS];
+    private static final int MEMO_SLOTS = 256;
 
-    private static final class Memo {
-        long chunk = Long.MIN_VALUE;
-        int version = -1;
-        LoadedChunk loaded;
+    private record Memo(long chunk, int version, LoadedChunk loaded) {
     }
 
     /**
@@ -367,15 +367,15 @@ public final class ChunkCache {
         int chunkX = Math.floorDiv(x, SECTION_SIZE), chunkZ = Math.floorDiv(z, SECTION_SIZE);
         long packed = ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
         int now = version.get();
-        Memo last = memo.get();
+        long key = chunkKey(chunkX, chunkZ);
+        int slot = (int) key & (MEMO_SLOTS - 1);
+        Memo last = memo[slot];
         LoadedChunk chunk;
-        if (last.chunk == packed && last.version == now) {
-            chunk = last.loaded;
+        if (last != null && last.chunk() == packed && last.version() == now) {
+            chunk = last.loaded();
         } else {
-            chunk = chunks.get(chunkKey(chunkX, chunkZ));
-            last.chunk = packed;
-            last.version = now;
-            last.loaded = chunk;
+            chunk = chunks.get(key);
+            memo[slot] = new Memo(packed, now, chunk);
         }
         if (chunk == null) {
             return UNKNOWN;

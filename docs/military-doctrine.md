@@ -1244,8 +1244,10 @@ against the least tier that gets its drop. Both come from the server jar (`bot.w
 DEVELOPMENT.md § 7). Ore it can see on the way - beside its body or the step it cuts, outside the
 shaft's 3x3 so no step or pillar is holed - it mines first, when its pickaxe gets the drop and
 nothing liquid lies behind it; one the server won't break in 30 seconds is left. The cutter reports
-`Mining` with its step. It stops with CANTCO where going on
-would let in water or lava, or would leave a step with no floor over an open cave.
+`Mining` with its step. A step over an open cave is floored as a tunnel is (below), and the stairs
+go on; live, the stairs met a cave at step 11 and stopped, the CANTCO went unanswered, and the mine
+under it was out of everyone's reach. It stops with CANTCO where going on would let in water or
+lava, or over a cave it can't floor - nothing carried to floor it with, or wider than 24 blocks.
 
 At the bottom the cutter goes on into the tunnels the ore is mined from: a main tunnel 24 blocks
 straight out from the last step, away from the shaft, then branches off it both ways every 3

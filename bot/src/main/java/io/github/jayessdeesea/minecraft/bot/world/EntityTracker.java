@@ -27,12 +27,21 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class EntityTracker {
 
     private final ConcurrentHashMap<Integer, Entry> entities = new ConcurrentHashMap<>();
+    /**
+     * The hostile ones of {@link #entities}, the same entries: a soldier's every tick asks for the
+     * hostiles near it, and live (commit 512's profile) streaming every item and animal tracked to
+     * find them was an eighth of the garrison's CPU.
+     */
+    private final ConcurrentHashMap<Integer, Entry> hostiles = new ConcurrentHashMap<>();
 
     public void spawn(int entityId, UUID uuid, int typeId, double x, double y, double z, Object owner) {
         entities.compute(entityId, (id, existing) -> {
             Entry entry = existing != null ? existing : new Entry(uuid, typeId, System.nanoTime());
             entry.position = new Position(x, y, z);
             entry.owners.add(owner);
+            if (HostileMobRegistry.isHostile(typeId)) {
+                hostiles.put(id, entry);
+            }
             return entry;
         });
     }
@@ -49,7 +58,11 @@ public final class EntityTracker {
         for (int entityId : entityIds) {
             entities.computeIfPresent(entityId, (id, entry) -> {
                 entry.owners.remove(owner);
-                return entry.owners.isEmpty() ? null : entry;
+                if (entry.owners.isEmpty()) {
+                    hostiles.remove(id);
+                    return null;
+                }
+                return entry;
             });
         }
     }
@@ -64,10 +77,9 @@ public final class EntityTracker {
     /** Hostile entities within {@code radius} (3D distance) of {@code center}, nearest first. */
     public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
         double radiusSquared = radius * radius;
-        return entities.entrySet().stream()
+        return hostiles.entrySet().stream()
+                .filter(e -> distanceSquared(center, e.getValue().position) <= radiusSquared)
                 .map(e -> new TrackedEntity(e.getKey(), e.getValue().typeId, e.getValue().position))
-                .filter(entity -> HostileMobRegistry.isHostile(entity.typeId()))
-                .filter(entity -> distanceSquared(center, entity.position()) <= radiusSquared)
                 .sorted(Comparator.comparingDouble(entity -> distanceSquared(center, entity.position())))
                 .toList();
     }
