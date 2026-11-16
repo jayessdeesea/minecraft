@@ -55,6 +55,14 @@ the world, not from reports, and shown to the squad leader and the platoon leade
   `Flatten` as the site.
 - **Built (2026-11-15):** the foreman's protocol - rectangles held till done or due, reassigned on
   timeout, split only for a builder come late; supplies between levels.
+- **Why Resource comes first (field246, the big site):** builders left their rectangles mid-level
+  for tools and timed out, four of five on one level - one with no pickaxe and "no LOG within 48
+  blocks" to make one, one short of a stone sword with "no STONE within 48 blocks" it could walk to,
+  one sent for a shovel to the camp's stockpile 70 blocks off and underground, because the depot's
+  chest wasn't standing (11 logs between the builders and the stockpile, 16 wanted). The protocol
+  handed each rectangle on and one builder finished them all; the crew's time went on the errands.
+  Done when: no level is dealt until the depot's chest stands and each builder on it carries a
+  pickaxe and a shovel - the depot's logs and tools stocked before the crew is sent.
 - **Depots by the site's size (operator, 2026-11-15: a site this big needs more than one):** one
   depot every 48 blocks along the site's long edge, so none of it is more than about 24 blocks from
   one - three for x=-16..16 z=-64..64. A builder uses the nearest; the depots are one stockpile,
