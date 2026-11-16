@@ -35,6 +35,37 @@ class ChunkCacheTest {
     private static final int AIR = 0;
     private static final int STONE = 1;
 
+    /**
+     * A lookup's memo of its last chunk never answers for a chunk that's changed: a block set, the
+     * chunk let go, another loaded - each read straight after one before it on the same chunk.
+     */
+    @Test
+    void theLastChunkLookedUpIsNeverStale() {
+        ChunkCache cache = new ChunkCache();
+        cache.load(0, 0, List.of(filled(AIR)), "owner");
+        assertFalse(cache.isSolid(5, -60, 5));
+
+        cache.setBlock(5, -60, 5, STONE);
+        assertTrue(cache.isSolid(5, -60, 5), "the block set");
+
+        cache.unload(0, 0, "owner");
+        assertTrue(cache.isSolid(5, -60, 5), "let go: unknown, so blocked");
+        assertTrue(cache.stateIdAt(5, -60, 5).isEmpty());
+
+        cache.load(0, 0, List.of(filled(AIR)), "owner");
+        assertFalse(cache.isSolid(5, -60, 5), "loaded again, as sent");
+
+        // From another thread, after this one's write: seen there too.
+        cache.setBlock(6, -60, 6, STONE);
+        boolean[] seen = new boolean[1];
+        Thread other = new Thread(() -> seen[0] = cache.isSolid(6, -60, 6));
+        other.start();
+        assertTrue(org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> {
+            other.join();
+            return seen[0];
+        }), "the other thread sees the block");
+    }
+
     @Test
     void unknownChunksAreTreatedAsSolid() {
         ChunkCache cache = new ChunkCache();

@@ -40,6 +40,27 @@ public final class ChunkCache {
     private final ConcurrentHashMap<Long, LoadedChunk> chunks = new ConcurrentHashMap<>();
 
     /**
+     * Bumped after every change to the cache - a chunk loaded, let go or written: a lookup's memo
+     * of its thread's last chunk holds only while it's unchanged. Read before the memo, it's also
+     * the happens-before edge a block written in place is seen across threads by.
+     */
+    private final java.util.concurrent.atomic.AtomicInteger version = new java.util.concurrent.atomic.AtomicInteger();
+
+    /**
+     * Each thread's last chunk looked up, by its packed coordinates, and the {@link #version} it was
+     * looked up at. Live (commit 480's profile), the map's {@code get} was 47% of the garrison's CPU:
+     * every block a path search reads looked its chunk up again, and nearly all are the chunk of the
+     * block before. The memo is the cache's own, per thread, not shared state.
+     */
+    private final ThreadLocal<Memo> memo = ThreadLocal.withInitial(Memo::new);
+
+    private static final class Memo {
+        long chunk = Long.MIN_VALUE;
+        int version = -1;
+        LoadedChunk loaded;
+    }
+
+    /**
      * Records {@code owner} as holding a reference to chunk ({@code chunkX}, {@code chunkZ}) with
      * the given per-section block-state arrays (bottom section first). A chunk another owner holds
      * already keeps its blocks: that owner's block updates have kept them current, and the
@@ -57,6 +78,7 @@ public final class ChunkCache {
             chunk.owners.add(owner);
             return chunk;
         });
+        version.incrementAndGet();
         return diverged[0];
     }
 
@@ -103,6 +125,7 @@ public final class ChunkCache {
             existing.owners.remove(owner);
             return existing.owners.isEmpty() ? null : existing;
         });
+        version.incrementAndGet();
     }
 
     /** Drops {@code owner}'s view entirely - for a connection that died without unloading what it saw. */
@@ -113,6 +136,7 @@ public final class ChunkCache {
                 return chunk.owners.isEmpty() ? null : chunk;
             });
         }
+        version.incrementAndGet();
     }
 
     public boolean isSolid(int x, int y, int z) {
@@ -321,6 +345,7 @@ public final class ChunkCache {
             }
             return chunk;
         });
+        version.incrementAndGet();
     }
 
     /**
@@ -334,7 +359,19 @@ public final class ChunkCache {
     }
 
     private int rawStateIdAt(int x, int y, int z) {
-        LoadedChunk chunk = chunks.get(chunkKey(Math.floorDiv(x, SECTION_SIZE), Math.floorDiv(z, SECTION_SIZE)));
+        int chunkX = Math.floorDiv(x, SECTION_SIZE), chunkZ = Math.floorDiv(z, SECTION_SIZE);
+        long packed = ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+        int now = version.get();
+        Memo last = memo.get();
+        LoadedChunk chunk;
+        if (last.chunk == packed && last.version == now) {
+            chunk = last.loaded;
+        } else {
+            chunk = chunks.get(chunkKey(chunkX, chunkZ));
+            last.chunk = packed;
+            last.version = now;
+            last.loaded = chunk;
+        }
         if (chunk == null) {
             return UNKNOWN;
         }
