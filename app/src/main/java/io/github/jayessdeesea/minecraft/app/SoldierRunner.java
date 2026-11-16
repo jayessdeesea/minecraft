@@ -6185,6 +6185,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 String held = hands.map(r -> r.name().toLowerCase(java.util.Locale.ROOT))
                         .orElseGet(() -> levelPlan != null && levelPlan.boxes().containsKey(name) && !keepDue.containsKey(name)
                                 ? "done, waiting for the level"
+                                // Held off its rectangle by another order - an errand, a fight's move -
+                                // not by its clearer: its squad's order isn't its dig, so no cover is
+                                // routed (backlog/keep-pace.md's "nothing to cut").
+                                : levelPlan != null && levelPlan.boxes().containsKey(name) && !clearing.containsKey(name)
+                                ? "held off its rectangle (" + status.order().getClass().getSimpleName() + ")"
                                 : levelPlan == null || levelPlan.boxes().containsKey(name)
                                 ? clearer.idleReason().map(r -> "clearer idle, " + r)
                                 .orElse("hands free, " + status.order().getClass().getSimpleName())

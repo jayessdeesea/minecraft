@@ -32,7 +32,10 @@ crew's ticks:
   squad loop's next look (up to a second) it's labelled so, and the order's cover (`route`'s
   `Clearing.toClear`) is a snapshot. The foreman now logs, at each level's end, every builder with
   a tenth of its ticks or more so ("[Keep] Bob had nothing to cut 30% of y=80 ..."), its rectangle
-  and its cover's size: read those next.
+  and its cover's size. Field262's level y=78: Jack 75% (53 s), Kate 42%, Liam 27%, Ivy 20%,
+  each with no cover routed. A builder whose squad's order isn't its dig - an errand, a fight's
+  move - is now counted "held off its rectangle (Order)", apart from its clearer's idling: read
+  which orders hold them next.
 - **Mine-head depositors stand (field256, 08:40).** Gus and Carol, of the mining squads, stood a
   minute each at the mine head with a full load, the depositor's hands, ordered to (-26.5, 70,
   -19.5) - a cell the world model reads solid (feet and head) over air - and their walk to the
