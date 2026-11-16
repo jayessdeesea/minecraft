@@ -5571,9 +5571,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 keepSaplingsCarried.put(name, inventory.count(ItemClass.SAPLING));
                 clearer.drainTimes().forEach(t -> keepPace.merge(name, t, LevelPace.Tally::plus));
                 KeepPlan levelPlan = keepPlan;
+                // With no routine holding its hands, why it has no rectangle - so "waiting" is only a
+                // builder on the crew the plan gave nothing to.
                 String held = hands.map(r -> r.name().toLowerCase(java.util.Locale.ROOT))
-                        .orElseGet(() -> levelPlan != null && !levelPlan.boxes().containsKey(name) ? "waiting, no rectangle"
-                                : "hands free, " + status.order().getClass().getSimpleName());
+                        .orElseGet(() -> levelPlan == null || levelPlan.boxes().containsKey(name)
+                                ? "hands free, " + status.order().getClass().getSimpleName()
+                                : inWoodParty(name) ? "wood party, walking"
+                                : name.equals(keepRoadCutter) ? "haul road, walking"
+                                : !levelPlan.crew().contains(name) ? "off the crew (" + status.order().getClass().getSimpleName() + ")"
+                                : "waiting, no rectangle");
                 keepSpent.computeIfAbsent(name, n -> new ConcurrentHashMap<>()).merge(held, 1, Integer::sum);
             } else {
                 clearer.drainTimes();
@@ -5716,7 +5722,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     : depositor.active() ? new Report.Gathering(carried != null && carried.stone() >= Gatherer.CARRY_STONE
                             ? Resource.STONE : Resource.WOOD)
                     : handover.active() ? handover.report().orElseThrow()
-                    : gatherer.active() ? new Report.Gathering(gather.gather().orElseThrow())
+                    : gatherer.active() ? new Report.Gathering(gatherer.gathering().orElseThrow())
                     : gather != null && gatherer.exhausted()
                     ? new Report.Cantco("nothing left to gather within 48 blocks of the objective")
                     // Only a tool the order needs makes its failure the order's: a pickaxe to quarry with.

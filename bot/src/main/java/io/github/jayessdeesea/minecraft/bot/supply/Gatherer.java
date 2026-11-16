@@ -96,6 +96,14 @@ public final class Gatherer {
      * Each tick: gathers {@code resource} around {@code around} while {@code wanted}; empty
      * {@code resource} means the squad isn't gathering.
      */
+    /** What it was last given to gather: the squad's objective's, or a ground work run's. */
+    private Resource gathering;
+
+    /** What it's gathering, while it's at it: empty when it isn't, or never was. */
+    public synchronized Optional<Resource> gathering() {
+        return active() ? Optional.ofNullable(gathering) : Optional.empty();
+    }
+
     public synchronized void tick(Position soldier, WorldView world, Optional<Resource> resource, Position around,
                                   boolean wanted) {
         tick(soldier, world, resource, around, wanted, OptionalInt.empty());
@@ -115,6 +123,7 @@ public final class Gatherer {
             exhausted = false;
             return;
         }
+        gathering = resource.get();
         ItemClass item = switch (resource.get()) {
             case WOOD -> ItemClass.LOG;
             case SOIL -> ItemClass.DIRT;
