@@ -676,7 +676,8 @@ Each names a cell to stand in, and a cell each for the table and the furnace, on
 the stand stays open on the other two. A surface workshop also names a chest's cell, behind its
 table or its furnace and in reach of the stand: the site's store (§12) - a chest already there a
 block up or down first, since the ground at a depot moves, and no block is ever put against a
-chest's face, whose click opens it (`Builder.support`). Live, a depot sited a block higher took its
+chest's face, whose click opens it (`Builder.support`), nor a chest's row cell named over another
+chest, which it would shut. Live, a depot sited a block higher took its
 own chest for none, and the chest put in its place, against the old one, never went in all night. A fixture not standing yet is fitted by the first soldier
 that needs it (`bot.supply.Fitter`): it crafts the item - the table in its grid, the furnace from 8
 cobblestone at the table - and places it into its cell. A fixture counts as standing only when its own block is in the cell:

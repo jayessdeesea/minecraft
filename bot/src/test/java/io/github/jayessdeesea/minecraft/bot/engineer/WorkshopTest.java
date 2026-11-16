@@ -169,6 +169,21 @@ class WorkshopTest {
         assertTrue(w.chestStands(withBlock(below, true)));
     }
 
+    /** The depot's row never names the cell over a chest: a block there shuts it, and nothing goes against its face. */
+    @Test
+    void theChestRowSkipsTheCellOverAChest() {
+        BlockPos ground = new BlockPos(0, 64, 0);
+        Workshop w = Workshop.hasty(flat(Map.of()), ground, Set.of()).orElseThrow();
+        List<BlockPos> row = w.chestCells(flat(Map.of()), Set.of(), 4);
+        BlockPos second = row.get(1);
+        BlockPos chestBelow = second.offset(0, -1, 0);
+
+        List<BlockPos> again = Workshop.hasty(withBlock(chestBelow, true), ground, Set.of()).orElseThrow()
+                .chestCells(withBlock(chestBelow, true), Set.of(), 4);
+
+        assertTrue(!again.contains(second), "not the cell over the chest: " + again);
+    }
+
     /** Flat ground with one block on it at {@code cell}: a chest, or some other block. */
     private static WorldView withBlock(BlockPos cell, boolean chest) {
         WorldView ground = flat(Map.of());

@@ -74,7 +74,11 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
             boolean besideStand = Math.abs(cell.x() - stand.x()) + Math.abs(cell.z() - stand.z()) == 1;
             boolean besideAnother = cells.stream().anyMatch(c -> Math.abs(c.x() - cell.x()) + Math.abs(c.z() - cell.z()) <= 1);
             boolean lidLifts = !world.isSolid(cell.x(), cell.y() + 1, cell.z());
-            if (!fixture && !besideStand && !besideAnother && lidLifts
+            // Not on a chest: a block there shuts the one under it, and nothing goes against a chest's
+            // face. Live, the depot's row named the cell over a chest standing a block down, and every
+            // builder tried it, "nothing to build against", while the chest under it was nobody's.
+            boolean overAChest = world.isChest(cell.x(), cell.y() - 1, cell.z());
+            if (!fixture && !besideStand && !besideAnother && lidLifts && !overAChest
                     && (free(world, cell, claimed) || world.isChest(cell.x(), cell.y(), cell.z()))) {
                 cells.add(cell);
             }
