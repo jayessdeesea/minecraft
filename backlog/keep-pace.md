@@ -56,6 +56,11 @@ crew's ticks:
   (-48.9, 74, 43.1) - within the chest's 3.5-block reach of (-46.5, 73, 44.5) by Depositor's own
   test - failed five walks to it in a row, "expected the chest in reach within 1789 ticks"; suspect
   the depositor's soldierAt left stale while another routine holds the hands.
+- **A metal draw that starts and stops (field270, 13:34).** Jack, at the site's north end
+  (5.5, 74, 65.5), set out for 5 raw copper at the main depot every 30 s and called it off within
+  seconds ("the trip is no longer wanted"), its order Idle meanwhile - the walk never steered it -
+  and stood a minute; then gave up the copper helmet, "no COPPER_ORE within 48 blocks". Find why
+  the MetalPool draw comes and goes, and why a draw under way leaves the soldier's order Idle.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done
