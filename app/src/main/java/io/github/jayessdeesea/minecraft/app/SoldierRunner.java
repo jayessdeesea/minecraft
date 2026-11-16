@@ -1138,19 +1138,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (!shop.chest().equals(Optional.of(cell))) {
             return;
         }
-        List<BlockPos> row = shop.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS);
-        int at = row.indexOf(cell);
-        if (at < 0 || at + 1 >= row.size()) {
+        // Once, when it's found full: the row is laid out from the chest it has, so its "next" can be
+        // one already full - the first of it not known full is. Live, each depositor's tick said it
+        // again, twenty a second, naming a full chest as the next.
+        if (!fullChests.add(cell)) {
             return;
         }
-        Workshop next = shop.withChest(row.get(at + 1));
+        List<BlockPos> row = shop.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS);
+        Optional<BlockPos> free = row.stream().filter(c -> !fullChests.contains(c)).findFirst();
+        if (free.isEmpty()) {
+            LOG.warn("[Workshop] the chest at {} is full - and every chest of its row, {} of them", cell, row.size());
+            return;
+        }
+        Workshop next = shop.withChest(free.get());
         // The camp's: the common stockpile, re-read by every squad loop at the camp. A squad's own,
         // its squad loop's to change: noted here, moved on there (nextChestIfFull).
-        fullChests.add(cell);
         if (shop.equals(campWorkshop)) {
             campWorkshop = next;
         }
-        LOG.info("[Workshop] the chest at {} is full - the next goes up at {} ({} of {})", cell, row.get(at + 1), at + 2, row.size());
+        LOG.info("[Workshop] the chest at {} is full - the next goes up at {} ({} of {})", cell, free.get(), row.indexOf(free.get()) + 1, row.size());
     }
 
     /** Workshop chests found full - ticks add, squad loops read. */
