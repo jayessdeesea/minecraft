@@ -37,9 +37,13 @@ crew's ticks:
   wait it fails (the soldier builds back up its pillar), as it does with a guard that holds a new
   cut while the soldier is in the air, so the pillar's recovery depends on the time between cuts.
 - **Pickups.** About 10 ticks a dig waiting for the drop.
-- **One-block levels.** A block above the floor reappears now and then - at the haul road's entry
-  (-16, 67, -4) and once mid-floor - and holds the site at its level for a second or two. What
-  puts it there is unknown: not the road's plan, not a recorded step.
+- **One-block levels at the edges: the benched edge (clearing rule 6) isn't built.** Where the
+  site meets ground higher than its floor - the big site's east edge, x=16, against a hillside -
+  soldiers crossing between the two put steps in the edge column to climb the wall (field245:
+  Dana and Fran, four in a minute), and each is a level of its own while it stands. Set-aside ore
+  and unloaded chunks also moved the level, and are fixed (one answer for the site; a column's last
+  known top). Done when the ground just round the dig is lowered as it goes - benched, a walkable
+  slope, docs/military-doctrine.md § 17 rule 6 - and the edge needs no steps.
 
 ## Done when
 - The dig so far (`[Keep] pace: the dig so far`) holds within 90% across a day's levels.
