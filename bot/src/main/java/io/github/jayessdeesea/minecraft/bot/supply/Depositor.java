@@ -126,8 +126,19 @@ public final class Depositor {
      * raw ore that's the force's ({@link MetalPool}) - on a trip it makes for them or for its load.
      */
     public synchronized void tick(Position soldier, Optional<Position> stockpile, boolean wanted, Set<ItemClass> pooled) {
+        tick(soldier, stockpile, wanted, pooled, inventory -> List.of());
+    }
+
+    /**
+     * As {@link #tick(Position, Optional, boolean, Set)}, putting in too the slots {@code surplus}
+     * finds past the soldier's load for its work (bot.craft.LoadPlan; operator, 2026-11-15: a third
+     * sword, a worse pickaxe, an emerald to the depot) - on any trip it makes.
+     */
+    public synchronized void tick(Position soldier, Optional<Position> stockpile, boolean wanted, Set<ItemClass> pooled,
+                                  java.util.function.Function<Inventory, List<Integer>> surplus) {
         if (script == null) {
             this.pooled = Set.copyOf(pooled);
+            this.surplus = surplus;
         }
         this.soldierAt = soldier;
         this.wanted = wanted;
@@ -265,7 +276,7 @@ public final class Depositor {
                 }, new Expect("the chest's contents", chest::isOpen), ChestWindow.ANSWER_TICKS),
                 new Step(PUT_IN, this::deposit,
                         new Expect("the load in the chest", () -> load.stream().allMatch(c -> inventory.count(c) == 0)
-                                && inventory.count(ItemClass.FOOD) <= foodLeft),
+                                && inventory.count(ItemClass.FOOD) <= foodLeft && surplus.apply(inventory).isEmpty()),
                         ChestWindow.ANSWER_TICKS)),
                 List.of(new Guard("the trip is no longer wanted", () -> wanted || !walking)));
     }
@@ -278,6 +289,8 @@ public final class Depositor {
 
     /** Raw ore put in on this trip: the force's, every bit of it carried. */
     private Set<ItemClass> pooled = Set.of();
+    /** What it carries past its load, put in on this trip too. */
+    private java.util.function.Function<Inventory, List<Integer>> surplus = i -> List.of();
 
     /** Shift-clicks across every stack of the material there's a full load of, and the pooled ore. */
     private void deposit() {
@@ -290,6 +303,9 @@ public final class Depositor {
             load.add(ItemClass.COBBLESTONE);
         }
         foodLeft = inventory.count(ItemClass.FOOD);
+        for (int slot : surplus.apply(inventory)) {
+            chest.quickMove(chest.windowSlotOf(slot));
+        }
         for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
             Optional<ItemClass> itemClass = ItemClassRegistry.classOf(inventory.itemAt(slot));
             if (itemClass.isPresent() && load.contains(itemClass.get())) {

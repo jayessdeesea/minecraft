@@ -543,15 +543,27 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 11. An iron axe, which chops a log in a sixth of the bare-handed time.
 12. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
     the miner takes beside its stairs (§16) with an iron pickaxe, not something a soldier fetches.
-13. The tool load (`CrossLevel.TOOL_LOAD`): four each of melee weapons, pickaxes and shovels, of
-    stone - they wear out, and the next is in the pack (operator, 2026-11-12). Last, after the
+13. The tool load (`CrossLevel.TOOL_LOAD`): two each of melee weapons, pickaxes and shovels, of
+    stone - a main and a spare: they wear out, and the next is in the pack (operator, 2026-11-15,
+    the fighting load; four before it). What's past a soldier's load for its work goes to the
+    depot (`bot.craft.LoadPlan`, below). Last, after the
     armour: protection first, and a rung whose makings can't be had is passed over.
 
 A keep builder's work load - not the wood party's, whose load is its axe - comes before the ladder past its protection floor (operator,
 2026-11-14: kit by role, protection and work apart; `bot.craft.WorkLoad`): once it holds a stone
 sword, it makes stone pickaxes and shovels, whichever it's further short of, up to its share of the
 keep's dig still to do, halved between the two, over a stone tool's 132 uses, plus one in hand,
-four of each at most. Only from what it carries, cobblestone and wood, never quarried or chopped
+the tool load of each at most.
+
+**The fighting load by kind of work** (operator, 2026-11-15; ATP 3-21.18: the fighting load on the
+soldier, the rest with the trains; `bot.craft.LoadPlan`, backlog/load-plans.md): the keep's hands
+flatten - two swords, two pickaxes, two shovels, two axes, a stack of torches - and a mine's cutters
+mine - two swords, three pickaxes, a shovel, no axe, a stack of torches; food's basic load is
+`Subsistence`'s. The best of each is kept up to its figure - an axe counts as an axe, not a
+weapon - and what's past it, the worst of a kind, torches past a stack, and anything of no part of
+a load (an emerald), goes into the depot on the soldier's next trip there with its loads, or on a
+trip of its own once it's three slots: room in the pack for what the work digs, and the spare kit
+in the depot for whoever's short. Only from what it carries, cobblestone and wood, never quarried or chopped
 for. Live, builders climbed through copper armour while the dig's tools wore out with no spare.
 
 No rung past what the camp's level authorises is made (backlog/maturity-model.md, basis of issue;

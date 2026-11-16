@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.bot.craft;
 
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
+import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -24,7 +25,7 @@ class WorkLoadTest {
     void theLoadIsSizedFromWhatsLeftToDig() {
         assertEquals(1, WorkLoad.builderTools(0), "one in hand, with nothing left");
         assertEquals(2, WorkLoad.builderTools(200), "100 blocks a tool: one wears out, one more");
-        assertEquals(4, WorkLoad.builderTools(5_000), "never past the tool load");
+        assertEquals(CrossLevel.TOOL_LOAD, WorkLoad.builderTools(5_000), "never past the tool load: a main and a spare");
     }
 
     @Test

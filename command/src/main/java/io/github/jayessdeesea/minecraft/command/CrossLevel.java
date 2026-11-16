@@ -34,11 +34,12 @@ public final class CrossLevel {
     public static final double CRITICAL_HEALTH = 6;
 
     /**
-     * The tool load: melee weapons, pickaxes and shovels a soldier carries of each - they wear out,
-     * and one that breaks mid-fight or mid-dig is the next in the pack, not a walk to a table
-     * (operator, 2026-11-12).
+     * The tool load: melee weapons, pickaxes and shovels a soldier carries of each - a main and a
+     * spare: they wear out, and one that breaks mid-fight or mid-dig is the next in the pack, not a
+     * walk to a table (operator, 2026-11-15, of the fighting load: two of each, the rest to the
+     * depot - bot.craft.LoadPlan; four, 2026-11-12, before it).
      */
-    public static final int TOOL_LOAD = 4;
+    public static final int TOOL_LOAD = 2;
     /** Below this many of a tool, a soldier asks its squadmates for one, as for rations. */
     public static final int TOOLS_LOW = 2;
     /** What a giver keeps of a tool: it gives only beyond this, one at a time. */

@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.bot.DeterministicSoldier;
 import io.github.jayessdeesea.minecraft.bot.Hands;
 import io.github.jayessdeesea.minecraft.bot.craft.Crafter;
 import io.github.jayessdeesea.minecraft.bot.craft.Ladder;
+import io.github.jayessdeesea.minecraft.bot.craft.LoadPlan;
 import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import io.github.jayessdeesea.minecraft.bot.craft.WorkLoad;
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
@@ -2929,6 +2930,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .map(Map.Entry::getKey).sorted().toList();
     }
 
+    /** Slots past a soldier's load that make a trip to the depot of their own: fewer go with its next load. */
+    static final int SURPLUS_TRIP = 3;
+
     /** What a miner stashes at the landing, and how much of it makes a trip. Coal stays in the pack, for torches. */
     static final Set<ItemClass> STASHED = Set.of(ItemClass.RAW_IRON, ItemClass.RAW_COPPER, ItemClass.DIAMOND);
     static final int STASH_ORE = 8;
@@ -5383,8 +5387,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     if (stashOre) {
                         pooled.addAll(STASHED);
                     }
-                    depositor.tick(status.position(), stockpile, free && (fullLoad || Depositor.surplusFood(inventory) || poolOre || stashOre)
-                            && !threatened && fort == null, pooled);
+                    // What it carries past its work's load goes in too (LoadPlan; backlog/load-plans.md): the
+                    // keep's hands flatten, a mine's cutters mine. A trip of its own once it's a few slots.
+                    Optional<LoadPlan> plan = keepHands.contains(name) ? Optional.of(LoadPlan.FLATTENING)
+                            : cutting.containsKey(name) ? Optional.of(LoadPlan.MINING) : Optional.empty();
+                    boolean surplusTrip = plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
+                    depositor.tick(status.position(), stockpile, free && (fullLoad || Depositor.surplusFood(inventory) || poolOre || stashOre
+                                    || surplusTrip) && !threatened && fort == null, pooled,
+                            inv -> plan.map(p -> p.surplus(inv)).orElse(List.of()));
                 }
             }));
             storeWalks.put(name, fitStore && !atStand(status.position(), shop.get())
