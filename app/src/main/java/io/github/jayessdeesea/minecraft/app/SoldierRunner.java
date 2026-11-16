@@ -5919,7 +5919,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .orElseGet(() -> levelPlan != null && levelPlan.boxes().containsKey(name) && !keepDue.containsKey(name)
                                 ? "done, waiting for the level"
                                 : levelPlan == null || levelPlan.boxes().containsKey(name)
-                                ? "hands free, " + status.order().getClass().getSimpleName()
+                                ? clearer.idleReason().map(r -> "clearer idle, " + r)
+                                .orElse("hands free, " + status.order().getClass().getSimpleName())
                                 : inWoodParty(name) ? "wood party, walking"
                                 : name.equals(keepRoadCutter) ? "haul road, walking"
                                 : !levelPlan.crew().contains(name) ? "off the crew (" + status.order().getClass().getSimpleName() + ")"

@@ -238,7 +238,9 @@ builder's own best, the level as it was split, is shown beside it, so an uneven 
 loss. Every tick of every builder on the keep is put down to what held it - the routine holding its
 hands (the clearer, the depositor, the armourer at a table, rations), or with none, why it has no
 rectangle: the wood party, the haul road, off the crew, done and waiting for the level, or
-waiting - on the crew with nothing given - so the gap to the best is accounted for. When the level falls, the log says what it took against
+waiting - on the crew with nothing given - and with work left and its clearer idle, why
+(`Clearer.idleReason`: nothing in reach, no blocks to climb on, a cut failed, no tool) - so the
+gap to the best is accounted for. When the level falls, the log says what it took against
 its best and its split's - the nights left out, its clock and the tally stopped while it's dark - where the crew's ticks went ("waiting, no rectangle 40%, clearer 35%,
 ..."), each builder's ticks taken against best; then the dig so far, level on level, the same way:
 that line is the one that says whether the method is within 90% of its best. Below 90% either line

@@ -97,6 +97,14 @@ public final class Clearer {
         return failed.stuck().map(s -> "can't clear the camp: " + s);
     }
 
+    /** Why it isn't cutting, as of its last tick - empty while it is (the flatten's pace telemetry). */
+    private String idle;
+
+    /** Why it isn't cutting: nothing in reach, a cut failed, no tool, not free - empty while it is. */
+    public synchronized Optional<String> idleReason() {
+        return digger != null ? Optional.empty() : Optional.ofNullable(idle);
+    }
+
     /**
      * A tick passed with no {@link #tick} - its owner at other work: the time still counts toward
      * the wait before it looks again. Live, a farmer's earthwork looked once, found nothing in reach,
@@ -141,9 +149,11 @@ public final class Clearer {
         }
         if (!free || cover.isEmpty()) {
             stop();
+            idle = !free ? "not free" : "nothing to cut";
             return;
         }
         if (digger != null) {
+            idle = null;
             switch (digger.tick(soldier, world)) {
                 case Digger.Progress.Working _ -> {
                 }
@@ -168,6 +178,7 @@ public final class Clearer {
                     failed.failed(digger.spot().block(), ticks, why);
                     stop();
                     cooldown = COOLDOWN_TICKS;
+                    idle = "a cut failed";
                 }
             }
             return;
@@ -218,6 +229,9 @@ public final class Clearer {
         }
         if (cut.isEmpty()) {
             cooldown = COOLDOWN_TICKS;
+            // Why nothing reached: a block too high with nothing to climb on, or no stand at all.
+            idle = !tunnel && strip.isPresent() && inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.COBBLESTONE) == 0
+                    ? "nothing in reach, no blocks to climb on" : "nothing in reach";
             return;
         }
         Clearing.Cut c = cut.get();
@@ -229,6 +243,7 @@ public final class Clearer {
             if (world.hardness(b.x(), b.y(), b.z()).isEmpty()) {
                 failed.failed(b, ticks, "no tool to dig the " + target + " at " + b + ", and no break time known to dig it by hand");
                 cooldown = COOLDOWN_TICKS;
+                idle = "no tool for it";
                 return;
             }
             if (!byHand.contains(b)) {
