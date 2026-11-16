@@ -316,7 +316,19 @@ public class ChainOfCommand implements DisposableBean {
      * rule, which still comes first at dusk.
      */
     Objective byDay(Objective objective, SquadStatus squad) {
-        if (!keepByDay || time == null || (time.dark() || sheltering()) && !surfacing() || objective.task() instanceof Objective.Task.Keep) {
+        if (!keepByDay || time == null || (time.dark() || sheltering()) && !surfacing()) {
+            return objective;
+        }
+        // The farm squad keeps the camp's farm, not the ground - whatever it's given: its standing job by day.
+        if (farmSquad.filter(squad.squadName()::equals).isPresent()) {
+            Foothold base = foothold;
+            Position at = base != null ? base.camp() : objective.location();
+            if (!(objective.task() instanceof Objective.Task.None) || !objective.location().equals(at)) {
+                LOG.info("[PL -> {}] by day, the farm squad: keeps the camp's farm, not '{}'", squad.squadName(), objective.mission());
+            }
+            return new Objective("Keep the camp's farm", at, "Food for the force: the farm squad's standing job", new Objective.Task.None());
+        }
+        if (objective.task() instanceof Objective.Task.Keep) {
             return objective;
         }
         boolean answersWood = objective.task() instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD && squad.classFour().isPresent();
@@ -443,6 +455,23 @@ public class ChainOfCommand implements DisposableBean {
         OrderTrace trace = trace(operator, "!flatten " + site.describe(), version);
         LOG.info("[{} -> PL] FLATTEN ({}): {}, in place of {}", operator, trace.id, site.describe(), was.describe());
         transmit("[PL -> " + operator + "] WILCO (" + trace.id + "): flatten " + site.describe());
+    }
+
+    /**
+     * The squad that keeps the camp's farm by day as its standing job (operator, 2026-11-15: a
+     * dedicated squad for the farming), so no other squad's hands are taken off the work for it -
+     * empty for none (minecraft.farm-squad).
+     */
+    private volatile Optional<String> farmSquad = Optional.empty();
+
+    @Autowired
+    void setFarmSquad(@Value("${minecraft.farm-squad:}") String squad) {
+        this.farmSquad = Optional.of(squad.strip()).filter(s -> !s.isEmpty());
+    }
+
+    /** The farm squad, if one is named. */
+    public Optional<String> farmSquad() {
+        return farmSquad;
     }
 
     /** The ground the squads flatten by day: the operator's last {@code !flatten}, or the configured site. */

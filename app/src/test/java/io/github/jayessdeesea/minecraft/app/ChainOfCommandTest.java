@@ -82,6 +82,25 @@ class ChainOfCommandTest {
     }
 
     /**
+     * The farm squad keeps the camp's farm by day whatever it's given, the keep included; the others
+     * flatten (operator, 2026-11-15: a dedicated squad for the farming).
+     */
+    @Test
+    void underTheKeepRuleTheFarmSquadKeepsTheFarm() {
+        chain.setKeepByDay(true);
+        chain.setFarmSquad("Delta");
+        chain.setGround((x, z, nearY) -> OptionalInt.of(64));
+        chain.onTime(TimeOfDay.of(1000, true));
+        Objective keep = chain.byDay(WALL, squad("Alpha", "Alice"));
+
+        Objective farm = chain.byDay(keep, squad("Delta", "Mia"));
+
+        assertTrue(keep.task() instanceof Objective.Task.Keep, keep.toString());
+        assertTrue(farm.task() instanceof Objective.Task.None, farm.toString());
+        assertEquals("Keep the camp's farm", farm.mission());
+    }
+
+    /**
      * A request outranks the standing rule, or it's never answered: under the keep rule the platoon leader's
      * WOOD for a squad whose Class IV is RED stands; the same order for one with no request is put
      * on the keep. Live, the keep's builders asked for logs all day and the rule put every squad back.

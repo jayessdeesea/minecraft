@@ -176,7 +176,12 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    fed by a hand-over of seconds, and the farm is a walk of minutes - live, a builder with an empty
    pack walked 80 blocks to the farm, baked four loaves for itself and walked 80 back while three
    squadmates carried plenty. A farmer sent stays four minutes whatever the rating does meanwhile,
-   since the walk is the cost: that one was taken off the farm 24 seconds after arriving. The camp's farm is sited once, on ground by water near the camp that
+   since the walk is the cost: that one was taken off the farm 24 seconds after arriving. With a
+   farm squad named (operator, 2026-11-15: a dedicated squad for the farming; `minecraft.farm-squad`),
+   all of the above gives way to it: that squad keeps the camp's farm by day as its standing job, every
+   soldier of it, whatever it's ordered, and no other squad farms but under a FARM order - a hungry
+   soldier elsewhere is fed from the stockpile or a squadmate's pack. Live, half of each hungry squad
+   on the keep went to the farm by the rule above, and the keep's crew was a third off its ground. The camp's farm is sited once, on ground by water near the camp that
    the squad can walk to - a flood from the camp's ground, as a FARM order's plot is from the squad -
    and kept while its water is there - on disk too, under `minecraft.state-dir` as the wall is
    (`app.WallStore`), since sited again after a restart it moved to another pond. Once a run it's
@@ -1190,7 +1195,11 @@ carrying 8 or more raw iron, raw copper and diamonds fits the chest if it isn't 
 workshop's is (§ 12), from a chest carried down or with 4 logs or more, so a pickaxe's handles are
 left - and puts them all in, and goes back to the cutting, rather than up the stairs
 with every pack; coal stays in its pack for torches. What the stash holds is the mine's, logged as
-`[Mine] the stash at ... holds ...`, not the camp's stockpile, and nothing is drawn from it. The stairs and tunnels are lit as they're cut, so the
+`[Mine] the stash at ... holds ...`, not the camp's stockpile - filled by night only. By day a
+soldier still down the stairs with room in its pack draws the stash's raw copper, then its iron, a
+stack at a time, and carries it up: the metal pool puts what it doesn't need into the depot, where an
+armourer draws it (operator, 2026-11-15: raw material up the stairs so everyone can use it; live, 42
+raw copper lay in the stash while nine soldiers of sixteen had no armour). The stairs and tunnels are lit as they're cut, so the
 mine spawns nothing: a torch on a step once a turn, halfway round, one at the landing's stand, one
 every 6 blocks along the main tunnel and one 4 blocks into every other pair of branches - within 7
 blocks of every tunnel cell (`Staircase.lights`), put down by the squad holding the top - those carrying torches, or the

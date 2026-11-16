@@ -55,6 +55,9 @@ minecraft:
   # rectangle taken down to y - everything above it dug out. An operator replaces it from chat with
   # "!flatten x1 z1 x2 z2 y".
   flatten: "-16 -16 16 16 63"
+  # The squad that keeps the camp's farm by day as its standing job; no other squad farms but under
+  # an order to. Empty: none - half a hungry squad farms by the field-feeding rule.
+  farm-squad: Delta
   # The camp the squads build up as a lodgment (docs/military-doctrine.md §17), as "x,z": its
   # progress through the phases is measured and shown to the platoon leader. Empty: no camp.
   camp: ""

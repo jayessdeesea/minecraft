@@ -3033,6 +3033,55 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Each mine's stash, by the mine's head, as last seen - written by the connection that stowed it. */
     private final Map<BlockPos, Stockpile> mineStash = new ConcurrentHashMap<>();
 
+    /** A draw from a mine's stash: its chest, centred, the ore, and how much to carry when done. */
+    record Unstash(Position chest, ItemClass ore, int carry) {
+    }
+
+    /** Raw ore a soldier takes from a stash at a time: a stack. */
+    static final int UNSTASH_LOAD = 64;
+    /** Free slots a soldier keeps for the walk up with it. */
+    static final int UNSTASH_FREE = 2;
+    /** How far from a mine's head a soldier below it is down that mine. */
+    static final int UNSTASH_REACH = 48;
+
+    /**
+     * Raw ore up the stairs (operator, 2026-11-15: bring raw material up so everyone can use it): by
+     * day, a soldier down a mine with room in its pack draws the copper - then the iron - its stash
+     * was last seen holding, and the metal pool puts what it doesn't need into the depot, where an
+     * armourer draws it. Live, 42 raw copper lay in a stash nobody drew from while nine soldiers of
+     * sixteen had no armour, each looking for ore of its own. Empty by night, when the stash is filled.
+     */
+    private Optional<Unstash> unstashFor(Position at, Inventory inventory, boolean dark) {
+        if (dark) {
+            return Optional.empty();
+        }
+        int free = 0;
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            if (inventory.itemAt(slot) < 0) {
+                free++;
+            }
+        }
+        if (free < UNSTASH_FREE) {
+            return Optional.empty();
+        }
+        for (Staircase mine : squadStairs.values().stream().distinct().toList()) {
+            Stockpile seen = mineStash.get(mine.head());
+            if (seen == null || at.y() > mine.head().y() - 2
+                    || Math.hypot(at.x() - mine.head().x(), at.z() - mine.head().z()) > UNSTASH_REACH) {
+                continue;
+            }
+            ItemClass ore = seen.rawCopper() > 0 ? ItemClass.RAW_COPPER : seen.rawIron() > 0 ? ItemClass.RAW_IRON : null;
+            if (ore == null) {
+                continue;
+            }
+            int there = ore == ItemClass.RAW_COPPER ? seen.rawCopper() : seen.rawIron();
+            BlockPos chest = mine.store().getFirst();
+            return Optional.of(new Unstash(new Position(chest.x() + 0.5, chest.y(), chest.z() + 0.5), ore,
+                    inventory.count(ore) + Math.min(UNSTASH_LOAD, there)));
+        }
+        return Optional.empty();
+    }
+
     /** The mine whose stash chest stands at {@code chest} - centred as a stockpile's position is. */
     private Optional<Staircase> mineOfChest(Position chest) {
         BlockPos cell = BlockPos.containing(chest.x(), chest.y(), chest.z());
@@ -4021,9 +4070,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // was taken off it 24 seconds after arriving, the moment the squad's rating turned.
             Long since = farmSince.get(soldierName);
             boolean onStint = since != null && clockwork.millis() - since < FARM_STINT_MILLIS && farmDay && !squadInContact;
+            // With a farm squad named, it keeps the camp's farm by day, every one of it, and no other
+            // squad farms but under an order to (operator, 2026-11-15): live, half of each hungry squad
+            // went to the farm by the field-feeding rule, and the keep's crew was a third off it.
+            Optional<String> farmSquad = chainOfCommand.farmSquad();
+            boolean theFarmSquad = farmSquad.filter(squadName::equals).isPresent();
             FarmPlan kept = farm != null ? farm
                     : siteDry && campFarm != null ? campFarm
-                    : (feeding != PlatoonSergeant.Farmers.NONE && farmDay && farmHalf || onStint) ? campFarm : null;
+                    : theFarmSquad ? (farmDay ? campFarm : null)
+                    : farmSquad.isEmpty() && (feeding != PlatoonSergeant.Farmers.NONE && farmDay && farmHalf || onStint) ? campFarm : null;
             if (kept != null && !squadInContact) {
                 if (kept == campFarm && farm == null) {
                     farmSince.putIfAbsent(soldierName, clockwork.millis());
@@ -5187,8 +5242,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean poolOre = metal.stocking(inventory) >= POOL_TRIP;
             // Down the mine with a load of ore: into the stash at the landing, and back to the cutting.
             Workshop working = workshops.get(name);
-            boolean stashOre = working != null && mineOfChest(chestCentre(working)).isPresent()
+            // By night only: by day the stash's ore comes up the stairs to the depot (unstashFor), and
+            // stashed again on the way it would never leave.
+            boolean darkNow = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
+            boolean stashOre = darkNow && working != null && mineOfChest(chestCentre(working)).isPresent()
                     && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;
+            Optional<Unstash> unstash = unstashFor(status.position(), inventory, darkNow);
             // A farmer's hoe, and its wheat baked into bread three at a time.
             FarmPlan field = farming.get(name);
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
@@ -5483,7 +5542,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 chestFitter.stop(status.position(), world);
                 Optional<Position> stockpile = stashOre && !depositor.active() || depositor.chestAt().flatMap(this::mineOfChest).isPresent() && depositor.active()
                         ? chestOf(working) : stockpileFor(name);
-                if (drawingStone.contains(name) || keepDrawing.contains(name)) {
+                if (unstash.isPresent()) {
+                    depositor.tickDraw(status.position(), Optional.of(unstash.get().chest()), unstash.get().ore(), unstash.get().carry(),
+                            free && !threatened);
+                } else if (drawingStone.contains(name) || keepDrawing.contains(name)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
                 } else if (drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile)
                         || depositor.drawing(ItemClass.LOG)) {
