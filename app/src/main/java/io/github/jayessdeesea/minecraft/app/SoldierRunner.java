@@ -2035,21 +2035,22 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // 2026-11-13: left for a tool of the right strength). Left in the dig it would be its strip's
         // top for good, and in lock step hold the whole site at its level. Set aside, the site goes on
         // down past it; with the pickaxe it's the strip's top again and is cleared like any block.
-        Map<String, Box> owners = new HashMap<>();
-        KeepPlan standing = keepPlan;
-        if (standing != null) {
-            standing.boxes().forEach((builder, boxes) -> owners.put(builder, boxes.getFirst()));
-        }
-        int squadsBest = hands.stream().mapToInt(h -> pickaxeTiers.getOrDefault(h.name(), Hardness.HAND)).max().orElse(Hardness.HAND);
+        // Set aside only what nobody on the site can take: the best pickaxe among every squad's hands,
+        // not this squad's, nor the one whose rectangle it's in - one answer for every cycle, whoever
+        // holds what. Ore one builder can't take and another can stays in the dig, and the ore errand
+        // sends the one who can. Live, the set-aside followed each squad and each plan's holders, the
+        // site's highest ground with it, and the level went 90, 83, 89, 83 every second, dealt out
+        // again each time.
+        Set<String> siteHands = new HashSet<>();
+        keepHandsAt.values().forEach(m -> siteHands.addAll(m.keySet()));
+        hands.forEach(h -> siteHands.add(h.name()));
+        int squadsBest = siteHands.stream().mapToInt(n -> pickaxeTiers.getOrDefault(n, Hardness.HAND)).max().orElse(Hardness.HAND);
         Set<Cell> oreAside = new HashSet<>();
         for (BlockPos c : siteClear(ground, digExcept)) {
             if (!world.isOre(c.x(), c.y(), c.z())) {
                 continue;
             }
-            int tier = owners.entrySet().stream()
-                    .filter(e -> c.x() >= e.getValue().minX() && c.x() <= e.getValue().maxX() && c.z() >= e.getValue().minZ() && c.z() <= e.getValue().maxZ())
-                    .map(e -> pickaxeTiers.getOrDefault(e.getKey(), Hardness.HAND)).findFirst().orElse(squadsBest);
-            if (world.hardness(c.x(), c.y(), c.z()).filter(h -> h.tool() == Hardness.Tool.PICKAXE && !h.drops(tier)).isPresent()) {
+            if (world.hardness(c.x(), c.y(), c.z()).filter(h -> h.tool() == Hardness.Tool.PICKAXE && !h.drops(squadsBest)).isPresent()) {
                 oreAside.add(new Cell(c.x(), c.y(), c.z()));
             }
         }

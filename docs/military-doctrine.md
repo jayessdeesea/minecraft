@@ -616,7 +616,9 @@ pickaxe digs stone by hand rather than stand, for a way out, a snag or the groun
 leaves is ore whose drop needs a pickaxe of a tier it hasn't got (`needs_*_tool`: stone for iron
 ore, iron for diamond), for a squadmate's pickaxe or until one is made, since dug with less the
 drop is lost for good (`Clearer`, "leaves N ore block(s) its tools can't dig for their drop"). On the keep
-such ore is set aside with the ground under it, by its strip's builder's pickaxe, and the site goes
+such ore is set aside with the ground under it when no builder on the site, of any squad, carries
+the pickaxe for it - one answer for the whole site, not each squad's nor each rectangle's holder's,
+whose changes moved the site's highest ground and the level with them every second - and the site goes
 on down past it - left in the dig it would hold the whole site at its level in lock step (§17) - and
 with the pickaxe carried it's the strip's top again, cleared like any block. Set aside isn't done:
 the keep's ground isn't flattened while any stands (operator, 2026-11-15), and its estimate (§ 17)
