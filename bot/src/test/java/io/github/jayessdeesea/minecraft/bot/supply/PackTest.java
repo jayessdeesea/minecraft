@@ -20,6 +20,18 @@ class PackTest {
     /** An item no routine uses: one of no class. */
     private static final int JUNK = IntStream.range(1, 4096).filter(id -> ItemClassRegistry.classOf(id).isEmpty()).findFirst().orElseThrow();
 
+    /** Minerals aren't junk: a nearly full pack sheds rotten flesh, never redstone or lapis (operator, 2026-11-15). */
+    @Test
+    void aNearlyFullPackKeepsItsMinerals() {
+        Inventory inventory = new Inventory();
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            inventory.setSlot(slot, new int[]{item(ItemClass.TORCH), 16});
+        }
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.MINERAL), 1});
+
+        assertEquals(Optional.empty(), Pack.unused(inventory), "the redstone kept");
+    }
+
     @Test
     void aNearlyFullPackShedsTheSmallestStackOfWhatNothingUses() {
         Inventory inventory = new Inventory();

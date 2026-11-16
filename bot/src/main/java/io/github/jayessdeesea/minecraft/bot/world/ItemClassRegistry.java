@@ -27,7 +27,9 @@ public final class ItemClassRegistry {
     /** What an item counts as. */
     public enum ItemClass { WEAPON, ARMOUR, ARROWS, LOG, PLANKS, STICK, CRAFTING_TABLE, COBBLESTONE, PICKAXE, FOOD, FURNACE, COAL, TORCH, RAW_IRON, IRON_INGOT,
         SHIELD, SEEDS, WHEAT, HOE, SAPLING, DIRT, STRING, FLINT, FEATHER, DIAMOND, RAW_COPPER, COPPER_INGOT,
-        CHEST, LADDER, FENCE, FENCE_GATE, BUCKET, WATER_BUCKET, WOOL, BED, SHOVEL }
+        CHEST, LADDER, FENCE, FENCE_GATE, BUCKET, WATER_BUCKET, WOOL, BED, SHOVEL,
+        /** What ore drops beyond the metals' raw ore, coal and diamond: redstone, lapis, emerald, gold, quartz, amethyst. */
+        MINERAL }
 
     private static final String RESOURCE_NAME = "item-classes-777.txt";
 
@@ -234,6 +236,7 @@ public final class ItemClassRegistry {
                         case "u" -> ItemClass.WOOL;
                         case "d" -> ItemClass.BED;
                         case "v" -> ItemClass.SHOVEL;
+                        case "m" -> ItemClass.MINERAL;
                         default -> throw new IllegalStateException("Unknown item class in " + RESOURCE_NAME + ": " + line);
                     };
                     items.put(Integer.parseInt(parts[0]), new Entry(itemClass, parts[2]));

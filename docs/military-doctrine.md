@@ -568,7 +568,8 @@ flatten - two swords, two pickaxes, two shovels, two axes, a stack of torches - 
 mine - two swords, three pickaxes, a shovel, no axe, a stack of torches; food's basic load is
 `Subsistence`'s. The best of each is kept up to its figure - an axe counts as an axe, not a
 weapon - and what's past it, the worst of a kind, torches past a stack, and anything of no part of
-a load (an emerald), goes into the depot on the soldier's next trip there with its loads, or on a
+a load - an emerald, a mineral of any kind, a diamond (`ItemClass.MINERAL`: redstone, lapis,
+emerald, gold, quartz, amethyst) - goes into the depot on the soldier's next trip there with its loads, or on a
 trip of its own once it's three slots: room in the pack for what the work digs, and the spare kit
 in the depot for whoever's short. Only from what it carries, cobblestone and wood, never quarried or chopped
 for. Live, builders climbed through copper armour while the dig's tools wore out with no spare.
@@ -624,7 +625,10 @@ seen holding that many, or hasn't been seen since a restart (`SoldierRunner.draw
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach -
 a tree or ore looked for at any height it can walk to, up a slope or down the mine's stairs, and
-ore met in a dig of the ground taken for its drop, not broken as a block in the way -
+ore met in a dig of the ground taken for its drop, not broken as a block in the way - every kind:
+iron, copper, coal, and any other with the best pickaxe carried (`Digger.Target.ORE`), its drop
+worth more than the dirt and cobblestone round it (operator, 2026-11-15) and never thrown away as
+junk from a full pack -
 only a block it can walk to a stand beside (`Armourer.spotFor`, a flood fill from where it stands):
 live, builders left the keep for iron seen 40 blocks off through solid rock, and copper under a
 blocked stair, and each stood 20 seconds at "no route" before giving up, every few minutes, all day.

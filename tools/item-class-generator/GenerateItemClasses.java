@@ -22,6 +22,8 @@ import java.util.TreeSet;
 public class GenerateItemClasses {
 
     private static final Set<String> WEAPON_SUFFIXES = Set.of("_sword", "_axe", "_spear");
+    /** What ore drops that isn't a metal's raw ore, coal or diamond: worth carrying and stocking over the bulk. */
+    private static final Set<String> MINERALS = Set.of("redstone", "lapis_lazuli", "emerald", "raw_gold", "gold_nugget", "quartz", "amethyst_shard");
     private static final Set<String> WEAPONS = Set.of("bow", "crossbow", "trident", "mace");
     private static final Set<String> ARMOUR_SUFFIXES = Set.of("_helmet", "_chestplate", "_leggings", "_boots");
     private static final Set<String> ROUNDS = Set.of("arrow", "spectral_arrow", "tipped_arrow");
@@ -50,6 +52,7 @@ public class GenerateItemClasses {
         unmatched.addAll(Set.of("stick", "crafting_table", "cobblestone", "wooden_pickaxe", "furnace", "coal", "charcoal", "torch",
                 "raw_iron", "iron_ingot", "shield", "wheat_seeds", "wheat", "wooden_hoe", "dirt",
                 "string", "flint", "feather", "diamond", "raw_copper", "copper_ingot", "white_wool", "white_bed"));
+        unmatched.addAll(MINERALS);
         unmatched.addAll(food);
         Iterator<Map.Entry<String, JsonNode>> it = entries.fields();
         while (it.hasNext()) {
@@ -82,6 +85,9 @@ public class GenerateItemClasses {
                     : name.equals("diamond") ? 'I'
                     : name.equals("raw_copper") ? 'G'
                     : name.equals("copper_ingot") ? 'c'
+                    // What ore drops beyond the metals and coal above: worth more than any dirt or
+                    // cobblestone in a pack, and the stockpile's (operator, 2026-11-15).
+                    : MINERALS.contains(name) ? 'm'
                     // A site's fixtures and fittings: chests, ladders, wooden fences and gates, buckets.
                     : name.equals("chest") ? 'h'
                     : name.equals("ladder") ? 'l'
@@ -112,7 +118,8 @@ public class GenerateItemClasses {
             out.println("# S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;");
             out.println("# U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;");
             out.println("# E wheat seeds, Y wheat, Z hoes, B saplings, D dirt; J string, Q flint, V feathers, I diamonds, G raw copper, c copper ingot.");
-            out.println("# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket; u white wool, d beds; v shovels.");
+            out.println("# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket; u white wool, d beds; v shovels;");
+            out.println("# m minerals - redstone, lapis, emerald, gold, quartz, amethyst.");
             out.println("# Everything NOT listed is just carried.");
             classes.forEach((id, line) -> out.println(id + " " + line));
         }

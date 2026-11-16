@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
 
@@ -65,8 +66,11 @@ public record LoadPlan(int weapons, int pickaxes, int shovels, int axes, int tor
         }
         for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
             int item = inventory.itemAt(slot);
-            if (item >= 0 && ItemClassRegistry.classOf(item).isEmpty() && ItemClassRegistry.meleeRank(item).isEmpty()
-                    && ItemClassRegistry.axeSpeed(item).isEmpty()) {
+            // And minerals - redstone, lapis, emerald, gold, diamonds: the stockpile's, worth carrying
+            // back over any dirt (operator, 2026-11-15), no part of a working load.
+            Optional<ItemClass> kind = item >= 0 ? ItemClassRegistry.classOf(item) : Optional.empty();
+            if (item >= 0 && (kind.filter(k -> k == ItemClass.MINERAL || k == ItemClass.DIAMOND).isPresent()
+                    || kind.isEmpty() && ItemClassRegistry.meleeRank(item).isEmpty() && ItemClassRegistry.axeSpeed(item).isEmpty())) {
                 out.add(slot);
             }
         }

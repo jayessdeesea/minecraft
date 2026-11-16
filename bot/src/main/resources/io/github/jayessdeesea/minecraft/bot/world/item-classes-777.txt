@@ -4,7 +4,8 @@
 # S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;
 # U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;
 # E wheat seeds, Y wheat, Z hoes, B saplings, D dirt; J string, Q flint, V feathers, I diamonds, G raw copper, c copper ingot.
-# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket; u white wool, d beds; v shovels.
+# h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket; u white wool, d beds; v shovels;
+# m minerals - redstone, lapis, emerald, gold, quartz, amethyst.
 # Everything NOT listed is just carried.
 55 D dirt
 62 K cobblestone
@@ -69,6 +70,7 @@
 427 f bamboo_fence
 428 f crimson_fence
 429 f warped_fence
+824 m redstone
 932 g oak_fence_gate
 933 g spruce_fence_gate
 934 g birch_fence_gate
@@ -89,10 +91,15 @@
 1010 O coal
 1011 O charcoal
 1012 I diamond
+1013 m emerald
+1014 m lapis_lazuli
+1015 m quartz
+1016 m amethyst_shard
 1017 M raw_iron
 1018 N iron_ingot
 1019 G raw_copper
 1020 c copper_ingot
+1021 m raw_gold
 1025 W wooden_sword
 1026 v wooden_shovel
 1027 X wooden_pickaxe
@@ -197,6 +204,7 @@
 1261 F cooked_beef
 1262 F chicken
 1263 F cooked_chicken
+1268 m gold_nugget
 1374 W mace
 1378 F carrot
 1379 F potato

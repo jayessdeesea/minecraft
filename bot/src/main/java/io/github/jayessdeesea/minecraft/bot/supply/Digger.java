@@ -79,6 +79,17 @@ final class Digger {
         IRON_ORE(45, 1, ItemClass.PICKAXE, 1, ItemClass.RAW_IRON),
         /** Copper ore, with a stone pickaxe or better: raw copper - armour where there's no iron. At feet or head height. */
         COPPER_ORE(45, 1, ItemClass.PICKAXE, 1, ItemClass.RAW_COPPER),
+        /**
+         * Coal ore, with any pickaxe: coal - the smelter's fuel and the torches'. Live, the keep's
+         * flattening broke it as any other block and left the coal lying on the floor. At feet or head height.
+         */
+        COAL_ORE(45, 1, ItemClass.PICKAXE, 0, ItemClass.COAL),
+        /**
+         * Any other ore - redstone, lapis, gold, emerald, diamond, quartz - with the best pickaxe
+         * carried, for what it drops, worth more than any dirt or cobblestone (operator, 2026-11-15).
+         * In its own break time from its hardness, as {@link #OTHER}. At feet or head height.
+         */
+        ORE(Clearing.MAX_DIG_TICKS, 1, ItemClass.PICKAXE, 0, ItemClass.MINERAL),
         /** Short or tall grass, by hand at a touch: wheat seeds, one time in eight. */
         GRASS(3, 1, null, 0, ItemClass.SEEDS, false),
         /** Ripe wheat, by hand at a touch: wheat, and seeds to plant again. */
@@ -133,6 +144,8 @@ final class Digger {
                 case IRON_ORE -> world.isIronOre(block.x(), block.y(), block.z());
                 case GRAVEL -> world.isGravel(block.x(), block.y(), block.z());
                 case COPPER_ORE -> world.oreOf(block.x(), block.y(), block.z()).filter("copper"::equals).isPresent();
+                case COAL_ORE -> world.oreOf(block.x(), block.y(), block.z()).filter("coal"::equals).isPresent();
+                case ORE -> world.isOre(block.x(), block.y(), block.z());
                 case GRASS -> world.isGrassPlant(block.x(), block.y(), block.z());
                 case WHEAT -> world.wheatAge(block.x(), block.y(), block.z()).orElse(-1) == RIPE;
                 case SOIL -> world.isSoil(block.x(), block.y(), block.z()) && !world.isFarmland(block.x(), block.y(), block.z())
@@ -341,8 +354,8 @@ final class Digger {
                 // The server times the dig itself: finishing early is refused, so wait out its break time.
                 new Step("dig the " + target + " at " + block, () -> {
                     digStarted = ticks;
-                    digTicks = target == Target.OTHER ? otherTicks() : target.digTicks(inventory);
-                    dropsBefore = target.drop == null ? 0 : inventory.count(target.drop);
+                    digTicks = target == Target.OTHER || target == Target.ORE ? otherTicks() : target.digTicks(inventory);
+                    dropsBefore = target.drop == null ? 0 : dropCount();
                     session.startDigging(block.x(), block.y(), block.z());
                 }, new Expect("the break time to pass", () -> ticks - digStarted >= digTicks), target.digTicks + Breacher.MARGIN_TICKS + 1),
                 new Step("break the " + target, () -> session.finishDigging(block.x(), block.y(), block.z()),
@@ -354,7 +367,7 @@ final class Digger {
                     pickingUp = true;
                     pickupStarted = ticks;
                 }, new Expect("the " + target.drop + " picked up", () -> {
-                    if (inventory.count(target.drop) > dropsBefore) {
+                    if (dropCount() > dropsBefore) {
                         return true;
                     }
                     boolean onGround = !dropsNear().isEmpty();
@@ -384,6 +397,12 @@ final class Digger {
         Hardness hardness = world.hardness(b.x(), b.y(), b.z())
                 .orElseThrow(() -> new IllegalStateException("no hardness for the block at " + b + " - it can't be broken"));
         return hardness.ticks(held, Target.speedFor(hardness, item)) + Breacher.MARGIN_TICKS;
+    }
+
+    /** What of its drop it carries: for {@link Target#ORE}, any mineral or diamond - which one an ore drops is its own. */
+    private int dropCount() {
+        return spot.target() == Target.ORE ? inventory.count(ItemClass.MINERAL) + inventory.count(ItemClass.DIAMOND)
+                : inventory.count(spot.target().drop);
     }
 
     /** Gives up this dig's claims - call once it's done, failed, or abandoned. */

@@ -245,7 +245,7 @@ public final class Clearer {
 
     /**
      * What a clear digs {@code block} as: a tree's log or leaves, stone, cobblestone, gravel and soil
-     * for their drops - and iron and copper ore for theirs, taken and picked up, not broken as a block
+     * for their drops - and ore of every kind for theirs, taken and picked up, not broken as a block
      * in the way. Live, a day's flattening went through ore after ore, the raw iron left lying where
      * it fell, and no soldier of eight held an ingot. Anything else is dug to clear it.
      */
@@ -254,6 +254,8 @@ public final class Clearer {
                 : world.leaves(b.x(), b.y(), b.z()).isPresent() ? Digger.Target.LEAVES
                 : world.isIronOre(b.x(), b.y(), b.z()) ? Digger.Target.IRON_ORE
                 : Digger.Target.COPPER_ORE.at(world, b) ? Digger.Target.COPPER_ORE
+                : Digger.Target.COAL_ORE.at(world, b) ? Digger.Target.COAL_ORE
+                : world.isOre(b.x(), b.y(), b.z()) ? Digger.Target.ORE
                 : world.isStone(b.x(), b.y(), b.z()) ? Digger.Target.STONE
                 : world.isCobblestone(b.x(), b.y(), b.z()) ? Digger.Target.COBBLESTONE
                 : world.isGravel(b.x(), b.y(), b.z()) ? Digger.Target.GRAVEL

@@ -135,6 +135,42 @@ class ClearerTest {
      * Iron ore in the dig is mined for its drop and picked up, not broken as a block in the way:
      * live, a day's flattening went through ore after ore and nobody held an ingot.
      */
+    /**
+     * Ore of any other kind - coal, redstone, lapis - is mined for its drop too, worth more than the
+     * dirt and cobblestone round it (operator, 2026-11-15): live, the keep's flattening broke coal
+     * ore as any block and left the coal lying.
+     */
+    @Test
+    void oreOfEveryKindInTheDigIsMinedForItsDrop() {
+        WorldView redstone = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return world.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isOre(int x, int y, int z) {
+                return MOUND.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public java.util.Optional<String> oreOf(int x, int y, int z) {
+                return isOre(x, y, z) ? java.util.Optional.of("redstone") : java.util.Optional.empty();
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(Digger.Target.ORE, Clearer.targetFor(redstone, MOUND, false));
+    }
+
     @Test
     void ironOreInTheDigIsMinedForItsDrop() {
         assertEquals(Digger.Target.IRON_ORE, Clearer.targetFor(stony(true), MOUND, false));

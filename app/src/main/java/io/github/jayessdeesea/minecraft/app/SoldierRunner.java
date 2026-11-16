@@ -3057,6 +3057,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 stairs.head().z() + 3.5 + over / NIGHT_ABREAST));
     }
 
+    /** How near in height a walk up to a squadmate, or onto what it threw, needs to get: a body's height and a jump. */
+    static final double TO_SOMEONE_VERTICAL = 2.5;
+
     /** How many abreast stand beside a mine's head by night, past the top of a line too long for its stairs. */
     static final int NIGHT_ABREAST = 4;
 
@@ -4342,6 +4345,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // The routine with the hands says where to stand: live, a mason under way and an armourer
             // walking to a workshop each sent the soldier its own way, and it reached neither.
             Optional<Position> stand = Optional.ofNullable(handsHeld.get(soldierName)).flatMap(h -> standOf(soldierName, h));
+            // Walking up to a squadmate, or onto what it threw: its height is where it is, mid-jump or
+            // on a step, not ground to stand at - held to half a block of it, the giver built a step
+            // to reach it. Live, givers on the keep's finished floor put down step after step for a
+            // receiver's y=65.32, and the builders dug each out as the site's highest.
+            boolean toSomeone = handsHeld.get(soldierName) == Hands.Routine.HANDOVER;
             if (stand.isEmpty()) {
                 stand = Optional.ofNullable(hunters.get(soldierName)).flatMap(Hunter::standAt);
             }
@@ -4360,6 +4368,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             if (stand.isEmpty() && handovers.containsKey(soldierName)) {
                 stand = handovers.get(soldierName).standAt();
+                toSomeone |= stand.isPresent();
             }
             if (stand.isEmpty() && scavengers.containsKey(soldierName)) {
                 stand = scavengers.get(soldierName).standAt();
@@ -4367,6 +4376,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (stand.isEmpty() && receiving.contains(soldierName)) {
                 // Walk onto what's been thrown: the server hands a dropped stack to whoever touches it.
                 stand = entityTracker.nearbyItems(statuses.get(i).position(), PICKUP_RADIUS).stream().findFirst();
+                toSomeone |= stand.isPresent();
             }
             // A mason stands as close to its place's centre as a hut builder: a body off centre leans
             // into the wall cell beside it, and the server won't place a block where a body is.
@@ -4391,7 +4401,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 stand = gatherer.standAt();
             }
             if (stand.isPresent()) {
-                given = new Order.MoveTo(stand.get().x(), stand.get().y(), stand.get().z(), tolerance, 0.5, Risk.LOW);
+                given = new Order.MoveTo(stand.get().x(), stand.get().y(), stand.get().z(), tolerance,
+                        toSomeone ? TO_SOMEONE_VERTICAL : 0.5, Risk.LOW);
             }
             byName.get(soldierName).receiveOrder(given);
         }

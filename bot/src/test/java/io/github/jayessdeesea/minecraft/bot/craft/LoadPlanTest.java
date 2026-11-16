@@ -49,6 +49,18 @@ class LoadPlanTest {
                 "the worst sword, the worst pickaxe and the emerald");
     }
 
+    /** Minerals and diamonds go to the depot: the stockpile's, not a working load's (operator, 2026-11-15). */
+    @Test
+    void mineralsGoToTheDepot() {
+        int mineral = ids(id -> ItemClassRegistry.classOf(id).equals(Optional.of(ItemClass.MINERAL))).getFirst();
+        int diamond = ids(id -> ItemClassRegistry.classOf(id).equals(Optional.of(ItemClass.DIAMOND))).getFirst();
+        Inventory inventory = new Inventory();
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{mineral, 5});
+        inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{diamond, 1});
+
+        assertEquals(List.of(Inventory.MAIN_FIRST, Inventory.MAIN_FIRST + 1), LoadPlan.FLATTENING.surplus(inventory));
+    }
+
     /** Two swords and two axes are two weapons and two axes, not four weapons of which two go. */
     @Test
     void axesAreCountedAsAxesNotAgainstTheSwords() {
