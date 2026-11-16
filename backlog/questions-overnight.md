@@ -42,3 +42,15 @@ Each names its backlog item and what the answer changes. Built meanwhile on the 
    left where they're dug - not picked up, or dropped in the pit - and only what the force uses
    is carried (ore, coal, logs always). Your earlier word - minerals before dirt and cobblestone
    in the stockpile - reads as (b), but it throws blocks away, so it's yours to say.
+
+5. **How far the flatten's side is cut back where the site is cut into a hill** (the clearing
+   rules, rule 6: the bench, 3 rows at 1:1, 29 CFR 1926 Subpart P Table B-1). Field269, 30
+   minutes: 323 steps put, three quarters of them on the east bench (x=16..19, z=-40..-50) at
+   y=85-86, where the hill beyond the site stands to about y=90 and the floor is at 77. Three rows
+   at 1:1 slope only the lowest 3 blocks of a cut 13 deep; above them the hill is a wall, and a
+   builder who ends up on it - an errand's route over the hill, or a high cell reached from it -
+   is 8 or more over the floor with no walk down, and builds steps to get off, each one the
+   level's to dig. As built: 3 rows. The alternative: the bench is as wide as the cut is deep -
+   the hill cut back at 1:1 all the way up, or stepped benches every 4 feet (Appendix B's
+   benching) - so the side is a slope a soldier walks; it's a great deal more to dig on a hill
+   site. The answer decides the bench's width: fixed, or the cut's depth.

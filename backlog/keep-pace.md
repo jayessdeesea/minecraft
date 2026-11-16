@@ -31,6 +31,9 @@ crew's ticks:
   out. Built: a builder standing on the force's own step cuts from there, the step under it too
   (Clearing.next), so it takes its climb down with it. Done when a wide level's pace line shows
   steps put no more than its blocks' share, and the level goes at its crew's rate.
+  Field269, 30 minutes after: 323 steps still, three quarters on the east bench at y=85-86 under
+  the hill beyond the site (to about y=90, the floor at 77) - builders on the hill with no walk
+  down, building their way off: backlog/questions-overnight.md's question 5, the bench's width.
 - **Builders with no rectangle.** A third of the crew's ticks - most of it a crew bigger than a sparse level needs, which backlog/flatten-campaign.md sizes to the level. Find which builders the plan leaves
   out and why - fewer columns than builders at the level, a builder dropped from the crew between
   plans, the road's cutter - and give each one ground.
