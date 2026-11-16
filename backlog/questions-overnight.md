@@ -21,3 +21,13 @@ Each names its backlog item and what the answer changes. Built meanwhile on the 
    builders done and waiting were about 40% of the crew's ticks, and those never dealt in 19%. The
    alternative is work-stealing: a done builder takes half of the most that's left of one builder's,
    as one come late does now. The answer decides whether held work is ever split but for a newcomer.
+
+3. **Whether the level below may be dug while a spire over it comes down** (the clearing rules,
+   highest block first). Field264: ore at (18, 84, -28), set aside till a builder carried the
+   pickaxe for it, left a pillar of ground under it six blocks over the level - ground isn't dug
+   from under a block held back. Once taken, the pillar was the site's highest ground: one builder
+   cut it a level at a time, 84, 83, 82..., about 70 s each, while 1,027 blocks at y=78 waited and
+   the rest of the crew stood (80% of its ticks). As built, the rule holds: no level is dealt until
+   everything over it is down. The alternative: a column standing over the level by more than a
+   step is a spire, cut by the nearest builder, and the level under it dealt to the rest
+   meanwhile. The answer decides whether "highest first" is site-wide or column by column.
