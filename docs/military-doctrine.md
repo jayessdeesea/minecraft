@@ -227,10 +227,16 @@ predict the theoretical maximum from the route, the tool's break time and the tr
 dig in and find out why; `command.LevelPace`). Every dig a builder finishes records the ticks its
 parts took - the walk to its stand, the tool taken in hand, the break, the server's word the block
 is gone, the pickup of its drop - against its best: the block's break time as vanilla gives it with
-the best tool the builder carries, and the straight walk to its stand at walking speed. When the
-level falls, the log says what it took against its slowest builder's best, each builder's ticks
-taken against best, and the ticks it spent not digging at all; below 90% the line is a warning,
-"BELOW 90%, look into it".
+the best tool the builder carries, and the straight walk to its stand at walking speed. A level's
+best is all its digs' best shared evenly over its crew - the theoretical maximum; the slowest
+builder's own best, the level as it was split, is shown beside it, so an uneven split shows as a
+loss. Every tick of every builder on the keep is put down to what held it - the routine holding its
+hands (the clearer, the depositor, the armourer at a table, rations), or waiting with no rectangle
+- so the gap to the best is accounted for. When the level falls, the log says what it took against
+its best and its split's, where the crew's ticks went ("waiting, no rectangle 40%, clearer 35%,
+..."), each builder's ticks taken against best; then the dig so far, level on level, the same way:
+that line is the one that says whether the method is within 90% of its best. Below 90% either line
+is a warning, "BELOW 90%".
 
 The keep's wood party - the platoon sergeant's, `command.PlatoonSergeant` (operator, 2026-11-14: trees are everywhere - break from the dig, harvest
 some, build crates at the depot and replant; a spruce every four blocks; the lumberjacks use axes)
@@ -1394,8 +1400,10 @@ Level by level, in lock step, planned by the keep's foreman (`command.LevelPlan`
 2026-11-14): one soldier the squad leader appoints - the first builder of the first squad on the
 keep, again whenever that one is off it. The site's level is the highest ground left anywhere on
 it, and nobody digs lower till it's gone, so the site comes down as one flat floor: nobody climbs
-over a neighbour's ground, and a block put where the level was already done - a step, a pillar left
-- is the level again, cleared before anyone goes down. At the start of each level the foreman
+over a neighbour's ground. A builder's own step or pillar (`SoldierRunner.scaffolding`) is no
+ground and doesn't set the level - counted as the highest, it held every builder at its level for
+one block while eight stood by - but every level shares out any step standing at or over it with
+its ground, so the step is dug with the level under it and none is left high. At the start of each level the foreman
 shares what's left of it out among the builders on hand, every squad's: a rectangle of x and z
 each, none overlapping, near-equal in blocks, each to the builder nearest it. With less work than
 four blocks a builder, fewer are sent - a spire one block across is the nearest builder's - and the
@@ -1404,8 +1412,10 @@ when a builder has cleared its rectangle while the level still has ground, and e
 from where the builders stand, so what's left is shared out again. On hand means on the keep, fed,
 not fighting and not off keeping the farm: live, a level's last three blocks went to a builder who
 then walked 80 blocks to the farm, and seven stood by for her. Nothing is kept from level to level, or overnight. The foreman says each plan on
-the net, point to point (`/msg`), a line a second at most since the server cuts off a connection
-that chats faster; the log reads "[Keep] level y=77: 41 block(s) left, 6 of 8 builder(s) on it"
+the net, point to point (`/msg`): only a line new to its builder, the latest overtaking one still
+queued, and one every two and a half seconds at most - vanilla counts 20 for each line and takes
+one off a tick, kicking past 200, so a line a second sustained is its decay exactly and the
+foreman was kicked for spamming every minute and a half; the log reads "[Keep] level y=77: 41 block(s) left, 6 of 8 builder(s) on it"
 and "[Keep] Alice -> Bob: KEEP DIG 77 3 -4 9 2". Ground within 12 blocks of a builder's fight, and
 for half a minute after it, is nobody's and isn't counted for the level: the rest go on, and when
 the fight's done that ground is the highest again. A builder with ground work isn't sent to

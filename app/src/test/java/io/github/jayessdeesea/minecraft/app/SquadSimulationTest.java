@@ -2644,6 +2644,49 @@ class SquadSimulationTest {
         assertTrue(high < low, "the high block before any of the mound under it: high at " + high + ", the mound's first at " + low);
     }
 
+    /**
+     * A builder's own steps are no ground: they don't hold the site at their level, but they're
+     * still taken down with the level they stand over, so none is left high. Live, a step put down
+     * to climb to the rim made the keep's level 72, 73, 77 for one block each, the rest standing by.
+     * A wall seven high on the rim, climbed to on steps: when it's down, nothing stands over the keep's
+     * floor - not the wall, not a step.
+     */
+    @Test
+    void aBuildersStepsDontHoldTheLevelAndAreTakenDownWithIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> z == Keep.MAX && x >= -1 && x <= 1 && y > GROUND && y <= GROUND + 7
+                ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(10 * 60_000);
+
+        List<String> log = List.copyOf(server.log);
+        List<String> left = new ArrayList<>();
+        for (int x = Keep.MIN; x <= Keep.MAX; x++) {
+            for (int z = Keep.MIN; z <= Keep.MAX; z++) {
+                for (int y = GROUND + 1; y <= GROUND + 10; y++) {
+                    int b = server.block(x, y, z);
+                    if (b != SimServer.AIR && b != SimServer.TORCH && b != SimServer.CRAFTING_TABLE && b != SimServer.FURNACE && b != SimServer.CHEST) {
+                        left.add(x + "," + y + "," + z + "=" + b);
+                    }
+                }
+            }
+        }
+        assertTrue(log.stream().anyMatch(e -> e.contains(" placed ")), "the wall climbed on steps; last server events: "
+                + log.subList(Math.max(0, log.size() - 15), log.size()));
+        assertTrue(left.isEmpty(), "nothing over the floor, the steps taken down too: " + left + "; last server events: "
+                + log.subList(Math.max(0, log.size() - 15), log.size()));
+    }
+
     private static int indexOf(List<String> log, String suffix) {
         for (int i = 0; i < log.size(); i++) {
             if (log.get(i).endsWith(suffix)) {

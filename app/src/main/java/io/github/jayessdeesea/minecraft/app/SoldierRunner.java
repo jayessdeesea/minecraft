@@ -1992,11 +1992,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         List<BlockPos> wholeDig = Clearing.toClear(world, Keep.dig(), digExcept);
         List<BlockPos> toDig = wholeDig.stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX()
                 && c.z() >= digShare.minZ() && c.z() <= digShare.maxZ()).toList();
+        // The ground's tops, not the soldiers' own steps: a step put down to climb from the floor to
+        // a strip on the rim is no ground, and counted as the site's highest it held every builder
+        // at its level for one block - live, the level went 71, 72, 73, 72 and 70, 77, 70, 71, a
+        // step each time, with eight standing by. A step over the level is still dug, by the one
+        // whose rectangle it stands in (foremansNet), so none is left high.
+        scaffolding.removeIf(c -> !world.isSolid(c.x(), c.y(), c.z()));
         Map<Long, Integer> tops = new HashMap<>();
+        Map<Long, Integer> stepTops = new HashMap<>();
         wholeDig.stream().filter(c -> !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty())
-                .forEach(c -> tops.merge(((long) c.x() << 32) ^ (c.z() & 0xffffffffL), c.y(), Math::max));
+                .forEach(c -> (scaffolding.contains(c) ? stepTops : tops).merge(((long) c.x() << 32) ^ (c.z() & 0xffffffffL), c.y(), Math::max));
         java.util.function.IntBinaryOperator top = (x, z) -> tops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
-        int layer = tops.values().stream().mapToInt(Integer::intValue).max().orElse(Keep.BOTTOM);
+        java.util.function.IntBinaryOperator stepTop = (x, z) -> stepTops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
+        int layer = tops.values().stream().mapToInt(Integer::intValue).max()
+                .orElse(stepTops.values().stream().mapToInt(Integer::intValue).max().orElse(Keep.BOTTOM));
         // Not built up for now (operator, 2026-11-15): taken down to its ground and left.
         List<BlockPos> toFill = toDig.isEmpty() && Keep.FILL ? Clearing.toFill(world, fillShare, kept) : List.of();
         state.keepDigLeft = toDig.size();
@@ -2023,7 +2032,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // where work is left: a strip that narrow left no stand beside its last block.
         Map<String, Order> orders = new HashMap<>(toDig.isEmpty() ? Tasking.keep(crew, Optional.empty(), bounds(toFill), kept) : Map.of());
         if (!toDig.isEmpty()) {
-            orders.putAll(foremansNet(squad, onKeep, hands, crew, top, layer, digExcept));
+            orders.putAll(foremansNet(squad, onKeep, hands, crew, top, stepTop, layer, digExcept));
         } else {
             keepCrews.remove(squad);
         }
@@ -2228,7 +2237,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * rectangle on the net ({@code /msg}), so the plan reads in the chat as it does in the log.
      */
     private Map<String, Order> foremansNet(String squad, List<String> onKeep, List<SoldierStatus> hands, List<Tasking.Hand> crew,
-                                           java.util.function.IntBinaryOperator top, int layer, Set<Cell> except) {
+                                           java.util.function.IntBinaryOperator top, java.util.function.IntBinaryOperator stepTop,
+                                           int layer, Set<Cell> except) {
         long now = clockwork.millis();
         Set<String> inCrew = crew.stream().map(Tasking.Hand::name).collect(Collectors.toSet());
         // On hand: on the keep, fed, not fighting - and not off keeping the farm. Live, a level's last
@@ -2261,16 +2271,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .map(Map.Entry::getValue).toList();
             java.util.function.IntBinaryOperator calm = (x, z) -> fights.stream()
                     .anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR) ? Integer.MIN_VALUE : top.applyAsInt(x, z);
+            java.util.function.IntBinaryOperator calmStep = (x, z) -> fights.stream()
+                    .anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR) ? Integer.MIN_VALUE : stepTop.applyAsInt(x, z);
             int level = Integer.MIN_VALUE;
             for (int x = site.minX(); x <= site.maxX(); x++) {
                 for (int z = site.minZ(); z <= site.maxZ(); z++) {
                     level = Math.max(level, calm.applyAsInt(x, z));
                 }
             }
+            // Only steps left: the level is theirs, so they're taken down.
+            for (int x = site.minX(); x <= site.maxX() && level == Integer.MIN_VALUE; x++) {
+                for (int z = site.minZ(); z <= site.maxZ(); z++) {
+                    level = Math.max(level, calmStep.applyAsInt(x, z));
+                }
+            }
             List<LevelPlan.Column> columns = new ArrayList<>();
             for (int x = site.minX(); x <= site.maxX() && level != Integer.MIN_VALUE; x++) {
                 for (int z = site.minZ(); z <= site.maxZ(); z++) {
-                    if (calm.applyAsInt(x, z) == level) {
+                    // The level's ground, and a step standing at or over it, shared out with it.
+                    if (calm.applyAsInt(x, z) == level || calmStep.applyAsInt(x, z) >= level) {
                         columns.add(new LevelPlan.Column(x, z));
                     }
                 }
@@ -2285,12 +2304,21 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // down the mine isn't the nearest to it once the squad is up.
             boolean old = plan != null && now - plan.at() >= KEEP_PLAN_MILLIS;
             if (plan != null && plan.level() != level && plan.level() != Integer.MIN_VALUE) {
-                LevelPace pace = new LevelPace(plan.level(), now - keepLevelAt, Map.copyOf(keepPace));
-                keepPace.clear();
+                Map<String, LevelPace.Tally> digs = new HashMap<>();
+                Set.copyOf(keepPace.keySet()).forEach(n -> Optional.ofNullable(keepPace.remove(n)).ifPresent(t -> digs.put(n, t)));
+                Map<String, Map<String, Integer>> spent = new HashMap<>();
+                Set.copyOf(keepSpent.keySet()).forEach(n -> Optional.ofNullable(keepSpent.remove(n)).ifPresent(m -> spent.put(n, Map.copyOf(m))));
+                LevelPace pace = new LevelPace(plan.level(), now - keepLevelAt, digs, plan.crew().size(), spent);
+                keepRun = keepRun.plus(pace);
                 if (pace.slow()) {
                     LOG.warn("[Keep] pace: {}", pace.summary());
                 } else {
                     LOG.info("[Keep] pace: {}", pace.summary());
+                }
+                if (keepRun.slow()) {
+                    LOG.warn("[Keep] pace: {}", keepRun.summary());
+                } else {
+                    LOG.info("[Keep] pace: {}", keepRun.summary());
                 }
             }
             if (plan == null || plan.level() != level) {
@@ -2508,6 +2536,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final int GROVE_KEEP_CLEAR = Keep.MAX + 12;
     /** Each keep builder's digs on the level under way (command.LevelPace) - ticks write, squad loops read and clear. */
     private final Map<String, LevelPace.Tally> keepPace = new ConcurrentHashMap<>();
+    /**
+     * Each keep builder's ticks on the level under way, by what held them - the routine holding its
+     * hands, or waiting with no rectangle (command.LevelPace) - its own tick writes, squad loops take.
+     */
+    private final Map<String, Map<String, Integer>> keepSpent = new ConcurrentHashMap<>();
+    /** The keep's dig so far, level on level - guarded by {@link #keepPlanLock}. */
+    private LevelPace.Run keepRun = LevelPace.Run.NONE;
     /** When the level under way was first planned - guarded by {@link #keepPlanLock}. */
     private long keepLevelAt;
     /** The keep's grove, once sited - squad loops write, ticks read. */
@@ -2528,8 +2563,21 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (from.equals(to)) {
             return;
         }
-        netOutbox.computeIfAbsent(from, n -> new java.util.ArrayDeque<>()).add(new String[]{to, line});
+        // Only what's new to it, and only the latest: a line still queued to the same soldier is
+        // overtaken by this one. Live, every replan queued a line to every builder, the queue never
+        // emptied, the foreman chatted a line a second for an hour - the very rate the server's spam
+        // count decays at - and was kicked "for spamming" every minute and a half.
+        if (line.equals(netLastSaid.get(from + ">" + to))) {
+            netOutbox.getOrDefault(from, new java.util.concurrent.ConcurrentLinkedDeque<>()).removeIf(q -> q[0].equals(to));
+            return;
+        }
+        java.util.Deque<String[]> queue = netOutbox.computeIfAbsent(from, n -> new java.util.concurrent.ConcurrentLinkedDeque<>());
+        queue.removeIf(q -> q[0].equals(to));
+        queue.add(new String[]{to, line});
     }
+
+    /** What each sender last sent each soldier on the net, by "from>to" - the squad loops'. */
+    private final Map<String, String> netLastSaid = new ConcurrentHashMap<>();
 
     /** Sends each sender's next line, a second after its last: the server cuts off a connection that chats faster. */
     private void drainNet(long now) {
@@ -2544,12 +2592,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             String[] next = queue.poll();
             line.accept("msg " + next[0] + " " + next[1]);
             netSentAt.put(from, now);
+            netLastSaid.put(from + ">" + next[0], next[1]);
             LOG.info("[Keep] {} -> {}: {}", from, next[0], next[1]);
         });
     }
 
-    /** The server cuts off a connection chatting faster than this, sustained. */
-    static final long NET_LINE_MILLIS = 1_000;
+    /**
+     * A sender's line at most this often. Vanilla counts 20 for each chat or command and takes one off
+     * each tick, kicking past 200: a line a second is exactly its decay, so any lag in the server's
+     * ticks tips it over. One every two and a half seconds is well under, with room for a burst of ten.
+     */
+    static final long NET_LINE_MILLIS = 2_500;
     /** How long a level's plan stands before a builder done with its rectangle has what's left shared out again. */
     static final long KEEP_REPLAN_MILLIS = 5_000;
     /** How long a level's plan stands at the most before it's made again from where the builders are. */
@@ -5500,6 +5553,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (keepHands.contains(name)) {
                 keepSaplingsCarried.put(name, inventory.count(ItemClass.SAPLING));
                 clearer.drainTimes().forEach(t -> keepPace.merge(name, t, LevelPace.Tally::plus));
+                KeepPlan levelPlan = keepPlan;
+                String held = hands.map(r -> r.name().toLowerCase(java.util.Locale.ROOT))
+                        .orElseGet(() -> levelPlan != null && !levelPlan.boxes().containsKey(name) ? "waiting, no rectangle"
+                                : "hands free, " + status.order().getClass().getSimpleName());
+                keepSpent.computeIfAbsent(name, n -> new ConcurrentHashMap<>()).merge(held, 1, Integer::sum);
             } else {
                 clearer.drainTimes();
             }
