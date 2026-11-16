@@ -482,8 +482,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (last != null && last[0].equals(cell)) {
             int tries = (int) last[1] + 1;
             if (tries == STEP_TRIES) {
-                LOG.warn("[{}] its step at {} {} {} keeps being refused - left for {} s", name, cell.x(), cell.y(), cell.z(),
-                        STEP_REFUSED_MILLIS / 1000);
+                // With the world model's block there and under it, as state ids (the server's reports
+                // name them): live, a step refused every 10 s in the dig went into a cell neither air nor
+                // anything a shovel, pickaxe, axe or hoe takes, and the probes couldn't name it.
+                LOG.warn("[{}] its step at {} {} {} keeps being refused - left for {} s; the model has state {} there, {} under it", name,
+                        cell.x(), cell.y(), cell.z(), STEP_REFUSED_MILLIS / 1000,
+                        chunkCache.stateIdAt(cell.x(), cell.y(), cell.z()).stream().mapToObj(Integer::toString).findFirst().orElse("?"),
+                        chunkCache.stateIdAt(cell.x(), cell.y() - 1, cell.z()).stream().mapToObj(Integer::toString).findFirst().orElse("?"));
             }
             if (tries >= STEP_TRIES && now - (long) last[2] < STEP_REFUSED_MILLIS) {
                 lastStep.put(name, new Object[]{cell, tries, last[2]});
