@@ -2468,6 +2468,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     LOG.info("[Keep] pace: {}", keepRun.summary());
                 }
             }
+            // A level that rises again - ground come back over one dug - says which columns raised it and
+            // whether they're seen or remembered: backlog/keep-pace.md's flicker in the bench's outer rows.
+            if (plan != null && plan.level() != Integer.MIN_VALUE && level > plan.level()) {
+                LOG.info("[Keep] the level rose from y={} to y={}: {}", plan.level(), level, columns.stream().limit(4)
+                        .map(c -> c.x() + " " + c.z() + (world.isLoaded(c.x(), c.z()) ? " seen" : " remembered")).toList());
+            }
             if (plan == null || plan.level() != level) {
                 keepLevelAt = now;
                 // The crew its blocks want, for the squads sent (backlog/flatten-campaign.md): a standard
