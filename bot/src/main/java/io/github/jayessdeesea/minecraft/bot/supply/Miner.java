@@ -250,7 +250,7 @@ public final class Miner {
         if (cut.tunnel() < 0) {
             holesBeside(world, stairs, cut).forEach(refill::add);
         }
-        Optional<BlockPos> seen = oreInSight(world, stairs, from, cut);
+        Optional<BlockPos> seen = oreInSight(world, stairs, from, cut, tunnelFloors(cuts), bestPickaxe());
         // The ore it took the last tick, gone now: on the stairs, its cell is a hole to put back.
         if (ore != null && !world.isOre(ore.x(), ore.y(), ore.z()) && !Staircase.uncut(world, ore) && cut.tunnel() < 0) {
             refill.add(ore);
@@ -447,13 +447,15 @@ public final class Miner {
 
     /** The first cut, all open, with ore in sight of its stand ({@link #oreInSight}) - empty when none has. */
     private OptionalInt prospect(WorldView world, Staircase stairs, List<Staircase.Cut> cuts) {
+        Set<BlockPos> floors = tunnelFloors(cuts);
+        int tier = bestPickaxe();
         for (int k = 0; k < cuts.size(); k++) {
             Staircase.Cut cut = cuts.get(k);
             if (blocked.contains(cut.tunnel()) || share.filter(mine -> !mine.contains(cut.tunnel())).isPresent()
                     || cut.cells().stream().anyMatch(c -> Staircase.uncut(world, c))) {
                 continue;
             }
-            if (oreInSight(world, stairs, cut.stand(), cut).isPresent()) {
+            if (oreInSight(world, stairs, cut.stand(), cut, floors, tier).isPresent()) {
                 return OptionalInt.of(k);
             }
         }
@@ -476,11 +478,22 @@ public final class Miner {
      * the pickaxe carried, nothing liquid beside it.
      */
     Optional<BlockPos> oreInSight(WorldView world, Staircase stairs, BlockPos from, Staircase.Cut cut) {
-        int tier = bestPickaxe();
-        Set<BlockPos> floors = stairs.cuts().stream().filter(c -> c.tunnel() >= 0)
-                .map(c -> c.feet().offset(0, -1, 0)).collect(Collectors.toSet());
-        java.util.function.Predicate<BlockPos> takeable = at -> !stairs.inShaft(at.x(), at.z())
-                && !floors.contains(at) && !leftOre.contains(at) && world.isOre(at.x(), at.y(), at.z())
+        return oreInSight(world, stairs, from, cut, tunnelFloors(stairs.cuts()), bestPickaxe());
+    }
+
+    /** The cells under the tunnels' floors - ore there is left, so as not to hole a floor. */
+    private static Set<BlockPos> tunnelFloors(List<Staircase.Cut> cuts) {
+        return cuts.stream().filter(c -> c.tunnel() >= 0).map(c -> c.feet().offset(0, -1, 0)).collect(Collectors.toSet());
+    }
+
+    /**
+     * As {@link #oreInSight(WorldView, Staircase, BlockPos, Staircase.Cut)}, with the tunnels' floors
+     * and the pickaxe's tier worked out once by a caller asking it of every cut: live (commit 512's
+     * profile), each cut's ask built every cut of the mine again, a sixth of the garrison's CPU.
+     */
+    private Optional<BlockPos> oreInSight(WorldView world, Staircase stairs, BlockPos from, Staircase.Cut cut, Set<BlockPos> floors, int tier) {
+        java.util.function.Predicate<BlockPos> takeable = at -> world.isOre(at.x(), at.y(), at.z()) && !stairs.inShaft(at.x(), at.z())
+                && !floors.contains(at) && !leftOre.contains(at)
                 && world.hardness(at.x(), at.y(), at.z()).map(h -> h.drops(tier)).orElse(false)
                 && !besideLiquid(world, at);
         List<BlockPos> near = new ArrayList<>(List.of(from, from.offset(0, 1, 0)));
@@ -501,7 +514,8 @@ public final class Miner {
                 for (int dz = -ORE_ACROSS; dz <= ORE_ACROSS; dz++) {
                     BlockPos at = from.offset(dx, dy, dz);
                     double distance = Math.sqrt(Math.pow(at.x() + 0.5 - ex, 2) + Math.pow(at.y() + 0.5 - ey, 2) + Math.pow(at.z() + 0.5 - ez, 2));
-                    if (distance <= ORE_REACH && distance < bestDistance && open(world, at) && takeable.test(at)) {
+                    // Ore first: nearly every cell isn't, and that's one lookup against open()'s six.
+                    if (distance <= ORE_REACH && distance < bestDistance && takeable.test(at) && open(world, at)) {
                         best = at;
                         bestDistance = distance;
                     }

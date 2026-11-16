@@ -324,6 +324,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Set<BlockPos> baseCells = Set.of();
     }
 
+    /** How far above or below the depot the flatten's grove may lie. */
+    static final int GROVE_RISE = 4;
     private static final long SQUAD_PERIOD_MILLIS = 1000;
     /** Squad cycles in a row a soldier is stranded before a squadmate is sent: about 20 seconds. */
     static final int STRANDED_REPORTS = 20;
@@ -2664,6 +2666,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .filter(b -> keepColumnsLeft(dealt.level(), b, top, stepTop)).toList();
             if (!mine.isEmpty()) {
                 orders.put(h.name(), new Order.Dig(mine.getFirst(), except));
+                sayNothingToCut(h.name(), mine.getFirst(), dealt.level(), top, stepTop, except);
             } else {
                 // No rectangle at this level - less work than builders, or it's in a fight: it waits
                 // where it stands, on the site, for the next plan. Left to "nothing else to do", live,
@@ -2728,6 +2731,33 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     /** Whether {@code box} has ground, a step or a tree left at or over {@code level}. */
+    /**
+     * Once a rectangle and level: a builder's rectangle with ground over the level, by the columns'
+     * tops, that its clearer finds nothing in to cut - backlog/keep-pace.md's "clearer idle, nothing
+     * to cut", an eighth of the crew's ticks. Names the columns, their tops, and whether that top is
+     * held out of the dig.
+     */
+    private void sayNothingToCut(String builder, Box box, int level, java.util.function.IntBinaryOperator top,
+                                 java.util.function.IntBinaryOperator stepTop, Set<Cell> except) {
+        if (!Clearing.toClear(world, box, except, false).isEmpty() || !nothingToCutSaid.add(builder + " " + level + " " + box)) {
+            return;
+        }
+        List<String> columns = new ArrayList<>();
+        for (int x = box.minX(); x <= box.maxX() && columns.size() < 6; x++) {
+            for (int z = box.minZ(); z <= box.maxZ() && columns.size() < 6; z++) {
+                int t = Math.max(top.applyAsInt(x, z), stepTop.applyAsInt(x, z));
+                if (t >= level) {
+                    columns.add(x + " " + t + " " + z + (except.contains(new Cell(x, t, z)) ? " held out" : "")
+                            + (world.isSolid(x, t + 1, z) ? ", covered" : "") + (world.isLoaded(x, z) ? "" : ", remembered"));
+                }
+            }
+        }
+        LOG.info("[Keep] {}'s {} at y={} has nothing its clearer can cut: {}", builder, boxesSaid(List.of(box)), level, columns);
+    }
+
+    /** The rectangles {@link #sayNothingToCut} has spoken of - squad loops. */
+    private final Set<String> nothingToCutSaid = ConcurrentHashMap.newKeySet();
+
     private static boolean keepColumnsLeft(int level, Box box, java.util.function.IntBinaryOperator top, java.util.function.IntBinaryOperator stepTop) {
         for (int x = box.minX(); x <= box.maxX(); x++) {
             for (int z = box.minZ(); z <= box.maxZ(); z++) {
@@ -2848,7 +2878,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Optional<TreeFarm> grove = TerrainSurveyor.surface(world, cx, cz, chainOfCommand.flatten().floor() + 60)
                         .flatMap(ground -> TreeFarm.site(world, ground, TREE_FARM_RADIUS))
                         .filter(g -> g.plot().size() >= GROVE_MIN_CELLS)
-                        .filter(g -> walkable.contains(g.centre().offset(0, 1, 0)) || walkable.contains(g.centre()));
+                        .filter(g -> walkable.contains(g.centre().offset(0, 1, 0)) || walkable.contains(g.centre()))
+                        // And level with the depot: one on a hill is walked to from the depot, but
+                        // climbed to from the dig - live, the planter pillared the bench's outer row
+                        // from the level up to a grove 13 blocks over it.
+                        .filter(g -> Math.abs(g.centre().y() - depot.stand().y()) <= GROVE_RISE);
                 if (grove.isPresent()) {
                     int score = groveScore(grove.get(), r);
                     if (score < bestScore) {

@@ -258,8 +258,9 @@ them it's on the dig again and another goes - after
 making itself a stone axe from the cobblestone it carries, a log in 15 ticks rather than the hand's
 60. The rest dig. The foreman says it on the net: "KEEP WOOD 16", "KEEP PLANT x z". The grove is a
 tree farm (§ 12) sited once with the depot: of the ground in rings round the depot's stand that a
-soldier can walk to from it - live, a grove on a hilltop past the site's bench had its planter put a
-pillar up the bench's outer row to reach it, each step the site's highest ground - clear of
+soldier can walk to from it, and within 4 blocks of its height - live, a grove on a hilltop past the
+site's bench had its planter put a pillar up the bench's outer row from the level to reach it, each
+step the site's highest ground - clear of
 the slab and its borrow pits, the depot, the mine's head, the farm and the camp, with room for 16
 saplings or more, the flattest, then the nearest sea level, then the nearest. Live, eight builders
 with a chest's worth of logs between them stood the depot at two chests, both full.
