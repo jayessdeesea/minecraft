@@ -38,6 +38,13 @@ crew's ticks:
   wait it fails (the soldier builds back up its pillar), as it does with a guard that holds a new
   cut while the soldier is in the air, so the pillar's recovery depends on the time between cuts.
 - **Pickups.** About 10 ticks a dig waiting for the drop.
+- **The bench's outer rows still flicker the level (field249, 06:34).** The level went 85, 88, 85,
+  89, 85, 87 within 20 seconds, each up-level one to three blocks at x=18..19 z=-11..-10, the
+  bench's rows two and three out against a dirt hill standing to about y=90 beyond them. Not steps
+  (none logged there), not falling blocks (dirt). Suspect: a column's remembered top
+  (`SoldierRunner.keepColumnTops`, kept while its chunk is unloaded) going stale against what's
+  been dug since - log the column's top and whether its chunk is loaded each time the level rises
+  by more than one, and see which.
 
 ## Done when
 - The dig so far (`[Keep] pace: the dig so far`) holds within 90% across a day's levels.
