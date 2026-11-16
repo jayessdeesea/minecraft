@@ -23,14 +23,12 @@ crew's ticks:
 | scavenging, gathering, moving | 15% |
 
 ## What's left, the biggest first
-- **Builders with no rectangle.** A third of the crew's ticks. Find which builders the plan leaves
+- **Builders with no rectangle.** A third of the crew's ticks - most of it a crew bigger than a sparse level needs, which backlog/flatten-campaign.md sizes to the level. Find which builders the plan leaves
   out and why - fewer columns than builders at the level, a builder dropped from the crew between
   plans, the road's cutter - and give each one ground.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time; one that empties fast is shared out again only after `KEEP_REPLAN_MILLIS`.
-- **Keep hands on the farm.** 12-20% of the keep crew's ticks are the farmer's. Whether the keep's
-  hands should farm by day, or the farm be someone else's, is the operator's call.
 - **Breaks at three times vanilla's.** A dig waits its target's fixed time plus
   `Breacher.MARGIN_TICKS` (5): dirt with a stone shovel 12 ticks against vanilla's 4. The server
   finishes a dig once 70% of its time has gone by, so vanilla's own time for the tool in hand plus

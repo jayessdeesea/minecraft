@@ -49,3 +49,21 @@ The operator's (2026-11-12). The force's materials are the force's, not a squad'
   never a soldier's own errand to make up.
 - Built so far: logs, cobblestone, bread and raw ore. Ingots, and the mine worked for ore, are
   [backlog/common-stockpile.md](../../backlog/common-stockpile.md).
+
+## Across the echelons: work in parallel
+The operator's (2026-11-15): the key to parallelism is non-overlapping work and sharing resources
+when one has surplus and the others have need - true of levelling, farming, mining and distributed
+systems alike. No locks, independent work, enough resources to run without interruption.
+- **Non-overlapping work.** Each worker gets a share no one else touches: a rectangle of the level
+  (`LevelPlan`), a stretch of the mine (`Staircase.share`), a squad's point round a shared objective
+  (`ChainOfCommand.spread`), the farm one squad's whole job. Two on one cell is a defect, not a
+  convenience - the space bubble ([military-doctrine.md](../military-doctrine.md)) is its alarm.
+- **No locks.** A share, once given, is held until it's done or its holder is off it: work isn't
+  re-dealt each time someone moves (the haul road's cutter is kept), and nobody waits on another to
+  start - a worker with nothing given is a defect of the split, not a rest.
+- **Surplus to need.** What one holds beyond its load goes where another lacks it: the stockpile,
+  cross-levelling, the stash's ore up the stairs. Nothing stands idle in a pack, a stash or a
+  squad while another worker is short of it.
+- **Enough to run uninterrupted.** A worker starts with what its share takes - tools, food, blocks
+  to climb on - and the depot and the farm keep it so; a walk away from the share mid-work is a
+  shortfall to fix upstream, not part of the job.

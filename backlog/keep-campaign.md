@@ -20,10 +20,7 @@ The keep's dig runs with no supply behind it (operator, 2026-11-14). Live:
   rule, and what was prepared, what's short and what phase it's in is worked out again or not at all.
 
 ## Done when
-- **A campaign record** (`command`, pure; kept on disk under `minecraft.state-dir` as the wall, the
-  farm and the mine are): its phase - DEPOT, DIG, SLAB - and each phase's standard measured from
-  the world, not from reports. Shown to the squad leader and the general in their prompts, as the
-  foothold is; never a model's memory.
+- The campaign record and its phases are backlog/flatten-campaign.md; this item is the depot's part of it.
 - **The depot's standard**, sized from the dig: chests enough for the slab's cobblestone (the
   fill's cell count over a chest's 1,728) and one more for wood and tools; a crafting table and a
   furnace beside them; a starting stock of logs; every builder a pickaxe and a shovel.

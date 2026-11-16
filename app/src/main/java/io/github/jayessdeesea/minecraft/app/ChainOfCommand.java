@@ -341,7 +341,7 @@ public class ChainOfCommand implements DisposableBean {
         }
         Flatten site = flatten;
         Objective keep = new Objective("Flatten " + site.describe(),
-                site.centre(), "The ground the operator ordered flattened", new Objective.Task.Keep());
+                spread(site.centre(), squad.squadName()), "The ground the operator ordered flattened", new Objective.Task.Keep());
         LOG.warn("[PL -> {}] by day, ordered '{}' ({}) - the operator's rule puts it on the keep instead",
                 squad.squadName(), objective.mission(), objective.task());
         return keep;
@@ -467,6 +467,20 @@ public class ChainOfCommand implements DisposableBean {
     @Autowired
     void setFarmSquad(@Value("${minecraft.farm-squad:}") String squad) {
         this.farmSquad = Optional.of(squad.strip()).filter(s -> !s.isEmpty());
+    }
+
+    /** How far from a shared objective each squad's own point is: clear of the others' formations. */
+    static final double SPREAD = 4;
+
+    /**
+     * {@code at} for {@code squadName} among every squad given it: a corner of its own round it, by the
+     * squad's place in the order of battle, so their point men don't all make for one cell. Live, four
+     * squads sent to the keep's middle stood in one body's width of each other all evening.
+     */
+    Position spread(Position at, String squadName) {
+        int k = Math.max(0, List.copyOf(squads.keySet()).indexOf(squadName));
+        double dx = k % 2 == 0 ? -SPREAD : SPREAD, dz = k % 4 < 2 ? -SPREAD : SPREAD;
+        return new Position(at.x() + dx, at.y(), at.z() + dz);
     }
 
     /** The farm squad, if one is named. */

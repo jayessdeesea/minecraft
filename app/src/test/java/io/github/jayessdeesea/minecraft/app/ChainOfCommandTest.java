@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
+import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.PlatoonSergeant;
@@ -77,6 +78,15 @@ class ChainOfCommandTest {
 
         assertTrue(byDay.task() instanceof Objective.Task.Keep, byDay.toString());
         assertEquals(byDay, chain.byDay(byDay, alpha), "a squad on the keep is kept on it");
+        // Each squad its own point round the ground's middle: four point men don't make for one cell.
+        ChainOfCommand two = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+        assertTrue(Cohesion.distance(two.spread(new Position(0, 64, 0), "Alpha"), two.spread(new Position(0, 64, 0), "Bravo")) >= ChainOfCommand.SPREAD,
+                "Alpha's and Bravo's points apart");
         chain.onTime(TimeOfDay.of(18000, true));
         assertEquals(WALL, chain.byDay(WALL, alpha), "the night is the night rule's");
     }
