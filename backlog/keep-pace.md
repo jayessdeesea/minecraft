@@ -23,6 +23,14 @@ crew's ticks:
 | scavenging, gathering, moving | 15% |
 
 ## What's left, the biggest first
+- **Steps put up to reach a step (field266, 11:54-11:56): the biggest loss on a wide level.** The
+  level y=78, 754 blocks, went at about 20 blocks a minute with five builders. Gus, on the bench's
+  outer rows (x=16..19 z=-50..-45), put about twenty steps in two minutes to cut cells at y=80-84 -
+  themselves earlier steps, read as soil - and each step put up to reach one stood over the level
+  and was the level's to dig in turn, by the same climb; it shut itself in once and cut its way
+  out. Within the clearing rules (scaffold to reach, nothing left high): the steps a builder puts
+  up to reach a cell are taken down by it as it comes back down - its own climb, not new work -
+  so the only steps over the level are ones nobody is climbing.
 - **Builders with no rectangle.** A third of the crew's ticks - most of it a crew bigger than a sparse level needs, which backlog/flatten-campaign.md sizes to the level. Find which builders the plan leaves
   out and why - fewer columns than builders at the level, a builder dropped from the crew between
   plans, the road's cutter - and give each one ground.
@@ -30,8 +38,8 @@ crew's ticks:
   116 s). The level's columns are read live now, and the foreman logged only six rectangles with
   ground its clearer couldn't cut, so the rest is elsewhere: between a builder's last block and the
   squad loop's next look (up to a second) it's labelled so, and the order's cover (`route`'s
-  `Clearing.toClear`) is a snapshot. The foreman now logs, at each level's end, every builder with
-  a tenth of its ticks or more so ("[Keep] Bob had nothing to cut 30% of y=80 ..."), its rectangle
+  `Clearing.toClear`) is a snapshot. The foreman logs, at each level's end, every builder with a
+  tenth of its ticks or more so ("[Keep] Bob had nothing to cut 30% of y=80 ..."), its rectangle
   and its cover's size. Field262's level y=78: Jack 75% (53 s), Kate 42%, Liam 27%, Ivy 20%,
   each with no cover routed. A builder whose squad's order isn't its dig - an errand, a fight's
   move - is now counted "held off its rectangle (Order)", apart from its clearer's idling: read

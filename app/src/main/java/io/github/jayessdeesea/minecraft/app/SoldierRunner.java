@@ -2671,7 +2671,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (!resupplying.isEmpty() && dealtIn != all) {
                     LOG.info("[Keep] level y={}: {} sit(s) it out to resupply", level, resupplying.stream().sorted().toList());
                 }
-                Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of() : LevelPlan.plan(level, site.maxY(), columns, dealtIn);
+                // Up to the site's highest ground or step, not the sky: each builder's rectangle is
+                // scanned (Clearing.toClear) every squad cycle, and live (commit 528's profile), from
+                // the level to y=319 that scan and its digs were a fifth of the garrison's CPU.
+                int ceiling = level;
+                for (int x = site.minX(); x <= site.maxX(); x++) {
+                    for (int z = site.minZ(); z <= site.maxZ(); z++) {
+                        ceiling = Math.max(ceiling, Math.max(calm.applyAsInt(x, z), calmStep.applyAsInt(x, z)));
+                    }
+                }
+                Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of() : LevelPlan.plan(level, ceiling + CEILING_SLACK, columns, dealtIn);
                 plan = new KeepPlan(level, names, boxes, now);
                 keepPlan = plan;
                 keepDue.clear();
@@ -2807,7 +2816,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .filter(b -> keepColumnsLeft(dealt.level(), b, top, stepTop)).toList();
             if (!mine.isEmpty()) {
                 orders.put(h.name(), new Order.Dig(mine.getFirst(), except));
-                sayNothingToCut(h.name(), mine.getFirst(), dealt.level(), top, stepTop, except);
             } else {
                 // No rectangle at this level - less work than builders, or it's in a fight: it waits
                 // where it stands, on the site, for the next plan. Left to "nothing else to do", live,
@@ -2872,32 +2880,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     /** Whether {@code box} has ground, a step or a tree left at or over {@code level}. */
-    /**
-     * Once a rectangle and level: a builder's rectangle with ground over the level, by the columns'
-     * tops, that its clearer finds nothing in to cut - backlog/keep-pace.md's "clearer idle, nothing
-     * to cut", an eighth of the crew's ticks. Names the columns, their tops, and whether that top is
-     * held out of the dig.
-     */
-    private void sayNothingToCut(String builder, Box box, int level, java.util.function.IntBinaryOperator top,
-                                 java.util.function.IntBinaryOperator stepTop, Set<Cell> except) {
-        if (!Clearing.toClear(world, box, except, false).isEmpty() || !nothingToCutSaid.add(builder + " " + level + " " + box)) {
-            return;
-        }
-        List<String> columns = new ArrayList<>();
-        for (int x = box.minX(); x <= box.maxX() && columns.size() < 6; x++) {
-            for (int z = box.minZ(); z <= box.maxZ() && columns.size() < 6; z++) {
-                int t = Math.max(top.applyAsInt(x, z), stepTop.applyAsInt(x, z));
-                if (t >= level) {
-                    columns.add(x + " " + t + " " + z + (except.contains(new Cell(x, t, z)) ? " held out" : "")
-                            + (world.isSolid(x, t + 1, z) ? ", covered" : "") + (world.isLoaded(x, z) ? "" : ", remembered"));
-                }
-            }
-        }
-        LOG.info("[Keep] {}'s {} at y={} has nothing its clearer can cut: {}", builder, boxesSaid(List.of(box)), level, columns);
-    }
-
-    /** The rectangles {@link #sayNothingToCut} has spoken of - squad loops. */
-    private final Set<String> nothingToCutSaid = ConcurrentHashMap.newKeySet();
 
     private static boolean keepColumnsLeft(int level, Box box, java.util.function.IntBinaryOperator top, java.util.function.IntBinaryOperator stepTop) {
         for (int x = box.minX(); x <= box.maxX(); x++) {
@@ -3069,6 +3051,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** A builder's standard share of a level, the crew sized from it: one builder to a level of 24 blocks or fewer. */
     static final int BLOCKS_A_BUILDER = 24;
+    /** Blocks over the site's highest a rectangle reaches: a step put up over it after the plan is still dug from its top. */
+    static final int CEILING_SLACK = 8;
     /** Levels under the one being dug that size its crew too: it's sized for the widest of them. */
     static final int CREW_LOOK_AHEAD = 3;
 
