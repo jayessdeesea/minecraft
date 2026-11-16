@@ -125,6 +125,25 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
         return new Position(minX - DEPOT_OFF, floor(), Math.floorDiv(minZ + maxZ, 2));
     }
 
+    /** How far apart its depots stand along its west edge: none of it more than about half that from one. */
+    static final int DEPOT_SPACING = 48;
+
+    /**
+     * Its depots (operator, 2026-11-15: a site this big needs more than one): off its west edge, one
+     * every {@link #DEPOT_SPACING} blocks along it, evenly spread, {@link #depot} among them - the
+     * middle one. x=-16..16 z=-64..64 has three, at z=-43, 0 and 43; a keep's one.
+     */
+    public java.util.List<Position> depots() {
+        int length = maxZ - minZ + 1;
+        int count = Math.max(1, (length + DEPOT_SPACING - 1) / DEPOT_SPACING);
+        java.util.List<Position> depots = new java.util.ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            int z = i == count / 2 ? (int) depot().z() : minZ + (2 * i + 1) * length / (2 * count);
+            depots.add(new Position(minX - DEPOT_OFF, floor(), z));
+        }
+        return java.util.List.copyOf(depots);
+    }
+
     /** Its widest half-span from its middle: how far round it to keep clear. */
     public int halfSpan() {
         return Math.max(maxX - minX, maxZ - minZ) / 2 + 1;

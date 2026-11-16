@@ -1085,6 +1085,26 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private volatile Workshop campWorkshop;
     /** The keep's workshop, at its depot, shared by every squad building it - squad loop only. */
     private volatile Workshop keepWorkshop;
+    /**
+     * The flatten's other depots, along its edge (Flatten.depots): where its builders put their
+     * loads in, the nearest of them or the main one - squad loops write, ticks read. Draws are from
+     * the main depot, whose chests hold the stores.
+     */
+    private volatile List<Workshop> keepOutposts = List.of();
+
+    /** The flatten's depot nearest {@code at}: the main one or an outpost. */
+    private Workshop nearestDepot(Position at) {
+        Workshop best = keepWorkshop;
+        double bestDistance = best == null ? Double.MAX_VALUE : Math.hypot(best.stand().x() + 0.5 - at.x(), best.stand().z() + 0.5 - at.z());
+        for (Workshop w : keepOutposts) {
+            double d = Math.hypot(w.stand().x() + 0.5 - at.x(), w.stand().z() + 0.5 - at.z());
+            if (d < bestDistance) {
+                best = w;
+                bestDistance = d;
+            }
+        }
+        return best;
+    }
     /** The depot ground last said to have nowhere for the workshop, so it's said once - squad loops. */
     private volatile BlockPos keepWorkshopNowhere;
     /**
@@ -1802,6 +1822,31 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 campWorkshop = camp;
             }
+            // Its outposts, the depots along its edge but the main one: each kept while it stands where
+            // its depot is, its chest the next of its row once one's full.
+            List<Workshop> outposts = new ArrayList<>();
+            for (Position p : chainOfCommand.flatten().depots()) {
+                if (Math.hypot(p.x() - depotAt.x(), p.z() - depotAt.z()) < 1) {
+                    continue;
+                }
+                Workshop outpost = keepOutposts.stream()
+                        .filter(w -> Math.hypot(w.stand().x() + 0.5 - p.x(), w.stand().z() + 0.5 - p.z()) <= DEPOT_MOVE
+                                && Pathfinder.standable(world, w.stand()))
+                        .findFirst().orElseGet(() -> {
+                            BlockPos at = TerrainSurveyor.surface(world, (int) Math.floor(p.x()), (int) Math.floor(p.z()), (int) p.y() + 60)
+                                    .orElseGet(() -> TerrainSurveyor.groundAt(world, BlockPos.containing(p.x() + 0.5, p.y(), p.z() + 0.5)));
+                            Workshop sited = Workshop.hasty(world, at, new HashSet<>(treeClaims)).orElse(null);
+                            if (sited != null) {
+                                LOG.info("[{}] an outpost depot of the flatten's: stand {}, chest {}", squad, sited.stand(),
+                                        sited.chest().map(Object::toString).orElse("no room for one"));
+                            }
+                            return sited;
+                        });
+                if (outpost != null) {
+                    outposts.add(nextChestIfFull(outpost));
+                }
+            }
+            keepOutposts = List.copyOf(outposts);
             state.workshop = keep;
             state.workshopFor = null;
             return;
@@ -4491,8 +4536,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 continue;
             }
             state.escaping.remove(soldierName);
-            Optional.ofNullable(soldiersWorkshop(workshopOf(state, statuses.get(i).position()), keepWorkshop, campWorkshop,
-                            keepHands.contains(soldierName)))
+            // A flatten builder's, the depot nearest it: its loads go in there, and there its chest is fitted.
+            Workshop squadShop = soldiersWorkshop(workshopOf(state, statuses.get(i).position()), keepWorkshop, campWorkshop,
+                    keepHands.contains(soldierName));
+            Optional.ofNullable(squadShop != null && squadShop == keepWorkshop && keepHands.contains(soldierName)
+                            ? nearestDepot(statuses.get(i).position()) : squadShop)
                     .ifPresentOrElse(w -> workshops.put(soldierName, w), () -> workshops.remove(soldierName));
             // Its own unit's hand-over first, else one across squads.
             transfers.stream().filter(t -> t.giver().equals(soldierName)).findFirst()
@@ -6018,7 +6066,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean fitStore = (atMine ? stashOre && (inventory.count(ItemClass.CHEST) > 0 || inventory.count(ItemClass.LOG) >= STASH_LOGS)
                     : fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
-            if (keepHands.contains(name) && shop.isPresent()) {
+            if (keepHands.contains(name) && shop.isPresent() && shop.get() == keepWorkshop) {
                 depositor.full().ifPresent(this::depotChestFull);
             } else if (shop.isPresent() && !atMine) {
                 depositor.full().ifPresent(f -> workshopChestFull(shop.get(), f));
@@ -6071,7 +6119,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     Optional<LoadPlan> plan = keepHands.contains(name) ? Optional.of(LoadPlan.FLATTENING)
                             : cutting.containsKey(name) ? Optional.of(LoadPlan.MINING) : Optional.empty();
                     boolean surplusTrip = plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
-                    depositor.tick(status.position(), stockpile, free && (fullLoad || Depositor.surplusFood(inventory) || poolOre || stashOre
+                    // A flatten builder's load into the nearest depot standing a chest (keepOutposts).
+                    Optional<Position> deposit = keepHands.contains(name) ? chestOf(shop.orElse(null)).or(() -> stockpile) : stockpile;
+                    depositor.tick(status.position(), deposit, free && (fullLoad || Depositor.surplusFood(inventory) || poolOre || stashOre
                                     || surplusTrip) && !threatened && fort == null, pooled,
                             inv -> plan.map(p -> p.surplus(inv)).orElse(List.of()));
                 }

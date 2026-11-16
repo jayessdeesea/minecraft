@@ -213,6 +213,11 @@ cell with ground under it near the slab's height: under a hill that's a cave's o
 and live it was a one-wide tunnel into the hill west of the keep, with nowhere beside a stand for a
 table, said every second for hours while the builders walked 50 blocks to a stray table for bread.
 
+A site longer than 48 blocks has more than one depot (operator, 2026-11-15): one every 48 along
+its west edge, evenly spread (`Flatten.depots`) - three for x=-16..16 z=-64..64, at z=-43, 0 and 43
+- the middle one the main depot, the others outposts, each a hasty workshop with its own row of
+chests. A builder's load goes into the depot nearest it, and its chest is fitted there; draws -
+food, logs, tools - are from the main depot, whose chests hold the stores.
 Every builder on the flatten's crew stocks and draws at the depot while a chest of it stands,
 whatever its own squad's task - live, the builders of squads sent to it from the mine carried 53 of
 92 loads to the camp's chest 70 blocks off. The depot is a row of chests, not one (operator, 2026-11-14): six cells laid out round the

@@ -53,4 +53,14 @@ class FlattenTest {
         assertFalse(site.contains(0, 33));
         assertEquals(new Box(-16, 64, 16, 16, Keep.SKY_TOP, 32), site.dig());
     }
+
+    /** A big site's depots spread along its west edge, its depot the middle one; a keep's is one. */
+    @org.junit.jupiter.api.Test
+    void aBigSiteHasADepotEveryFortyEightBlocksAndAKeepOne() {
+        Flatten big = new Flatten(-16, -64, 16, 64, 62);
+        assertEquals(java.util.List.of(new Position(-20, big.floor(), -43), new Position(-20, big.floor(), 0), new Position(-20, big.floor(), 43)),
+                big.depots());
+        assertEquals(big.depot(), big.depots().get(1));
+        assertEquals(java.util.List.of(Flatten.KEEP.depot()), Flatten.KEEP.depots());
+    }
 }

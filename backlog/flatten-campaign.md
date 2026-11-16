@@ -63,11 +63,11 @@ the world, not from reports, and shown to the squad leader and the platoon leade
   handed each rectangle on and one builder finished them all; the crew's time went on the errands.
   Done when: no level is dealt until the depot's chest stands and each builder on it carries a
   pickaxe and a shovel - the depot's logs and tools stocked before the crew is sent.
-- **Depots by the site's size (operator, 2026-11-15: a site this big needs more than one):** one
-  depot every 48 blocks along the site's long edge, so none of it is more than about 24 blocks from
-  one - three for x=-16..16 z=-64..64. A builder uses the nearest; the depots are one stockpile,
-  any drawn from, surplus moved to where it's short (docs/echelons/tenets.md, "work in parallel");
-  each its haul road. Resource checks every depot's standard before the crew is sent.
+- **Depots by the site's size - what's left:** built, a depot every 48 blocks along the west edge,
+  loads into the nearest, draws from the main one (docs/military-doctrine.md). Left: draws from
+  any depot that holds the thing wanted, surplus moved to where it's short (docs/echelons/tenets.md,
+  "work in parallel"); each outpost its haul road; Resource checks every depot's standard before
+  the crew is sent.
 - **Flatten, not the keep, in the code's names:** `keepwork`, `foremansNet`'s keep fields, the
   `[Keep]` log tag and `Objective.Task.Keep` are the flatten's; the keep is one use of it
   (operator, 2026-11-15). The task's name in the platoon leader's prompt changes with it.
