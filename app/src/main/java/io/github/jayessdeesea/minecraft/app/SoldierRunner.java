@@ -3010,7 +3010,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * {@code soldier}'s step on {@code stairs} for the night, holding no cut: a step of its own in a
      * line of every squad's soldiers on the mine but its cutters, by name, below the cutters' own
      * waiting steps - from three behind the cut while the stairs go down, from above the landing once
-     * they're down. Empty past the top: it waits where its squad's cutter is.
+     * they're down. Past the top, a place of its own beside the head; empty only for one not in the line.
      */
     private Optional<Position> nightPlace(Staircase stairs, String soldier) {
         Set<String> cutters = new HashSet<>(mineCrew(stairs));
@@ -3024,8 +3024,19 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int cut = stairs.stepsCut(world);
         int from = cut >= stairs.steps() ? stairs.steps() - 2 : cut - Miner.WAIT_BEHIND;
         int k = from - cutters.size() - rank;
-        return k < 0 ? Optional.empty() : Optional.of(centre(stairs.step(k)));
+        if (k >= 0) {
+            return Optional.of(centre(stairs.step(k)));
+        }
+        // Past the top - too few steps cut for the line: a place of its own beside the head, four
+        // abreast, in the line's order. Live, a mine on its first step sent everyone past the top to
+        // its cutter's cell, and pairs stood in one body's width all night.
+        int over = -k - 1;
+        return Optional.of(new Position(stairs.head().x() - 1.5 + over % NIGHT_ABREAST, stairs.head().y(),
+                stairs.head().z() + 3.5 + over / NIGHT_ABREAST));
     }
+
+    /** How many abreast stand beside a mine's head by night, past the top of a line too long for its stairs. */
+    static final int NIGHT_ABREAST = 4;
 
     /** When each mine, by its head, was last run on a stretch - squad loops write and read. */
     private final Map<BlockPos, Long> mineExtendedAt = new ConcurrentHashMap<>();

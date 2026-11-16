@@ -1240,7 +1240,8 @@ A mine is shared among the cutters on it - every squad's, in order by name (`Sta
 the first cuts the stairs and the main tunnel, and the branch roots along the main tunnel are cut
 into contiguous stretches, one a cutter, both sides, so each works a part of the mine of its own.
 The rest wait on the stairs, each a step of its own - three behind its cutter and up, then the
-last steps above the landing - until the main tunnel is cut through - started from
+last steps above the landing, and with too few steps cut for the line, the rest beside the head,
+four abreast - until the main tunnel is cut through - started from
 a root its cutter still stood on, two stood on one cell - and the mine is worked out only when
 every cutter's share is. Live, four squads' cutters each worked the whole mine and stood on one
 another.
