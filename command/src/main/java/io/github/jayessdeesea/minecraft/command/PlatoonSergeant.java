@@ -102,13 +102,29 @@ public final class PlatoonSergeant {
      * Rations across squads (the operator's: across squads if need be), as a squad of its own would
      * share them: to a soldier running low that no squadmate is sharing with, from the nearest of the
      * force with rations to spare - of {@code outOfContact}, none {@code busy} with a hand-over of
-     * its own squad's.
+     * its own squad's. A delivery {@code held} from the last cycle stands while both are still free
+     * and its receiver still low: chosen afresh, the nearest giver changed as they walked, and each
+     * change called the last one's delivery off - live, 69 of 117 called off, one receiver's giver
+     * flipping between two soldiers every second.
      */
-    public static List<CrossLevel.Transfer> crossRations(List<SoldierStatus> outOfContact, Set<String> busy) {
+    public static List<CrossLevel.Transfer> crossRations(List<SoldierStatus> outOfContact, Set<String> busy,
+                                                         java.util.Collection<CrossLevel.Transfer> held) {
         List<SoldierStatus> free = outOfContact.stream().filter(s -> !busy.contains(s.name())).toList();
         List<SoldierStatus> short_ = free.stream().filter(s -> s.condition().flatMap(Condition::kit)
                 .filter(k -> Subsistence.low(k.rations())).isPresent()).toList();
-        return CrossLevel.across(short_, free);
+        Set<String> freeNames = free.stream().map(SoldierStatus::name).collect(java.util.stream.Collectors.toSet());
+        Set<String> shortNames = short_.stream().map(SoldierStatus::name).collect(java.util.stream.Collectors.toSet());
+        List<CrossLevel.Transfer> kept = held.stream()
+                .filter(t -> freeNames.contains(t.giver()) && shortNames.contains(t.receiver())).toList();
+        Set<String> taken = new java.util.HashSet<>();
+        kept.forEach(t -> {
+            taken.add(t.giver());
+            taken.add(t.receiver());
+        });
+        List<CrossLevel.Transfer> all = new java.util.ArrayList<>(kept);
+        all.addAll(CrossLevel.across(short_.stream().filter(s -> !taken.contains(s.name())).toList(),
+                free.stream().filter(s -> !taken.contains(s.name())).toList()));
+        return List.copyOf(all);
     }
 
     /** How much of a squad keeps the farm: half, one soldier, or none. */

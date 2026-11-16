@@ -64,6 +64,26 @@ class PlatoonSergeantTest {
         return new SoldierStatus(name, new Position(0, 64, 0), new Order.Idle(), report, Optional.of(new Condition(20, 20, 0, Optional.of(kit))));
     }
 
+    /**
+     * A delivery across squads under way keeps its giver though another has come nearer: live, the
+     * nearest giver changed as they walked, and each change called the delivery off.
+     */
+    @Test
+    void aDeliveryAcrossSquadsKeepsItsGiverThoughAnotherComesNearer() {
+        SoldierStatus near = carrying("Olga", 64, Optional.of("stone_sword"), new Report.InPosition());
+        SoldierStatus far = new SoldierStatus("Mia", new Position(10, 64, 0), new Order.Idle(), new Report.InPosition(),
+                near.condition());
+        SoldierStatus low = carrying("Fran", 1, Optional.of("stone_sword"), new Report.InPosition());
+        CrossLevel.Transfer held = new CrossLevel.Transfer("Mia", "Fran", CrossLevel.Item.RATIONS, CrossLevel.RATIONS_GIVEN);
+
+        assertEquals("Olga", PlatoonSergeant.crossRations(List.of(near, far, low), Set.of(), List.of()).getFirst().giver(),
+                "afresh, the nearest");
+        assertEquals(List.of(held), PlatoonSergeant.crossRations(List.of(near, far, low), Set.of(), List.of(held)),
+                "under way, its giver kept");
+        assertEquals("Olga", PlatoonSergeant.crossRations(List.of(near, low), Set.of(), List.of(held)).getFirst().giver(),
+                "its giver gone, the next nearest");
+    }
+
     /** Rations to one running low from one with plenty; none to or from one the recovery drill has. */
     @Test
     void rationsGoToOneRunningLowButNeverToOrFromOneRecovering() {

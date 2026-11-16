@@ -26,12 +26,6 @@ crew's ticks:
 - **Builders with no rectangle.** A third of the crew's ticks - most of it a crew bigger than a sparse level needs, which backlog/flatten-campaign.md sizes to the level. Find which builders the plan leaves
   out and why - fewer columns than builders at the level, a builder dropped from the crew between
   plans, the road's cutter - and give each one ground.
-- **A rectangle with nothing to cut.** "clearer idle, nothing to cut" was 12-14% of the crew's
-  ticks (field252): a builder holds a rectangle with ground over the level by its columns' tops,
-  and its clearer's cover (`Clearing.toClear`: open-topped, not held out) is empty, so it stands
-  till the rectangle times out. The foreman logs each one ("has nothing its clearer can cut")
-  with its columns' tops, whether held out, covered or remembered - read those next, and make
-  the foreman's "work left" and the clearer's cover the same test.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done

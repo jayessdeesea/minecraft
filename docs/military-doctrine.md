@@ -1402,7 +1402,9 @@ of its own, not the keep's (operator, 2026-11-15): the task digs whatever ground
 operator names with `!flatten` - with its depot off the site's west edge, sited again when the
 site moves away from the one standing. Its crew is sized to its level (backlog/flatten-campaign.md):
 at each new level the foreman says the builders its blocks want, one to 24 blocks
-(`SoldierRunner.BLOCKS_A_BUILDER`), and only as many squads as that takes are sent to the ground, in
+(`SoldierRunner.BLOCKS_A_BUILDER`) of the widest of it and the three levels under it
+(`SoldierRunner.CREW_LOOK_AHEAD`) - live, a hilltop's last blocks let all but two go, and the next
+level, 1,038 blocks, was dealt to those two - and only as many squads as that takes are sent to the ground, in
 the order of battle, the farm squad never; the rest are released - to the platoon leader's own
 objective for them, or the camp's work where that's the ground too - and called back as the
 levels widen (`ChainOfCommand.onFlattenCrew`, "[PL] the ground's level wants N builder(s)"). The heights are the
@@ -1467,7 +1469,8 @@ each, none overlapping, near-equal in blocks, each to the builder nearest it. Wi
 four blocks a builder, fewer are sent - a spire one block across is the nearest builder's - and the
 rest wait where they stand. Then it holds the plan (operator, 2026-11-15): each builder is given
 one or more touching rectangles and keeps them till they're cleared - its completion, logged as
-"[Keep] Bob done with ..." - or till they're due: a minute to get there and six seconds a block
+"[Keep] Bob done with ...", read off the world as it is, not the site's scan of up to a second
+before: live, on hilltop levels a builder stood that second after every rectangle - or till they're due: a minute to get there and six seconds a block
 (`SoldierRunner.dueMillis`); due and not done, they're given to the nearest builder who's done
 ("[Keep] Bob's ... timed out - given to Carol"), as a builder's are when it goes off the crew. A
 builder given nothing yet on the level - come onto it once it was dealt, a squad called back to a

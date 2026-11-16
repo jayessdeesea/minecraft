@@ -1448,7 +1448,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }));
         Map<String, CrossLevel.Transfer> was = acrossSquads;
         Map<String, CrossLevel.Transfer> now = new HashMap<>();
-        PlatoonSergeant.crossRations(outOfContact, busy).forEach(t -> now.put(t.giver(), t));
+        PlatoonSergeant.crossRations(outOfContact, busy, was.values()).forEach(t -> now.put(t.giver(), t));
         now.values().stream().filter(t -> !was.containsValue(t))
                 .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL across squads: {} rations", t.giver(), t.receiver(), t.count()));
         acrossSquads = Map.copyOf(now);
@@ -2499,8 +2499,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<LevelPlan.Column> columns = new ArrayList<>();
             for (int x = site.minX(); x <= site.maxX() && level != Integer.MIN_VALUE; x++) {
                 for (int z = site.minZ(); z <= site.maxZ(); z++) {
-                    // The level's ground, and a step standing at or over it, shared out with it.
-                    if (calm.applyAsInt(x, z) == level || calmStep.applyAsInt(x, z) >= level) {
+                    // The level's ground, and a step standing at or over it, shared out with it - as the
+                    // world has it now, where it's seen: the site's scan is up to a second old, and live,
+                    // on hilltop levels of a few blocks, a builder stood that second after each rectangle
+                    // it finished ("clearer idle, nothing to cut", an eighth of the crew's ticks).
+                    boolean seen = world.isLoaded(x, z);
+                    int stepAt = calmStep.applyAsInt(x, z);
+                    boolean ground = calm.applyAsInt(x, z) == level && (!seen || world.isSolid(x, level, z));
+                    boolean step = stepAt >= level && (!seen || world.isSolid(x, stepAt, z));
+                    if (ground || step) {
                         columns.add(new LevelPlan.Column(x, z));
                     }
                 }
@@ -2534,8 +2541,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 keepLevelAt = now;
                 // The crew its blocks want, for the squads sent (backlog/flatten-campaign.md): a standard
                 // share a builder, the whole force for a full floor.
+                // And the levels just under it: a hilltop's last few blocks a level over a wide one
+                // let every squad go but two, and called them back one by one a level later - live, a
+                // level of 1,038 blocks was dealt to the two on it, with the rest at the camp.
                 if (level != Integer.MIN_VALUE) {
-                    chainOfCommand.onFlattenCrew(Math.max(1, (columns.size() + BLOCKS_A_BUILDER - 1) / BLOCKS_A_BUILDER));
+                    int ahead = 0;
+                    for (int x = site.minX(); x <= site.maxX(); x++) {
+                        for (int z = site.minZ(); z <= site.maxZ(); z++) {
+                            if (calm.applyAsInt(x, z) >= level - CREW_LOOK_AHEAD) {
+                                ahead++;
+                            }
+                        }
+                    }
+                    chainOfCommand.onFlattenCrew(Math.max(1, (Math.max(columns.size(), ahead) + BLOCKS_A_BUILDER - 1)
+                            / BLOCKS_A_BUILDER));
                 }
             }
             // The foreman's protocol (operator, 2026-11-15): each builder is given one or more touching
@@ -2966,6 +2985,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** A builder's standard share of a level, the crew sized from it: one builder to a level of 24 blocks or fewer. */
     static final int BLOCKS_A_BUILDER = 24;
+    /** Levels under the one being dug that size its crew too: it's sized for the widest of them. */
+    static final int CREW_LOOK_AHEAD = 3;
 
     /** How far the ground to flatten's depot spot may be from the depot standing before it's sited again, by the new ground. */
     static final int DEPOT_MOVE = 24;
