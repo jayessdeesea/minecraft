@@ -234,7 +234,7 @@ loss. Every tick of every builder on the keep is put down to what held it - the 
 hands (the clearer, the depositor, the armourer at a table, rations), or with none, why it has no
 rectangle: the wood party, the haul road, off the crew, or waiting - on the crew with nothing
 given - so the gap to the best is accounted for. When the level falls, the log says what it took against
-its best and its split's, where the crew's ticks went ("waiting, no rectangle 40%, clearer 35%,
+its best and its split's - the nights left out, its clock and the tally stopped while it's dark - where the crew's ticks went ("waiting, no rectangle 40%, clearer 35%,
 ..."), each builder's ticks taken against best; then the dig so far, level on level, the same way:
 that line is the one that says whether the method is within 90% of its best. Below 90% either line
 is a warning, "BELOW 90%".

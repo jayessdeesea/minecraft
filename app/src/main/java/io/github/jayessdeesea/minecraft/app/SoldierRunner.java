@@ -2246,6 +2246,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                            java.util.function.IntBinaryOperator top, java.util.function.IntBinaryOperator stepTop,
                                            int layer, Set<Cell> except) {
         long now = clockwork.millis();
+        // The night isn't the dig's: its level's clock stops while it's dark, and starts again at dawn.
+        // Live, a level stood over a night at 74 blocks and read 10% of its best.
+        boolean dark = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
+        synchronized (keepPlanLock) {
+            if (dark && keepDarkSince == Long.MIN_VALUE) {
+                keepDarkSince = now;
+            } else if (!dark && keepDarkSince != Long.MIN_VALUE) {
+                keepLevelAt += now - keepDarkSince;
+                keepDarkSince = Long.MIN_VALUE;
+            }
+        }
         Set<String> inCrew = crew.stream().map(Tasking.Hand::name).collect(Collectors.toSet());
         // On hand: on the keep, fed, not fighting - and not off keeping the farm. Live, a level's last
         // three blocks went to a builder who walked 80 blocks to the farm, and seven stood by for her.
@@ -2549,8 +2560,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Map<String, Integer>> keepSpent = new ConcurrentHashMap<>();
     /** The keep's dig so far, level on level - guarded by {@link #keepPlanLock}. */
     private LevelPace.Run keepRun = LevelPace.Run.NONE;
-    /** When the level under way was first planned - guarded by {@link #keepPlanLock}. */
+    /** When the level under way was first planned, the nights since left out - guarded by {@link #keepPlanLock}. */
     private long keepLevelAt;
+    /** Since when it's been dark over the level under way, or {@code Long.MIN_VALUE} by day - guarded by {@link #keepPlanLock}. */
+    private long keepDarkSince = Long.MIN_VALUE;
     /** The keep's grove, once sited - squad loops write, ticks read. */
     private volatile TreeFarm keepGrove;
     /** Whether the keep's grove has been looked for since the start: once, whatever it found. */
@@ -5580,7 +5593,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                 : name.equals(keepRoadCutter) ? "haul road, walking"
                                 : !levelPlan.crew().contains(name) ? "off the crew (" + status.order().getClass().getSimpleName() + ")"
                                 : "waiting, no rectangle");
-                keepSpent.computeIfAbsent(name, n -> new ConcurrentHashMap<>()).merge(held, 1, Integer::sum);
+                if (!chainOfCommand.time().map(TimeOfDay::dark).orElse(false)) {
+                    keepSpent.computeIfAbsent(name, n -> new ConcurrentHashMap<>()).merge(held, 1, Integer::sum);
+                }
             } else {
                 clearer.drainTimes();
             }
