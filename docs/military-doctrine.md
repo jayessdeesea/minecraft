@@ -1402,10 +1402,11 @@ Level by level, in lock step, planned by the keep's foreman (`command.LevelPlan`
 2026-11-14): one soldier the squad leader appoints - the first builder of the first squad on the
 keep, again whenever that one is off it. The site's level is the highest ground left anywhere on
 it, and nobody digs lower till it's gone, so the site comes down as one flat floor: nobody climbs
-over a neighbour's ground. A builder's own step or pillar (`SoldierRunner.scaffolding`) is no
-ground and doesn't set the level - counted as the highest, it held every builder at its level for
+over a neighbour's ground. A builder's own step or pillar (`SoldierRunner.scaffolding`), and a
+tree's logs and leaves, are no ground and don't set the level - counted as the highest, it held every builder at its level for
 one block while eight stood by - but every level shares out any step standing at or over it with
-its ground, so the step is dug with the level under it and none is left high. At the start of each level the foreman
+its ground, so it's dug with the level under it, and once the ground is gone what's left of them
+is the level: none is left high. At the start of each level the foreman
 shares what's left of it out among the builders on hand, every squad's: a rectangle of x and z
 each, none overlapping, near-equal in blocks, each to the builder nearest it. With less work than
 four blocks a builder, fewer are sent - a spire one block across is the nearest builder's - and the

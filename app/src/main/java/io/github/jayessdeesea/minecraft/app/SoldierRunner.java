@@ -2000,8 +2000,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         scaffolding.removeIf(c -> !world.isSolid(c.x(), c.y(), c.z()));
         Map<Long, Integer> tops = new HashMap<>();
         Map<Long, Integer> stepTops = new HashMap<>();
-        wholeDig.stream().filter(c -> !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty())
-                .forEach(c -> (scaffolding.contains(c) ? stepTops : tops).merge(((long) c.x() << 32) ^ (c.z() & 0xffffffffL), c.y(), Math::max));
+        // A tree's logs and leaves aren't ground either: they don't set the level, but like a step
+        // they're dug with the level under them, and once the ground is gone they're the level - live,
+        // a tree's last two blocks at y=78 stood over a finished keep with nobody given them.
+        wholeDig.forEach(c -> (scaffolding.contains(c) || world.isLog(c.x(), c.y(), c.z()) || world.leaves(c.x(), c.y(), c.z()).isPresent()
+                ? stepTops : tops).merge(((long) c.x() << 32) ^ (c.z() & 0xffffffffL), c.y(), Math::max));
         java.util.function.IntBinaryOperator top = (x, z) -> tops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
         java.util.function.IntBinaryOperator stepTop = (x, z) -> stepTops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
         int layer = tops.values().stream().mapToInt(Integer::intValue).max()
@@ -5815,6 +5818,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .ifPresent(block -> {
                             chunkCache.standIn(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE, clockwork.millis());
                             scaffolding.add(cell);
+                            // Who puts what in the keep: a block there over its floor holds the site's level.
+                            if (Keep.contains(cell.x(), cell.z()) && cell.y() >= Keep.BOTTOM) {
+                                LOG.info("[Keep] {} puts a step at {} {} {} - {}", name, cell.x(), cell.y(), cell.z(), soldier.status().order());
+                            }
                         });
             });
             footing.tick();
