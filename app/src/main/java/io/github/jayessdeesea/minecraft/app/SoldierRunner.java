@@ -2483,7 +2483,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // finished, and builders walked from lane to lane and never finished one.
             java.util.function.Predicate<Box> hasWork = b -> columns.stream()
                     .anyMatch(c -> c.x() >= b.minX() && c.x() <= b.maxX() && c.z() >= b.minZ() && c.z() <= b.maxZ());
-            if (plan == null || plan.level() != level) {
+            // Ground left that nobody holds - its holders all gone off the crew with nobody to take it,
+            // at nightfall say: the level dealt again, fresh. Live, the night took the whole crew off,
+            // the last rectangles were handed round till their last holder went too, and at dawn the
+            // level's 269 blocks were nobody's for half an hour.
+            KeepPlan dealtPlan = plan;
+            boolean unheld = dealtPlan != null && dealtPlan.level() == level && !columns.isEmpty() && !all.isEmpty()
+                    && dealtPlan.boxes().entrySet().stream().noneMatch(e -> names.contains(e.getKey()) && e.getValue().stream().anyMatch(hasWork));
+            if (plan == null || plan.level() != level || unheld) {
                 // Supplies between levels, not in the middle of one (operator, 2026-11-15): one low on
                 // rations with food in the stockpile, or with no pickaxe, sits this level out to get
                 // them, and is dealt in at the next. Off on an errand, its rectangles stood till they
