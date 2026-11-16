@@ -1882,6 +1882,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (supplyPoint.isPresent()) {
             return supplyPoint;
         }
+        // On the flatten's crew, its depot - whatever its squad's own task: live, the builders of the
+        // squads sent to it from the mine carried every load to the camp's chest 70 blocks off, 53 of
+        // 92, while the depot stood at the site's edge.
+        if (keepHands.contains(soldier)) {
+            Optional<Position> depot = chestOf(keepWorkshop);
+            if (depot.isPresent()) {
+                return depot;
+            }
+        }
         // A mine's chest is its stash of ore (stashOre), not a stockpile drawn from.
         Workshop own = workshops.get(soldier);
         return stockpileOf(own != null && mineOfChest(chestCentre(own)).isPresent() ? Optional.empty() : chestOf(own), chestOf(campWorkshop));
@@ -3748,6 +3757,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final int CUT_OFF_SPAN = 48, CUT_OFF_BUDGET = 20_000;
     /** A soldier that can walk no more cells than this is in a pocket - WayOut's measure of one. */
     static final int CUT_OFF_CELLS = 128;
+    /** How far under where it's sent a soldier with no way up to that height is cut off below it. */
+    static final int CUT_OFF_RISE = 6;
 
     /**
      * {@code reported}, with a soldier's "no route" read as stranded only when it's cut off: it can
@@ -3774,8 +3785,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 return s;
             }
             Position from = s.position();
-            int cells = Pathfinder.reachable(world, BlockPos.containing(from.x(), from.y(), from.z()), CUT_OFF_SPAN, CUT_OFF_BUDGET).size();
-            if (cells <= CUT_OFF_CELLS) {
+            Set<BlockPos> walkable = Pathfinder.reachable(world, BlockPos.containing(from.x(), from.y(), from.z()), CUT_OFF_SPAN, CUT_OFF_BUDGET);
+            int cells = walkable.size();
+            // Or a cave of any size under where it's sent, with no way up to that height: live, two
+            // soldiers down the mine's stairs at night stood in a cave of 866 cells at y=44, sent up to
+            // y=64, "not stranded", and the drill that lays a stair up never came.
+            boolean below = s.order() instanceof Order.MoveTo m && m.y() - from.y() > CUT_OFF_RISE
+                    && walkable.stream().noneMatch(c -> c.y() >= m.y() - m.verticalTolerance() - 1);
+            if (cells <= CUT_OFF_CELLS || below) {
                 walksSaid.remove(s.name());
                 return Recovery.stranded(s) ? s : new SoldierStatus(s.name(), s.position(), s.order(), new Report.Cantco(String.format(Locale.ROOT,
                         "no route from (%.0f, %.0f, %.0f): cut off in a pocket of %d cells", from.x(), from.y(), from.z(), cells)), s.condition());

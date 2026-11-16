@@ -213,7 +213,9 @@ cell with ground under it near the slab's height: under a hill that's a cave's o
 and live it was a one-wide tunnel into the hill west of the keep, with nowhere beside a stand for a
 table, said every second for hours while the builders walked 50 blocks to a stray table for bread.
 
-The depot is a row of chests, not one (operator, 2026-11-14): six cells laid out round the
+Every builder on the flatten's crew stocks and draws at the depot while a chest of it stands,
+whatever its own squad's task - live, the builders of squads sent to it from the mine carried 53 of
+92 loads to the camp's chest 70 blocks off. The depot is a row of chests, not one (operator, 2026-11-14): six cells laid out round the
 workshop's stand, each within reach of it and a step up or down a slope from it at most, open
 above so its lid lifts, none beside the stand or beside another chest - two
 side by side would join into one double chest (`Workshop.chestCells`). They're filled in turn: a
@@ -405,7 +407,10 @@ another, with a pickaxe and 263 cobblestone, stood a day in a dead end 30 blocks
 a carrier from below, whose own route builds the steps it finds - never down to one in a pocket:
 live, two squadmates in turn walked down to one and were trapped beside it. Stranded means cut
 off: a soldier reporting no route that can walk no more than 128 cells from where it stands, by the
-planner's own moves (`SoldierRunner.cutOff`, WayOut's measure of a pocket). One with the ground to
+planner's own moves (`SoldierRunner.cutOff`, WayOut's measure of a pocket) - or, sent more than 6
+blocks above itself, can walk to nothing within its order's height of that point, a cave of any
+size under it: live, two soldiers stood a night shift in one of 866 cells at y=44, sent up to y=64,
+and no stair up was laid. One with the ground to
 walk - its order's goal out of reach, a squadmate in a pocket, a plot across water - isn't
 stranded, and nothing is cross-levelled to or from one the drill has: live, the keep's foreman
 spent a day on the stairs with rations for one in a dead end, "stranded" every minute on its way.
