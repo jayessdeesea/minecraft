@@ -2503,10 +2503,21 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // ground is the highest again, and the level comes back up to it.
             List<Position> fights = keepFightingAt.entrySet().stream().filter(e -> keepFighting.contains(e.getKey()))
                     .map(Map.Entry::getValue).toList();
-            java.util.function.IntBinaryOperator calm = (x, z) -> fights.stream()
-                    .anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR) ? Integer.MIN_VALUE : top.applyAsInt(x, z);
-            java.util.function.IntBinaryOperator calmStep = (x, z) -> fights.stream()
-                    .anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR) ? Integer.MIN_VALUE : stepTop.applyAsInt(x, z);
+            // And a column's top as the world has it now, where it's seen: the site's scan is up to a
+            // second old and each squad's its own. Read off the scan, a builder stood that second after
+            // each rectangle it finished ("clearer idle, nothing to cut", an eighth of the crew's
+            // ticks); read live for the level's columns but not for the level, the level went 79, 78,
+            // 79, 78 in seconds, a squad with an older scan dealing it again each time.
+            java.util.function.IntBinaryOperator calm = (x, z) -> {
+                int t = top.applyAsInt(x, z);
+                return fights.stream().anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR)
+                        || t != Integer.MIN_VALUE && world.isLoaded(x, z) && !world.isSolid(x, t, z) ? Integer.MIN_VALUE : t;
+            };
+            java.util.function.IntBinaryOperator calmStep = (x, z) -> {
+                int t = stepTop.applyAsInt(x, z);
+                return fights.stream().anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR)
+                        || t != Integer.MIN_VALUE && world.isLoaded(x, z) && !world.isSolid(x, t, z) ? Integer.MIN_VALUE : t;
+            };
             int level = Integer.MIN_VALUE;
             for (int x = site.minX(); x <= site.maxX(); x++) {
                 for (int z = site.minZ(); z <= site.maxZ(); z++) {
@@ -2522,15 +2533,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<LevelPlan.Column> columns = new ArrayList<>();
             for (int x = site.minX(); x <= site.maxX() && level != Integer.MIN_VALUE; x++) {
                 for (int z = site.minZ(); z <= site.maxZ(); z++) {
-                    // The level's ground, and a step standing at or over it, shared out with it - as the
-                    // world has it now, where it's seen: the site's scan is up to a second old, and live,
-                    // on hilltop levels of a few blocks, a builder stood that second after each rectangle
-                    // it finished ("clearer idle, nothing to cut", an eighth of the crew's ticks).
-                    boolean seen = world.isLoaded(x, z);
-                    int stepAt = calmStep.applyAsInt(x, z);
-                    boolean ground = calm.applyAsInt(x, z) == level && (!seen || world.isSolid(x, level, z));
-                    boolean step = stepAt >= level && (!seen || world.isSolid(x, stepAt, z));
-                    if (ground || step) {
+                    // The level's ground, and a step standing at or over it, shared out with it.
+                    if (calm.applyAsInt(x, z) == level || calmStep.applyAsInt(x, z) >= level) {
                         columns.add(new LevelPlan.Column(x, z));
                     }
                 }
