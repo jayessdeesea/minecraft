@@ -1432,9 +1432,17 @@ is the level: none is left high. At the start of each level the foreman
 shares what's left of it out among the builders on hand, every squad's: a rectangle of x and z
 each, none overlapping, near-equal in blocks, each to the builder nearest it. With less work than
 four blocks a builder, fewer are sent - a spire one block across is the nearest builder's - and the
-rest wait where they stand. It plans again when the level falls, when the builders on hand change,
-when a builder has cleared its rectangle while the level still has ground, and every half minute
-from where the builders stand, so what's left is shared out again. On hand means on the keep, fed,
+rest wait where they stand. Then it holds the plan (operator, 2026-11-15): each builder is given
+one or more touching rectangles and keeps them till they're cleared - its completion, logged as
+"[Keep] Bob done with ..." - or till they're due: a minute to get there and six seconds a block
+(`SoldierRunner.dueMillis`); due and not done, they're given to the nearest builder who's done
+("[Keep] Bob's ... timed out - given to Carol"), as a builder's are when it goes off the crew. A
+builder come onto a level once it's dealt - a squad called back to a wide one - takes half of the
+most that's left of one builder's, the one time held work is split. Nothing is dealt again while
+it's held: live, the level was shared out again every half minute and each time a builder
+finished, and builders walked lane to lane and never finished one. Supplies come between levels:
+a builder low on rations with food in the stockpile, or with no pickaxe, sits the new level out
+to get them and is dealt in at the next. On hand means on the keep, fed,
 not fighting and not off keeping the farm: live, a level's last three blocks went to a builder who
 then walked 80 blocks to the farm, and seven stood by for her. Nothing is kept from level to level, or overnight. The foreman says each plan on
 the net, point to point (`/msg`): only a line new to its builder, the latest overtaking one still

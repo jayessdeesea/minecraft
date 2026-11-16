@@ -53,6 +53,13 @@ the world, not from reports, and shown to the squad leader and the platoon leade
 - Built: the foreman (`SoldierRunner.foremansNet`), its levels (`LevelPlan`), the pace telemetry
   (`LevelPace`), the haul road (`AccessRoute`), the depot's row of chests, the wood party, and
   `Flatten` as the site.
+- **Built (2026-11-15):** the foreman's protocol - rectangles held till done or due, reassigned on
+  timeout, split only for a builder come late; supplies between levels.
+- **Errands held till a builder's rectangles are done:** a depot trip with surplus, a draw of food
+  while fed, a tool made with one still in hand - none mid-assignment; hunger first, always.
+- **Traversal in the split:** blocks weighted by the walk and climb to them, so a builder with a
+  hard reach gets fewer (operator, 2026-11-15: about the same blocks each, or fewer if traversal is
+  challenging).
 - **Question for the operator:** what a released squad does - the platoon leader's own objective
   for it (the mission: the camp, the lodgment), or production the campaign itself wants (wood for
   its depot, the mine for its iron).

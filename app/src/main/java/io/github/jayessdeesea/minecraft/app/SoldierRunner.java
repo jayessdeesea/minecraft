@@ -2248,10 +2248,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * site comes down in lock step, one level at a time - {@code layer}, the highest ground left
      * anywhere on it - and at the start of each level the foreman shares what's left of it out among
      * the builders on hand, every squad's, a rectangle of x and z each ({@link LevelPlan}); with less
-     * work than builders, the nearest get it and the rest wait where they stand. Planned again when
-     * the level falls, when the builders on hand change - one fighting, fed, lost or back - and when
-     * a builder has cleared its rectangle while the level still has ground, so what's left is shared
-     * out again and nobody stands by a level others are still digging. Nothing is kept from level to
+     * work than builders, the nearest get it and the rest wait where they stand. Then the plan is
+     * held: each builder keeps its rectangles till they're cleared or due, when they go to the
+     * nearest builder who's done, as a builder's do when it's off the crew; one come onto the level
+     * late takes half of the most that's left of one builder's. Nothing is kept from level to
      * level. The foreman - the first builder of the first squad on the keep - says each builder's
      * rectangle on the net ({@code /msg}), so the plan reads in the chat as it does in the log.
      */
@@ -2325,14 +2325,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }
             plan = keepPlan;
-            // One with its rectangle cleared, and ground still left at the level: shared out again,
-            // though not every second - a builder walking to its rectangle has cleared nothing yet.
-            boolean idleHand = plan != null && now - plan.at() >= KEEP_REPLAN_MILLIS && !columns.isEmpty()
-                    && plan.boxes().values().stream().anyMatch(boxes -> boxes.stream().noneMatch(b -> columns.stream()
-                    .anyMatch(c -> c.x() >= b.minX() && c.x() <= b.maxX() && c.z() >= b.minZ() && c.z() <= b.maxZ())));
-            // And every half minute from where the builders stand now: one sent a rectangle at dawn from
-            // down the mine isn't the nearest to it once the squad is up.
-            boolean old = plan != null && now - plan.at() >= KEEP_PLAN_MILLIS;
             if (plan != null && plan.level() != level && plan.level() != Integer.MIN_VALUE) {
                 Map<String, LevelPace.Tally> digs = new HashMap<>();
                 Set.copyOf(keepPace.keySet()).forEach(n -> Optional.ofNullable(keepPace.remove(n)).ifPresent(t -> digs.put(n, t)));
@@ -2359,20 +2351,131 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     chainOfCommand.onFlattenCrew(Math.max(1, (columns.size() + BLOCKS_A_BUILDER - 1) / BLOCKS_A_BUILDER));
                 }
             }
-            if (plan == null || plan.level() != level || !plan.crew().equals(names) || idleHand || old) {
-                Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of() : LevelPlan.plan(level, site.maxY(), columns, all);
+            // The foreman's protocol (operator, 2026-11-15): each builder is given one or more touching
+            // rectangles at the level and holds them till they're cleared - its completion - or till
+            // their time is up, when they're given to someone else. Nothing is dealt again while it's
+            // held: live, the level was shared out again every half minute and each time a builder
+            // finished, and builders walked from lane to lane and never finished one.
+            java.util.function.Predicate<Box> hasWork = b -> columns.stream()
+                    .anyMatch(c -> c.x() >= b.minX() && c.x() <= b.maxX() && c.z() >= b.minZ() && c.z() <= b.maxZ());
+            if (plan == null || plan.level() != level) {
+                // Supplies between levels, not in the middle of one (operator, 2026-11-15): one low on
+                // rations with food in the stockpile, or with no pickaxe, sits this level out to get
+                // them, and is dealt in at the next. Off on an errand, its rectangles stood till they
+                // timed out.
+                boolean foodStocked = chainOfCommand.stockpile().map(st -> st.rations() > 0).orElse(false);
+                Set<String> resupplying = hands.stream().filter(h -> h.condition().flatMap(c -> c.kit())
+                                .filter(k -> foodStocked && Subsistence.low(k.rations()) || !k.pickaxe()).isPresent())
+                        .map(SoldierStatus::name).collect(Collectors.toSet());
+                List<LevelPlan.Builder> dealtIn = all.stream().filter(b -> !resupplying.contains(b.name())).toList();
+                if (dealtIn.isEmpty()) {
+                    dealtIn = all;
+                }
+                if (!resupplying.isEmpty() && dealtIn != all) {
+                    LOG.info("[Keep] level y={}: {} sit(s) it out to resupply", level, resupplying.stream().sorted().toList());
+                }
+                Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of() : LevelPlan.plan(level, site.maxY(), columns, dealtIn);
                 plan = new KeepPlan(level, names, boxes, now);
                 keepPlan = plan;
+                keepDue.clear();
+                boxes.forEach((n, bs) -> keepDue.put(n, now + dueMillis(bs, columns)));
                 LOG.info("[Keep] level y={}: {} block(s) left, {} of {} builder(s) on it - {}", level, columns.size(), boxes.size(), all.size(),
-                        boxes.entrySet().stream().map(e -> e.getKey() + " " + e.getValue().stream()
-                                .map(b -> "x=" + b.minX() + ".." + b.maxX() + " z=" + b.minZ() + ".." + b.maxZ()).toList()).toList());
+                        boxes.entrySet().stream().map(e -> e.getKey() + " " + boxesSaid(e.getValue())).toList());
                 String chief = keepForeman;
                 if (chief != null) {
                     for (LevelPlan.Builder b : all) {
-                        List<Box> mine = boxes.getOrDefault(b.name(), List.of());
-                        say(chief, b.name(), mine.isEmpty() ? "KEEP WAIT " + level
-                                : "KEEP DIG " + level + " " + mine.stream().map(r -> r.minX() + " " + r.minZ() + " " + r.maxX() + " " + r.maxZ())
-                                .collect(Collectors.joining(" ")));
+                        sayAssignment(chief, b.name(), level, boxes.getOrDefault(b.name(), List.of()));
+                    }
+                }
+            } else {
+                Map<String, List<Box>> boxes = new HashMap<>(plan.boxes());
+                Set<String> given = new HashSet<>();
+                List<Map.Entry<String, List<Box>>> orphans = new ArrayList<>();
+                // Off the crew - fighting, fed, gone: its rectangles to someone else.
+                for (String holder : List.copyOf(boxes.keySet())) {
+                    if (!names.contains(holder)) {
+                        orphans.add(Map.entry(holder, boxes.remove(holder)));
+                        LOG.info("[Keep] {} is off the crew - its {} to someone else", holder, boxesSaid(orphans.getLast().getValue()));
+                    }
+                }
+                // Done: logged once, and free for what times out.
+                for (Map.Entry<String, List<Box>> e : List.copyOf(boxes.entrySet())) {
+                    if (e.getValue().stream().noneMatch(hasWork) && keepDue.remove(e.getKey()) != null) {
+                        LOG.info("[Keep] {} done with {} at y={}", e.getKey(), boxesSaid(e.getValue()), level);
+                    }
+                }
+                // Timed out: given to someone else.
+                for (Map.Entry<String, List<Box>> e : List.copyOf(boxes.entrySet())) {
+                    Long due = keepDue.get(e.getKey());
+                    if (due != null && now > due && e.getValue().stream().anyMatch(hasWork)) {
+                        orphans.add(Map.entry(e.getKey(), boxes.remove(e.getKey())));
+                        keepDue.remove(e.getKey());
+                    }
+                }
+                Map<String, Position> at = all.stream().collect(Collectors.toMap(LevelPlan.Builder::name, LevelPlan.Builder::at));
+                for (Map.Entry<String, List<Box>> orphan : orphans) {
+                    List<Box> work = orphan.getValue().stream().filter(hasWork).toList();
+                    if (work.isEmpty()) {
+                        continue;
+                    }
+                    Box first = work.getFirst();
+                    double cx = (first.minX() + first.maxX()) / 2.0 + 0.5, cz = (first.minZ() + first.maxZ()) / 2.0 + 0.5;
+                    // The nearest builder with nothing left to do, not the one it's taken from.
+                    Optional<String> taker = all.stream().map(LevelPlan.Builder::name)
+                            .filter(n -> !n.equals(orphan.getKey()) && !given.contains(n)
+                                    && boxes.getOrDefault(n, List.of()).stream().noneMatch(hasWork))
+                            .min(Comparator.comparingDouble(n -> Math.hypot(at.get(n).x() - cx, at.get(n).z() - cz)));
+                    String to = taker.orElse(names.contains(orphan.getKey()) ? orphan.getKey() : null);
+                    if (to == null) {
+                        // Nobody free, and its holder gone: the nearest of the crew takes it on as well.
+                        to = all.stream().map(LevelPlan.Builder::name)
+                                .min(Comparator.comparingDouble(n -> Math.hypot(at.get(n).x() - cx, at.get(n).z() - cz))).orElse(null);
+                    }
+                    if (to == null) {
+                        continue;
+                    }
+                    List<Box> mine = new ArrayList<>(boxes.getOrDefault(to, List.of()).stream().filter(hasWork).toList());
+                    mine.addAll(work);
+                    boxes.put(to, List.copyOf(mine));
+                    keepDue.put(to, now + dueMillis(mine, columns));
+                    given.add(to);
+                    LOG.info("[Keep] {}'s {} {} - given to {}", orphan.getKey(), boxesSaid(work),
+                            names.contains(orphan.getKey()) ? "timed out" : "left behind", to);
+                }
+                // One come onto the level once it's dealt - a squad called back to a wide level: half
+                // of the most that's left of one builder's, split between them. The one split held work.
+                for (LevelPlan.Builder newcomer : all) {
+                    if (plan.crew().contains(newcomer.name()) || boxes.getOrDefault(newcomer.name(), List.of()).stream().anyMatch(hasWork)) {
+                        continue;
+                    }
+                    Optional<Map.Entry<String, List<LevelPlan.Column>>> most = boxes.entrySet().stream()
+                            .map(e -> Map.entry(e.getKey(), columns.stream().filter(c -> e.getValue().stream().anyMatch(b -> c.x() >= b.minX()
+                                    && c.x() <= b.maxX() && c.z() >= b.minZ() && c.z() <= b.maxZ())).toList()))
+                            .max(Comparator.comparingInt(e -> e.getValue().size()));
+                    if (most.isEmpty() || most.get().getValue().size() < 2 * BLOCKS_A_BUILDER) {
+                        continue;
+                    }
+                    String holder = most.get().getKey();
+                    Map<String, List<Box>> split = LevelPlan.plan(level, site.maxY(), most.get().getValue(),
+                            List.of(new LevelPlan.Builder(holder, at.get(holder)), newcomer));
+                    if (!split.containsKey(newcomer.name()) || !split.containsKey(holder)) {
+                        continue;
+                    }
+                    boxes.put(holder, split.get(holder));
+                    boxes.put(newcomer.name(), split.get(newcomer.name()));
+                    keepDue.put(holder, now + dueMillis(split.get(holder), columns));
+                    keepDue.put(newcomer.name(), now + dueMillis(split.get(newcomer.name()), columns));
+                    given.add(holder);
+                    given.add(newcomer.name());
+                    LOG.info("[Keep] {} comes onto the level: {}'s split, {} - {} keeps {}", newcomer.name(), holder,
+                            boxesSaid(split.get(newcomer.name())), holder, boxesSaid(split.get(holder)));
+                }
+                plan = new KeepPlan(level, names, Map.copyOf(boxes), plan.at());
+                keepPlan = plan;
+                String chief = keepForeman;
+                if (chief != null) {
+                    for (String n : given) {
+                        sayAssignment(chief, n, level, boxes.getOrDefault(n, List.of()));
                     }
                 }
             }
@@ -2396,7 +2499,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         TREE_FARM_RADIUS, 6, Risk.LOW, false));
                 continue;
             }
-            List<Box> mine = plan.boxes().getOrDefault(h.name(), List.of());
+            // The first of its rectangles with ground still in it: one done, the next.
+            KeepPlan dealt = plan;
+            List<Box> mine = plan.boxes().getOrDefault(h.name(), List.of()).stream()
+                    .filter(b -> keepColumnsLeft(dealt.level(), b, top, stepTop)).toList();
             if (!mine.isEmpty()) {
                 orders.put(h.name(), new Order.Dig(mine.getFirst(), except));
             } else {
@@ -2435,6 +2541,45 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             .map(e -> e.getKey().equals(hand)).orElse(false);
                 })
                 .min(Comparator.comparingDouble(c -> Math.hypot(on.get(hand).x() - c.x(), on.get(hand).z() - c.z())));
+    }
+
+    /** When each builder's rectangles on the level under way are due done - guarded by {@link #keepPlanLock}. */
+    private final Map<String, Long> keepDue = new HashMap<>();
+
+    /** The time a builder is given for a block of its rectangles, on top of {@link #DUE_SLACK_MILLIS}: a walk, a break, a pickup at a good pace. */
+    static final long DUE_MILLIS_A_BLOCK = 6_000;
+    /** The time a builder is given to get to its rectangles at all. */
+    static final long DUE_SLACK_MILLIS = 60_000;
+
+    /** When {@code boxes}, with {@code columns} left at the level, are due done from now. */
+    private static long dueMillis(List<Box> boxes, List<LevelPlan.Column> columns) {
+        long blocks = columns.stream().filter(c -> boxes.stream().anyMatch(b -> c.x() >= b.minX() && c.x() <= b.maxX()
+                && c.z() >= b.minZ() && c.z() <= b.maxZ())).count();
+        return DUE_SLACK_MILLIS + blocks * DUE_MILLIS_A_BLOCK;
+    }
+
+    /** Whether {@code box} has ground, a step or a tree left at or over {@code level}. */
+    private static boolean keepColumnsLeft(int level, Box box, java.util.function.IntBinaryOperator top, java.util.function.IntBinaryOperator stepTop) {
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                if (top.applyAsInt(x, z) >= level || stepTop.applyAsInt(x, z) >= level) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** {@code boxes} as the log says them. */
+    private static String boxesSaid(List<Box> boxes) {
+        return boxes.stream().map(b -> "x=" + b.minX() + ".." + b.maxX() + " z=" + b.minZ() + ".." + b.maxZ()).toList().toString();
+    }
+
+    /** The foreman's word to {@code builder} on the net: its rectangles at {@code level}, or to wait. */
+    private void sayAssignment(String chief, String builder, int level, List<Box> boxes) {
+        say(chief, builder, boxes.isEmpty() ? "KEEP WAIT " + level
+                : "KEEP DIG " + level + " " + boxes.stream().map(r -> r.minX() + " " + r.minZ() + " " + r.maxX() + " " + r.maxZ())
+                .collect(Collectors.joining(" ")));
     }
 
     /** The foreman's plan for a level: who's on it, their rectangles, and when it was made. */

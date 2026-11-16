@@ -421,7 +421,9 @@ final class Digger {
         if (!pickingUp) {
             return stand;
         }
-        return dropsNear().stream().findFirst().orElse(stand);
+        // On the ground under the drop, not at its height: a drop bounces, and a walk held to half a
+        // block of it built a step to reach it - live, ninety steps in an hour on the second ground.
+        return dropsNear().stream().findFirst().map(d -> new Position(d.x(), Math.floor(d.y()), d.z())).orElse(stand);
     }
 
     /** Dropped items around the dug block, nearest first. */
