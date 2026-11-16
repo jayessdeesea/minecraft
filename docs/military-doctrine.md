@@ -1362,7 +1362,11 @@ before and names the earliest open standard - the next thing to work on.
 
 The main base is built beside the foothold, which stays the base until it's done
 (backlog/cells.md): first its keep (`command.Keep`), the task `KEEP` - x and z from -16 to 16,
-taken down to y=63 (operator, 2026-11-15), its floor walked at feet 64. The heights are the
+taken down to y=63 (operator, 2026-11-15), its floor walked at feet 64. Flattening is a primitive
+of its own, not the keep's (operator, 2026-11-15): the task digs whatever ground is set to flatten
+(`command.Flatten`, a rectangle and a level) - the keep's first ground to begin with, then any the
+operator names with `!flatten` - with its depot off the site's west edge, sited again when the
+site moves away from the one standing. The heights are the
 plan's, not the ground's: everything from y=64 up into the sky over it is dug out, and the
 ground left as it is - not built up for now (operator, 2026-11-15; `Keep.FILL`). Built up, the
 ground's top at y=63, and any hollow open under it within 8 blocks, is filled in cobblestone only

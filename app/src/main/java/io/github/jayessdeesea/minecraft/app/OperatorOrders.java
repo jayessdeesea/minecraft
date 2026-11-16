@@ -19,7 +19,9 @@ import java.util.stream.Collectors;
  * {@code minecraft.operators}:
  * <ul>
  *   <li>{@code !mission <text>} - a new mission for the platoon leader (and the end of any escort);</li>
- *   <li>{@code !escort} - the squad escorts the operator; {@code !escort <player>} - that player.</li>
+ *   <li>{@code !escort} - the squad escorts the operator; {@code !escort <player>} - that player;</li>
+ *   <li>{@code !flatten <x1> <z1> <x2> <z2> <y>} - the ground worked by day: that rectangle taken down
+ *   to y, everything over it dug out (operator, 2026-11-15; command.Flatten).</li>
  * </ul>
  * Anything else an operator says is a remark for the platoon leader, but a word starting with {@code !}
  * that isn't one of these is an order not understood - answered SAY AGAIN on the radio, never
@@ -38,6 +40,7 @@ public class OperatorOrders {
 
     static final String MISSION = "!mission";
     static final String ESCORT = "!escort";
+    static final String FLATTEN = "!flatten";
 
     /** An order from the operator. */
     public sealed interface Order {
@@ -47,6 +50,10 @@ public class OperatorOrders {
         }
 
         record Escort(String operator, String principal) implements Order {
+        }
+
+        /** The ground to flatten by day: {@code site}. */
+        record Flatten(String operator, io.github.jayessdeesea.minecraft.command.Flatten site) implements Order {
         }
 
         /** Anything else an operator says: not an order, but worth the platoon leader's hearing. */
@@ -74,7 +81,7 @@ public class OperatorOrders {
         String command = words[0];
         String argument = words.length > 1 ? words[1].strip() : "";
         String operator = operators.get(chat.sender());
-        if (!command.equals(MISSION) && !command.equals(ESCORT)) {
+        if (!command.equals(MISSION) && !command.equals(ESCORT) && !command.equals(FLATTEN)) {
             // An operator talking, not ordering - passed up; anyone else's chat is just chat.
             if (operator == null || chat.message().isBlank()) {
                 return Optional.empty();
@@ -88,6 +95,12 @@ public class OperatorOrders {
         }
         if (command.equals(ESCORT)) {
             return Optional.of(new Order.Escort(operator, argument.isEmpty() ? operator : argument));
+        }
+        if (command.equals(FLATTEN)) {
+            // A site it can't read is an order not understood: SAY AGAIN, with how to give it.
+            return Optional.of(io.github.jayessdeesea.minecraft.command.Flatten.parse(argument)
+                    .<Order>map(site -> new Order.Flatten(operator, site))
+                    .orElseGet(() -> new Order.Unknown(operator, FLATTEN + " " + argument)));
         }
         if (argument.isEmpty()) {
             LOG.warn("Ignoring an empty mission from {}", operator);

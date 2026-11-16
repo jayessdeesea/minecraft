@@ -10,6 +10,7 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.CrossLevel;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.DrillSquadLeader;
+import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Objective;
@@ -2685,6 +2686,44 @@ class SquadSimulationTest {
                 + log.subList(Math.max(0, log.size() - 15), log.size()));
         assertTrue(left.isEmpty(), "nothing over the floor, the steps taken down too: " + left + "; last server events: "
                 + log.subList(Math.max(0, log.size() - 15), log.size()));
+    }
+
+    /**
+     * Flattening is a primitive of its own, not the keep's (operator, 2026-11-15): the operator names
+     * a rectangle and a level, and by day the squad takes it down - here a mound well off the keep.
+     */
+    @Test
+    void theOperatorsGroundIsFlattenedWhereverItIs() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= 40 && x <= 43 && z >= 40 && z <= 43 && y > GROUND && y <= GROUND + 2
+                ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Flatten site = new Flatten(38, 38, 45, 45, GROUND);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Flatten it", site.centre(), "The operator's ground",
+                new Objective.Task.Keep())), squadLeader(site.centre()),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        chain.onOperatorFlatten("Pat", site);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(36.5, GROUND + 1, 36.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1}, new int[]{10, SimServer.ITEM_DIRT, 16})))
+                .run();
+
+        clock.advance(6 * 60_000);
+
+        List<String> left = new ArrayList<>();
+        for (int x = 40; x <= 43; x++) {
+            for (int z = 40; z <= 43; z++) {
+                for (int y = GROUND + 1; y <= GROUND + 2; y++) {
+                    if (server.block(x, y, z) == SimServer.DIRT) {
+                        left.add(x + "," + y + "," + z);
+                    }
+                }
+            }
+        }
+        assertEquals(List.of(), left, "the mound taken down to the level; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size()));
     }
 
     private static int indexOf(List<String> log, String suffix) {

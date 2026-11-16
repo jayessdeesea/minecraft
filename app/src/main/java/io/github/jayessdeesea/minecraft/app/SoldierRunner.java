@@ -72,6 +72,7 @@ import io.github.jayessdeesea.minecraft.command.LevelPlan;
 import io.github.jayessdeesea.minecraft.command.Groundwork;
 import io.github.jayessdeesea.minecraft.command.Interval;
 import io.github.jayessdeesea.minecraft.command.Keep;
+import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.Logstat;
 import io.github.jayessdeesea.minecraft.command.Kit;
 import io.github.jayessdeesea.minecraft.command.Site;
@@ -581,7 +582,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             int digLeft = keepDigLeftBySquad.values().stream().mapToInt(Integer::intValue).sum();
             boolean fillKnown = keepFillLeftBySquad.values().stream().anyMatch(n -> n >= 0);
             int fillLeft = fillKnown ? keepFillLeftBySquad.values().stream().mapToInt(Integer::intValue).filter(n -> n >= 0).sum()
-                    : (int) Keep.slab().volume();
+                    : (int) chainOfCommand.flatten().slab().volume();
             keepWorkBurn.stock(digLeft + fillLeft, now);
             int crew = keepCrews.values().stream().mapToInt(List::size).sum();
             int stone = kits.stream().mapToInt(Kit::stone).sum() + pile.map(Stockpile::stone).orElse(0);
@@ -1607,16 +1608,19 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (taskOf(squad, Objective.Task.Keep.class).isPresent()) {
             Workshop keep = keepWorkshop;
             // Sited again too while it has no cell for a chest and none stands: a depot is a stockpile.
-            if (keep == null || !Pathfinder.standable(world, keep.stand()) || keep.chest().isEmpty() && !keep.stands(world, Workstation.CRAFTING_TABLE)) {
+            Position depotAt = chainOfCommand.flatten().depot();
+            // And when the ground to flatten has moved away from it: a new site's depot is its own.
+            boolean moved = keep != null && Math.hypot(keep.stand().x() + 0.5 - depotAt.x(), keep.stand().z() + 0.5 - depotAt.z()) > DEPOT_MOVE;
+            if (keep == null || moved || !Pathfinder.standable(world, keep.stand()) || keep.chest().isEmpty() && !keep.stands(world, Workstation.CRAFTING_TABLE)) {
                 Workshop was = keep;
                 // On the depot's surface, from high over any hill there down - not the first cell with
                 // ground under it near the slab's height, which under a hill is a cave's floor or a
                 // tunnel's: live, that was a one-wide tunnel into the hill west of the keep, and both
                 // squads said "nowhere" every second for hours while their builders walked 50 blocks to
                 // a stray table for bread.
-                int depotX = (int) Math.floor(Keep.DEPOT.x()), depotZ = (int) Math.floor(Keep.DEPOT.z());
-                BlockPos depot = TerrainSurveyor.surface(world, depotX, depotZ, Keep.FLOOR + 60)
-                        .orElseGet(() -> TerrainSurveyor.groundAt(world, BlockPos.containing(Keep.DEPOT.x() + 0.5, Keep.DEPOT.y(), Keep.DEPOT.z() + 0.5)));
+                int depotX = (int) Math.floor(depotAt.x()), depotZ = (int) Math.floor(depotAt.z());
+                BlockPos depot = TerrainSurveyor.surface(world, depotX, depotZ, (int) depotAt.y() + 60)
+                        .orElseGet(() -> TerrainSurveyor.groundAt(world, BlockPos.containing(depotAt.x() + 0.5, depotAt.y(), depotAt.z() + 0.5)));
                 keep = Workshop.hasty(world, depot, new HashSet<>(treeClaims)).orElse(null);
                 if (keep == null) {
                     if (!depot.equals(keepWorkshopNowhere)) {
@@ -1934,9 +1938,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * it's free for other work, and the keep waits on the mine.
      */
     private Map<String, Order> keepwork(String squad, SquadState state, List<SoldierStatus> hands) {
+        Flatten ground = chainOfCommand.flatten();
         Set<Cell> kept = groundExcept();
         Set<Cell> digExcept = new HashSet<>(kept);
-        Box slab = Keep.slab();
+        Box slab = ground.slab();
         for (int x = slab.minX(); x <= slab.maxX(); x++) {
             for (int z = slab.minZ(); z <= slab.maxZ(); z++) {
                 for (int y = slab.minY(); y <= slab.maxY(); y++) {
@@ -1952,8 +1957,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // splitting the whole site each, every strip was two soldiers'.
         List<String> onKeep = squadStates.keySet().stream().filter(s -> taskOf(s, Objective.Task.Keep.class).isPresent()).sorted().toList();
         int share = Math.max(0, onKeep.indexOf(squad));
-        Box digShare = Keep.dig().strips(Math.max(1, onKeep.size())).get(share);
-        Box fillShare = Keep.fill().strips(Math.max(1, onKeep.size())).get(share);
+        Box digShare = ground.dig().strips(Math.max(1, onKeep.size())).get(share);
+        Box fillShare = ground.fill().strips(Math.max(1, onKeep.size())).get(share);
         // Level by level, strip by strip: each soldier's floor is two under the highest ground left in
         // and round its strip (Tasking.keepDig), every squad's share counted - the seam between two
         // squads' strips is an edge like any other.
@@ -1969,7 +1974,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         int squadsBest = hands.stream().mapToInt(h -> pickaxeTiers.getOrDefault(h.name(), Hardness.HAND)).max().orElse(Hardness.HAND);
         Set<Cell> oreAside = new HashSet<>();
-        for (BlockPos c : Clearing.toClear(world, Keep.dig(), digExcept)) {
+        for (BlockPos c : Clearing.toClear(world, ground.dig(), digExcept)) {
             if (!world.isOre(c.x(), c.y(), c.z())) {
                 continue;
             }
@@ -1989,7 +1994,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         keepOreAsideBySquad.put(squad, oreAside.size());
         digExcept.addAll(oreAside);
-        List<BlockPos> wholeDig = Clearing.toClear(world, Keep.dig(), digExcept);
+        List<BlockPos> wholeDig = Clearing.toClear(world, ground.dig(), digExcept);
         List<BlockPos> toDig = wholeDig.stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX()
                 && c.z() >= digShare.minZ() && c.z() <= digShare.maxZ()).toList();
         // The ground's tops, not the soldiers' own steps: a step put down to climb from the floor to
@@ -2008,7 +2013,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         java.util.function.IntBinaryOperator top = (x, z) -> tops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
         java.util.function.IntBinaryOperator stepTop = (x, z) -> stepTops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
         int layer = tops.values().stream().mapToInt(Integer::intValue).max()
-                .orElse(stepTops.values().stream().mapToInt(Integer::intValue).max().orElse(Keep.BOTTOM));
+                .orElse(stepTops.values().stream().mapToInt(Integer::intValue).max().orElse(ground.bottom()));
         // Not built up for now (operator, 2026-11-15): taken down to its ground and left.
         List<BlockPos> toFill = toDig.isEmpty() && Keep.FILL ? Clearing.toFill(world, fillShare, kept) : List.of();
         state.keepDigLeft = toDig.size();
@@ -2016,7 +2021,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         state.keepFillLeft = toDig.isEmpty() ? toFill.size() : -1;
         keepFillLeftBySquad.put(squad, state.keepFillLeft);
         String said = "the keep: " + toDig.size() + " blocks to dig" + (toDig.isEmpty() ? ", " + toFill.size() + " cells to fill"
-                : ", its top y=" + toDig.stream().mapToInt(BlockPos::y).max().orElse(Keep.BOTTOM) + ", the keep's y=" + layer) + " in its share " + digShare;
+                : ", its top y=" + toDig.stream().mapToInt(BlockPos::y).max().orElse(ground.bottom()) + ", the keep's y=" + layer) + " in its share " + digShare;
         if (!said.equals(state.keepSaid)) {
             LOG.info("[{}] {}", squad, said);
             state.keepSaid = said;
@@ -2050,8 +2055,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         long now = clockwork.millis();
         int[] sidesNow = share == 0 ? PIT_SIDES_FIRST : PIT_SIDES_SECOND;
         int sideNow = sidesNow[Math.floorMod(keepPitShift.getOrDefault(squad, 0), sidesNow.length)];
-        int edgeNow = Keep.MAX + Groundwork.BORROW_GAP + 3;
-        Position pitNow = new Position(sideNow == 0 ? edgeNow : sideNow == 1 ? -edgeNow : 0, 0, sideNow == 2 ? edgeNow : sideNow == 3 ? -edgeNow : 0);
+        // Round the ground's middle, past its widest half-span: off the site whatever its shape.
+        Position mid = ground.centre();
+        int midX = (int) Math.floor(mid.x()), midZ = (int) Math.floor(mid.z());
+        int edgeNow = ground.halfSpan() + Groundwork.BORROW_GAP + 3;
+        Position pitNow = new Position(midX + (sideNow == 0 ? edgeNow : sideNow == 1 ? -edgeNow : 0), 0,
+                midZ + (sideNow == 2 ? edgeNow : sideNow == 3 ? -edgeNow : 0));
         // Only a fetcher at the pit says it's dug out: one stuck far off finds nothing anywhere. Live,
         // a builder shut in by the farm moved its squad's pit round the keep every minute.
         // And not again until its fetchers have had a minute at the new one: a gatherer that finds
@@ -2069,12 +2078,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         int[] sidesInTurn = share == 0 ? PIT_SIDES_FIRST : PIT_SIDES_SECOND;
         int side = sidesInTurn[Math.floorMod(keepPitShift.getOrDefault(squad, 0), sidesInTurn.length)];
-        int edge = Keep.MAX + Groundwork.BORROW_GAP + 3;
-        int pitX = side == 0 ? edge : side == 1 ? -edge : 0;
-        int pitZ = side == 2 ? edge : side == 3 ? -edge : 0;
+        int edge = ground.halfSpan() + Groundwork.BORROW_GAP + 3;
+        int pitX = midX + (side == 0 ? edge : side == 1 ? -edge : 0);
+        int pitZ = midZ + (side == 2 ? edge : side == 3 ? -edge : 0);
         // Its surface, from high over the hill down: live, a guess at y=68 put the pit under a hill,
         // where no soil has an open top, and every builder's fetch found none all day.
-        Optional<BlockPos> pitGround = TerrainSurveyor.surface(world, pitX, pitZ, Keep.FLOOR + 60);
+        Optional<BlockPos> pitGround = TerrainSurveyor.surface(world, pitX, pitZ, ground.floor() + 60);
         if (pitGround.isEmpty()) {
             LOG.warn("[{}] no ground at x={} z={} for the keep's borrow pit - its builders fetch no dirt", squad, pitX, pitZ);
         }
@@ -2090,7 +2099,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     LOG.info("[{}] {} carries {} blocks to climb on - fetches a load of dirt first", squad, h.name(), blocks);
                 }
                 orders.put(h.name(), new Order.Gather(Resource.SOIL,
-                        Groundwork.borrowPit(new Cell(0, pitGround.get().y(), 0), Keep.MAX + 1, side), Tasking.LOAD));
+                        Groundwork.borrowPit(new Cell(midX, pitGround.get().y(), midZ), ground.halfSpan() + 1, side), Tasking.LOAD));
             } else {
                 keepFetching.remove(h.name());
             }
@@ -2133,7 +2142,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         hands.forEach(h -> on.put(h.name(), h.position()));
         keepHandsAt.put(squad, Map.copyOf(on));
         KeepPlan levelled = keepPlan;
-        int level = levelled != null && levelled.level() != Integer.MIN_VALUE && !keepCrews.isEmpty() ? levelled.level() : Keep.BOTTOM;
+        int level = levelled != null && levelled.level() != Integer.MIN_VALUE && !keepCrews.isEmpty() ? levelled.level() : ground.bottom();
         for (SoldierStatus h : hands) {
             Optional<Cell> errand = oreErrand(h.name(), level);
             if (errand.isPresent()) {
@@ -2180,7 +2189,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         if (now - keepRoadAt >= ROAD_PLAN_MILLIS || keepRoad == null) {
             keepRoadAt = now;
-            java.util.function.Predicate<BlockPos> inKeep = c -> Keep.contains(c.x(), c.z());
+            Flatten ground = chainOfCommand.flatten();
+            java.util.function.Predicate<BlockPos> inKeep = c -> ground.contains(c.x(), c.z());
             Optional<AccessRoute> planned = AccessRoute.plan(world, depot.stand(), c -> inKeep.test(c) && Pathfinder.standable(world, c), inKeep);
             AccessRoute was = keepRoad;
             keepRoad = planned.orElse(null);
@@ -2282,7 +2292,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             String roadCutter = keepRoadCutter;
             List<LevelPlan.Builder> all = onHand.stream().filter(b -> !inWoodParty(b.name()) && !b.name().equals(roadCutter)).toList();
             Set<String> names = all.stream().map(LevelPlan.Builder::name).collect(Collectors.toUnmodifiableSet());
-            Box site = Keep.dig();
+            Box site = chainOfCommand.flatten().dig();
             // Ground under a fight is nobody's until it's over: not shared out - in the squad
             // simulation the fighter's rectangle went to its squadmate, who walked into the fight -
             // and not counted for the level, or the site would wait on it. When the fight's done its
@@ -2473,8 +2483,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Position keepWoodAt(List<String> onKeep, TreeFarm grove) {
         return onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream())
                 .filter(site -> site.resource() == Resource.WOOD).map(ResourceSite::location)
-                .min(Comparator.comparingDouble(l -> Math.hypot(l.x() - Keep.DEPOT.x(), l.z() - Keep.DEPOT.z())))
-                .orElseGet(() -> grove != null ? new Position(grove.centre().x() + 0.5, grove.centre().y(), grove.centre().z() + 0.5) : Keep.DEPOT);
+                .min(Comparator.comparingDouble(l -> Math.hypot(l.x() - chainOfCommand.flatten().depot().x(), l.z() - chainOfCommand.flatten().depot().z())))
+                .orElseGet(() -> grove != null ? new Position(grove.centre().x() + 0.5, grove.centre().y(), grove.centre().z() + 0.5)
+                        : chainOfCommand.flatten().depot());
     }
 
     /**
@@ -2485,7 +2496,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private Optional<TreeFarm> siteKeepGrove(Workshop depot) {
         List<Box> avoid = new ArrayList<>();
-        avoid.add(new Box(-GROVE_KEEP_CLEAR, Integer.MIN_VALUE, -GROVE_KEEP_CLEAR, GROVE_KEEP_CLEAR, Integer.MAX_VALUE, GROVE_KEEP_CLEAR));
+        Flatten site = chainOfCommand.flatten();
+        avoid.add(new Box(site.minX() - GROVE_KEEP_CLEAR, Integer.MIN_VALUE, site.minZ() - GROVE_KEEP_CLEAR,
+                site.maxX() + GROVE_KEEP_CLEAR, Integer.MAX_VALUE, site.maxZ() + GROVE_KEEP_CLEAR));
         avoid.add(around(depot.stand().x(), depot.stand().z(), Workshop.CHEST_REACH + 2));
         for (SquadState other : squadStates.values()) {
             if (other.stairs != null) {
@@ -2509,7 +2522,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (avoid.stream().anyMatch(a -> overlaps(a, plot))) {
                     continue;
                 }
-                Optional<TreeFarm> grove = TerrainSurveyor.surface(world, cx, cz, Keep.FLOOR + 60)
+                Optional<TreeFarm> grove = TerrainSurveyor.surface(world, cx, cz, chainOfCommand.flatten().floor() + 60)
                         .flatMap(ground -> TreeFarm.site(world, ground, TREE_FARM_RADIUS))
                         .filter(g -> g.plot().size() >= GROVE_MIN_CELLS);
                 if (grove.isPresent()) {
@@ -2553,7 +2566,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The world's sea level: water's top at y=62, the ground beside it at 63. */
     static final int SEA_LEVEL = 63;
     /** Half the side of the square round the keep's centre its grove keeps out of: the slab and its borrow pits. */
-    static final int GROVE_KEEP_CLEAR = Keep.MAX + 12;
+    static final int GROVE_KEEP_CLEAR = 12;
+
+    /** How far the ground to flatten's depot spot may be from the depot standing before it's sited again, by the new ground. */
+    static final int DEPOT_MOVE = 24;
     /** Each keep builder's digs on the level under way (command.LevelPace) - ticks write, squad loops read and clear. */
     private final Map<String, LevelPace.Tally> keepPace = new ConcurrentHashMap<>();
     /**
@@ -2690,7 +2706,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Whether {@code cell} is a structure's - a wall line's, or the keep's slab - where a step goes in as cobblestone. */
     private boolean builtCell(BlockPos cell) {
-        return Keep.slab().contains(cell.x(), cell.y(), cell.z()) || walls.values().stream().anyMatch(w -> w.contains(cell));
+        return chainOfCommand.flatten().slab().contains(cell.x(), cell.y(), cell.z()) || walls.values().stream().anyMatch(w -> w.contains(cell));
     }
 
     /** The register's name for a command on the keep. */
@@ -4806,6 +4822,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                         chainOfCommand.onOperatorMission(operator, mission);
                                 case OperatorOrders.Order.Escort(String operator, String principal) ->
                                         chainOfCommand.onOperatorEscort(operator, principal);
+                                case OperatorOrders.Order.Flatten(String operator, Flatten site) ->
+                                        chainOfCommand.onOperatorFlatten(operator, site);
                                 case OperatorOrders.Order.Remark(String operator, String remark) ->
                                         chainOfCommand.onOperatorRemark(operator, remark);
                                 case OperatorOrders.Order.Unknown(String operator, String command) ->
@@ -5830,7 +5848,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             chunkCache.standIn(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE, clockwork.millis());
                             scaffolding.add(cell);
                             // Who puts what in the keep: a block there over its floor holds the site's level.
-                            if (Keep.contains(cell.x(), cell.z()) && cell.y() >= Keep.BOTTOM) {
+                            if (chainOfCommand.flatten().contains(cell.x(), cell.z()) && cell.y() >= chainOfCommand.flatten().bottom()) {
                                 LOG.info("[Keep] {} puts a step at {} {} {} - {}", name, cell.x(), cell.y(), cell.z(), soldier.status().order());
                             }
                         });

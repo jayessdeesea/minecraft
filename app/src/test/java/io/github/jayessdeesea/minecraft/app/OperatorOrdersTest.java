@@ -24,6 +24,16 @@ class OperatorOrdersTest {
                 orders.orderFrom(new ChatMessage(OperatorOrders.offlineUuid("Pat"), "!mission  hold the bridge ")));
     }
 
+    /** {@code !flatten x1 z1 x2 z2 y}: the ground to flatten by day; one it can't read is SAY AGAIN, not dropped. */
+    @Test
+    void flattenNamesTheGroundToTakeDownToALevel() {
+        UUID pat = OperatorOrders.offlineUuid("Pat");
+        assertEquals(Optional.of(new OperatorOrders.Order.Flatten("Pat", new io.github.jayessdeesea.minecraft.command.Flatten(-16, 16, 16, 32, 63))),
+                orders.orderFrom(new ChatMessage(pat, "!flatten 16 32 -16 16 63")));
+        assertEquals(Optional.of(new OperatorOrders.Order.Unknown("Pat", "!flatten here")),
+                orders.orderFrom(new ChatMessage(pat, "!flatten here")));
+    }
+
     @Test
     void escortProtectsTheOperatorOrTheNamedPlayer() {
         UUID jake = OperatorOrders.offlineUuid("Jake");

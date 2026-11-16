@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.command.DrillSquadLeader;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.Keep;
+import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -326,8 +327,9 @@ public class ChainOfCommand implements DisposableBean {
                     squad.squadName(), objective.mission(), objective.task(), answersWood ? "Class IV" : "Class I");
             return objective;
         }
-        Objective keep = new Objective("Build the main base's keep: flatten the ground at the origin and lay its slab",
-                Keep.CENTRE, "The main base's keep, as the operator ordered", new Objective.Task.Keep());
+        Flatten site = flatten;
+        Objective keep = new Objective("Flatten " + site.describe(),
+                site.centre(), "The ground the operator ordered flattened", new Objective.Task.Keep());
         LOG.warn("[PL -> {}] by day, ordered '{}' ({}) - the operator's rule puts it on the keep instead",
                 squad.squadName(), objective.mission(), objective.task());
         return keep;
@@ -429,11 +431,40 @@ public class ChainOfCommand implements DisposableBean {
         transmit("[PL -> " + operator + "] WILCO (" + trace.id + "): " + mission);
     }
 
+    /**
+     * The ground the squads flatten by day (operator, 2026-11-15; command.Flatten): {@code site} in
+     * place of the last, from the next squad cycle. Acknowledged on the radio.
+     */
+    public void onOperatorFlatten(String operator, Flatten site) {
+        Flatten was = flatten;
+        flatten = site;
+        int version = missionVersion.incrementAndGet();
+        wake("the operator's ground to flatten", true);
+        OrderTrace trace = trace(operator, "!flatten " + site.describe(), version);
+        LOG.info("[{} -> PL] FLATTEN ({}): {}, in place of {}", operator, trace.id, site.describe(), was.describe());
+        transmit("[PL -> " + operator + "] WILCO (" + trace.id + "): flatten " + site.describe());
+    }
+
+    /** The ground the squads flatten by day: the operator's last {@code !flatten}, or the configured site. */
+    public Flatten flatten() {
+        return flatten;
+    }
+
+    /** The ground to flatten - the configured site, then the operator's (minecraft.flatten: "x1 z1 x2 z2 y"). */
+    private volatile Flatten flatten = Flatten.KEEP;
+
+    @Autowired
+    void setFlatten(@Value("${minecraft.flatten:-16 -16 16 16 63}") String site) {
+        this.flatten = Flatten.parse(site).orElseThrow(() -> new IllegalArgumentException(
+                "minecraft.flatten is \"x1 z1 x2 z2 y\": " + site));
+    }
+
     /** An order from the operator that isn't one: answered on the radio, with what the orders are. */
     public void onOperatorUnknown(String operator, String command) {
         LOG.warn("[{} -> PL] {} - not an order", operator, command);
         transmit("[PL -> " + operator + "] SAY AGAIN: " + command + " is not an order. Orders: " + OperatorOrders.MISSION
-                + " <what to do>, " + OperatorOrders.ESCORT + " [player]; anything else is passed to the platoon leader as a remark");
+                + " <what to do>, " + OperatorOrders.ESCORT + " [player], " + OperatorOrders.FLATTEN
+                + " <x1> <z1> <x2> <z2> <y>; anything else is passed to the platoon leader as a remark");
     }
 
     /** Operator orders being followed down the chain - each is dropped once carried out or superseded. */
