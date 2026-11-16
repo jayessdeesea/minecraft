@@ -6007,7 +6007,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else if (shop.isPresent() && !atMine) {
                 depositor.full().ifPresent(f -> workshopChestFull(shop.get(), f));
             }
-            turns.put(Hands.Routine.DEPOSITOR, turn(() -> depositor.active() || chestFitter.active(), free -> {
+            // Not while it cuts its way out (the recovery drill's stair up): a load put in or a stack
+            // picked up is past the stair it hasn't cut. Live, two soldiers in a cave under the mine's
+            // stairs, their stair up laid out, held their hands for a stockpile and a pickup with no
+            // route to either, and stood.
+            boolean cuttingOut = clearingTunnel.contains(name);
+            turns.put(Hands.Routine.DEPOSITOR, turn(() -> (depositor.active() || chestFitter.active()) && !cuttingOut, handsFree -> {
+                boolean free = handsFree && !cuttingOut;
                 if (free && fitStore && atStand(status.position(), shop.get())) {
                     if (!chestFitter.tickChest(status.position(), world, shop.get(), threatened)) {
                         // Once, then later and later: live, it was said every tick with no log to make a table from.
@@ -6151,8 +6157,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             gather == null ? status.position() : gather.location(), free && !inContact && !foodCalls);
                 }
             }));
-            turns.put(Hands.Routine.SCAVENGER, turn(scavenger::active,
-                    free -> scavenger.tick(status.position(), world, free && !threatened && fort == null && !foodCalls)));
+            turns.put(Hands.Routine.SCAVENGER, turn(() -> scavenger.active() && !cuttingOut,
+                    free -> scavenger.tick(status.position(), world, free && !cuttingOut && !threatened && fort == null && !foodCalls)));
             Optional<Hands.Routine> hands = Hands.tick(turns);
             if (keepHands.contains(name)) {
                 keepSaplingsCarried.put(name, inventory.count(ItemClass.SAPLING));

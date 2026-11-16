@@ -392,7 +392,9 @@ top down, nobody fetched: first a block under the ledge's edge, against its unde
 top step touches the ledge only at a corner, then each step and the block under it in turn. Live,
 a soldier stood a quarter of an hour on a ledge with 8 logs, no squadmate carrying 24. One stranded
 below - boxed in a pocket, with no stair down to lay - gets the engineer's stair up instead
-(`Stairway.up`): the cells to dig, one block up and one along a step to open ground, up to 40
+(`Stairway.up`) - its hands the stair's alone till it's out, no load put in nor stack picked up
+past it (live, two in a cave under the mine's stairs held theirs for both, with no route to either,
+and stood) -: the cells to dig, one block up and one along a step to open ground, up to 40
 steps - a tunnel to the surface from a dead end at a mine's bottom - winding left or right of its
 heading where a cave across the way or gravel over it stops it going straight (live, every one of
 the four straight flights was), and never under sand, gravel, water or lava (the operator's rule:
