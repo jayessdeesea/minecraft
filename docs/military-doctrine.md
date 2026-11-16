@@ -833,7 +833,9 @@ one at a time. A weapon goes only to one bare-handed: two soldiers each holding 
 sword back and forth. A replacement still linking up gets nothing until it has: the squad reorganises round
 it once it's back. Nor does a soldier making its kit (`Rearming`): mid-craft its weapon can be on
 an open window's cursor, where it isn't counted. Nobody cross-levels while
-the squad is in contact, or from a soldier linking up.
+the squad is in contact, or from a soldier linking up - nor with one more than 6 blocks up or down
+(`CrossLevel.HANDOVER_HEIGHT`): a hand-over is a walk, not a climb, and live a giver built steps up
+a hillside to a squadmate fourteen blocks over it, for one ration.
 
 The giver (`bot.supply.Handover`) walks to 2 blocks short of the receiver, faces it, and throws the
 logs across one at a time (a THROW click on its inventory). It then backs off, because the server

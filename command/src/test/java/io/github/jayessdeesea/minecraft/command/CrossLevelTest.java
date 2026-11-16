@@ -34,6 +34,26 @@ class CrossLevelTest {
                 "hungry but not at death's door: only from a squadmate with rations beyond its keep");
     }
 
+    /**
+     * A hand-over is a walk, not a climb: a giver fourteen blocks up a hill is passed over for one on
+     * the receiver's level, however near it stands across the ground. Live, a giver built steps up a
+     * hillside to hand one ration over.
+     */
+    @Test
+    void aGiverFarUpOrDownIsPassedOverForOneOnTheReceiversLevel() {
+        Kit none = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false);
+        Kit one = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 1, false);
+        Condition dying = new Condition(0.33, 0, 0, Optional.of(none));
+        Condition fed = new Condition(20, 20, 0, Optional.of(one));
+        List<SoldierStatus> squad = List.of(
+                new SoldierStatus("Hal", new Position(0, 64, 0), SLOT, new Report.InPosition(), Optional.of(dying)),
+                new SoldierStatus("Fran", new Position(1, 78, 0), SLOT, new Report.InPosition(), Optional.of(fed)),
+                new SoldierStatus("Eli", new Position(9, 65, 0), SLOT, new Report.InPosition(), Optional.of(fed)));
+
+        assertEquals(List.of(new CrossLevel.Transfer("Eli", "Hal", CrossLevel.Item.RATIONS, 1)),
+                CrossLevel.pair(squad, Map.of(), Map.of("Hal", CrossLevel.RATIONS_GIVEN)), "Eli, on Hal's level, not Fran up the hill");
+    }
+
     @Test
     void aBareHandedSoldierGetsASquadmatesSpareWeaponFirst() {
         Condition bare = new Condition(20, 20, 1, Optional.of(new Kit(Optional.empty(), 0, 0)));

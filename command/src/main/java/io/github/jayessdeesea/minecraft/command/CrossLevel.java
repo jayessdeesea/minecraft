@@ -45,6 +45,17 @@ public final class CrossLevel {
     /** What a giver keeps of a tool: it gives only beyond this, one at a time. */
     public static final int KEEP_TOOLS = 2;
 
+    /**
+     * How far up or down a giver goes to a receiver: a hand-over is a walk, not a climb. Live, a giver
+     * built steps up a hillside to a squadmate fourteen blocks over it, for one ration.
+     */
+    public static final double HANDOVER_HEIGHT = 6;
+
+    /** Whether {@code giver} and {@code receiver} are near enough in height for a hand-over. */
+    static boolean withinHeight(SoldierStatus giver, SoldierStatus receiver) {
+        return Math.abs(giver.position().y() - receiver.position().y()) <= HANDOVER_HEIGHT;
+    }
+
     /** What's handed across. */
     public enum Item {
         LOGS, RATIONS, WEAPON, PICKAXE, SHOVEL;
@@ -151,7 +162,7 @@ public final class CrossLevel {
         Set<String> busy = new HashSet<>();
         short_.stream().filter(r -> !(r.report() instanceof Report.LinkingUp))
                 .sorted(Comparator.comparingInt(Item.RATIONS::carried)).forEach(receiver -> givers.stream()
-                        .filter(g -> !busy.contains(g.name()) && !g.name().equals(receiver.name()) && !critical(g)
+                        .filter(g -> !busy.contains(g.name()) && !g.name().equals(receiver.name()) && !critical(g) && withinHeight(g, receiver)
                                 && !(g.report() instanceof Report.LinkingUp) && !(g.report() instanceof Report.InContact)
                                 && Cohesion.distance(g.position(), receiver.position()) <= ACROSS_REACH)
                         .filter(g -> Item.RATIONS.carried(g) - KEEP_RATIONS >= RATIONS_GIVEN
@@ -182,6 +193,7 @@ public final class CrossLevel {
             }
             squad.stream()
                     .filter(giver -> !giver.name().equals(receiver.name()) && !busy.contains(giver.name()) && !critical(giver)
+                            && withinHeight(giver, receiver)
                             && !(giver.report() instanceof Report.LinkingUp) && Item.RATIONS.carried(giver) > 0)
                     .min(Comparator.comparingDouble(giver -> Cohesion.distance(giver.position(), receiver.position())))
                     .ifPresent(giver -> {
@@ -203,7 +215,7 @@ public final class CrossLevel {
             }
             squad.stream()
                     .filter(giver -> !giver.name().equals(receiver.name()) && !busy.contains(giver.name())
-                            && !(giver.report() instanceof Report.LinkingUp))
+                            && !(giver.report() instanceof Report.LinkingUp) && withinHeight(giver, receiver))
                     // One wanting the same gives only rations, and only to one carrying fewer than it'll
                     // be left with: two running low don't hand the same rations back and forth.
                     .filter(giver -> !wantedBy.containsKey(giver.name())
