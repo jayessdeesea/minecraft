@@ -41,10 +41,11 @@ crew's ticks:
 - **The bench's outer rows still flicker the level (field249, 06:34).** The level went 85, 88, 85,
   89, 85, 87 within 20 seconds, each up-level one to three blocks at x=18..19 z=-11..-10, the
   bench's rows two and three out against a dirt hill standing to about y=90 beyond them. Not steps
-  (none logged there), not falling blocks (dirt). Suspect: a column's remembered top
-  (`SoldierRunner.keepColumnTops`, kept while its chunk is unloaded) going stale against what's
-  been dug since - log the column's top and whether its chunk is loaded each time the level rises
-  by more than one, and see which.
+  (none logged there), not falling blocks (dirt), not a remembered top: the foreman logs each rise
+  ("[Keep] the level rose from y=84 to y=87: [19 -17 seen]") and the column was loaded. Next
+  suspect: ground counts only under an open top (`Clearing.toClear`), so ground under a cell the
+  dig leaves - water beside it, a block it doesn't take - appears only once that cell changes.
+  Probe the cells over a column the next time it rises.
 
 ## Done when
 - The dig so far (`[Keep] pace: the dig so far`) holds within 90% across a day's levels.

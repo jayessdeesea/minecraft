@@ -6220,7 +6220,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             chunkCache.standIn(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE, clockwork.millis());
                             scaffolding.add(cell);
                             // Who puts what in the keep: a block there over its floor holds the site's level.
-                            if (chainOfCommand.flatten().contains(cell.x(), cell.z()) && cell.y() >= chainOfCommand.flatten().bottom()) {
+                            if (chainOfCommand.flatten().benchedContains(cell.x(), cell.z()) && cell.y() >= chainOfCommand.flatten().bottom()) {
                                 LOG.info("[Keep] {} puts a step at {} {} {} - {}", name, cell.x(), cell.y(), cell.z(), soldier.status().order());
                             }
                         });
