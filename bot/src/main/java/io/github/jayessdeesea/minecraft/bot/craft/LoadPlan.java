@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
 
@@ -41,12 +42,18 @@ public record LoadPlan(int weapons, int pickaxes, int shovels, int axes, int tor
      */
     public List<Integer> surplus(Inventory inventory) {
         Set<Integer> out = new HashSet<>();
-        // Weapons are swords and spears: an axe, though it ranks for melee, is counted as an axe.
-        past(inventory, weapons, slot -> ItemClassRegistry.meleeRank(inventory.itemAt(slot)).isPresent()
-                && ItemClassRegistry.axeSpeed(inventory.itemAt(slot)).isEmpty()
-                ? ItemClassRegistry.meleeRank(inventory.itemAt(slot)).getAsInt() : Double.NaN, out);
-        past(inventory, pickaxes, slot -> ItemClassRegistry.miningTier(inventory.itemAt(slot)).isPresent()
-                ? ItemClassRegistry.miningTier(inventory.itemAt(slot)).getAsInt() : Double.NaN, out);
+        // Weapons are swords and spears: an axe, though it ranks for melee, is counted as an axe. Each
+        // slot read once: the inventory is the connection's to change between two reads - live, a
+        // slot read as a weapon, then as nothing, and the tick failed on its missing rank.
+        past(inventory, weapons, slot -> {
+            int item = inventory.itemAt(slot);
+            OptionalInt rank = ItemClassRegistry.meleeRank(item);
+            return rank.isPresent() && ItemClassRegistry.axeSpeed(item).isEmpty() ? rank.getAsInt() : Double.NaN;
+        }, out);
+        past(inventory, pickaxes, slot -> {
+            OptionalInt tier = ItemClassRegistry.miningTier(inventory.itemAt(slot));
+            return tier.isPresent() ? tier.getAsInt() : Double.NaN;
+        }, out);
         past(inventory, shovels, slot -> ItemClassRegistry.shovelSpeed(inventory.itemAt(slot)).orElse(Double.NaN), out);
         past(inventory, axes, slot -> ItemClassRegistry.axeSpeed(inventory.itemAt(slot)).orElse(Double.NaN), out);
         // Torches past the load, the smallest stacks first, while what's left is still the load.
@@ -81,13 +88,17 @@ public record LoadPlan(int weapons, int pickaxes, int shovels, int axes, int tor
 
     /** The slots of a kind - where {@code rank} is a number - past the best {@code keep} of them. */
     private static void past(Inventory inventory, int keep, ToDoubleFunction<Integer> rank, Set<Integer> out) {
-        List<Integer> kind = new ArrayList<>();
+        // Each slot ranked once, then sorted on that: ranked again in the sort, a slot changed by the
+        // connection mid-sort would break the comparison's contract.
+        java.util.Map<Integer, Double> ranked = new java.util.HashMap<>();
         for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
-            if (inventory.itemAt(slot) >= 0 && !Double.isNaN(rank.applyAsDouble(slot))) {
-                kind.add(slot);
+            double r = inventory.itemAt(slot) >= 0 ? rank.applyAsDouble(slot) : Double.NaN;
+            if (!Double.isNaN(r)) {
+                ranked.put(slot, r);
             }
         }
-        kind.sort(Comparator.comparingDouble((Integer s) -> rank.applyAsDouble(s)).reversed());
+        List<Integer> kind = new ArrayList<>(ranked.keySet());
+        kind.sort(Comparator.comparingDouble((Integer s) -> ranked.get(s)).reversed());
         for (int i = keep; i < kind.size(); i++) {
             out.add(kind.get(i));
         }

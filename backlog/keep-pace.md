@@ -49,7 +49,10 @@ crew's ticks:
   -19.5) - a cell the world model reads solid (feet and head) over air - and their walk to the
   stockpile, the camp's 70 blocks off once their own workshop's chest was full and the next not
   fitted, timed out. No re-siting line was logged, so the workshop's stand read standable. Find
-  whose stand that order is, and why it's solid.
+  whose stand that order is, and why it's solid. And field268, 12:32: Mia, of the farm squad, at
+  (-48.9, 74, 43.1) - within the chest's 3.5-block reach of (-46.5, 73, 44.5) by Depositor's own
+  test - failed five walks to it in a row, "expected the chest in reach within 1789 ticks"; suspect
+  the depositor's soldierAt left stale while another routine holds the hands.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done
