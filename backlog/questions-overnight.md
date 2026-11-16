@@ -31,3 +31,14 @@ Each names its backlog item and what the answer changes. Built meanwhile on the 
    everything over it is down. The alternative: a column standing over the level by more than a
    step is a spire, cut by the nearest builder, and the level under it dealt to the rest
    meanwhile. The answer decides whether "highest first" is site-wide or column by column.
+
+4. **What becomes of the dirt and cobblestone a flatten digs past what the force can use**
+   (backlog/flatten-campaign.md, the depots). A builder's load is mostly dirt and cobblestone -
+   300 to 700 of each - and a chest holds about 1,700 blocks: the main depot's six chests hold
+   about 10,000, and x=-16..16 z=-64..64 has about 40,000 to dig. Field266 filled four of the six
+   within minutes of the restart. As built, once a depot's row is full its loads fail and the
+   builder carries on full. The alternatives: (a) the row grows - more chests, wider round the
+   stand, logs for each; (b) past a working stock (say a stack each), dirt and cobblestone are
+   left where they're dug - not picked up, or dropped in the pit - and only what the force uses
+   is carried (ore, coal, logs always). Your earlier word - minerals before dirt and cobblestone
+   in the stockpile - reads as (b), but it throws blocks away, so it's yours to say.
