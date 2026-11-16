@@ -259,6 +259,7 @@ server's own `GameProtocols` registration lists (read with `javap` - see DEVELOP
 | ← | `0x36` | Move Entity Pos | `MoveEntityPacket` | live (resolved positions continuous) |
 | ← | `0x37` | Move Entity Pos Rot | `MoveEntityPacket` | live |
 | ← | `0x3C` | Open Screen | `ContainerPackets.OpenScreen` | live (a chest: menu type 2, `generic_9x3`) |
+| ← | `0x20` | Disconnect (play) | `PlayDisconnectPacket` | live (a kick for spamming: `disconnect.spam`); the reason reaches the disconnect listener |
 | ← | `0x21` | Disguised Chat | `DisguisedChatPacket` | live (an unsigned `/msg` from another client) |
 | ← | `0x42` | Player Chat | `PlayerChatPacket` | live (plain chat from another client) |
 | ← | `0x45` | Player Combat Kill | `PlayerCombatKillPacket` | registration order; the jar's codec (VarInt player id, then the death message as a text component) |

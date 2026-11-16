@@ -45,7 +45,13 @@ crew's ticks:
   ("[Keep] the level rose from y=84 to y=87: [19 -17 seen]") and the column was loaded. Next
   suspect: ground counts only under an open top (`Clearing.toClear`), so ground under a cell the
   dig leaves - water beside it, a block it doesn't take - appears only once that cell changes.
-  Probe the cells over a column the next time it rises.
+  Found (field251): the keep's grove sat on a hilltop past the bench and its planter pillared up
+  the bench's outer row to it - fixed, a grove is sited only where it's walked to; and a step that
+  landed after reading open was dropped from the record and counted as ground - fixed, kept 20 s.
+  Left: a builder's own step to stand on is the level's to dig and is dug from under it and put
+  back at one cell (Eli at (19, 89, -11)); keeping steps out of the dig by age left a spire's
+  climbing steps standing in the squad simulation - it wants the step that's under someone's feet,
+  not a recent one.
 
 ## Done when
 - The dig so far (`[Keep] pace: the dig so far`) holds within 90% across a day's levels.

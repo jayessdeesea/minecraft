@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.ChunkBatchFinishedPacket
 import io.github.jayessdeesea.minecraft.protocol.packet.ChunkDataPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.DisguisedChatPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayDisconnectPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.EntityPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ForgetLevelChunkPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.InventoryPackets;
@@ -44,6 +45,7 @@ public final class PlayMarshaller implements PacketMarshaller {
             case SetTimePacket.PACKET_ID -> SetTimePacket.decode(data);
             case PlayerChatPacket.PACKET_ID -> PlayerChatPacket.decode(data);
             case DisguisedChatPacket.PACKET_ID -> DisguisedChatPacket.decode(data);
+            case PlayDisconnectPacket.PACKET_ID -> PlayDisconnectPacket.decode(data);
             case PlayerCombatKillPacket.PACKET_ID ->
                     PlayerCombatKillPacket.decode(data);
             case ChunkBatchFinishedPacket.PACKET_ID -> ChunkBatchFinishedPacket.decode(data);

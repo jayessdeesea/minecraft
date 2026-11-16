@@ -257,7 +257,9 @@ cuts trees instead, where a keep squad last saw them, 16 logs a builder - back w
 them it's on the dig again and another goes - after
 making itself a stone axe from the cobblestone it carries, a log in 15 ticks rather than the hand's
 60. The rest dig. The foreman says it on the net: "KEEP WOOD 16", "KEEP PLANT x z". The grove is a
-tree farm (§ 12) sited once with the depot: of the ground in rings round the depot's stand, clear of
+tree farm (§ 12) sited once with the depot: of the ground in rings round the depot's stand that a
+soldier can walk to from it - live, a grove on a hilltop past the site's bench had its planter put a
+pillar up the bench's outer row to reach it, each step the site's highest ground - clear of
 the slab and its borrow pits, the depot, the mine's head, the farm and the camp, with room for 16
 saplings or more, the flattest, then the nearest sea level, then the nearest. Live, eight builders
 with a chest's worth of logs between them stood the depot at two chests, both full.
@@ -1448,7 +1450,9 @@ it, and nobody digs lower till it's gone, so the site comes down as one flat flo
 over a neighbour's ground. A builder's own step or pillar (`SoldierRunner.scaffolding`), and a
 tree's logs and leaves, are no ground and don't set the level - counted as the highest, it held every builder at its level for
 one block while eight stood by - but every level shares out any step standing at or over it with
-its ground, so it's dug with the level under it, and once the ground is gone what's left of them
+its ground - a step isn't dropped from the record the moment it reads open, for 20 seconds, since
+one the server hasn't confirmed reads open a moment and would land as ground - so it's dug with the
+level under it, and once the ground is gone what's left of them
 is the level: none is left high. A column whose chunk nobody has loaded counts at its last known
 top (`WorldView.isLoaded`), not as gone: live, the big site's east edge was a chunk loaded and let
 go as builders moved, and the level went 86, 87, 86 a minute. At the start of each level the foreman
@@ -1475,7 +1479,10 @@ then walked 80 blocks to the farm, and seven stood by for her. Nothing is kept f
 the net, point to point (`/msg`): only a line new to its builder, the latest overtaking one still
 queued, and one every two and a half seconds at most - vanilla counts 20 for each line and takes
 one off a tick, kicking past 200, so a line a second sustained is its decay exactly and the
-foreman was kicked for spamming every minute and a half; the log reads "[Keep] level y=77: 41 block(s) left, 6 of 8 builder(s) on it"
+foreman was kicked for spamming every minute and a half. The radio - FRAGOs, CANTCOs and the
+platoon leader's traffic, keyed out over the radio operator's connection - goes through the same
+pacing on that connection, a squad's next FRAGO overtaking one still queued and a repeat not sent;
+keyed out unpaced beside the net, four squads' FRAGOs had the radio operator kicked. The log reads "[Keep] level y=77: 41 block(s) left, 6 of 8 builder(s) on it"
 and "[Keep] Alice -> Bob: KEEP DIG 77 3 -4 9 2". Ground within 12 blocks of a builder's fight, and
 for half a minute after it, is nobody's and isn't counted for the level: the rest go on, and when
 the fight's done that ground is the highest again. A builder with ground work isn't sent to

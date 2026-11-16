@@ -1127,6 +1127,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * scaffolding by where it went, not by its block: a dirt step reads as the ground's dirt.
      */
     private final Set<BlockPos> scaffolding = ConcurrentHashMap.newKeySet();
+    /** When each step in {@link #scaffolding} was put down - ticks write, squad loops read and prune. */
+    private final Map<BlockPos, Long> stepPlacedAt = new ConcurrentHashMap<>();
+    /** How long a step put down is kept on the record though it reads open: the server's word on it may be on its way. */
+    static final long STEP_FRESH_MILLIS = 20_000;
+
+    /**
+     * The steps taken down: not solid, and not put down in the last {@link #STEP_FRESH_MILLIS} - a step
+     * the server hasn't confirmed yet reads open for a moment, and dropped then it lands as ground.
+     */
+    private void pruneSteps() {
+        long fresh = clockwork.millis() - STEP_FRESH_MILLIS;
+        scaffolding.removeIf(c -> !world.isSolid(c.x(), c.y(), c.z()) && stepPlacedAt.getOrDefault(c, Long.MIN_VALUE) < fresh);
+        stepPlacedAt.keySet().removeIf(c -> !scaffolding.contains(c));
+    }
     /** How near the camp an objective is for its squad to craft at the camp's workshop. */
     private static final int CAMP_WORKSHOP_RANGE = 48;
     /** Ticks to each soldier's next stand-to check. */
@@ -1253,6 +1267,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         ScheduledExecutorService squad = clockwork.scheduler("squad");
         schedulers.add(squad);
         squad.scheduleAtFixedRate(loudly("the squad loop", this::leadSquad), SQUAD_PERIOD_MILLIS, SQUAD_PERIOD_MILLIS, TimeUnit.MILLISECONDS);
+        // The net and the radio drain on their own, keep or no keep: a radio line waits for nothing else.
+        squad.scheduleAtFixedRate(loudly("the net", () -> drainNet(clockwork.millis())), NET_DRAIN_MILLIS, NET_DRAIN_MILLIS, TimeUnit.MILLISECONDS);
         squad.scheduleAtFixedRate(loudly("the SITREP log", this::logSquadSitrep), STATUS_LOG_PERIOD_SECONDS, STATUS_LOG_PERIOD_SECONDS, TimeUnit.SECONDS);
     }
 
@@ -1966,7 +1982,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // up: the masons' steps inside it, and dug out from under them the wall stood unfinished in
         // the squad simulation. A step is known by where it went, not its block - dirt before
         // cobblestone, and read as the ground's dirt once the server's update replaces the stand-in.
-        scaffolding.removeIf(c -> !world.isSolid(c.x(), c.y(), c.z()));
+        pruneSteps();
         if (!campWalled) {
             for (int x = dig.minX(); x <= dig.maxX(); x++) {
                 for (int z = dig.minZ(); z <= dig.maxZ(); z++) {
@@ -2097,7 +2113,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // at its level for one block - live, the level went 71, 72, 73, 72 and 70, 77, 70, 71, a
         // step each time, with eight standing by. A step over the level is still dug, by the one
         // whose rectangle it stands in (foremansNet), so none is left high.
-        scaffolding.removeIf(c -> !world.isSolid(c.x(), c.y(), c.z()));
+        pruneSteps();
         Map<Long, Integer> tops = new HashMap<>();
         Map<Long, Integer> stepTops = new HashMap<>();
         // A tree's logs and leaves aren't ground either: they don't set the level, but like a step
@@ -2624,7 +2640,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }
         }
-        drainNet(now);
         Map<String, Order> orders = new HashMap<>();
         TreeFarm grove = keepGrove;
         for (SoldierStatus h : hands) {
@@ -2817,6 +2832,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             avoid.add(around(camp.x(), camp.z(), WALL_RADIUS + 6));
         }
         int[][] ways = {{-1, 0}, {-1, -1}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 1}, {1, 0}};
+        // Walked to from the depot, not climbed: live, the grove went on a hilltop past the site's
+        // bench, and its planter put a pillar up the bench's outer row to reach it, ten steps at a go,
+        // each of them the site's highest ground while it stood.
+        Set<BlockPos> walkable = Pathfinder.reachable(world, depot.stand(), 4 * GROVE_RING + TREE_FARM_RADIUS + 4, FARM_REACH_BUDGET);
         TreeFarm best = null;
         int bestScore = Integer.MAX_VALUE;
         for (int r = GROVE_RING; r <= 4 * GROVE_RING; r += GROVE_RING / 2) {
@@ -2828,7 +2847,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 Optional<TreeFarm> grove = TerrainSurveyor.surface(world, cx, cz, chainOfCommand.flatten().floor() + 60)
                         .flatMap(ground -> TreeFarm.site(world, ground, TREE_FARM_RADIUS))
-                        .filter(g -> g.plot().size() >= GROVE_MIN_CELLS);
+                        .filter(g -> g.plot().size() >= GROVE_MIN_CELLS)
+                        .filter(g -> walkable.contains(g.centre().offset(0, 1, 0)) || walkable.contains(g.centre()));
                 if (grove.isPresent()) {
                     int score = groveScore(grove.get(), r);
                     if (score < bestScore) {
@@ -2912,13 +2932,37 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // overtaken by this one. Live, every replan queued a line to every builder, the queue never
         // emptied, the foreman chatted a line a second for an hour - the very rate the server's spam
         // count decays at - and was kicked "for spamming" every minute and a half.
-        if (line.equals(netLastSaid.get(from + ">" + to))) {
-            netOutbox.getOrDefault(from, new java.util.concurrent.ConcurrentLinkedDeque<>()).removeIf(q -> q[0].equals(to));
+        queueLine(from, to, "msg " + to + " " + line, "[Keep] " + from + " -> " + to + ": " + line);
+    }
+
+    /**
+     * {@code command} queued on {@code from}'s connection, paced with everything else it sends: only
+     * if new on {@code key}, overtaking a line still queued on that key. The net's key is the soldier
+     * spoken to; the radio's, the station keying it - live, four squads' FRAGOs every few seconds,
+     * keyed out unpaced over the radio operator's connection beside the foreman's net, had Alice
+     * kicked for spamming.
+     */
+    private void queueLine(String from, String key, String command, String logged) {
+        if (command.equals(netLastSaid.get(from + ">" + key))) {
+            netOutbox.getOrDefault(from, new java.util.concurrent.ConcurrentLinkedDeque<>()).removeIf(q -> q[0].equals(key));
             return;
         }
         java.util.Deque<String[]> queue = netOutbox.computeIfAbsent(from, n -> new java.util.concurrent.ConcurrentLinkedDeque<>());
-        queue.removeIf(q -> q[0].equals(to));
-        queue.add(new String[]{to, line});
+        queue.removeIf(q -> q[0].equals(key));
+        queue.add(new String[]{key, command, logged});
+    }
+
+    /**
+     * A radio line (a chat command) put on the radio operator's connection, paced. Keyed by its
+     * station's call - "[Alpha -> squad] FRAGO" - so a squad's next order overtakes one still queued,
+     * and a repeat of the last isn't sent; traffic to the operator is keyed whole, never overtaken.
+     */
+    private void radio(String operator, String command) {
+        int call = command.indexOf(']');
+        String key = call > 0 && (command.contains("-> squad] FRAGO") || command.contains("-> PL] CANTCO"))
+                ? "radio " + command.substring(0, Math.min(command.length(), call + 8))
+                : "radio " + command;
+        queueLine(operator, key, command, "[Radio] " + operator + ": " + command);
     }
 
     /** What each sender last sent each soldier on the net, by "from>to" - the squad loops'. */
@@ -2935,10 +2979,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 return; // not connected: kept till it is
             }
             String[] next = queue.poll();
-            line.accept("msg " + next[0] + " " + next[1]);
+            line.accept(next[1]);
             netSentAt.put(from, now);
             netLastSaid.put(from + ">" + next[0], next[1]);
-            LOG.info("[Keep] {} -> {}: {}", from, next[0], next[1]);
+            LOG.info("{}", next[2]);
         });
     }
 
@@ -2948,6 +2992,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * ticks tips it over. One every two and a half seconds is well under, with room for a burst of ten.
      */
     static final long NET_LINE_MILLIS = 2_500;
+    /** How often the net's outboxes are looked at for a line due. */
+    private static final long NET_DRAIN_MILLIS = 250;
     /** How long a level's plan stands before a builder done with its rectangle has what's left shared out again. */
     static final long KEEP_REPLAN_MILLIS = 5_000;
     /** How long a level's plan stands at the most before it's made again from where the builders are. */
@@ -5313,7 +5359,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (definition == soldierDefinitions.getFirst()) {
             // The point man carries the squad's radio: the squad leader and platoon leader aren't in the
             // world, so their traffic is keyed out over his connection (rebound on reconnect).
-            chainOfCommand.setRadio(session::sendChatCommand);
+            chainOfCommand.setRadio(command -> radio(name, command));
             // The ground round the point, not the top of whatever stands on it: a heap of old huts
             // at the camp's centre isn't where an objective there is.
             chainOfCommand.setGround(new ChainOfCommand.Ground() {
@@ -6219,6 +6265,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .ifPresent(block -> {
                             chunkCache.standIn(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE, clockwork.millis());
                             scaffolding.add(cell);
+                            stepPlacedAt.put(cell, clockwork.millis());
                             // Who puts what in the keep: a block there over its floor holds the site's level.
                             if (chainOfCommand.flatten().benchedContains(cell.x(), cell.z()) && cell.y() >= chainOfCommand.flatten().bottom()) {
                                 LOG.info("[Keep] {} puts a step at {} {} {} - {}", name, cell.x(), cell.y(), cell.z(), soldier.status().order());

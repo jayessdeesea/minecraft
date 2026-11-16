@@ -23,6 +23,7 @@ import io.github.jayessdeesea.minecraft.protocol.packet.ChunkDataPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ClientInformationPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ContainerPackets;
 import io.github.jayessdeesea.minecraft.protocol.packet.DisguisedChatPacket;
+import io.github.jayessdeesea.minecraft.protocol.packet.PlayDisconnectPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.EntityPositionPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.FinishConfigurationPacket;
 import io.github.jayessdeesea.minecraft.protocol.packet.ForgetLevelChunkPacket;
@@ -241,6 +242,10 @@ public final class PlayClientHandler extends SimpleChannelInboundHandler<Packet>
             listeners.onContainer().accept(new ContainerUpdate.Closed(closed.containerId()));
         } else if (packet instanceof PlayerChatPacket chat) {
             listeners.onChat().accept(new ChatMessage(chat.sender(), chat.message()));
+        } else if (packet instanceof PlayDisconnectPacket disconnect) {
+            // The server's reason, carried to the disconnect listener - not "closed unexpectedly".
+            failureCause = new IOException("the server disconnected it: " + disconnect.reason());
+            ctx.close();
         } else if (packet instanceof DisguisedChatPacket chat) {
             // Named, not identified: in offline mode the server derives a player's UUID from its name.
             listeners.onChat().accept(new ChatMessage(
