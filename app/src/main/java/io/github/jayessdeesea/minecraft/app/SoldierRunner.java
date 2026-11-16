@@ -2190,7 +2190,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         AccessRoute road = keepRoad;
-        String cutter = road == null || road.toCut().isEmpty() ? null : onHand.stream().filter(b -> !inWoodParty(b.name()))
+        // Kept by the one cutting it while it's on hand: picked afresh as the nearest each cycle, the
+        // cutter changed every second or two as the builders moved, each change was a new crew for
+        // the level, and the level was shared out again every second (live: Carol, Gus, Hal, Carol...).
+        String was = keepRoadCutter;
+        String cutter = road == null || road.toCut().isEmpty() ? null
+                : was != null && onHand.stream().anyMatch(b -> b.name().equals(was)) && !inWoodParty(was) ? was
+                : onHand.stream().filter(b -> !inWoodParty(b.name()))
                 .min(Comparator.comparingDouble(b -> Math.hypot(b.at().x() - road.feet().getFirst().x(), b.at().z() - road.feet().getFirst().z())))
                 .map(LevelPlan.Builder::name).orElse(null);
         if (!Objects.equals(cutter, keepRoadCutter) && cutter != null) {

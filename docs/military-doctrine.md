@@ -1391,7 +1391,7 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
    the depot's stand to a standing cell on the keep's floor - the cheapest walk of one-block steps,
    a block dug costing three steps and one put down twenty, never through water, lava or the
    depot's table, furnace and chests, out of the keep's dig till its last cell; while any of it is
-   uncut, the keep's hand nearest its start cuts it and has no rectangle meanwhile (`[Keep] the
+   uncut, the keep's hand nearest its start cuts it - the same hand till it's cut, or the crew would change and the level be shared out again each time another came nearer - and has no rectangle meanwhile (`[Keep] the
    haul road: 9 steps from the depot at ... to ..., 16 block(s) to cut`).
 6. **Benched edges.** The ground just round the dig may be lowered as it goes - benched, as an
    excavation's sides are cut back in steps or sloped (29 CFR 1926.652) - so its edge is never a
