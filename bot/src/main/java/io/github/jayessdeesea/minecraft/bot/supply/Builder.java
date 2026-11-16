@@ -284,12 +284,12 @@ public final class Builder {
 
     /**
      * The side of {@code cell} with a solid block to build against, if any - below first. Not a
-     * crafting table or furnace: clicking one opens it, and no block goes in.
+     * crafting table, furnace or chest: clicking one opens it, and no block goes in.
      */
     public static Optional<BlockFace> support(WorldView world, BlockPos cell) {
         for (BlockFace face : List.of(BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.WEST, BlockFace.EAST, BlockFace.UP)) {
             int x = cell.x() + face.dx, y = cell.y() + face.dy, z = cell.z() + face.dz;
-            if (world.isSolid(x, y, z) && world.workstation(x, y, z).isEmpty()) {
+            if (world.isSolid(x, y, z) && world.workstation(x, y, z).isEmpty() && !world.isChest(x, y, z)) {
                 return Optional.of(face);
             }
         }

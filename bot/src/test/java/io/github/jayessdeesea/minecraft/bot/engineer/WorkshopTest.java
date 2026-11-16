@@ -152,6 +152,23 @@ class WorkshopTest {
         assertTrue(w.chestStands(withBlock(cell, true)));
     }
 
+    /**
+     * A chest a block below the cell behind the table is the workshop's chest: the ground at a depot
+     * moves, and live a workshop sited a block higher took its own chest for none - the chest put in
+     * its place went on top of it, the click opened the old one, and nothing went in all night.
+     */
+    @Test
+    void aChestABlockDownBehindTheTableIsTheWorkshopsChest() {
+        BlockPos ground = new BlockPos(0, 64, 0);
+        BlockPos planned = Workshop.hasty(flat(Map.of()), ground, Set.of()).orElseThrow().chest().orElseThrow();
+        BlockPos below = planned.offset(0, -1, 0);
+
+        Workshop w = Workshop.hasty(withBlock(below, true), ground, Set.of()).orElseThrow();
+
+        assertEquals(Optional.of(below), w.chest(), "the chest standing, not a cell over it");
+        assertTrue(w.chestStands(withBlock(below, true)));
+    }
+
     /** Flat ground with one block on it at {@code cell}: a chest, or some other block. */
     private static WorldView withBlock(BlockPos cell, boolean chest) {
         WorldView ground = flat(Map.of());

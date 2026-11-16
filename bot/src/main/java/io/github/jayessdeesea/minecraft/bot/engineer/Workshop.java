@@ -159,6 +159,19 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
      * in reach - free, or holding the chest put there before.
      */
     private static Optional<BlockPos> chestBehind(WorldView world, BlockPos stand, BlockPos table, BlockPos furnace, Set<BlockPos> claimed) {
+        // A chest already there, a block up or down, first: the ground at a depot moves, and the
+        // workshop sited again a block higher took its own chest for no chest - live, the chest it
+        // tried to put in its place went on top of the old one, the click opened the old one, and
+        // the depot "had no chest" all night with one standing.
+        for (BlockPos fixture : List.of(table, furnace)) {
+            BlockPos behind = fixture.offset(fixture.x() - stand.x(), 0, fixture.z() - stand.z());
+            for (int dy : new int[]{0, -1, 1}) {
+                BlockPos at = behind.offset(0, dy, 0);
+                if (!claimed.contains(at) && world.isChest(at.x(), at.y(), at.z())) {
+                    return Optional.of(at);
+                }
+            }
+        }
         for (BlockPos fixture : List.of(table, furnace)) {
             BlockPos behind = fixture.offset(fixture.x() - stand.x(), 0, fixture.z() - stand.z());
             boolean taken = world.isChest(behind.x(), behind.y(), behind.z());
