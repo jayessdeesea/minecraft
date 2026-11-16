@@ -419,6 +419,39 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<BlockPos, String> furnaces = new ConcurrentHashMap<>();
     /** Logs and stand cells a soldier is working, shared so soldiers pick different trees. */
     private final Set<BlockPos> treeClaims = ConcurrentHashMap.newKeySet();
+    /** How long a site's dig, as scanned, serves every squad's cycle before it's scanned again. */
+    static final long SITE_CLEAR_MILLIS = 1_000;
+
+    /** The site's dig as last scanned, by what was kept out of it: its ground, the exceptions, when, the cells. */
+    private final Map<Set<Cell>, Object[]> siteClears = new LinkedHashMap<>();
+
+    /**
+     * {@code Clearing.toClear} of {@code ground}'s dig with {@code except} kept out, scanned once a
+     * {@link #SITE_CLEAR_MILLIS} for every squad's cycle. Commit 496's profile: four squads each
+     * scanned the big site - 33 by 129 columns from the dig's bottom to the top of the world, a
+     * million cells - twice a cycle, and it was most of the garrison's CPU.
+     */
+    private List<BlockPos> siteClear(Flatten ground, Set<Cell> except) {
+        long now = clockwork.millis();
+        synchronized (siteClears) {
+            Object[] seen = siteClears.get(except);
+            if (seen != null && seen[0].equals(ground) && now - (long) seen[1] < SITE_CLEAR_MILLIS) {
+                @SuppressWarnings("unchecked")
+                List<BlockPos> cells = (List<BlockPos>) seen[2];
+                return cells;
+            }
+        }
+        List<BlockPos> cells = Clearing.toClear(world, ground.dig(), except);
+        synchronized (siteClears) {
+            siteClears.put(Set.copyOf(except), new Object[]{ground, now, cells});
+            // Only the last few kept: one for each squad's two scans.
+            while (siteClears.size() > 8) {
+                siteClears.remove(siteClears.keySet().iterator().next());
+            }
+        }
+        return cells;
+    }
+
     /** Each soldier's last step put down - its cell, how many times in a row, since when - its own tick's. */
     private final Map<String, Object[]> lastStep = new ConcurrentHashMap<>();
     /** How many times in a row a step goes into one cell before it's taken as refused. */
@@ -2009,7 +2042,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         int squadsBest = hands.stream().mapToInt(h -> pickaxeTiers.getOrDefault(h.name(), Hardness.HAND)).max().orElse(Hardness.HAND);
         Set<Cell> oreAside = new HashSet<>();
-        for (BlockPos c : Clearing.toClear(world, ground.dig(), digExcept)) {
+        for (BlockPos c : siteClear(ground, digExcept)) {
             if (!world.isOre(c.x(), c.y(), c.z())) {
                 continue;
             }
@@ -2029,7 +2062,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         keepOreAsideBySquad.put(squad, oreAside.size());
         digExcept.addAll(oreAside);
-        List<BlockPos> wholeDig = Clearing.toClear(world, ground.dig(), digExcept);
+        List<BlockPos> wholeDig = siteClear(ground, digExcept);
         List<BlockPos> toDig = wholeDig.stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX()
                 && c.z() >= digShare.minZ() && c.z() <= digShare.maxZ()).toList();
         // The ground's tops, not the soldiers' own steps: a step put down to climb from the floor to
@@ -2587,8 +2620,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .min(Comparator.comparingDouble(c -> Math.hypot(on.get(hand).x() - c.x(), on.get(hand).z() - c.z())));
     }
 
-    /** When each builder's rectangles on the level under way are due done - guarded by {@link #keepPlanLock}. */
-    private final Map<String, Long> keepDue = new HashMap<>();
+    /**
+     * When each builder's rectangles on the level under way are due done, and only while they're not:
+     * a builder dealt in with none here is done - written under {@link #keepPlanLock}, read by ticks.
+     */
+    private final Map<String, Long> keepDue = new ConcurrentHashMap<>();
     /** The builders given work on the level under way, done or not - guarded by {@link #keepPlanLock}. */
     private final Set<String> keepDealt = new HashSet<>();
 
@@ -5880,7 +5916,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // With no routine holding its hands, why it has no rectangle - so "waiting" is only a
                 // builder on the crew the plan gave nothing to.
                 String held = hands.map(r -> r.name().toLowerCase(java.util.Locale.ROOT))
-                        .orElseGet(() -> levelPlan == null || levelPlan.boxes().containsKey(name)
+                        .orElseGet(() -> levelPlan != null && levelPlan.boxes().containsKey(name) && !keepDue.containsKey(name)
+                                ? "done, waiting for the level"
+                                : levelPlan == null || levelPlan.boxes().containsKey(name)
                                 ? "hands free, " + status.order().getClass().getSimpleName()
                                 : inWoodParty(name) ? "wood party, walking"
                                 : name.equals(keepRoadCutter) ? "haul road, walking"
