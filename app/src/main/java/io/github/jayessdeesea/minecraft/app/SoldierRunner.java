@@ -2671,16 +2671,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (!resupplying.isEmpty() && dealtIn != all) {
                     LOG.info("[Keep] level y={}: {} sit(s) it out to resupply", level, resupplying.stream().sorted().toList());
                 }
-                // Up to the site's highest ground or step, not the sky: each builder's rectangle is
-                // scanned (Clearing.toClear) every squad cycle, and live (commit 528's profile), from
-                // the level to y=319 that scan and its digs were a fifth of the garrison's CPU.
-                int ceiling = level;
-                for (int x = site.minX(); x <= site.maxX(); x++) {
-                    for (int z = site.minZ(); z <= site.maxZ(); z++) {
-                        ceiling = Math.max(ceiling, Math.max(calm.applyAsInt(x, z), calmStep.applyAsInt(x, z)));
-                    }
-                }
-                Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of() : LevelPlan.plan(level, ceiling + CEILING_SLACK, columns, dealtIn);
+                Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of()
+                        : LevelPlan.plan(level, siteCeiling(site, level, calm, calmStep), columns, dealtIn);
                 plan = new KeepPlan(level, names, boxes, now);
                 keepPlan = plan;
                 keepDue.clear();
@@ -2767,7 +2759,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         continue;
                     }
                     String holder = most.get().getKey();
-                    Map<String, List<Box>> split = LevelPlan.plan(level, site.maxY(), most.get().getValue(),
+                    Map<String, List<Box>> split = LevelPlan.plan(level, siteCeiling(site, level, calm, calmStep), most.get().getValue(),
                             List.of(new LevelPlan.Builder(holder, at.get(holder)), newcomer));
                     if (!split.containsKey(newcomer.name()) || !split.containsKey(holder)) {
                         continue;
@@ -2880,6 +2872,21 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     /** Whether {@code box} has ground, a step or a tree left at or over {@code level}. */
+
+    /**
+     * How high the flatten's rectangles reach: {@link #CEILING_SLACK} over the site's highest ground
+     * or step, not the sky - each builder's rectangle is scanned every squad cycle (Clearing.toClear),
+     * and live (commit 528's profile), from the level to y=319 that was a fifth of the CPU.
+     */
+    private static int siteCeiling(Box site, int level, java.util.function.IntBinaryOperator calm, java.util.function.IntBinaryOperator calmStep) {
+        int ceiling = level;
+        for (int x = site.minX(); x <= site.maxX(); x++) {
+            for (int z = site.minZ(); z <= site.maxZ(); z++) {
+                ceiling = Math.max(ceiling, Math.max(calm.applyAsInt(x, z), calmStep.applyAsInt(x, z)));
+            }
+        }
+        return ceiling + CEILING_SLACK;
+    }
 
     private static boolean keepColumnsLeft(int level, Box box, java.util.function.IntBinaryOperator top, java.util.function.IntBinaryOperator stepTop) {
         for (int x = box.minX(); x <= box.maxX(); x++) {
@@ -5024,7 +5031,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 for (int dy = -2; dy <= 1; dy++) {
                     BlockPos cell = new BlockPos(cx + dx, cy + dy, cz + dz);
                     Position centre = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
-                    if (!reachable.contains(cell) || !Depositor.withinReach(centre, chest)) {
+                    // Not on a chest: one is less than a block high, so a stand on it is never quite
+                    // reached, and a body on it shuts its lid. Live, the farm squad's soldier was sent
+                    // onto the chest beside the camp's stockpile, failed five walks to it in a row, and
+                    // stood with its load.
+                    if (!reachable.contains(cell) || !Depositor.withinReach(centre, chest) || world.isChest(cell.x(), cell.y() - 1, cell.z())) {
                         continue;
                     }
                     double distance = Math.hypot(centre.x() - from.x(), centre.z() - from.z()) + Math.abs(centre.y() - from.y());
