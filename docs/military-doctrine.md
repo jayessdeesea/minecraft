@@ -623,7 +623,8 @@ on down past it - left in the dig it would hold the whole site at its level in l
 with the pickaxe carried it's the strip's top again, cleared like any block. Set aside isn't done:
 the keep's ground isn't flattened while any stands (operator, 2026-11-15), and its estimate (§ 17)
 bills the iron pickaxe it waits on. Once ore set aside is at or over the level - in reach on its
-pillar, or all that's left - the keep's nearest hand who carries the pickaxe for it takes it,
+pillar, or all that's left - or ore is left in a rectangle whose holder can't take it, the site's
+nearest hand who carries the pickaxe for it takes it,
 whatever its squad (`[Squad] Alice takes the ore set aside at 12 64 0`): live, the emerald was in
 one squad's share and the one iron pickaxe in another's. A drop fallen where no
 body can stand - into a gap a block high - is lost, not walked to: live, three builders in turn

@@ -2046,14 +2046,27 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         hands.forEach(h -> siteHands.add(h.name()));
         int squadsBest = siteHands.stream().mapToInt(n -> pickaxeTiers.getOrDefault(n, Hardness.HAND)).max().orElse(Hardness.HAND);
         Set<Cell> oreAside = new HashSet<>();
+        // And ore left in the dig that the one holding its rectangle can't take: the ore errand's,
+        // for the nearest who can - live, an emerald in a builder's rectangle stood, set aside for
+        // nobody since another squad's builder had the pickaxe, and the one who had it never sent.
+        Set<Cell> beyondHolder = new HashSet<>();
+        KeepPlan held = keepPlan;
         for (BlockPos c : siteClear(ground, digExcept)) {
             if (!world.isOre(c.x(), c.y(), c.z())) {
                 continue;
             }
-            if (world.hardness(c.x(), c.y(), c.z()).filter(h -> h.tool() == Hardness.Tool.PICKAXE && !h.drops(squadsBest)).isPresent()) {
+            Optional<Hardness> hardness = world.hardness(c.x(), c.y(), c.z()).filter(h -> h.tool() == Hardness.Tool.PICKAXE);
+            if (hardness.filter(h -> !h.drops(squadsBest)).isPresent()) {
                 oreAside.add(new Cell(c.x(), c.y(), c.z()));
+            } else if (held != null && hardness.isPresent()) {
+                held.boxes().entrySet().stream()
+                        .filter(e -> e.getValue().stream().anyMatch(b -> c.x() >= b.minX() && c.x() <= b.maxX() && c.z() >= b.minZ() && c.z() <= b.maxZ()))
+                        .findFirst()
+                        .filter(e -> !hardness.get().drops(pickaxeTiers.getOrDefault(e.getKey(), Hardness.HAND)))
+                        .ifPresent(e -> beyondHolder.add(new Cell(c.x(), c.y(), c.z())));
             }
         }
+        keepOreBeyondHolder.put(squad, Set.copyOf(beyondHolder));
         if (!oreAside.equals(state.keepOreAside)) {
             if (!oreAside.isEmpty()) {
                 LOG.info("[{}] the keep sets aside {} ore block(s) its builders' pickaxes won't get the drop from - {} - till one carries a better",
@@ -2606,6 +2619,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         Set<Cell> aside = new HashSet<>();
         squadStates.values().forEach(s -> aside.addAll(s.keepOreAside));
+        keepOreBeyondHolder.values().forEach(aside::addAll);
         return aside.stream().filter(c -> c.y() >= level - 1)
                 .filter(c -> {
                     Optional<Hardness> hardness = world.hardness(c.x(), c.y(), c.z());
@@ -2626,6 +2640,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * a builder dealt in with none here is done - written under {@link #keepPlanLock}, read by ticks.
      */
     private final Map<String, Long> keepDue = new ConcurrentHashMap<>();
+    /** Ore in the dig whose rectangle's holder can't take it, by squad as each last saw it: the ore errand's too. */
+    private final Map<String, Set<Cell>> keepOreBeyondHolder = new ConcurrentHashMap<>();
     /** The builders given work on the level under way, done or not - guarded by {@link #keepPlanLock}. */
     private final Set<String> keepDealt = new HashSet<>();
 
