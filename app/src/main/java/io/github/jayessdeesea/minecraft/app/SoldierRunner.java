@@ -1107,6 +1107,32 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * the chest being filled. Live, the depot's first chest filled with one builder's load, and every
      * builder after it walked to it, failed, and walked back.
      */
+    /**
+     * The camp workshop's chest that wouldn't take a load it reached and opened: its chest is the
+     * next of its row ({@link Workshop#chestCells}), fitted by the next soldier there with a full
+     * pack, as the depot's is. Live, the camp's one chest filled and five soldiers of two squads
+     * walked their loads to it and back, one failed trip after another.
+     */
+    private void workshopChestFull(Workshop shop, Position full) {
+        BlockPos cell = BlockPos.containing(full.x(), full.y(), full.z());
+        if (!shop.chest().equals(Optional.of(cell))) {
+            return;
+        }
+        List<BlockPos> row = shop.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS);
+        int at = row.indexOf(cell);
+        if (at < 0 || at + 1 >= row.size()) {
+            return;
+        }
+        Workshop next = shop.withChest(row.get(at + 1));
+        // The camp's: the common stockpile, re-read by every squad loop at the camp.
+        if (!shop.equals(campWorkshop)) {
+            return;
+        }
+        campWorkshop = next;
+        workshops.replaceAll((n, w) -> w.equals(shop) ? next : w);
+        LOG.info("[Workshop] the chest at {} is full - the next goes up at {} ({} of {})", cell, row.get(at + 1), at + 2, row.size());
+    }
+
     private void depotChestFull(Position full) {
         synchronized (keepPlanLock) {
             List<BlockPos> cells = keepChests;
@@ -5913,6 +5939,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
             if (keepHands.contains(name) && shop.isPresent()) {
                 depositor.full().ifPresent(this::depotChestFull);
+            } else if (shop.isPresent() && !atMine) {
+                depositor.full().ifPresent(f -> workshopChestFull(shop.get(), f));
             }
             turns.put(Hands.Routine.DEPOSITOR, turn(() -> depositor.active() || chestFitter.active(), free -> {
                 if (free && fitStore && atStand(status.position(), shop.get())) {
@@ -6103,8 +6131,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Integer below = nightBelow.get(unitOf(name, definition.squad()));
                 // Or holding where its squad leader sent it - and got to: waiting there is the order.
                 boolean resting = taskOf(unitOf(name, definition.squad()), Objective.Task.PatrolBase.class).isPresent()
-                        || planBook.of(name).role() == Role.RIFLEMAN
+                        || (planBook.of(name).role() == Role.RIFLEMAN
                         && planBook.of(name).current().filter(d -> d instanceof Directive.GoTo).isPresent()
+                        // Or any soldier saying it's in position: a builder told to wait for the next
+                        // rectangle where it stands is idle by its order, not stuck.
+                        || status.report() instanceof Report.InPosition)
                         && IdleWatch.holdingWhereSent(status.order(), status.position())
                         || below != null && status.position().y() < below - MINE_BELOW;
                 afterActionReview.commands.sample(squadTask(unitOf(name, definition.squad())), status.order().getClass().getSimpleName(), status.report());

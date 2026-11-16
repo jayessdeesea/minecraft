@@ -83,9 +83,10 @@ FORTIFY, Securing for SECURE, and so on - each hop timed, and each one late rais
 
 A soldier is always meant to be at something, by night too (the mine), so one that hasn't moved 2
 blocks any way in a minute, other than while its squad hides or sleeps - in its patrol base, or
-down its mine for the night - or holds where its squad leader sent it and got to (within the order's
-tolerances: live, one sent 60 blocks off and stood waist-deep in gravel was read as holding there
-for a day) - raises
+down its mine for the night - or holds where it was sent and got to, a rifleman on its squad
+leader's point or any soldier reporting itself in position, as a builder waiting where it stands
+for the next rectangle does (within the order's tolerances: live, one sent 60 blocks off and stood
+waist-deep in gravel was read as holding there for a day) - raises
 an alert in the log, once a spell (`[Alert]`, `app.IdleWatch`): its report, its order, which
 routine has its hands, and its squad's task. It's logged again when it moves on. A soldier held at
 a table or furnace shows its routine; one with free hands and a task its routines can't start on is
@@ -218,7 +219,8 @@ above so its lid lifts, none beside the stand or beside another chest - two
 side by side would join into one double chest (`Workshop.chestCells`). They're filled in turn: a
 keep builder's load that won't go into the chest it reached and opened marks that chest full
 (`Depositor.full`), and the depot's chest becomes the next cell, fitted by the first builder there
-with the logs for it or a full pack. A keep builder's pack is a full load with four slots still
+with the logs for it or a full pack. The camp's stockpile chest grows the same way, along its
+workshop's row: live, it filled, and five soldiers of two squads carried loads to it and back. A keep builder's pack is a full load with four slots still
 free (`SoldierRunner.KEEP_FULL_AT`), not two: a tool made at a table passes through planks, sticks
 and the table itself, a slot each, so a pack kept open is one that can still make things; with a
 full load it unloads before it makes the equipment ladder's next rung. While it's on its way to
