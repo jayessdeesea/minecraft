@@ -30,8 +30,9 @@ crew's ticks:
   116 s). The level's columns are read live now, and the foreman logged only six rectangles with
   ground its clearer couldn't cut, so the rest is elsewhere: between a builder's last block and the
   squad loop's next look (up to a second) it's labelled so, and the order's cover (`route`'s
-  `Clearing.toClear`) is a snapshot. Count the ticks so labelled per builder and rectangle, and
-  name what the clearer's cover held when it went empty.
+  `Clearing.toClear`) is a snapshot. The foreman now logs, at each level's end, every builder with
+  a tenth of its ticks or more so ("[Keep] Bob had nothing to cut 30% of y=80 ..."), its rectangle
+  and its cover's size: read those next.
 - **Mine-head depositors stand (field256, 08:40).** Gus and Carol, of the mining squads, stood a
   minute each at the mine head with a full load, the depositor's hands, ordered to (-26.5, 70,
   -19.5) - a cell the world model reads solid (feet and head) over air - and their walk to the

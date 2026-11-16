@@ -2543,6 +2543,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Set.copyOf(keepSpent.keySet()).forEach(n -> Optional.ofNullable(keepSpent.remove(n)).ifPresent(m -> spent.put(n, Map.copyOf(m))));
                 LevelPace pace = new LevelPace(plan.level(), now - keepLevelAt, digs, plan.crew().size(), spent);
                 keepRun = keepRun.plus(pace);
+                // Who stood with a rectangle and nothing its clearer would cut (backlog/keep-pace.md),
+                // a tenth of its ticks or more, and what it held at the level's end.
+                KeepPlan ended = plan;
+                spent.forEach((n, m) -> {
+                    int ticks = m.values().stream().mapToInt(Integer::intValue).sum();
+                    int idle = m.getOrDefault("clearer idle, nothing to cut", 0);
+                    if (ticks > 0 && idle * 10 >= ticks) {
+                        LOG.info("[Keep] {} had nothing to cut {}% of y={} ({} ticks), holding {}, its cover {} cell(s)", n, 100 * idle / ticks,
+                                ended.level(), idle, boxesSaid(ended.boxes().getOrDefault(n, List.of())),
+                                clearing.getOrDefault(n, List.of()).size());
+                    }
+                });
                 if (pace.slow()) {
                     LOG.warn("[Keep] pace: {}", pace.summary());
                 } else {
