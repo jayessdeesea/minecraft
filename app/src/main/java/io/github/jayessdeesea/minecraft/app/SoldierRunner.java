@@ -6088,7 +6088,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // picked up is past the stair it hasn't cut. Live, two soldiers in a cave under the mine's
             // stairs, their stair up laid out, held their hands for a stockpile and a pickup with no
             // route to either, and stood.
-            boolean cuttingOut = clearingTunnel.contains(name);
+            // Or builds its way down (the drill's stair down, an Order.Place): live, a builder given one
+            // held its hands for a stockpile it had no walk to, its order the stair's - Idle, with no
+            // stand from a builder that never got the hands - and stood.
+            boolean cuttingOut = clearingTunnel.contains(name) || placing.containsKey(name);
             turns.put(Hands.Routine.DEPOSITOR, turn(() -> (depositor.active() || chestFitter.active()) && !cuttingOut, handsFree -> {
                 boolean free = handsFree && !cuttingOut;
                 if (free && fitStore && atStand(status.position(), shop.get())) {

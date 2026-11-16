@@ -398,8 +398,9 @@ top step touches the ledge only at a corner, then each step and the block under 
 a soldier stood a quarter of an hour on a ledge with 8 logs, no squadmate carrying 24. One stranded
 below - boxed in a pocket, with no stair down to lay - gets the engineer's stair up instead
 (`Stairway.up`) - its hands the stair's alone till it's out, no load put in nor stack picked up
-past it (live, two in a cave under the mine's stairs held theirs for both, with no route to either,
-and stood) -: the cells to dig, one block up and one along a step to open ground, up to 64
+past it, as on a stair down (live, two in a cave under the mine's stairs held theirs for both, with
+no route to either, and stood; and one on a ledge with its stair down laid out held its for a
+stockpile, its order the stair's, and stood) -: the cells to dig, one block up and one along a step to open ground, up to 64
 steps - a tunnel to the surface from a dead end at a mine's bottom, as deep as a mine goes (live,
 one at y=25 under a head at y=70 was five short of 40) - winding left or right of its
 heading where a cave across the way or gravel over it stops it going straight (live, every one of
