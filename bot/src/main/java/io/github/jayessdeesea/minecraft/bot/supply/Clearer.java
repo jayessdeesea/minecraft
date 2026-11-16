@@ -140,6 +140,12 @@ public final class Clearer {
      * ({@link Clearing#nextInTunnel}).
      */
     public synchronized void tick(Position soldier, WorldView world, List<BlockPos> cover, boolean free, Optional<Box> strip, boolean tunnel) {
+        tick(soldier, world, cover, free, strip, tunnel, c -> false);
+    }
+
+    /** As {@link #tick(Position, WorldView, List, boolean, Optional, boolean)}, knowing the force's own {@code steps} (Clearing#next). */
+    public synchronized void tick(Position soldier, WorldView world, List<BlockPos> cover, boolean free, Optional<Box> strip, boolean tunnel,
+                                  Predicate<BlockPos> steps) {
         ticks++;
         if (cooldown > 0) {
             cooldown--;
@@ -220,7 +226,7 @@ public final class Clearer {
                 .orElse(true);
         Predicate<BlockPos> standable = s -> reachable.contains(s) && stands.test(world, s) && within.test(s);
         Optional<Clearing.Cut> cut = tunnel ? Clearing.nextInTunnel(world, cover, soldier, excluded, standable)
-                : Clearing.next(world, cover, soldier, excluded, standable);
+                : Clearing.next(world, cover, soldier, excluded, standable, steps);
         // Nothing on the ground reaches: the top layer from the air, on steps it builds - only with
         // blocks to build them of. Live, a hilltop over the keep stood while its builders stood under it.
         if (cut.isEmpty() && !tunnel && strip.isPresent() && inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.COBBLESTONE) > 0) {

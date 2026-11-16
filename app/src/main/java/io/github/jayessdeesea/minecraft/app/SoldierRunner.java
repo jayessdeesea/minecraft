@@ -6160,7 +6160,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // wide is cut from the neighbour's edge, not from on top of itself.
                     keepHands.contains(name) ? Optional.ofNullable(clearingStrip.get(name))
                             .map(b -> new Box(b.minX() - 1, b.minY(), b.minZ() - 1, b.maxX() + 1, b.maxY(), b.maxZ() + 1)) : Optional.empty(),
-                    clearingTunnel.contains(name))));
+                    clearingTunnel.contains(name), scaffolding::contains)));
             Filler filler = stoneFilling.contains(name) ? paver : plainFiller;
             (filler == paver ? plainFiller : paver).stop();
             fillers.put(name, filler);

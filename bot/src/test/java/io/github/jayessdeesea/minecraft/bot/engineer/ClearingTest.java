@@ -337,6 +337,19 @@ class ClearingTest {
         assertTrue(!cut.stand().equals(hump.offset(0, 1, 0)), "not on top of it: " + cut.stand());
     }
 
+    /**
+     * Standing on its own step, it cuts the step from where it stands - straight down onto known
+     * ground - not from a stand beside it it would build another step to reach.
+     */
+    @Test
+    void aStepItStandsOnIsCutFromOnIt() {
+        BlockPos step = new BlockPos(-2, 64, -2);
+        Clearing.Cut cut = Clearing.next(MOUND, List.of(step), new Position(-1.5, 65, -1.5), Set.of(), s -> true, step::equals).orElseThrow();
+
+        assertEquals(step.offset(0, 1, 0), cut.stand(), "from on it: " + cut.stand());
+        assertEquals(step, cut.block());
+    }
+
     /** Flat ground, feet at y=64, with a pit 3 deep in column (1, 1). */
     private static final WorldView PIT = new WorldView() {
         @Override

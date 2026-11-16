@@ -1101,7 +1101,11 @@ stands on the ground, never on the tree or the block, and reaches a block whose 
 within 5 blocks of its eyes: from the ground, six up. Leaves out of reach go by themselves once
 their tree's logs do, since cut-off leaves decay. One already up in a canopy cuts what it reaches
 from where it stands, never the block under its feet, and so works its way down: sent to stands
-on the ground, a soldier in a canopy over the camp had no way to them. A block it couldn't dig - no tool for it, out of
+on the ground, a soldier in a canopy over the camp had no way to them. One on the force's own
+steps does the same, the step under its feet too - straight down onto known ground - and so
+takes its climb down with it (live, a builder on its steps, sent to a stand beside the step under
+it, built another to reach that: twenty steps in two minutes); a hump of ground is still dug from
+beside it, not from on it. A block it couldn't dig - no tool for it, out of
 reach - it leaves for longer each time (`Setbacks`). FORTIFY isn't done while the dig box holds
 anything: its progress reads "N blocks over the camp's ground to dig" before the wall's count, so a
 tree too tall to fell from the ground shows as the task stalled.

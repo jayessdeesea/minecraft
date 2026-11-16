@@ -28,9 +28,9 @@ crew's ticks:
   outer rows (x=16..19 z=-50..-45), put about twenty steps in two minutes to cut cells at y=80-84 -
   themselves earlier steps, read as soil - and each step put up to reach one stood over the level
   and was the level's to dig in turn, by the same climb; it shut itself in once and cut its way
-  out. Within the clearing rules (scaffold to reach, nothing left high): the steps a builder puts
-  up to reach a cell are taken down by it as it comes back down - its own climb, not new work -
-  so the only steps over the level are ones nobody is climbing.
+  out. Built: a builder standing on the force's own step cuts from there, the step under it too
+  (Clearing.next), so it takes its climb down with it. Done when a wide level's pace line shows
+  steps put no more than its blocks' share, and the level goes at its crew's rate.
 - **Builders with no rectangle.** A third of the crew's ticks - most of it a crew bigger than a sparse level needs, which backlog/flatten-campaign.md sizes to the level. Find which builders the plan leaves
   out and why - fewer columns than builders at the level, a builder dropped from the crew between
   plans, the road's cutter - and give each one ground.

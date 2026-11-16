@@ -225,6 +225,16 @@ public final class Clearing {
      */
     public static Optional<Cut> next(WorldView world, List<BlockPos> cover, Position soldier, Set<BlockPos> excluded,
                                      Predicate<BlockPos> reach) {
+        return next(world, cover, soldier, excluded, reach, c -> false);
+    }
+
+    /**
+     * As {@link #next(WorldView, List, Position, Set, Predicate)}, standing on one of the force's own
+     * {@code steps} counted as standing in a canopy: it cuts what it reaches from there, the step under
+     * it too, and so its way down. A hump of ground is still dug from beside it, not from on it.
+     */
+    public static Optional<Cut> next(WorldView world, List<BlockPos> cover, Position soldier, Set<BlockPos> excluded,
+                                     Predicate<BlockPos> reach, Predicate<BlockPos> steps) {
         Cut best = null;
         double bestScore = Double.MAX_VALUE;
         int lowest = cover.stream().mapToInt(c -> order(world, c)).min().orElse(0);
@@ -232,8 +242,11 @@ public final class Clearing {
         // by a cut below - it cuts what it reaches from there, and so its way down. Live, a soldier in
         // a canopy over the camp was sent to stands on the ground it had no way to, and stood an hour.
         BlockPos here = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
+        // Or on its own step: live, a builder on its steps, sent to a stand beside the step under it,
+        // built another to reach that - twenty steps in two minutes, each one more to dig.
         boolean canStandHere = Pathfinder.standable(world, here) && !excluded.contains(here)
-                && (world.isLog(here.x(), here.y() - 1, here.z()) || world.leaves(here.x(), here.y() - 1, here.z()).isPresent());
+                && (world.isLog(here.x(), here.y() - 1, here.z()) || world.leaves(here.x(), here.y() - 1, here.z()).isPresent()
+                || steps.test(here.offset(0, -1, 0)));
         // Ground is dug a level at a time, the highest first: the top level's blocks are the only
         // ground on offer while any of them is left to dig, and they're taken in a sweep of the level,
         // not the nearest next (operator, 2026-11-13: clear one level before the next, no random walks).
