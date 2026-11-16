@@ -4539,7 +4539,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // A flatten builder's, the depot nearest it: its loads go in there, and there its chest is fitted.
             Workshop squadShop = soldiersWorkshop(workshopOf(state, statuses.get(i).position()), keepWorkshop, campWorkshop,
                     keepHands.contains(soldierName));
-            Optional.ofNullable(squadShop != null && squadShop == keepWorkshop && keepHands.contains(soldierName)
+            Workshop mainDepot = keepWorkshop;
+            Optional.ofNullable(squadShop != null && mainDepot != null && squadShop.stand().equals(mainDepot.stand()) && keepHands.contains(soldierName)
                             ? nearestDepot(statuses.get(i).position()) : squadShop)
                     .ifPresentOrElse(w -> workshops.put(soldierName, w), () -> workshops.remove(soldierName));
             // Its own unit's hand-over first, else one across squads.
@@ -6066,7 +6067,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean fitStore = (atMine ? stashOre && (inventory.count(ItemClass.CHEST) > 0 || inventory.count(ItemClass.LOG) >= STASH_LOGS)
                     : fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
-            if (keepHands.contains(name) && shop.isPresent() && shop.get() == keepWorkshop) {
+            // The main depot's by its stand, not the object: it's sited again each squad cycle.
+            Workshop mainDepot = keepWorkshop;
+            if (keepHands.contains(name) && shop.isPresent() && mainDepot != null && shop.get().stand().equals(mainDepot.stand())) {
                 depositor.full().ifPresent(this::depotChestFull);
             } else if (shop.isPresent() && !atMine) {
                 depositor.full().ifPresent(f -> workshopChestFull(shop.get(), f));
