@@ -1441,7 +1441,9 @@ over a neighbour's ground. A builder's own step or pillar (`SoldierRunner.scaffo
 tree's logs and leaves, are no ground and don't set the level - counted as the highest, it held every builder at its level for
 one block while eight stood by - but every level shares out any step standing at or over it with
 its ground, so it's dug with the level under it, and once the ground is gone what's left of them
-is the level: none is left high. At the start of each level the foreman
+is the level: none is left high. A column whose chunk nobody has loaded counts at its last known
+top (`WorldView.isLoaded`), not as gone: live, the big site's east edge was a chunk loaded and let
+go as builders moved, and the level went 86, 87, 86 a minute. At the start of each level the foreman
 shares what's left of it out among the builders on hand, every squad's: a rectangle of x and z
 each, none overlapping, near-equal in blocks, each to the builder nearest it. With less work than
 four blocks a builder, fewer are sent - a spire one block across is the nearest builder's - and the

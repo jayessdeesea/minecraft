@@ -86,6 +86,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public boolean isLoaded(int x, int z) {
+        return chunks.isLoaded(x, z);
+    }
+
+    @Override
     public boolean isGravel(int x, int y, int z) {
         return chunks.isGravel(x, y, z);
     }

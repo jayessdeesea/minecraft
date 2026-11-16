@@ -214,6 +214,11 @@ public final class ChunkCache {
         return BlockClassRegistry.oreOf(rawStateIdAt(x, y, z));
     }
 
+    /** Whether column ({@code x}, {@code z})'s chunk is loaded by any owner. */
+    public boolean isLoaded(int x, int z) {
+        return chunks.containsKey(chunkKey(Math.floorDiv(x, SECTION_SIZE), Math.floorDiv(z, SECTION_SIZE)));
+    }
+
     /** Whether the block is gravel - unknown blocks aren't. */
     public boolean isGravel(int x, int y, int z) {
         return BlockClassRegistry.isGravel(rawStateIdAt(x, y, z));

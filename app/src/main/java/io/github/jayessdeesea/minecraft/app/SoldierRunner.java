@@ -2092,6 +2092,30 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // a tree's last two blocks at y=78 stood over a finished keep with nobody given them.
         wholeDig.forEach(c -> (scaffolding.contains(c) || world.isLog(c.x(), c.y(), c.z()) || world.leaves(c.x(), c.y(), c.z()).isPresent()
                 ? stepTops : tops).merge(((long) c.x() << 32) ^ (c.z() & 0xffffffffL), c.y(), Math::max));
+        // A column whose chunk nobody has loaded is unknown, not dug: its last known top stands for it,
+        // or the level drops when the chunk goes and comes back when it's seen again. Live, the big
+        // site's east edge is the first column of a chunk mostly off it, loaded and let go as builders
+        // moved, and the level went 86, 87, 86 a minute, dealt out again each time.
+        synchronized (keepColumnTops) {
+            for (int x = ground.minX(); x <= ground.maxX(); x++) {
+                for (int z = ground.minZ(); z <= ground.maxZ(); z++) {
+                    long key = ((long) x << 32) ^ (z & 0xffffffffL);
+                    if (world.isLoaded(x, z)) {
+                        Integer now = tops.get(key);
+                        if (now == null) {
+                            keepColumnTops.remove(key);
+                        } else {
+                            keepColumnTops.put(key, now);
+                        }
+                    } else {
+                        Integer known = keepColumnTops.get(key);
+                        if (known != null) {
+                            tops.merge(key, known, Math::max);
+                        }
+                    }
+                }
+            }
+        }
         java.util.function.IntBinaryOperator top = (x, z) -> tops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
         java.util.function.IntBinaryOperator stepTop = (x, z) -> stepTops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
         int layer = tops.values().stream().mapToInt(Integer::intValue).max()
@@ -2640,6 +2664,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * a builder dealt in with none here is done - written under {@link #keepPlanLock}, read by ticks.
      */
     private final Map<String, Long> keepDue = new ConcurrentHashMap<>();
+    /** Each of the ground's columns' top as last seen loaded, by packed x and z - squad loops, under its own lock. */
+    private final Map<Long, Integer> keepColumnTops = new HashMap<>();
     /** Ore in the dig whose rectangle's holder can't take it, by squad as each last saw it: the ore errand's too. */
     private final Map<String, Set<Cell>> keepOreBeyondHolder = new ConcurrentHashMap<>();
     /** The builders given work on the level under way, done or not - guarded by {@link #keepPlanLock}. */

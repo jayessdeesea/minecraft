@@ -90,6 +90,14 @@ public interface WorldView {
         return Optional.empty();
     }
 
+    /**
+     * Whether column ({@code x}, {@code z})'s chunk is loaded - its blocks known, not taken for
+     * solid because nobody sees them. A view of a world all known says yes.
+     */
+    default boolean isLoaded(int x, int z) {
+        return true;
+    }
+
     /** Whether the block is gravel, which drops flint one time in ten. */
     default boolean isGravel(int x, int y, int z) {
         return false;

@@ -66,6 +66,18 @@ class ChunkCacheTest {
         }), "the other thread sees the block");
     }
 
+    /** A column is loaded while any owner holds its chunk: unknown is not air, and not dug. */
+    @Test
+    void aColumnIsLoadedWhileItsChunkIsHeld() {
+        ChunkCache cache = new ChunkCache();
+        assertFalse(cache.isLoaded(16, 5), "nobody's loaded it");
+        cache.load(1, 0, List.of(filled(AIR)), "owner");
+        assertTrue(cache.isLoaded(16, 5));
+        assertFalse(cache.isLoaded(15, 5), "the next chunk west is another");
+        cache.unload(1, 0, "owner");
+        assertFalse(cache.isLoaded(16, 5), "let go");
+    }
+
     @Test
     void unknownChunksAreTreatedAsSolid() {
         ChunkCache cache = new ChunkCache();
