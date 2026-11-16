@@ -47,9 +47,9 @@ public final class Hunter {
     /**
      * How far above or below its hunting ground game counts: an animal in a cave under the camp is
      * near as the crow flies and a long way on foot. Live, three soldiers stood two minutes over
-     * one 35 blocks down.
+     * one 35 blocks down; at eight, eight soldiers built steps toward one twelve below the site.
      */
-    static final double VERTICAL_REACH = 8;
+    static final double VERTICAL_REACH = 4;
     /** Ticks an animal chased and given up on is left for others. */
     static final int GIVEN_UP_TICKS = 2400;
     private final Map<Integer, Long> givenUp = new HashMap<>();
@@ -63,8 +63,20 @@ public final class Hunter {
     private int huntTicks;
     private int chargeTicks;
 
+    /**
+     * Which hunter has which animal, by entity, shared by the force's hunters: one animal, one hunter
+     * (docs/echelons/tenets.md, "work in parallel"). Live, eight soldiers chased one animal.
+     */
+    private final Map<Integer, String> claims;
+
     public Hunter(String name) {
+        this(name, new java.util.concurrent.ConcurrentHashMap<>());
+    }
+
+    /** A hunter sharing {@code claims} with the force's others. */
+    public Hunter(String name, Map<Integer, String> claims) {
         this.name = name;
+        this.claims = claims;
     }
 
     /** Whether there's game of the {@code kinds} wanted within {@link #radius} of {@code ground} to hunt. */
@@ -121,10 +133,14 @@ public final class Hunter {
         if (quarry == null) {
             givenUp.values().removeIf(until -> until <= ticks);
             Optional<TrackedEntity> nearest = world.gameNear(ground, radius).stream()
-                    .filter(e -> kinds.test(e.typeId()) && level(ground, e) && !givenUp.containsKey(e.entityId()))
+                    .filter(e -> kinds.test(e.typeId()) && level(ground, e) && !givenUp.containsKey(e.entityId())
+                            && claims.getOrDefault(e.entityId(), name).equals(name))
                     .min(Comparator.comparingDouble(e -> distance(soldier, e.position())));
             if (nearest.isEmpty()) {
                 return OptionalInt.empty();
+            }
+            if (!claims.computeIfAbsent(nearest.get().entityId(), id -> name).equals(name)) {
+                return OptionalInt.empty(); // another took it first
             }
             quarry = nearest.get().entityId();
             lastSeen = nearest.get().position();
@@ -138,6 +154,7 @@ public final class Hunter {
             // Gone from the tracker: killed, most likely, if it was within reach last we saw it.
             if (++unseenTicks > LOST_TICKS || distance(soldier, lastSeen) <= DeterministicSoldier.ATTACK_REACH + 1) {
                 LOG.info("{} {} the animal it hunted at {}", name, unseenTicks > LOST_TICKS ? "lost" : "killed", lastSeen);
+                claims.remove(quarry, name);
                 quarry = null;
                 pickupTicks = PICKUP_TICKS;
             }
@@ -164,6 +181,9 @@ public final class Hunter {
 
     /** Stops the hunt under way. */
     public synchronized void stop() {
+        if (quarry != null) {
+            claims.remove(quarry, name);
+        }
         quarry = null;
         lastSeen = null;
         pickupTicks = 0;

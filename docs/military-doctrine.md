@@ -267,8 +267,11 @@ A soldier short of rations hunts at food 14 or below, or wounded and below food 
 heal, and at any food with game in sight: by day, out of contact and not walling in a patrol base, it
 chases the nearest cow, pig, sheep, chicken or rabbit within 48 blocks of its squad's objective -
 not of itself, or one hunt after another carries it off; 96 once it's starving, at the food 6 it
-can no longer sprint at, since the ground round a camp is hunted out first - and within 8 blocks
-up or down of it, as an animal in a cave below is near only as the crow flies. It strikes it each
+can no longer sprint at, since the ground round a camp is hunted out first - and within 4 blocks
+up or down of it, as an animal in a cave below is near only as the crow flies. One animal is one
+hunter's: the force's hunters share their claims, and the next goes to the next animal (live, eight
+chased one twelve blocks down a cave and built steps toward it), and its walk to the animal needn't
+match the animal's height. It strikes it each
 time its weapon is charged and stands where it fell for the meat (`bot.supply.Hunter`); one it
 gives up on after a minute's chase it leaves for two. Food comes first:
 a soldier below food 18 with a ration in its pack, or wanting food with game in sight, puts down

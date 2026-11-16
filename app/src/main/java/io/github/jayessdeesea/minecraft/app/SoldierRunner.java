@@ -419,6 +419,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<BlockPos, String> furnaces = new ConcurrentHashMap<>();
     /** Logs and stand cells a soldier is working, shared so soldiers pick different trees. */
     private final Set<BlockPos> treeClaims = ConcurrentHashMap.newKeySet();
+    /** Which soldier hunts which animal, by entity: one hunter to an animal - the soldiers' hunters share it. */
+    private final Map<Integer, String> huntClaims = new ConcurrentHashMap<>();
     /**
      * The cells a lamplighter is putting a torch in, shared so soldiers light different ones. Not
      * {@link #treeClaims}: those say where nobody digs - a staircase's walkway, a base's walls - and
@@ -4581,7 +4583,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // on a step, not ground to stand at - held to half a block of it, the giver built a step
             // to reach it. Live, givers on the keep's finished floor put down step after step for a
             // receiver's y=65.32, and the builders dug each out as the site's highest.
-            boolean toSomeone = handsHeld.get(soldierName) == Hands.Routine.HANDOVER;
+            boolean toSomeone = handsHeld.get(soldierName) == Hands.Routine.HANDOVER || handsHeld.get(soldierName) == Hands.Routine.HUNTER;
             if (stand.isEmpty()) {
                 stand = Optional.ofNullable(hunters.get(soldierName)).flatMap(Hunter::standAt);
             }
@@ -5258,7 +5260,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         torchmakerRef.set(torchmaker);
         Lamplighter lamplighter = new Lamplighter(name, inventory, footing, torchClaims);
         lamplighters.put(name, lamplighter);
-        Hunter hunter = new Hunter(name);
+        Hunter hunter = new Hunter(name, huntClaims);
         hunters.put(name, hunter);
         Mason mason = new Mason(name, inventory, footing,
                 wallClaims);

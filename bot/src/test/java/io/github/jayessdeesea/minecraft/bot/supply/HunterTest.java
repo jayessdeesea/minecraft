@@ -63,6 +63,28 @@ class HunterTest {
         assertFalse(hunter.active(), "not chased");
     }
 
+    /**
+     * One animal, one hunter (docs/echelons/tenets.md, "work in parallel"): live, eight soldiers chased
+     * one animal and built steps toward it. Two sharing claims, one cow - one hunts it; with a second
+     * cow, the other hunts that one.
+     */
+    @Test
+    void oneAnimalIsOneHuntersAndTheNextGoesToTheNext() {
+        game.add(new TrackedEntity(7, COW, new Position(10.5, 64, 0.5)));
+        java.util.Map<Integer, String> claims = new java.util.concurrent.ConcurrentHashMap<>();
+        Hunter alice = new Hunter("Alice", claims), bob = new Hunter("Bob", claims);
+        Position at = new Position(0.5, 64, 0.5);
+
+        alice.tick(at, at, Hunter.SEARCH_RADIUS, kind -> true, field, true, 10);
+        bob.tick(at, at, Hunter.SEARCH_RADIUS, kind -> true, field, true, 10);
+
+        assertTrue(alice.active(), "Alice has the cow");
+        assertFalse(bob.active(), "Bob leaves it to her");
+        game.add(new TrackedEntity(8, COW, new Position(-10.5, 64, 0.5)));
+        bob.tick(at, at, Hunter.SEARCH_RADIUS, kind -> true, field, true, 10);
+        assertTrue(bob.active(), "the second cow is Bob's");
+    }
+
     @Test
     void aChaseGivenUpLeavesThatAnimalForAWhile() {
         game.add(new TrackedEntity(7, COW, new Position(10.5, 64, 0.5)));
