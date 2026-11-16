@@ -419,6 +419,39 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<BlockPos, String> furnaces = new ConcurrentHashMap<>();
     /** Logs and stand cells a soldier is working, shared so soldiers pick different trees. */
     private final Set<BlockPos> treeClaims = ConcurrentHashMap.newKeySet();
+    /** Each soldier's last step put down - its cell, how many times in a row, since when - its own tick's. */
+    private final Map<String, Object[]> lastStep = new ConcurrentHashMap<>();
+    /** How many times in a row a step goes into one cell before it's taken as refused. */
+    static final int STEP_TRIES = 8;
+    /** How long a refused step's cell is left alone. */
+    static final long STEP_REFUSED_MILLIS = 10_000;
+
+    /**
+     * Whether {@code name}'s step at {@code cell} is one the server keeps refusing - put there
+     * {@link #STEP_TRIES} times running - and so not put again for a while: the soldier stands,
+     * and the stuck alarm and the recovery drill take it from there. Live, a builder put one step
+     * every tick for four minutes, 700 times, standing in the cell it was putting it in.
+     */
+    private boolean refusedStep(String name, BlockPos cell) {
+        long now = clockwork.millis();
+        Object[] last = lastStep.get(name);
+        if (last != null && last[0].equals(cell)) {
+            int tries = (int) last[1] + 1;
+            if (tries == STEP_TRIES) {
+                LOG.warn("[{}] its step at {} {} {} keeps being refused - left for {} s", name, cell.x(), cell.y(), cell.z(),
+                        STEP_REFUSED_MILLIS / 1000);
+            }
+            if (tries >= STEP_TRIES && now - (long) last[2] < STEP_REFUSED_MILLIS) {
+                lastStep.put(name, new Object[]{cell, tries, last[2]});
+                return true;
+            }
+            lastStep.put(name, new Object[]{cell, tries >= STEP_TRIES ? 1 : tries, tries >= STEP_TRIES ? now : last[2]});
+            return false;
+        }
+        lastStep.put(name, new Object[]{cell, 1, now});
+        return false;
+    }
+
     /** Which soldier hunts which animal, by entity: one hunter to an animal - the soldiers' hunters share it. */
     private final Map<Integer, String> huntClaims = new ConcurrentHashMap<>();
     /**
@@ -2057,10 +2090,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         long now = clockwork.millis();
         int[] sidesNow = share == 0 ? PIT_SIDES_FIRST : PIT_SIDES_SECOND;
         int sideNow = sidesNow[Math.floorMod(keepPitShift.getOrDefault(squad, 0), sidesNow.length)];
-        // Round the ground's middle, past its widest half-span: off the site whatever its shape.
+        // Off each side's own edge, halfway along it: a long site's pit is beside it, not its length away.
+        // Live, a pit put past a 129-long site's half-span from its middle sent a builder 72 blocks east.
         Position mid = ground.centre();
         int midX = (int) Math.floor(mid.x()), midZ = (int) Math.floor(mid.z());
-        int edgeNow = ground.halfSpan() + Groundwork.BORROW_GAP + 3;
+        int halfX = (ground.maxX() - ground.minX()) / 2 + 1, halfZ = (ground.maxZ() - ground.minZ()) / 2 + 1;
+        int edgeNow = (sideNow == 0 || sideNow == 1 ? halfX : halfZ) + Groundwork.BORROW_GAP + 3;
         Position pitNow = new Position(midX + (sideNow == 0 ? edgeNow : sideNow == 1 ? -edgeNow : 0), 0,
                 midZ + (sideNow == 2 ? edgeNow : sideNow == 3 ? -edgeNow : 0));
         // Only a fetcher at the pit says it's dug out: one stuck far off finds nothing anywhere. Live,
@@ -2080,7 +2115,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         int[] sidesInTurn = share == 0 ? PIT_SIDES_FIRST : PIT_SIDES_SECOND;
         int side = sidesInTurn[Math.floorMod(keepPitShift.getOrDefault(squad, 0), sidesInTurn.length)];
-        int edge = ground.halfSpan() + Groundwork.BORROW_GAP + 3;
+        int sideHalf = side == 0 || side == 1 ? halfX : halfZ;
+        int edge = sideHalf + Groundwork.BORROW_GAP + 3;
         int pitX = midX + (side == 0 ? edge : side == 1 ? -edge : 0);
         int pitZ = midZ + (side == 2 ? edge : side == 3 ? -edge : 0);
         // Its surface, from high over the hill down: live, a guess at y=68 put the pit under a hill,
@@ -2101,7 +2137,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     LOG.info("[{}] {} carries {} blocks to climb on - fetches a load of dirt first", squad, h.name(), blocks);
                 }
                 orders.put(h.name(), new Order.Gather(Resource.SOIL,
-                        Groundwork.borrowPit(new Cell(midX, pitGround.get().y(), midZ), ground.halfSpan() + 1, side), Tasking.LOAD));
+                        Groundwork.borrowPit(new Cell(midX, pitGround.get().y(), midZ), sideHalf + 1, side), Tasking.LOAD));
             } else {
                 keepFetching.remove(h.name());
             }
@@ -6059,7 +6095,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Cobblestone stands in for whatever went in, dirt included, until the server's update says which.
             // A torch in the cell is broken first - it goes at a touch, and the server won't put a block
             // where one is: live, a soldier pillaring out of a pocket from a torch's cell jumped in place for good.
-            soldier.takePlacement().ifPresent(cell -> {
+            soldier.takePlacement().filter(cell -> !refusedStep(name, cell)).ifPresent(cell -> {
                 if (world.isTorch(cell.x(), cell.y(), cell.z())) {
                     session.startDigging(cell.x(), cell.y(), cell.z());
                     session.finishDigging(cell.x(), cell.y(), cell.z());
