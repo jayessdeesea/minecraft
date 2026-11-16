@@ -28,6 +28,12 @@ public final class Lamplighter {
     private static final Logger LOG = LogManager.getLogger(Lamplighter.class);
 
     static final int WALK_TICKS = 400;
+    /**
+     * Ticks more for each block to the cell - across, or twice that up or down, a stair's worth:
+     * live, cells down the mine 70 blocks off and 54 down were given the 20 seconds a cell beside
+     * the soldier gets, and every one failed.
+     */
+    static final int WALK_TICKS_A_BLOCK = 8;
     static final int ANSWER_TICKS = 40;
     static final int COOLDOWN_TICKS = 200;
     /** How long a cell that failed - not walked to, or its torch not taken - is first passed over. */
@@ -105,7 +111,7 @@ public final class Lamplighter {
         }
         // Not a cell that keeps failing: the next one along, and that one again only later.
         plan.stream().filter(c -> !claims.contains(c) && !passedOver.barred(c, ticks) && !world.isTorch(c.x(), c.y(), c.z()))
-                .min(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
+                .min(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()) + 2 * Math.abs(c.y() - soldier.y())))
                 .ifPresent(cell -> start(world, cell));
     }
 
@@ -115,13 +121,19 @@ public final class Lamplighter {
         standAt = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
         job = new Script(name, List.of(
                 new Step("walk to " + cell, () -> {
-                }, new Expect("standing in " + cell, this::onCell), WALK_TICKS),
+                }, new Expect("standing in " + cell, this::onCell), walkTicks(soldier, cell)),
                 new Step("torch at " + cell, () -> world.isTorch(cell.x(), cell.y(), cell.z()), () -> {
                     if (!footing.place(cell, ItemClass.TORCH)) {
                         throw new IllegalStateException("no torch carried - " + inventory.summary());
                     }
                     LOG.info("{} lights {} with a torch", name, cell);
                 }, new Expect("a torch at " + cell, () -> world.isTorch(cell.x(), cell.y(), cell.z())), ANSWER_TICKS)));
+    }
+
+    /** How long the walk to {@code cell} from {@code from} is given. */
+    static int walkTicks(Position from, BlockPos cell) {
+        double blocks = Math.abs(cell.x() + 0.5 - from.x()) + Math.abs(cell.z() + 0.5 - from.z()) + 2 * Math.abs(cell.y() - from.y());
+        return WALK_TICKS + (int) Math.ceil(blocks * WALK_TICKS_A_BLOCK);
     }
 
     private boolean onCell() {

@@ -26,6 +26,12 @@ crew's ticks:
 - **Builders with no rectangle.** A third of the crew's ticks - most of it a crew bigger than a sparse level needs, which backlog/flatten-campaign.md sizes to the level. Find which builders the plan leaves
   out and why - fewer columns than builders at the level, a builder dropped from the crew between
   plans, the road's cutter - and give each one ground.
+- **Mine-head depositors stand (field256, 08:40).** Gus and Carol, of the mining squads, stood a
+  minute each at the mine head with a full load, the depositor's hands, ordered to (-26.5, 70,
+  -19.5) - a cell the world model reads solid (feet and head) over air - and their walk to the
+  stockpile, the camp's 70 blocks off once their own workshop's chest was full and the next not
+  fitted, timed out. No re-siting line was logged, so the workshop's stand read standable. Find
+  whose stand that order is, and why it's solid.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done

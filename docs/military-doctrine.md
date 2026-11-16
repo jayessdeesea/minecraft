@@ -1009,7 +1009,9 @@ light data.
 No torch is planned on a wall's line, one laid out or the camp's still to be, where a torch
 would hold a cell the mason needs: a cell beside the line is lit from the nearest cell off it, and
 the line's own cells aren't counted dark. Each soldier takes the nearest planned cell no squadmate
-has taken, walks onto it and puts a torch down where it stands (`bot.supply.Lamplighter`). The server's block update confirms it. A soldier
+has taken - nearest counting a block up or down as two across - walks onto it, given 20 seconds and
+8 ticks a block of the way (live, cells down the mine 70 blocks off were given the 20 seconds a cell
+beside it gets, and every one failed), and puts a torch down where it stands (`bot.supply.Lamplighter`). The server's block update confirms it. A soldier
 out of torches makes eight at a time where it stands (`bot.supply.Torchmaker`, the same run as a
 patrol base's), and reports `Securing` meanwhile. One short of the makings gathers them first, where
 its squad last saw them nearest the objective: logs, then the cobblestone for a furnace (making
@@ -1144,7 +1146,9 @@ blocks is sent off base instead, `Order.Gather(SOIL, box, 32)` - a borrow pit 6 
 doesn't walk back for every fourth block. A mason back outside the wall line from a dirt run builds
 from the outside first, and claims its stand with its cell, so two masons never contest one stand.
 
-A soldier with nothing else to do keeps the camp the same way, whatever the squad's task: by day,
+A soldier with nothing else to do keeps the camp the same way, whatever the squad's task - but for
+leaves more than 5 blocks over the camp's ground, which decay once their trunk is cut (live, six
+soldiers stood under a canopy 11 blocks up with no log under it) - by day,
 out of contact and within 24 blocks of the camp, and within 6 of its ground's height, not down
 the mine under it - or by night inside the wall line of a camp lit
 to within 8 dark cells, since nothing spawns on lit ground, if it's armed and at half health or

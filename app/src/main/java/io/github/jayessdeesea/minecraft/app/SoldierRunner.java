@@ -1913,6 +1913,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     /** How far above or below the camp's ground a soldier is still at the camp, for its upkeep. */
     static final int CAMP_VERTICAL = 6;
+    /** How far over the camp's ground its leaves are still the camp's to cut. */
+    static final int LEAVES_OVER_CAMP = 5;
 
     /** Health a soldier keeps the camp by night with, besides a weapon: half its hearts. */
     static final double NIGHT_UPKEEP_HEALTH = 10;
@@ -2034,6 +2036,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }
             scaffolding.forEach(c -> except.add(new Cell(c.x(), c.y(), c.z())));
+        }
+        // Leaves high over the camp aren't its ground work: their trunk is, and cut, they decay on their
+        // own. Live, six soldiers stood under a canopy 11 blocks up with no log under it, a dig of
+        // twelve leaves between them, for minutes.
+        for (int x = dig.minX(); x <= dig.maxX(); x++) {
+            for (int z = dig.minZ(); z <= dig.maxZ(); z++) {
+                for (int y = feet.y() + LEAVES_OVER_CAMP + 1; y <= dig.maxY(); y++) {
+                    if (world.leaves(x, y, z).isPresent()) {
+                        except.add(new Cell(x, y, z));
+                    }
+                }
+            }
         }
         List<BlockPos> toDig = Clearing.toClear(world, dig, except);
         List<BlockPos> toFill = toDig.isEmpty()
