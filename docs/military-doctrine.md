@@ -649,8 +649,11 @@ one squad's share and the one iron pickaxe in another's. A drop fallen where no
 body can stand - into a gap a block high - is lost, not walked to: live, three builders in turn
 stood a minute over one. A step or pillar it builds is of
 dirt before cobblestone (`Footing.placeStep`): scaffolding, while cobblestone is a floor's and a
-wall's. One the server refuses eight times running in the same cell - the soldier standing in it,
-say - isn't put again for ten seconds (`SoldierRunner.refusedStep`, "its step at ... keeps being
+wall's. What stands in its cell that isn't solid and no block replaces - a flower, a torch, a
+sapling - is broken first, at a touch (live, three builders stood minutes in the dig, each step into
+a cell of wildflowers refused). One the server refuses eight times running in the same cell - the
+soldier standing in it, say - isn't put again for ten seconds, and the line says the world model's
+block there and under it as state ids (`SoldierRunner.refusedStep`, "its step at ... keeps being
 refused"): the soldier stands, and the stuck alarm and the recovery drill take it from there. Live,
 a builder put one step every tick for four minutes, 700 times.
 

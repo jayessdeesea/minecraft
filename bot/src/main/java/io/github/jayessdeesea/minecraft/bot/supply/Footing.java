@@ -64,7 +64,10 @@ public final class Footing {
         ItemClass first = built ? ItemClass.COBBLESTONE : ItemClass.DIRT;
         ItemClass second = built ? ItemClass.DIRT : ItemClass.COBBLESTONE;
         ItemClass block = inventory.slotOf(first) >= 0 ? first : inventory.slotOf(second) >= 0 ? second : ItemClass.LOG;
-        return place(cell, block, support) ? Optional.of(block) : Optional.empty();
+        // Clearing the cell first: a flower in it - not solid, and no block replaces it - refuses the
+        // step. Live, three builders stood minutes in the dig, each step into a cell of wildflowers
+        // refused every 10 s, and the level waited on them.
+        return placeClearing(cell, block, support) ? Optional.of(block) : Optional.empty();
     }
 
     /** As {@link #place(BlockPos, ItemClass)}, against the block on {@code support}'s side of {@code cell}. */

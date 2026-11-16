@@ -63,12 +63,6 @@ crew's ticks:
   force's view of the stockpile took every chest opened, the outposts' too, so the draw came and
   went with it - fixed, only the stockpile draws come from sets it. Left: watch that the draw now
   holds, and why the soldier's order read Idle between its tries.
-- **A step refused at a cell nothing names (field272, 13:52).** Ivy and Fran stood minutes at
-  (-7..-9, 73-74, -33..-35) in the dig, at heights 73.8 and 73.2, Ivy's step at (-7, 73, -35)
-  refused every 10 s; level y=76 took 494 s against a best of 37 s, the crew 36% "done, waiting for
-  the level" on them. The server's cell there is not air, chest, torch, water, lava, cobweb, stone
-  or cobblestone, nor in mineable/shovel, pickaxe, axe or hoe. The refused-step line now carries the
-  world model's state ids there and under it: name the block from the reports next time.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done
