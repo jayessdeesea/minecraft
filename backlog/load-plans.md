@@ -33,12 +33,13 @@ The fighting load by kind of work, the best of each kind kept up to its figure:
   wooden tools burn as the smelter's fuel.
 
 ## Done when
-- `LoadPlan` (`bot.craft`, pure): the loads above, and for an inventory and a kind of work the
-  slots that are surplus - the worst of each kind past its figure, and anything that's no part of
-  the load. Tested per work type.
-- `Depositor` stows the surplus slots on its trips to the depot, as it stows a full load now; the
-  depot's chests show them; a soldier short of a kind draws one there.
-- The mining load, with the stash for ore (built: docs/military-doctrine.md § 16, the store).
+- **Built** (docs/military-doctrine.md § 11, "The fighting load by kind of work"): `LoadPlan`'s
+  flattening and mining loads, the surplus slots, and `Depositor` putting them in on its trips -
+  with its loads, or on a trip of its own at three slots; the tool load two of each.
+- A soldier short of a kind draws one from the depot's spares (today it only makes one, or is
+  cross-levelled one by a squadmate).
+- The miner's third pickaxe made, not only kept.
+- The bow and its 16 arrows in every load from BUILDUP, once arrows can be had (Notes).
 - The depot's clear-out of old tiers, and wooden tools to the smelter's fuel.
 - Live: a keep hand's pack holds its load and what it's hauling, and the depot holds the spares.
 
