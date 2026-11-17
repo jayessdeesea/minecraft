@@ -952,6 +952,29 @@ class SquadSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
+    /**
+     * A keep's mine kept on disk whose well is dead - found dried up before a restart - moves on as the
+     * runner starts, and the runner starts: live (field383, field384), the move at start-up read a field
+     * the constructor hadn't set, and the garrison failed to start.
+     */
+    @Test
+    void aKeptMineWhoseWellIsDeadMovesOnAtStartUp() {
+        WallStore chests = new WallStore(state, "chests");
+        chests.save("keepmine", List.of(new BlockPos(-26, 16, -24)));
+        chests.save("deadwells", List.of(new BlockPos(-26, 70, -24)));
+        SimClock clock = new SimClock();
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString());
+
+        assertNotEquals(new Position(-26, 16, -24), chain.keepMine(), "moved off the dead well");
+        assertNotEquals(List.of(new BlockPos(-26, 16, -24)), chests.load("keepmine").orElseThrow(), "and kept on disk moved");
+    }
+
     /** Flat, with a shaft 6 deep down the 3x3 columns round the camp's mine head, (4, -4) from its centre. */
     private static int shaftAtTheMineHead(int x, int y, int z) {
         return x >= 3 && x <= 5 && z >= -5 && z <= -3 && y > GROUND - 6 && y <= GROUND ? SimServer.AIR : flat(x, y, z);
