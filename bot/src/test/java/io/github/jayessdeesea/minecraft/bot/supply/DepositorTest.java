@@ -134,7 +134,7 @@ class DepositorTest {
         run(ChestWindow.ANSWER_TICKS + 5, BESIDE, true);
 
         assertFalse(depositor.active());
-        assertEquals(List.of(), seen);
+        assertEquals(List.of(new Stockpile(FakeChestServer.CHEST_SLOTS * 64, 0, 0)), seen, "what the full chest holds, read when opened");
         assertEquals(Gatherer.CARRY_STONE, server.inventory.count(ItemClass.COBBLESTONE));
         assertTrue(depositor.full().isPresent(), "and it says which chest was full, for the depot's next");
     }

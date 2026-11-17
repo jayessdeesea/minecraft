@@ -220,7 +220,7 @@ chests. A builder's load goes into the depot nearest it, and its chest is fitted
 food, logs, tools - are from the main depot, whose chests hold the stores.
 No load is taken to a chest known full (live, with the depots' rows full of cobblestone, the crew's
 ticks were 38% failed trips). Cobblestone and dirt past 4,096 of either across the surface chests
-seen (operator, 2026-11-16), or either once every chest a builder could go to is full, is left at
+seen - each read when a load goes in, or when it's opened and found full (operator, 2026-11-16) - or either once every chest a builder could go to is full, is left at
 its depot's dump, not carried in: ground five blocks west of the stand, off the site and clear of
 the chests. A builder throws down every stack of it there but one of each kind, kept for steps,
 and the scavengers leave what lies within four blocks of a dump to despawn - a soldier picks up

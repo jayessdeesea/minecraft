@@ -190,6 +190,10 @@ public final class Depositor {
                                         + Math.pow(soldierAt.z() - (Math.floor(at.z()) + 0.5), 2))));
                 if (failed.step().equals(PUT_IN)) {
                     full = Optional.of(at);
+                    // Opened and read, if full: what it holds is the stockpile's too. Live, after a
+                    // restart every chest of the depots' rows was found full a failed trip at a time,
+                    // and none of it counted toward the stockpile's cap.
+                    stockpileSeen.accept(seen());
                 }
                 trips.failed(at, ticks, failed.step() + ": " + failed.reason());
                 finish();
