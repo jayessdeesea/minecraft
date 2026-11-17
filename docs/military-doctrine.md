@@ -481,7 +481,7 @@ the squad to falls.
   can't swing, as the vanilla client can't, which is why it isn't held up longer: an archer it
   can't close on keeps shooting.
 - **Out of reach both ways.** A hostile that fights hand to hand or explodes, out of a sword's reach with no
-  route to striking distance of it - water, a drop, a wall between - has none to the soldier
+  walk to striking distance of it - no steps put, no block dug, since it can do neither - - water, a drop, a wall between - has none to the soldier
   either: it isn't contact, and the soldier carries on with its order; once it's within reach, it
   is (live, the farm squad stood a night's start "in contact" with one across from it, each
   stepping at it into what stopped it, none striking). It's looked for swimming too, not only on

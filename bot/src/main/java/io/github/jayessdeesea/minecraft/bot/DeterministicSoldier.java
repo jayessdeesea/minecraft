@@ -508,6 +508,8 @@ public final class DeterministicSoldier implements Soldier {
             pinned = false; // a fresh contact gets a fresh look for a way to close
             pinnedCheckIn = 0;
             pinnedOn = nearestId;
+            noWalk = false;
+            noWalkCheckIn = 0;
         }
         // A hostile that fights hand to hand, out of reach with no way to it - water, a drop, a wall
         // between - has no way to the soldier either: not a fight, and the soldier carries on. Live,
@@ -517,7 +519,7 @@ public final class DeterministicSoldier implements Soldier {
         // squad stood a night in a cave 5 to 8 blocks from creepers, each backing off it with nowhere to
         // back to and too far to strike, and none of them moved.
         if (!threats.isEmpty() && !threats.get(0).shoots()
-                && distance(position, threats.get(0).position()) > ATTACK_REACH && pinned(world, threats.get(0).position())) {
+                && distance(position, threats.get(0).position()) > ATTACK_REACH && noWalkTo(world, threats.get(0).position())) {
             threats = List.of();
         }
         if (!threats.isEmpty()) {
@@ -595,6 +597,27 @@ public final class DeterministicSoldier implements Soldier {
 
         applyVerticalMovement(world);
         return attack;
+    }
+
+    /** Whether the last walk-only check found no way to the hostile, and ticks until the next. */
+    private boolean noWalk;
+    private int noWalkCheckIn;
+
+    /**
+     * Whether no walk - no steps put, no block dug, as a hostile goes - reaches within striking
+     * distance of {@code threat}: a way it could dig or build to isn't one the hostile can come by.
+     * Live, three of a squad stood a night 5 to 8 blocks from creepers they could have dug to and
+     * the creepers couldn't walk to. Planned once a {@link #PINNED_CHECK_TICKS}, on the ground or
+     * swimming.
+     */
+    private boolean noWalkTo(WorldView world, Position threat) {
+        if (noWalkCheckIn-- <= 0 && (onGround || wet)) {
+            noWalkCheckIn = PINNED_CHECK_TICKS;
+            Goal reach = new Goal(threat.x(), threat.y(), threat.z(), ATTACK_REACH, Pathfinder.MAX_DROP);
+            noWalk = !Pathfinder.find(world, standingCell(world, position), reach, PLAN_BUDGET,
+                    FallAllowance.NONE, 0, false).reachesGoal();
+        }
+        return noWalk;
     }
 
     /** How often, in contact with an archer, it checks there's still a way to close on it. */
