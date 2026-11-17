@@ -1577,9 +1577,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .ifPresent(c -> chainOfCommand.setKeepMine(new Position(c.x(), c.y(), c.z())));
         // A kept mine whose well is dead - found dried up or blocked before a restart - moves on at once:
         // live (field382), the night shift was sent back down the mine field381 had found dried up.
+        // (The constructor's own chainOfCommand: the field isn't set yet.)
         Position kept = chainOfCommand.keepMine();
         if (deadWells.stream().anyMatch(w -> w.x() == (int) Math.floor(kept.x()) && w.z() == (int) Math.floor(kept.z()))) {
-            chainOfCommand.onMineDriedUp((int) Math.floor(kept.x()), (int) Math.floor(kept.z())).ifPresent(this::keepMineSite);
+            chainOfCommand.onMineDriedUp((int) Math.floor(kept.x()), (int) Math.floor(kept.z())).ifPresent(site -> {
+                chestStore.save(MINE_SITE, List.of(BlockPos.containing(site.x(), site.y(), site.z())));
+                chestStore.save(MINES_TRIED, chainOfCommand.minesTried().stream().map(p -> BlockPos.containing(p.x(), p.y(), p.z())).toList());
+            });
         }
         this.planBook = new PlanBook(Path.of(stateDir));
         this.scoreboard = new Scoreboard(Path.of(stateDir));
@@ -5631,7 +5635,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                     if (seen) {
                         LOG.warn("[Outcome] no well can be sited at or round x={} z={} - SHORT", x, z);
-                        chainOfCommand.onMineDriedUp(state.stairs.head().x(), state.stairs.head().z()).ifPresent(this::keepMineSite); // by its head, not the finder's order (field381)
+                        chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite); // no well, no head: the site ordered
                     }
                 }
                 state.stairsFor = new int[]{x, z};
