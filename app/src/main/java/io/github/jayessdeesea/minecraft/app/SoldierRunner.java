@@ -3604,6 +3604,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Long> fellingSince = new ConcurrentHashMap<>();
     /** Trees let go as out of reach: never handed out again this run. */
     private final Set<BlockPos> treesLeft = ConcurrentHashMap.newKeySet();
+    /** What takes a cutter's hands off its tree for a while without its tree being the trouble. */
+    private static final Set<Hands.Routine> ERRANDS = java.util.EnumSet.of(Hands.Routine.SUPPLY_RUN, Hands.Routine.TORCHMAKER,
+            Hands.Routine.RATIONS, Hands.Routine.SEALER, Hands.Routine.HUNTER, Hands.Routine.ARMOURER, Hands.Routine.DEPOSITOR,
+            Hands.Routine.HANDOVER);
     /** How long a cutter works a tree with no log coming off it before it's let go. */
     static final long TREE_PATIENCE_MILLIS = 180_000;
     /** The stump each keep cutter replants before its next tree - squad loops write, the planting map reads. */
@@ -3669,6 +3673,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (tree != null) {
             int left = (int) tree.stream().filter(c -> world.isLog(c.x(), c.y(), c.z())).count();
             Integer was = fellingLeft.get(cutter);
+            // Its patience runs only while it's at the tree's work, not on an errand: live (field388), Eli
+            // made tools and fetched iron from the stockpile three minutes, and let go as out of reach a
+            // tree beside the workshop he'd never gone to.
+            Hands.Routine errand = handsHeld.get(cutter);
+            if (errand != null && ERRANDS.contains(errand)) {
+                fellingSince.put(cutter, now);
+            }
             if (was == null || left < was) {
                 fellingLeft.put(cutter, left);
                 fellingSince.put(cutter, now);

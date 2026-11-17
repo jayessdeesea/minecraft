@@ -318,8 +318,8 @@ to change; live, the party went out at 3 logs and was one builder); at the most 
 party cuts where a keep squad last saw trees, a tree at a time, felled whole as the level is dug -
 its logs and crown in a box of their own, only the wood in it dug, highest first, steps put up the
 trunk to reach - and then those steps dug out, so nothing's left to stunt what grows there next; a
-tree no log comes off in three minutes - a trunk left floating over the mine's shaft - is let go and
-not handed out again; and with each tree down the cutter stands where its logs fell, under the
+tree no log comes off in three minutes at its work (errands for tools, food or supply don't count
+against it) - a trunk left floating over the mine's shaft - is let go and not handed out again; and with each tree down the cutter stands where its logs fell, under the
 trunk, while its scavenger takes them up (live, one felled three trees and carried no more logs)
 (`SoldierRunner.fellingDig`; operator, 2026-11-17: get all the wood, so the trees fall, so you get
 saplings and replant; remove the scaffolding you added - live, cutters took what was in reach and
