@@ -1638,7 +1638,12 @@ is the level: none is left high. A column whose chunk nobody has loaded counts a
 top (`WorldView.isLoaded`), not as gone: live, the big site's east edge was a chunk loaded and let
 go as builders moved, and the level went 86, 87, 86 a minute. At the start of each level the foreman
 shares what's left of it out among the builders on hand, every squad's: a rectangle of x and z
-each, none overlapping, near-equal in blocks, each to the builder nearest it. With less work than
+each, none overlapping, near-equal in the time they take to dig - each block's break time with the
+crew's stone tools, on the ground, and a few ticks a block for the stand and pickup
+(`bot.world.BreakTime`: a block's hardness, tool and the tier its drop wants, then the tool's
+speed, its Efficiency, Haste and Fatigue, a fifth underwater and a fifth off the ground, in
+vanilla's order; operator, 2026-11-17) - not in blocks, a strip of stone being several of dirt -
+each to the builder nearest it. With less work than
 four blocks a builder, fewer are sent - a spire one block across is the nearest builder's - and the
 rest wait where they stand. Then it holds the plan (operator, 2026-11-15): each builder is given
 one or more touching rectangles and keeps them till they're cleared - its completion, logged as

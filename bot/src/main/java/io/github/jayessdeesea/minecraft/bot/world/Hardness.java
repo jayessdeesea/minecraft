@@ -20,6 +20,8 @@ public record Hardness(double hardness, int pickaxeTier, Tool tool) {
 
     /** No pickaxe needed: dug by hand, at hand speed. */
     public static final int HAND = -1;
+    /** A stone pickaxe's tier. */
+    public static final int STONE_TIER = 1;
 
     private static final double[] PICKAXE_SPEED = {2, 4, 6, 8, 9};
 
@@ -52,10 +54,14 @@ public record Hardness(double hardness, int pickaxeTier, Tool tool) {
      * whose tool is an axe or a shovel, one of speed {@code toolSpeed} - 1 for a hand or the wrong tool.
      */
     public int ticks(int heldTier, double toolSpeed) {
+        return breakTime(heldTier, toolSpeed).ticks(hardness).orElse(Integer.MAX_VALUE);
+    }
+
+    /** How a soldier holding a pickaxe of {@code heldTier} and a tool of {@code toolSpeed} breaks it, on dry ground, before modifiers. */
+    public BreakTime breakTime(int heldTier, double toolSpeed) {
         if (tool == Tool.PICKAXE) {
-            double speed = heldTier == HAND ? 1 : PICKAXE_SPEED[heldTier];
-            return (int) Math.ceil(hardness * (drops(heldTier) ? 30 : 100) / speed);
+            return BreakTime.of(heldTier == HAND ? 1 : PICKAXE_SPEED[heldTier], drops(heldTier));
         }
-        return (int) Math.ceil(hardness * 30 / Math.max(1, tool == Tool.HAND ? 1 : toolSpeed));
+        return BreakTime.of(Math.max(1, tool == Tool.HAND ? 1 : toolSpeed), true);
     }
 }

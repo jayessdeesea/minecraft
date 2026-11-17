@@ -91,4 +91,20 @@ class LevelPlanTest {
 
         assertEquals(Map.of("Alice", List.of(new Box(0, 70, 5, 7, 70, 5)), "Bob", List.of(new Box(8, 70, 5, 15, 70, 5))), plan);
     }
+
+    /** A strip of stone is more work than as many columns of dirt: shares are cut by the time, not the count. */
+    @Test
+    void sharesAreNearEqualInTheirTicksNotTheirColumns() {
+        java.util.List<LevelPlan.Column> row = new java.util.ArrayList<>();
+        for (int x = 0; x < 16; x++) {
+            row.add(new LevelPlan.Column(x, 0));
+        }
+        // Stone at x 0..3, twelve ticks a column; dirt past it, three.
+        java.util.function.ToIntFunction<LevelPlan.Column> cost = c -> c.x() < 4 ? 12 : 3;
+        java.util.List<java.util.List<LevelPlan.Column>> shares = LevelPlan.split(row, 2, cost);
+        org.junit.jupiter.api.Assertions.assertEquals(2, shares.size());
+        int a = shares.get(0).stream().mapToInt(cost).sum(), b = shares.get(1).stream().mapToInt(cost).sum();
+        org.junit.jupiter.api.Assertions.assertTrue(Math.abs(a - b) <= 12, "near-equal ticks: " + a + " and " + b);
+        org.junit.jupiter.api.Assertions.assertTrue(shares.get(0).size() != shares.get(1).size(), "so not as many columns each");
+    }
 }

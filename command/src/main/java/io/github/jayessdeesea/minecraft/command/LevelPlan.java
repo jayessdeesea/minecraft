@@ -40,12 +40,22 @@ public final class LevelPlan {
      * has work for. A builder with none isn't in the map.
      */
     public static Map<String, List<Box>> plan(int level, int top, List<Column> columns, List<Builder> builders) {
+        return plan(level, top, columns, builders, c -> 1);
+    }
+
+    /**
+     * As {@link #plan(int, int, List, List)}, the shares near-equal in {@code cost} - each column's ticks
+     * to dig, not its count (operator, 2026-11-17): a strip of stone dug with a wooden pickaxe is many
+     * times a strip of dirt's work, and a share of each the same size left one builder long after the rest.
+     */
+    public static Map<String, List<Box>> plan(int level, int top, List<Column> columns, List<Builder> builders,
+                                              java.util.function.ToIntFunction<Column> cost) {
         Map<String, List<Box>> plan = new LinkedHashMap<>();
         if (columns.isEmpty() || builders.isEmpty()) {
             return plan;
         }
         int parts = Math.max(1, Math.min(builders.size(), columns.size() / MIN_SHARE));
-        List<List<Column>> shares = split(columns, parts);
+        List<List<Column>> shares = split(columns, parts, cost);
         // The nearest pair first, each builder one share: the shortest walks, greedily.
         List<Builder> free = new ArrayList<>(builders);
         List<List<Column>> open = new ArrayList<>(shares);
@@ -72,6 +82,11 @@ public final class LevelPlan {
 
     /** {@code columns} in {@code parts} shares of near-equal size, each on its own side of a line of x or z. */
     static List<List<Column>> split(List<Column> columns, int parts) {
+        return split(columns, parts, c -> 1);
+    }
+
+    /** As {@link #split(List, int)}, near-equal in {@code cost}, each column's at least 1. */
+    static List<List<Column>> split(List<Column> columns, int parts, java.util.function.ToIntFunction<Column> cost) {
         if (parts <= 1 || columns.size() < 2) {
             return List.of(columns);
         }
@@ -83,19 +98,23 @@ public final class LevelPlan {
             List<Column> sorted = columns.stream().sorted(Comparator.comparingInt((Column c) -> byX ? c.x() : c.z())
                     .thenComparingInt(c -> byX ? c.z() : c.x())).toList();
             int leftParts = parts / 2;
-            int want = sorted.size() * leftParts / parts;
+            long[] upTo = new long[sorted.size() + 1];
+            for (int i = 0; i < sorted.size(); i++) {
+                upTo[i + 1] = upTo[i] + Math.max(1, cost.applyAsInt(sorted.get(i)));
+            }
+            double want = (double) upTo[sorted.size()] * leftParts / parts;
             // The cut falls between two different coordinates, so the shares' rectangles don't overlap:
-            // the nearest such boundary to the share wanted.
+            // the nearest such boundary to the share of the cost wanted.
             int cut = -1;
             for (int i = 1; i < sorted.size(); i++) {
                 int a = byX ? sorted.get(i - 1).x() : sorted.get(i - 1).z(), b = byX ? sorted.get(i).x() : sorted.get(i).z();
-                if (a != b && (cut < 0 || Math.abs(i - want) < Math.abs(cut - want))) {
+                if (a != b && (cut < 0 || Math.abs(upTo[i] - want) < Math.abs(upTo[cut] - want))) {
                     cut = i;
                 }
             }
             if (cut > 0) {
-                List<List<Column>> out = new ArrayList<>(split(sorted.subList(0, cut), leftParts));
-                out.addAll(split(sorted.subList(cut, sorted.size()), parts - leftParts));
+                List<List<Column>> out = new ArrayList<>(split(sorted.subList(0, cut), leftParts, cost));
+                out.addAll(split(sorted.subList(cut, sorted.size()), parts - leftParts, cost));
                 return out;
             }
         }

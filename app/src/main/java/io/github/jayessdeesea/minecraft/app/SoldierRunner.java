@@ -1031,6 +1031,28 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return new Position(x, (box.minY() + box.maxY()) / 2.0, z);
     }
 
+    /**
+     * Ticks to dig column ({@code x}, {@code z}) from {@code from} up to {@code to}: each block's break time
+     * with the crew's usual kit - a stone pickaxe, stone shovel and axe, on the ground ({@link BreakTime}) -
+     * and a few ticks a block for the stand and the pickup.
+     */
+    private int columnTicks(int x, int z, int from, int to) {
+        int ticks = 0;
+        for (int y = from; y <= to; y++) {
+            if (!world.solidHere(x, y, z)) {
+                continue;
+            }
+            ticks += BLOCK_HANDLING_TICKS + Math.min(Clearing.MAX_DIG_TICKS,
+                    world.hardness(x, y, z).map(h -> h.ticks(Hardness.STONE_TIER, STONE_TOOL_SPEED)).orElse(0));
+        }
+        return ticks;
+    }
+
+    /** Ticks a block costs past its break: the stand, the swing's start and the pickup. */
+    static final int BLOCK_HANDLING_TICKS = 4;
+    /** A stone shovel's or axe's speed. */
+    static final double STONE_TOOL_SPEED = 4;
+
     /** How far round a site its ground is looked for. */
     static final int GROUND_NEAR = 8;
     /** How far under the ground at its site a kept mine's head may be before it reads sited from below. */
@@ -2997,8 +3019,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (!resupplying.isEmpty() && dealtIn != all) {
                     LOG.info("[Keep] level y={}: {} sit(s) it out to resupply", level, resupplying.stream().sorted().toList());
                 }
+                // Shared by the time each column takes to dig, not its count (operator, 2026-11-17).
+                int digLevel = level;
+                java.util.function.ToIntFunction<LevelPlan.Column> digTicks = c -> columnTicks(c.x(), c.z(), digLevel, calm.applyAsInt(c.x(), c.z()));
                 Map<String, List<Box>> boxes = level == Integer.MIN_VALUE ? Map.of()
-                        : LevelPlan.plan(level, siteCeiling(site, level, calm, calmStep), columns, dealtIn);
+                        : LevelPlan.plan(level, siteCeiling(site, level, calm, calmStep), columns, dealtIn, digTicks);
                 plan = new KeepPlan(level, names, boxes, now);
                 keepPlan = plan;
                 keepDue.clear();
@@ -3090,8 +3115,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         continue;
                     }
                     String holder = most.get().getKey();
+                    int splitLevel = level;
                     Map<String, List<Box>> split = LevelPlan.plan(level, siteCeiling(site, level, calm, calmStep), most.get().getValue(),
-                            List.of(new LevelPlan.Builder(holder, at.get(holder)), newcomer));
+                            List.of(new LevelPlan.Builder(holder, at.get(holder)), newcomer),
+                            c -> columnTicks(c.x(), c.z(), splitLevel, calm.applyAsInt(c.x(), c.z())));
                     if (!split.containsKey(newcomer.name()) || !split.containsKey(holder)) {
                         continue;
                     }
