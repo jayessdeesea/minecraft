@@ -991,6 +991,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** How long after a staircase couldn't be sited it's looked for again: the water or lava may have gone. */
     static final long STAIRS_RETRY_MILLIS = 60_000;
+    /** How far above or below its objective a soldier may be for its squad's survey to be taken from it. */
+    static final int SURVEY_FROM_HEIGHT = 16;
     /** How far under the ground at its site a kept mine's head may be before it reads sited from below. */
     static final int BURIED_HEAD = 16;
 
@@ -1591,9 +1593,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // tower - respawned on a block over spawn - doesn't show the squad no ground at all; and
             // never one being recovered: live, the survey from one in a canopy, or in a hole under the
             // mine's landing, showed the squad 0 of 81 cells reachable, and it reported its task CANTCO.
+            // With an objective, from the one of them nearest it: live (field336), a squad released to the
+            // camp with three of its four still down the mine was surveyed from y=6, shown the camp's
+            // nearest reachable ground in the caves under it, and the one already up top had no route there.
             List<Position> formed = shown.stream().filter(s -> !(s.report() instanceof Report.Recovering))
                     .map(SoldierStatus::position).sorted(Comparator.comparingDouble(Position::y)).toList();
-            Position pointMan = formed.isEmpty() ? shown.getFirst().position() : formed.get(formed.size() / 2);
+            Optional<Position> toward = chainOfCommand.objective(p.squad()).map(Objective::location);
+            // Only one near the objective's height, though: one up a tower over it shows no ground at all.
+            Position pointMan = formed.isEmpty() ? shown.getFirst().position()
+                    : toward.flatMap(o -> formed.stream().filter(f -> Math.abs(f.y() - o.y()) <= SURVEY_FROM_HEIGHT)
+                    .min(Comparator.comparingDouble(f -> Math.hypot(f.x() - o.x(), f.z() - o.z()))))
+                    .orElse(formed.get(formed.size() / 2));
             // Climbing counts when the point man carries cobblestone to pillar with.
             int climbBlocks = shown.get(0).condition().flatMap(c -> c.kit()).map(k -> k.stone()).orElse(0);
             boolean stoneSteps = shown.get(0).condition().flatMap(c -> c.kit()).map(k -> k.pickaxe()).orElse(false);

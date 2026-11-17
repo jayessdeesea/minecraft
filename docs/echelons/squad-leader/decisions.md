@@ -13,7 +13,10 @@ platoon leader's to give as data.
 - **The objective** from the platoon leader: a place, the mission and intent in words, and the `Task`.
 - **Each soldier's status:** position, order, report, health, food and kit.
 - **The terrain round the objective, surveyed:** which ground is reachable from where the squad
-  stands (`bot.nav.TerrainSurveyor`), so it never has to read a grid.
+  stands (`bot.nav.TerrainSurveyor`), so it never has to read a grid - from the soldier nearest the
+  objective within 16 blocks of its height, else the one at the squad's middle height (live, a squad
+  three-quarters down the mine was surveyed from y=6 and sent to caves under the camp, out of reach
+  of the one on top).
 - **The time of day.**
 
 ## What it decides: `command.SquadOrder`
