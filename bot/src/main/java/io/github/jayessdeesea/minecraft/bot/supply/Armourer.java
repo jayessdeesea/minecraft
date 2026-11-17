@@ -128,6 +128,14 @@ public final class Armourer {
     /** Beside a table or furnace standing nearby, while the soldier walks to it to use it. */
     private Position toStation;
 
+    /** The cell of {@link #toStation}, null with none. */
+    private BlockPos toStationCell() {
+        return toStation == null ? null : BlockPos.containing(toStation.x(), toStation.y(), toStation.z());
+    }
+
+    /** Cells the flood for a station's reachable sides looks at: the 16-block search round the soldier. */
+    static final int STATION_REACH_BUDGET = 8_000;
+
     /**
      * The tables and furnaces it may use within {@link Digger#SEARCH_RADIUS} - in reach, or a walk
      * away: what it needn't make again.
@@ -261,6 +269,20 @@ public final class Armourer {
      */
     private void walkToStation(Position soldier, WorldView world, Optional<Workshop> workshop, CraftPlan plan) {
         Set<Workstation> needed = needed(plan);
+        // Only a side it can walk to: live (field348), a table left in a cave at y=16 by a workshop sited
+        // there was the nearest, and Ivy, at the mine's bottom below it, stood a minute with no route.
+        // Flooded only when a new station is chosen: the walk to one already chosen asks every tick.
+        java.util.concurrent.atomic.AtomicReference<Set<BlockPos>> walkable = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.function.Predicate<BlockPos> reaches = cell -> {
+            if (cell.equals(toStationCell())) {
+                return true;
+            }
+            if (walkable.get() == null) {
+                walkable.set(Pathfinder.reachable(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()),
+                        Digger.SEARCH_RADIUS + Clearer.REACH_MARGIN, STATION_REACH_BUDGET));
+            }
+            return walkable.get().contains(cell);
+        };
         for (Workstation station : List.of(Workstation.FURNACE, Workstation.CRAFTING_TABLE)) {
             if (!needed.contains(station)) {
                 continue;
@@ -271,7 +293,7 @@ public final class Armourer {
             }
             for (int[] side : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
                 BlockPos cell = at.get().offset(side[0], 0, side[1]);
-                if (Digger.standable(world, cell)) {
+                if (Digger.standable(world, cell) && reaches.test(cell)) {
                     if (toStation == null) {
                         LOG.info("{} walks to the {} at {} for {}", name, station, at.get(), describe(making));
                     }

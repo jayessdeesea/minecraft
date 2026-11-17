@@ -720,7 +720,7 @@ only a block it can walk to a stand beside (`Armourer.spotFor`, a flood fill fro
 live, builders left the keep for iron seen 40 blocks off through solid rock, and copper under a
 blocked stair, and each stood 20 seconds at "no route" before giving up, every few minutes, all day.
 It crafts what it can in its 2x2 inventory grid. What needs a table or a furnace it makes at one
-standing within 16 blocks, walked to - only one of a kind the making needs: live, a soldier smelting copper walked to a table, and in its reach went on to the workshop, and back, for five minutes - or else at its squad's workshop. What's made is put on: armour worn, the best weapon in hand. And whenever its hands are
+standing within 16 blocks, walked to - only one of a kind the making needs, with a side it can walk to (live, a table left in a cave over a mine's bottom held a miner a minute): live, a soldier smelting copper walked to a table, and in its reach went on to the workshop, and back, for five minutes - or else at its squad's workshop. What's made is put on: armour worn, the best weapon in hand. And whenever its hands are
 free, a soldier stands to: every two seconds it puts on any better armour it carries and takes its
 best weapon back in hand, rather than the seeds or dirt its last job left there. A first wooden sword takes
 about a minute. While crafting or smelting, the soldier stays where it began, since a window closes
@@ -1369,7 +1369,7 @@ past its last stretch it's cut a level deeper off the same stairs, 16 blocks dow
 tunnel there (`Staircase.deeper`; operator, 2026-11-16: go deeper, or pick other sites) - "[Outcome]
 the mine at ... is worked out at y=16 - its next level cut at y=0" - down to just above bedrock; past
 that it's said dried up, once - by a squad's second pair too, when no level is left under theirs - and
-the keep's mine moves on (a squad's Mine task reads DONE only when every one of its cutters on its level is done): the night shift and a squad released for iron are sent to a fresh site 32
+the keep's mine moves on (a squad's Mine task reads DONE only when every one of its cutters on its level is done; and by day any of the squad still down its last mine, within 64 of its head, climbs its stairs to the head before the day's work - live, a squad at a fresh mine's landing at dawn was sent to wedge places in the rock): the night shift and a squad released for iron are sent to a fresh site 32
 blocks further west, its head 8 clear of the flatten site and its bench (`ChainOfCommand.onMineDriedUp`,
 "[PL] the keep's mine at ... is dried up - the night shift's mine moves to ..."; kept on disk, so a
 restart keeps it where it went). A mine off the camp is headed on the ground there, read from the

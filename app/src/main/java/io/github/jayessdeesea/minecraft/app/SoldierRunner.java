@@ -234,6 +234,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         String torchbearer;
         /** The squad's staircase, while its objective is MINE. */
         Staircase stairs;
+        /** The last staircase it worked, kept by day: the way out for any of it still down there. */
+        Staircase lastStairs;
+        /** Soldiers sent up its last stairs, said once each climb. */
+        final Set<String> climbingOut = new HashSet<>();
         /** The squad's second level, for its second pair of cutters (the rules of a mine: two to a level). */
         Staircase second;
         /** The soldiers' own reports this cycle, before link-up relabels a replacement. */
@@ -4273,6 +4277,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** How far below the stairs' head a soldier is down the mine, for the mine base's workshop. */
     private static final int MINE_BELOW = 3;
+    /** How far across from its last mine's head a soldier below it is sent up its stairs first. */
+    static final double CLIMB_OUT_NEAR = 64;
 
     /**
      * How the squad's task stands, from the world where the task leaves a mark - the wall's open
@@ -5114,6 +5120,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return level;
         }).orElse(null);
         state.stairs = stairs;
+        if (stairs != null) {
+            state.lastStairs = stairs;
+        }
         if (stairs == null) {
             squadStairs.remove(squadName);
         } else {
@@ -5204,6 +5213,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 continue;
             }
             state.escaping.remove(soldierName);
+            // Still down the mine by day: up its stairs first, to their head - the day's work is a long way
+            // off and up, and from below no route there is found. Live (field348), Charlie came off the
+            // night shift 50 down at the mine's landing, the keep 100 blocks off, its survey 1 of 81 cells
+            // reachable, and its soldiers sent to wedge places in the rock round the point man.
+            Staircase cameFrom = state.lastStairs;
+            Position below = statuses.get(i).position();
+            if (state.stairs == null && cameFrom != null && !squadInContact && !state.recovery.recovering(soldierName)
+                    && below.y() < cameFrom.head().y() - MINE_BELOW
+                    && Math.hypot(below.x() - cameFrom.head().x(), below.z() - cameFrom.head().z()) <= CLIMB_OUT_NEAR) {
+                Position head = centre(cameFrom.head());
+                if (state.climbingOut.add(soldierName)) {
+                    LOG.info("[{}] {} climbs out of the mine to its head at {} first", squadName, soldierName, cameFrom.head());
+                }
+                byName.get(soldierName).receiveOrder(new Order.MoveTo(head.x(), head.y(), head.z(), 1.5, 1.5, Risk.LOW));
+                continue;
+            }
+            state.climbingOut.remove(soldierName);
             // A flatten builder's, the depot nearest it: its loads go in there, and there its chest is fitted.
             Workshop squadShop = soldiersWorkshop(workshopOf(state, statuses.get(i).position()), keepWorkshop, campWorkshop,
                     keepHands.contains(soldierName));
