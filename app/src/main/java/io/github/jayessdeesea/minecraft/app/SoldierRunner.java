@@ -234,6 +234,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         String torchbearer;
         /** The squad's staircase, while its objective is MINE. */
         Staircase stairs;
+        /** The squad's second level, for its second pair of cutters (the rules of a mine: two to a level). */
+        Staircase second;
         /** The soldiers' own reports this cycle, before link-up relabels a replacement. */
         List<SoldierStatus> reported = List.of();
         /** The objective's x and z the wall was laid out for: its key in {@code walls}. */
@@ -3850,6 +3852,44 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .map(Map.Entry::getKey).sorted().toList();
     }
 
+    /**
+     * The squad's second level, for its second pair of cutters (the rules of a mine: two soldiers to a
+     * level, a squad of four on two): with three or more carrying a pickaxe, on a mine off the camp,
+     * the next free level under every other's - kept on disk as the squad's second; worked out, the
+     * next free one again. None for a squad of fewer, or at the camp's mine.
+     */
+    private Staircase secondLevel(String squad, SquadState state, List<SoldierStatus> statuses) {
+        Staircase first = state.stairs;
+        String key = squad + " second";
+        long picks = statuses.stream().filter(st -> st.condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false)).count();
+        if (first == null || state.stairsFor == null || nearCamp(first.head().x(), first.head().z()) || picks <= CUTTERS_A_LEVEL) {
+            squadStairs.remove(key);
+            return null;
+        }
+        int x = state.stairsFor[0], z = state.stairsFor[1];
+        Staircase level = state.second != null && state.second.head().equals(first.head()) ? state.second
+                : keptMine(levelKey(x, z, key)).filter(k -> k.head().equals(first.head())).orElse(null);
+        List<String> crew = level == null ? List.of() : mineCrew(level);
+        boolean workedOut = level != null && !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done);
+        if (level == null || workedOut) {
+            squadStairs.remove(key);
+            Optional<Staircase> next = freeLevel(first, key);
+            if (next.isEmpty()) {
+                return level;
+            }
+            if (level != null) {
+                LOG.warn("[Outcome] [{}] its second level at y={} is worked out - its next cut at y={}", squad, level.bottom(), next.get().bottom());
+                crew.forEach(stairsProgress::remove);
+            }
+            level = next.get();
+            LOG.info("[{}] MINE: its second level of the mine at {}: y={}", squad, first.head(), level.bottom());
+            mineStore.save(mineKey(levelKey(x, z, key), level.well()), toKeep(level));
+            treeClaims.addAll(level.walkway());
+        }
+        squadStairs.put(key, level);
+        return level;
+    }
+
     /** Where a squad's own level of the mine ordered at ({@code x}, {@code z}) is kept on disk. */
     private static String levelKey(int x, int z, String squad) {
         // A file's name: a unit's name may be a path ("Alpha/miner"), which won't write.
@@ -4815,6 +4855,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         } else {
             squadStairs.put(squadName, stairs);
         }
+        state.second = secondLevel(squadName, state, statuses);
         if (stairs == null) {
             nightBelow.remove(squadName);
         }
@@ -4830,7 +4871,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // rules of a mine: two soldiers to a level). Until one does, all make one.
         List<String> cutters = stairs == null || squadInContact ? List.of() : statuses.stream()
                 .filter(st -> st.condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false))
-                .map(SoldierStatus::name).limit(CUTTERS_A_LEVEL).toList();
+                .map(SoldierStatus::name).limit(state.second == null ? CUTTERS_A_LEVEL : 2L * CUTTERS_A_LEVEL).toList();
+        Staircase secondLevel = state.second;
         String cutter = cutters.isEmpty() ? null : cutters.getFirst();
         // Securing: the torches still to put down round the objective, worked out again each cycle -
         // every torch put down, by anyone, changes what's left. Read once: the platoon leader's thread may
@@ -5169,7 +5211,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 mining.remove(soldierName);
             }
             if (stairs != null && cutters.contains(soldierName)) {
-                cutting.put(soldierName, stairs);
+                cutting.put(soldierName, cutters.indexOf(soldierName) < CUTTERS_A_LEVEL || secondLevel == null ? stairs : secondLevel);
             } else {
                 cutting.remove(soldierName);
                 stairsProgress.remove(soldierName);
