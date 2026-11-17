@@ -6769,6 +6769,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Securing ground: a soldier out of torches makes more where it stands, then puts them down.
             List<BlockPos> lights = lighting.getOrDefault(name, List.of());
             boolean torchesWanted = !lights.isEmpty() && inventory.count(ItemClassRegistry.ItemClass.TORCH) == 0;
+            // And for torches: ground to light, none carried, and not the makings - live (field350), Eli
+            // at the mine's head stood "short of {LOG=1}" to make them, with logs in the stores.
+            Optional<String> torchShort = torchesWanted && !torchmaker.active() && !Torchmaker.canMake(inventory)
+                    ? Optional.of(torchShortfall(inventory, workshops.get(name))) : Optional.empty();
             // A mine's cutter keeps a stock to light its strips as it cuts them (the rules of a mine:
             // torches enough): under its low mark, it makes up to its stock from the coal it mines.
             boolean minerShort = cutting.containsKey(name) && inventory.count(ItemClassRegistry.ItemClass.TORCH) < MINER_TORCHES_LOW;
@@ -6961,10 +6965,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             free && !threatened);
                 } else if (drawingStone.contains(name) || keepDrawing.contains(name) || keepClimbDrawing.contains(name)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
-                } else if (drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), logsAt)
+                } else if (drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), logsAt)
                         || depositor.drawing(ItemClass.LOG)) {
                     depositor.tickDraw(status.position(), logsAt.or(depositor::chestAt), ItemClass.LOG, DRAW_LOGS, free && !threatened
-                            && drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), logsAt));
+                            && drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), logsAt));
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));

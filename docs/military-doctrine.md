@@ -704,7 +704,7 @@ keeps being refused"); the blocks named in refused steps and stalls are counted,
 10th and 100th of a kind ("[Blocks]"), for the classes to fix: the soldier stands, and the stuck alarm and the recovery drill take it from there. Live,
 a builder put one step every tick for four minutes, 700 times.
 
-With no tree in reach for its kit's logs, it draws 8 from the nearest surface chest seen holding
+With no tree in reach for its kit's logs, or its torches' with ground to light and none carried, it draws 8 from the nearest surface chest seen holding
 them, as metal is drawn, while the stores were last seen holding that many, or haven't been seen
 since a restart (`SoldierRunner.drawsLogs`): live, a miner at the mine's head couldn't make a
 pickaxe with 71 logs in the keep's depot, his own stockpile the camp's chest.
