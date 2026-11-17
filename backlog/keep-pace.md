@@ -71,6 +71,13 @@ crew's ticks:
   what it fights however far that takes it from its order. Wanted: a leash - not closing past a
   distance from where its order holds it (the drill's 24 blocks of support?) - and the caves
   under the floor sealed or left to a squad sent for them. Both change how contact is fought.
+- **The mine's stairs go down but not up (field283-284).** Soldiers on the camp's mine stairs at
+  y=21-29 (x=-26..-24, z=-24..-22) are cut off - the walk flood finishes inside its budget (550)
+  and reaches nothing near the surface - and the recovery drill lays a stair up for some (93, 126
+  blocks) and none for others ("nothing to step up onto" all round). They got down - by a drop a
+  route allowed, or a step since taken - and can't climb back. Walk the stairs' cells from the
+  head down (Staircase.cuts) against the world for the first step a soldier can't go up: a
+  floored step's head room, a step dug from under it, a refill in the walkway.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done
