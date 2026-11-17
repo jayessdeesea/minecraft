@@ -63,13 +63,6 @@ crew's ticks:
   force's view of the stockpile took every chest opened, the outposts' too, so the draw came and
   went with it - fixed, only the stockpile draws come from sets it. Left: watch that the draw now
   holds, and why the soldier's order read Idle between its tries.
-- **A squad pinned in contact by a hostile it doesn't fight (field275, 15:58).** Delta, the farm
-  squad sent to the mine for the night, stood over a minute at (-56..-57, 60-63, 16-22), all three
-  "in contact" with one hostile, hands free and threatened; Mia's last blow fell at 15:58:04 and
-  none after. Mia did the same at (-36, 67, 45) on field268. Suspect a hostile seen but not reached -
-  across water, in a cave under the farm - holding the squad's react-to-contact drill. Log the
-  hostile's position and whether it's reachable when a squad's been in contact a minute without a
-  blow, then decide what the drill does with a hostile it can't close with.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done

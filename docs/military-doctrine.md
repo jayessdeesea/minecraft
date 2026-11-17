@@ -480,6 +480,11 @@ the squad to falls.
   in front once it has been up 5 ticks. Meanwhile the soldier walks at a fifth of its pace and
   can't swing, as the vanilla client can't, which is why it isn't held up longer: an archer it
   can't close on keeps shooting.
+- **Out of reach both ways.** A hostile that fights hand to hand, out of a sword's reach with no
+  route to striking distance of it - water, a drop, a wall between - has none to the soldier
+  either: it isn't contact, and the soldier carries on with its order; once it's within reach, it
+  is (live, the farm squad stood a night's start "in contact" with one across from it, each
+  stepping at it into what stopped it, none striking).
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
 - **Work under contact.** The soldiers in contact drop their ground work - the keep's rectangle, the

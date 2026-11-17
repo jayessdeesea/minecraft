@@ -503,9 +503,19 @@ public final class DeterministicSoldier implements Soldier {
             underFireTicks--;
         }
         cutting = List.of(); // set again below only while navigating onto a step being cut
-        if (threats.isEmpty() || !threats.get(0).shoots()) {
+        int nearestId = threats.isEmpty() ? -1 : threats.get(0).entityId();
+        if (nearestId != pinnedOn) {
             pinned = false; // a fresh contact gets a fresh look for a way to close
             pinnedCheckIn = 0;
+            pinnedOn = nearestId;
+        }
+        // A hostile that fights hand to hand, out of reach with no way to it - water, a drop, a wall
+        // between - has no way to the soldier either: not a fight, and the soldier carries on. Live,
+        // the farm squad stood a night's start "in contact" with one across from it, stepping at it
+        // into what stopped it, none of them striking; once it comes within reach, it's a fight.
+        if (!threats.isEmpty() && !threats.get(0).shoots() && !threats.get(0).explodes()
+                && distance(position, threats.get(0).position()) > ATTACK_REACH && pinned(world, threats.get(0).position())) {
+            threats = List.of();
         }
         if (!threats.isEmpty()) {
             TrackedEntity nearest = threats.get(0);
@@ -589,6 +599,8 @@ public final class DeterministicSoldier implements Soldier {
     /** Whether the last check found no way to the archer, and ticks until the next. */
     private boolean pinned;
     private int pinnedCheckIn;
+    /** The hostile {@link #pinned} was last looked at for. */
+    private int pinnedOn = -1;
 
     /**
      * Whether no route reaches within striking distance of the archer at {@code threat} - water, a
