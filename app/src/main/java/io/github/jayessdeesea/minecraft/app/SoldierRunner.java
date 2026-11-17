@@ -3609,6 +3609,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The stump each keep cutter replants before its next tree - squad loops write, the planting map reads. */
     private final Map<String, BlockPos> keepStumps = new ConcurrentHashMap<>();
     private final Map<String, Long> keepStumpSince = new ConcurrentHashMap<>();
+    /** Where each keep cutter's felled logs fell, and when it went to pick them up - squad loops only. */
+    private final Map<String, BlockPos> keepCollect = new ConcurrentHashMap<>();
+    private final Map<String, Long> keepCollectSince = new ConcurrentHashMap<>();
+    /** How long a cutter stands where its tree's logs fell, its scavenger taking them up. */
+    static final long COLLECT_MILLIS = 15_000;
+    /** How far down a felled trunk's column its logs are looked for. */
+    static final int FALL_LOOK_DOWN = 24;
     /** How far down its trunk's column a felled tree's ground is looked for, to replant on. */
     static final int STUMP_LOOK_DOWN = 4;
     /** How long a cutter tries to replant a stump - a sapling from the leaves it dug, or broken for - before it goes on. */
@@ -3628,6 +3635,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * own steps kept while a log stands, dug out once none does. Empty with no tree near.
      */
     private Optional<Order> fellingDig(String cutter, Position at, Set<Cell> except) {
+        // The logs it cut picked up first: they fall to the ground under the trunk, and a cutter gone on to
+        // its next tree leaves them lying - live (field385), Liam felled three trees and carried 2 logs
+        // before and 2 after. It stands where they fell while its scavenger takes them up.
+        BlockPos fell = keepCollect.get(cutter);
+        if (fell != null) {
+            if (clockwork.millis() - keepCollectSince.getOrDefault(cutter, 0L) < COLLECT_MILLIS) {
+                return Optional.of(new Order.MoveTo(fell.x() + 0.5, fell.y(), fell.z() + 0.5, 2, 3, Risk.LOW));
+            }
+            keepCollect.remove(cutter);
+            keepCollectSince.remove(cutter);
+        }
         // Its stump replanted before the next tree: it stands on it, its forester plants it (keepStumps).
         BlockPos stump = keepStumps.get(cutter);
         if (stump != null) {
@@ -3679,6 +3697,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 for (int down = 0; down < STUMP_LOOK_DOWN && !world.isSolid(foot.x(), foot.y() - 1, foot.z()); down++) {
                     foot = foot.offset(0, -1, 0);
                 }
+                // Where its logs fell: the ground under the trunk, however far down.
+                BlockPos ground = foot;
+                for (int down = 0; down < FALL_LOOK_DOWN && !world.isSolid(ground.x(), ground.y() - 1, ground.z()); down++) {
+                    ground = ground.offset(0, -1, 0);
+                }
+                keepCollect.put(cutter, ground);
+                keepCollectSince.put(cutter, clockwork.millis());
                 // Replanted where it stood, its headroom dug clear with its crown (operator, 2026-11-17).
                 if (world.isSoil(foot.x(), foot.y() - 1, foot.z()) && !world.isSolid(foot.x(), foot.y(), foot.z())) {
                     keepStumps.put(cutter, foot);
