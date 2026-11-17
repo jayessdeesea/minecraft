@@ -841,6 +841,11 @@ public final class DeterministicSoldier implements Soldier {
     private Goal wideGoal;
     /** The wider search, once the cheap ones gain no ground: a way round beyond one cheap search. */
     private static final int LONG_PLAN_BUDGET = 60_000;
+    /** The goal a wide search last failed for, and at which tick - tick loop only. */
+    private Goal wideFailedGoal;
+    private int wideFailedAt;
+    /** Ticks before a goal a wide search failed for is searched wide again: five seconds. */
+    static final int WIDE_RETRY_TICKS = 100;
     private static final double WAYPOINT_REACHED = 0.25;
 
     // Navigation state - tick-loop only, like verticalVelocity.
@@ -970,12 +975,19 @@ public final class DeterministicSoldier implements Soldier {
             }
             // A goal beyond one cheap search: once the cheap plans gain no ground, one search wider.
             // Live, two soldiers stood a day 80 blocks out, every plan ending where they stood.
-            if (!plan.reachesGoal() && failedPlans > 0) {
+            // Not again straight after one that didn't get there: commit 624's profile, three soldiers at a
+            // mine's bottom with no route out searched 60,000 cells at the end of each partial route, two
+            // thirds of the soldiers' CPU.
+            boolean wideJustFailed = goal.equals(wideFailedGoal) && navTicks - wideFailedAt < WIDE_RETRY_TICKS;
+            if (!plan.reachesGoal() && failedPlans > 0 && !wideJustFailed) {
                 Pathfinder.Result wide = Pathfinder.find(world, start, goal, LONG_PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(),
                         carriesPickaxe(), false, avoid);
                 if (wide.reachesGoal()) {
                     plan = wide;
                     wideGoal = goal;
+                } else {
+                    wideFailedGoal = goal;
+                    wideFailedAt = navTicks;
                 }
             }
             FallAllowance allowance = fallAllowance(current);

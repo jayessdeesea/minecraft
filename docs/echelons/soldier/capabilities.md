@@ -41,6 +41,9 @@ seconds or when stuck:
 - **Searches wider for a goal its cheap searches can't reach.** Once its plans gain no ground, it
   searches 15 times wider (`DeterministicSoldier.LONG_PLAN_BUDGET`) and, finding the way, goes on
   searching that wide for that goal: a cheap replan on the way round would lead back to the wall.
+  A wide search that doesn't get there isn't made again for that goal for 5 seconds
+  (`WIDE_RETRY_TICKS`): soldiers at a mine's bottom with no way out made one at the end of every
+  partial route, two thirds of the soldiers' CPU.
 - **Asks for help when it's out of ways of its own.** The ladder is: try again later, try another
   target or route, then ask. A routine whose last 3 tries in a row all failed, whatever they were
   at, reports CANTCO with the last one's place and reason - clearing, walling, lighting, farming, or
