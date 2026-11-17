@@ -3109,18 +3109,58 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return chosen.orElse(null);
     }
 
+    /** How far round the main depot furnaces are looked for: the keep, its mine head and its depots. */
+    static final int FURNACE_SCAN = 32;
+    /** The furnaces found round the main depot, and when it was looked: once a sweep's span. */
+    private volatile Set<BlockPos> furnacesScanned = Set.of();
+    private volatile long furnacesScannedAt = Long.MIN_VALUE / 2;
+
+    /** The furnaces standing within {@link #FURNACE_SCAN} of the main depot's stand, 8 up or down, looked for at most once a sweep's span. */
+    private Set<BlockPos> furnacesNearDepot(long now) {
+        Workshop depot = keepWorkshop;
+        if (depot == null || now - furnacesScannedAt < FURNACE_SWEEP_MILLIS) {
+            return furnacesScanned;
+        }
+        Set<BlockPos> found = new HashSet<>();
+        BlockPos at = depot.stand();
+        for (int x = at.x() - FURNACE_SCAN; x <= at.x() + FURNACE_SCAN; x++) {
+            for (int z = at.z() - FURNACE_SCAN; z <= at.z() + FURNACE_SCAN; z++) {
+                if (!world.isLoaded(x, z)) {
+                    continue;
+                }
+                for (int y = at.y() - 8; y <= at.y() + 8; y++) {
+                    if (world.workstation(x, y, z).equals(Optional.of(Workstation.FURNACE))) {
+                        found.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        furnacesScanned = Set.copyOf(found);
+        furnacesScannedAt = now;
+        return furnacesScanned;
+    }
+
     /** When each furnace was last emptied - the smelter's tick writes and reads. */
     private final Map<BlockPos, Long> furnacesSwept = new ConcurrentHashMap<>();
     /** How often a furnace is emptied: a smelt left in one stands no longer. */
     static final long FURNACE_SWEEP_MILLIS = 10 * 60_000;
 
-    /** The nearest of the force's furnaces - its depots' and the camp's - not emptied in {@link #FURNACE_SWEEP_MILLIS}. */
+    /**
+     * The nearest furnace not emptied in {@link #FURNACE_SWEEP_MILLIS}: the depots', the camp's, the
+     * squads' workshops', any a soldier has used, and any standing within {@link #FURNACE_SCAN} of the
+     * main depot - whoever put it there. Live, 3 iron ingots stood in a furnace by the keep's mine head
+     * that no run's log named, while three soldiers wore no armour.
+     */
     private Optional<Position> furnaceDue(Position from) {
         long now = clockwork.millis();
         List<Workshop> shops = new ArrayList<>(keepOutposts);
         Optional.ofNullable(keepWorkshop).ifPresent(shops::add);
         Optional.ofNullable(campWorkshop).ifPresent(shops::add);
-        return shops.stream().map(Workshop::furnace).distinct()
+        shops.addAll(workshops.values());
+        Set<BlockPos> known = new HashSet<>(shops.stream().map(Workshop::furnace).toList());
+        known.addAll(furnaces.keySet());
+        known.addAll(furnacesNearDepot(now));
+        return known.stream()
                 .filter(f -> world.workstation(f.x(), f.y(), f.z()).equals(Optional.of(Workstation.FURNACE)))
                 .filter(f -> now - furnacesSwept.getOrDefault(f, Long.MIN_VALUE / 2) >= FURNACE_SWEEP_MILLIS)
                 .map(f -> new Position(f.x() + 0.5, f.y(), f.z() + 0.5))
