@@ -366,7 +366,10 @@ echelons read - the same economy of attention doctrine optimizes for.
 
 *Resupply:* the operator can set up a supply point - a chest at `minecraft.supply.point` - and
 the platoon leader sees it next to the LOGSTAT. When the platoon leader gives a squad an objective there, the
-`command.Resupply` drill sends each soldier short of a weapon or armour to the chest. A soldier
+`command.Resupply` drill sends each soldier short of a weapon or armour to the chest - but not
+after dark when the chest is more than 32 blocks from the squad's objective: the squad shares what
+it carries until dawn (live, one night every soldier short was sent 100 blocks across the open to
+it, none went down the mine, and six died). A soldier
 short of kit who comes within reach of the chest draws from it on its own initiative, whatever its
 order (`bot.supply.SupplyRun`). It takes only what fills a gap - the best melee weapon if it has
 none, and one piece for each empty armour slot (`bot.supply.Quartermaster`) - then wears the

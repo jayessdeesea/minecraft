@@ -4993,6 +4993,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Soldiers said to have ground to walk despite their "no route", once each time it starts - squad loops. */
     private final Set<String> walksSaid = ConcurrentHashMap.newKeySet();
 
+    /**
+     * The supply point a squad short of rations is sent to: none after dark when it's a walk across the
+     * open from the squad's objective - the squad shares what it carries until dawn. Live (field385), at
+     * night every soldier short of food was sent 100 blocks west to the camp's supply point, none went
+     * down the mine, and six died on the way (0 ore of 16).
+     */
+    private Optional<Position> nightSupply(Position objective) {
+        boolean dark = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
+        return supplyPoint.filter(p -> !dark || Math.hypot(p.x() - objective.x(), p.z() - objective.z()) <= NIGHT_SUPPLY_REACH);
+    }
+
+    /** How far from its objective a squad goes to its supply point by night. */
+    static final int NIGHT_SUPPLY_REACH = 32;
+
     /** The engineer's stair down for a stranded soldier, from where it stands. */
     private Function<SoldierStatus, Optional<List<Cell>>> stairDown(String squadName) {
         return stuck -> {
@@ -5092,7 +5106,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<SoldierStatus> reported = cutOff(statuses.stream().map(s -> ownReports.getOrDefault(s.name(), s)).toList());
             orders = ReactToContact.orders(statuses, state.recovery.orders(reported,
                     Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, formation(order, statuses), state.recovery::recovering)),
-                            order.objective(), supplyPoint), stairDown(squadName), stairUp(squadName), pillarDown(squadName)));
+                            order.objective(), nightSupply(order.objective())), stairDown(squadName), stairUp(squadName), pillarDown(squadName)));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
         if (!Objects.equals(straggler, state.haltedFor)) {
