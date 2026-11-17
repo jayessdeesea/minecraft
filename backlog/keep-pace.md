@@ -63,6 +63,14 @@ crew's ticks:
   force's view of the stockpile took every chest opened, the outposts' too, so the draw came and
   went with it - fixed, only the stockpile draws come from sets it. Left: watch that the draw now
   holds, and why the soldier's order read Idle between its tries.
+- **A fight with no leash, through caves under the site (field277, 16:50-16:58).** Dana, a
+  flatten builder, went down from the level (~74) to a cave under the site at (-0.3, 52), back up,
+  down again, then east through the caves fighting one hostile after the next - each blow a step
+  toward the next - to (74.7, 47.2, -45.3), 75 blocks from the site and in water, the sealer
+  filling round it. The dig breaks into caves under its floor, and a soldier in contact closes on
+  what it fights however far that takes it from its order. Wanted: a leash - not closing past a
+  distance from where its order holds it (the drill's 24 blocks of support?) - and the caves
+  under the floor sealed or left to a squad sent for them. Both change how contact is fought.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done
