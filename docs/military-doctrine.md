@@ -436,7 +436,7 @@ foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A sol
 route - its own planner having tried building its way with whatever it carries - is stranded: cut off in
 a pocket, below where it's sent with no way up, or under the ground - more than 8 blocks of rock or
 soil over it, a tree's leaves and logs not counted, and none of the ground it can walk to out from
-under it - and sent to the surface, however big its cave (operator, 2026-11-17: a soldier digs itself
+under it, all of that ground searched - and sent to the surface, however big its cave (operator, 2026-11-17: a soldier digs itself
 out of anything; live, Ivy stood half an hour in a stone slot 26 under a hill, her cave too big to
 be a pocket). It's reported "no route" 20 squad cycles in a row (about
 20 seconds), since one failed hop across the camp isn't a soldier stuck; "no route" to where it's

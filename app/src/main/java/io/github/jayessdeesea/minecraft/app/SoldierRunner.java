@@ -4627,7 +4627,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // far side of it - never stranded, so never dug out. Not one sent somewhere underground: a miner.
             // And only with none of the ground it can walk to out from under it: one in a cut it walks out
             // of every day isn't stranded (live, field365, the farm squad at the mine's head).
-            boolean buried = s.order() instanceof Order.MoveTo m && buried(from) && !buried(new Position(m.x(), m.y(), m.z()))
+            // On a flood that ran out of ground, not budget, as below: live (field366), Gus down the mine at
+            // y=-24 had a stair up 99 blocks laid out for him, the mine's own stairs past the flood's budget.
+            boolean buried = s.order() instanceof Order.MoveTo m && cells < CUT_OFF_BUDGET && buried(from)
+                    && !buried(new Position(m.x(), m.y(), m.z()))
                     && walkable.stream().allMatch(c -> buried(new Position(c.x() + 0.5, c.y(), c.z() + 0.5)));
             if (cells <= CUT_OFF_CELLS || below || buried) {
                 walksSaid.remove(s.name());
