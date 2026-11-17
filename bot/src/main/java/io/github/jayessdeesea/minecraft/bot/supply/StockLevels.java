@@ -60,6 +60,9 @@ public final class StockLevels {
         levels.put(ItemClass.FLINT, new Level(64, 256));
         levels.put(ItemClass.FENCE, new Level(0, 64));
         levels.put(ItemClass.CRAFTING_TABLE, new Level(1, 4));
+        // The makings of tools and tables: a little carried to craft with, the rest stocked.
+        levels.put(ItemClass.PLANKS, new Level(0, 256));
+        levels.put(ItemClass.STICK, new Level(0, 256));
         levels.put(ItemClass.DIRT, new Level(0, 256));
         return Collections.unmodifiableMap(levels);
     }

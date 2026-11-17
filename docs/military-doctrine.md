@@ -243,6 +243,7 @@ counts are read each time a load goes in, or a chest is opened and found full.
 | Raw copper, copper ingots | 64 | 256 | raw copper left out of the metal pool, thrown last by a full pack |
 | Saplings, seeds, string, flint | 64 | 256 | thrown by a full pack |
 | Fences | 0 | 64 | thrown by a full pack |
+| Planks, sticks | 0 | 256 | a soldier keeps 16 of each to craft with; thrown by a full pack past the most |
 | Crafting tables | 1 | 4 | thrown by a full pack |
 | Dirt, cobblestone | - | 256 | left at the dump: so common they're all but had on demand |
 
@@ -682,12 +683,17 @@ the tool load of each at most.
 
 **The fighting load by kind of work** (operator, 2026-11-15; ATP 3-21.18: the fighting load on the
 soldier, the rest with the trains; `bot.craft.LoadPlan`, backlog/load-plans.md): the keep's hands
-flatten - two swords, two pickaxes, two shovels, two axes, a stack of torches - and a mine's cutters
+flatten - one sword, two pickaxes, two shovels, two axes, a stack of torches, armour worn and none
+spare: surface work by the base is the safest there is, so its load is lean for room to work in
+(operator, 2026-11-17: always have a sword, always have torches; no spares when working near the
+base) - and a mine's cutters
 mine - two swords, three pickaxes, a shovel, no axe, a stack of torches; food's basic load is
 `Subsistence`'s. The best of each is kept up to its figure - an axe counts as an axe, not a
 weapon - and what's past it, the worst of a kind, torches past a stack, and anything of no part of
 a load - an emerald, a mineral of any kind, a diamond (`ItemClass.MINERAL`: redstone, lapis,
-emerald, gold, quartz, amethyst) - goes into the depot on the soldier's next trip there with its loads, or on a
+emerald, gold, quartz, amethyst), and armour carried rather than worn (live, a builder with 5 spare
+pieces walked them to the depot and back every 70 s, his pack never emptied) - goes into the depot on
+the soldier's next trip there with its loads, or on a
 trip of its own once it's three slots: room in the pack for what the work digs, and the spare kit
 in the depot for whoever's short. Only from what it carries, cobblestone and wood, never quarried or chopped
 for. Live, builders climbed through copper armour while the dig's tools wore out with no spare.

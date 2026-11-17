@@ -68,7 +68,7 @@ class StockLevelsTest {
         assertEquals(16, StockLevels.throwPast(kept, kind -> 256).get(ItemClass.SAPLING));
         assertEquals(Integer.MAX_VALUE, StockLevels.throwPast(kept, kind -> 0).get(ItemClass.COBBLESTONE), "under 256: stored");
         assertEquals(320, StockLevels.throwPast(kept, kind -> 256).get(ItemClass.COBBLESTONE));
-        assertEquals(5, StockLevels.throwPast(Map.of(ItemClass.STICK, 5), kind -> 0).get(ItemClass.STICK), "no level: its keep");
+        assertEquals(5, StockLevels.throwPast(Map.of(ItemClass.TORCH, 5), kind -> 0).get(ItemClass.TORCH), "no level: its keep");
     }
 
     /** Diamonds and iron have no most: never at it, however many the depot holds (operator, 2026-11-17). */

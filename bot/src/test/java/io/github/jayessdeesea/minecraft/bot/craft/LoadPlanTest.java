@@ -45,8 +45,8 @@ class LoadPlanTest {
 
         List<Integer> surplus = LoadPlan.FLATTENING.surplus(inventory);
 
-        assertEquals(List.of(Inventory.MAIN_FIRST, Inventory.MAIN_FIRST + 3, Inventory.MAIN_FIRST + 6), surplus,
-                "the worst sword, the worst pickaxe and the emerald");
+        assertEquals(List.of(Inventory.MAIN_FIRST, Inventory.MAIN_FIRST + 2, Inventory.MAIN_FIRST + 3, Inventory.MAIN_FIRST + 6), surplus,
+                "all but the best sword - one, on the surface by the base - the worst pickaxe and the emerald");
     }
 
     /** Minerals and diamonds go to the depot: the stockpile's, not a working load's (operator, 2026-11-15). */
@@ -72,7 +72,7 @@ class LoadPlanTest {
         inventory.setSlot(Inventory.MAIN_FIRST + 2, new int[]{axe, 1});
         inventory.setSlot(Inventory.MAIN_FIRST + 3, new int[]{axe, 1});
 
-        assertEquals(List.of(), LoadPlan.FLATTENING.surplus(inventory), "all four kept");
+        assertEquals(List.of(), new LoadPlan(2, 2, 2, 2, 64).surplus(inventory), "all four kept");
     }
 
     /** Mining keeps a third pickaxe, and no axe; torches past a stack go to the depot. */

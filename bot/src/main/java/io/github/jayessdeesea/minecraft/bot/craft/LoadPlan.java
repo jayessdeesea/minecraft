@@ -29,7 +29,12 @@ import java.util.function.ToDoubleFunction;
 public record LoadPlan(int weapons, int pickaxes, int shovels, int axes, int torches) {
 
     /** The keep's hands: two of each tool, a stack of torches (food's basic load is Subsistence's). */
-    public static final LoadPlan FLATTENING = new LoadPlan(2, 2, 2, 2, 64);
+    /**
+     * Surface work near the base - flattening, cutting, farming - is the safest there is, so its load is
+     * lean for room to work in (operator, 2026-11-17): always a sword, but one; armour worn, never spare;
+     * a stack of torches; a spare of each digging tool, which wears out mid-dig.
+     */
+    public static final LoadPlan FLATTENING = new LoadPlan(1, 2, 2, 2, 64);
     /** A mine's cutters: a third pickaxe for the stone that wears them fastest, one shovel, no axe. */
     public static final LoadPlan MINING = new LoadPlan(2, 3, 1, 0, 64);
 
@@ -68,6 +73,14 @@ public record LoadPlan(int weapons, int pickaxes, int shovels, int axes, int tor
         for (int slot : torchSlots) {
             if (left - inventory.countAt(slot) >= torches) {
                 left -= inventory.countAt(slot);
+                out.add(slot);
+            }
+        }
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            // And armour carried, not worn - the set it wears is in its armour slots: live (field374), Bob
+            // carried 5 spare pieces among 9, his pack near full, and walked to the depot every 70 s with
+            // them, each trip putting in nothing of them.
+            if (ItemClassRegistry.classOf(inventory.itemAt(slot)).filter(k -> k == ItemClass.ARMOUR).isPresent()) {
                 out.add(slot);
             }
         }

@@ -1262,6 +1262,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         kept.put(ItemClassRegistry.ItemClass.STRING, 8);
         kept.put(ItemClassRegistry.ItemClass.FLINT, 16);
         kept.put(ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);
+        kept.put(ItemClassRegistry.ItemClass.PLANKS, 16);
+        kept.put(ItemClassRegistry.ItemClass.STICK, 16);
         kept.put(ItemClassRegistry.ItemClass.COBBLESTONE, Pack.COBBLESTONE_KEPT);
         return java.util.Collections.unmodifiableMap(kept);
     }
@@ -1270,7 +1272,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final Map<ItemClassRegistry.ItemClass, Integer> CARRIED = Map.of(
             ItemClassRegistry.ItemClass.DIRT, Pack.DIRT_KEPT, ItemClassRegistry.ItemClass.SEEDS, Pack.SEEDS_KEPT,
             ItemClassRegistry.ItemClass.SAPLING, 64, ItemClassRegistry.ItemClass.STRING, 64, ItemClassRegistry.ItemClass.FLINT, 64,
-            ItemClassRegistry.ItemClass.FENCE, 0, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1, ItemClassRegistry.ItemClass.WHEAT, 64);
+            ItemClassRegistry.ItemClass.FENCE, 0, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1, ItemClassRegistry.ItemClass.WHEAT, 64,
+            ItemClassRegistry.ItemClass.PLANKS, 16, ItemClassRegistry.ItemClass.STICK, 16);
     /** What a mine's cutter keeps: its backfill's dirt, and ore before the rest (the rules of a mine). */
     static final Map<ItemClassRegistry.ItemClass, Integer> MINE_CARRIED = Map.of(
             ItemClassRegistry.ItemClass.DIRT, Pack.MINER_DIRT_KEPT, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);
