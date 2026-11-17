@@ -2793,7 +2793,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 keepDue.clear();
                 keepDealt.clear();
                 keepDealt.addAll(boxes.keySet());
-                boxes.forEach((n, bs) -> keepDue.put(n, now + dueMillis(bs, columns)));
+                Map<String, Position> dealtAt = all.stream().collect(Collectors.toMap(LevelPlan.Builder::name, LevelPlan.Builder::at));
+                int dealtLevel = level;
+                boxes.forEach((n, bs) -> keepDue.put(n, now + dueMillis(bs, columns, climb(dealtAt.get(n), dealtLevel))));
                 LOG.info("[Keep] level y={}: {} block(s) left, {} of {} builder(s) on it - {}", level, columns.size(), boxes.size(), all.size(),
                         boxes.entrySet().stream().map(e -> e.getKey() + " " + boxesSaid(e.getValue())).toList());
                 String chief = keepForeman;
@@ -2852,7 +2854,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     List<Box> mine = new ArrayList<>(boxes.getOrDefault(to, List.of()).stream().filter(hasWork).toList());
                     mine.addAll(work);
                     boxes.put(to, List.copyOf(mine));
-                    keepDue.put(to, now + dueMillis(mine, columns));
+                    keepDue.put(to, now + dueMillis(mine, columns, climb(at.get(to), level)));
                     keepDealt.add(to);
                     given.add(to);
                     LOG.info("[Keep] {}'s {} {} - given to {}", orphan.getKey(), boxesSaid(work),
@@ -2884,8 +2886,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                     boxes.put(holder, split.get(holder));
                     boxes.put(newcomer.name(), split.get(newcomer.name()));
-                    keepDue.put(holder, now + dueMillis(split.get(holder), columns));
-                    keepDue.put(newcomer.name(), now + dueMillis(split.get(newcomer.name()), columns));
+                    keepDue.put(holder, now + dueMillis(split.get(holder), columns, climb(at.get(holder), level)));
+                    keepDue.put(newcomer.name(), now + dueMillis(split.get(newcomer.name()), columns, climb(newcomer.at(), level)));
                     keepDealt.add(newcomer.name());
                     given.add(holder);
                     given.add(newcomer.name());
@@ -2984,11 +2986,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final long DUE_SLACK_MILLIS = 60_000;
 
     /** When {@code boxes}, with {@code columns} left at the level, are due done from now. */
-    private static long dueMillis(List<Box> boxes, List<LevelPlan.Column> columns) {
+    private static long dueMillis(List<Box> boxes, List<LevelPlan.Column> columns, int climb) {
         long blocks = columns.stream().filter(c -> boxes.stream().anyMatch(b -> c.x() >= b.minX() && c.x() <= b.maxX()
                 && c.z() >= b.minZ() && c.z() <= b.maxZ())).count();
-        return DUE_SLACK_MILLIS + blocks * DUE_MILLIS_A_BLOCK;
+        return DUE_SLACK_MILLIS + blocks * DUE_MILLIS_A_BLOCK + climb * DUE_MILLIS_A_CLIMB;
     }
+
+    /** Blocks a builder at {@code at} climbs to {@code level}: none from at or over it, or not known where. */
+    private static int climb(Position at, int level) {
+        return at == null ? 0 : Math.max(0, level - (int) Math.floor(at.y()));
+    }
+
+    /**
+     * Time a rectangle's due is given for each block its builder climbs to it, on steps it puts up -
+     * a step a few seconds. Live (field310), a hilltop's last cells 13 over the builders timed out on
+     * the climb, were handed on, and the next builder climbed from the bottom again.
+     */
+    static final long DUE_MILLIS_A_CLIMB = 5_000;
 
     /** Whether {@code box} has ground, a step or a tree left at or over {@code level}. */
 

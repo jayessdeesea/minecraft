@@ -1586,7 +1586,9 @@ four blocks a builder, fewer are sent - a spire one block across is the nearest 
 rest wait where they stand. Then it holds the plan (operator, 2026-11-15): each builder is given
 one or more touching rectangles and keeps them till they're cleared - its completion, logged as
 "[Keep] Bob done with ...", read off the world as it is, not the site's scan of up to a second
-before: live, on hilltop levels a builder stood that second after every rectangle - or till they're due: a minute to get there and six seconds a block
+before: live, on hilltop levels a builder stood that second after every rectangle - or till they're due: a minute to get there, six seconds a block, and five a block of climb from where
+the builder stood up to the level (live, a hilltop's last cells 13 over the builders timed out on the
+climb and were handed on, the next builder climbing from the bottom again)
 (`SoldierRunner.dueMillis`); due and not done, they're given to the nearest builder who's done
 ("[Keep] Bob's ... timed out - given to Carol"), as a builder's are when it goes off the crew. A
 builder with nothing to cut - given nothing yet on the level (come onto it once it was dealt, a
