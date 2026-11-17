@@ -2783,7 +2783,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // (the live check's), or ground really come back (both had it lower).
             if (plan != null && plan.level() != Integer.MIN_VALUE && level > plan.level()) {
                 Map<Long, Integer> last = lastScanTops;
-                LOG.info("[Keep] the level rose from y={} to y={}: {}", plan.level(), level, columns.stream().limit(4)
+                // The columns that raised it - at the new level - not the level's first few, which may be its steps.
+                int risen = level;
+                LOG.info("[Keep] the level rose from y={} to y={}: {}", plan.level(), level, columns.stream()
+                        .filter(c -> calm.applyAsInt(c.x(), c.z()) == risen).limit(4)
                         .map(c -> {
                             long key = ((long) c.x() << 32) ^ (c.z() & 0xffffffffL);
                             Integer was = last.get(key);
