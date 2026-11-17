@@ -373,6 +373,15 @@ public class ChainOfCommand implements DisposableBean {
                 return new Objective("Cut the next mine while the ground's level is small", nextMine.get(),
                         "Released from the flatten: the keep's next mine cut before its first is spent", new Objective.Task.Mine());
             }
+            // Nothing else to do: the stockpile's bread toward its most, the lowest priority there is
+            // (operator, 2026-11-17: low priority to get to 1024, but if the workers are idle, do it).
+            Stockpile held = stores;
+            if (held != null && held.rations() < Subsistence.STOCKPILE_MOST) {
+                Optional<Objective> farm = toShortfall(PlatoonSergeant.Shortfall.FOOD, squad, woods, wanted);
+                if (farm.isPresent()) {
+                    return farm.get();
+                }
+            }
             Foothold base = foothold;
             return new Objective("Work the camp while the ground's level is small", base != null ? base.camp() : objective.location(),
                     "Released from the flatten: its level wants " + wanted + " builder(s)", new Objective.Task.None());

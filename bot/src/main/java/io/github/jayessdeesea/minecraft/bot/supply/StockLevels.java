@@ -51,7 +51,7 @@ public final class StockLevels {
         levels.put(ItemClass.LOG, new Level(io.github.jayessdeesea.minecraft.command.Keep.LOGS_RESERVE,
                 io.github.jayessdeesea.minecraft.command.Keep.LOGS_MOST));
         levels.put(ItemClass.FOOD, new Level(Subsistence.STOCKPILE_RESERVE, Subsistence.STOCKPILE_MOST));
-        levels.put(ItemClass.WHEAT, new Level(64, 256));
+        levels.put(ItemClass.WHEAT, new Level(64, 256)); // bread's own levels are Subsistence's
         // So common they're all but had on demand (operator, 2026-11-17): handy, never hoarded.
         levels.put(ItemClass.COBBLESTONE, new Level(0, 256));
         levels.put(ItemClass.SAPLING, new Level(64, 256));

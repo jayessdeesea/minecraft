@@ -917,8 +917,8 @@ class SquadSimulationTest {
     }
 
     /**
-     * Bread beyond a basic load is the force's: Alice, carrying 80, puts a stack of 16 in the camp's
-     * chest, fitting it at the workshop, and keeps her basic load. (Drawn out by whoever's short:
+     * Bread beyond what a soldier carries to share is the force's: Alice, carrying 144, puts a stack of 16
+     * in the camp's chest, fitting it at the workshop, and keeps her 128 (Subsistence.CARRY_MOST). (Drawn out by whoever's short:
      * DepositorTest; given across squads first, near: aSoldierNoSquadmateCanFeedIsSharedRationsAcrossSquads.)
      */
     @Test
@@ -935,12 +935,13 @@ class SquadSimulationTest {
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
                         new int[]{37, SimServer.ITEM_BREAD, 64}, new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{39, SimServer.ITEM_BREAD, 64},
                         new int[]{10, SimServer.ITEM_OAK_LOG, 4})))
                 .run();
 
         clock.advance(2 * 60_000);
 
-        assertEquals(64, server.count("Alice", ItemClassRegistry.ItemClass.FOOD), "Alice keeps her basic load; last server events: "
+        assertEquals(Subsistence.CARRY_MOST, server.count("Alice", ItemClassRegistry.ItemClass.FOOD), "Alice keeps what she carries to share; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 

@@ -25,7 +25,7 @@ import java.util.function.Consumer;
 /**
  * One soldier carrying gathered materials to the stockpile - the supply point's chest
  * (docs/military-doctrine.md §12): walk to it, open it, shift-click in the material it has a full
- * load of - and the rations it carries beyond its basic load ({@link Subsistence#BASIC_LOAD}), whole
+ * load of - and the rations it carries beyond what it keeps to share ({@link Subsistence#CARRY_MOST}), whole
  * stacks while the basic load stays in its pack - close it. Only that: a soldier quarrying stone keeps the logs it carries, because its
  * wooden pickaxe wears out in 59 blocks and the next one is made from them. What the chest holds
  * once it's done is reported ({@code stockpileSeen}), so the chain of command knows the stockpile
@@ -472,7 +472,7 @@ public final class Depositor {
             Optional<ItemClass> itemClass = ItemClassRegistry.classOf(inventory.itemAt(slot));
             if (itemClass.isPresent() && load.contains(itemClass.get())) {
                 chest.quickMove(chest.windowSlotOf(slot));
-            } else if (storesFood && itemClass.equals(Optional.of(ItemClass.FOOD)) && foodLeft - inventory.countAt(slot) >= Subsistence.BASIC_LOAD) {
+            } else if (storesFood && itemClass.equals(Optional.of(ItemClass.FOOD)) && foodLeft - inventory.countAt(slot) >= Subsistence.CARRY_MOST) {
                 foodLeft -= inventory.countAt(slot);
                 chest.quickMove(chest.windowSlotOf(slot));
             }
@@ -487,7 +487,7 @@ public final class Depositor {
         int food = inventory.count(ItemClass.FOOD);
         for (int slot = 0; slot <= Inventory.HOTBAR_LAST; slot++) {
             if (ItemClassRegistry.classOf(inventory.itemAt(slot)).equals(Optional.of(ItemClass.FOOD))
-                    && food - inventory.countAt(slot) >= Subsistence.BASIC_LOAD) {
+                    && food - inventory.countAt(slot) >= Subsistence.CARRY_MOST) {
                 return true;
             }
         }
