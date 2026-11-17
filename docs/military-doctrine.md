@@ -234,7 +234,7 @@ counts are read each time a load goes in, or a chest is opened and found full.
 | Material | Reserve | Most | Past the most |
 |---|---|---|---|
 | Diamonds, raw iron, iron ingots | - | none | never shed; the depot's row grows for them |
-| Logs | - | none | never shed |
+| Logs | 64 | 256 | never shed; the keep's wood party works to these |
 | Bread, wheat | 64 | 256 | bread past it stays in the packs; wheat past a farmer's 64 goes in |
 | Raw copper, copper ingots | 64 | 256 | raw copper left out of the metal pool, thrown last by a full pack |
 | Saplings, seeds, string, flint | 64 | 256 | thrown by a full pack |
@@ -304,9 +304,12 @@ some, build crates at the depot and replant; a spruce every four blocks; the lum
 is the foreman's errand in place of a rectangle, two builders at most and a third of the crew,
 never the foreman. One
 plants the keep's grove while it has a cell with nothing growing, with a sapling carried or trees
-seen; when the builders and the stockpile hold fewer logs between them than Class IV's reorder point
-(below) - never under 8 - and until they hold its stockage objective - never under 16 - the party
-cuts trees instead, where a keep squad last saw them, 16 logs a builder - back with
+seen. Between them the builders and the stockpile hold logs against the logs' levels: under Class
+IV's reorder point (below) - never under the reserve, 64 - the whole party cuts; from there to the
+stockage objective - never under the most, 256 - one builder stays on it, a producer kept at work
+so the reserve is refilled before it's an emergency (operator, 2026-11-17: an emergency is a signal
+to change; live, the party went out at 3 logs and was one builder); at the most none does. The
+party cuts where a keep squad last saw trees, 16 logs a builder - back with
 them it's on the dig again and another goes - after
 making itself a stone axe from the cobblestone it carries, a log in 15 ticks rather than the hand's
 60. The rest dig. The foreman says it on the net: "KEEP WOOD 16", "KEEP PLANT x z". The grove is a

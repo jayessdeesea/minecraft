@@ -37,6 +37,19 @@ crew's ticks:
   Field269, 30 minutes after: 323 steps still, three quarters on the east bench at y=85-86 under
   the hill beyond the site (to about y=90, the floor at 77) - builders on the hill with no walk
   down, building their way off: backlog/flatten-campaign.md's graduated slope.
+- **A builder on its own step's column, taken off the crew and left with no order (field360,
+  06:31-06:37).** Bob dug 9 of 10 blocks of his rectangle, put a step up and stood at (24.5, 97,
+  -20.1) on the one cobblestone at (24, 96, -20), air at (24, 96, -21) and (25, 96, -20). Two
+  things went wrong, and between them cost 371 s idle:
+  - His position rounds to the open cell beside the column, so every route from it failed - "no
+    route from (25, 97, -20) to within 0 of (25, 97, -20)", four times. A start cell should be the
+    one under the body that holds it (`Pathfinder`'s start, the soldier's footprint).
+  - Recovery laid out a 1-block stair down and took him off the crew, but he stood `Idle` with
+    `order Idle[]` the whole time - the stair never reached him as an order. Find where the squad's
+    recovery order is lost for a keep hand (`Recovery.orders` gives an `Order.Place` for one with
+    the blocks - he carried 43 dirt - and the squad's per-soldier `route` should keep it).
+  The squad leader also answered his CANTCO with a whole-squad wedge move, the point man halting
+  for him. One occurrence so far: watch for a repeat.
 - **Builders with no rectangle.** A third of the crew's ticks - most of it a crew bigger than a sparse level needs, which backlog/flatten-campaign.md sizes to the level. Find which builders the plan leaves
   out and why - fewer columns than builders at the level, a builder dropped from the crew between
   plans, the road's cutter - and give each one ground.

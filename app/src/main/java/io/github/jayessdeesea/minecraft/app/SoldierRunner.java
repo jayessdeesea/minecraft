@@ -3370,7 +3370,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (!party.cutters().equals(was.cutters()) || !party.planter().equals(was.planter())) {
             int logs = crew.stream().mapToInt(PlatoonSergeant.Hand::logs).sum() + wood.stockpileLogs();
             LOG.info("[Keep] the wood party: {} cut(s) trees for the depot ({} logs between the builders and the stockpile, {} wanted){}",
-                    party.cutters().isEmpty() ? "nobody" : party.cutters(), logs, Keep.LOGS_WANTED,
+                    party.cutters().isEmpty() ? "nobody" : party.cutters(), logs, (int) wood.back(),
                     party.planter().map(n -> ", " + n + " plants the keep's grove").orElse(""));
             String chief = keepForeman;
             if (chief != null) {

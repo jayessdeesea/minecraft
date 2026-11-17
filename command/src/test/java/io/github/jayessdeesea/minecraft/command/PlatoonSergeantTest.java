@@ -163,19 +163,20 @@ class PlatoonSergeantTest {
         assertTrue(party.planter().isEmpty(), "no trees and no sapling: nothing to plant either");
     }
 
-    /** Out below half the logs wanted, back at all of them: not in and out with each chest made. */
+    /**
+     * In strength under the logs' reserve, one standing from there to their most, none at it: a
+     * producer kept at work between the two, not sent out at 3 logs (operator, 2026-11-17).
+     */
     @Test
-    void outBelowHalfBackAtAll() {
-        List<PlatoonSergeant.Hand> twelve = crew(0, "Alice", "Bob", "Carol", "Dana", "Eli", "Fran");
-        PlatoonSergeant.WoodParty stocked = PlatoonSergeant.woodParty(twelve, "Alice", PlatoonSergeant.WoodParty.NONE,
-                new PlatoonSergeant.Wood(Keep.LOGS_WANTED - 2, true, false, false));
-        assertFalse(stocked.cutting(), "below what's wanted, but not below half: no party");
+    void theWholePartyUnderTheReserveOneStandingToTheMost() {
+        List<PlatoonSergeant.Hand> six = crew(0, "Alice", "Bob", "Carol", "Dana", "Eli", "Fran");
 
-        PlatoonSergeant.WoodParty out = new PlatoonSergeant.WoodParty(Set.of("Fran"), Optional.empty(), true);
-        assertTrue(PlatoonSergeant.woodParty(twelve, "Alice", out, new PlatoonSergeant.Wood(Keep.LOGS_WANTED - 2, true, false, false))
-                .cutting(), "out already: it stays out until all are in");
-        assertFalse(PlatoonSergeant.woodParty(twelve, "Alice", out, new PlatoonSergeant.Wood(Keep.LOGS_WANTED, true, false, false))
-                .cutting(), "and comes back at all of them");
+        assertEquals(2, PlatoonSergeant.woodParty(six, "Alice", PlatoonSergeant.WoodParty.NONE,
+                new PlatoonSergeant.Wood(Keep.LOGS_RESERVE - 1, true, false, false)).cutters().size(), "under the reserve: in strength");
+        assertEquals(1, PlatoonSergeant.woodParty(six, "Alice", PlatoonSergeant.WoodParty.NONE,
+                new PlatoonSergeant.Wood(Keep.LOGS_RESERVE, true, false, false)).cutters().size(), "the reserve met: one stays on it");
+        assertFalse(PlatoonSergeant.woodParty(six, "Alice", PlatoonSergeant.WoodParty.NONE,
+                new PlatoonSergeant.Wood(Keep.LOGS_MOST, true, false, false)).cutting(), "at the most: none");
     }
 
     /** A cutter part-loaded stays out until its load is in. */
@@ -191,8 +192,9 @@ class PlatoonSergeantTest {
         assertTrue(PlatoonSergeant.woodParty(six, "Alice", PlatoonSergeant.WoodParty.NONE, burning).cutting(), "60 logs under a reorder point of 80");
         PlatoonSergeant.WoodParty out = new PlatoonSergeant.WoodParty(Set.of("Fran"), Optional.empty(), true);
         assertTrue(PlatoonSergeant.woodParty(six, "Alice", out, new PlatoonSergeant.Wood(100, true, false, false, 80, 120)).cutting(),
-                "out until the objective, 120");
-        assertFalse(PlatoonSergeant.woodParty(six, "Alice", out, new PlatoonSergeant.Wood(120, true, false, false, 80, 120)).cutting());
+                "out until the most");
+        assertFalse(PlatoonSergeant.woodParty(six, "Alice", out, new PlatoonSergeant.Wood(Keep.LOGS_MOST, true, false, false, 80, 120)).cutting(),
+                "back at the logs' most, the objective under it");
     }
 
     /**
@@ -230,11 +232,11 @@ class PlatoonSergeantTest {
                 new PlatoonSergeant.Hand("Carol", 0, 0), new PlatoonSergeant.Hand("Dana", 0, 3));
 
         PlatoonSergeant.WoodParty party = PlatoonSergeant.woodParty(crew, "Alice", PlatoonSergeant.WoodParty.NONE,
-                new PlatoonSergeant.Wood(Keep.LOGS_WANTED, true, true, false));
+                new PlatoonSergeant.Wood(Keep.LOGS_MOST, true, true, false));
 
         assertTrue(party.cutters().isEmpty());
         assertEquals(Optional.of("Dana"), party.planter());
-        assertTrue(PlatoonSergeant.woodParty(crew, "Alice", party, new PlatoonSergeant.Wood(Keep.LOGS_WANTED, true, true, true))
+        assertTrue(PlatoonSergeant.woodParty(crew, "Alice", party, new PlatoonSergeant.Wood(Keep.LOGS_MOST, true, true, true))
                 .planter().isEmpty(), "its planting waits: no planter");
     }
 

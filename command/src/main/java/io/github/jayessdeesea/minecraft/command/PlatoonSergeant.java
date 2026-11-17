@@ -208,14 +208,14 @@ public final class PlatoonSergeant {
             this(stockpileLogs, treesSeen, groveBare, groveWaits, 0, 0);
         }
 
-        /** Below this, the party goes out: the reorder point, and never under half the logs a depot wants. */
+        /** Below this, the party goes out in strength: the reorder point, and never under the logs' reserve. */
         public double out() {
-            return Math.max(Keep.LOGS_WANTED / 2.0, reorder);
+            return Math.max(Keep.LOGS_RESERVE, reorder);
         }
 
-        /** At this, it comes back: the stockage objective, and never under the logs a depot wants. */
+        /** At this, the last of it comes back: the stockage objective, and never under the logs' most. */
         public double back() {
-            return Math.max(Keep.LOGS_WANTED, objective);
+            return Math.max(Keep.LOGS_MOST, objective);
         }
     }
 
@@ -237,11 +237,14 @@ public final class PlatoonSergeant {
     /**
      * The keep's wood party (operator, 2026-11-14: trees are everywhere - take a break from the dig,
      * harvest some, build crates at the depot, and replant). {@link #WOOD_PARTY} builders at most and
-     * a third of the crew, never {@code foreman}, who says the plan: when the crew and the stockpile
-     * hold fewer than half {@link Keep#LOGS_WANTED} logs between them, and until they hold all of
-     * them, the party cuts trees, where any have been seen - {@link #WOOD_LOAD} logs a builder, back
-     * with them on the dig and another sent. A place left over plants the grove while it has a cell
-     * bare, with trees seen or a sapling carried, unless its planting waits. The rest dig. Members
+     * a third of the crew, never {@code foreman}, who says the plan. Under the logs' reserve
+     * ({@link Wood#out}), between the crew and the stockpile, the whole party cuts; from there to
+     * their most ({@link Wood#back}) one builder stays on it - a producer kept at work between the
+     * two, so the reserve is refilled before it's an emergency (operator, 2026-11-17: an emergency
+     * is a signal to change; live, the party went out at 3 logs) - and at the most none does. It cuts
+     * where trees have been seen, {@link #WOOD_LOAD} logs a builder, back with them on the dig and
+     * another sent. A place left over plants the grove while it has a cell bare, with trees seen or a
+     * sapling carried, unless its planting waits, so what's cut grows back. The rest dig. Members
      * stay put between looks, the rest drawn from the end of the roster; a planter carrying saplings
      * first, since it plants at once.
      */
@@ -253,11 +256,12 @@ public final class PlatoonSergeant {
         // that went at 15 and stopped at 16 came and went with every chest and handle made.
         // The platoon sergeant tasks producers when the stock crosses its reorder point (backlog/
         // maturity-model.md, the gate), and stands them down at the stockage objective.
-        boolean out = wood.treesSeen() && (was.cutting() ? logs < wood.back() : logs < wood.out());
+        boolean out = wood.treesSeen() && logs < wood.back();
         int size = Math.min(WOOD_PARTY, crew.size() / 3);
         List<String> candidates = crew.stream().map(Hand::name).filter(n -> !n.equals(foreman)).sorted(Comparator.reverseOrder()).toList();
-        // Cutting first while the depot is short: wood now before trees later.
-        int cutters = out ? size : 0;
+        // Cutting first while the depot is short: wood now before trees later. In strength under the
+        // reserve, one standing to the most.
+        int cutters = !out ? 0 : logs < wood.out() ? size : Math.min(1, size);
         List<String> cutting = new ArrayList<>(was.cutters().stream()
                 .filter(n -> byName.containsKey(n) && byName.get(n).logs() < WOOD_LOAD).sorted().toList());
         while (cutting.size() > cutters) {

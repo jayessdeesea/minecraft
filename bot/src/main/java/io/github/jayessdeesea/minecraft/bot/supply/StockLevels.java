@@ -48,7 +48,8 @@ public final class StockLevels {
         levels.put(ItemClass.IRON_INGOT, new Level(0, UNBOUNDED));
         levels.put(ItemClass.RAW_COPPER, new Level(64, 256));
         levels.put(ItemClass.COPPER_INGOT, new Level(64, 256));
-        levels.put(ItemClass.LOG, new Level(0, UNBOUNDED));
+        levels.put(ItemClass.LOG, new Level(io.github.jayessdeesea.minecraft.command.Keep.LOGS_RESERVE,
+                io.github.jayessdeesea.minecraft.command.Keep.LOGS_MOST));
         levels.put(ItemClass.FOOD, new Level(Subsistence.STOCKPILE_RESERVE, Subsistence.STOCKPILE_MOST));
         levels.put(ItemClass.WHEAT, new Level(64, 256));
         // So common they're all but had on demand (operator, 2026-11-17): handy, never hoarded.

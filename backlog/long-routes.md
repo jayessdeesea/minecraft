@@ -31,3 +31,9 @@ objective, which is where the squad last saw some.
 ## Notes
 - Fran and Bob died gathering 50-60 blocks out (a creeper, pillagers). A gather that far from the
   camp is its own question: the general's tree farm is meant to bring the wood in.
+
+- **Stranded with no pickaxe (field360, 06:29).** Kate, routed into a cave at y=47 on her way to the
+  mine, was pulled out by recovery 35 under the ground at y=62 with two shovels, no pickaxe, no
+  cobblestone, one log and no bread: her 88-block stair up is dug by hand, 150 ticks a stone block
+  against 30 with a stone pickaxe - about eleven minutes. Never routing a surface soldier into a
+  cave is the fix; a stranded soldier with a carried table and two logs could make a pickaxe first.
