@@ -2630,7 +2630,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // A column whose top was cut since the scan is followed down to what's left of it, not
             // dropped: the scan is up to a second old, and live (field294) a dirt tower in the bench's
             // outer rows, cut a block at a time, dropped out at each cut - the level fell from y=88 to
-            // 74, was dealt out, and came back up at the next scan, a dozen times in a minute.
+            // 74, was dealt out, and came back up at the next scan, six times in a minute.
             java.util.function.IntBinaryOperator calm = (x, z) -> {
                 int t = top.applyAsInt(x, z);
                 if (fights.stream().anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR)) {
@@ -5761,6 +5761,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt)
                         .ifPresent(chest -> chestsSeen.put(BlockPos.containing(chest.x(), chest.y(), chest.z()), seen));
+                List<Stockpile> chests = List.copyOf(chestsSeen.values());
+                chainOfCommand.onStores(new Stockpile(chests.stream().mapToInt(Stockpile::logs).sum(),
+                        chests.stream().mapToInt(Stockpile::stone).sum(), chests.stream().mapToInt(Stockpile::rations).sum(),
+                        chests.stream().mapToInt(Stockpile::rawIron).sum(), chests.stream().mapToInt(Stockpile::rawCopper).sum(),
+                        chests.stream().mapToInt(Stockpile::dirt).sum()));
             }
             if (mine.isEmpty() && Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).equals(stockpileFor(name))) {
                 // Only the stockpile draws come from: an outpost depot's chest, or another the load went

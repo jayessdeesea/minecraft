@@ -764,6 +764,18 @@ public class ChainOfCommand implements DisposableBean {
 
     private volatile Stockpile stockpile;
 
+    /**
+     * What every surface chest held when last looked in, summed - the force's stores, for what it's
+     * short of (PlatoonSergeant#shortfall). Not one chest's: live (field299), released squads were sent
+     * for wood one decision and iron the next, as soldiers looked in different chests.
+     */
+    private volatile Stockpile stores;
+
+    /** The surface chests' contents, summed, as a soldier last saw them change. */
+    public void onStores(Stockpile stores) {
+        this.stores = stores;
+    }
+
     /** What the stockpile held when a soldier last looked in it, if anyone has. */
     public Optional<Stockpile> stockpile() {
         return Optional.ofNullable(stockpile);
@@ -948,7 +960,7 @@ public class ChainOfCommand implements DisposableBean {
                 }
                 long millis = clockwork.millis() - started;
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
-                Optional<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfall(statuses, stockpile());
+                Optional<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfall(statuses, Optional.ofNullable(stores));
                 List<ResourceSite> woods = statuses.stream().flatMap(s -> s.resources().stream()).toList();
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
