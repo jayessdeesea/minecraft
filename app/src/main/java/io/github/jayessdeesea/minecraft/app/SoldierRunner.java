@@ -4988,6 +4988,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // Worked out when every cutter on it - every squad's - has its share cut, not when one has.
                 List<String> crew = mineCrew(state.stairs);
                 boolean workedOut = !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done);
+                // Stopped by water or lava beside the stairs, every cutter: the shaft goes no deeper, and
+                // the keep's mine moves on as from one dried up. Live (field348), a fresh well stopped at its
+                // 58th step, y=8, every squad's level under it, and its crews stood at the head.
+                boolean blocked = !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Stopped s
+                        && s.why().contains("water or lava"));
+                if (blocked && driedUp.add(state.stairs.head())) {
+                    String why = ((Miner.Progress.Stopped) stairsProgress.get(crew.getFirst())).why();
+                    LOG.warn("[Outcome] the mine at {} is blocked at y={}: {} - SHORT", state.stairs.head(), state.stairs.bottom(), why);
+                    chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
+                }
                 // Settled by mine, not by squad: live, four squads on one mine each took the others' stale
                 // DONE for their own, and it ran on from 24 blocks to 96 in seconds with nothing cut.
                 // Worked on while ore is wanted: the iron short, or anyone short of armour (operator,
