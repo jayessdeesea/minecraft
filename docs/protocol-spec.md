@@ -335,7 +335,9 @@ them, at most 256 - and on any other type keeps the
 item, drops the rest of that packet (the frame is length-isolated, so this is safe), and logs the
 type. Enchantments (13) and stored enchantments (45, on books) are decoded: a VarInt count, then
 per enchantment a VarInt ID in the session's synced `minecraft:enchantment` registry and a VarInt
-level; the registry's entry order, passed on from Registry Data, names them.
+level; the registry's entry order, passed on from Registry Data, names them. A loaded crossbow's
+`charged_projectiles` (51) is a VarInt count, at most 1,024, of item stack templates, each a VarInt
+item ID, then a VarInt count - item first, unlike a slot's stack - then its own component patch.
 
 ## 4. Compression
 

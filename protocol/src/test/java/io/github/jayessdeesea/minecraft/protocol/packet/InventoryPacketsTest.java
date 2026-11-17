@@ -162,6 +162,34 @@ class InventoryPacketsTest {
         assertEquals(Optional.of(new ItemSlot(ARROW, 16, -1, false)), contents.slots().get(2));
     }
 
+    /** Live: a pillager's crossbow, loaded, dropped the rest of a soldier's inventory 347 times in a run. */
+    @Test
+    void aLoadedCrossbowsProjectilesAreReadPast() {
+        ByteBuf in = Unpooled.buffer();
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 2);  // two slots: the crossbow, then arrows
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 1491); // crossbow
+        ProtocolCodec.writeVarInt(in, 2);
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 3); // damage
+        ProtocolCodec.writeVarInt(in, 7);
+        ProtocolCodec.writeVarInt(in, 51); // charged_projectiles: one arrow, item before count
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, ARROW);
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 0);
+        stack(in, 16, ARROW);
+
+        InventoryUpdate.Contents contents = (InventoryUpdate.Contents) InventoryPackets.decodeSetContent(in).update();
+
+        assertEquals(true, contents.complete(), contents.toString());
+        assertEquals(Optional.of(new ItemSlot(1491, 1, 7, false)), contents.slots().get(0));
+        assertEquals(Optional.of(new ItemSlot(ARROW, 16, -1, false)), contents.slots().get(1));
+    }
+
     @Test
     void setHeldSlot() {
         ByteBuf in = Unpooled.buffer();

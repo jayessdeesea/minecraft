@@ -20,7 +20,7 @@ import java.util.Optional;
  * gap, not a broken connection: the frame is already length-isolated (same reasoning as
  * {@code UnknownPacket}), so the caller keeps what it decoded and drops the rest, and the type is
  * logged loudly so the gap gets closed. Known: the plain-number components a soldier's gear
- * carries, enchantments, names and lore, and what a pillager captain drops - its banner's
+ * carries, enchantments, names and lore, a loaded crossbow's projectiles, and what a pillager captain drops - its banner's
  * rarity, patterns and tooltip display, and its bottle's amplifier (codecs confirmed in the server jar).
  */
 final class ItemStacks {
@@ -58,6 +58,11 @@ final class ItemStacks {
     private static final int BASE_COLOR = 75;
     /** More than any banner has: the loom allows six layers, commands a few more. */
     private static final int MAX_BANNER_LAYERS = 64;
+    // ChargedProjectiles.STREAM_CODEC: ItemStackTemplate.STREAM_CODEC listed, VarInt-counted to 1,024 -
+    // each a VarInt item ID, then a VarInt count (item first, unlike a slot's stack), then its own
+    // component patch. A crossbow a pillager drops, loaded.
+    private static final int CHARGED_PROJECTILES = 51;
+    private static final int MAX_PROJECTILES = 1024;
     /** More than any item carries: there are well under 64 enchantments. */
     private static final int MAX_ENCHANTMENTS = 64;
 
@@ -67,10 +72,12 @@ final class ItemStacks {
     /** Thrown when a stack carries a component this reader can't decode; holds what it could read. */
     static final class Undecodable extends RuntimeException {
         final ItemSlot partial;
+        final int componentType;
 
         Undecodable(ItemSlot partial, int componentType) {
             super("item " + partial.itemId() + " carries undecoded component type " + componentType, null, false, false);
             this.partial = partial;
+            this.componentType = componentType;
         }
     }
 
@@ -83,6 +90,11 @@ final class ItemStacks {
             return Optional.empty();
         }
         int itemId = ProtocolCodec.readVarInt(in);
+        return Optional.of(readPatch(in, itemId, count));
+    }
+
+    /** A stack's component patch, after its item and count: the stack it makes. */
+    private static ItemSlot readPatch(ByteBuf in, int itemId, int count) {
         int added = ProtocolCodec.readVarIntCount(in, MAX_COMPONENTS);
         int removed = ProtocolCodec.readVarIntCount(in, MAX_COMPONENTS);
         int damage = -1;
@@ -113,6 +125,18 @@ final class ItemStacks {
                 }
                 case ENCHANTMENTS -> enchantments = readEnchantments(in);
                 case STORED_ENCHANTMENTS -> readEnchantments(in); // a book's: not on the soldier
+                case CHARGED_PROJECTILES -> {
+                    int projectiles = ProtocolCodec.readVarIntCount(in, MAX_PROJECTILES);
+                    for (int p = 0; p < projectiles; p++) {
+                        int projectile = ProtocolCodec.readVarInt(in);
+                        int projectileCount = ProtocolCodec.readVarInt(in);
+                        try {
+                            readPatch(in, projectile, projectileCount);
+                        } catch (Undecodable inner) {
+                            throw new Undecodable(new ItemSlot(itemId, count, damage, true), inner.componentType);
+                        }
+                    }
+                }
                 case CUSTOM_NAME, ITEM_NAME -> Nbt.skipUnnamedRoot(in);
                 case LORE -> {
                     int lines = ProtocolCodec.readVarIntCount(in, MAX_LORE_LINES);
@@ -129,7 +153,7 @@ final class ItemStacks {
         for (int i = 0; i < removed; i++) {
             ProtocolCodec.readVarInt(in);
         }
-        return Optional.of(new ItemSlot(itemId, count, damage, false, enchantments));
+        return new ItemSlot(itemId, count, damage, false, enchantments);
     }
 
     private static Map<Integer, Integer> readEnchantments(ByteBuf in) {
