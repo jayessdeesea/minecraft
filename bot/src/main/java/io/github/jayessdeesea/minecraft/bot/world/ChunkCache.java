@@ -139,6 +139,12 @@ public final class ChunkCache {
         version.incrementAndGet();
     }
 
+    /** Whether the block here is solid itself, the cell over a fence not counted ({@link WorldView#solidHere}). */
+    public boolean solidHere(int x, int y, int z) {
+        BlockClassRegistry.BlockClass here = classAt(x, y, z);
+        return here != BlockClassRegistry.BlockClass.PASSABLE && here != BlockClassRegistry.BlockClass.HAZARD;
+    }
+
     public boolean isSolid(int x, int y, int z) {
         BlockClassRegistry.BlockClass here = classAt(x, y, z);
         // Every class but these two has collision - so a class added later is solid unless it says otherwise.

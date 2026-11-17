@@ -194,9 +194,47 @@ public final class Miner {
                 break;
             }
             cut = cuts.get(next.getAsInt());
+            // The stairs closed below a step sealed: no deeper, for good (operator, 2026-11-17: water or
+            // lava blocked, and that path considered closed).
+            if (!stairs.head().equals(stairsClosedFor)) {
+                stairsClosed = null; // another mine's stairs: what closed the last doesn't close these
+                stairsClosedAt = Integer.MAX_VALUE;
+            }
+            if (cut.tunnel() < 0 && stairsClosed != null && next.getAsInt() >= stairsClosedAt) {
+                stop();
+                return new Progress.Stopped(stairsClosed);
+            }
             Optional<String> hazard = hazard(world, cut, next.getAsInt());
             if (hazard.isEmpty()) {
                 break;
+            }
+            // Water or lava: blocked first, from where it stands, with the junk it carries - the flow
+            // kept out of the mine - and then the path closed.
+            if (!hazard.get().startsWith("no floor")) {
+                BlockPos feet = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
+                Optional<BlockPos> wet = hazardCells(world, cut).stream()
+                        .filter(c -> reach(feet, c) && !world.noBuild(c.x(), c.y(), c.z()) && sealTicks.getOrDefault(c, 0) < ORE_PATIENCE_TICKS)
+                        .filter(c -> faceOf(world, c).isPresent()).findFirst();
+                if (wet.isPresent() && bridging.isPresent() && free) {
+                    if (sealTicks.merge(wet.get(), 1, Integer::sum) == 1) {
+                        LOG.info("{} blocks the water or lava at {} - {}", name, wet.get(), hazard.get());
+                    }
+                    breacher.stop();
+                    footing.place(wet.get(), bridging.get(), faceOf(world, wet.get()).orElseThrow());
+                    footing.tick();
+                    return new Progress.Working(next.getAsInt(), cuts.size());
+                }
+                if (cut.tunnel() < 0) {
+                    stairsClosed = hazard.get();
+                    stairsClosedAt = next.getAsInt();
+                    stairsClosedFor = stairs.head();
+                    LOG.warn("{} closes the stairs at step {}: {}", name, next.getAsInt() + 1, hazard.get());
+                    stop();
+                    return new Progress.Stopped(hazard.get());
+                }
+                LOG.warn("{} closes tunnel {} of the mine: {}", name, cut.tunnel(), hazard.get());
+                blocked.add(cut.tunnel());
+                continue;
             }
             Optional<Bridge> support = bridgeable(world, cut);
             if (cut.tunnel() < 0) {
@@ -588,6 +626,28 @@ public final class Miner {
         }
         return best;
     }
+
+    /** The water and lava cells in or beside {@code cut}'s cells: what's blocked before it's closed. */
+    static List<BlockPos> hazardCells(WorldView world, Staircase.Cut cut) {
+        List<BlockPos> wet = new ArrayList<>();
+        for (BlockPos cell : cut.cells()) {
+            for (int[] d : new int[][]{{0, 0, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+                BlockPos c = cell.offset(d[0], d[1], d[2]);
+                if (world.isHazard(c.x(), c.y(), c.z()) && !wet.contains(c)) {
+                    wet.add(c);
+                }
+            }
+        }
+        return wet;
+    }
+
+    /** Ticks spent blocking each water or lava cell, so one that won't take a block is left. */
+    private final java.util.Map<BlockPos, Integer> sealTicks = new java.util.HashMap<>();
+    /** Why the stairs are closed below {@link #stairsClosedAt}, once water or lava is met beside a step - null till then. */
+    private String stairsClosed;
+    private int stairsClosedAt = Integer.MAX_VALUE;
+    /** The head of the stairs {@link #stairsClosed} is for. */
+    private BlockPos stairsClosedFor;
 
     /** Why making cut {@code k} would let in water or lava, or leave a body nothing to stand on. */
     static Optional<String> hazard(WorldView world, Staircase.Cut cut, int k) {

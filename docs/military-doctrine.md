@@ -1368,8 +1368,8 @@ soldier in less than a full set of armour: worked out, its main tunnel is run on
 past its last stretch it's cut a level deeper off the same stairs, 16 blocks down, a fresh main
 tunnel there (`Staircase.deeper`; operator, 2026-11-16: go deeper, or pick other sites) - "[Outcome]
 the mine at ... is worked out at y=16 - its next level cut at y=0" - down to just above bedrock; past
-that it's said dried up, once - by a squad's second pair too, when no level is left under theirs, and blocked when water or lava beside a step of its stairs stops any cutter on it (live, a fresh well stopped at its 58th step, every level under it) - and
-a site where no well can go down at or round it, every chunk seen, is done with too (live, a hill over an open cave); its well is kept on disk as dead, never sited again even from the chunk beside a fresh site (live, a mine moved 32 west was sited back in the blocked well next door, and moved on again uncut), and the keep's mine moves on (a squad's Mine task reads DONE only when every one of its cutters on its level is done; and by day any of the squad still down its last mine, within 64 of its head, climbs its stairs to the head before the day's work - live, a squad at a fresh mine's landing at dawn was sent to wedge places in the rock): the night shift and a squad released for iron are sent to a fresh site, the nearest the
+that it's said dried up, once - by a squad's second pair too, when no level is left under theirs, and blocked when water or lava beside a step of its stairs stops any cutter on it (live, a fresh well stopped at its 58th step, every level under it); water or lava a cut meets is blocked first with the junk the cutter carries, from where it stands, and that path closed for good - a tunnel given up, the stairs no deeper (operator, 2026-11-17) - and
+a site where no well can go down at or round it, every chunk seen, is done with too (live, a hill over an open cave); a squad the flatten doesn't want, with nothing short, cuts the next site's stairs by day ahead of time (`ChainOfCommand.nextMineSite`; operator, 2026-11-17: dig deeper, but also cut the next mine); its well is kept on disk as dead, never sited again even from the chunk beside a fresh site (live, a mine moved 32 west was sited back in the blocked well next door, and moved on again uncut), and the keep's mine moves on (a squad's Mine task reads DONE only when every one of its cutters on its level is done; and by day any of the squad still down its last mine, within 64 of its head, climbs its stairs to the head before the day's work - live, a squad at a fresh mine's landing at dawn was sent to wedge places in the rock): the night shift and a squad released for iron are sent to a fresh site, the nearest the
 keep untried on a 32-block grid round its first mine, up to 192 out every way, its head 8 clear of
 the flatten site and its bench (`ChainOfCommand.onMineDriedUp`, "[PL] the keep's mine at ... is dried
 up - the night shift's mine moves to ..."; the site and those tried kept on disk, so a restart keeps
@@ -1382,7 +1382,7 @@ in its tunnels at y=-23). A staircase kept on disk - the camp's or another - wit
 more under the ground over the head itself is let go, every squad's level off it with it, and
 sited again: a shaft is open over its head, a buried head has the rock over it. A mine worked out - every tunnel cut, the ore in sight of them taken - while nobody carries an iron
 pickaxe and the force hasn't the three iron for one is run on: its main tunnel 24 blocks further,
-branches along it, up to 96, a stretch at most every half minute a mine (`Staircase.extended`, `[Squad] MINE: worked out, the force short of
+branches along it, up to 192 (operator, 2026-11-17: a mine is run wider before it's left - each move cost a night of stairs and a walk back), a stretch at most every half minute a mine (`Staircase.extended`, `[Squad] MINE: worked out, the force short of
 iron - its main tunnel run on to 48 blocks`), and kept on disk by the tunnel's end. Live, the mine
 read DONE all night with one raw iron in the force.
 
@@ -1610,11 +1610,15 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
    haul road: 9 steps from the depot at ... to ..., 16 block(s) to cut`).
 6. **Benched edges.** The ground just round the dig may be lowered as it goes - benched, as an
    excavation's sides are cut back in steps or sloped (29 CFR 1926.652) - so its edge is never a
-   cliff over the work (2026-11-15). Built (`Flatten.bench`): a ring three wide round the site, its
+   cliff over the work (2026-11-15). Built (`Flatten.bench`): a ring twelve wide round the site, its
    row d out dug down to d over the floor - Table B-1's 1:1 slope for Type B soil, a walkable
    staircase - its ground the level's like the site's, highest first, and in the squads' shares;
-   past the ring the ground stands. Three, clear of the depot four off the west edge. Live, soldiers
-   put steps up the wall the big site was cut against, each one a level of its own.
+   past the ring the ground stands. A fence or wall is dug like any block: the cell over it reads
+   solid to a body, not to the dig's open top (`WorldView.solidHere`; live, a fence on the hilltop and
+   the ground under it stood while the site round it was flattened). Twelve (operator, 2026-11-17: slope the hills round the edge so
+   soldiers can climb up), the depots sixteen off the west edge past it and the borrow pits past it
+   too, so neither stands on nor holes the slope. Live, at three, soldiers put steps up the wall the
+   big site was cut against, each one a level of its own, and builders on the hill had no walk down.
 
 Level by level, in lock step, planned by the keep's foreman (`command.LevelPlan`, operator
 2026-11-14): one soldier the squad leader appoints - the first builder of the first squad on the

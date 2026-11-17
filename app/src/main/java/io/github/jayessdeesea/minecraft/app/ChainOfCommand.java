@@ -367,6 +367,12 @@ public class ChainOfCommand implements DisposableBean {
             if (!(objective.task() instanceof Objective.Task.Keep)) {
                 return objective;
             }
+            // The next mine cut ahead of time, by day, so the night shift moves to stairs already cut.
+            Optional<Position> nextMine = nextMineSite();
+            if (nextMine.isPresent()) {
+                return new Objective("Cut the next mine while the ground's level is small", nextMine.get(),
+                        "Released from the flatten: the keep's next mine cut before its first is spent", new Objective.Task.Mine());
+            }
             Foothold base = foothold;
             return new Objective("Work the camp while the ground's level is small", base != null ? base.camp() : objective.location(),
                     "Released from the flatten: its level wants " + wanted + " builder(s)", new Objective.Task.None());
@@ -478,22 +484,7 @@ public class ChainOfCommand implements DisposableBean {
             return Optional.empty();
         }
         minesTried.add(was);
-        // The nearest untried site on a grid round the keep's first mine, every way: live (field355), stepping
-        // only west put the night shift's mine 160 blocks off, past a lake, a blocked well and a hill.
-        Flatten site = flatten;
-        Position centre = site.centre();
-        Position next = null;
-        double best = Double.MAX_VALUE;
-        for (int i = -MINE_SITE_RINGS; i <= MINE_SITE_RINGS; i++) {
-            for (int j = -MINE_SITE_RINGS; j <= MINE_SITE_RINGS; j++) {
-                Position p = new Position(KEEP_MINE.x() + i * MINE_SITE_STEP, KEEP_MINE.y(), KEEP_MINE.z() + j * MINE_SITE_STEP);
-                double d = Math.hypot(p.x() - centre.x(), p.z() - centre.z());
-                if (d < best && !minesTried.contains(p) && !cutsInto(site, (int) Math.floor(p.x()), (int) Math.floor(p.z()))) {
-                    best = d;
-                    next = p;
-                }
-            }
-        }
+        Position next = nextMineSite().orElse(null);
         if (next == null) {
             LOG.warn("[PL] the keep's mine at {} is dried up, and every site within {} blocks has been tried", was, MINE_SITE_RINGS * MINE_SITE_STEP);
             return Optional.empty();
@@ -501,6 +492,31 @@ public class ChainOfCommand implements DisposableBean {
         keepMine = next;
         LOG.warn("[PL] the keep's mine at {} is dried up - the night shift's mine moves to {}", was, next);
         return Optional.of(next);
+    }
+
+    /**
+     * Where the keep's mine goes when it's spent: the nearest untried site on a grid round its first
+     * mine, every way, but the one it's at - live (field355), stepping only west put the night shift's
+     * mine 160 blocks off, past a lake, a blocked well and a hill. Cut by day ahead of time by a squad
+     * the flatten doesn't want (operator, 2026-11-17: dig deeper, but also cut the next mine).
+     */
+    Optional<Position> nextMineSite() {
+        Flatten site = flatten;
+        Position centre = site.centre();
+        Position at = keepMine;
+        Position next = null;
+        double best = Double.MAX_VALUE;
+        for (int i = -MINE_SITE_RINGS; i <= MINE_SITE_RINGS; i++) {
+            for (int j = -MINE_SITE_RINGS; j <= MINE_SITE_RINGS; j++) {
+                Position p = new Position(KEEP_MINE.x() + i * MINE_SITE_STEP, KEEP_MINE.y(), KEEP_MINE.z() + j * MINE_SITE_STEP);
+                double d = Math.hypot(p.x() - centre.x(), p.z() - centre.z());
+                if (d < best && !p.equals(at) && !minesTried.contains(p) && !cutsInto(site, (int) Math.floor(p.x()), (int) Math.floor(p.z()))) {
+                    best = d;
+                    next = p;
+                }
+            }
+        }
+        return Optional.ofNullable(next);
     }
 
     /** Whether a mine headed at ({@code x}, {@code z}) would cut into {@code site} or its bench. */

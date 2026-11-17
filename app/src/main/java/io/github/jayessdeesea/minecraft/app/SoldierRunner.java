@@ -2550,7 +2550,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Position mid = ground.centre();
         int midX = (int) Math.floor(mid.x()), midZ = (int) Math.floor(mid.z());
         int halfX = (ground.maxX() - ground.minX()) / 2 + 1, halfZ = (ground.maxZ() - ground.minZ()) / 2 + 1;
-        int edgeNow = (sideNow == 0 || sideNow == 1 ? halfX : halfZ) + Groundwork.BORROW_GAP + 3;
+        // Past the bench, so a pit never holes the slope (Flatten.BENCH).
+        int edgeNow = (sideNow == 0 || sideNow == 1 ? halfX : halfZ) + Flatten.BENCH + Groundwork.BORROW_GAP + 3;
         Position pitNow = new Position(midX + (sideNow == 0 ? edgeNow : sideNow == 1 ? -edgeNow : 0), 0,
                 midZ + (sideNow == 2 ? edgeNow : sideNow == 3 ? -edgeNow : 0));
         // Only a fetcher at the pit says it's dug out: one stuck far off finds nothing anywhere. Live,
@@ -2571,7 +2572,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int[] sidesInTurn = share == 0 ? PIT_SIDES_FIRST : PIT_SIDES_SECOND;
         int side = sidesInTurn[Math.floorMod(keepPitShift.getOrDefault(squad, 0), sidesInTurn.length)];
         int sideHalf = side == 0 || side == 1 ? halfX : halfZ;
-        int edge = sideHalf + Groundwork.BORROW_GAP + 3;
+        int edge = sideHalf + Flatten.BENCH + Groundwork.BORROW_GAP + 3;
         int pitX = midX + (side == 0 ? edge : side == 1 ? -edge : 0);
         int pitZ = midZ + (side == 2 ? edge : side == 3 ? -edge : 0);
         // Its surface, from high over the hill down: live, a guess at y=68 put the pit under a hill,
@@ -2617,7 +2618,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     LOG.info("[{}] {} carries {} blocks to climb on - fetches a load of dirt first", squad, h.name(), blocks);
                 }
                 orders.put(h.name(), new Order.Gather(Resource.SOIL,
-                        Groundwork.borrowPit(new Cell(midX, pitGround.get().y(), midZ), sideHalf + 1, side), Tasking.LOAD));
+                        Groundwork.borrowPit(new Cell(midX, pitGround.get().y(), midZ), sideHalf + 1 + Flatten.BENCH, side), Tasking.LOAD));
             } else {
                 keepFetching.remove(h.name());
                 keepClimbDrawing.remove(h.name());

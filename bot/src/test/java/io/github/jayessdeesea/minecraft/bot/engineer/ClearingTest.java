@@ -140,6 +140,51 @@ class ClearingTest {
         assertTrue(!cut.stand().equals(stump.offset(0, 1, 0)), "not on top of the stump: " + cut.stand());
     }
 
+    /**
+     * A fence on the ground is dug, and the ground under it: the cell over a fence reads solid to a body
+     * (a fence is 1.5 high), and read so for the dig's open top, the fence and its column stood (field356).
+     */
+    @Test
+    void aFenceAndTheGroundUnderItAreDug() {
+        BlockPos fence = new BlockPos(0, 65, 0);
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 64 || fence.equals(new BlockPos(x, y, z)) || fence.offset(0, 1, 0).equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean solidHere(int x, int y, int z) {
+                return y <= 64 || fence.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return y <= 64;
+            }
+
+            @Override
+            public Optional<io.github.jayessdeesea.minecraft.bot.world.Hardness> hardness(int x, int y, int z) {
+                return fence.equals(new BlockPos(x, y, z))
+                        ? Optional.of(new io.github.jayessdeesea.minecraft.bot.world.Hardness(2.0, -1,
+                        io.github.jayessdeesea.minecraft.bot.world.Hardness.Tool.AXE)) : Optional.empty();
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        List<BlockPos> dug = Clearing.toClear(world, new Box(0, 64, 0, 0, 70, 0), Set.of());
+        assertTrue(dug.contains(fence), "the fence: " + dug);
+        assertTrue(dug.contains(new BlockPos(0, 64, 0)), "the ground under it: " + dug);
+    }
+
     /** Flat dirt ground, feet at y=64, with a mound of dirt two high at (2, 2) and one high at (-2, -2). */
     private static final WorldView MOUND = new WorldView() {
         @Override

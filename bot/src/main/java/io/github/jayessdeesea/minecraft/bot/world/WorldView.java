@@ -37,6 +37,16 @@ public interface WorldView {
         return false;
     }
 
+    /**
+     * Whether the block in ({@code x}, {@code y}, {@code z}) is itself solid - not the cell over a fence
+     * or wall, which {@link #isSolid} reads solid for a body's sake. What a dig asks of the cell over
+     * the block it would cut: live (field356), a fence on the hilltop never had an open top, and it and
+     * the ground under it stood while the site round it was flattened.
+     */
+    default boolean solidHere(int x, int y, int z) {
+        return isSolid(x, y, z);
+    }
+
     default boolean isTorch(int x, int y, int z) {
         return false;
     }

@@ -115,7 +115,8 @@ class ChainOfCommandTest {
         Objective released = two.byDay(WALL, squad("Bravo", "Bob"));
         assertEquals(WALL, released, "the other to the platoon leader's own objective");
         Objective keep = two.byDay(WALL, squad("Alpha", "Alice"));
-        assertTrue(two.byDay(keep, squad("Bravo", "Bob")).task() instanceof Objective.Task.None, "the ground given it, the camp's work instead");
+        assertTrue(two.byDay(keep, squad("Bravo", "Bob")).task() instanceof Objective.Task.Mine,
+                "the ground given it, the next mine cut instead (operator, 2026-11-17)");
 
         Objective toTheMine = two.byDay(WALL, squad("Bravo", "Bob"), Optional.of(PlatoonSergeant.Shortfall.IRON), List.of());
         assertTrue(toTheMine.task() instanceof Objective.Task.Mine, "released, to the force's shortfall: " + toTheMine);

@@ -27,7 +27,7 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
     static final int LOWEST = -64, HIGHEST = 318;
 
     /** How far off the site's west edge its depot stands: off the dig, on ground nothing digs. */
-    static final int DEPOT_OFF = 4;
+    public static final int DEPOT_OFF = Flatten.BENCH + 4;
 
     public Flatten {
         if (minX > maxX || minZ > maxZ) {
@@ -78,9 +78,11 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
      * How far round the site its edge is benched (clearing rule 6; 29 CFR 1926.652, Appendix B Table
      * B-1's 1:1 slope for Type B soil): the ground {@code d} out from the edge may stand {@code d} over
      * the site's top, no higher, so the edge is a walkable slope and never a cliff over the work.
-     * Three, clear of the depot four blocks off the west edge.
+     * Twelve (operator, 2026-11-17: slope the hills round the edge so soldiers can climb up): at three,
+     * builders on the hill beyond climbed up on steps of their own and had no walk down. The depots stand
+     * past it.
      */
-    public static final int BENCH = 3;
+    public static final int BENCH = 12;
 
     /**
      * The bench's row {@code d} out from the edge (1 to {@link #BENCH}), as boxes - the ring of

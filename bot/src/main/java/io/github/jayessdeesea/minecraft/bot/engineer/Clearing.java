@@ -64,7 +64,9 @@ public final class Clearing {
                 // Down each column: ground is dug only from an open top, so a block of it is in the dig
                 // only with the cell over it open or in the dig too. Live, five blocks under ones the dig
                 // left - above the box, or kept - were counted for hours and never dug.
-                boolean clearAbove = !world.isSolid(x, box.maxY() + 1, z);
+                // Over the block, the block itself: the cell over a fence reads solid to a body, and the fence
+                // was never dug (WorldView#solidHere).
+                boolean clearAbove = !world.solidHere(x, box.maxY() + 1, z);
                 for (int y = box.maxY(); y >= box.minY(); y--) {
                     // A section all open - the sky over the ground - has nothing to dig and leaves the
                     // column open: down to its bottom row in one step, that row read as any other (a
@@ -81,7 +83,7 @@ public final class Clearing {
                     if (dug) {
                         cells.add(new BlockPos(x, y, z));
                     }
-                    clearAbove = dug || !world.isSolid(x, y, z);
+                    clearAbove = dug || !world.solidHere(x, y, z);
                 }
             }
         }

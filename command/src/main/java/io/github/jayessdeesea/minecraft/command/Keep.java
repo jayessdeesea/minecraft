@@ -35,7 +35,7 @@ public final class Keep {
      * Where the builders' workshop and chest go: off the slab's west edge, toward the camp, on
      * ground nothing digs - a chest on the site would stand on a pillar of ground the dig can't take.
      */
-    public static final Position DEPOT = new Position(MIN - 4, FLOOR, 0);
+    public static final Position DEPOT = new Position(MIN - Flatten.DEPOT_OFF, FLOOR, 0);
 
     private Keep() {
     }

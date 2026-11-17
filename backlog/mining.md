@@ -28,6 +28,9 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   can't tell it from the miner's own tunnels, which keep every soldier busy there in a fresh mine,
   so it wants a scenario with the tunnels already cut.
 
+- **The next mine cut ahead (operator, 2026-11-17).** Built: a squad released from the flatten
+  with nothing short cuts the next site's stairs by day. Left: whether that's enough to have it cut
+  before the keep's is spent, live; and a squad of its own for it if not.
 - **The general never orders a mine by day.** 0 of 256 orders in a night's run, 244 of them
   patrol bases: its picture asks for one only through the AAR's "no mine yet". The night shift
   cuts it regardless. A mine head in its own cell (backlog/cells.md) would put it in that picture.

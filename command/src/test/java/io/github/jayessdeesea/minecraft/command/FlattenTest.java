@@ -39,8 +39,8 @@ class FlattenTest {
         Flatten site = new Flatten(0, 0, 9, 9, 63);
         assertEquals(new Box(-1, 65, -1, 10, Keep.SKY_TOP, -1), site.bench(1).getFirst(), "row 1 north, from the floor plus one");
         assertEquals(new Box(12, 67, -2, 12, Keep.SKY_TOP, 11), site.bench(3).get(3), "row 3 east, from the floor plus three");
-        assertTrue(site.benchedContains(-3, 12));
-        assertFalse(site.benchedContains(-4, 0));
+        assertTrue(site.benchedContains(-Flatten.BENCH, 9 + Flatten.BENCH), "the bench's far corner");
+        assertFalse(site.benchedContains(-Flatten.BENCH - 1, 0), "one past it");
     }
 
     /** A long site: its middle, its depot off the west edge halfway along, columns in and out. */
@@ -48,7 +48,7 @@ class FlattenTest {
     void aSitesGeometryIsItsOwn() {
         Flatten site = new Flatten(-16, 16, 16, 32, 63);
         assertEquals(new Position(0.5, 64, 24.5), site.centre());
-        assertEquals(new Position(-20, 64, 24), site.depot());
+        assertEquals(new Position(-16 - Flatten.DEPOT_OFF, 64, 24), site.depot());
         assertTrue(site.contains(0, 32));
         assertFalse(site.contains(0, 33));
         assertEquals(new Box(-16, 64, 16, 16, Keep.SKY_TOP, 32), site.dig());
@@ -58,7 +58,8 @@ class FlattenTest {
     @org.junit.jupiter.api.Test
     void aBigSiteHasADepotEveryFortyEightBlocksAndAKeepOne() {
         Flatten big = new Flatten(-16, -64, 16, 64, 62);
-        assertEquals(java.util.List.of(new Position(-20, big.floor(), -43), new Position(-20, big.floor(), 0), new Position(-20, big.floor(), 43)),
+        int x = -16 - Flatten.DEPOT_OFF;
+        assertEquals(java.util.List.of(new Position(x, big.floor(), -43), new Position(x, big.floor(), 0), new Position(x, big.floor(), 43)),
                 big.depots());
         assertEquals(big.depot(), big.depots().get(1));
         assertEquals(java.util.List.of(Flatten.KEEP.depot()), Flatten.KEEP.depots());

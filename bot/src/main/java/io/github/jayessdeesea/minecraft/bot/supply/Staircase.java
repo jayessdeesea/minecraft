@@ -109,8 +109,12 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
         return d[0] != 0 ? new int[]{d[0], 0} : new int[]{0, d[1]};
     }
 
-    /** The most stretches a main tunnel runs to: 96 blocks, a walk of half a minute from the landing. */
-    public static final int MAX_STRETCHES = 4;
+    /**
+     * The most stretches a main tunnel runs to: 192 blocks, a walk of a minute from the landing. A mine
+     * is run wider before it's left (operator, 2026-11-17): every move to a fresh site cost a night of
+     * stairs and a long walk back at dawn (field346-355).
+     */
+    public static final int MAX_STRETCHES = 8;
 
     /** The main tunnel's length in blocks. */
     public int tunnel() {

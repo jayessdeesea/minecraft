@@ -2734,7 +2734,7 @@ class SquadSimulationTest {
     @Test
     void aSiteCutIntoAHillLeavesItsEdgeBenched() {
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, (x, y, z) -> x >= 40 && x <= 52 && z >= 36 && z <= 47 && y > GROUND && y <= GROUND + 6
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= 40 && x <= 45 + Flatten.BENCH + 2 && z >= 36 && z <= 47 && y > GROUND && y <= GROUND + 6
                 ? SimServer.DIRT : flat(x, y, z), 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Flatten site = new Flatten(38, 38, 45, 45, GROUND);

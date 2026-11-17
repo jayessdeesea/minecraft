@@ -79,7 +79,7 @@ the world, not from reports, and shown to the squad leader and the platoon leade
 - **Released squads, the rest (operator, 2026-11-16):** farm, wood and iron are built
   (docs/military-doctrine.md § 4). Left: hunting - no squad task for it yet - and the mine's stash
   of raw iron, not counted with the surface chests'.
-- **A graduated slope where the site is cut into a hill (operator, 2026-11-16):** the bench as
-  wide as the cut is deep, not a fixed 3 rows - field269's builders stranded on a 13-block wall
-  built steps to get off it. Stepped, a block up every few rows (29 CFR 1926 Subpart P, Appendix
-  B's benching), unless the operator wants it smooth.
+- **A graduated slope where the site is cut into a hill.** Built: the bench is twelve rows, 1:1,
+  and the depots and pits stand past it (docs/military-doctrine.md, clearing rule 6). Left: a hill
+  higher than twelve over the floor still stands as a wall past the twelfth row - whether that wants
+  rows to the full depth, live, once the big site's east side is cut down to it.
