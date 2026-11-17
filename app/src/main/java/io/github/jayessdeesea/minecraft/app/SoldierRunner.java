@@ -4414,6 +4414,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }).toList();
     }
 
+    /** How far under the ground over it a stranded soldier is under the ground, for the drill: a stair up, not down. */
+    static final int UNDERGROUND = 8;
     /** How long after its last "no route" a soldier is still looked at as possibly in a pocket. */
     static final long POCKET_MEMORY_MILLIS = 60_000;
     /** When each soldier last reported no route - squad loops. */
@@ -4426,6 +4428,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return stuck -> {
             String n = stuck.name();
             Position at = stuck.position();
+            // Under the ground, a stair down leads only further into it: none, and the stair up is laid
+            // instead. Live (field341), Jack in a cave at y=-51 had a stair down to its floor laid out,
+            // one block he didn't carry, and stood with nobody to fetch it.
+            Optional<BlockPos> sky = TerrainSurveyor.surface(world, (int) Math.floor(at.x()), (int) Math.floor(at.z()), Keep.SKY_TOP);
+            if (sky.isPresent() && sky.get().y() > at.y() + UNDERGROUND) {
+                LOG.warn("[{}] RECOVERY: {} is stranded at {}, {} under the ground at y={} - no stair down, a stair up instead",
+                        squadName, n, at, sky.get().y() - (int) Math.floor(at.y()), sky.get().y());
+                return Optional.empty();
+            }
             Optional<List<Cell>> stair = Stairway.down(world,
                             BlockPos.containing(at.x(), at.y(), at.z()))
                     .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList());

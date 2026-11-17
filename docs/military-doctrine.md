@@ -419,7 +419,9 @@ soldier carrying the blocks for its own stair - stone, dirt or logs - builds it 
 top down, nobody fetched: first a block under the ledge's edge, against its underside, since the
 top step touches the ledge only at a corner, then each step and the block under it in turn. Live,
 a soldier stood a quarter of an hour on a ledge with 8 logs, no squadmate carrying 24. One stranded
-below - boxed in a pocket, with no stair down to lay - gets the engineer's stair up instead
+below - boxed in a pocket, with no stair down to lay, or more than 8 under the ground over it, where
+a stair down leads only further in (live, one in a cave at y=-51 had a one-block stair down laid out
+to its floor, carried no block, and stood) - gets the engineer's stair up instead
 (`Stairway.up`) - its hands the stair's alone till it's out, no load put in nor stack picked up, nor given ground on the keep at all - its rectangle, the stockpile's cobblestone or a pit's dirt -
 past it, as on a stair down (live, two in a cave under the mine's stairs held theirs for both, with
 no route to either, and stood; and one on a ledge with its stair down laid out held its for a
