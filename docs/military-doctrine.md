@@ -315,7 +315,9 @@ IV's reorder point (below) - never under the reserve, 64 - the whole party cuts;
 stockage objective - never under the most, 256 - one builder stays on it, a producer kept at work
 so the reserve is refilled before it's an emergency (operator, 2026-11-17: an emergency is a signal
 to change; live, the party went out at 3 logs and was one builder); at the most none does. The
-party cuts where a keep squad last saw trees, a tree at a time, felled whole as the level is dug -
+party cuts where a keep squad last saw trees - or, with none seen lately, at the tree nearest the
+depot the world model holds, a column topped with a log within 64 of it (live, the squads came up
+from a night in the mine having seen none, and nobody cut at 3 logs) - a tree at a time, felled whole as the level is dug -
 its logs and crown in a box of their own, only the wood in it dug, highest first, steps put up the
 trunk to reach - and then those steps dug out, so nothing's left to stunt what grows there next; a
 tree no log comes off in three minutes at its work (errands for tools, food or supply don't count

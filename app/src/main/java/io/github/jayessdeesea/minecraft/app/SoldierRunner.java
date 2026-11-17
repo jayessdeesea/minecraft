@@ -3425,7 +3425,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         TreeFarm grove = keepGrove;
         Supply logsMeasured = logsSupply;
         PlatoonSergeant.Wood wood = new PlatoonSergeant.Wood(chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
-                treesSeenLately(onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream()).anyMatch(r -> r.resource() == Resource.WOOD), now)
+                // Or a tree the world model holds near the depot: live (field389), the keep's squads came up
+                // from a night in the mine having seen no trees, and nobody cut at 3 logs.
+                treesSeenLately(onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream()).anyMatch(r -> r.resource() == Resource.WOOD)
+                        || knownTree(now).isPresent(), now)
                         || grove == null && keepGroveToClear != null, // the grove's ground to clear is trees seen
                 grove != null && !Forester.planted(world, grove), now < keepGroveBarredUntil,
                 logsMeasured == null ? 0 : logsMeasured.reorderPoint(), logsMeasured == null ? 0 : logsMeasured.objective());
@@ -3834,9 +3837,55 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .filter(site -> site.resource() == Resource.WOOD).map(ResourceSite::location)
                 .filter(l -> !buried(l) && Math.hypot(l.x() - depot.x(), l.z() - depot.z()) <= KEEP_WOOD_REACH)
                 .min(Comparator.comparingDouble(l -> Math.hypot(l.x() - chainOfCommand.flatten().depot().x(), l.z() - chainOfCommand.flatten().depot().z())))
+                .or(() -> knownTree(clockwork.millis()))
                 .orElseGet(() -> grove != null ? new Position(grove.centre().x() + 0.5, grove.centre().y(), grove.centre().z() + 0.5)
                         : chainOfCommand.flatten().depot());
     }
+
+    /**
+     * The tree nearest the depot the world model holds, within {@link #KEEP_WOOD_REACH} across: a column
+     * whose top is a log, under leaves or open sky - on the surface, never a mineshaft's timbers. Looked
+     * for again every {@link #KNOWN_TREE_MILLIS}.
+     */
+    private Optional<Position> knownTree(long now) {
+        if (now - keepKnownTreeAt >= KNOWN_TREE_MILLIS) {
+            keepKnownTreeAt = now;
+            Position depot = chainOfCommand.flatten().depot();
+            int dx = (int) Math.floor(depot.x()), dy = (int) Math.floor(depot.y()), dz = (int) Math.floor(depot.z());
+            Position best = null;
+            double bestDistance = Double.MAX_VALUE;
+            for (int x = dx - KEEP_WOOD_REACH; x <= dx + KEEP_WOOD_REACH; x++) {
+                for (int z = dz - KEEP_WOOD_REACH; z <= dz + KEEP_WOOD_REACH; z++) {
+                    double d = Math.hypot(x - dx, z - dz);
+                    if (d > KEEP_WOOD_REACH || d >= bestDistance) {
+                        continue;
+                    }
+                    for (int y = dy + KNOWN_TREE_ABOVE; y >= dy - KNOWN_TREE_BELOW; y--) {
+                        if (world.isLog(x, y, z)) {
+                            if (!treesLeft.contains(new BlockPos(x, y, z))) {
+                                best = new Position(x + 0.5, y, z + 0.5);
+                                bestDistance = d;
+                            }
+                            break;
+                        }
+                        if (world.isSolid(x, y, z) && world.leaves(x, y, z).isEmpty()) {
+                            break; // the ground: no tree on this column
+                        }
+                    }
+                }
+            }
+            keepKnownTree = best;
+        }
+        return Optional.ofNullable(keepKnownTree);
+    }
+
+    /** The tree {@link #knownTree} last found, and when it looked - squad loops only. */
+    private volatile Position keepKnownTree;
+    private volatile long keepKnownTreeAt = Long.MIN_VALUE / 2;
+    static final long KNOWN_TREE_MILLIS = 10_000;
+    /** How far over and under the depot's stand a known tree's column is looked down. */
+    static final int KNOWN_TREE_ABOVE = 24;
+    static final int KNOWN_TREE_BELOW = 8;
 
     /**
      * The keep's grove: a {@link TreeFarm} near its depot, on the nearest ground with room for one
