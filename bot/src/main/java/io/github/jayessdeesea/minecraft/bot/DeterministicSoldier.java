@@ -1276,8 +1276,12 @@ public final class DeterministicSoldier implements Soldier {
     }
 
     private void trackProgress() {
+        // Height is headway only once it's landed there: a jump that comes back down isn't. Live
+        // (field364), Olga and Ned jumped at a step under a tree's leaves at the farm's edge, each jump
+        // read as headway, and the planner never tried another way (operator, 2026-11-17: try twice,
+        // then another way).
         if (progressMark == null || Math.hypot(position.x() - progressMark.x(), position.z() - progressMark.z()) > 0.5
-                || Math.abs(position.y() - progressMark.y()) > 0.5) {
+                || onGround && Math.abs(position.y() - progressMark.y()) > 0.5) {
             progressMark = position;
             stuckTicks = 0;
         } else {

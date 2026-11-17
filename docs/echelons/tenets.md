@@ -10,7 +10,10 @@ review). Most of the time nothing changes; the point is to look.
   back to its work after, finds its own route and retries it differently, gets itself out of water
   and pits ([capabilities.md](soldier/capabilities.md)).
 - **Owns how, never what.** Its plan - a role at a site, directives ahead of it - says what; it
-  chooses where to stand, which cell next, which route ([orders.md](soldier/orders.md)).
+  chooses where to stand, which cell next, which route ([orders.md](soldier/orders.md)). It keeps
+  to the task it's given, preempted only for a while by what it can't avoid - a fight, its own
+  survival - and never fails over to a secondary task on its own (operator, 2026-11-17): stuck at
+  its task, it tries twice, then another way, and asks its squad leader once out of ways.
 - **Asks its squad leader for help only when out of ways of its own**, saying what it tried and
   what's in the way (CANTCO, [military-doctrine.md § 4](../military-doctrine.md#4-reports-upward)).
   Supplies are the exception: running low on food, it asks its squadmates before it's out, and
