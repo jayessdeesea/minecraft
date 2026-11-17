@@ -125,6 +125,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1166,6 +1167,55 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Workshop chests found full - ticks add, squad loops read. */
     private final Set<BlockPos> fullChests = ConcurrentHashMap.newKeySet();
+
+    /** What each surface chest held when a load last went in: the stockpile is all of them, not one. */
+    private final Map<BlockPos, Stockpile> chestsSeen = new ConcurrentHashMap<>();
+
+    /**
+     * Past this many of cobblestone or dirt in the stockpile's chests, more is left at a dump, not
+     * carried in (operator, 2026-11-16: "anything past 4096 of either is way more than we need").
+     */
+    static final int ENOUGH_STOCKED = 4096;
+
+    /** How far off a depot's stand its dump is: clear of its chests, which are within reach of it. */
+    static final int DUMP_OFF = Workshop.CHEST_REACH + 2;
+
+    /**
+     * What a flatten builder's load leaves at a dump: cobblestone or dirt past {@link #ENOUGH_STOCKED}
+     * across the surface chests, or either once every chest it could go to is full.
+     */
+    private Set<ItemClass> surplusKinds(Optional<Position> deposit) {
+        int stone = chestsSeen.values().stream().mapToInt(Stockpile::stone).sum();
+        int dirt = chestsSeen.values().stream().mapToInt(Stockpile::dirt).sum();
+        Set<ItemClass> kinds = EnumSet.noneOf(ItemClass.class);
+        if (deposit.isEmpty() || stone >= ENOUGH_STOCKED) {
+            kinds.add(ItemClass.COBBLESTONE);
+        }
+        if (deposit.isEmpty() || dirt >= ENOUGH_STOCKED) {
+            kinds.add(ItemClass.DIRT);
+        }
+        return kinds;
+    }
+
+    /** A depot's dump: ground {@link #DUMP_OFF} west of its stand, off the walks to its chests. */
+    private static Optional<Position> dumpOf(Workshop depot, io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
+        BlockPos stand = depot.stand();
+        return TerrainSurveyor.surface(world, stand.x() - DUMP_OFF, stand.z(), stand.y() + CEILING_SLACK)
+                .map(cell -> new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5));
+    }
+
+    /** Whether an item at {@code item} lies at a depot's dump: left there, not picked up again. */
+    private boolean atADump(Position item) {
+        Workshop keep = keepWorkshop;
+        if (keep == null) {
+            return false;
+        }
+        return java.util.stream.Stream.concat(java.util.stream.Stream.of(keep), keepOutposts.stream()).anyMatch(depot -> Math.hypot(item.x() - (depot.stand().x() - DUMP_OFF + 0.5),
+                item.z() - (depot.stand().z() + 0.5)) <= DUMP_LEAVE);
+    }
+
+    /** How near a dump what lies there is left by the scavengers. */
+    static final double DUMP_LEAVE = 4;
 
     /** {@code shop}, its chest the next of its row while the one it has is full. */
     private Workshop nextChestIfFull(Workshop shop) {
@@ -5024,7 +5074,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             if (stand.isEmpty() && depositors.containsKey(soldierName)) {
                 SoldierStatus self = statuses.get(i);
-                stand = depositors.get(soldierName).standAt().map(chest -> chestStand(self.position(), chest).orElse(chest));
+                Depositor own = depositors.get(soldierName);
+                stand = own.dumping() ? own.standAt() : own.standAt().map(chest -> chestStand(self.position(), chest).orElse(chest));
             }
             if (stand.isEmpty()) {
                 stand = storeWalks.getOrDefault(soldierName, Optional.empty());
@@ -5083,7 +5134,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return Optional.empty();
         }
         Optional<Position> here = statuses.stream().filter(s -> s.name().equals(soldier)).findFirst().map(SoldierStatus::position);
-        return depositors.get(soldier).standAt().map(chest -> here.flatMap(h -> chestStand(h, chest)).orElse(chest));
+        Depositor own = depositors.get(soldier);
+        return own.dumping() ? own.standAt() : own.standAt().map(chest -> here.flatMap(h -> chestStand(h, chest)).orElse(chest));
     }
 
     private Optional<Position> chestStand(Position from, Position chest) {
@@ -5682,7 +5734,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (mine.isPresent()) {
                 mineStash.put(mine.get().head(), seen);
                 LOG.info("[Mine] the stash at {} holds {} raw iron, {} raw copper", mine.get().head(), seen.rawIron(), seen.rawCopper());
-            } else if (Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).equals(stockpileFor(name))) {
+            } else {
+                Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt)
+                        .ifPresent(chest -> chestsSeen.put(BlockPos.containing(chest.x(), chest.y(), chest.z()), seen));
+            }
+            if (mine.isEmpty() && Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).equals(stockpileFor(name))) {
                 // Only the stockpile draws come from: an outpost depot's chest, or another the load went
                 // into, isn't it. Live, with the flatten's outposts, the force's view of its stockpile
                 // took each chest opened in turn, raw copper there one look and none the next, and a
@@ -6191,7 +6247,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 chestFitter.stop(status.position(), world);
                 Optional<Position> stockpile = stashOre && !depositor.active() || depositor.chestAt().flatMap(this::mineOfChest).isPresent() && depositor.active()
                         ? chestOf(working) : stockpileFor(name);
-                if (unstash.isPresent()) {
+                // A flatten builder's surplus - cobblestone or dirt past what the stockpile needs - is left
+                // at its depot's dump, a stack of each kept for steps.
+                java.util.function.Predicate<Position> notFull = c -> !fullChests.contains(BlockPos.containing(c.x(), c.y(), c.z()));
+                Optional<Position> deposit = (keepHands.contains(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile) : stockpile)
+                        .filter(notFull);
+                Set<ItemClass> surplus = keepHands.contains(name) && !depositor.active() || depositor.dumping() ? surplusKinds(deposit) : Set.of();
+                boolean dumpNow = fullLoad && surplus.stream().anyMatch(c -> inventory.count(c) > Depositor.KEEP);
+                if (depositor.dumping() || dumpNow && !depositor.active()) {
+                    depositor.tickDump(status.position(), shop.or(() -> Optional.ofNullable(mainDepot)).flatMap(d -> dumpOf(d, world)), surplus,
+                            free && !threatened && fort == null && (depositor.dumping() || dumpNow));
+                } else if (unstash.isPresent()) {
                     depositor.tickDraw(status.position(), Optional.of(unstash.get().chest()), unstash.get().ore(), unstash.get().carry(),
                             free && !threatened);
                 } else if (drawingStone.contains(name) || keepDrawing.contains(name)) {
@@ -6221,11 +6287,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // A flatten builder's load into the nearest depot standing a chest (keepOutposts).
                     // Not to a chest known full: a trip there fails, and is made again. Live (field285), with
                     // the depots' rows filled with cobblestone, the crew's ticks were 38% depositor - trip
-                    // after failed trip. With every chest it could go to full, it carries on full
-                    // (backlog/keep-pace.md, surplus past what a stockpile needs).
-                    java.util.function.Predicate<Position> notFull = c -> !fullChests.contains(BlockPos.containing(c.x(), c.y(), c.z()));
-                    Optional<Position> deposit = (keepHands.contains(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile) : stockpile)
-                            .filter(notFull);
+                    // after failed trip (deposit, above). With every chest it could go to full, its
+                    // cobblestone and dirt go to the dump (surplusKinds), the rest carried on full.
                     // Not up out of the mine by night for a load - the stash's ore goes in below; the rest
                     // waits for day. Live, the night shift's loads were for the camp's chest 85 blocks off
                     // and up the stairs, into the dark.
@@ -6334,7 +6397,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }));
             turns.put(Hands.Routine.SCAVENGER, turn(() -> scavenger.active() && !cuttingOut,
-                    free -> scavenger.tick(status.position(), world, free && !cuttingOut && !threatened && fort == null && !foodCalls)));
+                    free -> scavenger.tick(status.position(), world, free && !cuttingOut && !threatened && fort == null && !foodCalls, this::atADump)));
             Optional<Hands.Routine> hands = Hands.tick(turns);
             if (keepHands.contains(name)) {
                 keepSaplingsCarried.put(name, inventory.count(ItemClass.SAPLING));

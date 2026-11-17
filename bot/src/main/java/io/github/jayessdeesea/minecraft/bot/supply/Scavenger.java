@@ -45,6 +45,11 @@ public final class Scavenger {
 
     /** Each tick, while {@code wanted} (free, nothing near): walks onto the nearest stack it hasn't given up on. */
     public synchronized void tick(Position soldier, WorldView world, boolean wanted) {
+        tick(soldier, world, wanted, p -> false);
+    }
+
+    /** As {@link #tick(Position, WorldView, boolean)}, leaving what lies where {@code leave} says: a dump's. */
+    public synchronized void tick(Position soldier, WorldView world, boolean wanted, java.util.function.Predicate<Position> leave) {
         ticks++;
         left.values().removeIf(until -> until <= ticks);
         if (!wanted) {
@@ -52,6 +57,7 @@ public final class Scavenger {
             return;
         }
         Optional<Position> nearest = world.itemsNear(soldier, RADIUS).stream()
+                .filter(item -> !leave.test(item))
                 .filter(item -> left.keySet().stream().noneMatch(l -> distance(l, item) < 1)).findFirst();
         if (nearest.isEmpty()) {
             going = null;

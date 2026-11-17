@@ -40,6 +40,9 @@ final class FakeChestServer {
         Arrays.fill(chestItems, -1);
     }
 
+    /** The stacks thrown down, as they were. */
+    final List<int[]> thrown = new ArrayList<>();
+
     void connect(Consumer<ContainerUpdate> client) {
         this.client = client;
     }
@@ -79,6 +82,11 @@ final class FakeChestServer {
                             inventory.setSlot(slot, stack(hotbar));
                             inventory.setSlot(hotbar, a);
                         });
+                    }
+                    case "throwStack" -> {
+                        int slot = (int) args[2];
+                        thrown.add(stack(slot));
+                        answers.add(() -> inventory.setSlot(slot, null));
                     }
                     case "closeContainer", "selectHotbarSlot" -> {
                     }

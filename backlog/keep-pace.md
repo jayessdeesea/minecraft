@@ -98,11 +98,6 @@ crew's ticks:
   the walk, the climb and the blocks' hardness, not their count - and a builder done with its own
   takes half of the most that's left of another's, as a newcomer does now. "Done, waiting for the
   level" was 15-35% of the crew's ticks on wide levels.
-- **Surplus past what a stockpile needs (operator, 2026-11-16).** Cobblestone and dirt past 4,096
-  of either in the stockpile are left, not carried: a builder's load was about a chest of
-  cobblestone, and the depots' rows filled. A soldier picks up what it walks over, so it's
-  dropped at a dump beside the depot, off the walks, and the scavenger leaves dirt and cobblestone
-  there to despawn.
 - **Blocks that stop soldiers, and fences (operator, 2026-11-16).** Built: a refused step and a
   stall name the blocks there ("wildflowers P"), counted and said at the 1st, 10th and 100th of a
   kind ("[Blocks] ..."). Every state the server has is classed (tools/block-class-generator), so an

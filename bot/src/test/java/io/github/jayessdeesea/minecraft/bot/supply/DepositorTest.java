@@ -41,6 +41,34 @@ class DepositorTest {
     }
 
     @Test
+    void leavesItsSurplusAtTheDumpButAStackOfEach() {
+        server.inventory.setSlot(10, new int[]{itemOf(ItemClass.COBBLESTONE), 64});
+        server.inventory.setSlot(11, new int[]{itemOf(ItemClass.COBBLESTONE), 64});
+        server.inventory.setSlot(12, new int[]{itemOf(ItemClass.DIRT), 30});
+        server.inventory.setSlot(13, new int[]{itemOf(ItemClass.COBBLESTONE), 12});
+        server.inventory.setSlot(14, new int[]{itemOf(ItemClass.LOG), 5});
+        java.util.Set<ItemClass> surplus = java.util.Set.of(ItemClass.COBBLESTONE, ItemClass.DIRT);
+
+        for (int i = 0; i < 3; i++) {
+            server.tick();
+            depositor.tickDump(FAR, Optional.of(BESIDE), surplus, true);
+        }
+        assertTrue(depositor.dumping());
+        assertEquals(Optional.of(BESIDE), depositor.standAt(), "it stands at the dump itself");
+        for (int i = 0; i < 5; i++) {
+            server.tick();
+            depositor.tickDump(BESIDE, Optional.of(BESIDE), surplus, true);
+        }
+
+        assertFalse(depositor.active());
+        assertEquals(64, server.inventory.count(ItemClass.COBBLESTONE), "one stack kept for steps");
+        assertEquals(30, server.inventory.count(ItemClass.DIRT), "a kind's first stack is kept");
+        assertEquals(5, server.inventory.count(ItemClass.LOG), "nothing else thrown");
+        assertEquals(2, server.thrown.size());
+        assertEquals(List.of(), seen, "no chest opened");
+    }
+
+    @Test
     void drawsStacksOfAMaterialOutUntilItCarriesEnough() {
         server.chestItems[0] = itemOf(ItemClass.COBBLESTONE);
         server.chestCounts[0] = 64;

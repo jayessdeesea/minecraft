@@ -218,8 +218,13 @@ its west edge, evenly spread (`Flatten.depots`) - three for x=-16..16 z=-64..64,
 - the middle one the main depot, the others outposts, each a hasty workshop with its own row of
 chests. A builder's load goes into the depot nearest it, and its chest is fitted there; draws -
 food, logs, tools - are from the main depot, whose chests hold the stores.
-No load is taken to a chest known full: with every chest a builder could go to full, it carries on
-full (live, with the depots' rows full of cobblestone, the crew's ticks were 38% failed trips).
+No load is taken to a chest known full (live, with the depots' rows full of cobblestone, the crew's
+ticks were 38% failed trips). Cobblestone and dirt past 4,096 of either across the surface chests
+seen (operator, 2026-11-16), or either once every chest a builder could go to is full, is left at
+its depot's dump, not carried in: ground five blocks west of the stand, off the site and clear of
+the chests. A builder throws down every stack of it there but one of each kind, kept for steps,
+and the scavengers leave what lies within four blocks of a dump to despawn - a soldier picks up
+what it walks over.
 Every builder on the flatten's crew stocks and draws at the depot while a chest of it stands,
 whatever its own squad's task - live, the builders of squads sent to it from the mine carried 53 of
 92 loads to the camp's chest 70 blocks off. The depot is a row of chests, not one (operator, 2026-11-14): six cells laid out round the

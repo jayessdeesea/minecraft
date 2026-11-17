@@ -66,6 +66,7 @@ public final class Depositor {
     private int drawTo;
 
     public Depositor(String name, PlaySession session, Inventory inventory, Consumer<Stockpile> stockpileSeen) {
+        this.session = session;
         this.name = name;
         this.inventory = inventory;
         this.chest = new ChestWindow(session, inventory);
@@ -79,6 +80,11 @@ public final class Depositor {
 
     public synchronized boolean active() {
         return script != null;
+    }
+
+    /** Whether a trip under way is to a dump ({@link #tickDump}): {@link #standAt} is the dump's cell, not a chest's. */
+    public synchronized boolean dumping() {
+        return script != null && !dumping.isEmpty();
     }
 
     private static final String PUT_IN = "put the load in";
@@ -197,6 +203,71 @@ public final class Depositor {
      * no more - and advances one under way. One squad's surplus is another's supply: live, masons
      * stood idle for want of blocks while a soldier of the other squad carried 627 cobblestone.
      */
+    private final PlaySession session;
+    /** What a dump trip under way leaves: {@link #tickDump}. */
+    private Set<ItemClass> dumping = Set.of();
+    /** How near the dump its surplus is thrown down. */
+    static final double DUMP_REACH = 1.5;
+    /** What of each surplus kind a dump leaves on the soldier: one stack, for steps and plugs. */
+    public static final int KEEP = 64;
+
+    /**
+     * Each tick: leaves {@code surplus} - what the stockpile has more than enough of - at {@code dump}
+     * when {@code wanted}, every stack of it thrown down there, not carried to a chest (operator,
+     * 2026-11-16: past 4,096 of cobblestone or dirt in a stockpile, drop it and leave it). A soldier
+     * picks up what it walks over, so it's left at a dump off the walks, where it despawns.
+     */
+    public synchronized void tickDump(Position soldier, Optional<Position> dump, Set<ItemClass> surplus, boolean wanted) {
+        this.soldierAt = soldier;
+        this.wanted = wanted;
+        ticks++;
+        if (cooldown > 0) {
+            cooldown--;
+        }
+        if (script == null) {
+            if (!wanted || cooldown > 0 || dump.isEmpty() || surplus.stream().allMatch(c -> inventory.count(c) <= KEEP)) {
+                return;
+            }
+            at = dump.get();
+            dumping = Set.copyOf(surplus);
+            LOG.info("{} leaves its surplus {} at the dump at {} - {}", name, dumping, at, inventory.summary());
+            walking = true;
+            script = new Script(name, List.of(
+                    new Step("walk to the dump", () -> walking = true,
+                            new Expect("at the dump", () -> Math.hypot(soldierAt.x() - at.x(), soldierAt.z() - at.z()) <= DUMP_REACH
+                                    && Math.abs(soldierAt.y() - at.y()) <= 2), walkTicks()),
+                    new Step("leave the surplus", this::throwSurplus,
+                            new Expect("the surplus left", () -> dumping.stream().allMatch(c -> inventory.count(c) <= KEEP)),
+                            ChestWindow.ANSWER_TICKS)),
+                    List.of(new Guard("the dump is no longer wanted", () -> this.wanted || !walking)));
+        }
+        switch (script.tick()) {
+            case Script.Status.Running _ -> {
+            }
+            case Script.Status.Done _ -> {
+                LOG.info("{} left its surplus at the dump - {}", name, inventory.summary());
+                finish();
+            }
+            case Script.Status.Interrupted _ -> finish();
+            case Script.Status.Failed failed -> {
+                LOG.warn("{} couldn't leave its surplus at the dump: {}: {}", name, failed.step(), failed.reason());
+                finish();
+            }
+        }
+    }
+
+    /** Throws down every stack of what it's dumping but the first of each kind. */
+    private void throwSurplus() {
+        walking = false;
+        Set<ItemClass> kept = new java.util.HashSet<>();
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            Optional<ItemClass> kind = inventory.itemAt(slot) >= 0 ? ItemClassRegistry.classOf(inventory.itemAt(slot)) : Optional.empty();
+            if (kind.filter(dumping::contains).isPresent() && !kept.add(kind.get())) {
+                session.throwStack(0, 0, slot); // stale state: the server resends the inventory
+            }
+        }
+    }
+
     public synchronized void tickDraw(Position soldier, Optional<Position> stockpile, ItemClass material, int carry, boolean wanted) {
         this.soldierAt = soldier;
         this.wanted = wanted;
@@ -294,7 +365,7 @@ public final class Depositor {
     /** The chest as it stands open. */
     private Stockpile seen() {
         return new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE), chest.chestCount(ItemClass.FOOD),
-                chest.chestCount(ItemClass.RAW_IRON), chest.chestCount(ItemClass.RAW_COPPER));
+                chest.chestCount(ItemClass.RAW_IRON), chest.chestCount(ItemClass.RAW_COPPER), chest.chestCount(ItemClass.DIRT));
     }
 
     /** Raw ore put in on this trip: the force's, every bit of it carried. */
@@ -355,6 +426,7 @@ public final class Depositor {
         load = Set.of();
         foodLeft = Integer.MAX_VALUE;
         drawing = Optional.empty();
+        dumping = Set.of();
         cooldown = COOLDOWN_TICKS;
     }
 }

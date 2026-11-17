@@ -6,7 +6,12 @@ package io.github.jayessdeesea.minecraft.command;
  * soldiers' basic loads ({@link Subsistence}), and raw ore pooled for armour - the force's, drawn
  * by whoever it completes a piece for (docs/echelons/tenets.md, specialists produce, missions consume).
  */
-public record Stockpile(int logs, int stone, int rations, int rawIron, int rawCopper) {
+public record Stockpile(int logs, int stone, int rations, int rawIron, int rawCopper, int dirt) {
+
+    /** No dirt counted. */
+    public Stockpile(int logs, int stone, int rations, int rawIron, int rawCopper) {
+        this(logs, stone, rations, rawIron, rawCopper, 0);
+    }
 
     /** No ore in it. */
     public Stockpile(int logs, int stone, int rations) {

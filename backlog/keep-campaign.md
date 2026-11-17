@@ -43,9 +43,9 @@ The keep's dig runs with no supply behind it (operator, 2026-11-14). Live:
     chests at a base, to dump a lot into. Double chests need `ChestWindow` to open a 54-slot window
     (today two chests side by side are kept apart because nothing opens the pair). Sized from the
     counts beside that: eight builders carry about 9,000 blocks.
-  - **Caps on bulk (operator, 2026-11-15):** no more than 4,096 dirt, and no more than 4,096
-    cobblestone, in the 32-double-chest stockpile, unless an active plan wants more (the slab, a
-    wall) - past that it's thrown away, not carried. Needs the dirt count in `Stockpile` and `Depositor` stowing dirt.
+  - **Caps on bulk:** the 4,096 cap is built for the flatten's crew (docs/military-doctrine.md § 4,
+    the depot's dump). Left: an active plan that wants more (the slab, a wall) lifting the cap, and
+    other squads' loads dumped as the crew's are.
     The pack's own order when full is built (docs/military-doctrine.md § 4, the pack): dirt past two
     stacks, then seeds, then cobblestone past five stacks; never ore, ingots or tools.
   - Selective stowing: cobblestone, logs, ore, spare tools, the lumberjacks' axes and saplings go in
