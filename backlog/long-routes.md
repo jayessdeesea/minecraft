@@ -21,6 +21,12 @@ objective, which is where the squad last saw some.
   gain no ground, a soldier searches 15 times wider, and goes on searching that wide for that
   goal - `DeterministicSoldier.LONG_PLAN_BUDGET`, `aGoalBeyondOneSearchIsReachedRoundTheLongWay`.)
 - A goal beyond even the wide search - farther than about a hundred blocks round - walked in legs.
+- A soldier on the surface is never routed down into a cave toward a goal there's no walk to.
+  Live (field332-347), Jack, gathering wood, went from y=73 into the caves to y=-19 in a minute,
+  and then walked cave to cave: each time the recovery drill laid his stair up (which now digs him
+  out, field346), the next order sent him walking off it, down through the caves again toward a goal
+  on the surface - y=-52, -22, -29, -26 in turn. A route's leg that goes far below both its start
+  and its goal, with no known way up at the far end, is the cave's, not the goal's.
 
 ## Notes
 - Fran and Bob died gathering 50-60 blocks out (a creeper, pillagers). A gather that far from the
