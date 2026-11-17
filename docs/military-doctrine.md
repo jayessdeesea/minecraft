@@ -484,7 +484,8 @@ the squad to falls.
   route to striking distance of it - water, a drop, a wall between - has none to the soldier
   either: it isn't contact, and the soldier carries on with its order; once it's within reach, it
   is (live, the farm squad stood a night's start "in contact" with one across from it, each
-  stepping at it into what stopped it, none striking).
+  stepping at it into what stopped it, none striking). It's looked for swimming too, not only on
+  the ground: one in water stood "in contact" across two restarts, its drill held off.
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
 - **Work under contact.** The soldiers in contact drop their ground work - the keep's rectangle, the

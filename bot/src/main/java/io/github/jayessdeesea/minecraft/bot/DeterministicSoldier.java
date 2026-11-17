@@ -609,7 +609,9 @@ public final class DeterministicSoldier implements Soldier {
      * it, so progress isn't the test - a route is.
      */
     private boolean pinned(WorldView world, Position threat) {
-        if (pinnedCheckIn-- <= 0 && onGround) {
+        // On the ground, or swimming: live, a soldier in water was never on the ground, so never found
+        // the hostile out of reach, and stood "in contact" across two restarts, its drill held off.
+        if (pinnedCheckIn-- <= 0 && (onGround || wet)) {
             pinnedCheckIn = PINNED_CHECK_TICKS;
             Goal reach = new Goal(threat.x(), threat.y(), threat.z(), ATTACK_REACH, Pathfinder.MAX_DROP);
             pinned = !Pathfinder.find(world, standingCell(world, position), reach, PLAN_BUDGET,
