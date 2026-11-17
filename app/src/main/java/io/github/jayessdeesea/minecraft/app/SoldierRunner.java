@@ -2579,13 +2579,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             LOG.warn("[{}] no ground at x={} z={} for the keep's borrow pit - its builders fetch no dirt", squad, pitX, pitZ);
         }
         for (SoldierStatus h : hands) {
-            if (!(orders.get(h.name()) instanceof Order.Dig) || pitGround.isEmpty()) {
+            int blocks = h.condition().flatMap(c -> c.kit()).map(k -> k.dirt() + k.stone()).orElse(0);
+            // A builder waiting for ground restocks too: live (field354), Bob, on top of his own steps at the
+            // hilltop with none left, lost his rectangle the moment his draw was set, and the draw with it.
+            boolean digging = orders.get(h.name()) instanceof Order.Dig;
+            if (!digging && !keepClimbDrawing.contains(h.name()) && blocks >= Tasking.LOW) {
+                keepFetching.remove(h.name());
+                continue;
+            }
+            if (!digging && !chainOfCommand.stores().map(st -> st.stone() >= Tasking.LOAD).orElse(false)) {
                 keepFetching.remove(h.name());
                 keepClimbDrawing.remove(h.name());
                 continue;
             }
-            int blocks = h.condition().flatMap(c -> c.kit()).map(k -> k.dirt() + k.stone()).orElse(0);
-            boolean fetching = keepFetching.contains(h.name()) ? blocks < Tasking.LOAD : blocks < Tasking.LOW;
+            if (digging && pitGround.isEmpty()) {
+                keepFetching.remove(h.name());
+                keepClimbDrawing.remove(h.name());
+                continue;
+            }
+            boolean fetching = keepFetching.contains(h.name()) || keepClimbDrawing.contains(h.name()) ? blocks < Tasking.LOAD : blocks < Tasking.LOW;
             // The dig's own cobblestone first, from the depot: it climbs as well as dirt, and the depots
             // hold thousands of it. Live (field347), every pit round the keep was dug out in turn and
             // builders stood a minute at a time finding no dirt, with the depots' rows full of stone.
@@ -5134,6 +5146,19 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (!failedHere) {
                     LOG.warn("[{}] MINE: no chunk at or round x={} z={} a well can be cut down clear of water and lava - there itself, {}",
                             squadName, x, z, Staircase.whyNotWell(world, x, z, nearY, depth));
+                    // With every chunk round it seen, a site no well can go down is as done as one dried up:
+                    // the keep's mine moves on. Live (field354), the site at x=-154 was a hill over an open cave,
+                    // and every squad would have been sent back to it each minute all night.
+                    boolean seen = true;
+                    for (int dx = -16; dx <= 16 && seen; dx += 16) {
+                        for (int dz = -16; dz <= 16 && seen; dz += 16) {
+                            seen = world.isLoaded(x + dx, z + dz);
+                        }
+                    }
+                    if (seen) {
+                        LOG.warn("[Outcome] no well can be sited at or round x={} z={} - SHORT", x, z);
+                        chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
+                    }
                 }
                 state.stairsFor = new int[]{x, z};
                 state.stairsRetryAt = clockwork.millis() + STAIRS_RETRY_MILLIS;
