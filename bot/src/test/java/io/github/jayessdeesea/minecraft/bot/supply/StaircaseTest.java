@@ -79,6 +79,34 @@ class StaircaseTest {
     }
 
     /**
+     * The grid (the rules of a mine): every tunnel three high, and the strips off the spine where the
+     * world's coordinate along it is a multiple of 3 - wherever the mine's shaft is - so every block
+     * between two strips is seen from one, and none is dug twice.
+     */
+    @Test
+    void aLevelIsAGridOfStripsThreeHighOnTheWorldsThirds() {
+        for (int x0 = 0; x0 < 3; x0++) {
+            Staircase stairs = new Staircase(new BlockPos(x0, 64, 0), 16);
+            for (Staircase.Cut cut : stairs.cuts()) {
+                if (cut.tunnel() >= 0 && cut.cells().size() != 2) {
+                    assertTrue(cut.cells().size() == Staircase.TUNNEL_HEIGHT, "three high: " + cut);
+                }
+            }
+            List<Staircase.Cut> main = stairs.cuts().stream().filter(c -> c.tunnel() == 0 && c.cells().size() == 3).toList();
+            boolean alongX = main.get(1).feet().x() != main.get(0).feet().x();
+            Set<Integer> rootsAt = new HashSet<>();
+            stairs.cuts().stream().filter(c -> c.tunnel() > 0).forEach(c -> rootsAt.add(alongX ? c.stand().x() : c.stand().z()));
+            List<Staircase.Cut> firsts = stairs.cuts().stream().filter(c -> c.tunnel() > 0)
+                    .filter(c -> main.stream().anyMatch(m -> m.feet().equals(c.stand()))).toList();
+            assertFalse(firsts.isEmpty());
+            for (Staircase.Cut first : firsts) {
+                int along = alongX ? first.stand().x() : first.stand().z();
+                assertTrue(Math.floorMod(along, Staircase.BRANCH_EVERY) == 0, "a strip at a world third, head x=" + x0 + ": " + first.stand());
+            }
+        }
+    }
+
+    /**
      * A well's levels at y % 4 == 0 (the rules of a mine): each its own tunnels, out through the wall
      * its walkway's on at that height - east, south and west in turn - so no two levels one above
      * another run the same way, and none goes back through the shaft.
@@ -137,7 +165,11 @@ class StaircaseTest {
                     assertTrue(seen.add(tunnel), "tunnel " + tunnel + " is one miner's, of " + miners);
                 }
                 List<Integer> roots = share.stream().filter(t -> t > 0).map(t -> (t - 1) / 2).sorted().toList();
-                if (!roots.isEmpty()) {
+                if (miners == 2) {
+                    // Two to a level, one to each side of the spine (the rules of a mine).
+                    int side = miner;
+                    assertTrue(share.stream().filter(t -> t > 0).allMatch(t -> t % 2 == (side == 0 ? 1 : 0)), "miner " + miner + " one side's");
+                } else if (!roots.isEmpty()) {
                     assertTrue(roots.getFirst() > lastRoot, "miner " + miner + "'s stretch lies past the last one's");
                     lastRoot = roots.getLast();
                 }

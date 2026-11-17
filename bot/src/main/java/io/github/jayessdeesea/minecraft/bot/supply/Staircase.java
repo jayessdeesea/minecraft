@@ -162,7 +162,17 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
             tunnels.add(-1);
             tunnels.add(0);
         }
-        int roots = tunnel() / BRANCH_EVERY;
+        // Two to a level, one to each side of the spine (the rules of a mine): the first the strips
+        // to its one side, the second the other's - never two in one strip, nor at one root.
+        if (miners == 2) {
+            for (int t = 1; t <= branches(); t++) {
+                if (t % 2 == (miner == 0 ? 1 : 0)) {
+                    tunnels.add(t);
+                }
+            }
+            return Set.copyOf(tunnels);
+        }
+        int roots = branches() / 2;
         for (int root = miner * roots / miners; root < (miner + 1) * roots / miners; root++) {
             // Tunnel 2r+1 is root r's branch to one side, 2r+2 the other's (cuts()).
             tunnels.add(2 * root + 1);
@@ -272,8 +282,13 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
         for (int i = TUNNEL_LIGHT_EVERY; i <= tunnel(); i += TUNNEL_LIGHT_EVERY) {
             lights.add(last.offset(dx * i, 0, dz * i));
         }
-        for (int i = BRANCH_EVERY; i <= tunnel(); i += 2 * BRANCH_EVERY) {
-            BlockPos root = last.offset(dx * i, 0, dz * i);
+        List<BlockPos> main = new ArrayList<>();
+        for (int i = 1; i <= tunnel(); i++) {
+            main.add(last.offset(dx * i, 0, dz * i));
+        }
+        List<Integer> roots = roots(main, dx, dz);
+        for (int r = 0; r < roots.size(); r += 2) {
+            BlockPos root = main.get(roots.get(r) - 1);
             for (int side : new int[]{1, -1}) {
                 lights.add(root.offset(-dz * side * BRANCH_LIGHT, 0, dx * side * BRANCH_LIGHT));
             }
@@ -353,7 +368,7 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
         List<BlockPos> main = new ArrayList<>();
         for (int i = 1; i <= tunnel(); i++) {
             BlockPos feet = last.offset(dx * i, 0, dz * i);
-            cuts.add(new Cut(i == 1 ? last : main.getLast(), List.of(feet.offset(0, 1, 0), feet), 0));
+            cuts.add(new Cut(i == 1 ? last : main.getLast(), tunnelCells(feet), 0));
             main.add(feet);
             if (i == 1) {
                 // The landing: a recess each side of the tunnel's first cell, off the walkway, where
@@ -370,19 +385,55 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
             }
         }
         int tunnel = 1;
-        for (int i = BRANCH_EVERY; i <= tunnel(); i += BRANCH_EVERY) {
+        for (int i : roots(main, dx, dz)) {
             BlockPos root = main.get(i - 1);
             for (int side : new int[]{1, -1}) {
                 BlockPos stand = root;
                 for (int j = 1; j <= BRANCH; j++) {
                     BlockPos feet = root.offset(-dz * side * j, 0, dx * side * j);
-                    cuts.add(new Cut(stand, List.of(feet.offset(0, 1, 0), feet), tunnel));
+                    cuts.add(new Cut(stand, tunnelCells(feet), tunnel));
                     stand = feet;
                 }
                 tunnel++;
             }
         }
         return List.copyOf(cuts);
+    }
+
+    /** A tunnel's height (the rules of a mine): three blocks, y to y + 2, so the rock between strips and levels is all seen. */
+    public static final int TUNNEL_HEIGHT = 3;
+
+    /** The cells a tunnel's cut at {@code feet} clears, top first, the feet last. */
+    private static List<BlockPos> tunnelCells(BlockPos feet) {
+        return List.of(feet.offset(0, 2, 0), feet.offset(0, 1, 0), feet);
+    }
+
+    /**
+     * The main tunnel's cells a strip goes off at, 1-based: where the world's coordinate along it is a
+     * multiple of {@link #BRANCH_EVERY} (the rules of a mine: x % 3 == 0 along x, z % 3 == 0 along z) -
+     * the grid the world's, not each mine's own - none in its first two cells, the landing's and the
+     * store's recesses.
+     */
+    private static List<Integer> roots(List<BlockPos> main, int dx, int dz) {
+        List<Integer> roots = new ArrayList<>();
+        for (int i = 3; i <= main.size(); i++) {
+            BlockPos cell = main.get(i - 1);
+            if (Math.floorMod(dx != 0 ? cell.x() : cell.z(), BRANCH_EVERY) == 0) {
+                roots.add(i);
+            }
+        }
+        return roots;
+    }
+
+    /** How many strips the mine's main tunnel has off it, both sides counted. */
+    int branches() {
+        BlockPos last = step(steps() - 1);
+        int[] out = outward();
+        List<BlockPos> main = new ArrayList<>();
+        for (int i = 1; i <= tunnel(); i++) {
+            main.add(last.offset(out[0] * i, 0, out[1] * i));
+        }
+        return 2 * roots(main, out[0], out[1]).size();
     }
 
     public Staircase {

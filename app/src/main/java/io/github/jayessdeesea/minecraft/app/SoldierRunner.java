@@ -3821,6 +3821,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return at < 0 ? stairs.share(0, 1) : stairs.share(at, crew.size());
     }
 
+    /** Cutters on a level: two, one to each side of its spine (the rules of a mine). */
+    static final int CUTTERS_A_LEVEL = 2;
+
     /** The soldiers cutting {@code stairs}, every squad's, by name. */
     private List<String> mineCrew(Staircase stairs) {
         return cutting.entrySet().stream().filter(e -> e.getValue().head().equals(stairs.head()) && e.getValue().bottom() == stairs.bottom())
@@ -4803,10 +4806,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 : Stream.of(plan.cells(), plan.floor(), plan.floor().stream().map(f -> new Position(f.x(), f.y() + 1, f.z())).toList())
                         .flatMap(List::stream).map(c -> BlockPos.containing(c.x(), c.y(), c.z())).toList());
         state.workshop = nextChestIfFull(state.workshop);
-        // The one who cuts it: the first soldier carrying a pickaxe. Until one does, all make one.
-        String cutter = stairs == null || squadInContact ? null : statuses.stream()
+        // Who cuts it: the first two carrying a pickaxe, one to each side of its level's spine (the
+        // rules of a mine: two soldiers to a level). Until one does, all make one.
+        List<String> cutters = stairs == null || squadInContact ? List.of() : statuses.stream()
                 .filter(st -> st.condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false))
-                .map(SoldierStatus::name).findFirst().orElse(null);
+                .map(SoldierStatus::name).limit(CUTTERS_A_LEVEL).toList();
+        String cutter = cutters.isEmpty() ? null : cutters.getFirst();
         // Securing: the torches still to put down round the objective, worked out again each cycle -
         // every torch put down, by anyone, changes what's left. Read once: the platoon leader's thread may
         // change the squad's task mid-cycle - live, a second read found SECURE gone and the squad
@@ -5123,7 +5128,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Kit lamp = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
             boolean canLight = torchesCarried.getOrDefault(soldierName, 0) > 0
                     || canMakeTorches.getOrDefault(soldierName, false) && lamp != null && lamp.stone() >= TORCH_STONE;
-            if (stairs != null && !squadInContact && torchesLeft.isEmpty() && !soldierName.equals(cutter) && canLight) {
+            if (stairs != null && !squadInContact && torchesLeft.isEmpty() && !cutters.contains(soldierName) && canLight) {
                 List<BlockPos> stairsDark = stairs.lights().stream()
                         .filter(c -> !world.isSolid(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z()) && !world.isTorch(c.x(), c.y(), c.z()))
                         .toList();
@@ -5143,7 +5148,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 mining.remove(soldierName);
             }
-            if (stairs != null && soldierName.equals(cutter)) {
+            if (stairs != null && cutters.contains(soldierName)) {
                 cutting.put(soldierName, stairs);
             } else {
                 cutting.remove(soldierName);
@@ -5168,9 +5173,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Position rest = dark && stairs.landingCut(world) ? centre(stairs.landingStand()) : centre(stairs.head());
                 // A load's walk first, while the depositor has the hands - a stand by its chest: live, a
                 // miner's every trip to the stockpile timed out where it stood, its order the miner's stand.
-                Position cutterAt = cutter == null ? rest
-                        : depositTo(cutter, statuses).or(() -> armourers.get(cutter).standAt()).or(() -> miners.get(cutter).standAt()).orElse(rest);
-                boolean isCutter = soldierName.equals(cutter);
+                boolean isCutter = cutters.contains(soldierName);
+                String own = isCutter ? soldierName : cutter;
+                Position cutterAt = own == null ? rest
+                        : depositTo(own, statuses).or(() -> armourers.get(own).standAt()).or(() -> miners.get(own).standAt()).orElse(rest);
                 // One holding the top goes on its errand first: its kit at the workshop, torches made, the stairs lit.
                 // Not by night: the top is the dark, and the squad stays down with its cutter.
                 Optional<Position> errand = isCutter || dark ? Optional.empty()

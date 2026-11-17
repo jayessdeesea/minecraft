@@ -1328,9 +1328,12 @@ under it was out of everyone's reach. It stops with CANTCO where going on would 
 lava, or over a cave it can't floor - nothing carried to floor it with, or wider than 24 blocks.
 
 At the bottom the cutter goes on into the tunnels the ore is mined from: a main tunnel 24 blocks
-straight out from the last step, away from the shaft, then branches off it both ways every 3
-blocks, each 8 long, so every block between two branches is seen from one of them. All are two
-high, at the stairs' depth, with their floors left standing. Ore is taken as it's seen: touching a
+straight out from the last step, away from the shaft, then strips off it both ways wherever the
+world's coordinate along it is a multiple of 3 (`Staircase.BRANCH_EVERY`; the rules of a mine's grid),
+each 8 long, so every block between two strips is seen from one of them. All are three high
+(`Staircase.TUNNEL_HEIGHT`), at the level's depth, with their floors left standing. A squad's first
+two with a pickaxe cut its level, one to each side of the spine (`SoldierRunner.CUTTERS_A_LEVEL`):
+the first the stairs, the spine and its side's strips, the second the other side's. Ore is taken as it's seen: touching a
 cut, or anywhere in reach (4.5 blocks, two across) with a face open - the rest of a vein behind its
 first block, a cave's wall - nearest first, so a vein of coal or copper is mined out, not just
 where it meets the tunnel. Ore under a tunnel's floor is
@@ -1361,26 +1364,34 @@ that breaks one is a step back):**
 1. **Work in parallel.** Each worker has a share no one else touches, held till it's done; nobody
    waits on another or stands in another's way; a little coordination - who has which share -
    and no more (docs/echelons/tenets.md, work in parallel).
-2. **A squad to a level.** Each squad on a mine works its own level of the shaft; the levels are at
-   heights a multiple of 4 (y % 4 == 0), each tunnel three blocks high, so the rock between two
-   levels is seen from one or the other and no ore is missed.
-3. **A soldier to a direction.** Each soldier of a squad cuts its own tunnel, its own way from the
-   level's landing - never two in one tunnel.
-4. **The whole vein.** Ore is followed: every block of a vein in reach is taken, not only the face
-   the tunnel touches - and the holes it leaves are filled back with cobblestone or dirt where a
-   block is carried, so the walls and floors stay whole and nothing spawns in them.
-5. **Torches enough.** Every miner goes down with torches enough for its tunnel, and lights it as
-   it's cut.
-6. **The yield checked.** Each level's ore is checked against what it should give, and one dried
+2. **A grid that sees every block, with the least digging.** A level is at a height a multiple of
+   4 (y % 4 == 0): a spine out from the shaft's landing, and strips off it both ways at every third
+   block of the world's grid along it - x % 3 == 0 for a spine along x, z % 3 == 0 for one along z.
+   Every tunnel is three high (y to y + 2), so the two columns between strips are each seen from a
+   strip, and the layer between two levels (y + 3) is one's ceiling and the other's floor: every
+   block seen once, none dug twice (2026-11-16).
+3. **Two soldiers to a level, each to a side.** A level is worked by two: one cuts the strips on
+   the spine's one side, the other the other's - never two in one strip. A squad of four takes two
+   levels (2026-11-16).
+4. **The whole vein, then backfilled.** Ore seen in a wall is followed block to block while it's in
+   reach, and the holes it leaves are filled back with the cobblestone or dirt it carries for that -
+   the grid's strips themselves left open - so the walls stay whole and nothing spawns in them.
+5. **The ore comes first in the pack.** Cobblestone and dirt are carried only to what the backfill
+   takes, about a stack; past that they're left, never carried at the cost of a slot for ore,
+   ingots or tools.
+6. **Torches enough.** Every miner goes down with torches enough for its strips, and lights them as
+   they're cut.
+7. **The yield checked.** Each level's ore is checked against what it should give, and one dried
    up is said so (docs/conventions.md, check the outcome).
 Built today: a squad to a level - each squad on a mine off the camp works its own level of the
 shaft at y % 4 == 0, the base's if nobody else does, else the first free one under every other
 squad's, kept on disk by squad; a well's level runs out through the wall its walkway's on at that
 height, so levels one over another run east, south and west in turn; a level's crew is its own
-squad's cutters, and a level worked out goes to the next free one under the rest. Tunnels two
-high, branches shared as stretches among the level's cutters, ore in reach taken, holes in the
-well filled, the tunnels lit, the yield checked at dawn. Not yet: tunnels three high, a direction
-per soldier, a vein's holes filled, a torch stock carried down (backlog/mining.md).
+squad's cutters, and a level worked out goes to the next free one under the rest. The grid:
+strips on the world's x % 3 or z % 3 off each level's spine, three high, its two cutters one to
+each side. Ore in reach taken, holes in the well filled, the tunnels lit, the yield checked at
+dawn. Not yet: a squad of four on two levels, a vein's holes filled, a torch stock carried down,
+and the pack's cap on cobblestone and dirt (backlog/mining.md).
 
 Squads on one mine each work their own level (the rules of a mine, above): live, squads sharing
 one level's stretches took one another's stale DONE for their own, and it was run on with nothing

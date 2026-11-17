@@ -377,7 +377,7 @@ class MinerTest {
     void aMineAlreadyCutIsWorkedForTheOreInSightOfItsTunnels() {
         Staircase stairs = new Staircase(HEAD, GROUND - 20);
         assertInstanceOf(Miner.Progress.Done.class, dig(stairs, 120000));
-        BlockPos above = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList().get(3).feet().offset(0, 2, 0);
+        BlockPos above = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList().get(3).feet().offset(0, Staircase.TUNNEL_HEIGHT, 0);
         dug.remove(above);
         ore.add(above);
         Inventory stonePickaxe = new Inventory();
