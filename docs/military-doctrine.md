@@ -221,15 +221,35 @@ food, logs, tools - are from the main depot, whose chests hold the stores.
 No load is taken to a chest known full (live, with the depots' rows full of cobblestone, the crew's
 ticks were 38% failed trips) - known across restarts, kept on disk (`chests/full`), and no longer
 full once a load goes into it (live, after every restart the crew found each full chest again by a
-failed trip, a third of its ticks). Cobblestone and dirt past 4,096 of either across the surface chests
-seen - each read when a load goes in, or when it's opened and found full (operator, 2026-11-16) - or either once every chest a builder could go to is full, is left at
+failed trip, a third of its ticks).
+
+**The stockpile's levels** (`bot.supply.StockLevels`; operator, 2026-11-17: nothing is garbage, but
+the packs and chests need room for what's worth more). Each material has a reserve, held as rations
+and ammunition are, and a most, past which none is hoarded. Under its reserve, a soldier carrying
+16 or more past its pack's keep - or enough to fill it - makes a trip of its own. Between the two,
+it rides along on a trip made anyway. At its most, it's what a full pack throws away. Work draws on
+it down through the reserve, which is refilled once there's a surplus again. The surface chests'
+counts are read each time a load goes in, or a chest is opened and found full.
+
+| Material | Reserve | Most | Past the most |
+|---|---|---|---|
+| Diamonds, raw iron, iron ingots | - | none | never shed; the depot's row grows for them |
+| Logs, rations | - | none | never shed |
+| Raw copper, copper ingots | 64 | 256 | raw copper left out of the metal pool, thrown last by a full pack |
+| Saplings, seeds, string, flint | 64 | 256 | thrown by a full pack |
+| Fences | 0 | 64 | thrown by a full pack |
+| Crafting tables | 1 | 4 | thrown by a full pack |
+| Dirt | 64 | 256 | left at the dump; underfoot everywhere |
+| Cobblestone | - | 4,096 | left at the dump |
+
+Cobblestone or dirt past its most - or either once every chest a builder could go to is full - is left at
 its depot's dump, not carried in: ground five blocks west of the stand, off the site and clear of
 the chests. A builder throws down every stack of it there but one of each kind, kept for steps,
 and the scavengers leave what lies within four blocks of a dump to despawn - a soldier picks up
 what it walks over.
 Every builder on the flatten's crew stocks and draws at the depot while a chest of it stands,
 whatever its own squad's task - live, the builders of squads sent to it from the mine carried 53 of
-92 loads to the camp's chest 70 blocks off. The depot is a row of chests, not one (operator, 2026-11-14): six cells laid out round the
+92 loads to the camp's chest 70 blocks off. The depot is a row of chests, not one (operator, 2026-11-14): as many cells as fit round the
 workshop's stand, each within reach of it and a step up or down a slope from it at most, open
 above so its lid lifts, none beside the stand or beside another chest - two
 side by side would join into one double chest (`Workshop.chestCells`). They're filled in turn: a
@@ -870,13 +890,16 @@ live, one standing still picked it straight back up, and threw it 454 times. Wit
 shed, a full pack sheds its bulk, worth least first: dirt past two stacks (`Pack.DIRT_KEPT`), then
 seeds past theirs, then cobblestone past five stacks (`Pack.COBBLESTONE_KEPT`) - never ore, ingots
 or tools (operator, 2026-11-15: almost never dirt over iron; live, a soldier with twelve raw iron
-carried 586 dirt and had no slot for the pickaxe it was crafting). A keep builder sheds sooner, at one
-slot more than its load trip's mark, so the trip carries only what's worth the walk, and keeps
-less: a stack of dirt to climb on, a stack of seeds, 16 saplings, no fences, 8 string, 16 flint,
-one crafting table (`SoldierRunner.KEEP_PACK`; operator, 2026-11-17: fill a slot, dump it when
-something better comes along, and optimize the travel away - live, builders walked a few dirt,
-three slots of seeds and five tables to the depot and back). What it throws is left where it
-lies, no squadmate's scavenger fetching it back to be shed again (`SoldierRunner.thrownNear`). And part-stacks of one item are
+carried 586 dirt and had no slot for the pickaxe it was crafting). A keep builder keeps less in
+its pack: a stack of dirt to climb on, a stack of seeds, 16 saplings, no fences, 8 string, 16
+flint, one crafting table (`SoldierRunner.KEEP_PACK`; operator, 2026-11-17: fill a slot, dump it
+when something better comes along, and optimize the travel away - live, builders walked a few
+dirt, three slots of seeds and five tables to the depot and back). Past that, what the depot is
+under its most of goes in on the builder's next trip, and only what it's at its most of is thrown -
+from one slot more than the load trip's mark, so the trip carries what's worth the walk (the
+stockpile's levels, § 4). Everyone else stores what it carries past its own keep the same way
+(`SoldierRunner.CARRIED`, `MINE_CARRIED`). What's thrown is left where it lies, no squadmate's
+scavenger fetching it back to be shed again (`SoldierRunner.thrownNear`). And part-stacks of one item are
 merged, the smaller onto the larger (`Pack.mergeable`), for what stacks to 64 only - a tool put on
 a tool swaps them - and an item merged isn't merged again for 5 minutes, so one the server
 didn't merge never holds off the rest of the pack's keeping. The hotbar is kept as the operator keeps

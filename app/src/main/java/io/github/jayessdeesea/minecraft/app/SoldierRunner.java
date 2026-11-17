@@ -22,6 +22,7 @@ import io.github.jayessdeesea.minecraft.bot.supply.Breacher;
 import io.github.jayessdeesea.minecraft.bot.supply.Builder;
 import io.github.jayessdeesea.minecraft.bot.supply.Clearer;
 import io.github.jayessdeesea.minecraft.bot.supply.Depositor;
+import io.github.jayessdeesea.minecraft.bot.supply.StockLevels;
 import io.github.jayessdeesea.minecraft.bot.supply.Farmer;
 import io.github.jayessdeesea.minecraft.bot.supply.Filler;
 import io.github.jayessdeesea.minecraft.bot.supply.Fitter;
@@ -1229,10 +1230,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     static final int KEEP_FULL_AT = 4;
     /**
-     * What a keep builder keeps of each kind once its pack is near full, worth least first - the rest
-     * thrown where it stands, not walked to the depot (operator, 2026-11-17): a slot of dirt to climb
-     * on, a stack of seeds, a few saplings, no fences, a little string and flint, one crafting table,
-     * the slab's cobblestone.
+     * What a keep builder keeps of each kind once its pack is near full, worth least first: a slot of
+     * dirt to climb on, a stack of seeds, a few saplings, no fences, a little string and flint, one
+     * crafting table, the slab's cobblestone. The rest goes into the depot on its next trip while the
+     * depot's under its most of it ({@link StockLevels}), and is thrown where it stands only once it
+     * isn't (operator, 2026-11-17: fill a slot, dump it when something better comes along; none of it
+     * is garbage).
      */
     static final Map<ItemClassRegistry.ItemClass, Integer> KEEP_PACK = keepPack();
 
@@ -1248,8 +1251,26 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         kept.put(ItemClassRegistry.ItemClass.COBBLESTONE, Pack.COBBLESTONE_KEPT);
         return java.util.Collections.unmodifiableMap(kept);
     }
+
+    /** What any other soldier keeps in its pack of the depot's kinds before it stores the rest. */
+    static final Map<ItemClassRegistry.ItemClass, Integer> CARRIED = Map.of(
+            ItemClassRegistry.ItemClass.DIRT, Pack.DIRT_KEPT, ItemClassRegistry.ItemClass.SEEDS, Pack.SEEDS_KEPT,
+            ItemClassRegistry.ItemClass.SAPLING, 64, ItemClassRegistry.ItemClass.STRING, 64, ItemClassRegistry.ItemClass.FLINT, 64,
+            ItemClassRegistry.ItemClass.FENCE, 0, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);
+    /** What a mine's cutter keeps: its backfill's dirt, and ore before the rest (the rules of a mine). */
+    static final Map<ItemClassRegistry.ItemClass, Integer> MINE_CARRIED = Map.of(
+            ItemClassRegistry.ItemClass.DIRT, Pack.MINER_DIRT_KEPT, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);
+
+    /** What of the depot's kinds each surface chest held when it was last open, as {@link #chestsSeen}. */
+    private final Map<BlockPos, Map<ItemClassRegistry.ItemClass, Integer>> chestStock = new ConcurrentHashMap<>();
+
+    /** How many of {@code kind} the stockpile's surface chests hold, by their last look. */
+    private int stocked(ItemClassRegistry.ItemClass kind) {
+        return chestStock.entrySet().stream().filter(e -> chestsSeen.containsKey(e.getKey()))
+                .mapToInt(e -> e.getValue().getOrDefault(kind, 0)).sum();
+    }
     /** Chests a depot is laid out for: the dig's stone for the slab, its ore, wood and spare tools. */
-    static final int DEPOT_CHESTS = 6;
+    static final int DEPOT_CHESTS = 24;
     /** The cells of the keep's depot's chests, in the order they're filled - squad loops write, ticks read. */
     private volatile List<BlockPos> keepChests = List.of();
     /** Which of {@link #keepChests} is being filled. */
@@ -1310,27 +1331,21 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** What each surface chest held when a load last went in: the stockpile is all of them, not one. */
     private final Map<BlockPos, Stockpile> chestsSeen = new ConcurrentHashMap<>();
 
-    /**
-     * Past this many of cobblestone or dirt in the stockpile's chests, more is left at a dump, not
-     * carried in (operator, 2026-11-16: "anything past 4096 of either is way more than we need").
-     */
-    static final int ENOUGH_STOCKED = 4096;
-
     /** How far off a depot's stand its dump is: clear of its chests, which are within reach of it. */
     static final int DUMP_OFF = Workshop.CHEST_REACH + 2;
 
     /**
-     * What a flatten builder's load leaves at a dump: cobblestone or dirt past {@link #ENOUGH_STOCKED}
+     * What a flatten builder's load leaves at a dump: cobblestone or dirt past its most ({@link StockLevels})
      * across the surface chests, or either once every chest it could go to is full.
      */
     private Set<ItemClass> surplusKinds(Optional<Position> deposit) {
         int stone = chestsSeen.values().stream().mapToInt(Stockpile::stone).sum();
         int dirt = chestsSeen.values().stream().mapToInt(Stockpile::dirt).sum();
         Set<ItemClass> kinds = EnumSet.noneOf(ItemClass.class);
-        if (deposit.isEmpty() || stone >= ENOUGH_STOCKED) {
+        if (deposit.isEmpty() || stone >= StockLevels.DEPOT.get(ItemClass.COBBLESTONE).most()) {
             kinds.add(ItemClass.COBBLESTONE);
         }
-        if (deposit.isEmpty() || dirt >= ENOUGH_STOCKED) {
+        if (deposit.isEmpty() || dirt >= StockLevels.DEPOT.get(ItemClass.DIRT).most()) {
             kinds.add(ItemClass.DIRT);
         }
         return kinds;
@@ -6504,8 +6519,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 mineStash.put(mine.get().head(), seen);
                 LOG.info("[Mine] the stash at {} holds {} raw iron, {} raw copper", mine.get().head(), seen.rawIron(), seen.rawCopper());
             } else {
-                Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt)
-                        .ifPresent(chest -> chestsSeen.put(BlockPos.containing(chest.x(), chest.y(), chest.z()), seen));
+                Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).ifPresent(chest -> {
+                    chestStock.put(BlockPos.containing(chest.x(), chest.y(), chest.z()), stashing.get().stockSeen());
+                    chestsSeen.put(BlockPos.containing(chest.x(), chest.y(), chest.z()), seen);
+                });
                 // A load went in - its trip didn't end full - so the chest has room: no longer known full.
                 Optional.ofNullable(stashing.get()).filter(d -> d.full().isEmpty()).flatMap(Depositor::chestAt)
                         .map(chest -> BlockPos.containing(chest.x(), chest.y(), chest.z()))
@@ -6960,13 +6977,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (keepHands.contains(name) && !cutsAMine) {
                     // A keep builder sheds before its load trip's mark, so a trip carries what's worth the walk.
                     long before = pack.thrown();
-                    pack.tick(packFree, KEEP_FULL_AT + 1, KEEP_PACK);
+                    pack.tick(packFree, KEEP_FULL_AT + 1, StockLevels.throwPast(KEEP_PACK, this::stocked));
                     if (pack.thrown() != before) {
                         thrownAt.put(status.position(), clockwork.millis());
                     }
                 } else {
                     pack.tick(packFree, cutsAMine ? Pack.MINER_DIRT_KEPT : Pack.DIRT_KEPT,
-                            cutsAMine ? Pack.MINER_COBBLESTONE_KEPT : Pack.COBBLESTONE_KEPT);
+                            cutsAMine ? Pack.MINER_COBBLESTONE_KEPT : Pack.COBBLESTONE_KEPT,
+                            StockLevels.atMost(ItemClass.RAW_COPPER, this::stocked));
                 }
             }));
             Kit eating = status.condition().flatMap(c -> c.kit()).orElse(null);
@@ -7123,6 +7141,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             free && !threatened && fort == null && metalDraw.isPresent());
                 } else {
                     Set<ItemClass> pooled = new HashSet<>(metal.stock());
+                    pooled.removeIf(kind -> StockLevels.atMost(kind, this::stocked)); // copper past 256 (StockLevels)
                     if (stashOre) {
                         pooled.addAll(STASHED);
                     }
@@ -7131,6 +7150,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     Optional<LoadPlan> plan = keepHands.contains(name) ? Optional.of(LoadPlan.FLATTENING)
                             : cutting.containsKey(name) ? Optional.of(LoadPlan.MINING) : Optional.empty();
                     boolean surplusTrip = plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
+                    // The depot's kinds past what the pack keeps go in with it while the depot's under its
+                    // most (StockLevels) - not into a mine's stash - and a reserve run short is a trip of its own.
+                    Map<ItemClass, Integer> packKept = keepHands.contains(name) ? KEEP_PACK : cutting.containsKey(name) ? MINE_CARRIED : CARRIED;
+                    boolean toDepot = deposit.flatMap(this::mineOfChest).isEmpty();
+                    boolean stockTrip = toDepot && StockLevels.reserveShort(inventory, packKept, this::stocked);
                     // A flatten builder's load into the nearest depot standing a chest (keepOutposts).
                     // Not to a chest known full: a trip there fails, and is made again. Live (field285), with
                     // the depots' rows filled with cobblestone, the crew's ticks were 38% depositor - trip
@@ -7142,8 +7166,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     Integer nightFloor = nightBelow.get(unitOf(name, definition.squad()));
                     boolean downForTheNight = nightFloor != null && status.position().y() < nightFloor - MINE_BELOW && !stashOre;
                     depositor.tick(status.position(), deposit, free && (fullLoad || Depositor.surplusFood(inventory) || poolOre || stashOre
-                                    || surplusTrip) && !threatened && fort == null && !downForTheNight, pooled,
-                            inv -> plan.map(p -> p.surplus(inv)).orElse(List.of()));
+                                    || surplusTrip || stockTrip) && !threatened && fort == null && !downForTheNight, pooled,
+                            inv -> {
+                                List<Integer> slots = new ArrayList<>(plan.map(p -> p.surplus(inv)).orElse(List.of()));
+                                if (toDepot) {
+                                    StockLevels.toStore(inv, packKept, this::stocked).stream().filter(s -> !slots.contains(s)).forEach(slots::add);
+                                }
+                                return slots;
+                            });
                 }
             }));
             storeWalks.put(name, fitStore && !atStand(status.position(), shop.get())

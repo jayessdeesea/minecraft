@@ -423,8 +423,19 @@ public final class Depositor {
                 List.of(new Guard("the trip is no longer wanted", () -> wanted || !walking)));
     }
 
+    /** What of the depot's kept kinds ({@link StockLevels#DEPOT}) the chest held when it was last open. */
+    private java.util.Map<ItemClass, Integer> stockSeen = java.util.Map.of();
+
+    /** What of {@link StockLevels#DEPOT}'s kinds the chest its last trip opened held. */
+    public synchronized java.util.Map<ItemClass, Integer> stockSeen() {
+        return stockSeen;
+    }
+
     /** The chest as it stands open. */
     private Stockpile seen() {
+        java.util.Map<ItemClass, Integer> stock = new java.util.EnumMap<>(ItemClass.class);
+        StockLevels.DEPOT.keySet().forEach(kind -> stock.put(kind, chest.chestCount(kind)));
+        stockSeen = java.util.Collections.unmodifiableMap(stock);
         return new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE), chest.chestCount(ItemClass.FOOD),
                 chest.chestCount(ItemClass.RAW_IRON), chest.chestCount(ItemClass.RAW_COPPER), chest.chestCount(ItemClass.DIRT),
                 chest.chestCount(ItemClass.IRON_INGOT), chest.chestCount(ItemClass.COPPER_INGOT));

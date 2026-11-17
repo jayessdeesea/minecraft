@@ -2315,7 +2315,8 @@ class SquadSimulationTest {
         clock.advance(8 * 60_000);
 
         String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
-        assertEquals(2, server.chests.size(), "a second chest at the depot; " + events);
+        // Two at least: the dirt it digs after goes in too (StockLevels), and the row grows on as each fills.
+        assertTrue(server.chests.size() >= 2, "a second chest at the depot: " + server.chests.size() + "; " + events);
         assertTrue(server.chests.values().stream().allMatch(c -> java.util.Arrays.stream(c).anyMatch(java.util.Objects::nonNull)),
                 "and the builder's load in it; " + events);
     }

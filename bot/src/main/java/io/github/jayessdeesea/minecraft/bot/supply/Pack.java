@@ -70,10 +70,21 @@ public final class Pack {
      * with its pack full - a miner's backfill only (the rules of a mine: the ore comes first in the pack).
      */
     public synchronized void tick(boolean free, int dirtKept, int cobblestoneKept) {
+        tick(free, dirtKept, cobblestoneKept, false);
+    }
+
+    /**
+     * As {@link #tick(boolean, int, int)}, and with {@code copperStocked} - the depot holding its most
+     * of raw copper (StockLevels) - raw copper last, after the cobblestone: never ore over dirt.
+     */
+    public synchronized void tick(boolean free, int dirtKept, int cobblestoneKept, boolean copperStocked) {
         java.util.Map<ItemClass, Integer> kept = new java.util.LinkedHashMap<>();
         kept.put(ItemClass.DIRT, dirtKept);
         kept.put(ItemClass.SEEDS, SEEDS_KEPT);
         kept.put(ItemClass.COBBLESTONE, cobblestoneKept);
+        if (copperStocked) {
+            kept.put(ItemClass.RAW_COPPER, 0);
+        }
         tick(free, FULL_AT, kept);
     }
 
