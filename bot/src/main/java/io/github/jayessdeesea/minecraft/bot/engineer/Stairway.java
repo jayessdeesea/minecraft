@@ -124,11 +124,12 @@ public final class Stairway {
 
     /**
      * Steps at most up out of a pocket: a tunnel to the surface from a dead end at the bottom of a
-     * mine - as deep as a mine goes, its head at the surface to its bottom at y=16. Live, a soldier
-     * stood a day in a pocket 30 blocks under the camp, a 12-step stair short; and one at y=25 under
-     * a mine's head at y=70 was 5 short of the 40 a stair down is given.
+     * mine - as deep as a mine goes, its head at the surface to its bottom just over bedrock. Live, a
+     * soldier stood a day in a pocket 30 blocks under the camp, a 12-step stair short; one at y=25
+     * under a mine's head at y=70 was 5 short of the 40 a stair down is given; and one in a cave at
+     * y=-52 (field336), 64 steps up still under the ground, waited out two runs.
      */
-    static final int MAX_STEPS_UP = 64;
+    static final int MAX_STEPS_UP = 136;
 
     /**
      * The cells to dig for the shortest stair from {@code feet} - where a soldier stands boxed in

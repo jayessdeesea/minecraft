@@ -423,9 +423,10 @@ below - boxed in a pocket, with no stair down to lay - gets the engineer's stair
 (`Stairway.up`) - its hands the stair's alone till it's out, no load put in nor stack picked up
 past it, as on a stair down (live, two in a cave under the mine's stairs held theirs for both, with
 no route to either, and stood; and one on a ledge with its stair down laid out held its for a
-stockpile, its order the stair's, and stood) -: the cells to dig, one block up and one along a step to open ground, up to 64
-steps - a tunnel to the surface from a dead end at a mine's bottom, as deep as a mine goes (live,
-one at y=25 under a head at y=70 was five short of 40) - winding left or right of its
+stockpile, its order the stair's, and stood) -: the cells to dig, one block up and one along a step to open ground, up to 136
+steps - a tunnel to the surface from a dead end at a mine's bottom, as deep as a mine goes, just over
+bedrock (live, one at y=25 under a head at y=70 was five short of 40, and one in a cave at y=-52 was
+still under the ground at 64) - winding left or right of its
 heading where a cave across the way or gravel over it stops it going straight (live, every one of
 the four straight flights was), and never under sand, gravel, water or lava (the operator's rule:
 cut above only toward what's known) - a cell of gravel itself is dug like any other, and gravel
