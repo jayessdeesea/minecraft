@@ -6,6 +6,7 @@ import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.PlatoonSergeant;
+import io.github.jayessdeesea.minecraft.command.Progress;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -114,6 +115,13 @@ class ChainOfCommandTest {
         assertEquals(WALL, released, "the other to the platoon leader's own objective");
         Objective keep = two.byDay(WALL, squad("Alpha", "Alice"));
         assertTrue(two.byDay(keep, squad("Bravo", "Bob")).task() instanceof Objective.Task.None, "the ground given it, the camp's work instead");
+
+        Objective toTheMine = two.byDay(WALL, squad("Bravo", "Bob"), Optional.of(PlatoonSergeant.Shortfall.IRON), List.of());
+        assertTrue(toTheMine.task() instanceof Objective.Task.Mine, "released, to the force's shortfall: " + toTheMine);
+        SquadStatus stalled = new SquadStatus("Bravo", null, squad("Bravo", "Bob").soldiers(), List.of(), Optional.of(toTheMine), false,
+                java.util.OptionalInt.empty(), Optional.of(new Progress(Progress.State.STALLED, "no ore")), Optional.empty());
+        assertEquals(WALL, two.byDay(WALL, stalled, Optional.of(PlatoonSergeant.Shortfall.IRON), List.of()),
+                "stalled on it: the platoon leader's objective instead");
 
         two.onFlattenCrew(40);
         assertTrue(two.byDay(WALL, squad("Bravo", "Bob")).task() instanceof Objective.Task.Keep, "a full floor: called back");

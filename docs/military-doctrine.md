@@ -1464,7 +1464,8 @@ the order of battle, the farm squad never; the rest are released to what the for
 (operator, 2026-11-16; `PlatoonSergeant.shortfall`): the camp's farm while a squad is Class I RED,
 the nearest trees seen while the keep's builders ask for logs or the stockpile holds fewer than it
 wants, the keep's mine while the stockpile holds under 24 raw iron ("[PL -> Bravo] released from
-the flatten ...: to the force's IRON shortfall"). Short of nothing, to the platoon leader's own
+the flatten ...: to the force's IRON shortfall"); stalled on that work - trees already cut,
+"nothing left to gather" - it's given the platoon leader's objective instead. Short of nothing, to the platoon leader's own
 objective for them, or the camp's work where that's the ground too. They're called back as the
 levels widen (`ChainOfCommand.onFlattenCrew`, "[PL] the ground's level wants N builder(s)"). The heights are the
 plan's, not the ground's: everything from y=64 up into the sky over it is dug out, and the

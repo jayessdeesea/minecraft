@@ -348,7 +348,15 @@ public class ChainOfCommand implements DisposableBean {
         int squadsWanted = wanted == Integer.MAX_VALUE ? builders.size() : Math.max(1, (wanted + perSquad - 1) / perSquad);
         if (builders.indexOf(squad.squadName()) >= squadsWanted) {
             Optional<Objective> needed = shortfall.flatMap(s -> toShortfall(s, squad, woods, wanted));
-            if (needed.isPresent()) {
+            // Not sent again to what it's just said it can't do there: live (field296), a squad sent
+            // for wood to trees already cut said "nothing left to gather" and was sent back each decision.
+            boolean stalledOnIt = needed.isPresent() && squad.standing().filter(o -> o.task().equals(needed.get().task())).isPresent()
+                    && squad.progress().filter(p -> p.state() == Progress.State.STALLED).isPresent();
+            if (stalledOnIt) {
+                LOG.info("[PL -> {}] released from the flatten: its {} shortfall work stalled ({}) - the platoon leader's objective instead",
+                        squad.squadName(), shortfall.get(), squad.progress().get().detail());
+            }
+            if (needed.isPresent() && !stalledOnIt) {
                 if (!needed.get().equals(squad.standing().orElse(null))) {
                     LOG.info("[PL -> {}] released from the flatten ({} builder(s) wanted): to the force's {} shortfall - '{}'",
                             squad.squadName(), wanted, shortfall.get(), needed.get().mission());
