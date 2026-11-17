@@ -3227,9 +3227,33 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // clear existing wood, which might be what's blocking the sky).
             BlockPos toClear = keepGroveToClear;
             if (keepParty.cutters().contains(h.name()) && grove == null && toClear != null) {
+                // To the top of the tallest crown over the plot, not a sapling's headroom only: a trunk
+                // cut through at seven over the ground leaves its top standing, and its leaves.
+                int crown = toClear.y() + TreeFarm.HEADROOM;
+                for (int x = toClear.x() - TREE_FARM_RADIUS; x <= toClear.x() + TREE_FARM_RADIUS; x++) {
+                    for (int z = toClear.z() - TREE_FARM_RADIUS; z <= toClear.z() + TREE_FARM_RADIUS; z++) {
+                        for (int y = toClear.y() + TREE_TALLEST; y > crown; y--) {
+                            if (world.isLog(x, y, z) || world.leaves(x, y, z).isPresent()) {
+                                crown = y;
+                                break;
+                            }
+                        }
+                    }
+                }
                 orders.put(h.name(), new Order.Dig(new Box(toClear.x() - TREE_FARM_RADIUS, toClear.y(), toClear.z() - TREE_FARM_RADIUS,
-                        toClear.x() + TREE_FARM_RADIUS, toClear.y() + TreeFarm.HEADROOM, toClear.z() + TREE_FARM_RADIUS), except));
+                        toClear.x() + TREE_FARM_RADIUS, crown, toClear.z() + TREE_FARM_RADIUS), except));
                 continue;
+            }
+            // A tree at a time, felled whole as the level is dug - highest first, steps put up the trunk to
+            // reach, every log and its crown - then the steps dug out, so nothing's left to stunt what grows
+            // there next (operator, 2026-11-17: gather all the wood on a tree; remove the scaffolding you
+            // added). Live, cutters took the logs in reach and walked on, the tops and the leaves left.
+            if (keepParty.cutters().contains(h.name())) {
+                Optional<Order> felled = fellingDig(h.name(), keepWoodAt(onKeep, grove), except);
+                if (felled.isPresent()) {
+                    orders.put(h.name(), felled.get());
+                    continue;
+                }
             }
             if (keepParty.cutters().contains(h.name())) {
                 Position trees = keepWoodAt(onKeep, grove);
@@ -3512,6 +3536,138 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final int SMELT_BATCH = 8;
     /** Raw ore a smelter draws at a time: a stack, one furnace load. */
     static final int SMELT_DRAW = 64;
+
+    /** The tree each keep cutter is felling: its logs as first found - the dig is its box until they're down and its steps out. */
+    private final Map<String, Set<BlockPos>> felling = new ConcurrentHashMap<>();
+    /** How far across from its first log a tree's logs are taken in: an oak's or a spruce's spread. */
+    static final int TREE_ACROSS = 4;
+    /** The stump each keep cutter replants before its next tree - squad loops write, the planting map reads. */
+    private final Map<String, BlockPos> keepStumps = new ConcurrentHashMap<>();
+    private final Map<String, Long> keepStumpSince = new ConcurrentHashMap<>();
+    /** How long a cutter tries to replant a stump - a sapling from the leaves it dug, or broken for - before it goes on. */
+    static final long STUMP_PLANT_MILLIS = 90_000;
+    /** The most logs taken as one tree. */
+    static final int TREE_LOGS = 96;
+    /** Leaves over a tree's top log, dug with it: a spruce's or an oak's crown. */
+    static final int TREE_CROWN = 3;
+    /** How far round where it's sent a cutter looks for its next tree. */
+    static final int TREE_LOOK = 8;
+    /** The tallest a tree is looked for over the ground: a giant spruce. */
+    static final int TREE_TALLEST = 32;
+
+    /**
+     * {@code cutter}'s dig of the tree it's felling, or the next tree nearest {@code at}: the box round
+     * its logs and crown, only logs and leaves in it dug - the ground and anything else kept - and its
+     * own steps kept while a log stands, dug out once none does. Empty with no tree near.
+     */
+    private Optional<Order> fellingDig(String cutter, Position at, Set<Cell> except) {
+        // Its stump replanted before the next tree: it stands on it, its forester plants it (keepStumps).
+        BlockPos stump = keepStumps.get(cutter);
+        if (stump != null) {
+            long since = keepStumpSince.getOrDefault(cutter, clockwork.millis());
+            if (TreeFarm.planted(world, stump) || clockwork.millis() - since > STUMP_PLANT_MILLIS) {
+                if (!TreeFarm.planted(world, stump)) {
+                    LOG.warn("[Keep] {} couldn't replant the stump at {} in {} s - left for the leaves' saplings", cutter, stump,
+                            STUMP_PLANT_MILLIS / 1000);
+                }
+                keepStumps.remove(cutter);
+                keepStumpSince.remove(cutter);
+            } else {
+                return Optional.of(new Order.MoveTo(stump.x() + 0.5, stump.y(), stump.z() + 0.5, 2, 3, Risk.LOW));
+            }
+        }
+        Set<BlockPos> tree = felling.get(cutter);
+        boolean standing = tree != null && tree.stream().anyMatch(c -> world.isLog(c.x(), c.y(), c.z()));
+        Box held = tree == null ? null : treeBox(tree);
+        boolean steps = held != null && !standing && scaffolding.stream().anyMatch(c -> held.contains(c.x(), c.y(), c.z())
+                && world.isSolid(c.x(), c.y(), c.z()));
+        Box box = held;
+        if (!standing && !steps) {
+            if (tree != null) {
+                BlockPos foot = tree.stream().min(Comparator.comparingInt(BlockPos::y)).orElseThrow();
+                LOG.info("[Keep] {} has felled the tree at {} and dug out its steps", cutter, foot);
+                felling.remove(cutter);
+                // Replanted where it stood, its headroom dug clear with its crown (operator, 2026-11-17).
+                if (world.isSoil(foot.x(), foot.y() - 1, foot.z()) && !world.isSolid(foot.x(), foot.y(), foot.z())) {
+                    keepStumps.put(cutter, foot);
+                    keepStumpSince.put(cutter, clockwork.millis());
+                    return Optional.of(new Order.MoveTo(foot.x() + 0.5, foot.y(), foot.z() + 0.5, 2, 3, Risk.LOW));
+                }
+            }
+            tree = nearestLog(at).map(this::treeAt).orElse(null);
+            if (tree == null) {
+                felling.remove(cutter);
+                return Optional.empty();
+            }
+            felling.put(cutter, tree);
+            box = treeBox(tree);
+            standing = true;
+            LOG.info("[Keep] {} fells the tree at {}: {} log(s), dug as {}", cutter, tree.stream().min(Comparator.comparingInt(BlockPos::y)).orElseThrow(),
+                    tree.size(), box);
+        }
+        Set<Cell> keep = new HashSet<>(except);
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int y = box.minY(); y <= box.maxY(); y++) {
+                for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                    boolean wood = world.isLog(x, y, z) || world.leaves(x, y, z).isPresent();
+                    boolean step = scaffolding.contains(new BlockPos(x, y, z));
+                    if (world.isSolid(x, y, z) && !wood && (standing || !step)) {
+                        keep.add(new Cell(x, y, z));
+                    } else if (step && !standing) {
+                        keep.remove(new Cell(x, y, z));
+                    }
+                }
+            }
+        }
+        return Optional.of(new Order.Dig(box, keep));
+    }
+
+    /** The box round {@code tree}'s logs and its crown. */
+    private static Box treeBox(Set<BlockPos> tree) {
+        return new Box(tree.stream().mapToInt(BlockPos::x).min().orElseThrow() - 2, tree.stream().mapToInt(BlockPos::y).min().orElseThrow(),
+                tree.stream().mapToInt(BlockPos::z).min().orElseThrow() - 2, tree.stream().mapToInt(BlockPos::x).max().orElseThrow() + 2,
+                tree.stream().mapToInt(BlockPos::y).max().orElseThrow() + TREE_CROWN, tree.stream().mapToInt(BlockPos::z).max().orElseThrow() + 2);
+    }
+
+    /** The log nearest {@code at}, within {@link #TREE_LOOK} across and up or down. */
+    private Optional<BlockPos> nearestLog(Position at) {
+        int ax = (int) Math.floor(at.x()), ay = (int) Math.floor(at.y()), az = (int) Math.floor(at.z());
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int x = ax - TREE_LOOK; x <= ax + TREE_LOOK; x++) {
+            for (int z = az - TREE_LOOK; z <= az + TREE_LOOK; z++) {
+                for (int y = ay - TREE_LOOK; y <= ay + TREE_LOOK; y++) {
+                    double d = Math.hypot(x - ax, z - az) + Math.abs(y - ay) * 0.5;
+                    if (d < bestDistance && world.isLog(x, y, z)) {
+                        best = new BlockPos(x, y, z);
+                        bestDistance = d;
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** Every log joined to {@code log}, within {@link #TREE_ACROSS} across of it: one tree. */
+    private Set<BlockPos> treeAt(BlockPos log) {
+        Set<BlockPos> tree = new HashSet<>(List.of(log));
+        java.util.ArrayDeque<BlockPos> open = new java.util.ArrayDeque<>(List.of(log));
+        while (!open.isEmpty() && tree.size() < TREE_LOGS) {
+            BlockPos c = open.poll();
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        BlockPos n = c.offset(dx, dy, dz);
+                        if (Math.abs(n.x() - log.x()) <= TREE_ACROSS && Math.abs(n.z() - log.z()) <= TREE_ACROSS
+                                && world.isLog(n.x(), n.y(), n.z()) && tree.add(n)) {
+                            open.add(n);
+                        }
+                    }
+                }
+            }
+        }
+        return Set.copyOf(tree);
+    }
 
     /** The ground the wood party clears for the keep's grove, while it has none: its trees cut first. */
     private volatile BlockPos keepGroveToClear;
@@ -5694,7 +5850,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             // The keep's planter plants the keep's grove, whatever its squad's own plot: live, planters
             // sent to a squad's plot 40 blocks up a hill failed the walk one after another.
-            TreeFarm grove = keepParty.planter().filter(soldierName::equals).isPresent() && keepGrove != null ? keepGrove : trees;
+            // A cutter's stump, felled: its own one-cell plot, planted before its next tree.
+            BlockPos felledAt = keepStumps.get(soldierName);
+            TreeFarm grove = felledAt != null ? new TreeFarm(felledAt, List.of(felledAt))
+                    : keepParty.planter().filter(soldierName::equals).isPresent() && keepGrove != null ? keepGrove : trees;
             if (grove != null && !squadInContact) {
                 planting.put(soldierName, grove);
             } else {

@@ -313,10 +313,13 @@ IV's reorder point (below) - never under the reserve, 64 - the whole party cuts;
 stockage objective - never under the most, 256 - one builder stays on it, a producer kept at work
 so the reserve is refilled before it's an emergency (operator, 2026-11-17: an emergency is a signal
 to change; live, the party went out at 3 logs and was one builder); at the most none does. The
-party cuts where a keep squad last saw trees, 16 logs a builder - each tree it starts felled whole,
-the load or not, its top logs from its own steps, and a sapling planted where it stood (`bot.supply.
-Gatherer`; operator, 2026-11-17: get all the wood, so the trees fall, so you get saplings and
-replant - live, cutters took what was in reach and walked on, and nothing was replanted) - back with
+party cuts where a keep squad last saw trees, a tree at a time, felled whole as the level is dug -
+its logs and crown in a box of their own, only the wood in it dug, highest first, steps put up the
+trunk to reach - and then those steps dug out, so nothing's left to stunt what grows there next
+(`SoldierRunner.fellingDig`; operator, 2026-11-17: get all the wood, so the trees fall, so you get
+saplings and replant; remove the scaffolding you added - live, cutters took what was in reach and
+walked on, the tops and the leaves left). A squad gathering wood fells each tree it starts whole the
+same way, up to a body's reach, and plants a sapling where it stood (`bot.supply.Gatherer`) - back with
 them it's on the dig again and another goes - after
 making itself a stone axe from the cobblestone it carries, a log in 15 ticks rather than the hand's
 60. The rest dig. The foreman says it on the net: "KEEP WOOD 16", "KEEP PLANT x z". The grove is a
@@ -1434,7 +1437,7 @@ in its tunnels at y=-23). A staircase kept on disk - the camp's or another - wit
 more under the ground over the head itself is let go, every squad's level off it with it, and
 sited again: a shaft is open over its head, a buried head has the rock over it. A mine worked out - every tunnel cut, the ore in sight of them taken - while nobody carries an iron
 pickaxe and the force hasn't the three iron for one is run on: its main tunnel 24 blocks further,
-branches along it, up to 192 (operator, 2026-11-17: a mine is run wider before it's left - each move cost a night of stairs and a walk back), a stretch at most every half minute a mine (`Staircase.extended`, `[Squad] MINE: worked out, the force short of
+branches along it, up to 192 (operator, 2026-11-17: a mine is run wider before it's left - each move cost a night of stairs and a walk back; and it moves on its tunnels' length, never on its nights' yield), a stretch at most every half minute a mine (`Staircase.extended`, `[Squad] MINE: worked out, the force short of
 iron - its main tunnel run on to 48 blocks`), and kept on disk by the tunnel's end. Live, the mine
 read DONE all night with one raw iron in the force.
 
