@@ -846,6 +846,16 @@ public final class DeterministicSoldier implements Soldier {
     private int wideFailedAt;
     /** Ticks before a goal a wide search failed for is searched wide again: five seconds. */
     static final int WIDE_RETRY_TICKS = 100;
+    /**
+     * Walking a leg: the way a wide search found toward a goal beyond it, to its nearest ground to the
+     * goal, followed to its end before the next search - not replanned on the clock, which from inside
+     * the hollow it's leaving would lead straight back (backlog/long-routes.md). Tick loop only.
+     */
+    private boolean onLeg;
+    /** Blocks nearer the goal a leg must end, to be one. */
+    static final int LEG_GAIN = 8;
+    /** How far under its column's surface a cell is under the ground: a cave's, not the surface's. */
+    static final int UNDER_THE_SURFACE = 8;
     private static final double WAYPOINT_REACHED = 0.25;
 
     // Navigation state - tick-loop only, like verticalVelocity.
@@ -933,7 +943,7 @@ public final class DeterministicSoldier implements Soldier {
         Set<Integer> creeperIds = creepers.stream().map(TrackedEntity::entityId).collect(java.util.stream.Collectors.toUnmodifiableSet());
         boolean newCreeper = !creepersRoutedRound.containsAll(creeperIds);
         boolean replan = route == null || routeIndex >= route.size() && !noRoute
-                || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS || newCreeper;
+                || ticksSincePlan >= REPLAN_TICKS && !onLeg || stuckTicks >= STUCK_TICKS || newCreeper;
         navTicks++;
         avoided.values().removeIf(until -> until <= navTicks);
         if (replan && (onGround || afloat)) {
@@ -961,6 +971,7 @@ public final class DeterministicSoldier implements Soldier {
             // A fall is the exception, never the plan: first a route with none - walked, then with
             // steps built from what it carries - and only with no such route one the order's risk allows.
             BlockPos start = standingCell(world, position);
+            onLeg = false;
             // Wide straight away for a goal a wide search was needed for: a cheap replan on the way
             // round would only lead back to the wall it's going round.
             Pathfinder.Result plan = Pathfinder.find(world, start, goal, goal.equals(wideGoal) ? LONG_PLAN_BUDGET : PLAN_BUDGET,
@@ -988,6 +999,16 @@ public final class DeterministicSoldier implements Soldier {
                 } else {
                     wideFailedGoal = goal;
                     wideFailedAt = navTicks;
+                    // Beyond even the wide search, a leg: the way to its nearest ground to the goal,
+                    // walked to its end, and searched on from there. Live, Ivy stood half an hour in
+                    // two runs at (38, 74, -51), every goal 70 to 120 blocks west.
+                    if (isLeg(world, start, wide)) {
+                        plan = wide;
+                        onLeg = true;
+                        LOG.info("{} walks a leg toward ({}, {}, {}): {} steps to {}, {} blocks nearer", name,
+                                (int) goal.x(), (int) goal.y(), (int) goal.z(), wide.path().size(), wide.path().getLast(),
+                                (int) (goal.estimate(start) - goal.estimate(wide.path().getLast())));
+                    }
                 }
             }
             FallAllowance allowance = fallAllowance(current);
@@ -1000,6 +1021,10 @@ public final class DeterministicSoldier implements Soldier {
             route = plan.path();
             pillarFrom = null;
             assessPlan(world, plan, stuck);
+            if (onLeg) {
+                failedPlans = 0; // a leg walked is headway, not a plan that failed
+                report = new Report.Moving();
+            }
             lastPlan = (plan.reachesGoal() ? "to goal" : "partial") + ", " + route.size() + " steps"
                     + (route.isEmpty() ? "" : " ending " + route.getLast());
             routeIndex = 0;
@@ -1177,6 +1202,30 @@ public final class DeterministicSoldier implements Soldier {
      * way), and a soldier that keeps re-planning the same route without moving must eventually say
      * so rather than report "Moving" forever.
      */
+    /**
+     * Whether a wide search that didn't reach its goal found a leg toward it: a way to ground at least
+     * {@link #LEG_GAIN} blocks nearer, and - from the surface - on the surface, never down into a cave
+     * toward a goal there's no walk to (backlog/long-routes.md: live, Jack went from y=73 into the caves
+     * to y=-19 in a minute, walking cave to cave).
+     */
+    private boolean isLeg(WorldView world, BlockPos start, Pathfinder.Result wide) {
+        if (wide.path().isEmpty()) {
+            return false;
+        }
+        BlockPos end = wide.path().getLast();
+        if (goal.estimate(start) - goal.estimate(end) < LEG_GAIN) {
+            return false;
+        }
+        return !onTheSurface(world, start) || onTheSurface(world, end);
+    }
+
+    /** Whether {@code cell} is on its column's surface, not under the ground. */
+    private static boolean onTheSurface(WorldView world, BlockPos cell) {
+        return io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.surface(world, cell.x(), cell.z(),
+                        io.github.jayessdeesea.minecraft.command.Keep.SKY_TOP)
+                .map(top -> top.y() <= cell.y() + UNDER_THE_SURFACE).orElse(true);
+    }
+
     private void assessPlan(WorldView world, Pathfinder.Result plan, boolean stuck) {
         if (stuck) {
             failedPlans++;

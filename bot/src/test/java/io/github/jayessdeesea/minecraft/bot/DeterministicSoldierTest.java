@@ -121,6 +121,43 @@ class DeterministicSoldierTest {
     }
 
     /**
+     * A goal beyond even the wide search, from inside a hollow bigger than a cheap search: the soldier
+     * walks the leg the wide search found - out of the hollow, toward the goal - and searches on from
+     * there, not back to the hollow's wall nearest the goal. Live, Ivy stood half an hour in two runs,
+     * every goal 70 to 120 blocks west (backlog/long-routes.md).
+     */
+    @Test
+    void aGoalBeyondTheWideSearchIsWalkedInLegs() {
+        WorldView hollow = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                boolean wall = y >= GROUND && y <= GROUND + 2
+                        && (x == 40 && Math.abs(z) <= 40 || Math.abs(z) == 40 && x >= -40 && x <= 40);
+                return y <= GROUND - 1 || wall;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        DeterministicSoldier ivy = new DeterministicSoldier("Ivy", new Position(0.5, GROUND, 0.5));
+        ivy.receiveOrder(new Order.MoveTo(600.5, GROUND, 0.5, 1.5, 2, Risk.LOW));
+
+        for (int i = 0; i < 12_000; i++) {
+            ivy.tick(hollow);
+        }
+
+        Position at = ivy.status().position();
+        assertTrue(at.x() > 60, "out of the hollow and on east, not at " + at + ": " + ivy.status().report() + ", " + ivy.lastPlan());
+    }
+
+    /**
      * Put back by the server every time it reaches one cell - a block the server has and the model
      * doesn't - a soldier is stuck short of that cell three plans running and reports it as a snag,
      * once; walking freely it reports none. Live, one down the camp's mine was stuck short of one
