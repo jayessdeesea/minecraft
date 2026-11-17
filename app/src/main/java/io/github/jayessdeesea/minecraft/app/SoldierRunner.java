@@ -4134,9 +4134,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         boolean workedOut = settled && !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done);
         if (level == null || workedOut) {
             Staircase left = level;
-            // The next free level under the rest and under the one it leaves - never the same again.
-            Optional<Staircase> next = freeLevel(left == null ? first : left.bottom() < first.bottom() ? left : first, key)
-                    .filter(n -> left == null || n.bottom() < left.bottom());
+            // Its own tunnel run on a stretch first, as the first pair's is (operator, 2026-11-17: a mine run
+            // wider before it's left): live (field357), the second pair at y=-52 had no level under it, read
+            // the keep's mine dried up and moved the night shift off it, its tunnels at 96 of 192.
+            // Then the next free level under the rest and under the one it leaves - never the same again.
+            Optional<Staircase> runOn = left == null || !oreWanted() ? Optional.empty() : left.extended();
+            Optional<Staircase> next = runOn.or(() -> freeLevel(left == null ? first : left.bottom() < first.bottom() ? left : first, key)
+                    .filter(n -> left == null || n.bottom() < left.bottom()));
             squadStairs.remove(key);
             if (next.isEmpty()) {
                 // No level left under it: the mine is dried up for this pair too.
@@ -4147,7 +4151,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 return level;
             }
-            if (level != null) {
+            if (level != null && runOn.isPresent()) {
+                LOG.info("[{}] MINE: its second level at y={} worked out - its main tunnel run on to {} blocks", squad, level.bottom(),
+                        runOn.get().tunnel());
+                crew.forEach(stairsProgress::remove);
+            } else if (level != null) {
                 LOG.warn("[Outcome] [{}] its second level at y={} is worked out - its next cut at y={}", squad, level.bottom(), next.get().bottom());
                 crew.forEach(stairsProgress::remove);
             }
