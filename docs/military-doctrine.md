@@ -1685,7 +1685,7 @@ The pillar is the force's own steps: no top layer of its own while ground is lef
 a step over the level is cut only from on it, its builder's way down, and the rest once the ground
 is gone (live, a builder's step a block over a hilltop was taken for the level, cut from beside it,
 and another put up, two stands in turn for two minutes). A
-builder carrying fewer than 4 blocks to climb on fetches a load of 32 dirt from a borrow pit off
+builder carrying fewer than 4 blocks to climb on draws a load of the dig's cobblestone from the depot while the stores hold 32 or more (live, every pit round the keep was dug out in turn, and builders stood a minute at a time finding no dirt), else fetches a load of 32 dirt from a borrow pit off
 its squad's side of the keep first - on the ground's surface there, found from above, and its dirt
 looked for within 16 of the pit's point nearest the fetcher, the pit running the side's whole length
 (`SoldierRunner.nearestIn`) - and when

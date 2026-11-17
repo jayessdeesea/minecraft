@@ -2574,11 +2574,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         for (SoldierStatus h : hands) {
             if (!(orders.get(h.name()) instanceof Order.Dig) || pitGround.isEmpty()) {
                 keepFetching.remove(h.name());
+                keepClimbDrawing.remove(h.name());
                 continue;
             }
             int blocks = h.condition().flatMap(c -> c.kit()).map(k -> k.dirt() + k.stone()).orElse(0);
             boolean fetching = keepFetching.contains(h.name()) ? blocks < Tasking.LOAD : blocks < Tasking.LOW;
-            if (fetching) {
+            // The dig's own cobblestone first, from the depot: it climbs as well as dirt, and the depots
+            // hold thousands of it. Live (field347), every pit round the keep was dug out in turn and
+            // builders stood a minute at a time finding no dirt, with the depots' rows full of stone.
+            boolean depotStone = chainOfCommand.stockpile().map(st -> st.stone() >= Tasking.LOAD).orElse(false)
+                    && stockpileFor(h.name()).isPresent();
+            if (fetching && depotStone) {
+                if (keepClimbDrawing.add(h.name())) {
+                    LOG.info("[{}] {} carries {} blocks to climb on - draws a load of cobblestone from the depot first", squad, h.name(), blocks);
+                }
+                keepFetching.remove(h.name());
+            } else if (fetching) {
+                keepClimbDrawing.remove(h.name());
                 if (keepFetching.add(h.name())) {
                     LOG.info("[{}] {} carries {} blocks to climb on - fetches a load of dirt first", squad, h.name(), blocks);
                 }
@@ -2586,6 +2598,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         Groundwork.borrowPit(new Cell(midX, pitGround.get().y(), midZ), sideHalf + 1, side), Tasking.LOAD));
             } else {
                 keepFetching.remove(h.name());
+                keepClimbDrawing.remove(h.name());
             }
         }
         boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false);
@@ -3608,6 +3621,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Soldiers on the keep sent to the stockpile for cobblestone - squad loop writes, tick reads. */
     private final Set<String> keepDrawing = ConcurrentHashMap.newKeySet();
+    /** Builders on the keep drawing cobblestone from the depot to climb on - squad loop writes, tick reads. */
+    private final Set<String> keepClimbDrawing = ConcurrentHashMap.newKeySet();
 
     /** What no ground work digs or fills: the camp's kept structures, its mine, and every squad's stairs. */
     private Set<Cell> groundExcept() {
@@ -4919,6 +4934,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             state.keepFillLeft = -1;
             statuses.forEach(s -> {
                 keepDrawing.remove(s.name());
+                keepClimbDrawing.remove(s.name());
                 keepHands.remove(s.name());
             });
         }
@@ -6892,7 +6908,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (unstash.isPresent()) {
                     depositor.tickDraw(status.position(), Optional.of(unstash.get().chest()), unstash.get().ore(), unstash.get().carry(),
                             free && !threatened);
-                } else if (drawingStone.contains(name) || keepDrawing.contains(name)) {
+                } else if (drawingStone.contains(name) || keepDrawing.contains(name) || keepClimbDrawing.contains(name)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
                 } else if (drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile)
                         || depositor.drawing(ItemClass.LOG)) {
