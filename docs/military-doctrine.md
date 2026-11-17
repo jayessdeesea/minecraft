@@ -700,7 +700,9 @@ free, a soldier stands to: every two seconds it puts on any better armour it car
 best weapon back in hand, rather than the seeds or dirt its last job left there. A first wooden sword takes
 about a minute. While crafting or smelting, the soldier stays where it began, since a window closes
 on a player who walks away from it. A furnace burns one kind of fuel at a time: the soldier feeds
-it from a stack of planks that covers the smelts, or failing that of logs, which burn as long.
+it coal (or charcoal) it carries first - eight smelts a lump - then a stack of planks that covers
+the smelts, or failing that of logs, which burn as long; and its plan counts coal carried as the
+furnace's fuel before it asks for planks, so a soldier with ore and coal and no logs smelts.
 
 The squad climbs together. Nobody works above the lowest rung a squadmate is still working toward,
 so the first soldier up the ladder doesn't dig out the ore the rest need for their shields. A

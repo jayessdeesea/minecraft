@@ -413,6 +413,16 @@ public final class Crafter {
      * own: whether it had them to spare.
      */
     private boolean fuel(int smelts, int keep) {
+        int coal = biggest(ItemClass.COAL, -1);
+        if (coal >= 0 && inventory.countAt(coal) >= Recipe.coalFor(smelts)) {
+            int window = windowId;
+            session.click(window, 0, coal - Inventory.MAIN_FIRST + windowSlots, false);
+            for (int i = 0; i < Recipe.coalFor(smelts); i++) {
+                session.click(window, 0, FURNACE_FUEL, true);
+            }
+            session.click(window, 0, coal - Inventory.MAIN_FIRST + windowSlots, false);
+            return true;
+        }
         int planks = biggest(ItemClass.PLANKS, -1);
         int fuel = Recipe.fuelFor(smelts);
         if (planks < 0 || inventory.count(ItemClass.PLANKS) - fuel < keep || inventory.countAt(planks) < fuel) {
@@ -490,33 +500,34 @@ public final class Crafter {
         int count = Math.min(Math.min(smelts, MAX_STACK), inventory.countAt(from));
         int window = windowId;
         Optional<ItemSlot> burning = furnace[FURNACE_FUEL];
-        int burnt = burning.map(ItemSlot::count).orElse(0);
+        // What's in the fuel slot already, in smelts: coal burns eight, a plank or log one and a half.
+        double covered = burning.map(b -> b.count() * rateOf(b.itemId())).orElse(0.0);
         int fuelFrom = -1;
-        if (Recipe.fuelFor(count) > burnt) {
+        if (count > covered) {
             int kind = burning.map(ItemSlot::itemId).orElse(-1);
-            fuelFrom = fuelSlot(kind, Recipe.fuelFor(count) - burnt);
+            fuelFrom = fuelSlot(kind, count - covered);
             if (fuelFrom < 0) {
                 fuelFrom = biggestFuel(kind);
             }
             if (fuelFrom < 0 && burning.isPresent()) {
                 session.quickMove(window, 0, FURNACE_FUEL);
-                burnt = 0;
-                fuelFrom = fuelSlot(-1, Recipe.fuelFor(count));
+                covered = 0;
+                fuelFrom = fuelSlot(-1, count);
                 if (fuelFrom < 0) {
                     fuelFrom = biggestFuel(-1);
                 }
             }
             if (fuelFrom < 0) {
-                throw new IllegalStateException("no planks or logs to burn for " + count + " smelts - " + inventory.summary());
+                throw new IllegalStateException("no coal, planks or logs to burn for " + count + " smelts - " + inventory.summary());
             }
-            count = Math.min(count, (int) Math.floor((burnt + inventory.countAt(fuelFrom)) * Recipe.SMELTS_PER_PLANK));
+            count = Math.min(count, (int) Math.floor(covered + inventory.countAt(fuelFrom) * rateOf(inventory.itemAt(fuelFrom))));
         }
         session.click(window, 0, from - Inventory.MAIN_FIRST + windowSlots, false);
         for (int i = 0; i < count; i++) {
             session.click(window, 0, FURNACE_IN, true);
         }
         session.click(window, 0, from - Inventory.MAIN_FIRST + windowSlots, false);
-        int fuel = Recipe.fuelFor(count) - burnt;
+        int fuel = fuelFrom < 0 ? 0 : (int) Math.ceil(Math.max(0, count - covered) / rateOf(inventory.itemAt(fuelFrom)));
         if (fuel > 0) {
             session.click(window, 0, fuelFrom - Inventory.MAIN_FIRST + windowSlots, false);
             for (int i = 0; i < fuel; i++) {
@@ -527,20 +538,34 @@ public final class Crafter {
         return count;
     }
 
-    /** The biggest stack of planks, or failing those of logs - of item {@code itemId}, unless -1 - or -1. */
+    /** Smelts one of item {@code itemId} burns. */
+    private static double rateOf(int itemId) {
+        return ItemClassRegistry.classOf(itemId).map(Recipe::smeltsPer).orElse(Recipe.SMELTS_PER_PLANK);
+    }
+
+    /** The fuels, in the order they're burned: coal, as the plan counts it first, then planks, then logs. */
+    private static final List<ItemClass> FUELS = List.of(ItemClass.COAL, ItemClass.PLANKS, ItemClass.LOG);
+
+    /** The biggest stack of coal, or failing that of planks, or of logs - of item {@code itemId}, unless -1 - or -1. */
     private int biggestFuel(int itemId) {
-        int planks = biggest(ItemClass.PLANKS, itemId);
-        return planks >= 0 ? planks : biggest(ItemClass.LOG, itemId);
+        for (ItemClass fuel : FUELS) {
+            int slot = biggest(fuel, itemId);
+            if (slot >= 0) {
+                return slot;
+            }
+        }
+        return -1;
     }
 
     /**
-     * The slot of planks - of item {@code itemId}, unless -1 - with {@code need} or more, or failing
-     * that of logs: planks first, as the plan counted them, so logs it meant for planks aren't burned. Or -1.
+     * The slot of coal, planks or logs - in that order, of item {@code itemId} unless -1 - that burns
+     * {@code smelts} or more: planks before logs, as the plan counted them, so logs it meant for
+     * planks aren't burned. Or -1.
      */
-    private int fuelSlot(int itemId, int need) {
-        for (ItemClass fuel : List.of(ItemClass.PLANKS, ItemClass.LOG)) {
+    private int fuelSlot(int itemId, double smelts) {
+        for (ItemClass fuel : FUELS) {
             int slot = biggest(fuel, itemId);
-            if (slot >= 0 && inventory.countAt(slot) >= need) {
+            if (slot >= 0 && inventory.countAt(slot) * Recipe.smeltsPer(fuel) >= smelts) {
                 return slot;
             }
         }

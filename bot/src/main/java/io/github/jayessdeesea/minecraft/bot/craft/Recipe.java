@@ -146,6 +146,13 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
 
     /** Planks a furnace burns a smelt: one plank burns 300 ticks, a smelt takes 200. */
     public static final double SMELTS_PER_PLANK = 1.5;
+    /** Smelts a coal - or charcoal - burns: 1,600 ticks. */
+    public static final double SMELTS_PER_COAL = 8;
+
+    /** Smelts one of {@code fuel} burns: coal's or charcoal's eight, a plank's or log's one and a half. */
+    public static double smeltsPer(ItemClass fuel) {
+        return fuel == ItemClass.COAL ? SMELTS_PER_COAL : SMELTS_PER_PLANK;
+    }
 
     public Recipe {
         rows = List.copyOf(rows);
@@ -188,5 +195,10 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
     /** Planks to burn for {@code smelts} smelts. */
     public static int fuelFor(int smelts) {
         return (int) Math.ceil(smelts / SMELTS_PER_PLANK);
+    }
+
+    /** Coal to burn for {@code smelts} smelts. */
+    public static int coalFor(int smelts) {
+        return (int) Math.ceil(smelts / SMELTS_PER_COAL);
     }
 }

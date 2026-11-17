@@ -23,6 +23,14 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
   as a squad sheltering down it at night does.
 
 ## Left
+- **The leaders know what the soldiers need (operator, 2026-11-16):** "by now everyone should have
+  armour, even if it is just copper." Field299: Carol, Hal and Pete wore none, Gus one piece, Dana,
+  Ned and Olga two; the stores held about 1 raw iron and 22 raw copper, and soldiers gave up an iron
+  pickaxe 86 times for "no IRON_ORE within 48 blocks" - each hunting ore alone where it stood. The
+  platoon sergeant sums every soldier's kit gaps (armour pieces, iron pickaxes, axes) into the ore
+  and ingots they take, and that bill - not a fixed reserve (`PlatoonSergeant.IRON_RESERVE`) - sets
+  the mine's work and the released squads' shortfall; a soldier's armourer draws from the stockpile
+  rather than searching for ore.
 - **The ore's chain of hands (operator, 2026-11-14)**, each link a job of its own, chests between:
   1. *A mine stash* - built (docs/military-doctrine.md § 16, the store): the chest beside the
      landing a miner unloads raw ore into. What's left: its second chest when the first is full,
@@ -35,8 +43,8 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
      for whoever is short, the iron pickaxe first.
   Today one soldier does all four for its own kit, and only from what it carries: raw ore stays in
   the pack of whoever dug it unless `MetalPool` pools it.
-- Fuel: a smelt failed live for want of "planks or logs to burn". Coal from the mine, or charcoal
-  from the grove's logs, kept in the depot for the smelter.
+- Fuel: coal carried is burned first (docs/military-doctrine.md, the ladder). Left: coal kept in
+  the depot and drawn for the smelter, and charcoal from the grove's logs.
 - The general isn't shown the ore in the stockpile: its line says logs and cobblestone only.
 - Ingots stay with whoever smelted them.
 

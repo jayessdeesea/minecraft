@@ -126,7 +126,15 @@ public record CraftPlan(List<Session> sessions, Map<ItemClass, Integer> short_, 
             Set<Recipe> used = new HashSet<>();
             recipe.ingredients().forEach((ingredient, each) -> addUse(used, need(ingredient, each * crafts)));
             if (recipe.station() == Station.FURNACE) {
-                addUse(used, need(ItemClass.PLANKS, Recipe.fuelFor(crafts)));
+                // Coal carried burns first: eight smelts a lump, and no logs to find. Live (field299), a
+                // soldier with 22 raw copper and no armour gave up its chestplate for "no LOG within 48
+                // blocks" - planks for the furnace - while miners carried coal.
+                int coal = Recipe.coalFor(crafts);
+                if (free.getOrDefault(ItemClass.COAL, 0) >= coal) {
+                    addUse(used, need(ItemClass.COAL, coal));
+                } else {
+                    addUse(used, need(ItemClass.PLANKS, Recipe.fuelFor(crafts)));
+                }
             }
             station(recipe.station());
             times.merge(recipe, crafts, Integer::sum);

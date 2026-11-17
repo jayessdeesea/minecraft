@@ -55,7 +55,20 @@ The keep's dig runs with no supply behind it (operator, 2026-11-14). Live:
     for each full chest. It belongs in the campaign record.
   - Draws (logs, cobblestone for the slab) look in the chest being filled only, not along the row.
 - **The wood party and the keep's grove are built** (docs/military-doctrine.md § 4, "The keep's
-  wood party"). What's left: a lumberjack who draws its axe and saplings from the depot's chest and
+  wood party"). What's left:
+  - **A surveyor (operator, 2026-11-16):** a role that finds the forest - and ore, and ground -
+    past what the squads see (`bot.supply.ResourceSurveyor` reports only what's within 64 blocks
+    of a squad), and says where it is. No surveyor role exists yet.
+  - **A standing lumberjack (operator, 2026-11-16):** with an axe, it clear-cuts the forest the
+    surveyor found; takes a second pass once the leaves have decayed, for the saplings and logs
+    dropped; and replants on the grid ((x+2)%4 == 0, (z+2)%4 == 0, `TreeFarm.onGrid`) only where
+    there's room for the tree to grow - open air above (`TreeFarm.HEADROOM`, built) and round it
+    sideways (not checked today: a grid cell beside a wall or a trunk is planted). A forest far
+    out is cut and its wood and saplings carried back, and the grove planted near the keep, not
+    there.
+  Today the wood party cuts where a keep squad last saw trees, and the one grove is planted by
+  the depot.
+  - A lumberjack who draws its axe and saplings from the depot's chest and
   puts them back, rather than making an axe each time; the grove grown to 16-32 trees with more than
   one plot once the first is planted; the general's whole-squad WOOD answer to Class IV RED dropped
   for the keep's squads, now the foreman sends a party.

@@ -31,6 +31,18 @@ class CraftPlanTest {
                 new Session(Station.GRID, List.of(new Batch(Recipe.TORCHES, 5)))), plan.sessions());
     }
 
+    /** Live (field299): 22 raw copper, no logs, and coal in the squad - the chestplate given up for want of planks to burn. */
+    @Test
+    void coalCarriedIsTheFurnacesFuelAndNoLogsAreWanted() {
+        CraftPlan plan = CraftPlan.of(Map.of(Recipe.COPPER_CHESTPLATE, 1),
+                Stock.of(Map.of(ItemClass.RAW_COPPER, 22, ItemClass.COAL, 1)), WORKSHOP);
+
+        assertTrue(plan.feasible(), plan.short_().toString());
+        assertEquals(List.of(
+                new Session(Station.FURNACE, List.of(new Batch(Recipe.COPPER_INGOT, 8))),
+                new Session(Station.TABLE, List.of(new Batch(Recipe.COPPER_CHESTPLATE, 1)))), plan.sessions());
+    }
+
     @Test
     void aStationNotInReachIsMissingNotMadeAndThePlanWaitsForTheWorkshop() {
         CraftPlan plan = CraftPlan.of(Map.of(Recipe.WOODEN_PICKAXE, 1), Stock.of(Map.of(ItemClass.LOG, 3)), Set.of());
