@@ -4247,8 +4247,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return null;
         }
         int x = state.stairsFor[0], z = state.stairsFor[1];
-        Staircase level = state.second != null && state.second.head().equals(first.head()) ? state.second
-                : keptMine(levelKey(x, z, key)).filter(k -> k.head().equals(first.head())).orElse(null);
+        // Never a level another squad holds (the rules of a mine: a squad to a level): live (field371),
+        // Charlie's and Delta's second levels were both y=-56, one squad's kept on disk from before the
+        // other was given it while it had too few pickaxes for one, and four soldiers worked one stretch.
+        java.util.function.Predicate<Staircase> ownLevel = k -> squadStairs.entrySet().stream()
+                .noneMatch(e -> !e.getKey().equals(key) && e.getValue().head().equals(k.head()) && e.getValue().bottom() == k.bottom());
+        Staircase level = state.second != null && state.second.head().equals(first.head()) && ownLevel.test(state.second) ? state.second
+                : keptMine(levelKey(x, z, key)).filter(k -> k.head().equals(first.head())).filter(ownLevel).orElse(null);
         List<String> crew = level == null ? List.of() : mineCrew(level);
         // Worked out by its own crew's word, once they've had it a while: a crew given it reports what
         // it last did on another - live (field320), Charlie's second level at y=-12 read worked out the
