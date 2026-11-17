@@ -3599,6 +3599,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The stump each keep cutter replants before its next tree - squad loops write, the planting map reads. */
     private final Map<String, BlockPos> keepStumps = new ConcurrentHashMap<>();
     private final Map<String, Long> keepStumpSince = new ConcurrentHashMap<>();
+    /** How far down its trunk's column a felled tree's ground is looked for, to replant on. */
+    static final int STUMP_LOOK_DOWN = 4;
     /** How long a cutter tries to replant a stump - a sapling from the leaves it dug, or broken for - before it goes on. */
     static final long STUMP_PLANT_MILLIS = 90_000;
     /** The most logs taken as one tree. */
@@ -3658,9 +3660,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Box box = held;
         if (!standing && !steps) {
             if (tree != null) {
-                BlockPos foot = tree.stream().min(Comparator.comparingInt(BlockPos::y)).orElseThrow();
-                LOG.info("[Keep] {} has felled the tree at {} and dug out its steps", cutter, foot);
+                BlockPos lowest = tree.stream().min(Comparator.comparingInt(BlockPos::y)).orElseThrow();
+                LOG.info("[Keep] {} has felled the tree at {} and dug out its steps", cutter, lowest);
                 felling.remove(cutter);
+                // The ground its trunk stood on, down its column: live (field380), Bob's tree's lowest log
+                // stood over air, and its stump wasn't replanted.
+                BlockPos foot = lowest;
+                for (int down = 0; down < STUMP_LOOK_DOWN && !world.isSolid(foot.x(), foot.y() - 1, foot.z()); down++) {
+                    foot = foot.offset(0, -1, 0);
+                }
                 // Replanted where it stood, its headroom dug clear with its crown (operator, 2026-11-17).
                 if (world.isSoil(foot.x(), foot.y() - 1, foot.z()) && !world.isSolid(foot.x(), foot.y(), foot.z())) {
                     keepStumps.put(cutter, foot);
