@@ -3871,10 +3871,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Staircase level = state.second != null && state.second.head().equals(first.head()) ? state.second
                 : keptMine(levelKey(x, z, key)).filter(k -> k.head().equals(first.head())).orElse(null);
         List<String> crew = level == null ? List.of() : mineCrew(level);
-        boolean workedOut = level != null && !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done);
+        // Worked out by its own crew's word, once they've had it a while: a crew given it reports what
+        // it last did on another - live (field320), Charlie's second level at y=-12 read worked out the
+        // moment it was given, and was given again every cycle.
+        long now = clockwork.millis();
+        boolean settled = level != null && now - mineExtendedAt.getOrDefault(level.head().offset(0, level.bottom(), 0), 0L) >= EXTEND_SETTLE_MILLIS;
+        boolean workedOut = settled && !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done);
         if (level == null || workedOut) {
+            Staircase left = level;
+            // The next free level under the rest and under the one it leaves - never the same again.
+            Optional<Staircase> next = freeLevel(left == null ? first : left.bottom() < first.bottom() ? left : first, key)
+                    .filter(n -> left == null || n.bottom() < left.bottom());
             squadStairs.remove(key);
-            Optional<Staircase> next = freeLevel(first, key);
             if (next.isEmpty()) {
                 return level;
             }
@@ -3883,6 +3891,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 crew.forEach(stairsProgress::remove);
             }
             level = next.get();
+            mineExtendedAt.put(level.head().offset(0, level.bottom(), 0), now);
             LOG.info("[{}] MINE: its second level of the mine at {}: y={}", squad, first.head(), level.bottom());
             mineStore.save(mineKey(levelKey(x, z, key), level.well()), toKeep(level));
             treeClaims.addAll(level.walkway());

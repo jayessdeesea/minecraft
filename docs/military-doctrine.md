@@ -1396,9 +1396,14 @@ dawn. A mine's cutter keeps only its backfill's bulk with its pack full - a stac
 and half of dirt (`Pack.MINER_COBBLESTONE_KEPT`) - the rest thrown before anything else, so a slot
 for ore is never taken by it. A cutter under 8 torches makes up to 32 from the coal it mines
 (`SoldierRunner.MINER_TORCHES`). A vein's holes, on the stairs or off a tunnel, are filled
-back once it's taken, never one of the mine's own cells. A squad with three or more carrying a pickaxe takes a second level, the
+back once it's taken, never one of the mine's own cells nor one the force keeps open - every squad's
+stairs (`WorldView.noBuild`): live, a step under one squad's level was found solid, and two
+soldiers stood above it with no way down to theirs. A squad with three or more carrying a pickaxe takes a second level, the
 next free one under every other's, for its second pair (`SoldierRunner.secondLevel`), kept on disk
-as the squad's second and moved to the next free one when it's worked out.
+as the squad's second and moved to the next free one under it when it's worked out - by its own
+crew's word, once they've had it 30 seconds: a crew newly given it reports what it last did on
+another (live, a second level read worked out the moment it was given, and was given again every
+cycle).
 
 Squads on one mine each work their own level (the rules of a mine, above): live, squads sharing
 one level's stretches took one another's stale DONE for their own, and it was run on with nothing
