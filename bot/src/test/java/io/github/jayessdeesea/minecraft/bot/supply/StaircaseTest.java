@@ -79,6 +79,27 @@ class StaircaseTest {
     }
 
     /**
+     * A mine run on as far as it goes is cut a level deeper off the same stairs: the steps above are
+     * the same, a fresh main tunnel under them, down to just above bedrock and no further.
+     */
+    @Test
+    void aMineWorkedOutGoesALevelDeeperOffTheSameStairs() {
+        Staircase upper = new Staircase(new BlockPos(0, 64, 0), 16, Staircase.MAX_STRETCHES, false);
+        Staircase lower = upper.deeper().orElseThrow();
+
+        assertTrue(lower.bottom() == 16 - Staircase.LEVEL_DROP && lower.stretches() == 1, lower.toString());
+        for (int k = 0; k < upper.steps(); k++) {
+            assertTrue(lower.step(k).equals(upper.step(k)), "step " + k + " is the same step");
+        }
+        assertTrue(Staircase.kept(lower.head(), lower.step(lower.steps() - 1), java.util.Optional.empty()).equals(lower), "kept as cut");
+        Staircase last = lower;
+        while (last.deeper().isPresent()) {
+            last = last.deeper().get();
+        }
+        assertTrue(last.bottom() >= Staircase.DEEPEST && last.bottom() - Staircase.LEVEL_DROP < Staircase.DEEPEST, last.toString());
+    }
+
+    /**
      * Shared among miners, every tunnel is one miner's and no more than one's, and each miner's
      * branches are a stretch of the main tunnel of their own: no miner's root between another's.
      */

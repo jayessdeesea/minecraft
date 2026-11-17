@@ -112,6 +112,19 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
         return stretches * MAIN_TUNNEL;
     }
 
+    /** How much deeper a mine's next level is cut: fresh rock a level under the last one's branches. */
+    public static final int LEVEL_DROP = 16;
+
+    /**
+     * This mine a level deeper (operator, 2026-11-16: go deeper, or pick other sites): its stairs cut
+     * on down {@link #LEVEL_DROP} blocks from the same head, a fresh main tunnel and branches there;
+     * empty once that would be under {@link #DEEPEST}. The stairs above are the same steps.
+     */
+    public java.util.Optional<Staircase> deeper() {
+        int next = bottom - LEVEL_DROP;
+        return next < DEEPEST ? java.util.Optional.empty() : java.util.Optional.of(new Staircase(head, next, 1, well));
+    }
+
     /** This mine with its main tunnel run on a stretch, its branches with it; empty at {@link #MAX_STRETCHES}. */
     public java.util.Optional<Staircase> extended() {
         return stretches >= MAX_STRETCHES ? java.util.Optional.empty() : java.util.Optional.of(new Staircase(head, bottom, stretches + 1, well));

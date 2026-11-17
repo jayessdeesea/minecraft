@@ -3699,6 +3699,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * make one (backlog/maturity-model.md, basis of issue: at AIRHEAD the iron pickaxe is the iron
      * authorised - it opens the keep's emerald and the diamonds). A mine worked out is run on while it is.
      */
+    /** Whether the force wants ore: short of iron, or a soldier wearing less than a full set of armour. */
+    private boolean oreWanted() {
+        return ironShort() || activeSoldiers.values().stream()
+                .anyMatch(s -> s.status().condition().flatMap(Condition::kit).map(k -> k.armour() < FULL_ARMOUR).orElse(false));
+    }
+
+    /** Pieces in a full set of armour. */
+    static final int FULL_ARMOUR = 4;
+
     private boolean ironShort() {
         int iron = soldierIron.values().stream().mapToInt(Integer::intValue).sum()
                 + chainOfCommand.stores().map(s -> s.rawIron() + s.ironIngots()).orElse(0);
@@ -3728,7 +3737,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         int night = taken - dusk;
         if (night < NIGHT_ORE) {
-            LOG.warn("[Outcome] the night's mining: {} ore block(s) taken, {} expected - SHORT", night, NIGHT_ORE);
+            // Where it stands, so the short night's cause is read off it: each mine's level and length,
+            // and whether its cutters were all done - nothing left to cut - or ore no longer wanted.
+            String mines = squadStairs.entrySet().stream().map(e -> e.getKey() + " y=" + e.getValue().bottom() + " "
+                    + e.getValue().tunnel() + " blocks, crew " + mineCrew(e.getValue()).stream()
+                    .map(n -> n + " " + Optional.ofNullable(stairsProgress.get(n)).map(p -> p.getClass().getSimpleName()).orElse("none"))
+                    .toList()).collect(Collectors.joining("; "));
+            LOG.warn("[Outcome] the night's mining: {} ore block(s) taken, {} expected - SHORT; ore wanted {}; {}", night, NIGHT_ORE,
+                    oreWanted(), mines);
         } else {
             LOG.info("[Outcome] the night's mining: {} ore block(s) taken, {} expected", night, NIGHT_ORE);
         }
@@ -4591,11 +4607,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 boolean workedOut = !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done);
                 // Settled by mine, not by squad: live, four squads on one mine each took the others' stale
                 // DONE for their own, and it ran on from 24 blocks to 96 in seconds with nothing cut.
-                if (workedOut && ironShort() && now - mineExtendedAt.getOrDefault(state.stairs.head(), 0L) >= EXTEND_SETTLE_MILLIS) {
-                    Optional<Staircase> longer = state.stairs.extended();
+                // Worked on while ore is wanted: the iron short, or anyone short of armour (operator,
+                // 2026-11-16: by now everyone should have armour). Run on a stretch, then a level deeper.
+                if (workedOut && oreWanted() && now - mineExtendedAt.getOrDefault(state.stairs.head(), 0L) >= EXTEND_SETTLE_MILLIS) {
+                    Optional<Staircase> run = state.stairs.extended();
+                    Optional<Staircase> longer = run.or(state.stairs::deeper);
+                    if (run.isEmpty() && longer.isPresent()) {
+                        LOG.warn("[Outcome] the mine at {} is worked out at y={} - its next level cut at y={}", state.stairs.head(),
+                                state.stairs.bottom(), longer.get().bottom());
+                    }
                     if (longer.isEmpty() && driedUp.add(state.stairs.head())) {
-                        LOG.warn("[Outcome] the mine at {} is dried up: every tunnel cut, its main tunnel at {} blocks, and the force still"
-                                + " short of iron - SHORT", state.stairs.head(), state.stairs.tunnel());
+                        LOG.warn("[Outcome] the mine at {} is dried up: every level cut down to y={}, and ore still wanted - SHORT",
+                                state.stairs.head(), state.stairs.bottom());
                     }
                     if (longer.isPresent()) {
                         mineExtendedAt.put(state.stairs.head(), now);
