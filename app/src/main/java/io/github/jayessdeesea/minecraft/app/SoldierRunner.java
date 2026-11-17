@@ -2075,11 +2075,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             state.workshopFor = null;
             return;
         }
-        // A MINE objective's height is the depth to reach: its workshop is at the stairs' head.
-        Position at = state.stairs != null
-                ? new Position(state.stairs.head().x(), state.stairs.head().y(), state.stairs.head().z())
-                : objectiveOf(squad).map(Objective::location)
-                .orElse(statuses.getFirst().position());
+        // A MINE objective's height is the depth to reach: its workshop is at the stairs' head, and
+        // before they're sited on the ground at its x and z - never at the depth. Live (field346), a
+        // mine not yet sited had its workshop in a cave at y=16, and depositors stood over it.
+        Optional<Objective> objective = objectiveOf(squad);
+        Position at;
+        if (state.stairs != null) {
+            at = new Position(state.stairs.head().x(), state.stairs.head().y(), state.stairs.head().z());
+        } else if (objective.filter(Objective::mine).isPresent()) {
+            Position o = objective.get().location();
+            OptionalInt g = groundNear((int) Math.floor(o.x()), (int) Math.floor(o.z()));
+            if (g.isEmpty()) {
+                state.workshop = null;
+                state.workshopFor = null;
+                return;
+            }
+            at = new Position(o.x(), g.getAsInt(), o.z());
+        } else {
+            at = objective.map(Objective::location).orElse(statuses.getFirst().position());
+        }
         Set<BlockPos> claimed = new HashSet<>(treeClaims);
         claimed.addAll(hut);
         // Clear of the shaft: its 3x3 is dug out from under anything put down beside its head.

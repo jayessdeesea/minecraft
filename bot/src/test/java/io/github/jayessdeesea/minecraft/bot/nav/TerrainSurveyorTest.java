@@ -66,6 +66,28 @@ class TerrainSurveyorTest {
                 TerrainSurveyor.surface(low, -90, -24, 319));
     }
 
+    /** A lake's column has no ground: never its bed's cave under it. */
+    @Test
+    void aLakesColumnHasNoGround() {
+        WorldView lake = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < 60 && !(y >= 24 && y <= 26);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return y >= 60 && y <= 62;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(Optional.empty(), TerrainSurveyor.surface(lake, -90, -24, 319), "not the cave at y=24 under the lake");
+    }
+
     private static TerrainSurvey.Sample at(TerrainSurvey survey, int x, int z) {
         return survey.samples().stream().filter(s -> s.x() == x && s.z() == z).findFirst().orElseThrow();
     }

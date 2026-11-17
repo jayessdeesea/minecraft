@@ -1371,7 +1371,9 @@ the keep's mine moves on (a squad's Mine task reads DONE only when every one of 
 blocks further west, its head 8 clear of the flatten site and its bench (`ChainOfCommand.onMineDriedUp`,
 "[PL] the keep's mine at ... is dried up - the night shift's mine moves to ..."; kept on disk, so a
 restart keeps it where it went). A mine off the camp is headed on the ground there, read from the
-sky down at the nearest column within 8 of its site that reads; with none read, nothing is sited
+sky down at the nearest column within 8 of its site that reads - a lake's or lava's column reads
+none, never the cave under its bed (live, a site's lake read through to a cave at y=24) - and its
+workshop, before the stairs are cut, on that ground, not at the order's depth; with none read, nothing is sited
 until one is, never at a soldier's height (live, a squad down the old mine sited the new one's head
 in its tunnels at y=-23). A staircase kept on disk - the camp's or another - with its head 16 or
 more under the ground over the head itself is let go, every squad's level off it with it, and

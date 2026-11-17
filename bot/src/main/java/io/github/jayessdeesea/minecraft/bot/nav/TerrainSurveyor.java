@@ -84,10 +84,17 @@ public final class TerrainSurveyor {
      * {@link #groundAt}, which looks only a few blocks under a guess, finds. Empty with none.
      * Down to the world's floor: 256 under the sky's top was y=64, and ground at y=62 never read -
      * live (field334-343), the mine sites west of the keep found no ground, and one was sited at a
-     * soldier's height down the old mine.
+     * soldier's height down the old mine. And no further than the first water or lava: a column with
+     * no ground of its own.
      */
     public static java.util.Optional<BlockPos> surface(WorldView world, int x, int z, int fromY) {
         for (int y = fromY; y > WORLD_FLOOR; y--) {
+            // A lake or lava at the top is no ground: never read through it to a cave under its bed.
+            // Live (field346), a mine site's column was a lake at y=60-62, the read went on down to a
+            // cave at y=24, and the well was sited from there - no floor under its sixth step.
+            if (world.isHazard(x, y, z)) {
+                return java.util.Optional.empty();
+            }
             if (world.isSolid(x, y - 1, z) && !world.isSolid(x, y, z) && !world.isSolid(x, y + 1, z) && !world.isHazard(x, y, z)) {
                 return java.util.Optional.of(new BlockPos(x, y, z));
             }
