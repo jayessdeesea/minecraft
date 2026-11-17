@@ -28,6 +28,15 @@ public interface WorldView {
     boolean isHazard(int x, int y, int z);
 
     /** Whether the block at (x, y, z) is a torch - a light a patrol base is lit by. */
+    /**
+     * Whether every block of the 16-high section holding ({@code x}, {@code y}, {@code z}) is known
+     * and passable - air, plants, torches: nothing in it to dig or stand on. False when it isn't
+     * known, or a model can't say - never a reason to skip a cell.
+     */
+    default boolean openSection(int x, int y, int z) {
+        return false;
+    }
+
     default boolean isTorch(int x, int y, int z) {
         return false;
     }

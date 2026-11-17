@@ -217,6 +217,21 @@ class ChunkCacheTest {
         assertEquals(1, cache.loadedChunkCount());
     }
 
+    /** A section of air reads open, one with a block in it doesn't, and a block set since is read. */
+    @Test
+    void anOpenSectionIsReadAgainAfterABlockIsSet() {
+        ChunkCache cache = new ChunkCache();
+        cache.load(0, 0, List.of(filled(AIR), filled(STONE)), "owner");
+        assertTrue(cache.openSection(3, -60, 3), "all air");
+        assertFalse(cache.openSection(3, -44, 3), "all stone");
+        assertFalse(cache.openSection(20, -60, 3), "a chunk not loaded");
+
+        cache.setBlock(7, -55, 7, STONE);
+        assertFalse(cache.openSection(3, -60, 3), "a block set in it since");
+        cache.setBlock(7, -55, 7, AIR);
+        assertTrue(cache.openSection(3, -60, 3), "and taken out again");
+    }
+
     private static int[] filled(int stateId) {
         int[] section = new int[4096];
         Arrays.fill(section, stateId);

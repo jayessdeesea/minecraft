@@ -21,6 +21,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public boolean openSection(int x, int y, int z) {
+        return chunks.openSection(x, y, z);
+    }
+
+    @Override
     public boolean isSolid(int x, int y, int z) {
         return chunks.isSolid(x, y, z);
     }

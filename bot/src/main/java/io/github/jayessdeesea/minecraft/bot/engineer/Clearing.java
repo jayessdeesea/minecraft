@@ -66,6 +66,15 @@ public final class Clearing {
                 // left - above the box, or kept - were counted for hours and never dug.
                 boolean clearAbove = !world.isSolid(x, box.maxY() + 1, z);
                 for (int y = box.maxY(); y >= box.minY(); y--) {
+                    // A section all open - the sky over the ground - has nothing to dig and leaves the
+                    // column open: down to its bottom row in one step, that row read as any other (a
+                    // fence or wall under it makes it solid).
+                    int bottom = Math.floorDiv(y, 16) * 16;
+                    if (y > bottom && bottom >= box.minY() && world.openSection(x, y, z)) {
+                        clearAbove = true;
+                        y = bottom + 1;
+                        continue;
+                    }
                     boolean ground = !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty();
                     boolean dug = !except.contains(new Cell(x, y, z)) && diggable(world, x, y, z)
                             && (!ground || clearAbove);

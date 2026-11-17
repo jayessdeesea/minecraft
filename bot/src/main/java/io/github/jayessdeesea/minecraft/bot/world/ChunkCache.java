@@ -347,10 +347,44 @@ public final class ChunkCache {
             if (sectionIndex >= 0 && sectionIndex < chunk.sectionBlockStates.size()) {
                 int index = (Math.floorMod(y, SECTION_SIZE) << 8) | (Math.floorMod(z, SECTION_SIZE) << 4) | Math.floorMod(x, SECTION_SIZE);
                 chunk.sectionBlockStates.get(sectionIndex)[index] = stateId;
+                chunk.writes.incrementAndGet(sectionIndex); // after the block: a scan begun before it reads stale
             }
             return chunk;
         });
         version.incrementAndGet();
+    }
+
+    /**
+     * Whether every block of the section holding ({@code x}, {@code y}, {@code z}) is passable -
+     * the dig's scan of a site skips the open sky in one step. Commit 608's profile: the squad
+     * thread's scan of the flatten site, 33 by 129 columns up to y=319, was a third of its time,
+     * most of it reading air. Worked out once a section and kept, against the section's count of
+     * block writes: a write since makes it worked out again.
+     */
+    public boolean openSection(int x, int y, int z) {
+        LoadedChunk chunk = chunks.get(chunkKey(Math.floorDiv(x, SECTION_SIZE), Math.floorDiv(z, SECTION_SIZE)));
+        if (chunk == null) {
+            return false;
+        }
+        int i = Math.floorDiv(y, SECTION_SIZE) - MIN_SECTION_Y;
+        if (i < 0 || i >= chunk.sectionBlockStates.size()) {
+            return false;
+        }
+        int writes = chunk.writes.get(i);
+        long kept = chunk.open.get(i);
+        if (kept != 0 && (int) (kept >>> 2) == writes) {
+            return (kept & 1) == 1;
+        }
+        boolean open = true;
+        for (int stateId : chunk.sectionBlockStates.get(i)) {
+            if (BlockClassRegistry.classOf(stateId) != BlockClassRegistry.BlockClass.PASSABLE) {
+                open = false;
+                break;
+            }
+        }
+        // Bit 1 says it's worked out; the writes it was worked out against above it.
+        chunk.open.set(i, ((long) writes << 2) | 2 | (open ? 1 : 0));
+        return open;
     }
 
     /**
@@ -425,8 +459,14 @@ public final class ChunkCache {
         // it doesn't need its own concurrency control on top of that.
         final Set<Object> owners = new HashSet<>();
 
+        /** Block writes into each section, and whether each is open as last worked out (ChunkCache#openSection). */
+        final java.util.concurrent.atomic.AtomicIntegerArray writes;
+        final java.util.concurrent.atomic.AtomicLongArray open;
+
         LoadedChunk(List<int[]> sectionBlockStates) {
             this.sectionBlockStates = sectionBlockStates;
+            this.writes = new java.util.concurrent.atomic.AtomicIntegerArray(sectionBlockStates.size());
+            this.open = new java.util.concurrent.atomic.AtomicLongArray(sectionBlockStates.size());
         }
     }
 }
