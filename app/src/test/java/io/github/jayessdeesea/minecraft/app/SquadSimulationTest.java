@@ -881,8 +881,9 @@ class SquadSimulationTest {
     }
 
     /**
-     * One ration at a time, no more often than every four seconds, to whoever carries fewest: Fran,
-     * with 40, feeds both her low squadmates rather than unloading on one (the operator's).
+     * One ration at a time, no more often than every second, to whoever carries fewest: Fran, with
+     * 40, feeds both her low squadmates rather than unloading on one (the operator's; a second a
+     * ration, 2026-11-17).
      */
     @Test
     void aGiverSharesOneRationAtATimeRoundEveryoneShort() {
@@ -891,7 +892,7 @@ class SquadSimulationTest {
         int gus = run.server().count("Gus", ItemClassRegistry.ItemClass.FOOD), hal = run.server().count("Hal", ItemClassRegistry.ItemClass.FOOD);
         int given = 40 - run.server().count("Fran", ItemClassRegistry.ItemClass.FOOD);
         assertTrue(gus > 5 && hal > 5, "both fed: Gus " + gus + ", Hal " + hal);
-        assertTrue(given <= 20_000 / 4_000 + 1, given + " given in 20 s");
+        assertTrue(given <= 20_000 / 1_000 + 1, given + " given in 20 s");
     }
 
     private record Shared(SimServer server) {

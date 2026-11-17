@@ -50,11 +50,12 @@ public final class Handover {
      */
     static final int COOLDOWN_TICKS = 200;
     /**
-     * Rations are thrown one at a time, no more often than this from the last throw: with the
-     * receivers paired fewest first each time, a giver's rations go round everyone short of them
-     * (the operator's: one ration a pair every four seconds).
+     * Rations are thrown one at a time, a second apart (operator, 2026-11-17: one second a ration a
+     * player): with the receivers paired fewest first each time, a giver's rations go round everyone
+     * short of them, and a ration's hand-over is done once it's thrown - its pickup is the receiver's,
+     * two seconds on, not waited for.
      */
-    static final int RATION_EVERY_TICKS = 80;
+    static final int RATION_EVERY_TICKS = 20;
 
     /** Hand {@code count} of {@code item} to {@code receiver}, now standing at {@code at}. */
     public record Delivery(String receiver, Position at, CrossLevel.Item item, int count) {
@@ -197,8 +198,8 @@ public final class Handover {
                                 throw new IllegalStateException("picked its own " + what() + " back up");
                             }
                             // A ration's receiver may still be short, and asking, after one: it's done once it can be picked up.
-                            return sinceThrow >= PICKUP_DELAY_TICKS
-                                    && (item == CrossLevel.Item.RATIONS || offered.filter(d -> d.receiver().equals(receiver)).isEmpty());
+                            return item == CrossLevel.Item.RATIONS
+                                    || sinceThrow >= PICKUP_DELAY_TICKS && offered.filter(d -> d.receiver().equals(receiver)).isEmpty();
                         }), PICKUP_DELAY_TICKS + WALK_TIMEOUT_TICKS)),
                 List.of(new Guard("the delivery is off", () -> remaining < logs
                         || offered.filter(d -> d.receiver().equals(receiver)).isPresent())));
@@ -218,7 +219,9 @@ public final class Handover {
             throw new IllegalStateException("out of " + what() + " with " + remaining + " still to give");
         }
         int before = carried();
-        int throwing = Math.min(remaining, inventory.countAt(slot));
+        // Rations one at a time, a second apart; the rest a slot at a time.
+        boolean ration = item == CrossLevel.Item.RATIONS;
+        int throwing = ration ? 1 : Math.min(remaining, inventory.countAt(slot));
         for (int i = 0; i < throwing; i++) {
             session.throwOne(0, 0, slot); // stale state: the server resends the inventory
         }

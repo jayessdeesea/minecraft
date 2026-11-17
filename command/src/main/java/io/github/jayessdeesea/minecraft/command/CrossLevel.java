@@ -23,8 +23,10 @@ public final class CrossLevel {
     /** Rations a giver keeps for itself: below this it has none to spare (the operator's). */
     public static final int KEEP_RATIONS = 15;
     /**
-     * Rations handed across at a time: one, so a giver spreads what it has over everyone short of
-     * it, fewest first, rather than unloading on the first (the operator's).
+     * Rations handed across at a time: one, so a giver spreads what it has over everyone short of it,
+     * fewest first, rather than unloading on the first (the operator's) - a hand-over a second
+     * (Handover; operator, 2026-11-17: one second a ration a player), and a receiver fed by every
+     * giver near it at once.
      */
     public static final int RATIONS_GIVEN = 1;
     /**
@@ -224,7 +226,10 @@ public final class CrossLevel {
                     .min(Comparator.comparingDouble(giver -> Cohesion.distance(giver.position(), receiver.position())))
                     .ifPresent(giver -> {
                         busy.add(giver.name());
-                        busy.add(receiver.name());
+                        // Rations: the receiver stays open to the next giver near it, each feeding it at once.
+                        if (item != Item.RATIONS) {
+                            busy.add(receiver.name());
+                        }
                         transfers.add(new Transfer(giver.name(), receiver.name(), item, wanted));
                     });
         }
