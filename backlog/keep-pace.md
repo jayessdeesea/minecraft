@@ -78,6 +78,15 @@ crew's ticks:
   route allowed, or a step since taken - and can't climb back. Walk the stairs' cells from the
   head down (Staircase.cuts) against the world for the first step a soldier can't go up: a
   floored step's head room, a step dug from under it, a refill in the walkway.
+  Found (field285, probed read-only): the stairs (head (-26, 70, -24), the plain ring) have solid
+  blocks in both feet and head of steps at (-27, 62, -25) and (-27, 55, -24), and more at
+  (-25, 28, -25) and (-25, 26, -23). The log shows step 8, (-27, 62, -25), cut again and again by
+  the miners (07:02-07:41) while walkers put their route steps into it ("[Dana] its step at
+  -27 62 -25 keeps being refused"): soldiers crossing the shaft's open top build into the stairs'
+  own cells, and some stay. Wanted: the route planner never builds into a staircase's cut cells
+  (Pathfinder, a no-build set alongside its avoid set), and the cutter clears the stairs from the
+  head down when it finds them blocked. Separately, the camp's stairs are kept on disk twice - "to
+  y=24" by Bravo's miner, "to y=16" by Alpha - two plans for one shaft.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done
