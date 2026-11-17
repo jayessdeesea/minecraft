@@ -39,8 +39,9 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
 - **Prevention beats engagement**: sleep against phantoms, lighting and walls against ground mobs.
 
 ## Phases
-1. The matrix at contact and bypass in routing: a path cost near hostiles, a creeper on the route
-   gone round, not fought; a hostile not on the path and not targeting carried past.
+1. The matrix at contact and bypass in routing: a creeper on the route gone round is built
+   (docs/military-doctrine.md, contact). Left: a hostile not on the path and not targeting
+   carried past - a melee hostile in contact is closed on today whatever it's doing.
 2. The order fields and their defaults through Order, the squad leader and the soldier.
 3. Contact and capability-gap reports, and the sergeant's answer to repeated gaps.
 

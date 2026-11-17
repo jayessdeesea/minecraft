@@ -530,6 +530,42 @@ class DeterministicSoldierTest {
         assertEquals(new Report.Idle(), alice.status().report());
     }
 
+    /** A creeper on its route is gone round, not walked past at arm's length (the engagement doctrine). */
+    @Test
+    void aRouteGoesRoundACreeperOnIt() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        Position creeper = new Position(10.5, GROUND, 0.5);
+        WorldView open = withHostileAt(creeper, (x, y, z) -> y < GROUND);
+        WorldView withCreeper = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return open.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return Math.hypot(center.x() - creeper.x(), center.z() - creeper.z()) <= radius
+                        ? List.of(new TrackedEntity(1, HostileMobRegistry.typeIdOf("creeper"), creeper)) : List.of();
+            }
+        };
+        alice.receiveOrder(new Order.MoveTo(20.5, GROUND, 0.5, 1, 2, Risk.LOW));
+
+        double closest = Double.MAX_VALUE;
+        for (int tick = 0; tick < 400 && alice.status().position().x() < 19; tick++) {
+            alice.tick(withCreeper);
+            Position at = alice.status().position();
+            closest = Math.min(closest, Math.hypot(at.x() - creeper.x(), at.z() - creeper.z()));
+        }
+
+        assertTrue(alice.status().position().x() >= 19, "it gets there: " + alice.status().position());
+        assertTrue(closest > DeterministicSoldier.CREEPER_CLEAR, "never inside the blast on the way: " + closest);
+    }
+
     @Test
     void withAWallAtItsBackItSidestepsACreeper() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, 64, 0.5));

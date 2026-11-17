@@ -497,7 +497,11 @@ the squad to falls.
   of a squad in a cave stood a night 5 to 8 blocks from creepers that had no way to them. And a
   creeper more than 4.5 blocks off, past its blast, is contact the soldier carries on through: it
   never closes on one, and one that didn't come on held three standing for hours; it goes on with
-  its order, and closing inside that, it backs off.
+  its order, and closing inside that, it backs off. Its route goes round a creeper (operator,
+  2026-11-16, the engagement doctrine: bypass): every cell within 5 blocks of one within 24 costs
+  a route more, so a way round is taken where there's one, and a creeper newly in range has the
+  route planned again (`DeterministicSoldier.CREEPER_BERTH`). Without it, a soldier walking past
+  one closed to its blast, backed off, and never got by.
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
 - **Work under contact.** The soldiers in contact drop their ground work - the keep's rectangle, the

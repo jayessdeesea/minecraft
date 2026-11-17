@@ -775,6 +775,16 @@ public final class DeterministicSoldier implements Soldier {
     /** Cells it got stuck short of, and the tick each is tried again from: plans route round them meanwhile. */
     private final Map<BlockPos, Integer> avoided = new HashMap<>();
     /**
+     * How far round a creeper a route gives it berth (operator, 2026-11-16, the engagement doctrine:
+     * a creeper on the route is gone round, not fought): past its blast, each cell inside costing
+     * {@link Pathfinder#AVOID_COST} more, so a way round is taken where there is one.
+     */
+    static final int CREEPER_BERTH = 5;
+    /** How far off a creeper is known when a route is planned: about a route's first stretch. */
+    static final double CREEPER_WATCH = 24;
+    /** The creepers its route was planned round: a new one comes into the watch, and it plans again. */
+    private Set<Integer> creepersRoutedRound = Set.of();
+    /**
      * How many times it gets stuck short of one cell before that cell is a snag: a block
      * the server has and the model doesn't (backlog/world-model-stale.md). Live, a soldier down the
      * camp's mine was stuck short of one cell 161 times in a quarter of an hour, every plan through it.
@@ -899,8 +909,11 @@ public final class DeterministicSoldier implements Soldier {
         // On dry ground only: in water each plan is the plug's next step (the squad simulation's soldier
         // stuck in water with only logs plugs its way out a plan at a time).
         boolean noRoute = route != null && route.isEmpty() && ticksSincePlan < NO_ROUTE_RETRY_TICKS && !wet && !afloat;
+        List<TrackedEntity> creepers = world.nearbyHostiles(position, CREEPER_WATCH).stream().filter(TrackedEntity::explodes).toList();
+        Set<Integer> creeperIds = creepers.stream().map(TrackedEntity::entityId).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        boolean newCreeper = !creepersRoutedRound.containsAll(creeperIds);
         boolean replan = route == null || routeIndex >= route.size() && !noRoute
-                || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS;
+                || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS || newCreeper;
         navTicks++;
         avoided.values().removeIf(until -> until <= navTicks);
         if (replan && (onGround || afloat)) {
@@ -910,7 +923,21 @@ public final class DeterministicSoldier implements Soldier {
             if (stuck && route != null && routeIndex < route.size() && !goal.contains(route.get(routeIndex))) {
                 stuckShortOf(route.get(routeIndex));
             }
-            Set<BlockPos> avoid = Set.copyOf(avoided.keySet());
+            Set<BlockPos> avoid = new java.util.HashSet<>(avoided.keySet());
+            // A berth round each creeper in the watch: the route goes round, not past it at arm's length.
+            for (TrackedEntity creeper : creepers) {
+                BlockPos at = BlockPos.containing(creeper.position().x(), creeper.position().y(), creeper.position().z());
+                for (int dx = -CREEPER_BERTH; dx <= CREEPER_BERTH; dx++) {
+                    for (int dz = -CREEPER_BERTH; dz <= CREEPER_BERTH; dz++) {
+                        if (dx * dx + dz * dz <= CREEPER_BERTH * CREEPER_BERTH) {
+                            for (int dy = -2; dy <= 2; dy++) {
+                                avoid.add(at.offset(dx, dy, dz));
+                            }
+                        }
+                    }
+                }
+            }
+            creepersRoutedRound = creeperIds;
             // A fall is the exception, never the plan: first a route with none - walked, then with
             // steps built from what it carries - and only with no such route one the order's risk allows.
             BlockPos start = standingCell(world, position);
