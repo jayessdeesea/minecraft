@@ -536,6 +536,15 @@ public final class DeterministicSoldier implements Soldier {
             }
             if (shot) {
                 holdCoverTicks = 0;
+            } else if (nearest.explodes() && range > CREEPER_CLEAR) {
+                // In contact with a creeper well outside its blast: it carries on with its order, keeping
+                // its route - a soldier never closes on one, so one that doesn't come on held it standing
+                // for good. Live, three of a squad stood hours in a cave 5 to 8 blocks from creepers that
+                // could walk to them and didn't. Closing inside this, it backs off as below.
+                navigate(world);
+                report = new Report.InContact(threats.size());
+                applyVerticalMovement(world);
+                return attack;
             } else if (nearest.explodes()) {
                 // A creeper is never fought at arm's length: get clear of the blast - straight away,
                 // else the heading nearest that the ground allows. Boxed in, strike it: a hit knocks
@@ -598,6 +607,9 @@ public final class DeterministicSoldier implements Soldier {
         applyVerticalMovement(world);
         return attack;
     }
+
+    /** How far off a creeper stops being contact for a soldier with no bow: past its blast. */
+    static final double CREEPER_CLEAR = 4.5;
 
     /** Whether the last walk-only check found no way to the hostile, and ticks until the next. */
     private boolean noWalk;

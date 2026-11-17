@@ -3853,7 +3853,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Or a cave of any size under where it's sent, with no way up to that height: live, two
             // soldiers down the mine's stairs at night stood in a cave of 866 cells at y=44, sent up to
             // y=64, "not stranded", and the drill that lays a stair up never came.
-            boolean below = s.order() instanceof Order.MoveTo m && m.y() - from.y() > CUT_OFF_RISE
+            // Only on a flood that ran out of ground, not budget: live, three on the mine's stairs at y=28
+            // flooded the mine's tunnels to the budget before the stairs up, and were read as cut off -
+            // a stair up laid out for one, another sent further down.
+            boolean below = s.order() instanceof Order.MoveTo m && m.y() - from.y() > CUT_OFF_RISE && cells < CUT_OFF_BUDGET
                     && walkable.stream().noneMatch(c -> c.y() >= m.y() - m.verticalTolerance() - 1);
             if (cells <= CUT_OFF_CELLS || below) {
                 walksSaid.remove(s.name());

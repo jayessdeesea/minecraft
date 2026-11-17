@@ -418,7 +418,8 @@ live, two squadmates in turn walked down to one and were trapped beside it. Stra
 off: a soldier reporting no route that can walk no more than 128 cells from where it stands, by the
 planner's own moves (`SoldierRunner.cutOff`, WayOut's measure of a pocket) - or, sent more than 6
 blocks above itself, can walk to nothing within its order's height of that point, a cave of any
-size under it: live, two soldiers stood a night shift in one of 866 cells at y=44, sent up to y=64,
+size under it, by a flood that ran out of ground and not of budget (one on a mine's stairs whose
+flood filled the tunnels first was read as cut off): live, two soldiers stood a night shift in one of 866 cells at y=44, sent up to y=64,
 and no stair up was laid. One with the ground to
 walk - its order's goal out of reach, a squadmate in a pocket, a plot across water - isn't
 stranded, and nothing is cross-levelled to or from one the drill has: live, the keep's foreman
@@ -486,7 +487,10 @@ the squad to falls.
   is (live, the farm squad stood a night's start "in contact" with one across from it, each
   stepping at it into what stopped it, none striking). It's looked for swimming too, not only on
   the ground: one in water stood "in contact" across two restarts, its drill held off; and three
-  of a squad in a cave stood a night 5 to 8 blocks from creepers that had no way to them.
+  of a squad in a cave stood a night 5 to 8 blocks from creepers that had no way to them. And a
+  creeper more than 4.5 blocks off, past its blast, is contact the soldier carries on through: it
+  never closes on one, and one that didn't come on held three standing for hours; it goes on with
+  its order, and closing inside that, it backs off.
 - **The squad's drill.** `command.ReactToContact` sends teammates within 24 blocks to support,
   ahead of the squad leader's next decision.
 - **Work under contact.** The soldiers in contact drop their ground work - the keep's rectangle, the
