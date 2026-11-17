@@ -538,6 +538,16 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
      * can stand in. Empty with none.
      */
     public static Optional<Staircase> siteWell(WorldView world, int x, int z, int nearY, int depth) {
+        return siteWell(world, x, z, nearY, depth, head -> false);
+    }
+
+    /**
+     * As {@link #siteWell(WorldView, int, int, int, int)}, never a well whose head {@code dead} names - one
+     * worked out or blocked already. Live (field353), the keep's mine moved 32 west of a blocked well,
+     * was sited back in it, the chunk beside, and moved on again without ever being cut.
+     */
+    public static Optional<Staircase> siteWell(WorldView world, int x, int z, int nearY, int depth,
+                                               java.util.function.Predicate<BlockPos> dead) {
         int cx = Math.floorDiv(x, 16), cz = Math.floorDiv(z, 16);
         List<int[]> chunks = new ArrayList<>();
         for (int dx = -1; dx <= 1; dx++) {
@@ -548,7 +558,7 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
         chunks.sort(java.util.Comparator.comparingDouble(c -> Math.hypot(c[0] * 16 + 8 - x, c[1] * 16 + 8 - z)));
         for (int[] c : chunks) {
             Optional<Staircase> well = wellAt(world, c[0], c[1], nearY, depth);
-            if (well.isPresent() && well.get().clear(world)) {
+            if (well.isPresent() && !dead.test(well.get().head()) && well.get().clear(world)) {
                 return well;
             }
         }

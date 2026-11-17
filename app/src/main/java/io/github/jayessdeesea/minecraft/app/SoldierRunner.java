@@ -1478,6 +1478,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.stepStore = new WallStore(Path.of(stateDir), "steps");
         stepStore.load(STEPS).ifPresent(scaffolding::addAll);
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
+        chestStore.load(DEAD_WELLS).ifPresent(deadWells::addAll);
         chestStore.load(MINE_SITE).filter(l -> l.size() == 1).map(List::getFirst)
                 .ifPresent(c -> chainOfCommand.setKeepMine(new Position(c.x(), c.y(), c.z())));
         this.planBook = new PlanBook(Path.of(stateDir));
@@ -3993,6 +3994,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
     }
 
+    /** Mine heads worked out or blocked, never sited again - kept on disk. Squad loop, read at siting. */
+    private final Set<BlockPos> deadWells = ConcurrentHashMap.newKeySet();
+    /** The key the dead wells are kept under. */
+    private static final String DEAD_WELLS = "deadwells";
+
+    /** {@code head}'s well is worked out or blocked: never sited again, across restarts. */
+    private void deadWell(BlockPos head) {
+        if (deadWells.add(head)) {
+            synchronized (chestStore) {
+                chestStore.save(DEAD_WELLS, List.copyOf(deadWells));
+            }
+        }
+    }
+
     /** The key the keep's mine as it stands is kept under. */
     private static final String MINE_SITE = "keepmine";
 
@@ -4998,6 +5013,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .filter(p -> p instanceof Miner.Progress.Stopped s && s.why().contains("water or lava beside step"))
                         .map(p -> ((Miner.Progress.Stopped) p).why()).findFirst();
                 if (blockedBy.isPresent() && driedUp.add(state.stairs.head())) {
+                    deadWell(state.stairs.head());
                     String why = blockedBy.get();
                     LOG.warn("[Outcome] the mine at {} is blocked at y={}: {} - SHORT", state.stairs.head(), state.stairs.bottom(), why);
                     chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
@@ -5014,6 +5030,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                 state.stairs.bottom(), longer.get().bottom());
                     }
                     if (longer.isEmpty() && driedUp.add(state.stairs.head())) {
+                        deadWell(state.stairs.head());
                         LOG.warn("[Outcome] the mine at {} is dried up: every level cut down to y={}, and ore still wanted - SHORT",
                                 state.stairs.head(), state.stairs.bottom());
                         chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
@@ -5112,7 +5129,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             int nearY = surfaceY.getAsInt();
             // To the standard: a 4x4 well centred in the chunk (Staircase.well; operator, 2026-11-15).
-            Optional<Staircase> sited = Staircase.siteWell(world, x, z, nearY, depth);
+            Optional<Staircase> sited = Staircase.siteWell(world, x, z, nearY, depth, deadWells::contains);
             if (sited.isEmpty()) {
                 if (!failedHere) {
                     LOG.warn("[{}] MINE: no chunk at or round x={} z={} a well can be cut down clear of water and lava - there itself, {}",

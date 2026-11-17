@@ -37,6 +37,15 @@ class StaircaseTest {
         };
     }
 
+    /** A well already worked out or blocked is never sited again: the next chunk's is. */
+    @Test
+    void aDeadWellIsPassedOverForTheNextChunks() {
+        WorldView flat = ground(Set.of());
+        Staircase first = Staircase.siteWell(flat, 8, 8, 64, 16).orElseThrow();
+        Staircase next = Staircase.siteWell(flat, 8, 8, 64, 16, first.head()::equals).orElseThrow();
+        assertFalse(next.head().equals(first.head()), "not the dead well at " + first.head());
+    }
+
     @Test
     void aCaveAtTheLandingIsNoLandingTillTheStepsReachIt() {
         Set<BlockPos> open = new HashSet<>();
