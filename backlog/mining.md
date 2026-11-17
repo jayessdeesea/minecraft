@@ -20,20 +20,13 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   and branches' walls kept whole the same way.
 - **Branch tunnels, the rest.** The tunnels are cut and lit (docs/military-doctrine.md § 16). What's
   left: the LOGSTAT counting raw iron and diamonds.
-- **Levels.** The landing at the bottom is cut, with the mine base's workshop, and the stairs are
-  lit (docs/military-doctrine.md § 16); a mine worked out while the force is short of iron is run
-  on a stretch, to 96 blocks. Past that, with nothing left to cut, the night shift waits at
-  the landing. What's left: iron wanted past the first pickaxe (armour at BUILDUP) running the mine
-  on as well; cutters on different levels, not only different stretches of one (operator,
-  2026-11-15: "almost working in different levels, different directions") - a second level's
-  stairs from the landing, a cutter or two on each; the rest of the mine base (backlog/sites.md), and a next level once
-  the first is cut - live, the camp's mine was cut to y=16 in under a quarter of an hour, and the
-  night rule sent the squad back to it every night after with nothing left to do there. With every
-  squad on the night shift (field149, 2026-11-13), 846 of 1,450 soldier-reports at the landing were
-  InPosition. Wanted: the squad quarries the stone round the landing - the keep's 4,096
-  cobblestone - with an `Order.Gather(STONE)` round it for each soldier but the cutter. Tried; its
-  squad simulation can't tell it from the miner's own tunnels, which keep every soldier busy there
-  in a fresh mine, so it wants a scenario with the tunnels already cut.
+- **Levels.** Built: a squad to a level at y%4==0, two cutters to a level, a second level for a
+  squad of four, levels cut on down while ore is wanted, and a dried-up mine moved to a fresh site
+  (docs/military-doctrine.md § 16). What's left: the rest of the mine base (backlog/sites.md); and
+  the squad quarrying the stone round the landing - the keep's 4,096 cobblestone - with an
+  `Order.Gather(STONE)` round it for each soldier but the cutters. Tried; its squad simulation
+  can't tell it from the miner's own tunnels, which keep every soldier busy there in a fresh mine,
+  so it wants a scenario with the tunnels already cut.
 
 - **The general never orders a mine by day.** 0 of 256 orders in a night's run, 244 of them
   patrol bases: its picture asks for one only through the AAR's "no mine yet". The night shift
@@ -47,11 +40,6 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   the recovery drill laid out for it twice in two seconds as it walked on. A 1x1 spiral of 200 steps
   should count as hundreds of cells; whether the flood fill climbs the stair, or the cutter's work
   below the landing breaks it, wants a look (`SoldierRunner.cutOff`, `Pathfinder.reachable`).
-- **The task's state flickers.** Live (field168), `task Mine[]` was logged DONE ("the stairs are
-  cut down to y=16, and the ore beside them taken") and UNDER_WAY ("the stairs 51 of 54 steps
-  down") in turn, once a second, all night, by both squads: the state is DONE when any soldier's
-  `stairsProgress` is Done, else the count of steps cut - two readings of the same stairs that
-  disagree. One measure, said once when it changes.
 
 ## Notes
 - Diamonds need an iron pickaxe: the equipment ladder (docs/military-doctrine.md § 11) reaches
