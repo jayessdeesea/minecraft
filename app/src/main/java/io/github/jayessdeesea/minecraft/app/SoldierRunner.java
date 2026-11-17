@@ -4859,13 +4859,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // With nothing left to cut, by night the squad waits at the landing, under the
                 // ground: live, a mine cut to the bottom left it all night at the head, under the sky.
                 Position rest = dark && stairs.landingCut(world) ? centre(stairs.landingStand()) : centre(stairs.head());
+                // A load's walk first, while the depositor has the hands - a stand by its chest: live, a
+                // miner's every trip to the stockpile timed out where it stood, its order the miner's stand.
                 Position cutterAt = cutter == null ? rest
-                        : armourers.get(cutter).standAt().or(() -> miners.get(cutter).standAt()).orElse(rest);
+                        : depositTo(cutter, statuses).or(() -> armourers.get(cutter).standAt()).or(() -> miners.get(cutter).standAt()).orElse(rest);
                 boolean isCutter = soldierName.equals(cutter);
                 // One holding the top goes on its errand first: its kit at the workshop, torches made, the stairs lit.
                 // Not by night: the top is the dark, and the squad stays down with its cutter.
                 Optional<Position> errand = isCutter || dark ? Optional.empty()
-                        : Optional.ofNullable(armourers.get(soldierName)).flatMap(Armourer::standAt)
+                        : depositTo(soldierName, statuses).or(() -> Optional.ofNullable(armourers.get(soldierName)).flatMap(Armourer::standAt))
                         .or(() -> Optional.ofNullable(torchmakers.get(soldierName)).flatMap(Torchmaker::standAt))
                         .or(() -> Optional.ofNullable(lamplighters.get(soldierName))
                                 .flatMap(Lamplighter::standAt));
@@ -5075,6 +5077,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * cutting steps. Not the chest's own cell, which nobody stands in: live, a chest walled on
      * three sides left every trip to it short of reach, and the day's loads in the soldiers' packs.
      */
+    /** Where {@code soldier} stands for a load it carries to a chest, while its depositor has its hands. */
+    private Optional<Position> depositTo(String soldier, List<SoldierStatus> statuses) {
+        if (handsHeld.get(soldier) != Hands.Routine.DEPOSITOR || !depositors.containsKey(soldier)) {
+            return Optional.empty();
+        }
+        Optional<Position> here = statuses.stream().filter(s -> s.name().equals(soldier)).findFirst().map(SoldierStatus::position);
+        return depositors.get(soldier).standAt().map(chest -> here.flatMap(h -> chestStand(h, chest)).orElse(chest));
+    }
+
     private Optional<Position> chestStand(Position from, Position chest) {
         BlockPos feet = BlockPos.containing(from.x(), from.y(), from.z());
         int cx = (int) Math.floor(chest.x()), cy = (int) Math.floor(chest.y()), cz = (int) Math.floor(chest.z());
