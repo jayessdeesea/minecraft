@@ -1304,7 +1304,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             case RAW_COPPER -> Stockpile::rawCopper;
             case IRON_INGOT -> Stockpile::ironIngots;
             case COPPER_INGOT -> Stockpile::copperIngots;
-            default -> throw new IllegalArgumentException(metal + " isn't a metal drawn");
+            case LOG -> Stockpile::logs;
+            default -> throw new IllegalArgumentException(metal + " isn't drawn from the chest holding it");
         };
         // A chest the world no longer shows is forgotten, not walked to: live (field324), a draw went
         // seven times to a mine's old stash at y=24 that wasn't there, and failed each time.
@@ -3619,6 +3620,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Builders on the keep fetching dirt to climb on - squad loop only. */
     private final Set<String> keepFetching = ConcurrentHashMap.newKeySet();
 
+    /** Soldiers the recovery drill has, stranded till they're out - squad loop writes, tick reads. */
+    private final Set<String> recovering = ConcurrentHashMap.newKeySet();
     /** Soldiers on the keep sent to the stockpile for cobblestone - squad loop writes, tick reads. */
     private final Set<String> keepDrawing = ConcurrentHashMap.newKeySet();
     /** Builders on the keep drawing cobblestone from the depot to climb on - squad loop writes, tick reads. */
@@ -5317,6 +5320,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             long now = clockwork.millis();
             // The recovery drill's order - its own stair or cut, or a squadmate's - over its ground work:
             // live, a builder in a dead end at the mine's bottom kept its strip's dig over the stair out.
+            if (state.recovery.recovering(soldierName)) {
+                recovering.add(soldierName);
+            } else {
+                recovering.remove(soldierName);
+            }
             Order work = state.recovery.ordered(soldierName) ? null : ground.get(soldierName);
             if (work != null && !state.relieved(soldierName, keepHands.contains(soldierName) ? keepTask(work) : groundTask(work), now)) {
                 // The task's now, not the upkeep's: left the upkeep's, the upkeep would drop it again
@@ -6554,6 +6562,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     : new MetalPool.Plan(own.stock().stream().filter(c -> c != ItemClass.RAW_IRON && c != ItemClass.RAW_COPPER)
                     .collect(Collectors.toSet()), toSmelt.map(ore -> new MetalPool.Draw(ore, SMELT_DRAW)));
             Optional<MetalPool.Draw> metalDraw = metal.draw().filter(d -> metalChest(d.ore(), status.position()).isPresent());
+            // Logs from the nearest chest holding them, as metal is: its own stockpile may hold none. Live
+            // (field347), Eli at the mine's head couldn't make a pickaxe, "no LOG within 48 blocks", with
+            // 71 logs in the stores - in the keep's depot, and his stockpile the camp's chest.
+            Optional<Position> logsAt = metalChest(ItemClass.LOG, status.position());
             boolean drawingMetal = metalDraw.isPresent() || MetalPool.METALS.stream().anyMatch(depositor::drawing);
             if (drawingMetal) {
                 rung.ifPresent(tools::remove);
@@ -6628,7 +6640,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (smelter && inventory.count(ItemClass.RAW_IRON) > 0) {
                 tools.add(Recipe.IRON_INGOT);
             }
-            Set<Recipe> craftable = fort == null ? tools
+            // Nothing made by one the recovery drill has: its hands are the stair's till it's out. Live
+            // (field347), Jack's armourer walked him off his stair up every second for the camp's
+            // workshop, 200 blocks off and up, for an iron pickaxe, and his clearer never kept a stand.
+            Set<Recipe> craftable = recovering.contains(name) ? Set.of() : fort == null ? tools
                     : waiting && rearming ? Set.of(rung.orElseThrow())
                     : Set.of();
             Kit carried = status.condition().flatMap(c -> c.kit()).orElse(null);
@@ -6910,10 +6925,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             free && !threatened);
                 } else if (drawingStone.contains(name) || keepDrawing.contains(name) || keepClimbDrawing.contains(name)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
-                } else if (drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile)
+                } else if (drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), logsAt)
                         || depositor.drawing(ItemClass.LOG)) {
-                    depositor.tickDraw(status.position(), stockpile, ItemClass.LOG, DRAW_LOGS, free && !threatened
-                            && drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), stockpile));
+                    depositor.tickDraw(status.position(), logsAt.or(depositor::chestAt), ItemClass.LOG, DRAW_LOGS, free && !threatened
+                            && drawsLogs(armourer.failure().or(chestFitter::failure), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), logsAt));
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));

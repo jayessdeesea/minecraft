@@ -422,7 +422,7 @@ a soldier stood a quarter of an hour on a ledge with 8 logs, no squadmate carryi
 below - boxed in a pocket, with no stair down to lay, or more than 8 under the ground over it, where
 a stair down leads only further in (live, one in a cave at y=-51 had a one-block stair down laid out
 to its floor, carried no block, and stood) - gets the engineer's stair up instead, laid again from where it stands once it's more than 6 off every cell of it (live, one walked off 8 before it began, and stood under it with no cell in reach)
-(`Stairway.up`) - its hands the stair's alone till it's out, no load put in nor stack picked up, nor given ground on the keep at all - its rectangle, the stockpile's cobblestone or a pit's dirt -
+(`Stairway.up`) - its hands the stair's alone till it's out, no load put in nor stack picked up, nor given ground on the keep at all - its rectangle, the stockpile's cobblestone or a pit's dirt - nor anything to make, whose walk to a workshop would take it off the stair (live, an iron pickaxe walked one off its stair up every second),
 past it, as on a stair down (live, two in a cave under the mine's stairs held theirs for both, with
 no route to either, and stood; and one on a ledge with its stair down laid out held its for a
 stockpile, its order the stair's, and stood) -: the cells to dig, one block up and one along a step to open ground, up to 136
@@ -704,8 +704,10 @@ keeps being refused"); the blocks named in refused steps and stalls are counted,
 10th and 100th of a kind ("[Blocks]"), for the classes to fix: the soldier stands, and the stuck alarm and the recovery drill take it from there. Live,
 a builder put one step every tick for four minutes, 700 times.
 
-With no tree in reach for its kit's logs, it draws 8 from its stockpile, while the chest was last
-seen holding that many, or hasn't been seen since a restart (`SoldierRunner.drawsLogs`).
+With no tree in reach for its kit's logs, it draws 8 from the nearest surface chest seen holding
+them, as metal is drawn, while the stores were last seen holding that many, or haven't been seen
+since a restart (`SoldierRunner.drawsLogs`): live, a miner at the mine's head couldn't make a
+pickaxe with 71 logs in the keep's depot, his own stockpile the camp's chest.
 
 It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach -
