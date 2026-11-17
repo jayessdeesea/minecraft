@@ -190,6 +190,46 @@ class InventoryPacketsTest {
         assertEquals(Optional.of(new ItemSlot(ARROW, 16, -1, false)), contents.slots().get(1));
     }
 
+    /** Live: a witch's potion, picked up, dropped the rest of a soldier's inventory every update. */
+    @Test
+    void aPotionsContentsAreReadPast() {
+        ByteBuf in = Unpooled.buffer();
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 2);  // two slots: the potion, then arrows
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 1271); // potion
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 53); // potion_contents
+        in.writeBoolean(true);
+        ProtocolCodec.writeVarInt(in, 7); // a potion from the registry
+        in.writeBoolean(true);
+        in.writeInt(0x3F76E4); // a custom colour
+        ProtocolCodec.writeVarInt(in, 1); // one custom effect, hiding another
+        ProtocolCodec.writeVarInt(in, 2);
+        ProtocolCodec.writeVarInt(in, 1);
+        ProtocolCodec.writeVarInt(in, 600);
+        in.writeBoolean(false);
+        in.writeBoolean(true);
+        in.writeBoolean(true);
+        in.writeBoolean(true);
+        ProtocolCodec.writeVarInt(in, 0);
+        ProtocolCodec.writeVarInt(in, 1200);
+        in.writeBoolean(false);
+        in.writeBoolean(true);
+        in.writeBoolean(true);
+        in.writeBoolean(false);
+        in.writeBoolean(false); // no custom name
+        stack(in, 16, ARROW);
+
+        InventoryUpdate.Contents contents = (InventoryUpdate.Contents) InventoryPackets.decodeSetContent(in).update();
+
+        assertEquals(true, contents.complete(), contents.toString());
+        assertEquals(Optional.of(new ItemSlot(1271, 1, -1, false)), contents.slots().get(0));
+        assertEquals(Optional.of(new ItemSlot(ARROW, 16, -1, false)), contents.slots().get(1));
+    }
+
     @Test
     void setHeldSlot() {
         ByteBuf in = Unpooled.buffer();

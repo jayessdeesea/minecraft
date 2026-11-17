@@ -338,6 +338,10 @@ per enchantment a VarInt ID in the session's synced `minecraft:enchantment` regi
 level; the registry's entry order, passed on from Registry Data, names them. A loaded crossbow's
 `charged_projectiles` (51) is a VarInt count, at most 1,024, of item stack templates, each a VarInt
 item ID, then a VarInt count - item first, unlike a slot's stack - then its own component patch.
+A potion's `potion_contents` (53) is an optional potion (boolean, VarInt ID), an optional colour
+(boolean, 4-byte int), a VarInt count of custom effects - each a VarInt ID, then amplifier and
+duration as VarInts, three booleans, and an optional hidden effect of the same form - and an
+optional name (boolean, string).
 
 ## 4. Compression
 

@@ -20,7 +20,7 @@ import java.util.Optional;
  * gap, not a broken connection: the frame is already length-isolated (same reasoning as
  * {@code UnknownPacket}), so the caller keeps what it decoded and drops the rest, and the type is
  * logged loudly so the gap gets closed. Known: the plain-number components a soldier's gear
- * carries, enchantments, names and lore, a loaded crossbow's projectiles, and what a pillager captain drops - its banner's
+ * carries, enchantments, names and lore, a loaded crossbow's projectiles, a potion's contents, and what a pillager captain drops - its banner's
  * rarity, patterns and tooltip display, and its bottle's amplifier (codecs confirmed in the server jar).
  */
 final class ItemStacks {
@@ -63,6 +63,14 @@ final class ItemStacks {
     // component patch. A crossbow a pillager drops, loaded.
     private static final int CHARGED_PROJECTILES = 51;
     private static final int MAX_PROJECTILES = 1024;
+    // PotionContents.STREAM_CODEC: an optional potion (a boolean, then its VarInt registry ID), an
+    // optional custom colour (a boolean, then a 4-byte int), a VarInt-counted list of custom effects,
+    // then an optional custom name (a boolean, then a string). Each effect is its VarInt registry ID
+    // and MobEffectInstance.Details: VarInt amplifier, VarInt duration, three booleans (ambient,
+    // particles, icon), then an optional hidden effect - a boolean, then Details again. A witch's drop.
+    private static final int POTION_CONTENTS = 53;
+    /** More custom effects than any potion carries: a handful at most, commands a few more. */
+    private static final int MAX_EFFECTS = 64;
     /** More than any item carries: there are well under 64 enchantments. */
     private static final int MAX_ENCHANTMENTS = 64;
 
@@ -125,6 +133,22 @@ final class ItemStacks {
                 }
                 case ENCHANTMENTS -> enchantments = readEnchantments(in);
                 case STORED_ENCHANTMENTS -> readEnchantments(in); // a book's: not on the soldier
+                case POTION_CONTENTS -> {
+                    if (in.readBoolean()) {
+                        ProtocolCodec.readVarInt(in);
+                    }
+                    if (in.readBoolean()) {
+                        in.readInt();
+                    }
+                    int effects = ProtocolCodec.readVarIntCount(in, MAX_EFFECTS);
+                    for (int e = 0; e < effects; e++) {
+                        ProtocolCodec.readVarInt(in);
+                        skipEffectDetails(in);
+                    }
+                    if (in.readBoolean()) {
+                        ProtocolCodec.readString(in);
+                    }
+                }
                 case CHARGED_PROJECTILES -> {
                     int projectiles = ProtocolCodec.readVarIntCount(in, MAX_PROJECTILES);
                     for (int p = 0; p < projectiles; p++) {
@@ -154,6 +178,21 @@ final class ItemStacks {
             ProtocolCodec.readVarInt(in);
         }
         return new ItemSlot(itemId, count, damage, false, enchantments);
+    }
+
+    /** A MobEffectInstance.Details, and the hidden ones under it: each a level deeper, at most {@link #MAX_EFFECTS}. */
+    private static void skipEffectDetails(ByteBuf in) {
+        for (int depth = 0; depth < MAX_EFFECTS; depth++) {
+            ProtocolCodec.readVarInt(in);
+            ProtocolCodec.readVarInt(in);
+            in.readBoolean();
+            in.readBoolean();
+            in.readBoolean();
+            if (!in.readBoolean()) {
+                return;
+            }
+        }
+        throw new IllegalArgumentException("an effect's hidden effects nest deeper than " + MAX_EFFECTS);
     }
 
     private static Map<Integer, Integer> readEnchantments(ByteBuf in) {
