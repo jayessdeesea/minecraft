@@ -5084,7 +5084,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -CHEST_STAND_ACROSS; dx <= CHEST_STAND_ACROSS; dx++) {
             for (int dz = -CHEST_STAND_ACROSS; dz <= CHEST_STAND_ACROSS; dz++) {
-                for (int dy = -2; dy <= 1; dy++) {
+                // No lower than a step under the chest: a stand two down is a pit reached by a drop with no
+                // walk out of it. Live, three soldiers of three squads were sent into one by the camp's
+                // chest, taken for shut in, and cut their way out sideways under the camp.
+                for (int dy = -1; dy <= 1; dy++) {
                     BlockPos cell = new BlockPos(cx + dx, cy + dy, cz + dz);
                     Position centre = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
                     // Not on a chest: one is less than a block high, so a stand on it is never quite

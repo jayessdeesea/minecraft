@@ -86,6 +86,11 @@ crew's ticks:
   own cells, and some stay. Built: no route builds in a staircase's steps (WorldView.noBuild).
   Left: the cutter clearing the stairs from the head down when it finds them blocked. Separately, the camp's stairs are kept on disk twice - "to
   y=24" by Bravo's miner, "to y=16" by Alpha - two plans for one shaft.
+- **A way out cut sideways from a pocket under the ground (field287).** Three soldiers sent into a
+  pit by the camp's chest at (-46..-48, 70-71, 40-42), three under the camp's ground, were taken for
+  shut in, and their doorway cut sideways - the room grew a cell at a time, and each was taken for
+  shut in again. A way out of a room below the ground goes up to it, not along. (The stand that
+  sent them in, two under the chest, is fixed: no stand lower than a step under a chest.)
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol); whether one done
