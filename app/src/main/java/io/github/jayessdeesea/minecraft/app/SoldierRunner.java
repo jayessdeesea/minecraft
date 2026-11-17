@@ -3109,6 +3109,24 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return chosen.orElse(null);
     }
 
+    /** When each furnace was last emptied - the smelter's tick writes and reads. */
+    private final Map<BlockPos, Long> furnacesSwept = new ConcurrentHashMap<>();
+    /** How often a furnace is emptied: a smelt left in one stands no longer. */
+    static final long FURNACE_SWEEP_MILLIS = 10 * 60_000;
+
+    /** The nearest of the force's furnaces - its depots' and the camp's - not emptied in {@link #FURNACE_SWEEP_MILLIS}. */
+    private Optional<Position> furnaceDue(Position from) {
+        long now = clockwork.millis();
+        List<Workshop> shops = new ArrayList<>(keepOutposts);
+        Optional.ofNullable(keepWorkshop).ifPresent(shops::add);
+        Optional.ofNullable(campWorkshop).ifPresent(shops::add);
+        return shops.stream().map(Workshop::furnace).distinct()
+                .filter(f -> world.workstation(f.x(), f.y(), f.z()).equals(Optional.of(Workstation.FURNACE)))
+                .filter(f -> now - furnacesSwept.getOrDefault(f, Long.MIN_VALUE / 2) >= FURNACE_SWEEP_MILLIS)
+                .map(f -> new Position(f.x() + 0.5, f.y(), f.z() + 0.5))
+                .min(Comparator.comparingDouble(p -> Math.hypot(p.x() - from.x(), p.z() - from.z())));
+    }
+
     /** The keep's smelter, if one is detailed - squad loops write, ticks read. */
     private volatile String keepSmelter;
     /** Smelters carrying raw ore or ingots still to put in - their ticks write, squad loops read. */
@@ -6413,6 +6431,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (depositor.dumping() || dumpNow && !depositor.active()) {
                     depositor.tickDump(status.position(), shop.or(() -> Optional.ofNullable(mainDepot)).flatMap(d -> dumpOf(d, world)), surplus,
                             free && !threatened && fort == null && (depositor.dumping() || dumpNow));
+                } else if (depositor.emptying() || smelter && !depositor.active() && rawCarried == 0 && toSmelt.isEmpty()
+                        && furnaceDue(status.position()).isPresent()) {
+                    // Between batches the smelter empties the force's furnaces of what's left in them.
+                    Optional<Position> furnace = depositor.emptying() ? depositor.chestAt() : furnaceDue(status.position());
+                    if (!depositor.emptying()) {
+                        furnace.ifPresent(f -> furnacesSwept.put(BlockPos.containing(f.x(), f.y(), f.z()), clockwork.millis()));
+                    }
+                    depositor.tickEmpty(status.position(), furnace, free && !threatened && fort == null);
                 } else if (unstash.isPresent()) {
                     depositor.tickDraw(status.position(), Optional.of(unstash.get().chest()), unstash.get().ore(), unstash.get().carry(),
                             free && !threatened);

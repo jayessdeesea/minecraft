@@ -321,6 +321,63 @@ public final class Depositor {
         return Digger.walkTicks(soldierAt, chestAt);
     }
 
+    /** Whether a trip under way is to empty a furnace ({@link #tickEmpty}): {@link #standAt} is the furnace's. */
+    public synchronized boolean emptying() {
+        return script != null && emptyingFurnace;
+    }
+
+    private boolean emptyingFurnace;
+
+    /**
+     * Each tick: walks to the furnace at {@code furnace} when {@code wanted} and takes out what's in
+     * its output and input - smelted, or left smelting by a soldier gone off - so it goes in the
+     * chests, not stands there (docs/conventions.md, check the outcome: live (field300), 4 copper
+     * ingots stood in the camp's furnace and 4 in an outpost depot's, nobody's). Its fuel is left.
+     */
+    public synchronized void tickEmpty(Position soldier, Optional<Position> furnace, boolean wanted) {
+        this.soldierAt = soldier;
+        this.wanted = wanted;
+        ticks++;
+        if (cooldown > 0) {
+            cooldown--;
+        }
+        if (script == null) {
+            if (!wanted || cooldown > 0 || furnace.isEmpty()) {
+                return;
+            }
+            at = furnace.get();
+            emptyingFurnace = true;
+            LOG.info("{} empties the furnace at {} - {}", name, at, inventory.summary());
+            walking = true;
+            script = new Script(name, List.of(
+                    new Step("walk to the furnace", () -> walking = true,
+                            new Expect("the furnace in reach", () -> ChestWindow.withinReach(soldierAt, at)), walkTicks()),
+                    new Step("open the furnace", () -> {
+                        walking = false;
+                        chest.open(at, true);
+                    }, new Expect("the furnace's contents", chest::isOpen), ChestWindow.ANSWER_TICKS),
+                    new Step("take out what's in it", () -> {
+                        chest.quickMove(ChestWindow.FURNACE_OUTPUT);
+                        chest.quickMove(ChestWindow.FURNACE_INPUT);
+                    }, new Expect("its output and input empty", () -> chest.countAt(ChestWindow.FURNACE_OUTPUT) == 0
+                            && chest.countAt(ChestWindow.FURNACE_INPUT) == 0), ChestWindow.ANSWER_TICKS)),
+                    List.of(new Guard("the trip is no longer wanted", () -> this.wanted || !walking)));
+        }
+        switch (script.tick()) {
+            case Script.Status.Running _ -> {
+            }
+            case Script.Status.Done _ -> {
+                LOG.info("{} emptied the furnace at {} - {}", name, at, inventory.summary());
+                finish();
+            }
+            case Script.Status.Interrupted _ -> finish();
+            case Script.Status.Failed failed -> {
+                LOG.warn("{} couldn't empty the furnace at {}: {}: {}", name, at, failed.step(), failed.reason());
+                finish();
+            }
+        }
+    }
+
     private Script drawTrip() {
         walking = true;
         return new Script(name, List.of(
@@ -432,6 +489,7 @@ public final class Depositor {
         foodLeft = Integer.MAX_VALUE;
         drawing = Optional.empty();
         dumping = Set.of();
+        emptyingFurnace = false;
         cooldown = COOLDOWN_TICKS;
     }
 }

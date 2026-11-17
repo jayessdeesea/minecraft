@@ -46,7 +46,6 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
 - Fuel: coal carried is burned first (docs/military-doctrine.md, the ladder). Left: coal kept in
   the depot and drawn for the smelter, and charcoal from the grove's logs.
 - The general isn't shown the ore in the stockpile: its line says logs and cobblestone only.
-- A furnace's output left in it: 4 copper ingots sat in the camp's furnace (field300).
 - A mine said dried up (`[Outcome]`, built) is worked again: a new level of tunnels off its stairs
   (copper is commonest about y=48) or a new mine; and a squad sent to it for iron isn't told DONE.
 

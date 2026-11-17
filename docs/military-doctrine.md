@@ -268,7 +268,10 @@ chests hold 8 raw ore or more, one builder with no rectangle - the nearest the m
 the dig to smelt it ("[Keep] Carol is the smelter: 22 raw ore in the chests"). It draws a stack of
 one metal's raw ore from the nearest chest holding it, smelts all it carries at the main depot's
 furnace, and its ingots go in as anyone's do (`MetalPool`), for whoever's next piece they complete;
-back on the dig once there's none left in the chests or its pack. Armour then needs a table and a
+back on the dig once there's none left in the chests or its pack. Between batches it empties the
+force's furnaces - the depots' and the camp's, each every 10 minutes at most - of what's in their
+output and input (`Depositor.tickEmpty`): a smelt left by a soldier gone off goes in the chests,
+not stands there (live, 4 copper ingots stood in the camp's furnace and 4 in an outpost's). Armour then needs a table and a
 chest's ingots, not a furnace and fuel where each soldier stands: live (field302), the farm squad
 walked between a table with no furnace by it, a furnace 22 blocks off and a table 50 off, for copper
 leggings, with 74 raw copper in chests.

@@ -27,6 +27,11 @@ final class ChestWindow {
     static final int ANSWER_TICKS = 40;
     /** Menu registry IDs 0-5 are generic_9x1 to generic_9x6: chests, barrels, double chests. */
     private static final int GENERIC_9X6 = 5;
+    /** The furnace's menu: its input, fuel and output slots. */
+    static final int FURNACE_MENU = 14;
+    static final int FURNACE_INPUT = 0, FURNACE_OUTPUT = 2;
+    /** Whether the block it opens next may be a furnace, not a chest. */
+    private boolean furnaceAllowed;
 
     private final PlaySession session;
     private final Inventory inventory;
@@ -47,6 +52,12 @@ final class ChestWindow {
 
     /** Asks the server to open the chest at {@code chest}; {@link #isOpen} says when it has. */
     void open(Position chest) {
+        open(chest, false);
+    }
+
+    /** As {@link #open(Position)}, the block a furnace if {@code furnace}: its three slots then the inventory. */
+    void open(Position chest, boolean furnace) {
+        furnaceAllowed = furnace;
         id = -1;
         contentsSeen = false;
         gone = null;
@@ -118,13 +129,14 @@ final class ChestWindow {
                     return false;
                 }
                 opening = false;
-                if (menuType < 0 || menuType > GENERIC_9X6) {
+                boolean furnace = furnaceAllowed && menuType == FURNACE_MENU;
+                if (!furnace && (menuType < 0 || menuType > GENERIC_9X6)) {
                     session.closeContainer(opened);
                     gone = "menu type " + menuType + " opened, not a chest";
                     return true;
                 }
                 id = opened;
-                size = (menuType + 1) * 9;
+                size = furnace ? 3 : (menuType + 1) * 9;
                 items = new int[size];
                 counts = new int[size];
                 Arrays.fill(items, -1);
