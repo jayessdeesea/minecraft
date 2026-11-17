@@ -33,7 +33,7 @@ crew's ticks:
   steps put no more than its blocks' share, and the level goes at its crew's rate.
   Field269, 30 minutes after: 323 steps still, three quarters on the east bench at y=85-86 under
   the hill beyond the site (to about y=90, the floor at 77) - builders on the hill with no walk
-  down, building their way off: backlog/questions-overnight.md's question 5, the bench's width.
+  down, building their way off: backlog/flatten-campaign.md's graduated slope.
 - **Builders with no rectangle.** A third of the crew's ticks - most of it a crew bigger than a sparse level needs, which backlog/flatten-campaign.md sizes to the level. Find which builders the plan leaves
   out and why - fewer columns than builders at the level, a builder dropped from the crew between
   plans, the road's cutter - and give each one ground.
@@ -93,8 +93,22 @@ crew's ticks:
   sent them in, two under the chest, is fixed: no stand lower than a step under a chest.)
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
-  plan time and the foreman holds them till done or due (the operator's protocol); whether one done
-  takes part of a slow one's is backlog/questions-overnight.md's question 2.
+  plan time and the foreman holds them till done or due (the operator's protocol). Wanted
+  (operator, 2026-11-16: do a better job assigning): rectangles sized by their estimated time -
+  the walk, the climb and the blocks' hardness, not their count - and a builder done with its own
+  takes half of the most that's left of another's, as a newcomer does now. "Done, waiting for the
+  level" was 15-35% of the crew's ticks on wide levels.
+- **Surplus past what a stockpile needs (operator, 2026-11-16).** Cobblestone and dirt past 4,096
+  of either in the stockpile are left, not carried: a builder's load was about a chest of
+  cobblestone, and the depots' rows filled. A soldier picks up what it walks over, so it's
+  dropped at a dump beside the depot, off the walks, and the scavenger leaves dirt and cobblestone
+  there to despawn.
+- **Blocks that stop soldiers, and fences (operator, 2026-11-16).** Built: a refused step and a
+  stall name the blocks there ("wildflowers P"), counted and said at the 1st, 10th and 100th of a
+  kind ("[Blocks] ..."). Every state the server has is classed (tools/block-class-generator), so an
+  "unknown" block is a class that's wrong for it, as the wildflowers' was: read the [Blocks] lines
+  each run and fix the class. Fences are classed tall (T, 1.5 high) already; if soldiers stall on
+  them, the [Blocks] lines will say which - a gate, a wall - and where.
 - **Breaks at three times vanilla's.** A dig waits its target's fixed time plus
   `Breacher.MARGIN_TICKS` (5): dirt with a stone shovel 12 ticks against vanilla's 4. The server
   finishes a dig once 70% of its time has gone by, so vanilla's own time for the tool in hand plus

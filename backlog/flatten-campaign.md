@@ -76,6 +76,10 @@ the world, not from reports, and shown to the squad leader and the platoon leade
 - **Traversal in the split:** blocks weighted by the walk and climb to them, so a builder with a
   hard reach gets fewer (operator, 2026-11-15: about the same blocks each, or fewer if traversal is
   challenging).
-- **Question for the operator:** what a released squad does - the platoon leader's own objective
-  for it (the mission: the camp, the lodgment), or production the campaign itself wants (wood for
-  its depot, the mine for its iron).
+- **Released squads to what's needed (operator, 2026-11-16):** a squad the flatten doesn't need
+  goes where the force is short - the mine for iron, the farm, hunting, wood - by the shortfalls
+  the platoon sergeant already measures, not the platoon leader's standing objective.
+- **A graduated slope where the site is cut into a hill (operator, 2026-11-16):** the bench as
+  wide as the cut is deep, not a fixed 3 rows - field269's builders stranded on a 13-block wall
+  built steps to get off it. Stepped, a block up every few rows (29 CFR 1926 Subpart P, Appendix
+  B's benching), unless the operator wants it smooth.

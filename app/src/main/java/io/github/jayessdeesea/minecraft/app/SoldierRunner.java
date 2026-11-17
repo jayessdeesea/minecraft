@@ -485,10 +485,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // With the world model's block there and under it, as state ids (the server's reports
                 // name them): live, a step refused every 10 s in the dig went into a cell neither air nor
                 // anything a shovel, pickaxe, axe or hoe takes, and the probes couldn't name it.
-                LOG.warn("[{}] its step at {} {} {} keeps being refused - left for {} s; the model has state {} there, {} under it", name,
-                        cell.x(), cell.y(), cell.z(), STEP_REFUSED_MILLIS / 1000,
-                        chunkCache.stateIdAt(cell.x(), cell.y(), cell.z()).stream().mapToObj(Integer::toString).findFirst().orElse("?"),
-                        chunkCache.stateIdAt(cell.x(), cell.y() - 1, cell.z()).stream().mapToObj(Integer::toString).findFirst().orElse("?"));
+                String there = chunkCache.describeAt(cell.x(), cell.y(), cell.z());
+                LOG.warn("[{}] its step at {} {} {} keeps being refused - left for {} s; the model has {} there, {} under it", name,
+                        cell.x(), cell.y(), cell.z(), STEP_REFUSED_MILLIS / 1000, there, chunkCache.describeAt(cell.x(), cell.y() - 1, cell.z()));
+                blocksThatStopped("a refused step", there);
             }
             if (tries >= STEP_TRIES && now - (long) last[2] < STEP_REFUSED_MILLIS) {
                 lastStep.put(name, new Object[]{cell, tries, last[2]});
@@ -5162,9 +5162,27 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The block-state IDs the world model holds at {@code to}'s cell and the two over it, "?" for none known. */
     private String modelBlocks(Order.MoveTo to) {
         int x = (int) Math.floor(to.x()), y = (int) Math.floor(to.y()), z = (int) Math.floor(to.z());
-        return IntStream.rangeClosed(-1, 1).mapToObj(dy -> chunkCache.stateIdAt(x, y + dy, z))
-                .map(id -> id.isPresent() ? String.valueOf(id.getAsInt()) : "?").collect(Collectors.joining("/"))
-                + " at " + x + " " + (y - 1) + ".." + (y + 1) + " " + z;
+        List<String> blocks = IntStream.rangeClosed(-1, 1).mapToObj(dy -> chunkCache.describeAt(x, y + dy, z)).toList();
+        // Its feet and head cells, where something not air stops a body.
+        blocks.subList(1, 3).stream().filter(b -> !b.startsWith("air ") && !b.startsWith("cave_air ") && !b.equals("unknown"))
+                .forEach(b -> blocksThatStopped("a stall", b));
+        return String.join(" / ", blocks) + " at " + x + " " + (y - 1) + ".." + (y + 1) + " " + z;
+    }
+
+    /** How often each kind of block has been where a soldier was refused or stalled, by name and class. */
+    private final Map<String, Integer> stoppers = new ConcurrentHashMap<>();
+
+    /**
+     * Counts {@code block} as what stopped a soldier ({@code how}), said at its first, tenth and
+     * hundredth: the next round of fixes reads them (operator, 2026-11-16: an unknown type, detected
+     * and added to the next round). Live, wildflowers - not solid, not replaceable - refused every
+     * step put into them, and probing the server couldn't name them.
+     */
+    private void blocksThatStopped(String how, String block) {
+        int seen = stoppers.merge(block, 1, Integer::sum);
+        if (seen == 1 || seen == 10 || seen == 100) {
+            LOG.warn("[Blocks] {} at a {} - {} time(s) so far", how, block, seen);
+        }
     }
 
     /** {@code task} guarded by {@link #faults}: a fault on one tick is logged and counted, and the next tick runs. */
@@ -6204,7 +6222,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // Not to a chest known full: a trip there fails, and is made again. Live (field285), with
                     // the depots' rows filled with cobblestone, the crew's ticks were 38% depositor - trip
                     // after failed trip. With every chest it could go to full, it carries on full
-                    // (backlog/questions-overnight.md, question 4).
+                    // (backlog/keep-pace.md, surplus past what a stockpile needs).
                     java.util.function.Predicate<Position> notFull = c -> !fullChests.contains(BlockPos.containing(c.x(), c.y(), c.z()));
                     Optional<Position> deposit = (keepHands.contains(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile) : stockpile)
                             .filter(notFull);

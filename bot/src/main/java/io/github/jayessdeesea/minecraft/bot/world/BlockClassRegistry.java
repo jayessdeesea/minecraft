@@ -76,6 +76,8 @@ final class BlockClassRegistry {
     private static final Map<Integer, String> ORE_KINDS = new HashMap<>();
     /** Each leaves or sapling state's tree - "spruce", "oak". Filled while loading. */
     private static final Map<Integer, String> TREES = new HashMap<>();
+    /** Each state's block name, for what's said of a block that stops a soldier (the server's reports name it). */
+    private static final Map<Integer, String> NAMES = new HashMap<>();
     /** Sapling states. Filled while loading. */
     private static final BitSet SAPLINGS = new BitSet();
     private static final Set<String> SWUM = Set.of("water", "seagrass", "tall_seagrass", "kelp", "kelp_plant");
@@ -195,6 +197,11 @@ final class BlockClassRegistry {
     private BlockClassRegistry() {
     }
 
+    /** The block's name - "wildflowers", "oak_fence" - for the state, if the table lists it. */
+    static java.util.Optional<String> nameOf(int stateId) {
+        return java.util.Optional.ofNullable(NAMES.get(stateId));
+    }
+
     static BlockClass classOf(int stateId) {
         return stateId >= 0 && stateId < CLASSES.length && CLASSES[stateId] != null ? CLASSES[stateId] : BlockClass.SOLID;
     }
@@ -213,6 +220,9 @@ final class BlockClassRegistry {
                     }
                     String[] fields = line.split(" ");
                     int stateId = Integer.parseInt(fields[0]);
+                    if (fields.length > 2) {
+                        NAMES.put(stateId, fields[2]);
+                    }
                     if (stateId >= classes.length) {
                         classes = Arrays.copyOf(classes, Math.max(stateId + 1, classes.length * 2));
                     }

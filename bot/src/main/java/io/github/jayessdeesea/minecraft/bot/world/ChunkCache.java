@@ -358,6 +358,17 @@ public final class ChunkCache {
      * observability/debugging only, not used by {@link #isSolid}. Useful for checking
      * {@link BlockClassRegistry}'s classification against real data without guessing.
      */
+    /**
+     * The block's name at (x, y, z) and its class - "wildflowers P" - or "unknown" for a block nobody
+     * has cached: what's said of a block that refused a step or stalled a soldier, so the next round of
+     * fixes knows what stopped it (operator, 2026-11-16).
+     */
+    public String describeAt(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId == UNKNOWN ? "unknown" : BlockClassRegistry.nameOf(stateId).orElse("state " + stateId) + " "
+                + BlockClassRegistry.classOf(stateId);
+    }
+
     public OptionalInt stateIdAt(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
         return stateId == UNKNOWN ? OptionalInt.empty() : OptionalInt.of(stateId);
