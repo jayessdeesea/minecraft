@@ -25,6 +25,29 @@ class PlatoonSergeantTest {
      * platoon leader, naming what can't be made; with enough, nothing is said. Live, the builders worked a
      * day with no tree within reach, no chest and no pickaxe, and nobody was asked for logs.
      */
+    private static SquadStatus squad(Optional<Subsistence.Status> classOne, Optional<String> classFour) {
+        return new SquadStatus("Alpha", null, List.of(), List.of(), Optional.empty(), false, java.util.OptionalInt.empty(),
+                Optional.empty(), classOne, classFour);
+    }
+
+    /** A released squad goes to the force's gravest shortfall: food, then wood, then iron (operator, 2026-11-16). */
+    @Test
+    void aReleasedSquadGoesToTheGravestShortfall() {
+        Optional<Stockpile> plenty = Optional.of(new Stockpile(Keep.LOGS_WANTED, 0, 0, PlatoonSergeant.IRON_RESERVE, 0));
+        Optional<Stockpile> noIron = Optional.of(new Stockpile(Keep.LOGS_WANTED, 0, 0, 0, 0));
+        Optional<Stockpile> noLogs = Optional.of(new Stockpile(0, 0, 0, 0, 0));
+        SquadStatus fed = squad(Optional.of(new Subsistence.Status(Subsistence.Rating.GREEN, List.of(), List.of())), Optional.empty());
+        SquadStatus hungry = squad(Optional.of(new Subsistence.Status(Subsistence.Rating.RED, List.of("Bob"), List.of("Bob"))), Optional.empty());
+        SquadStatus asking = squad(Optional.empty(), Optional.of("Class IV RED"));
+
+        assertEquals(Optional.empty(), PlatoonSergeant.shortfall(List.of(fed), plenty));
+        assertEquals(Optional.empty(), PlatoonSergeant.shortfall(List.of(fed), Optional.empty()), "nothing seen, nothing known short");
+        assertEquals(Optional.of(PlatoonSergeant.Shortfall.IRON), PlatoonSergeant.shortfall(List.of(fed), noIron));
+        assertEquals(Optional.of(PlatoonSergeant.Shortfall.WOOD), PlatoonSergeant.shortfall(List.of(fed), noLogs));
+        assertEquals(Optional.of(PlatoonSergeant.Shortfall.WOOD), PlatoonSergeant.shortfall(List.of(fed, asking), plenty));
+        assertEquals(Optional.of(PlatoonSergeant.Shortfall.FOOD), PlatoonSergeant.shortfall(List.of(asking, hungry), noIron), "food first");
+    }
+
     @Test
     void theKeepsBuildersAskForLogsWhenTheyAndTheStockpileAreShort() {
         String line = PlatoonSergeant.classFour(1, 0, false).orElseThrow();

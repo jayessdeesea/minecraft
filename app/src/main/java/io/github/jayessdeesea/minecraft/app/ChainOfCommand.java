@@ -13,6 +13,7 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Progress;
 import io.github.jayessdeesea.minecraft.command.Readiness;
 import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.PlatoonSergeant;
 import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.command.ResourceSite;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
@@ -316,6 +317,15 @@ public class ChainOfCommand implements DisposableBean {
      * rule, which still comes first at dusk.
      */
     Objective byDay(Objective objective, SquadStatus squad) {
+        return byDay(objective, squad, Optional.empty(), List.of());
+    }
+
+    /**
+     * As {@link #byDay(Objective, SquadStatus)}, a squad the flatten doesn't need sent to the force's
+     * {@code shortfall} (PlatoonSergeant#shortfall) - the farm, the trees in {@code woods} nearest it,
+     * the keep's mine - not the platoon leader's objective for it.
+     */
+    Objective byDay(Objective objective, SquadStatus squad, Optional<PlatoonSergeant.Shortfall> shortfall, List<ResourceSite> woods) {
         if (!keepByDay || time == null || (time.dark() || sheltering()) && !surfacing()) {
             return objective;
         }
@@ -337,6 +347,14 @@ public class ChainOfCommand implements DisposableBean {
         int perSquad = Math.max(1, squad.soldiers().size());
         int squadsWanted = wanted == Integer.MAX_VALUE ? builders.size() : Math.max(1, (wanted + perSquad - 1) / perSquad);
         if (builders.indexOf(squad.squadName()) >= squadsWanted) {
+            Optional<Objective> needed = shortfall.flatMap(s -> toShortfall(s, squad, woods, wanted));
+            if (needed.isPresent()) {
+                if (!needed.get().equals(squad.standing().orElse(null))) {
+                    LOG.info("[PL -> {}] released from the flatten ({} builder(s) wanted): to the force's {} shortfall - '{}'",
+                            squad.squadName(), wanted, shortfall.get(), needed.get().mission());
+                }
+                return needed.get();
+            }
             if (!(objective.task() instanceof Objective.Task.Keep)) {
                 return objective;
             }
@@ -361,6 +379,22 @@ public class ChainOfCommand implements DisposableBean {
         LOG.warn("[PL -> {}] by day, ordered '{}' ({}) - the operator's rule puts it on the keep instead",
                 squad.squadName(), objective.mission(), objective.task());
         return keep;
+    }
+
+    /** The work that makes good {@code shortfall} for a squad released from the flatten, if there's somewhere to do it. */
+    private Optional<Objective> toShortfall(PlatoonSergeant.Shortfall shortfall, SquadStatus squad, List<ResourceSite> woods, int wanted) {
+        String why = "Released from the flatten (its level wants " + wanted + " builder(s)): the force is short of ";
+        Foothold base = foothold;
+        return switch (shortfall) {
+            case FOOD -> Optional.ofNullable(base).map(b -> new Objective("Work the camp's farm", b.camp(), why + "food", new Objective.Task.Farm()));
+            case IRON -> Optional.of(new Objective("Mine the keep's mine for iron", KEEP_MINE, why + "iron", new Objective.Task.Mine()));
+            case WOOD -> {
+                Position from = squad.soldiers().isEmpty() ? flatten.centre() : squad.soldiers().getFirst().position();
+                yield woods.stream().filter(w -> w.resource() == Resource.WOOD)
+                        .min(java.util.Comparator.comparingDouble(w -> Math.hypot(w.location().x() - from.x(), w.location().z() - from.z())))
+                        .map(w -> new Objective("Gather wood", w.location(), why + "logs", new Objective.Task.Gather(Resource.WOOD)));
+            }
+        };
     }
 
     /**
@@ -906,9 +940,12 @@ public class ChainOfCommand implements DisposableBean {
                 }
                 long millis = clockwork.millis() - started;
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
+                Optional<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfall(statuses, stockpile());
+                List<ResourceSite> woods = statuses.stream().flatMap(s -> s.resources().stream()).toList();
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
-                    Objective given = sheltered(grounded(byDay(objectives.get(i), statuses.get(i)), statuses.get(i).soldiers()), statuses.get(i));
+                    Objective given = sheltered(grounded(byDay(objectives.get(i), statuses.get(i), shortfall, woods),
+                            statuses.get(i).soldiers()), statuses.get(i));
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
                         LOG.info("[PL -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
                         // The feedback not taken: the squad said its task is finished or stuck, and it was kept.

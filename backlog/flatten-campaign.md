@@ -76,9 +76,9 @@ the world, not from reports, and shown to the squad leader and the platoon leade
 - **Traversal in the split:** blocks weighted by the walk and climb to them, so a builder with a
   hard reach gets fewer (operator, 2026-11-15: about the same blocks each, or fewer if traversal is
   challenging).
-- **Released squads to what's needed (operator, 2026-11-16):** a squad the flatten doesn't need
-  goes where the force is short - the mine for iron, the farm, hunting, wood - by the shortfalls
-  the platoon sergeant already measures, not the platoon leader's standing objective.
+- **Released squads, the rest (operator, 2026-11-16):** farm, wood and iron are built
+  (docs/military-doctrine.md § 4). Left: hunting - no squad task for it yet - and the stockpile's
+  iron counted from one chest's view, not every chest's and the mine's stash.
 - **A graduated slope where the site is cut into a hill (operator, 2026-11-16):** the bench as
   wide as the cut is deep, not a fixed 3 rows - field269's builders stranded on a 13-block wall
   built steps to get off it. Stepped, a block up every few rows (29 CFR 1926 Subpart P, Appendix

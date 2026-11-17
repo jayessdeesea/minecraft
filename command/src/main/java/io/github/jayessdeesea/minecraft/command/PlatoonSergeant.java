@@ -29,6 +29,38 @@ public final class PlatoonSergeant {
     private PlatoonSergeant() {
     }
 
+    /** What the force is short of, that a squad sent to it makes good. */
+    public enum Shortfall {
+        /** A squad's Class I RED: the farm. */
+        FOOD,
+        /** The keep's Class IV: logs, where trees are. */
+        WOOD,
+        /** Raw iron in the stockpile under {@link #IRON_RESERVE}: the mine. */
+        IRON
+    }
+
+    /** Raw iron the stockpile is short below: a pickaxe each for eight builders. */
+    public static final int IRON_RESERVE = 24;
+
+    /**
+     * The gravest of what the force is short of, for a squad the flatten doesn't need (operator,
+     * 2026-11-16: "send people to the mines, help farming, hunting"): food first - a squad's Class I
+     * RED - then wood, a Class IV request or the stockpile under {@link Keep#LOGS_WANTED}, then
+     * iron. With no stockpile seen, only food and the squads' own requests are known. Empty with none.
+     */
+    public static Optional<Shortfall> shortfall(List<SquadStatus> squads, Optional<Stockpile> stockpile) {
+        if (squads.stream().anyMatch(s -> s.classOne().filter(c -> c.rating() == Subsistence.Rating.RED).isPresent())) {
+            return Optional.of(Shortfall.FOOD);
+        }
+        if (squads.stream().anyMatch(s -> s.classFour().isPresent()) || stockpile.filter(st -> st.logs() < Keep.LOGS_WANTED).isPresent()) {
+            return Optional.of(Shortfall.WOOD);
+        }
+        if (stockpile.filter(st -> st.rawIron() < IRON_RESERVE).isPresent()) {
+            return Optional.of(Shortfall.IRON);
+        }
+        return Optional.empty();
+    }
+
     /**
      * The LOGSTAT's Class IV line for the keep's builders, said as the request it is when they're
      * short (FM 4-0: construction materials are requisitioned, or obtained locally; operator,
