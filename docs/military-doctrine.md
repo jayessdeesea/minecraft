@@ -1354,7 +1354,32 @@ that it's said dried up, once. A mine worked out - every tunnel cut, the ore in 
 pickaxe and the force hasn't the three iron for one is run on: its main tunnel 24 blocks further,
 branches along it, up to 96, a stretch at most every half minute a mine (`Staircase.extended`, `[Squad] MINE: worked out, the force short of
 iron - its main tunnel run on to 48 blocks`), and kept on disk by the tunnel's end. Live, the mine
-read DONE all night with one raw iron in the force. Squads sharing a mine each work its deepest level, and the longest any
+read DONE all night with one raw iron in the force.
+
+**The rules of a mine (operator, 2026-11-16; standing - the mine is built to them, and a change
+that breaks one is a step back):**
+1. **Work in parallel.** Each worker has a share no one else touches, held till it's done; nobody
+   waits on another or stands in another's way; a little coordination - who has which share -
+   and no more (docs/echelons/tenets.md, work in parallel).
+2. **A squad to a level.** Each squad on a mine works its own level of the shaft; the levels are at
+   heights a multiple of 4 (y % 4 == 0), each tunnel three blocks high, so the rock between two
+   levels is seen from one or the other and no ore is missed.
+3. **A soldier to a direction.** Each soldier of a squad cuts its own tunnel, its own way from the
+   level's landing - never two in one tunnel.
+4. **The whole vein.** Ore is followed: every block of a vein in reach is taken, not only the face
+   the tunnel touches - and the holes it leaves are filled back with cobblestone or dirt where a
+   block is carried, so the walls and floors stay whole and nothing spawns in them.
+5. **Torches enough.** Every miner goes down with torches enough for its tunnel, and lights it as
+   it's cut.
+6. **The yield checked.** Each level's ore is checked against what it should give, and one dried
+   up is said so (docs/conventions.md, check the outcome).
+Built today: tunnels two high at the stairs' bottom, branches shared out as stretches among the
+mine's cutters, ore in reach taken, holes in the well filled, the tunnels lit, the yield checked at
+dawn, a level deeper when one is worked out. Not yet: a level for each squad at y % 4 == 0, tunnels
+three high, a direction per soldier, a vein's holes filled, a torch stock carried down
+(backlog/mining.md).
+
+Squads sharing a mine each work its deepest level, and the longest any
 has run it there - not each its own: live, one squad took the mine a level deeper while the others
 kept the worked-out level above, read DONE on it, and the new level was run on with nothing cut.
 

@@ -3762,8 +3762,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final int NIGHT_ORE = 16;
     /** The mine's cutters' ore taken, summed, at dusk: the night's yield is the change by dawn. */
     private volatile Integer oreAtDusk;
-    /** Whether it was dark at the squad loop's last look: dusk is the change. */
-    private volatile boolean wasDark;
+    /**
+     * Whether it was dark at the squad loop's last look: dusk is the change. Dark to begin with, so a
+     * garrison come up in the night doesn't take its first look for dusk and measure a part of a night
+     * as the whole - live (field310), "0 ore block(s) taken" for the last minutes of one.
+     */
+    private volatile boolean wasDark = true;
     /** The mines said dried up, by head: said once. */
     private final Set<BlockPos> driedUp = ConcurrentHashMap.newKeySet();
 
