@@ -1256,7 +1256,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final Map<ItemClassRegistry.ItemClass, Integer> CARRIED = Map.of(
             ItemClassRegistry.ItemClass.DIRT, Pack.DIRT_KEPT, ItemClassRegistry.ItemClass.SEEDS, Pack.SEEDS_KEPT,
             ItemClassRegistry.ItemClass.SAPLING, 64, ItemClassRegistry.ItemClass.STRING, 64, ItemClassRegistry.ItemClass.FLINT, 64,
-            ItemClassRegistry.ItemClass.FENCE, 0, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);
+            ItemClassRegistry.ItemClass.FENCE, 0, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1, ItemClassRegistry.ItemClass.WHEAT, 64);
     /** What a mine's cutter keeps: its backfill's dirt, and ore before the rest (the rules of a mine). */
     static final Map<ItemClassRegistry.ItemClass, Integer> MINE_CARRIED = Map.of(
             ItemClassRegistry.ItemClass.DIRT, Pack.MINER_DIRT_KEPT, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);
@@ -7165,7 +7165,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // and up the stairs, into the dark.
                     Integer nightFloor = nightBelow.get(unitOf(name, definition.squad()));
                     boolean downForTheNight = nightFloor != null && status.position().y() < nightFloor - MINE_BELOW && !stashOre;
-                    depositor.tick(status.position(), deposit, free && (fullLoad || Depositor.surplusFood(inventory) || poolOre || stashOre
+                    boolean breadWanted = toDepot && !StockLevels.atMost(ItemClass.FOOD, this::stocked);
+                    depositor.storesFood(breadWanted);
+                    depositor.tick(status.position(), deposit, free && (fullLoad || breadWanted && Depositor.surplusFood(inventory) || poolOre || stashOre
                                     || surplusTrip || stockTrip) && !threatened && fort == null && !downForTheNight, pooled,
                             inv -> {
                                 List<Integer> slots = new ArrayList<>(plan.map(p -> p.surplus(inv)).orElse(List.of()));

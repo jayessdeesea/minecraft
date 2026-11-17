@@ -46,7 +46,8 @@ public final class PlatoonSergeant {
      * The gravest of what the force is short of, for a squad the flatten doesn't need (operator,
      * 2026-11-16: "send people to the mines, help farming, hunting"): food first - a squad's Class I
      * RED - then wood, a Class IV request or the stockpile under {@link Keep#LOGS_WANTED}, then
-     * iron. With no stockpile seen, only food and the squads' own requests are known. Empty with none.
+     * iron, then the stockpile's bread under its reserve. With no stockpile seen, only food and the
+     * squads' own requests are known. Empty with none.
      */
     public static Optional<Shortfall> shortfall(List<SquadStatus> squads, Optional<Stockpile> stockpile) {
         if (squads.stream().anyMatch(s -> s.classOne().filter(c -> c.rating() == Subsistence.Rating.RED).isPresent())) {
@@ -57,6 +58,10 @@ public final class PlatoonSergeant {
         }
         if (stockpile.filter(st -> st.rawIron() + st.ironIngots() < IRON_RESERVE).isPresent()) {
             return Optional.of(Shortfall.IRON);
+        }
+        // Last, the bread reserve: a little priority when the stockpile runs low (operator, 2026-11-17).
+        if (stockpile.filter(st -> st.rations() < Subsistence.STOCKPILE_RESERVE).isPresent()) {
+            return Optional.of(Shortfall.FOOD);
         }
         return Optional.empty();
     }

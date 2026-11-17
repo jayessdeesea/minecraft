@@ -441,6 +441,14 @@ public final class Depositor {
                 chest.chestCount(ItemClass.IRON_INGOT), chest.chestCount(ItemClass.COPPER_INGOT));
     }
 
+    /** Whether a trip puts in the bread it carries past its basic load: not once the depot has its most (StockLevels). */
+    private boolean storesFood = true;
+
+    /** Whether trips put in bread past the basic load - the depot under its most of it. */
+    public synchronized void storesFood(boolean stores) {
+        this.storesFood = stores;
+    }
+
     /** Raw ore put in on this trip: the force's, every bit of it carried. */
     private Set<ItemClass> pooled = Set.of();
     /** What it carries past its load, put in on this trip too. */
@@ -456,7 +464,7 @@ public final class Depositor {
         if (inventory.count(ItemClass.COBBLESTONE) >= Gatherer.CARRY_STONE) {
             load.add(ItemClass.COBBLESTONE);
         }
-        foodLeft = inventory.count(ItemClass.FOOD);
+        foodLeft = storesFood ? inventory.count(ItemClass.FOOD) : Integer.MAX_VALUE;
         for (int slot : surplus.apply(inventory)) {
             chest.quickMove(chest.windowSlotOf(slot));
         }
@@ -464,7 +472,7 @@ public final class Depositor {
             Optional<ItemClass> itemClass = ItemClassRegistry.classOf(inventory.itemAt(slot));
             if (itemClass.isPresent() && load.contains(itemClass.get())) {
                 chest.quickMove(chest.windowSlotOf(slot));
-            } else if (itemClass.equals(Optional.of(ItemClass.FOOD)) && foodLeft - inventory.countAt(slot) >= Subsistence.BASIC_LOAD) {
+            } else if (storesFood && itemClass.equals(Optional.of(ItemClass.FOOD)) && foodLeft - inventory.countAt(slot) >= Subsistence.BASIC_LOAD) {
                 foodLeft -= inventory.countAt(slot);
                 chest.quickMove(chest.windowSlotOf(slot));
             }

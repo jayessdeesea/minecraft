@@ -50,6 +50,15 @@ The operator's (2026-11-12). The force's materials are the force's, not a squad'
 - Built so far: logs, cobblestone, bread and raw ore. Ingots, and the mine worked for ore, are
   [backlog/common-stockpile.md](../../backlog/common-stockpile.md).
 
+## Across the echelons: an emergency is a signal to change
+The operator's (2026-11-17): as the force expands it needs more and more supplies at its
+fingertips. An emergency - a wood party sent out at 3 logs, bread cross-levelled a ration at a
+time, a Class I RED, a draw from an empty chest - is met, and is also the sign that a standing
+level is set too low or a producer isn't standing. Each one is answered twice: the emergency now,
+and a change so it doesn't come back - a reserve raised in the stockpile's levels
+([military-doctrine.md § 4](../military-doctrine.md#4-reports-upward)), a producer kept at work
+between the reserve and the most. A shortfall met only by emergency pulls is a defect, not a routine.
+
 ## Across the echelons: work in parallel
 The operator's (2026-11-15): the key to parallelism is non-overlapping work and sharing resources
 when one has surplus and the others have need - true of levelling, farming, mining and distributed

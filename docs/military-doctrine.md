@@ -234,13 +234,13 @@ counts are read each time a load goes in, or a chest is opened and found full.
 | Material | Reserve | Most | Past the most |
 |---|---|---|---|
 | Diamonds, raw iron, iron ingots | - | none | never shed; the depot's row grows for them |
-| Logs, rations | - | none | never shed |
+| Logs | - | none | never shed |
+| Bread, wheat | 64 | 256 | bread past it stays in the packs; wheat past a farmer's 64 goes in |
 | Raw copper, copper ingots | 64 | 256 | raw copper left out of the metal pool, thrown last by a full pack |
 | Saplings, seeds, string, flint | 64 | 256 | thrown by a full pack |
 | Fences | 0 | 64 | thrown by a full pack |
 | Crafting tables | 1 | 4 | thrown by a full pack |
-| Dirt | 64 | 256 | left at the dump; underfoot everywhere |
-| Cobblestone | - | 4,096 | left at the dump |
+| Dirt, cobblestone | - | 256 | left at the dump: so common they're all but had on demand |
 
 Cobblestone or dirt past its most - or either once every chest a builder could go to is full - is left at
 its depot's dump, not carried in: ground five blocks west of the stand, off the site and clear of

@@ -30,10 +30,11 @@ class PlatoonSergeantTest {
                 Optional.empty(), classOne, classFour);
     }
 
-    /** A released squad goes to the force's gravest shortfall: food, then wood, then iron (operator, 2026-11-16). */
+    /** A released squad goes to the force's gravest shortfall: food, then wood, then iron, then the bread reserve (operator, 2026-11-16, 2026-11-17). */
     @Test
     void aReleasedSquadGoesToTheGravestShortfall() {
-        Optional<Stockpile> plenty = Optional.of(new Stockpile(Keep.LOGS_WANTED, 0, 0, PlatoonSergeant.IRON_RESERVE, 0));
+        Optional<Stockpile> plenty = Optional.of(new Stockpile(Keep.LOGS_WANTED, 0, Subsistence.STOCKPILE_RESERVE, PlatoonSergeant.IRON_RESERVE, 0));
+        Optional<Stockpile> lowBread = Optional.of(new Stockpile(Keep.LOGS_WANTED, 0, Subsistence.STOCKPILE_RESERVE - 1, PlatoonSergeant.IRON_RESERVE, 0));
         Optional<Stockpile> noIron = Optional.of(new Stockpile(Keep.LOGS_WANTED, 0, 0, 0, 0));
         Optional<Stockpile> noLogs = Optional.of(new Stockpile(0, 0, 0, 0, 0));
         SquadStatus fed = squad(Optional.of(new Subsistence.Status(Subsistence.Rating.GREEN, List.of(), List.of())), Optional.empty());
@@ -41,6 +42,7 @@ class PlatoonSergeantTest {
         SquadStatus asking = squad(Optional.empty(), Optional.of("Class IV RED"));
 
         assertEquals(Optional.empty(), PlatoonSergeant.shortfall(List.of(fed), plenty));
+        assertEquals(Optional.of(PlatoonSergeant.Shortfall.FOOD), PlatoonSergeant.shortfall(List.of(fed), lowBread), "the bread reserve, last");
         assertEquals(Optional.empty(), PlatoonSergeant.shortfall(List.of(fed), Optional.empty()), "nothing seen, nothing known short");
         assertEquals(Optional.of(PlatoonSergeant.Shortfall.IRON), PlatoonSergeant.shortfall(List.of(fed), noIron));
         assertEquals(Optional.of(PlatoonSergeant.Shortfall.WOOD), PlatoonSergeant.shortfall(List.of(fed), noLogs));

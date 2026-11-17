@@ -66,8 +66,8 @@ class StockLevelsTest {
 
         assertEquals(Integer.MAX_VALUE, StockLevels.throwPast(kept, kind -> 100).get(ItemClass.SAPLING));
         assertEquals(16, StockLevels.throwPast(kept, kind -> 256).get(ItemClass.SAPLING));
-        assertEquals(Integer.MAX_VALUE, StockLevels.throwPast(kept, kind -> 0).get(ItemClass.COBBLESTONE), "under 4,096: stored");
-        assertEquals(320, StockLevels.throwPast(kept, kind -> 4096).get(ItemClass.COBBLESTONE));
+        assertEquals(Integer.MAX_VALUE, StockLevels.throwPast(kept, kind -> 0).get(ItemClass.COBBLESTONE), "under 256: stored");
+        assertEquals(320, StockLevels.throwPast(kept, kind -> 256).get(ItemClass.COBBLESTONE));
         assertEquals(5, StockLevels.throwPast(Map.of(ItemClass.STICK, 5), kind -> 0).get(ItemClass.STICK), "no level: its keep");
     }
 

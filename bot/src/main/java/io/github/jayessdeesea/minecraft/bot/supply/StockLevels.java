@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.bot.supply;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.command.Subsistence;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,15 +49,17 @@ public final class StockLevels {
         levels.put(ItemClass.RAW_COPPER, new Level(64, 256));
         levels.put(ItemClass.COPPER_INGOT, new Level(64, 256));
         levels.put(ItemClass.LOG, new Level(0, UNBOUNDED));
-        levels.put(ItemClass.FOOD, new Level(0, UNBOUNDED));
-        levels.put(ItemClass.COBBLESTONE, new Level(0, 4096));
+        levels.put(ItemClass.FOOD, new Level(Subsistence.STOCKPILE_RESERVE, Subsistence.STOCKPILE_MOST));
+        levels.put(ItemClass.WHEAT, new Level(64, 256));
+        // So common they're all but had on demand (operator, 2026-11-17): handy, never hoarded.
+        levels.put(ItemClass.COBBLESTONE, new Level(0, 256));
         levels.put(ItemClass.SAPLING, new Level(64, 256));
         levels.put(ItemClass.SEEDS, new Level(64, 256));
         levels.put(ItemClass.STRING, new Level(64, 256));
         levels.put(ItemClass.FLINT, new Level(64, 256));
         levels.put(ItemClass.FENCE, new Level(0, 64));
         levels.put(ItemClass.CRAFTING_TABLE, new Level(1, 4));
-        levels.put(ItemClass.DIRT, new Level(64, 256));
+        levels.put(ItemClass.DIRT, new Level(0, 256));
         return Collections.unmodifiableMap(levels);
     }
 

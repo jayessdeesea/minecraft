@@ -23,6 +23,13 @@ public final class Subsistence {
     public static final int BASIC_LOAD = 64;
     /** Below this, a soldier restocks when it's convenient: bakes, hunts what's in sight, draws from a stockpile near, asks its squadmates. */
     public static final int RESUPPLY = 32;
+    /**
+     * Bread the stockpile keeps in reserve, for whoever's short (operator, 2026-11-17: 64 to 256):
+     * under it, a squad the work doesn't need goes to the farm, once nothing graver is short.
+     */
+    public static final int STOCKPILE_RESERVE = 64;
+    /** Bread the stockpile is stocked to, and not past: the rest stays in the packs. */
+    public static final int STOCKPILE_MOST = 256;
     /** Below this, food comes first, and a soldier with no means of its own is short. */
     public static final int FOOD_FIRST = 10;
 

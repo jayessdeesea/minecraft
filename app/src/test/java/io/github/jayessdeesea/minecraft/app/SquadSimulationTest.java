@@ -2294,7 +2294,9 @@ class SquadSimulationTest {
         // The depot's table standing, east of its stand, and its first chest behind the table.
         SimServer server = new SimServer(clock, (x, y, z) -> x >= -6 && x <= 5 && z >= -6 && z <= 5 && y > GROUND && y <= GROUND + 3
                 ? SimServer.DIRT : x == dx + 1 && y == GROUND + 1 && z == dz ? SimServer.CRAFTING_TABLE : flat(x, y, z), 1000);
-        server.fullChest(dx + 2, GROUND + 1, dz, SimServer.itemNamedOrMinus("cobblestone"));
+        // Full of logs, which have no most (StockLevels): full of cobblestone, the depot would have its most
+        // of it, and the load would go to the dump.
+        server.fullChest(dx + 2, GROUND + 1, dz, SimServer.itemNamedOrMinus("oak_log"));
         Roster roster = new Roster("Alpha:Alice");
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
                 new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
