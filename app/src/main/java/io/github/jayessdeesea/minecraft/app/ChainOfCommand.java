@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.OptionalInt;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -433,8 +434,22 @@ public class ChainOfCommand implements DisposableBean {
      * and set back from it at start-up ({@link #setKeepMine}).
      */
     private volatile Position keepMine = KEEP_MINE;
-    /** How far west each fresh mine site is from the last: two chunks. */
+    /** How far apart the sites a mine may move to are: two chunks. */
     static final int MINE_SITE_STEP = 32;
+    /** How many sites out every way from the keep's first mine one may be. */
+    static final int MINE_SITE_RINGS = 6;
+    /** The sites the keep's mine has been at and left - kept on disk by the soldier runner. */
+    private final Set<Position> minesTried = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /** The sites the keep's mine has been at and left. */
+    Set<Position> minesTried() {
+        return Set.copyOf(minesTried);
+    }
+
+    /** The sites tried, read back from disk at start-up. */
+    void setMinesTried(java.util.Collection<Position> tried) {
+        minesTried.addAll(tried);
+    }
     /** How far round a mine's head is kept clear of the flatten site and its bench: the stairs' well. */
     static final int MINE_SITE_CLEAR = 8;
 
@@ -447,6 +462,9 @@ public class ChainOfCommand implements DisposableBean {
     void setKeepMine(Position site) {
         LOG.info("[PL] the keep's mine, kept on disk: {}", site);
         keepMine = site;
+        if (!site.equals(KEEP_MINE)) {
+            minesTried.add(KEEP_MINE); // moved off it: it was worked out
+        }
     }
 
     /**
@@ -459,12 +477,27 @@ public class ChainOfCommand implements DisposableBean {
         if ((int) Math.floor(was.x()) != x || (int) Math.floor(was.z()) != z) {
             return Optional.empty();
         }
+        minesTried.add(was);
+        // The nearest untried site on a grid round the keep's first mine, every way: live (field355), stepping
+        // only west put the night shift's mine 160 blocks off, past a lake, a blocked well and a hill.
         Flatten site = flatten;
-        double nx = was.x() - MINE_SITE_STEP;
-        while (cutsInto(site, (int) Math.floor(nx), (int) Math.floor(was.z()))) {
-            nx -= MINE_SITE_STEP;
+        Position centre = site.centre();
+        Position next = null;
+        double best = Double.MAX_VALUE;
+        for (int i = -MINE_SITE_RINGS; i <= MINE_SITE_RINGS; i++) {
+            for (int j = -MINE_SITE_RINGS; j <= MINE_SITE_RINGS; j++) {
+                Position p = new Position(KEEP_MINE.x() + i * MINE_SITE_STEP, KEEP_MINE.y(), KEEP_MINE.z() + j * MINE_SITE_STEP);
+                double d = Math.hypot(p.x() - centre.x(), p.z() - centre.z());
+                if (d < best && !minesTried.contains(p) && !cutsInto(site, (int) Math.floor(p.x()), (int) Math.floor(p.z()))) {
+                    best = d;
+                    next = p;
+                }
+            }
         }
-        Position next = new Position(nx, was.y(), was.z());
+        if (next == null) {
+            LOG.warn("[PL] the keep's mine at {} is dried up, and every site within {} blocks has been tried", was, MINE_SITE_RINGS * MINE_SITE_STEP);
+            return Optional.empty();
+        }
         keepMine = next;
         LOG.warn("[PL] the keep's mine at {} is dried up - the night shift's mine moves to {}", was, next);
         return Optional.of(next);

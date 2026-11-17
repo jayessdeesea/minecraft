@@ -1479,6 +1479,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         stepStore.load(STEPS).ifPresent(scaffolding::addAll);
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
         chestStore.load(DEAD_WELLS).ifPresent(deadWells::addAll);
+        chestStore.load(MINES_TRIED).ifPresent(tried -> chainOfCommand.setMinesTried(tried.stream()
+                .map(c -> new Position(c.x(), c.y(), c.z())).toList()));
         chestStore.load(MINE_SITE).filter(l -> l.size() == 1).map(List::getFirst)
                 .ifPresent(c -> chainOfCommand.setKeepMine(new Position(c.x(), c.y(), c.z())));
         this.planBook = new PlanBook(Path.of(stateDir));
@@ -4003,8 +4005,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private void keepMineSite(Position site) {
         synchronized (chestStore) {
             chestStore.save(MINE_SITE, List.of(BlockPos.containing(site.x(), site.y(), site.z())));
+            chestStore.save(MINES_TRIED, chainOfCommand.minesTried().stream().map(p -> BlockPos.containing(p.x(), p.y(), p.z())).toList());
         }
     }
+
+    /** The key the sites the keep's mine has left are kept under. */
+    private static final String MINES_TRIED = "minestried";
 
     /** Mine heads worked out or blocked, never sited again - kept on disk. Squad loop, read at siting. */
     private final Set<BlockPos> deadWells = ConcurrentHashMap.newKeySet();

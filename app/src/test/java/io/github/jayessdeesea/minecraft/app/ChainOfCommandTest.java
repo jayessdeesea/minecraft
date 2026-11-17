@@ -213,7 +213,7 @@ class ChainOfCommandTest {
     }
 
     @Test
-    void aDriedUpKeepMineMovesWestClearOfTheFlatten() {
+    void aDriedUpKeepMineMovesToTheNearestUntriedSiteClearOfTheFlatten() {
         ChainOfCommand two = new ChainOfCommand(
                 (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
                 ChatClient.create((ChatModel) prompt -> {
@@ -225,9 +225,16 @@ class ChainOfCommandTest {
         assertEquals(first, two.keepMine());
 
         Position next = two.onMineDriedUp((int) Math.floor(first.x()), (int) Math.floor(first.z())).orElseThrow();
-        assertEquals(first.x() - ChainOfCommand.MINE_SITE_STEP, next.x());
-        assertEquals(first.z(), next.z());
+        assertEquals(0, Math.floorMod((int) (next.x() - first.x()), ChainOfCommand.MINE_SITE_STEP), "on the grid round the first");
+        assertEquals(0, Math.floorMod((int) (next.z() - first.z()), ChainOfCommand.MINE_SITE_STEP), "on the grid round the first");
         assertEquals(next, two.keepMine());
+        assertTrue(two.minesTried().contains(first), "the first is tried");
+        Position after = two.onMineDriedUp((int) Math.floor(next.x()), (int) Math.floor(next.z())).orElseThrow();
+        assertFalse(after.equals(first) || after.equals(next), "never back to a site tried: " + after);
+        double centre = Math.hypot(next.x() - two.flatten().centre().x(), next.z() - two.flatten().centre().z());
+        assertTrue(centre <= Math.hypot(after.x() - two.flatten().centre().x(), after.z() - two.flatten().centre().z()),
+                "nearest the keep first");
+        next = after;
         for (int dx = -ChainOfCommand.MINE_SITE_CLEAR; dx <= ChainOfCommand.MINE_SITE_CLEAR; dx++) {
             assertFalse(two.flatten().benchedContains((int) next.x() + dx, (int) next.z()), "clear of the flatten site and its bench");
         }
