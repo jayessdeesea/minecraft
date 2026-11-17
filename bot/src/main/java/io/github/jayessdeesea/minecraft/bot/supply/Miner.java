@@ -224,6 +224,19 @@ public final class Miner {
                     footing.tick();
                     return new Progress.Working(next.getAsInt(), cuts.size());
                 }
+                // Seen from down the tunnel, out of reach: to the cut's stand first - the cuts before it are
+                // what opened it - and blocked from there. Live (field357), Alice closed the main tunnel at
+                // water 70 blocks off and blocked nothing, two dirt in her pack.
+                BlockPos stand = cut.stand();
+                boolean there = Math.hypot(soldier.x() - (stand.x() + 0.5), soldier.z() - (stand.z() + 0.5)) < ON_CELL
+                        && Math.abs(soldier.y() - stand.y()) < ON_CELL;
+                boolean anyWet = hazardCells(world, cut).stream().anyMatch(c -> sealTicks.getOrDefault(c, 0) < ORE_PATIENCE_TICKS);
+                if (anyWet && bridging.isPresent() && free && !there
+                        && sealWalkTicks.merge(stand, 1, Integer::sum) <= SEAL_WALK_TICKS) {
+                    breacher.stop();
+                    standAt = new Position(stand.x() + 0.5, stand.y(), stand.z() + 0.5);
+                    return new Progress.Working(next.getAsInt(), cuts.size());
+                }
                 if (cut.tunnel() < 0) {
                     stairsClosed = hazard.get();
                     stairsClosedAt = next.getAsInt();
@@ -640,6 +653,11 @@ public final class Miner {
         }
         return wet;
     }
+
+    /** Ticks spent walking to a cut's stand to block its water, so one it can't reach is closed unblocked. */
+    private final java.util.Map<BlockPos, Integer> sealWalkTicks = new java.util.HashMap<>();
+    /** How long it walks to block water before closing the path without: a minute and a half. */
+    static final int SEAL_WALK_TICKS = 1_800;
 
     /** Ticks spent blocking each water or lava cell, so one that won't take a block is left. */
     private final java.util.Map<BlockPos, Integer> sealTicks = new java.util.HashMap<>();

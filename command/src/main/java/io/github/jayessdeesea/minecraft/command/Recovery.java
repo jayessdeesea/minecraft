@@ -159,7 +159,7 @@ public final class Recovery {
             // carrying blocks enough to come up for it.
             SoldierStatus self = byName.get(e.getKey());
             if (episode.pillar.isPresent()) {
-                result.set(names.indexOf(e.getKey()), dig(episode.pillar.get()));
+                result.set(names.indexOf(e.getKey()), digOf(episode.pillar.get()));
                 ordered.add(e.getKey());
                 continue;
             }
@@ -171,7 +171,7 @@ public final class Recovery {
             // Below, with a pickaxe: it tunnels up itself, along the engineer's cut. Live, a soldier
             // with a pickaxe and 263 cobblestone stood a day in a dead end at the mine's bottom.
             if (episode.cut.isPresent() && self != null && pickaxe(self)) {
-                result.set(names.indexOf(e.getKey()), dig(episode.cut.get()));
+                result.set(names.indexOf(e.getKey()), digOf(episode.cut.get()));
                 ordered.add(e.getKey());
                 continue;
             }
@@ -191,7 +191,7 @@ public final class Recovery {
                 // break anything but bedrock, slowly, for no drop, and a way out wants no drop
                 // (operator, 2026-11-14: the best tool available, and sometimes that's fists).
                 if (episode.cut.isPresent() && self != null) {
-                    result.set(names.indexOf(e.getKey()), dig(episode.cut.get()));
+                    result.set(names.indexOf(e.getKey()), digOf(episode.cut.get()));
                     ordered.add(e.getKey());
                     continue;
                 }
@@ -212,12 +212,30 @@ public final class Recovery {
             }
             Position at = episode.at;
             result.set(names.indexOf(episode.fetcher), episode.stair.<Order>map(Order.Place::new)
-                    .or(() -> episode.cut.map(Recovery::dig))
+                    .or(() -> episode.cut.map(this::digOf))
                     .orElse(new Order.MoveTo(at.x(), at.y(), at.z(), TOLERANCE, TOLERANCE, Risk.LOW)));
             ordered.add(episode.fetcher);
         }
+        Set<List<Cell>> live = new HashSet<>();
+        recovering.values().forEach(ep -> {
+            ep.cut.ifPresent(live::add);
+            ep.pillar.ifPresent(live::add);
+        });
+        digs.keySet().retainAll(live);
         return List.copyOf(result);
     }
+
+    /**
+     * The dig of {@code cells}, made once an episode: its box's every other cell is kept out of it, and
+     * a stair up's box holds a hundred thousand - commit 640's profile, a quarter of the squad thread
+     * built it again every cycle.
+     */
+    private Order.Dig digOf(List<Cell> cells) {
+        return digs.computeIfAbsent(cells, Recovery::dig);
+    }
+
+    /** Each episode's dig, by its cells - dropped with the episode. */
+    private final Map<List<Cell>, Order.Dig> digs = new HashMap<>();
 
     /** The soldiers the drill ordered this cycle - the stranded building or digging their way, the fetchers. */
     private final Set<String> ordered = new HashSet<>();

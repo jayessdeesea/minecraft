@@ -870,7 +870,13 @@ live, one standing still picked it straight back up, and threw it 454 times. Wit
 shed, a full pack sheds its bulk, worth least first: dirt past two stacks (`Pack.DIRT_KEPT`), then
 seeds past theirs, then cobblestone past five stacks (`Pack.COBBLESTONE_KEPT`) - never ore, ingots
 or tools (operator, 2026-11-15: almost never dirt over iron; live, a soldier with twelve raw iron
-carried 586 dirt and had no slot for the pickaxe it was crafting). And part-stacks of one item are
+carried 586 dirt and had no slot for the pickaxe it was crafting). A keep builder sheds sooner, at one
+slot more than its load trip's mark, so the trip carries only what's worth the walk, and keeps
+less: a stack of dirt to climb on, a stack of seeds, 16 saplings, no fences, 8 string, 16 flint,
+one crafting table (`SoldierRunner.KEEP_PACK`; operator, 2026-11-17: fill a slot, dump it when
+something better comes along, and optimize the travel away - live, builders walked a few dirt,
+three slots of seeds and five tables to the depot and back). What it throws is left where it
+lies, no squadmate's scavenger fetching it back to be shed again (`SoldierRunner.thrownNear`). And part-stacks of one item are
 merged, the smaller onto the larger (`Pack.mergeable`), for what stacks to 64 only - a tool put on
 a tool swaps them - and an item merged isn't merged again for 5 minutes, so one the server
 didn't merge never holds off the rest of the pack's keeping. The hotbar is kept as the operator keeps
@@ -1368,7 +1374,7 @@ soldier in less than a full set of armour: worked out, its main tunnel is run on
 past its last stretch it's cut a level deeper off the same stairs, 16 blocks down, a fresh main
 tunnel there (`Staircase.deeper`; operator, 2026-11-16: go deeper, or pick other sites) - "[Outcome]
 the mine at ... is worked out at y=16 - its next level cut at y=0" - down to just above bedrock; past
-that it's said dried up, once - by a squad's second pair too, when its own tunnel is run to 192 and no level is left under theirs, and blocked when water or lava beside a step of its stairs stops any cutter on it (live, a fresh well stopped at its 58th step, every level under it); water or lava a cut meets is blocked first with the junk the cutter carries, from where it stands, and that path closed for good - a tunnel given up, the stairs no deeper (operator, 2026-11-17) - and
+that it's said dried up, once - by a squad's second pair too, when its own tunnel is run to 192 and no level is left under theirs, and blocked when water or lava beside a step of its stairs stops any cutter on it (live, a fresh well stopped at its 58th step, every level under it); water or lava a cut meets is blocked first with the junk the cutter carries - from the cut's stand, walked to if it's seen from down the tunnel (live, one closed a tunnel at water 70 off and blocked nothing) - and that path closed for good - a tunnel given up, the stairs no deeper (operator, 2026-11-17) - and
 a site where no well can go down at or round it, every chunk seen, is done with too (live, a hill over an open cave); a squad the flatten doesn't want, with nothing short, cuts the next site's stairs by day ahead of time (`ChainOfCommand.nextMineSite`; operator, 2026-11-17: dig deeper, but also cut the next mine); its well is kept on disk as dead, never sited again even from the chunk beside a fresh site (live, a mine moved 32 west was sited back in the blocked well next door, and moved on again uncut), and the keep's mine moves on (a squad's Mine task reads DONE only when every one of its cutters on its level is done; and by day any of the squad still down its last mine, within 64 of its head, climbs its stairs to the head before the day's work - live, a squad at a fresh mine's landing at dawn was sent to wedge places in the rock): the night shift and a squad released for iron are sent to a fresh site, the nearest the
 keep untried on a 32-block grid round its first mine, up to 192 out every way, its head 8 clear of
 the flatten site and its bench (`ChainOfCommand.onMineDriedUp`, "[PL] the keep's mine at ... is dried
@@ -1675,8 +1681,10 @@ platoon leader's traffic, keyed out over the radio operator's connection - goes 
 pacing on that connection, a squad's next FRAGO overtaking one still queued and a repeat not sent;
 keyed out unpaced beside the net, four squads' FRAGOs had the radio operator kicked. The log reads "[Keep] level y=77: 41 block(s) left, 6 of 8 builder(s) on it"
 and "[Keep] Alice -> Bob: KEEP DIG 77 3 -4 9 2". Ground within 12 blocks of a builder's fight, and
-for half a minute after it, is nobody's and isn't counted for the level: the rest go on, and when
-the fight's done that ground is the highest again. A builder with ground work isn't sent to
+for half a minute after it, is nobody's: not dealt out, but counted for the level, so the level
+never drops under the highest ground (the clearing rules: never a high block skipped) - with
+only the fight's ground at the top, the rest wait on it. Live, counting it out dropped the level
+from 100 to 97 and back three times in two minutes, the crew dealt lower ground each time. A builder with ground work isn't sent to
 support a squadmate's fight (§8), and digs on with a hostile in sight that isn't on it. Tried
 first: a fixed strip each, a step under its neighbours' edges - builders walled each other in with
 the steps they built to climb the terraces; then fixed strips in lock step - with the high ground

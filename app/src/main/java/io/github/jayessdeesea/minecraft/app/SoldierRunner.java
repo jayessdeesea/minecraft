@@ -1228,6 +1228,26 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * simulation a builder with two slots free ran out of pack halfway through a sword.
      */
     static final int KEEP_FULL_AT = 4;
+    /**
+     * What a keep builder keeps of each kind once its pack is near full, worth least first - the rest
+     * thrown where it stands, not walked to the depot (operator, 2026-11-17): a slot of dirt to climb
+     * on, a stack of seeds, a few saplings, no fences, a little string and flint, one crafting table,
+     * the slab's cobblestone.
+     */
+    static final Map<ItemClassRegistry.ItemClass, Integer> KEEP_PACK = keepPack();
+
+    private static Map<ItemClassRegistry.ItemClass, Integer> keepPack() {
+        Map<ItemClassRegistry.ItemClass, Integer> kept = new java.util.LinkedHashMap<>();
+        kept.put(ItemClassRegistry.ItemClass.DIRT, 64);
+        kept.put(ItemClassRegistry.ItemClass.SEEDS, 64);
+        kept.put(ItemClassRegistry.ItemClass.FENCE, 0);
+        kept.put(ItemClassRegistry.ItemClass.SAPLING, 16);
+        kept.put(ItemClassRegistry.ItemClass.STRING, 8);
+        kept.put(ItemClassRegistry.ItemClass.FLINT, 16);
+        kept.put(ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);
+        kept.put(ItemClassRegistry.ItemClass.COBBLESTONE, Pack.COBBLESTONE_KEPT);
+        return java.util.Collections.unmodifiableMap(kept);
+    }
     /** Chests a depot is laid out for: the dig's stone for the slab, its ore, wood and spare tools. */
     static final int DEPOT_CHESTS = 6;
     /** The cells of the keep's depot's chests, in the order they're filled - squad loops write, ticks read. */
@@ -1340,6 +1360,24 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return chestsSeen.entrySet().stream().filter(e -> count.applyAsInt(e.getValue()) > 0)
                 .map(e -> new Position(e.getKey().x() + 0.5, e.getKey().y(), e.getKey().z() + 0.5))
                 .min(java.util.Comparator.comparingDouble(p -> Math.hypot(p.x() - from.x(), p.z() - from.z())));
+    }
+
+    /** Where keep builders threw what their packs shed, and when - tick threads write, scavengers read. */
+    private final Map<Position, Long> thrownAt = new ConcurrentHashMap<>();
+    /** How long thrown things lie: a dropped stack despawns in five minutes. */
+    static final long THROWN_LIES_MILLIS = 300_000;
+    /** How near a throw an item is the throw's. */
+    static final double THROWN_NEAR = 3;
+
+    /**
+     * Whether an item at {@code item} lies where a builder threw what its pack shed: left, not fetched
+     * by a squadmate's scavenger and carried back to be shed again.
+     */
+    private boolean thrownNear(Position item) {
+        long now = clockwork.millis();
+        thrownAt.values().removeIf(at -> now - at > THROWN_LIES_MILLIS);
+        return thrownAt.keySet().stream().anyMatch(p -> Math.hypot(p.x() - item.x(), p.z() - item.z()) <= THROWN_NEAR
+                && Math.abs(p.y() - item.y()) <= THROWN_NEAR);
     }
 
     /** Whether an item at {@code item} lies at a depot's dump: left there, not picked up again. */
@@ -2856,11 +2894,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // dropped: the scan is up to a second old, and live (field294) a dirt tower in the bench's
             // outer rows, cut a block at a time, dropped out at each cut - the level fell from y=88 to
             // 74, was dealt out, and came back up at the next scan, six times in a minute.
-            java.util.function.IntBinaryOperator calm = (x, z) -> {
+            java.util.function.IntBinaryOperator calmAll = (x, z) -> {
                 int t = top.applyAsInt(x, z);
-                if (fights.stream().anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR)) {
-                    return Integer.MIN_VALUE;
-                }
                 // A top since put on the step record - the scan caught it before it was - is followed down too.
                 if (t == Integer.MIN_VALUE || !world.isLoaded(x, z) || world.isSolid(x, t, z) && !scaffolding.contains(new BlockPos(x, t, z))) {
                     return t;
@@ -2877,6 +2912,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 return Integer.MIN_VALUE;
             };
+            // Ground under a fight counts for the level - the highest block first, never one skipped (the
+            // clearing rules) - but isn't dealt out: live (field358), a fight at the bench's corner dropped
+            // the level from 100 to 97 and back three times in two minutes, the crew dealt lower ground each time.
+            java.util.function.IntBinaryOperator calm = (x, z) ->
+                    fights.stream().anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR)
+                            ? Integer.MIN_VALUE : calmAll.applyAsInt(x, z);
             java.util.function.IntBinaryOperator calmStep = (x, z) -> {
                 int t = stepTop.applyAsInt(x, z);
                 return fights.stream().anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR)
@@ -2885,7 +2926,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             int level = Integer.MIN_VALUE;
             for (int x = site.minX(); x <= site.maxX(); x++) {
                 for (int z = site.minZ(); z <= site.maxZ(); z++) {
-                    level = Math.max(level, calm.applyAsInt(x, z));
+                    level = Math.max(level, calmAll.applyAsInt(x, z));
                 }
             }
             // Only steps left: the level is theirs, so they're taken down.
@@ -6915,8 +6956,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // Its pack kept for what's worth more: surplus seeds thrown away, between meals.
                 // A mine's cutter keeps only its backfill's bulk: the ore comes first (the rules of a mine).
                 boolean cutsAMine = cutting.containsKey(name);
-                pack.tick(free && !threatened && !rations.active(), cutsAMine ? Pack.MINER_DIRT_KEPT : Pack.DIRT_KEPT,
-                        cutsAMine ? Pack.MINER_COBBLESTONE_KEPT : Pack.COBBLESTONE_KEPT);
+                boolean packFree = free && !threatened && !rations.active();
+                if (keepHands.contains(name) && !cutsAMine) {
+                    // A keep builder sheds before its load trip's mark, so a trip carries what's worth the walk.
+                    long before = pack.thrown();
+                    pack.tick(packFree, KEEP_FULL_AT + 1, KEEP_PACK);
+                    if (pack.thrown() != before) {
+                        thrownAt.put(status.position(), clockwork.millis());
+                    }
+                } else {
+                    pack.tick(packFree, cutsAMine ? Pack.MINER_DIRT_KEPT : Pack.DIRT_KEPT,
+                            cutsAMine ? Pack.MINER_COBBLESTONE_KEPT : Pack.COBBLESTONE_KEPT);
+                }
             }));
             Kit eating = status.condition().flatMap(c -> c.kit()).orElse(null);
             boolean hungry = status.condition().filter(c -> c.kit().isPresent()).map(SoldierRunner::wantsFood).orElse(false);
@@ -7192,7 +7243,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }));
             turns.put(Hands.Routine.SCAVENGER, turn(() -> scavenger.active() && !cuttingOut,
-                    free -> scavenger.tick(status.position(), world, free && !cuttingOut && !threatened && fort == null && !foodCalls, this::atADump)));
+                    free -> scavenger.tick(status.position(), world, free && !cuttingOut && !threatened && fort == null && !foodCalls,
+                            item -> atADump(item) || thrownNear(item))));
             Optional<Hands.Routine> hands = Hands.tick(turns);
             if (keepHands.contains(name)) {
                 keepSaplingsCarried.put(name, inventory.count(ItemClass.SAPLING));

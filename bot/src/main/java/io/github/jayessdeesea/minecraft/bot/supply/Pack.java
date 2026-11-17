@@ -53,6 +53,14 @@ public final class Pack {
     }
 
     /** Each tick: with its hands {@code free}, throws away a stack of seeds it doesn't need. */
+    /** Stacks thrown away so far: a caller marks the ground they lie on, so nobody fetches them back. */
+    private long thrown;
+
+    /** How many stacks it has thrown away. */
+    public synchronized long thrown() {
+        return thrown;
+    }
+
     public synchronized void tick(boolean free) {
         tick(free, DIRT_KEPT, COBBLESTONE_KEPT);
     }
@@ -62,6 +70,22 @@ public final class Pack {
      * with its pack full - a miner's backfill only (the rules of a mine: the ore comes first in the pack).
      */
     public synchronized void tick(boolean free, int dirtKept, int cobblestoneKept) {
+        java.util.Map<ItemClass, Integer> kept = new java.util.LinkedHashMap<>();
+        kept.put(ItemClass.DIRT, dirtKept);
+        kept.put(ItemClass.SEEDS, SEEDS_KEPT);
+        kept.put(ItemClass.COBBLESTONE, cobblestoneKept);
+        tick(free, FULL_AT, kept);
+    }
+
+    /**
+     * As {@link #tick(boolean, int, int)}, shedding from {@code fullAt} free slots, and keeping of each kind
+     * in {@code kept} that many - the rest thrown, the kinds in order, worth least first. A keep builder's
+     * pack sheds before its load trip's mark: live (field358), builders walked to the depot with a few
+     * dirt, three slots of seeds, saplings, string, flint and five crafting tables, stored a load of
+     * cobblestone and came back with the rest (operator, 2026-11-17: fill a slot, dump it when
+     * something better comes along, and optimize the travel away).
+     */
+    public synchronized void tick(boolean free, int fullAt, java.util.Map<ItemClass, Integer> kept) {
         ticks++;
         leftAfter.entrySet().removeIf(e -> {
             if (countOf(e.getKey()) > e.getValue()) {
@@ -101,7 +125,7 @@ public final class Pack {
             return;
         }
         // A pack near full sheds what no routine uses - rotten flesh, bones, gravel - before seeds.
-        Optional<Integer> junk = freeSlots(inventory) <= FULL_AT
+        Optional<Integer> junk = freeSlots(inventory) <= fullAt
                 ? unused(inventory, item -> ticks - pickedBack.getOrDefault(item, Long.MIN_VALUE / 2) < THROWN_FOR) : Optional.empty();
         if (junk.isPresent()) {
             int slot = junk.get();
@@ -109,6 +133,7 @@ public final class Pack {
                     inventory.countAt(slot), inventory.itemAt(slot));
             leftAfter.put(inventory.itemAt(slot), countOf(inventory.itemAt(slot)) - inventory.countAt(slot));
             session.throwStack(0, 0, slot); // stale state: the server resends the inventory
+            thrown++;
             settle = SETTLE_TICKS;
             return;
         }
@@ -116,10 +141,14 @@ public final class Pack {
         // then cobblestone. Never ore, ingots or tools: live, a soldier with twelve raw iron had 586
         // dirt in its pack and no slot for the pickaxe it was crafting (operator, 2026-11-15:
         // almost never dirt over iron).
-        if (freeSlots(inventory) <= FULL_AT) {
-            Optional<Integer> bulk = surplus(inventory, ItemClass.DIRT, dirtKept)
-                    .or(() -> surplusSeeds(inventory))
-                    .or(() -> surplus(inventory, ItemClass.COBBLESTONE, cobblestoneKept));
+        if (freeSlots(inventory) <= fullAt) {
+            Optional<Integer> bulk = Optional.empty();
+            for (java.util.Map.Entry<ItemClass, Integer> keep : kept.entrySet()) {
+                bulk = surplus(inventory, keep.getKey(), keep.getValue());
+                if (bulk.isPresent()) {
+                    break;
+                }
+            }
             // Not one picked back up lately: live, thrown where the soldier stood, it was picked straight
             // back up and thrown again, 56 times in four minutes.
             bulk = bulk.filter(slot -> ticks - pickedBack.getOrDefault(inventory.itemAt(slot), Long.MIN_VALUE / 2) >= THROWN_FOR);
@@ -129,6 +158,7 @@ public final class Pack {
                         inventory.countAt(slot), inventory.itemAt(slot));
                 leftAfter.put(inventory.itemAt(slot), countOf(inventory.itemAt(slot)) - inventory.countAt(slot));
                 session.throwStack(0, 0, slot); // stale state: the server resends the inventory
+            thrown++;
                 settle = SETTLE_TICKS;
                 return;
             }
@@ -140,6 +170,7 @@ public final class Pack {
             LOG.info("{} throws away {} seeds, keeping {} - its pack is for what's worth more", name, inventory.countAt(slot),
                     inventory.count(ItemClass.SEEDS) - inventory.countAt(slot));
             session.throwStack(0, 0, slot); // stale state: the server resends the inventory
+            thrown++;
             settle = SETTLE_TICKS;
         });
     }
