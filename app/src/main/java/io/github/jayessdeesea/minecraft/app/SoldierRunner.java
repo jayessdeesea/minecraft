@@ -6973,10 +6973,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
                 } else if (drawingStone.contains(name) || keepDrawing.contains(name)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
-                } else if (drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), logsAt)
+                } else if (drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stores(), logsAt)
                         || depositor.drawing(ItemClass.LOG)) {
                     depositor.tickDraw(status.position(), logsAt.or(depositor::chestAt), ItemClass.LOG, DRAW_LOGS, free && !threatened
-                            && drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), logsAt));
+                            && drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stores(), logsAt));
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
