@@ -208,23 +208,32 @@ public final class Armourer {
                 fitter.stop(soldier, world);
             }
         }
-        // A walk to a station that doesn't get there is given up, its hands let go: held for the walk,
-        // they'd otherwise be held for good.
+        // A walk to a station that gets no nearer is given up, its hands let go: held for the walk, they'd
+        // otherwise be held for good. No nearer, not not there: live (field393), Dana walking down the
+        // mine's 92 steps to its base was given up at 90 s, 50 blocks nearer every leg.
         if (toStation == null) {
             errandTo = null;
-        } else if (!toStation.equals(errandTo)) {
-            errandTo = toStation;
-            errandFrom = ticks;
-        } else if (ticks - errandFrom > ERRAND_TICKS && digger == null && !crafter.active() && !fitter.active()) {
-            giveUp("not at " + BlockPos.containing(toStation.x(), toStation.y(), toStation.z()) + " in " + ERRAND_TICKS / 20 + " s");
+        } else {
+            double off = Math.sqrt(Math.pow(soldier.x() - toStation.x(), 2) + Math.pow(soldier.y() - toStation.y(), 2)
+                    + Math.pow(soldier.z() - toStation.z(), 2));
+            if (!toStation.equals(errandTo) || off < errandNearest - ERRAND_GAIN) {
+                errandTo = toStation;
+                errandNearest = off;
+                errandFrom = ticks;
+            } else if (ticks - errandFrom > ERRAND_TICKS && digger == null && !crafter.active() && !fitter.active()) {
+                giveUp("no nearer " + BlockPos.containing(toStation.x(), toStation.y(), toStation.z()) + " in " + ERRAND_TICKS / 20 + " s, "
+                        + Math.round(off) + " off");
+            }
         }
     }
 
-    /** The station walk under way, and the tick it began. */
+    /** The station walk under way, the nearest it's been, and the tick it last got nearer. */
     private Position errandTo;
+    private double errandNearest;
     private long errandFrom;
-    /** How long a walk to a station is given: the mine's bottom to its workshop, by the stairs. */
-    static final int ERRAND_TICKS = 1800;
+    /** How long a walk to a station is given to get {@link #ERRAND_GAIN} nearer. */
+    static final int ERRAND_TICKS = 1200;
+    static final double ERRAND_GAIN = 2;
 
     /** The making itself, after {@link #tick}'s bookkeeping: whether it fitted out the workshop this tick. */
     private boolean tickMaking(Position soldier, WorldView world, boolean threatened, Optional<Workshop> workshop) {
