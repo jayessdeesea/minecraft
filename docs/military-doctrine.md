@@ -1367,7 +1367,10 @@ that it's said dried up, once - by a squad's second pair too, when no level is l
 the keep's mine moves on (a squad's Mine task reads DONE only when every one of its cutters on its level is done): the night shift and a squad released for iron are sent to a fresh site 32
 blocks further west, its head 8 clear of the flatten site and its bench (`ChainOfCommand.onMineDriedUp`,
 "[PL] the keep's mine at ... is dried up - the night shift's mine moves to ..."; kept on disk, so a
-restart keeps it where it went). A mine worked out - every tunnel cut, the ore in sight of them taken - while nobody carries an iron
+restart keeps it where it went). A mine off the camp is headed on its column's surface, read from the
+sky down; with none read - the column not loaded - nothing is sited until one is, never at a
+soldier's height (live, a squad down the old mine sited the new one's head in its tunnels at
+y=-23), and one kept on disk with its head 16 or more under the ground there is let go and sited again. A mine worked out - every tunnel cut, the ore in sight of them taken - while nobody carries an iron
 pickaxe and the force hasn't the three iron for one is run on: its main tunnel 24 blocks further,
 branches along it, up to 96, a stretch at most every half minute a mine (`Staircase.extended`, `[Squad] MINE: worked out, the force short of
 iron - its main tunnel run on to 48 blocks`), and kept on disk by the tunnel's end. Live, the mine

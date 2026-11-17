@@ -991,6 +991,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** How long after a staircase couldn't be sited it's looked for again: the water or lava may have gone. */
     static final long STAIRS_RETRY_MILLIS = 60_000;
+    /** How far under the ground at its site a kept mine's head may be before it reads sited from below. */
+    static final int BURIED_HEAD = 16;
 
     /** How long a soldier is first kept off a task it stalled on (the squad's register's finding). */
     static final long RELIEVED_MILLIS = 5 * 60_000;
@@ -2510,7 +2512,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             LOG.warn("[{}] no ground at x={} z={} for the keep's borrow pit - its builders fetch no dirt", squad, pitX, pitZ);
         }
         for (SoldierStatus h : hands) {
-            if (!(orders.get(h.name()) instanceof Order.Dig) || pitGround.isEmpty()) {
+            // Not one the recovery drill has: stranded, it can't walk to a pit, and its stair is its way
+            // out - live (field333), Jack, cut off at y=-46 150 blocks off, was sent for a load of dirt.
+            if (!(orders.get(h.name()) instanceof Order.Dig) || pitGround.isEmpty() || state.recovery.recovering(h.name())) {
                 keepFetching.remove(h.name());
                 continue;
             }
@@ -4925,13 +4929,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // old shaft had a staircase sited from a step in it.
             // Off the camp - the keep's mine - its head on the column's own surface: the point man may
             // be anywhere at dusk, up a hill or down a pit.
-            int nearY = campGround != null && Math.hypot(campGround.x() - x, campGround.z() - z) <= 2 * Staircase.SITE_RADIUS
-                    ? campGround.y()
-                    : TerrainSurveyor.surface(world, x, z, Keep.SKY_TOP).map(BlockPos::y).orElse((int) Math.floor(statuses.get(0).position().y()));
+            // No surface read - the column not loaded - is no site yet, not the point man's height: live
+            // (field334), with the squad down the old mine at y=-23, the new mine's head was sited there,
+            // one step over its bottom, in the old one's tunnels.
+            boolean atCamp = campGround != null && Math.hypot(campGround.x() - x, campGround.z() - z) <= 2 * Staircase.SITE_RADIUS;
+            OptionalInt surfaceY = atCamp ? OptionalInt.of(campGround.y())
+                    : TerrainSurveyor.surface(world, x, z, Keep.SKY_TOP).map(b -> OptionalInt.of(b.y())).orElse(OptionalInt.empty());
             // A site on the ground says where, not how deep: down to the iron. Live, a miner's site at
             // the camp's height was taken for its depth, and three miners stood over one step.
             int asked = (int) Math.floor(o.location().y());
-            int depth = asked >= nearY - 1 ? ChainOfCommand.MINE_DEPTH : asked;
+            int depth = surfaceY.isEmpty() || asked >= surfaceY.getAsInt() - 1 ? ChainOfCommand.MINE_DEPTH : asked;
             // Any mine ordered near the camp is the camp's: the platoon leader's point is a guess - live, it
             // moved the order to the camp's centre, 13 blocks from the mine cut to the bottom, and a
             // new staircase was started inside the wall and kept in its place.
@@ -4946,6 +4953,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // Its own level first, kept by squad; else the mine's stairs, and a level of its own off them.
                 Optional<Staircase> own = keptMine(levelKey(x, z, squadName));
                 kept = own.isPresent() ? own : keptMine("mine" + x + "," + z).map(shared -> ownLevel(shared, squadName, x, z));
+                // One kept with its head far under the ground there was sited from below it, and is let go.
+                if (kept.isPresent() && surfaceY.isPresent() && kept.get().head().y() < surfaceY.getAsInt() - BURIED_HEAD) {
+                    LOG.warn("[{}] MINE: the staircase kept on disk for x={} z={} heads at y={}, {} under the ground there at y={} - let go, sited again",
+                            squadName, x, z, kept.get().head().y(), surfaceY.getAsInt() - kept.get().head().y(), surfaceY.getAsInt());
+                    mineStore.save(levelKey(x, z, squadName), List.of());
+                    mineStore.save(mineKey(levelKey(x, z, squadName), true), List.of());
+                    mineStore.save(mineKey("mine" + x + "," + z, true), List.of());
+                    mineStore.save("mine" + x + "," + z, List.of());
+                    kept = Optional.empty();
+                }
             }
             if (kept.isPresent()) {
                 LOG.info("[{}] MINE: the staircase kept on disk: down from {} to y={}", squadName, kept.get().head(), kept.get().bottom());
@@ -4957,6 +4974,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (failedHere && clockwork.millis() < state.stairsRetryAt) {
                 return null;
             }
+            if (surfaceY.isEmpty()) {
+                LOG.warn("[{}] MINE: no ground read at x={} z={} (loaded: {}) - no staircase sited there yet", squadName, x, z, world.isLoaded(x, z));
+                state.stairsFor = new int[]{x, z};
+                state.stairsRetryAt = clockwork.millis() + STAIRS_RETRY_MILLIS;
+                return null;
+            }
+            int nearY = surfaceY.getAsInt();
             // To the standard: a 4x4 well centred in the chunk (Staircase.well; operator, 2026-11-15).
             Optional<Staircase> sited = Staircase.siteWell(world, x, z, nearY, depth);
             if (sited.isEmpty()) {
