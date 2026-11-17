@@ -78,3 +78,9 @@ stranded on a platform 17 blocks up.
 ## Notes
 - Each command kind is scored in the field (backlog/command-scorecard.md); a command changes when
   a scenario can't pass without the change.
+- **The platoon leader answers per soldier, not per squad (field35x-369, 2026-11-17).** Four times
+  in a morning its reply held one objective per soldier - Alpha four times over, each from one
+  soldier's report ("dig the keep (7 cells left)", "InPosition", ...) - or left a squad out, and the
+  decision was dropped ("[PL] no decision - keeping the current objectives: two objectives for squad
+  Alpha"). Fails loud and costs a decision, not the force; but the prompt shows it each soldier's
+  report where it should see its squad's summary (docs/prompting.md: a model is shown computed state).

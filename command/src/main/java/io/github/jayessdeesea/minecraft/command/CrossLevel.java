@@ -167,14 +167,23 @@ public final class CrossLevel {
                         .filter(g -> !busy.contains(g.name()) && !g.name().equals(receiver.name()) && !critical(g) && withinHeight(g, receiver)
                                 && !(g.report() instanceof Report.LinkingUp) && !(g.report() instanceof Report.InContact)
                                 && Cohesion.distance(g.position(), receiver.position()) <= ACROSS_REACH)
-                        .filter(g -> Item.RATIONS.carried(g) - KEEP_RATIONS >= RATIONS_GIVEN
-                                && Item.RATIONS.carried(g) - RATIONS_GIVEN >= Item.RATIONS.carried(receiver) + RATIONS_GIVEN)
+                        .filter(g -> evens(g, receiver))
                         .min(Comparator.comparingDouble(g -> Cohesion.distance(g.position(), receiver.position())))
                         .ifPresent(g -> {
                             busy.add(g.name());
                             transfers.add(new Transfer(g.name(), receiver.name(), Item.RATIONS, RATIONS_GIVEN));
                         }));
         return List.copyOf(transfers);
+    }
+
+    /**
+     * Whether {@code giver} has a ration for {@code receiver}: two more than it carries, so what there is
+     * evens out - no keep of its own held back while a squadmate has none (live, field369: 12 of 16 at
+     * none, the farm squad at 12 and 13 under a keep of 15, nothing handed across; operator,
+     * 2026-11-17: use it if you need it, the reserve included).
+     */
+    static boolean evens(SoldierStatus giver, SoldierStatus receiver) {
+        return Item.RATIONS.carried(giver) >= Item.RATIONS.carried(receiver) + 2 * RATIONS_GIVEN;
     }
 
     /** Whether {@code soldier} is starving one hit from death, with nothing to eat. */
@@ -222,7 +231,7 @@ public final class CrossLevel {
                     // be left with: two running low don't hand the same rations back and forth.
                     .filter(giver -> !wantedBy.containsKey(giver.name())
                             || item == Item.RATIONS && item.carried(giver) - wanted >= item.carried(receiver) + wanted)
-                    .filter(giver -> item.carried(giver) - item.kept() >= wanted)
+                    .filter(giver -> item == Item.RATIONS ? evens(giver, receiver) : item.carried(giver) - item.kept() >= wanted)
                     .min(Comparator.comparingDouble(giver -> Cohesion.distance(giver.position(), receiver.position())))
                     .ifPresent(giver -> {
                         busy.add(giver.name());

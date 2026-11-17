@@ -157,8 +157,9 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    draws from it wherever it is, and hunts any game in sight, fed or not. Bread beyond its basic
    load - a whole stack, the basic load still in its pack - goes into the stockpile (§12).
 2. **The squad shares, and keeps the camp's farm.** A soldier below 32, hungry yet or not, is given
-   rations by the nearest squadmate who keeps 15 (cross-leveling, §13) - one at a time, the one
-   carrying fewest first, and no more often than every four seconds from one giver to one receiver,
+   rations by the nearest squadmate carrying two more than it (cross-leveling, §13), so what there is
+   evens out - one at a time, the one carrying fewest first, a second apart from one giver to one
+   receiver, and from every giver near it at once,
    so a giver's spare goes round everyone short rather than to the first (the operator's). A
    squadmate below 32 itself still gives, to one it's left with more than; below 15 it has none to
    spare. One no squadmate can feed is given them across squads, by the nearest soldier of another
@@ -954,7 +955,10 @@ wood has to be grown. The soldier at it reports `Planting`.
 *How we use it:* a soldier that needs logs for a tool (§11, §12), has tried to chop them and found
 no tree in reach, is short; so is one below its resupply mark of 32 rations (§4). `command.CrossLevel`
 pairs each with the nearest squadmate carrying more than it needs: a giver keeps 3 logs, enough for
-its own next pickaxe, or 15 rations, and hands over the logs short or one ration - rations go across
+its own next pickaxe, and hands over the logs short; rations go one at a time from any squadmate
+carrying two more than the one short, no keep held back in a famine (operator, 2026-11-17: use it
+if you need it, the reserve included; live, 12 of 16 had none while the farm squad's 12 and 13 sat
+under a keep of 15) - rations go across
 squads too (§4, Class I). A bare-handed
 soldier - a replacement respawns with nothing - gets a squadmate's spare melee weapon: the worst
 of those it carries beyond its best (`Inventory.spareWeaponSlot`), never the one in hand. Weapons
