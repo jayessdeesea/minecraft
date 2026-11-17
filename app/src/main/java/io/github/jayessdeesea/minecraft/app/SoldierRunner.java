@@ -4881,6 +4881,19 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // The recovery drill's stair up: dug as ground work is, its own and nobody's upkeep.
                 upkeeping.remove(soldierName);
                 route(soldierName, dig);
+                // The routine with the hands says where to stand, as below: a load to put in, a table to
+                // make kit at, ore to fetch. Live, every flatten builder's walk to a chest was steered to
+                // its clearer's stand instead - "last seen 32 blocks off" when the walk timed out - and
+                // not one load went in.
+                Hands.Routine holding = handsHeld.get(soldierName);
+                Position here = statuses.get(i).position();
+                Optional<Position> routine = holding == null || holding == Hands.Routine.CLEARER ? Optional.empty()
+                        : standOf(soldierName, holding).map(p -> holding == Hands.Routine.DEPOSITOR
+                        ? chestStand(here, p).orElse(p) : p);
+                if (routine.isPresent()) {
+                    byName.get(soldierName).receiveOrder(new Order.MoveTo(routine.get().x(), routine.get().y(), routine.get().z(), 0.3, 0.5, Risk.LOW));
+                    continue;
+                }
                 // Where the clearer stands for its next cut; until it has one, toward the stair's foot.
                 Position at = clearers.get(soldierName).standAt().orElse(new Position(dig.box().minX() + 0.5, dig.box().maxY() + 1,
                         dig.box().minZ() + 0.5));
@@ -6137,8 +6150,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     boolean surplusTrip = plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
                     // A flatten builder's load into the nearest depot standing a chest (keepOutposts).
                     Optional<Position> deposit = keepHands.contains(name) ? chestOf(shop.orElse(null)).or(() -> stockpile) : stockpile;
+                    // Not up out of the mine by night for a load - the stash's ore goes in below; the rest
+                    // waits for day. Live, the night shift's loads were for the camp's chest 85 blocks off
+                    // and up the stairs, into the dark.
+                    Integer nightFloor = nightBelow.get(unitOf(name, definition.squad()));
+                    boolean downForTheNight = nightFloor != null && status.position().y() < nightFloor - MINE_BELOW && !stashOre;
                     depositor.tick(status.position(), deposit, free && (fullLoad || Depositor.surplusFood(inventory) || poolOre || stashOre
-                                    || surplusTrip) && !threatened && fort == null, pooled,
+                                    || surplusTrip) && !threatened && fort == null && !downForTheNight, pooled,
                             inv -> plan.map(p -> p.surplus(inv)).orElse(List.of()));
                 }
             }));
