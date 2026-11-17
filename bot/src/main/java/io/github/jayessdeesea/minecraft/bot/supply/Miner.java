@@ -253,8 +253,10 @@ public final class Miner {
             holesBeside(world, stairs, cut).forEach(refill::add);
         }
         Optional<BlockPos> seen = oreInSight(world, stairs, from, cut, tunnelFloors(cuts), bestPickaxe());
-        // The ore it took the last tick, gone now: on the stairs, its cell is a hole to put back.
-        if (ore != null && !world.isOre(ore.x(), ore.y(), ore.z()) && !Staircase.uncut(world, ore) && cut.tunnel() < 0) {
+        // The ore it took the last tick, gone now: its cell is a hole to put back - on the stairs or off a
+        // tunnel - but never one of the mine's own cells, which stay open (the rules of a mine: the
+        // vein followed, then backfilled; the grid's strips left).
+        if (ore != null && !world.isOre(ore.x(), ore.y(), ore.z()) && !Staircase.uncut(world, ore) && !mineCells(stairs).contains(ore)) {
             refill.add(ore);
         }
         if (seen.isEmpty()) {
@@ -264,12 +266,12 @@ public final class Miner {
             Optional<BlockPos> hole = refill.isEmpty() ? Optional.empty() : Optional.of(refill.getLast());
             Optional<BlockFace> face = hole.flatMap(h -> faceOf(world, h));
             if (hole.isPresent() && refillTicks.merge(hole.get(), 1, Integer::sum) > ORE_PATIENCE_TICKS) {
-                LOG.warn("{} leaves the hole at {} in the well: not filled in {} ticks", name, hole.get(), ORE_PATIENCE_TICKS);
+                LOG.warn("{} leaves the hole at {} in the mine's wall: not filled in {} ticks", name, hole.get(), ORE_PATIENCE_TICKS);
                 refill.remove(hole.get());
             } else if (hole.isPresent() && face.isPresent() && bridging.isPresent()) {
                 breacher.stop();
                 if (refillTicks.get(hole.get()) == 1) {
-                    LOG.info("{} fills the hole at {} in the well", name, hole.get());
+                    LOG.info("{} fills the hole at {} in the mine's wall", name, hole.get());
                 }
                 footing.place(hole.get(), bridging.get(), face.get());
                 footing.tick();
@@ -305,6 +307,18 @@ public final class Miner {
     public synchronized int oreTaken() {
         return oreFound - oreLeft;
     }
+
+    /** Every cell {@code stairs} cuts, worked out once a staircase: a vein's hole in one of them isn't filled. */
+    private Set<BlockPos> mineCells(Staircase stairs) {
+        if (!stairs.equals(cellsOf)) {
+            cellsOf = stairs;
+            cells = stairs.cutCells();
+        }
+        return cells;
+    }
+
+    private Staircase cellsOf;
+    private Set<BlockPos> cells = Set.of();
 
     /** Holes to fill in the well, last found last: what was taken out of its walls, and what it found open. */
     private final java.util.LinkedHashSet<BlockPos> refill = new java.util.LinkedHashSet<>();

@@ -181,6 +181,30 @@ class MinerTest {
     }
 
     /** Ore in the well's wall is mined, and its cell put back once the vein's done, so the well stays closed. */
+    /**
+     * A vein off a tunnel, taken, is backfilled with what's carried - the strip itself left open (the
+     * rules of a mine: the whole vein, then backfilled; the grid's strips kept).
+     */
+    @Test
+    void oreOffATunnelIsMinedAndItsHoleFilledTheTunnelLeftOpen() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 20);
+        Staircase.Cut cut = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList().get(3);
+        Staircase.Cut next = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList().get(4);
+        int sx = next.feet().z() - cut.feet().z(), sz = cut.feet().x() - next.feet().x();
+        BlockPos vein = cut.feet().offset(sx, 1, sz);
+        ore.add(vein);
+        Inventory kit = new Inventory();
+        kit.setSlot(Inventory.HOTBAR_FIRST, new int[]{pickaxe(1), 1});
+        kit.setSlot(Inventory.MAIN_FIRST, new int[]{IntStream.range(0, 4096)
+                .filter(id -> ItemClassRegistry.classOf(id).equals(Optional.of(ItemClassRegistry.ItemClass.COBBLESTONE))).findFirst().orElseThrow(), 64});
+
+        dig(stairs, 120000, kit, new Position(0.5, GROUND, 0.5));
+
+        assertTrue(dug.contains(vein), "the ore at " + vein + " mined");
+        assertTrue(placed.contains(vein), "and its hole filled back: " + placed);
+        assertTrue(cut.cells().stream().noneMatch(placed::contains), "the strip itself left open");
+    }
+
     @Test
     void oreInTheWellsWallIsMinedAndItsCellPutBack() {
         Staircase well = Staircase.wellAt(world, 0, 0, GROUND, GROUND - 16).orElseThrow();
