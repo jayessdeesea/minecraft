@@ -4868,7 +4868,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     keepFighting.remove(st.name());
                 }
             });
-            Map<String, Order> keepOrders = keepwork(squadName, state, statuses);
+            // Not one the recovery drill has: its stair is its work till it's out. Live (field340), Jack,
+            // his stair up laid out 208 blocks long, was given a rectangle on the keep 130 blocks off and
+            // above, and the dig's walk there held his hands.
+            Map<String, Order> keepOrders = keepwork(squadName, state, statuses.stream()
+                    .filter(s -> !state.recovery.recovering(s.name())).toList());
             ground.putAll(keepOrders);
             statuses.forEach(s -> {
                 if (keepOrders.containsKey(s.name())) {
