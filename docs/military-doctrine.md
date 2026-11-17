@@ -802,7 +802,9 @@ it left there, and a squadmate waits for it.
   patrol base or on its wall.
 - **The mine base's**, at the bottom of the camp's stairs (§16): for a soldier more than 3 blocks
   down, once the landing is cut. By night it's a mining squad's only workshop, so nobody climbs
-  out into the dark for a tool.
+  out into the dark for a tool. Only for a soldier under the ground or within 32 across of the mine's
+  head: one on the surface elsewhere uses its squad's own (live, a soldier on the surface 70 blocks off was sent down to a
+  dried-up mine's base at y=-48, walked through the caves, and was stranded).
 
 Each names a cell to stand in, and a cell each for the table and the furnace, on adjacent sides so
 the stand stays open on the other two. A surface workshop also names a chest's cell, behind its

@@ -2262,13 +2262,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (state.stairs == null) {
             return state.workshop;
         }
+        // The mine's base only for a soldier at the mine - under the ground, or by its head: live
+        // (field390-393), Eli on the surface 70 blocks off was sent by night to his squad's dried-up mine's
+        // base at y=-48 for a chestplate, walked down through the caves, and was stranded at y=-43.
+        BlockPos head = state.stairs.head();
+        boolean underground = TerrainSurveyor.surface(world, (int) Math.floor(at.x()), (int) Math.floor(at.z()), Keep.SKY_TOP)
+                .map(top -> top.y() > at.y() + UNDERGROUND).orElse(false);
+        if (!underground && Math.hypot(at.x() - head.x(), at.z() - head.z()) > MINE_SHOP_NEAR) {
+            return state.workshop;
+        }
         boolean landing = state.stairs.landingCut(world);
-        if (landing && at.y() < state.stairs.head().y() - MINE_BELOW) {
+        if (landing && at.y() < head.y() - MINE_BELOW) {
             return Workshop.mine(state.stairs);
         }
         boolean dark = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
         return dark ? (landing ? Workshop.mine(state.stairs) : null) : state.workshop;
     }
+
+    /** How far across from a mine's head a soldier on the surface still crafts at its base: by the head. */
+    static final double MINE_SHOP_NEAR = 32;
 
     /**
      * Where {@code soldier}'s loads go and are drawn from: the supply point the operator set up, else
