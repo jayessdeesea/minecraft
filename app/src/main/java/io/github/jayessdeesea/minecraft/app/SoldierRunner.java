@@ -6429,7 +6429,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         status.condition().map(c -> c.health() < Condition.MAX_HEALTH).orElse(false), free && !threatened,
                         soldier.yaw(), soldier.pitch());
                 // Its pack kept for what's worth more: surplus seeds thrown away, between meals.
-                pack.tick(free && !threatened && !rations.active());
+                // A mine's cutter keeps only its backfill's bulk: the ore comes first (the rules of a mine).
+                boolean cutsAMine = cutting.containsKey(name);
+                pack.tick(free && !threatened && !rations.active(), cutsAMine ? Pack.MINER_DIRT_KEPT : Pack.DIRT_KEPT,
+                        cutsAMine ? Pack.MINER_COBBLESTONE_KEPT : Pack.COBBLESTONE_KEPT);
             }));
             Kit eating = status.condition().flatMap(c -> c.kit()).orElse(null);
             boolean hungry = status.condition().filter(c -> c.kit().isPresent()).map(SoldierRunner::wantsFood).orElse(false);

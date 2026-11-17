@@ -54,6 +54,14 @@ public final class Pack {
 
     /** Each tick: with its hands {@code free}, throws away a stack of seeds it doesn't need. */
     public synchronized void tick(boolean free) {
+        tick(free, DIRT_KEPT, COBBLESTONE_KEPT);
+    }
+
+    /**
+     * As {@link #tick(boolean)}, keeping {@code dirtKept} dirt and {@code cobblestoneKept} cobblestone
+     * with its pack full - a miner's backfill only (the rules of a mine: the ore comes first in the pack).
+     */
+    public synchronized void tick(boolean free, int dirtKept, int cobblestoneKept) {
         ticks++;
         leftAfter.entrySet().removeIf(e -> {
             if (countOf(e.getKey()) > e.getValue()) {
@@ -109,9 +117,9 @@ public final class Pack {
         // dirt in its pack and no slot for the pickaxe it was crafting (operator, 2026-11-15:
         // almost never dirt over iron).
         if (freeSlots(inventory) <= FULL_AT) {
-            Optional<Integer> bulk = surplus(inventory, ItemClass.DIRT, DIRT_KEPT)
+            Optional<Integer> bulk = surplus(inventory, ItemClass.DIRT, dirtKept)
                     .or(() -> surplusSeeds(inventory))
-                    .or(() -> surplus(inventory, ItemClass.COBBLESTONE, COBBLESTONE_KEPT));
+                    .or(() -> surplus(inventory, ItemClass.COBBLESTONE, cobblestoneKept));
             // Not one picked back up lately: live, thrown where the soldier stood, it was picked straight
             // back up and thrown again, 56 times in four minutes.
             bulk = bulk.filter(slot -> ticks - pickedBack.getOrDefault(inventory.itemAt(slot), Long.MIN_VALUE / 2) >= THROWN_FOR);
@@ -226,6 +234,11 @@ public final class Pack {
     public static final int DIRT_KEPT = 128;
     /** Cobblestone it keeps with its pack full: five stacks, a wall's or a stretch of slab's load. */
     public static final int COBBLESTONE_KEPT = 320;
+    /**
+     * What a mine's cutter keeps with its pack full: a stack of cobblestone and half of dirt, to floor
+     * a gap and fill a vein's holes - never carried at the cost of a slot for ore (the rules of a mine).
+     */
+    public static final int MINER_COBBLESTONE_KEPT = 64, MINER_DIRT_KEPT = 32;
 
     /**
      * A slot of {@code bulk} that can go and leave {@code kept} or more: the smallest such stack,

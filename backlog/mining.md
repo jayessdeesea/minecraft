@@ -16,7 +16,7 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
 ## Done when
 - **The rules of a mine (operator, 2026-11-16; docs/military-doctrine.md § 16):** a level for each
   squad, and the grid - strips on the world's thirds, three high, two cutters a level by side - are
-  built. Left: a squad of four on two levels; the pack carrying cobblestone and
+  built, and the pack's cap on a cutter's cobblestone and dirt. Left: a squad of four on two levels; the pack carrying cobblestone and
   dirt only to the backfill's stack, ore always with room; a vein followed to its last block in reach and its holes filled back with
   cobblestone or dirt; every miner going down with a stock of torches. Today's shared stretches of
   one level are replaced by this.

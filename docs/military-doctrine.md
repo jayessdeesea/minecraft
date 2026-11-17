@@ -1390,8 +1390,10 @@ height, so levels one over another run east, south and west in turn; a level's c
 squad's cutters, and a level worked out goes to the next free one under the rest. The grid:
 strips on the world's x % 3 or z % 3 off each level's spine, three high, its two cutters one to
 each side. Ore in reach taken, holes in the well filled, the tunnels lit, the yield checked at
-dawn. Not yet: a squad of four on two levels, a vein's holes filled, a torch stock carried down,
-and the pack's cap on cobblestone and dirt (backlog/mining.md).
+dawn. A mine's cutter keeps only its backfill's bulk with its pack full - a stack of cobblestone
+and half of dirt (`Pack.MINER_COBBLESTONE_KEPT`) - the rest thrown before anything else, so a slot
+for ore is never taken by it. Not yet: a squad of four on two levels, a vein's holes filled, a torch
+stock carried down (backlog/mining.md).
 
 Squads on one mine each work their own level (the rules of a mine, above): live, squads sharing
 one level's stretches took one another's stale DONE for their own, and it was run on with nothing
