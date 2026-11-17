@@ -421,7 +421,7 @@ top step touches the ledge only at a corner, then each step and the block under 
 a soldier stood a quarter of an hour on a ledge with 8 logs, no squadmate carrying 24. One stranded
 below - boxed in a pocket, with no stair down to lay, or more than 8 under the ground over it, where
 a stair down leads only further in (live, one in a cave at y=-51 had a one-block stair down laid out
-to its floor, carried no block, and stood) - gets the engineer's stair up instead, laid again from where it stands once it's more than 6 off every cell of it (live, one walked off 8 before it began, and stood under it with no cell in reach)
+to its floor, carried no block, and stood) - gets the engineer's stair up instead, laid again from where it stands once it's more than 6 off every cell of it, and dug through any ore on its way whatever the pickaxe, the drop lost (live, an ore cell a stone pickaxe couldn't take was set aside, and the stair stood uncut) (live, one walked off 8 before it began, and stood under it with no cell in reach)
 (`Stairway.up`) - its hands the stair's alone till it's out, no load put in nor stack picked up, nor given ground on the keep at all - its rectangle, the stockpile's cobblestone or a pit's dirt - nor anything to make, whose walk to a workshop would take it off the stair (live, an iron pickaxe walked one off its stair up every second),
 past it, as on a stair down (live, two in a cave under the mine's stairs held theirs for both, with
 no route to either, and stood; and one on a ledge with its stair down laid out held its for a

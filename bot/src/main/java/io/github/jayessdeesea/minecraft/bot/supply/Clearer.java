@@ -201,7 +201,10 @@ public final class Clearer {
         // were handed the cobblestone over the camp's floor, and each failed at it three times.
         int bestPickaxe = Digger.Target.bestTool(inventory);
         int bestTier = bestPickaxe < 0 ? Hardness.HAND : ItemClassRegistry.miningTier(inventory.itemAt(bestPickaxe)).orElse(Hardness.HAND);
-        List<BlockPos> beyondItsTools = cover.stream()
+        // Not in a tunnel: a stair up out of a pocket is a way out, and the way out comes first - live
+        // (field355), Ivy's stair up ran through an ore block her stone pickaxe couldn't take for its
+        // drop, it was set aside, and she stood under it with no cut.
+        List<BlockPos> beyondItsTools = tunnel ? List.of() : cover.stream()
                 // Only ore: a clear is for the ground gone, not the drop, and anything else is dug with the
                 // best tool carried, fists included (operator, 2026-11-14) - stone by hand in 7.5 seconds for
                 // no cobblestone, rather than a soldier stood still for the want of a pickaxe.
