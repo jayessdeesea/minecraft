@@ -104,8 +104,13 @@ public final class Depositor {
         return Optional.ofNullable(at);
     }
 
+    /**
+     * Where the soldier stands for its trip: by the chest, the whole trip - walking to it, opening it,
+     * putting the load in - not only the walk. Live, with the walk over the soldier was steered to its
+     * dig's stand mid-trip, walked off, and the load didn't go in, "8.3 blocks off".
+     */
     public synchronized Optional<Position> standAt() {
-        return script != null && walking ? Optional.of(at) : Optional.empty();
+        return script != null ? Optional.of(at) : Optional.empty();
     }
 
     /**

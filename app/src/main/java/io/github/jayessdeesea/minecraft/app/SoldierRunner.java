@@ -6319,6 +6319,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free")
                         // What holds routines back with free hands: food first, and the work it was handed.
                         + (foodCalls ? ", food calls" : "") + (threatened ? ", threatened" : "")
+                        // In contact with what, and where: live, a squad stood a night "in contact" with
+                        // one hostile each, and nothing said what or where it was.
+                        + (status.report() instanceof Report.InContact ? world.nearbyHostiles(status.position(), 24).stream().findFirst()
+                        .map(h -> ", nearest hostile " + HostileMobRegistry.nameOf(h.typeId()) + " at " + h.position() + String.format(java.util.Locale.ROOT,
+                                " (%.1f off)", Math.sqrt(Math.pow(h.position().x() - status.position().x(), 2) + Math.pow(h.position().y() - status.position().y(), 2)
+                                        + Math.pow(h.position().z() - status.position().z(), 2)))).orElse(", no hostile within 24") : "")
                         + ", " + lights.size() + " cells to light with " + inventory.count(ItemClass.TORCH) + " torches"
                         + (lights.isEmpty() ? "" : " (" + lamplighter.passedOver(world, lights) + ")")
                         + (farming.get(name) == null ? "" : ", farm " + farmer.passedOver(world, farming.get(name)))

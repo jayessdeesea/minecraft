@@ -728,6 +728,8 @@ public final class DeterministicSoldier implements Soldier {
 
     /** Re-plan at least this often while moving - 2 seconds. */
     static final int REPLAN_TICKS = 40;
+    /** Ticks before a plan that found no route is tried again. */
+    static final int NO_ROUTE_RETRY_TICKS = 20;
     /** Ticks without real progress along the route before re-planning. */
     private static final int STUCK_TICKS = 20;
     /** How long a cell it got stuck short of is routed round: long enough for a squadmate in the way to move on. */
@@ -853,7 +855,13 @@ public final class DeterministicSoldier implements Soldier {
         if (cuttingTicks > 0 && cuttingTicks < CUT_PATIENCE_TICKS) {
             stuckTicks = 0; // standing still to cut a step is headway
         }
-        boolean replan = route == null || routeIndex >= route.size()
+        // A plan that found no way at all isn't made again the next tick: live (commit 544's profile),
+        // one soldier in a cave with no route to its goal searched 60,000 cells twenty times a second,
+        // more than half the garrison's CPU.
+        // On dry ground only: in water each plan is the plug's next step (the squad simulation's soldier
+        // stuck in water with only logs plugs its way out a plan at a time).
+        boolean noRoute = route != null && route.isEmpty() && ticksSincePlan < NO_ROUTE_RETRY_TICKS && !wet && !afloat;
+        boolean replan = route == null || routeIndex >= route.size() && !noRoute
                 || ticksSincePlan >= REPLAN_TICKS || stuckTicks >= STUCK_TICKS;
         navTicks++;
         avoided.values().removeIf(until -> until <= navTicks);
