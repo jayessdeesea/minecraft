@@ -3557,6 +3557,34 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Raw ore a smelter draws at a time: a stack, one furnace load. */
     static final int SMELT_DRAW = 64;
 
+    /**
+     * The cells of the grove's grid within {@link #TREE_FARM_RADIUS} of {@code centre} a sapling could go
+     * in once what grows over them is cut: soil under, no water, near the centre's height.
+     */
+    private int groveGround(BlockPos centre) {
+        int cells = 0;
+        for (int x = centre.x() - TREE_FARM_RADIUS; x <= centre.x() + TREE_FARM_RADIUS; x++) {
+            for (int z = centre.z() - TREE_FARM_RADIUS; z <= centre.z() + TREE_FARM_RADIUS; z++) {
+                if (!TreeFarm.onGrid(x, z)) {
+                    continue;
+                }
+                for (int y = centre.y() + 4; y >= centre.y() - 4; y--) {
+                    if (world.isWater(x, y, z)) {
+                        break;
+                    }
+                    if (world.isSoil(x, y - 1, z) && !world.isFarmland(x, y - 1, z) && !world.isSolid(x, y, z)) {
+                        cells++;
+                        break;
+                    }
+                    if (world.isSolid(x, y - 1, z) && !world.isLog(x, y - 1, z) && world.leaves(x, y - 1, z).isEmpty()) {
+                        break; // ground that isn't soil
+                    }
+                }
+            }
+        }
+        return cells;
+    }
+
     /** The tree each keep cutter is felling: its logs as first found - the dig is its box until they're down and its steps out. */
     private final Map<String, Set<BlockPos>> felling = new ConcurrentHashMap<>();
     /** How far across from its first log a tree's logs are taken in: an oak's or a spruce's spread. */
@@ -3749,6 +3777,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // The nearest site walked to whose trees keep it from being a grove: cleared by the wood party
         // (operator, 2026-11-17: we can clear an area for a grove as well).
         BlockPos toClear = null;
+        int toClearCells = 0;
         for (int r = GROVE_RING; r <= 4 * GROVE_RING; r += GROVE_RING / 2) {
             for (int[] way : ways) {
                 int cx = depot.stand().x() + way[0] * r, cz = depot.stand().z() + way[1] * r;
@@ -3765,10 +3794,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (why != null) {
                     passedOver.merge(why, 1, Integer::sum);
                 }
-                if (toClear == null && ("no plot".equals(why) || "too small".equals(why))
+                // The one whose ground could hold a grove once its trees are down: the most cells of the
+                // grove's grid with soil under them and no water - not the nearest. Live (field376), the
+                // site cleared lay by the farm's water, five of its cells water, and could never be one.
+                if (("no plot".equals(why) || "too small".equals(why))
                         && (walkable.contains(surface.get()) || walkable.contains(surface.get().offset(0, 1, 0)))
                         && surface.get().y() - depot.stand().y() <= GROVE_RISE) {
-                    toClear = surface.get();
+                    int could = groveGround(surface.get());
+                    if (could >= GROVE_MIN_CELLS && could > toClearCells) {
+                        toClear = surface.get();
+                        toClearCells = could;
+                    }
                 }
                 Optional<TreeFarm> grove = sited
                         .filter(g -> g.plot().size() >= GROVE_MIN_CELLS)
