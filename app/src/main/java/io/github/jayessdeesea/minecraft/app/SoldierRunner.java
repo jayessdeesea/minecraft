@@ -2632,7 +2632,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             woodParty(onKeep, onHand, now);
             // The haul road's cutter has no rectangle while it cuts it (keepwork).
             String roadCutter = keepRoadCutter;
-            List<LevelPlan.Builder> all = onHand.stream().filter(b -> !inWoodParty(b.name()) && !b.name().equals(roadCutter)).toList();
+            keepSmelter = smelter(onHand, keepPlan);
+            String smelterNow = keepSmelter;
+            List<LevelPlan.Builder> all = onHand.stream().filter(b -> !inWoodParty(b.name()) && !b.name().equals(roadCutter)
+                    && !b.name().equals(smelterNow)).toList();
             Set<String> names = all.stream().map(LevelPlan.Builder::name).collect(Collectors.toUnmodifiableSet());
             // The site and its bench round it: the ring's ground is the level's too, highest first.
             Box dug = chainOfCommand.flatten().dig();
@@ -3073,6 +3076,47 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private boolean inWoodParty(String name) {
         return keepParty.has(name);
     }
+
+    /**
+     * The keep's smelter (backlog/common-stockpile.md, the ore's chain of hands: the smelter): one
+     * builder off the dig while the surface chests hold raw ore - drawn from whichever holds it,
+     * smelted at the main depot's furnace, the ingots put back - so armour needs a table and a chest's
+     * ingots, not a furnace and fuel where each soldier stands. Live (field302), the farm squad walked
+     * between a table with no furnace by it, a furnace 22 blocks off and a table 50 off, for copper
+     * leggings never made, with 74 raw copper in chests. Of the crew, one with no rectangle, nearest
+     * the main depot; kept while there's ore to smelt or it carries some.
+     */
+    private String smelter(List<LevelPlan.Builder> onHand, KeepPlan plan) {
+        Workshop depot = keepWorkshop;
+        int raw = chainOfCommand.stores().map(s -> s.rawIron() + s.rawCopper()).orElse(0);
+        String was = keepSmelter;
+        boolean onCrew = was != null && onHand.stream().anyMatch(b -> b.name().equals(was));
+        if (onCrew && (raw > 0 || smelterCarries.contains(was))) {
+            return was;
+        }
+        if (depot == null || raw < SMELT_BATCH) {
+            if (was != null) {
+                LOG.info("[Keep] {} is done smelting - back on the dig", was);
+            }
+            return null;
+        }
+        Optional<String> chosen = onHand.stream()
+                .filter(b -> plan == null || !plan.boxes().containsKey(b.name()))
+                .filter(b -> !inWoodParty(b.name()) && !b.name().equals(keepRoadCutter))
+                .min(Comparator.comparingDouble(b -> Math.hypot(b.at().x() - depot.stand().x(), b.at().z() - depot.stand().z())))
+                .map(LevelPlan.Builder::name);
+        chosen.filter(n -> !n.equals(was)).ifPresent(n -> LOG.info("[Keep] {} is the smelter: {} raw ore in the chests", n, raw));
+        return chosen.orElse(null);
+    }
+
+    /** The keep's smelter, if one is detailed - squad loops write, ticks read. */
+    private volatile String keepSmelter;
+    /** Smelters carrying raw ore or ingots still to put in - their ticks write, squad loops read. */
+    private final Set<String> smelterCarries = ConcurrentHashMap.newKeySet();
+    /** Raw ore in the chests worth a smelter: a chestplate's copper. */
+    static final int SMELT_BATCH = 8;
+    /** Raw ore a smelter draws at a time: a stack, one furnace load. */
+    static final int SMELT_DRAW = 64;
 
     /** Where the wood party cuts: the trees nearest the depot a keep squad last saw, else round the grove, else the depot. */
     private Position keepWoodAt(List<String> onKeep, TreeFarm grove) {
@@ -6006,14 +6050,32 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // or the mine base for a soldier down the stairs. The armourer walks there itself.
             // Its own, else the camp's: live, a farmer working 15 blocks out, sited none, gave up its
             // bread 13 times for want of a table near, and its squad starved with the wheat in its pack.
-            Optional<Workshop> workshop = Optional.ofNullable(workshops.get(name)).or(() -> Optional.ofNullable(campWorkshop));
+            // The smelter's is the main depot's: its furnace, its chests.
+            boolean smelter = name.equals(keepSmelter);
+            Workshop mainShop = keepWorkshop;
+            Optional<Workshop> workshop = smelter && mainShop != null ? Optional.of(mainShop)
+                    : Optional.ofNullable(workshops.get(name)).or(() -> Optional.ofNullable(campWorkshop));
             // Raw ore through the common stockpile (bot.supply.MetalPool): what its next piece can't
             // be made from goes in; what the stockpile completes it with is drawn - and the armourer
             // waits for the draw rather than walking off to dig.
             // Counted over every surface chest, and drawn from the one holding it: live (field300), 64 raw
             // copper lay in an outpost depot's chests and 10 in the camp's, enough for four soldiers' armour,
             // while draws looked only in the main depot's - and three soldiers wore none.
-            MetalPool.Plan metal = MetalPool.plan(inventory, rung, chainOfCommand.stores());
+            MetalPool.Plan own = MetalPool.plan(inventory, rung, chainOfCommand.stores());
+            int rawCarried = inventory.count(ItemClass.RAW_IRON) + inventory.count(ItemClass.RAW_COPPER);
+            if (smelter && rawCarried + inventory.count(ItemClass.IRON_INGOT) + inventory.count(ItemClass.COPPER_INGOT) > 0) {
+                smelterCarries.add(name);
+            } else {
+                smelterCarries.remove(name);
+            }
+            // The smelter draws raw ore - all the nearest chest holds of one metal, up to a stack - and
+            // keeps it to smelt; the ingots it makes go in as anyone's do.
+            Optional<ItemClass> toSmelt = !smelter || rawCarried > 0 ? Optional.empty()
+                    : java.util.stream.Stream.of(ItemClass.RAW_COPPER, ItemClass.RAW_IRON)
+                    .filter(ore -> metalChest(ore, status.position()).isPresent()).findFirst();
+            MetalPool.Plan metal = !smelter ? own
+                    : new MetalPool.Plan(own.stock().stream().filter(c -> c != ItemClass.RAW_IRON && c != ItemClass.RAW_COPPER)
+                    .collect(Collectors.toSet()), toSmelt.map(ore -> new MetalPool.Draw(ore, SMELT_DRAW)));
             Optional<MetalPool.Draw> metalDraw = metal.draw().filter(d -> metalChest(d.ore(), status.position()).isPresent());
             boolean drawingMetal = metalDraw.isPresent() || MetalPool.METALS.stream().anyMatch(depositor::drawing);
             if (drawingMetal) {
@@ -6083,6 +6145,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Pre-combat checks come first: a bare-handed soldier waiting on its squad's base - not
             // yet building, not the torchbearer - may make its sword meanwhile.
             boolean waiting = fort != null && !fort.allInside() && !fort.makeTorches();
+            if (smelter && inventory.count(ItemClass.RAW_COPPER) > 0) {
+                tools.add(Recipe.COPPER_INGOT);
+            }
+            if (smelter && inventory.count(ItemClass.RAW_IRON) > 0) {
+                tools.add(Recipe.IRON_INGOT);
+            }
             Set<Recipe> craftable = fort == null ? tools
                     : waiting && rearming ? Set.of(rung.orElseThrow())
                     : Set.of();
@@ -6505,6 +6573,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                 : levelPlan == null || levelPlan.boxes().containsKey(name)
                                 ? clearer.idleReason().map(r -> "clearer idle, " + r)
                                 .orElse("hands free, " + status.order().getClass().getSimpleName())
+                                : name.equals(keepSmelter) ? "smelter, walking"
                                 : inWoodParty(name) ? "wood party, walking"
                                 : name.equals(keepRoadCutter) ? "haul road, walking"
                                 : !levelPlan.crew().contains(name) ? "off the crew (" + status.order().getClass().getSimpleName() + ")"

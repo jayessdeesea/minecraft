@@ -263,6 +263,16 @@ its best and its split's - the nights left out, its clock and the tally stopped 
 that line is the one that says whether the method is within 90% of its best. Below 90% either line
 is a warning, "BELOW 90%".
 
+The keep's smelter (the ore's chain of hands, backlog/common-stockpile.md): while the surface
+chests hold 8 raw ore or more, one builder with no rectangle - the nearest the main depot - is off
+the dig to smelt it ("[Keep] Carol is the smelter: 22 raw ore in the chests"). It draws a stack of
+one metal's raw ore from the nearest chest holding it, smelts all it carries at the main depot's
+furnace, and its ingots go in as anyone's do (`MetalPool`), for whoever's next piece they complete;
+back on the dig once there's none left in the chests or its pack. Armour then needs a table and a
+chest's ingots, not a furnace and fuel where each soldier stands: live (field302), the farm squad
+walked between a table with no furnace by it, a furnace 22 blocks off and a table 50 off, for copper
+leggings, with 74 raw copper in chests.
+
 The keep's wood party - the platoon sergeant's, `command.PlatoonSergeant` (operator, 2026-11-14: trees are everywhere - break from the dig, harvest
 some, build crates at the depot and replant; a spruce every four blocks; the lumberjacks use axes)
 is the foreman's errand in place of a rectangle, two builders at most and a third of the crew,

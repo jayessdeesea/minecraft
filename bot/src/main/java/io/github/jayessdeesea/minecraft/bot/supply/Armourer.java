@@ -413,8 +413,11 @@ public final class Armourer {
      */
     private Map<Recipe, Integer> once(Set<Recipe> recipes) {
         Map<Recipe, Integer> items = new LinkedHashMap<>();
+        // Ingots, as bread is baked: all the raw ore carried, smelted - the smelter's batch.
         recipes.forEach(r -> items.put(r, r == Recipe.BREAD
                 ? inventory.count(ItemClass.FOOD) + inventory.count(ItemClass.WHEAT) / 3
+                : r == Recipe.COPPER_INGOT ? inventory.count(ItemClass.COPPER_INGOT) + inventory.count(ItemClass.RAW_COPPER)
+                : r == Recipe.IRON_INGOT ? inventory.count(ItemClass.IRON_INGOT) + inventory.count(ItemClass.RAW_IRON)
                 : kitWanted.computeIfAbsent(r, k -> Stock.of(inventory).count(k) + 1)));
         return items;
     }

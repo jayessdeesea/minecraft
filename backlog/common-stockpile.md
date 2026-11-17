@@ -37,8 +37,8 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
      and the stash shown in the mine base's site line.
   2. *The haul.* The stash brought up in one big batch - one soldier, a full pack of ore - to the
      surface depot's chests, at dawn when the squads come up anyway.
-  3. *The smelter.* Someone draws raw ore and fuel from the depot, smelts it at its furnace, and puts
-     the ingots back in a chest.
+  3. *The smelter* - built (docs/military-doctrine.md § 4, the keep's smelter). What's left: coal
+     kept in the chests and drawn for its fuel, and a smelter for a squad away from the keep.
   4. *The crafter.* Ingots drawn and turned into the ladder's next rung - armour, weapons, tools -
      for whoever is short, the iron pickaxe first.
   Today one soldier does all four for its own kit, and only from what it carries: raw ore stays in
@@ -49,8 +49,6 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
 - A furnace's output left in it: 4 copper ingots sat in the camp's furnace (field300).
 - A mine said dried up (`[Outcome]`, built) is worked again: a new level of tunnels off its stairs
   (copper is commonest about y=48) or a new mine; and a squad sent to it for iron isn't told DONE.
-- A smelter (link 3 above) is wanted now: field302's farm squad walked between a table with no
-  furnace by it, a furnace 22 blocks off, and a table 50 off, for copper leggings never made.
 
 ## Done when
 - A miner follows a vein - the ore behind the ore it took - not only the faces its cuts touch.
