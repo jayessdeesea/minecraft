@@ -230,7 +230,7 @@ public final class Clearer {
         // Nothing on the ground reaches: the top layer from the air, on steps it builds - only with
         // blocks to build them of. Live, a hilltop over the keep stood while its builders stood under it.
         if (cut.isEmpty() && !tunnel && strip.isPresent() && inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.COBBLESTONE) > 0) {
-            cut = Clearing.fromTheAir(world, cover, excluded, within);
+            cut = Clearing.fromTheAir(world, cover, excluded, within, steps);
             cut.ifPresent(c -> LOG.info("{} builds up to the top of its strip to cut {} from {}", name, c.block(), c.stand()));
         }
         if (cut.isEmpty()) {

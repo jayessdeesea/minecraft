@@ -163,6 +163,41 @@ class ClearingTest {
         }
     };
 
+    /**
+     * A step the force put up to reach the top is no top to reach from the air: live (field301), a
+     * builder was sent for its own step from the other side, put another, and went back for the first.
+     */
+    @Test
+    void fromTheAirNeverAimsAtTheForcesOwnStep() {
+        BlockPos step = new BlockPos(3, 66, 2);
+        WorldView withStep = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return MOUND.isSolid(x, y, z) || step.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return MOUND.isSoil(x, y, z) || step.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        List<BlockPos> cover = Clearing.toClear(withStep, SKY, Set.of());
+
+        assertEquals(step, Clearing.fromTheAir(withStep, cover, Set.of(), s -> true).orElseThrow().block(), "unknowing, the step is the top");
+        assertEquals(new BlockPos(2, 65, 2), Clearing.fromTheAir(withStep, cover, Set.of(), s -> true, step::equals).orElseThrow().block(),
+                "knowing its step, the ground's top");
+    }
+
     @Test
     void highGroundIsDugFromTheTopDown() {
         assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(-2, 64, -2), new BlockPos(2, 64, 2)),

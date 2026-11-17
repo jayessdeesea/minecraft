@@ -124,7 +124,15 @@ like mine, and they don't return with results, we need to dig into why"). A task
 produce any more says so - a mine dried up is reported, not read as DONE night after night. Live,
 the keep's mine read DONE for days on about 18 ores in all, and copper for four soldiers' armour
 sat in chests no draw looked in; nothing said so until the operator saw soldiers without armour.
-A check is a logged `[Outcome]` line, read in every live check with the alerts.
+Each such task has a model of perfect - the flatten's level: its blocks over the crew's best dig
+rate (`command.LevelPace`); the mine's night: ore for the tunnel cut at its depth; a farm: wheat per
+plot per growth; a grove: logs per tree per regrowth - and its outcome is said as a share of it.
+Under 90% it's SHORT, says where the time or the yield went, and the biggest loss is traced to a
+soldier and a cause before it's taken for the ground's: live, the flatten's levels read 3% with
+"waiting, no rectangle" 65% all evening, taken for sparse hilltop levels, while the one builder the
+level was dealt to went back and forth between two steps for two minutes. A check is a logged
+`[Outcome]` line (the flatten's is its `[Keep] pace` line), read in every live check with the
+alerts.
 
 ## Profile every sixteenth commit
 

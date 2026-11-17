@@ -311,7 +311,19 @@ public final class Clearing {
      * body. Its steps are dirt in the dig, and come down top first. Empty when there's none.
      */
     public static Optional<Cut> fromTheAir(WorldView world, List<BlockPos> cover, Set<BlockPos> excluded, Predicate<BlockPos> within) {
-        int top = cover.stream().filter(b -> !excluded.contains(b) && diggable(world, b.x(), b.y(), b.z())
+        return fromTheAir(world, cover, excluded, within, step -> false);
+    }
+
+    /**
+     * As {@link #fromTheAir(WorldView, List, Set, Predicate)}, never for one of the force's own
+     * {@code steps}: a step put up to reach the top is no top to reach. Live (field301), a builder on a
+     * dirt tower two wide put a step to cut its top, was sent for that step from the other side, put
+     * another, and went back for the first - two cells in turn for two minutes, the whole crew waiting
+     * on the level. The steps come down with the ground under them (Clearing#next).
+     */
+    public static Optional<Cut> fromTheAir(WorldView world, List<BlockPos> cover, Set<BlockPos> excluded, Predicate<BlockPos> within,
+                                           Predicate<BlockPos> steps) {
+        int top = cover.stream().filter(b -> !excluded.contains(b) && !steps.test(b) && diggable(world, b.x(), b.y(), b.z())
                         && !world.isLog(b.x(), b.y(), b.z()) && world.leaves(b.x(), b.y(), b.z()).isEmpty())
                 .mapToInt(BlockPos::y).max().orElse(Integer.MIN_VALUE);
         if (top == Integer.MIN_VALUE) {
@@ -319,7 +331,7 @@ public final class Clearing {
         }
         int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
         for (BlockPos block : cover) {
-            if (block.y() != top || excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())
+            if (block.y() != top || excluded.contains(block) || steps.test(block) || !diggable(world, block.x(), block.y(), block.z())
                     || world.isSolid(block.x(), block.y() + 1, block.z())) {
                 continue;
             }
