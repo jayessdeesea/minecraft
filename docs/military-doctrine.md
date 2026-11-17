@@ -317,7 +317,9 @@ so the reserve is refilled before it's an emergency (operator, 2026-11-17: an em
 to change; live, the party went out at 3 logs and was one builder); at the most none does. The
 party cuts where a keep squad last saw trees, a tree at a time, felled whole as the level is dug -
 its logs and crown in a box of their own, only the wood in it dug, highest first, steps put up the
-trunk to reach - and then those steps dug out, so nothing's left to stunt what grows there next
+trunk to reach - and then those steps dug out, so nothing's left to stunt what grows there next; a
+tree no log comes off in three minutes - a trunk left floating over the mine's shaft - is let go and
+not handed out again
 (`SoldierRunner.fellingDig`; operator, 2026-11-17: get all the wood, so the trees fall, so you get
 saplings and replant; remove the scaffolding you added - live, cutters took what was in reach and
 walked on, the tops and the leaves left). A squad gathering wood fells each tree it starts whole the

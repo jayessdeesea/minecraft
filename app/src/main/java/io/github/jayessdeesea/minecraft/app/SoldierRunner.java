@@ -3589,6 +3589,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Set<BlockPos>> felling = new ConcurrentHashMap<>();
     /** How far across from its first log a tree's logs are taken in: an oak's or a spruce's spread. */
     static final int TREE_ACROSS = 4;
+    /** Logs left on each cutter's tree when last one came off, and when - its patience with it. */
+    private final Map<String, Integer> fellingLeft = new ConcurrentHashMap<>();
+    private final Map<String, Long> fellingSince = new ConcurrentHashMap<>();
+    /** Trees let go as out of reach: never handed out again this run. */
+    private final Set<BlockPos> treesLeft = ConcurrentHashMap.newKeySet();
+    /** How long a cutter works a tree with no log coming off it before it's let go. */
+    static final long TREE_PATIENCE_MILLIS = 180_000;
     /** The stump each keep cutter replants before its next tree - squad loops write, the planting map reads. */
     private final Map<String, BlockPos> keepStumps = new ConcurrentHashMap<>();
     private final Map<String, Long> keepStumpSince = new ConcurrentHashMap<>();
@@ -3625,6 +3632,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         Set<BlockPos> tree = felling.get(cutter);
+        // A tree nobody can reach - a trunk left floating over the mine's shaft - is let go once no log has
+        // come off it a while, and never handed out again: live (field377-379), Jack and then Dana were each
+        // sent to the logs at y=76-78 over the shaft at the mine's head, air under them to y=70, and stood.
+        long now = clockwork.millis();
+        if (tree != null) {
+            int left = (int) tree.stream().filter(c -> world.isLog(c.x(), c.y(), c.z())).count();
+            Integer was = fellingLeft.get(cutter);
+            if (was == null || left < was) {
+                fellingLeft.put(cutter, left);
+                fellingSince.put(cutter, now);
+            } else if (left > 0 && now - fellingSince.getOrDefault(cutter, now) > TREE_PATIENCE_MILLIS) {
+                LOG.warn("[Keep] {} leaves the tree at {}: no log off it in {} s - out of reach", cutter,
+                        tree.stream().min(Comparator.comparingInt(BlockPos::y)).orElseThrow(), TREE_PATIENCE_MILLIS / 1000);
+                treesLeft.addAll(tree);
+                felling.remove(cutter);
+                fellingLeft.remove(cutter);
+                tree = null;
+            }
+        }
         boolean standing = tree != null && tree.stream().anyMatch(c -> world.isLog(c.x(), c.y(), c.z()));
         Box held = tree == null ? null : treeBox(tree);
         boolean steps = held != null && !standing && scaffolding.stream().anyMatch(c -> held.contains(c.x(), c.y(), c.z())
@@ -3648,6 +3674,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 return Optional.empty();
             }
             felling.put(cutter, tree);
+            fellingLeft.put(cutter, tree.size());
+            fellingSince.put(cutter, now);
             box = treeBox(tree);
             standing = true;
             LOG.info("[Keep] {} fells the tree at {}: {} log(s), dug as {}", cutter, tree.stream().min(Comparator.comparingInt(BlockPos::y)).orElseThrow(),
@@ -3686,7 +3714,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             for (int z = az - TREE_LOOK; z <= az + TREE_LOOK; z++) {
                 for (int y = ay - TREE_LOOK; y <= ay + TREE_LOOK; y++) {
                     double d = Math.hypot(x - ax, z - az) + Math.abs(y - ay) * 0.5;
-                    if (d < bestDistance && world.isLog(x, y, z)) {
+                    if (d < bestDistance && world.isLog(x, y, z) && !treesLeft.contains(new BlockPos(x, y, z))) {
                         best = new BlockPos(x, y, z);
                         bestDistance = d;
                     }
