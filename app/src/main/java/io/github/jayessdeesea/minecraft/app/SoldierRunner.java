@@ -479,6 +479,38 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * and the stuck alarm and the recovery drill take it from there. Live, a builder put one step
      * every tick for four minutes, 700 times, standing in the cell it was putting it in.
      */
+    /**
+     * Whether another soldier's body is in {@code cell}, so the server won't place a block there: the
+     * step waits for it to move, not sent to be refused. Live (field333), Bob pillared up into the
+     * cell Alice stood in at the hill's top, and his step was refused and read as the model's fault -
+     * "a refused step at air". Said once each time the one in the way changes.
+     */
+    private boolean bodyIn(String name, BlockPos cell) {
+        Optional<String> in = activeSoldiers.entrySet().stream().filter(e -> !e.getKey().equals(name))
+                .filter(e -> overlaps(e.getValue().status().position(), cell)).map(Map.Entry::getKey).findFirst();
+        String was = bodyInTheWay.get(name);
+        if (in.isPresent() && !in.get().equals(was)) {
+            LOG.info("[{}] its step at {} {} {} waits for {} to move out of it", name, cell.x(), cell.y(), cell.z(), in.get());
+        }
+        if (in.isPresent()) {
+            bodyInTheWay.put(name, in.get());
+        } else {
+            bodyInTheWay.remove(name);
+        }
+        return in.isPresent();
+    }
+
+    /** Whether a player's body - 0.6 across, 1.8 high, feet at {@code feet} - is in {@code cell}. */
+    static boolean overlaps(Position feet, BlockPos cell) {
+        double half = 0.3;
+        return feet.x() + half > cell.x() && feet.x() - half < cell.x() + 1
+                && feet.z() + half > cell.z() && feet.z() - half < cell.z() + 1
+                && feet.y() + 1.8 > cell.y() && feet.y() < cell.y() + 1;
+    }
+
+    /** Whose body each soldier's step last waited on, by name. */
+    private final Map<String, String> bodyInTheWay = new ConcurrentHashMap<>();
+
     private boolean refusedStep(String name, BlockPos cell) {
         long now = clockwork.millis();
         Object[] last = lastStep.get(name);
@@ -7125,7 +7157,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Cobblestone stands in for whatever went in, dirt included, until the server's update says which.
             // A torch in the cell is broken first - it goes at a touch, and the server won't put a block
             // where one is: live, a soldier pillaring out of a pocket from a torch's cell jumped in place for good.
-            soldier.takePlacement().filter(cell -> !refusedStep(name, cell)).ifPresent(cell -> {
+            soldier.takePlacement().filter(cell -> !bodyIn(name, cell)).filter(cell -> !refusedStep(name, cell)).ifPresent(cell -> {
                 if (world.isTorch(cell.x(), cell.y(), cell.z())) {
                     session.startDigging(cell.x(), cell.y(), cell.z());
                     session.finishDigging(cell.x(), cell.y(), cell.z());

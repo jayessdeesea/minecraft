@@ -32,7 +32,9 @@ grass_block SOIL under it", while she stood at y=66 on it. No stand-in was taken
 ("[World] ... stand-in block(s) ... taken back" never logged), so it's a block update missed or
 misread, not a placement the model rolled back. Most "refused step at air" lines in `[Blocks]`
 (10 in that run) are likely this. A refused step at a cell the model has open could be taken as
-the server's word that it's solid, and the model told so.
+the server's word that it's solid, and the model told so. Not every one: a squadmate's body in the cell is refused
+too (field333, Bob pillaring into the cell Alice stood in), and a step now waits for a body in its
+cell to move rather than being sent ("[Bob] its step at ... waits for Alice to move out of it").
 
 ## Done when
 - The cause is found and a test shows it: which change the server made that the model missed.
