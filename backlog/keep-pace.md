@@ -87,7 +87,9 @@ crew's ticks:
   the miners (07:02-07:41) while walkers put their route steps into it ("[Dana] its step at
   -27 62 -25 keeps being refused"): soldiers crossing the shaft's open top build into the stairs'
   own cells, and some stay. Built: no route builds in a staircase's steps (WorldView.noBuild).
-  Left: the cutter clearing the stairs from the head down when it finds them blocked. Separately, the camp's stairs are kept on disk twice - "to
+  Left: the cutter clearing the stairs from the head down when it finds them blocked - field316,
+  steps 6-10 (y=63-59) solid for minutes while Gus stood stranded at y=0, a 188-block stair up laid
+  out for him, then cleared. Separately, the camp's stairs are kept on disk twice - "to
   y=24" by Bravo's miner, "to y=16" by Alpha - two plans for one shaft.
 - **A way out cut sideways from a pocket under the ground (field287).** Three soldiers sent into a
   pit by the camp's chest at (-46..-48, 70-71, 40-42), three under the camp's ground, were taken for

@@ -601,6 +601,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final WallStore wallStore;
     /** The camp's farm, kept on disk like the wall: sited again after a restart, it moved to another pond. */
     private final WallStore farmStore;
+    /** The chests found full, kept on disk: live, after every restart the crew found each again by a failed trip. */
+    private final WallStore chestStore;
     /**
      * The camp's mine - its staircase, as its head and its last step's feet - kept on disk like the
      * wall. After a restart the same staircase is cut on down, not sited afresh: live, sited again
@@ -1150,6 +1152,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (!fullChests.add(cell)) {
             return;
         }
+        saveFullChests();
         List<BlockPos> row = shop.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS);
         Optional<BlockPos> free = row.stream().filter(c -> !fullChests.contains(c)).findFirst();
         if (free.isEmpty()) {
@@ -1165,8 +1168,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         LOG.info("[Workshop] the chest at {} is full - the next goes up at {} ({} of {})", cell, free.get(), row.indexOf(free.get()) + 1, row.size());
     }
 
-    /** Workshop chests found full - ticks add, squad loops read. */
+    /** Workshop chests found full - ticks add, squad loops read; kept on disk, and one a load went into since taken off. */
     private final Set<BlockPos> fullChests = ConcurrentHashMap.newKeySet();
+    /** The key the full chests are kept under. */
+    private static final String FULL_CHESTS = "full";
+
+    /** The full chests to disk, as they are now. */
+    private void saveFullChests() {
+        // One write at a time: soldiers' ticks find chests full on threads of their own.
+        synchronized (chestStore) {
+            chestStore.save(FULL_CHESTS, List.copyOf(fullChests));
+        }
+    }
 
     /** What each surface chest held when a load last went in: the stockpile is all of them, not one. */
     private final Map<BlockPos, Stockpile> chestsSeen = new ConcurrentHashMap<>();
@@ -1242,7 +1255,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     private void depotChestFull(Position full) {
         // Known full, whatever comes next: no load is taken to it again (the depositor's notFull).
-        fullChests.add(BlockPos.containing(full.x(), full.y(), full.z()));
+        if (fullChests.add(BlockPos.containing(full.x(), full.y(), full.z()))) {
+            saveFullChests();
+        }
         synchronized (keepPlanLock) {
             List<BlockPos> cells = keepChests;
             int at = keepChestAt;
@@ -1355,6 +1370,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.wallStore = new WallStore(Path.of(stateDir));
         this.farmStore = new WallStore(Path.of(stateDir), "farm");
         this.mineStore = new WallStore(Path.of(stateDir), "stairs");
+        this.chestStore = new WallStore(Path.of(stateDir), "chests");
+        chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
         this.planBook = new PlanBook(Path.of(stateDir));
         this.scoreboard = new Scoreboard(Path.of(stateDir));
         this.camp = camp.isBlank() ? null : Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
@@ -6003,6 +6020,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt)
                         .ifPresent(chest -> chestsSeen.put(BlockPos.containing(chest.x(), chest.y(), chest.z()), seen));
+                // A load went in - its trip didn't end full - so the chest has room: no longer known full.
+                Optional.ofNullable(stashing.get()).filter(d -> d.full().isEmpty()).flatMap(Depositor::chestAt)
+                        .map(chest -> BlockPos.containing(chest.x(), chest.y(), chest.z()))
+                        .filter(fullChests::remove).ifPresent(chest -> saveFullChests());
                 List<Stockpile> chests = List.copyOf(chestsSeen.values());
                 chainOfCommand.onStores(new Stockpile(chests.stream().mapToInt(Stockpile::logs).sum(),
                         chests.stream().mapToInt(Stockpile::stone).sum(), chests.stream().mapToInt(Stockpile::rations).sum(),

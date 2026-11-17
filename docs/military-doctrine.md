@@ -219,7 +219,9 @@ its west edge, evenly spread (`Flatten.depots`) - three for x=-16..16 z=-64..64,
 chests. A builder's load goes into the depot nearest it, and its chest is fitted there; draws -
 food, logs, tools - are from the main depot, whose chests hold the stores.
 No load is taken to a chest known full (live, with the depots' rows full of cobblestone, the crew's
-ticks were 38% failed trips). Cobblestone and dirt past 4,096 of either across the surface chests
+ticks were 38% failed trips) - known across restarts, kept on disk (`chests/full`), and no longer
+full once a load goes into it (live, after every restart the crew found each full chest again by a
+failed trip, a third of its ticks). Cobblestone and dirt past 4,096 of either across the surface chests
 seen - each read when a load goes in, or when it's opened and found full (operator, 2026-11-16) - or either once every chest a builder could go to is full, is left at
 its depot's dump, not carried in: ground five blocks west of the stand, off the site and clear of
 the chests. A builder throws down every stack of it there but one of each kind, kept for steps,
