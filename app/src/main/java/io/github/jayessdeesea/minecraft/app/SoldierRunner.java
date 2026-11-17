@@ -993,6 +993,30 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final long STAIRS_RETRY_MILLIS = 60_000;
     /** How far above or below its objective a soldier may be for its squad's survey to be taken from it. */
     static final int SURVEY_FROM_HEIGHT = 16;
+    /**
+     * The ground's height at the column nearest ({@code x}, {@code z}) within {@link #GROUND_NEAR} it
+     * can be read at, from the sky down - a site's own column may be water, or a hazard at its top.
+     * Empty when none round it reads.
+     */
+    private OptionalInt groundNear(int x, int z) {
+        for (int r = 0; r <= GROUND_NEAR; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r || !world.isLoaded(x + dx, z + dz)) {
+                        continue;
+                    }
+                    Optional<BlockPos> at = TerrainSurveyor.surface(world, x + dx, z + dz, Keep.SKY_TOP);
+                    if (at.isPresent()) {
+                        return OptionalInt.of(at.get().y());
+                    }
+                }
+            }
+        }
+        return OptionalInt.empty();
+    }
+
+    /** How far round a site its ground is looked for. */
+    static final int GROUND_NEAR = 8;
     /** How far under the ground at its site a kept mine's head may be before it reads sited from below. */
     static final int BURIED_HEAD = 16;
 
@@ -4945,8 +4969,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // (field334), with the squad down the old mine at y=-23, the new mine's head was sited there,
             // one step over its bottom, in the old one's tunnels.
             boolean atCamp = campGround != null && Math.hypot(campGround.x() - x, campGround.z() - z) <= 2 * Staircase.SITE_RADIUS;
-            OptionalInt surfaceY = atCamp ? OptionalInt.of(campGround.y())
-                    : TerrainSurveyor.surface(world, x, z, Keep.SKY_TOP).map(b -> OptionalInt.of(b.y())).orElse(OptionalInt.empty());
+            OptionalInt surfaceY = atCamp ? OptionalInt.of(campGround.y()) : groundNear(x, z);
             // A site on the ground says where, not how deep: down to the iron. Live, a miner's site at
             // the camp's height was taken for its depth, and three miners stood over one step.
             int asked = (int) Math.floor(o.location().y());
@@ -4965,14 +4988,33 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // Its own level first, kept by squad; else the mine's stairs, and a level of its own off them.
                 Optional<Staircase> own = keptMine(levelKey(x, z, squadName));
                 kept = own.isPresent() ? own : keptMine("mine" + x + "," + z).map(shared -> ownLevel(shared, squadName, x, z));
-                // One kept with its head far under the ground there was sited from below it, and is let go.
-                if (kept.isPresent() && surfaceY.isPresent() && kept.get().head().y() < surfaceY.getAsInt() - BURIED_HEAD) {
-                    LOG.warn("[{}] MINE: the staircase kept on disk for x={} z={} heads at y={}, {} under the ground there at y={} - let go, sited again",
-                            squadName, x, z, kept.get().head().y(), surfaceY.getAsInt() - kept.get().head().y(), surfaceY.getAsInt());
-                    mineStore.save(levelKey(x, z, squadName), List.of());
-                    mineStore.save(mineKey(levelKey(x, z, squadName), true), List.of());
-                    mineStore.save(mineKey("mine" + x + "," + z, true), List.of());
-                    mineStore.save("mine" + x + "," + z, List.of());
+            }
+            // One kept with its head far under the ground over it was sited from below - the camp's or
+            // another - and is let go, every squad's level off it too. Read over the head itself: a
+            // shaft is open over its head, a buried head has the rock over it. Live (field338), the
+            // keep's mine moved near the camp and was kept as the camp's, its head at y=-23.
+            if (kept.isPresent()) {
+                BlockPos head = kept.get().head();
+                Optional<BlockPos> over = TerrainSurveyor.surface(world, head.x(), head.z(), Keep.SKY_TOP);
+                if (over.isPresent() && head.y() < over.get().y() - BURIED_HEAD) {
+                    LOG.warn("[{}] MINE: the staircase kept on disk heads at {}, {} under the ground over it at y={} - let go, sited again",
+                            squadName, head, over.get().y() - head.y(), over.get().y());
+                    List<String> keys = new ArrayList<>(List.of("mine" + x + "," + z));
+                    roster.squads().forEach(sq -> {
+                        keys.add(levelKey(x, z, sq.name()));
+                        keys.add(levelKey(x, z, sq.name() + " second"));
+                    });
+                    if (camp != null) {
+                        keys.add(camp[0] + "," + camp[1]);
+                    }
+                    keys.forEach(k -> {
+                        mineStore.save(k, List.of());
+                        mineStore.save(mineKey(k, true), List.of());
+                    });
+                    if (campStairs != null && campStairs.filter(c -> c.head().equals(head)).isPresent()) {
+                        campStairs = Optional.empty();
+                    }
+                    squadStairs.entrySet().removeIf(e -> e.getValue().head().equals(head));
                     kept = Optional.empty();
                 }
             }
