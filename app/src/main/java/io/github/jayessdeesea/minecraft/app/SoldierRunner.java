@@ -5105,7 +5105,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // reached, and a body on it shuts its lid. Live, the farm squad's soldier was sent
                     // onto the chest beside the camp's stockpile, failed five walks to it in a row, and
                     // stood with its load.
-                    if (!reachable.contains(cell) || !Depositor.withinReach(centre, chest) || world.isChest(cell.x(), cell.y() - 1, cell.z())) {
+                    // In reach wherever in the stand the walk stops - 0.3 of its centre - not only from its
+                    // centre: live, a walk ended 3.5 blocks off, a hair past reach, and the load wasn't put in.
+                    boolean reachedFromAll = Depositor.withinReach(new Position(centre.x() - 0.3, centre.y(), centre.z() - 0.3), chest)
+                            && Depositor.withinReach(new Position(centre.x() + 0.3, centre.y(), centre.z() - 0.3), chest)
+                            && Depositor.withinReach(new Position(centre.x() - 0.3, centre.y(), centre.z() + 0.3), chest)
+                            && Depositor.withinReach(new Position(centre.x() + 0.3, centre.y(), centre.z() + 0.3), chest);
+                    if (!reachable.contains(cell) || !reachedFromAll || world.isChest(cell.x(), cell.y() - 1, cell.z())) {
                         continue;
                     }
                     double distance = Math.hypot(centre.x() - from.x(), centre.z() - from.z()) + Math.abs(centre.y() - from.y());
