@@ -1514,7 +1514,9 @@ who fight. Where a rule of a clearing below meets the standard, it says which pa
 Level by level, in lock step, planned by the keep's foreman (`command.LevelPlan`, operator
 2026-11-14): one soldier the squad leader appoints - the first builder of the first squad on the
 keep, again whenever that one is off it. The site's level is the highest ground left anywhere on
-it, and nobody digs lower till it's gone, so the site comes down as one flat floor: nobody climbs
+it - read live from the world over the site's scan, a column cut since followed down a few blocks
+to what's left of it (`SoldierRunner.LIVE_TOP_DROP`), not dropped, so a tower being cut doesn't
+drop the level and raise it again at each block - and nobody digs lower till it's gone, so the site comes down as one flat floor: nobody climbs
 over a neighbour's ground. A builder's own step or pillar (`SoldierRunner.scaffolding`), and a
 tree's logs and leaves, are no ground and don't set the level - counted as the highest, it held every builder at its level for
 one block while eight stood by - but every level shares out any step standing at or over it with

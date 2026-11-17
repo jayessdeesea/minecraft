@@ -2627,10 +2627,26 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // each rectangle it finished ("clearer idle, nothing to cut", an eighth of the crew's
             // ticks); read live for the level's columns but not for the level, the level went 79, 78,
             // 79, 78 in seconds, a squad with an older scan dealing it again each time.
+            // A column whose top was cut since the scan is followed down to what's left of it, not
+            // dropped: the scan is up to a second old, and live (field294) a dirt tower in the bench's
+            // outer rows, cut a block at a time, dropped out at each cut - the level fell from y=88 to
+            // 74, was dealt out, and came back up at the next scan, a dozen times in a minute.
             java.util.function.IntBinaryOperator calm = (x, z) -> {
                 int t = top.applyAsInt(x, z);
-                return fights.stream().anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR)
-                        || t != Integer.MIN_VALUE && world.isLoaded(x, z) && !world.isSolid(x, t, z) ? Integer.MIN_VALUE : t;
+                if (fights.stream().anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR)) {
+                    return Integer.MIN_VALUE;
+                }
+                if (t == Integer.MIN_VALUE || !world.isLoaded(x, z) || world.isSolid(x, t, z)) {
+                    return t;
+                }
+                int row = Math.max(0, Math.max(Math.max(dug.minX() - x, x - dug.maxX()), Math.max(dug.minZ() - z, z - dug.maxZ())));
+                int lowest = Math.max(dug.minY() + row, t - LIVE_TOP_DROP);
+                for (int y = t - 1; y >= lowest; y--) {
+                    if (world.isSolid(x, y, z)) {
+                        return y;
+                    }
+                }
+                return Integer.MIN_VALUE;
             };
             java.util.function.IntBinaryOperator calmStep = (x, z) -> {
                 int t = stepTop.applyAsInt(x, z);
@@ -3136,6 +3152,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** A builder's standard share of a level, the crew sized from it: one builder to a level of 24 blocks or fewer. */
     static final int BLOCKS_A_BUILDER = 24;
+    /** How far down a column whose top was cut since the site's scan is followed live: a scan's few cuts. */
+    static final int LIVE_TOP_DROP = 4;
     /** Blocks left in one builder's rectangles worth splitting with one that has none: half each, a share or two. */
     static final int SPLIT_AT = 4 * LevelPlan.MIN_SHARE;
     /** Blocks over the site's highest a rectangle reaches: a step put up over it after the plan is still dug from its top. */
