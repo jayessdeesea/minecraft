@@ -43,6 +43,9 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
    (docs/military-doctrine.md, contact). Left: a hostile not on the path and not targeting
    carried past - a melee hostile in contact is closed on today whatever it's doing.
 2. The order fields and their defaults through Order, the squad leader and the soldier.
+   And the cell "both can reach, blocking the path": a creeper in a one-wide mine tunnel can't be
+   gone round, and backing off only holds the distance - live (field320), Eli stood a minute 2.9
+   blocks from one at y=24. Engage it (strike, or shoot), as the doctrine's both-reach cell says.
 3. Contact and capability-gap reports, and the sergeant's answer to repeated gaps.
 
 ## To verify first

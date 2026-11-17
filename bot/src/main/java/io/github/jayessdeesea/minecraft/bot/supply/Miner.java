@@ -262,7 +262,11 @@ public final class Miner {
         if (seen.isEmpty()) {
             // The vein done: what it took out of the well's walls put back, last taken first, and the holes
             // it found filled - each against a solid face, in cobblestone, else dirt.
-            refill.removeIf(c -> world.isSolid(c.x(), c.y(), c.z()) || world.isHazard(c.x(), c.y(), c.z()) || !reach(from, c));
+            // Never into a cell the force keeps open - another squad's stairs or tunnels (WorldView.noBuild):
+            // live (field319), a step of the stairs under a squad's level was found solid, and two
+            // soldiers stood above it with no way down to theirs.
+            refill.removeIf(c -> world.isSolid(c.x(), c.y(), c.z()) || world.isHazard(c.x(), c.y(), c.z()) || !reach(from, c)
+                    || world.noBuild(c.x(), c.y(), c.z()));
             Optional<BlockPos> hole = refill.isEmpty() ? Optional.empty() : Optional.of(refill.getLast());
             Optional<BlockFace> face = hole.flatMap(h -> faceOf(world, h));
             if (hole.isPresent() && refillTicks.merge(hole.get(), 1, Integer::sum) > ORE_PATIENCE_TICKS) {

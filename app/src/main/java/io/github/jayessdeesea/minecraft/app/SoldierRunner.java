@@ -1448,6 +1448,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             java.util.function.Consumer<Staircase> keep = st -> st.cuts().stream().filter(c -> c.tunnel() < 0)
                     .forEach(c -> stairsOpen.addAll(c.cells()));
             squadStates.values().forEach(st -> Optional.ofNullable(st.stairs).ifPresent(keep));
+            squadStates.values().forEach(st -> Optional.ofNullable(st.second).ifPresent(keep));
             campStairs().ifPresent(keep);
             world.keepOpen(stairsOpen);
         });
@@ -5400,7 +5401,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (stand.isEmpty() && depositors.containsKey(soldierName)) {
                 SoldierStatus self = statuses.get(i);
                 Depositor own = depositors.get(soldierName);
-                stand = own.dumping() ? own.standAt() : own.standAt().map(chest -> chestStand(self.position(), chest).orElse(chest));
+                stand = own.dumping() ? own.standAt() : own.standAt().map(chest -> chestStand(self.position(), chest).orElseGet(() -> noStandFor(chest)));
             }
             if (stand.isEmpty()) {
                 stand = storeWalks.getOrDefault(soldierName, Optional.empty());
@@ -5460,7 +5461,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         Optional<Position> here = statuses.stream().filter(s -> s.name().equals(soldier)).findFirst().map(SoldierStatus::position);
         Depositor own = depositors.get(soldier);
-        return own.dumping() ? own.standAt() : own.standAt().map(chest -> here.flatMap(h -> chestStand(h, chest)).orElse(chest));
+        return own.dumping() ? own.standAt() : own.standAt().map(chest -> here.flatMap(h -> chestStand(h, chest)).orElseGet(() -> noStandFor(chest)));
+    }
+
+    /**
+     * Where to make for, for a chest no stand was found for from where the soldier is: a mine's
+     * chest's landing - the stand its store is reached from - else the chest's own cell. Never into a
+     * mine's chest: live (field319), a soldier on the stairs above a mine's stash was ordered into
+     * the stash's own cell, "no route", and stood.
+     */
+    private Position noStandFor(Position chest) {
+        return mineOfChest(chest).map(m -> centre(m.landingStand())).orElse(chest);
     }
 
     private Optional<Position> chestStand(Position from, Position chest) {
