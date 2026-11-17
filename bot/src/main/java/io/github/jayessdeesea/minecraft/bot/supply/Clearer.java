@@ -224,13 +224,19 @@ public final class Clearer {
                 inventory.slotOf(ItemClass.PICKAXE) >= 0).keySet();
         Predicate<BlockPos> within = s -> strip.map(b -> s.x() >= b.minX() && s.x() <= b.maxX() && s.z() >= b.minZ() && s.z() <= b.maxZ())
                 .orElse(true);
-        Predicate<BlockPos> standable = s -> reachable.contains(s) && stands.test(world, s) && within.test(s);
+        // A stand in the air beside its strip's edge is its own: the rectangles keep the blocks apart,
+        // not where their builders stand. Live (field304), a tower's last block, one column wide, was
+        // a rectangle of one cell with every stand beside it outside, and went from builder to builder
+        // as each timed out.
+        Predicate<BlockPos> beside = s -> strip.map(b -> s.x() >= b.minX() - 1 && s.x() <= b.maxX() + 1
+                && s.z() >= b.minZ() - 1 && s.z() <= b.maxZ() + 1).orElse(true);
+        Predicate<BlockPos> standable = s -> reachable.contains(s) && stands.test(world, s) && beside.test(s);
         Optional<Clearing.Cut> cut = tunnel ? Clearing.nextInTunnel(world, cover, soldier, excluded, standable)
                 : Clearing.next(world, cover, soldier, excluded, standable, steps);
         // Nothing on the ground reaches: the top layer from the air, on steps it builds - only with
         // blocks to build them of. Live, a hilltop over the keep stood while its builders stood under it.
         if (cut.isEmpty() && !tunnel && strip.isPresent() && inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.COBBLESTONE) > 0) {
-            cut = Clearing.fromTheAir(world, cover, excluded, within, steps);
+            cut = Clearing.fromTheAir(world, cover, excluded, beside, steps);
             cut.ifPresent(c -> LOG.info("{} builds up to the top of its strip to cut {} from {}", name, c.block(), c.stand()));
         }
         if (cut.isEmpty()) {
