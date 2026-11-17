@@ -239,7 +239,7 @@ public final class Armourer {
                 toStation = null;
                 made(crafter.tick(soldier, world, items, false));
             } else if (cooldown == 0) {
-                walkToStation(soldier, world, workshop);
+                walkToStation(soldier, world, workshop, plan);
             }
             return false;
         }
@@ -253,9 +253,18 @@ public final class Armourer {
         return false;
     }
 
-    /** Walks to beside the nearest usable station a walk away - a furnace first, the scarcer - and not yet in reach. */
-    private void walkToStation(Position soldier, WorldView world, Optional<Workshop> workshop) {
+    /**
+     * Walks to beside the nearest usable station a walk away that {@code plan} makes something at - a
+     * furnace first, the scarcer - and not yet in reach. Only one it needs: live (field332), Bob,
+     * making copper ingots, walked to a table beside the mine head, and once in its reach went on to
+     * the workshop instead, and back to the table again out of it - five minutes between the two.
+     */
+    private void walkToStation(Position soldier, WorldView world, Optional<Workshop> workshop, CraftPlan plan) {
+        Set<Workstation> needed = needed(plan);
         for (Workstation station : List.of(Workstation.FURNACE, Workstation.CRAFTING_TABLE)) {
+            if (!needed.contains(station)) {
+                continue;
+            }
             Optional<BlockPos> at = crafter.nearestUsable(world, soldier, station, Digger.SEARCH_RADIUS);
             if (at.isEmpty() || crafter.usableInReach(world, soldier, station)) {
                 continue;
@@ -287,6 +296,20 @@ public final class Armourer {
             return;
         }
         giveUp("no table or furnace to use within " + Digger.SEARCH_RADIUS + " blocks, and not the makings of one");
+    }
+
+    /** The stations {@code plan}'s sessions are made at. */
+    static Set<Workstation> needed(CraftPlan plan) {
+        Set<Workstation> needed = EnumSet.noneOf(Workstation.class);
+        for (CraftPlan.Session session : plan.sessions()) {
+            switch (session.station()) {
+                case TABLE -> needed.add(Workstation.CRAFTING_TABLE);
+                case FURNACE -> needed.add(Workstation.FURNACE);
+                case GRID -> {
+                }
+            }
+        }
+        return needed;
     }
 
     public synchronized void onContainer(ContainerUpdate update) {

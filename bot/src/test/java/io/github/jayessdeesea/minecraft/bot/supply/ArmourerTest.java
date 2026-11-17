@@ -1,12 +1,16 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
+import io.github.jayessdeesea.minecraft.bot.craft.CraftPlan;
+import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.world.Workstation;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -54,5 +58,15 @@ class ArmourerTest {
         assertEquals(Optional.empty(), Armourer.spotFor(world(Set.of(BURIED)), feet, Set.of(), Digger.Target.IRON_ORE));
         Digger.Spot spot = Armourer.spotFor(world(Set.of(BURIED, SURFACE)), feet, Set.of(), Digger.Target.IRON_ORE).orElseThrow();
         assertEquals(SURFACE, spot.block(), "the ore on the surface, the one it can walk to");
+    }
+
+    @Test
+    void aStationWalkedToIsOneThePlanMakesSomethingAt() {
+        CraftPlan ingots = new CraftPlan(List.of(new CraftPlan.Session(Recipe.Station.FURNACE,
+                List.of(new CraftPlan.Batch(Recipe.COPPER_INGOT, 1)))), Map.of(), Set.of());
+        assertEquals(Set.of(Workstation.FURNACE), Armourer.needed(ingots), "an ingot wants a furnace, not the table beside it");
+        CraftPlan sword = new CraftPlan(List.of(new CraftPlan.Session(Recipe.Station.GRID, List.of(new CraftPlan.Batch(Recipe.PLANKS, 1))),
+                new CraftPlan.Session(Recipe.Station.TABLE, List.of(new CraftPlan.Batch(Recipe.FURNACE, 1)))), Map.of(), Set.of());
+        assertEquals(Set.of(Workstation.CRAFTING_TABLE), Armourer.needed(sword));
     }
 }

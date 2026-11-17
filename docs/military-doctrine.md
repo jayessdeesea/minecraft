@@ -715,7 +715,7 @@ only a block it can walk to a stand beside (`Armourer.spotFor`, a flood fill fro
 live, builders left the keep for iron seen 40 blocks off through solid rock, and copper under a
 blocked stair, and each stood 20 seconds at "no route" before giving up, every few minutes, all day.
 It crafts what it can in its 2x2 inventory grid. What needs a table or a furnace it makes at one
-standing within 16 blocks, walked to, or else at its squad's workshop. What's made is put on: armour worn, the best weapon in hand. And whenever its hands are
+standing within 16 blocks, walked to - only one of a kind the making needs: live, a soldier smelting copper walked to a table, and in its reach went on to the workshop, and back, for five minutes - or else at its squad's workshop. What's made is put on: armour worn, the best weapon in hand. And whenever its hands are
 free, a soldier stands to: every two seconds it puts on any better armour it carries and takes its
 best weapon back in hand, rather than the seeds or dirt its last job left there. A first wooden sword takes
 about a minute. While crafting or smelting, the soldier stays where it began, since a window closes
