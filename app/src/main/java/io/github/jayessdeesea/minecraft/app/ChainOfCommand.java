@@ -411,6 +411,22 @@ public class ChainOfCommand implements DisposableBean {
         boolean answersWood = objective.task() instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD && squad.classFour().isPresent();
         boolean answersFood = objective.task() instanceof Objective.Task.Farm
                 && squad.classOne().filter(c -> c.rating() == Subsistence.Rating.RED).isPresent();
+        // Food and wood both short: the squads asking for food dealt across both, food first - with three,
+        // two farm and one cuts (operator, 2026-11-17: put workers on both; an odd one to food). The one
+        // dealt wood goes to the trees seen, or with none seen to the keep, whose wood party cuts at the
+        // logs' reserve. Live (field393), every squad answered its Class I RED with the farm, the keep's
+        // crew was nobody, and nobody cut at 0 logs.
+        if (answersFood && alarms.contains(PlatoonSergeant.Shortfall.FOOD) && alarms.contains(PlatoonSergeant.Shortfall.WOOD)) {
+            List<PlatoonSergeant.Shortfall> both = List.of(PlatoonSergeant.Shortfall.FOOD, PlatoonSergeant.Shortfall.WOOD);
+            if (both.get(Math.max(0, builders.indexOf(squad.squadName())) % both.size()) == PlatoonSergeant.Shortfall.WOOD) {
+                Objective wood = toShortfall(PlatoonSergeant.Shortfall.WOOD, squad, woods, wanted)
+                        .orElseGet(() -> new Objective("Flatten " + flatten.describe(), spread(flatten.centre(), squad.squadName()),
+                                "The ground the operator ordered flattened, its wood party out for logs", new Objective.Task.Keep()));
+                LOG.info("[PL -> {}] by day, food and wood both short: to the {} for logs, not '{}'", squad.squadName(),
+                        wood.task() instanceof Objective.Task.Keep ? "keep's wood party" : "trees", objective.mission());
+                return wood;
+            }
+        }
         if (answersWood || answersFood) {
             LOG.info("[PL -> {}] by day, ordered '{}' ({}) answering the squad's {} request: it stands over the keep rule",
                     squad.squadName(), objective.mission(), objective.task(), answersWood ? "Class IV" : "Class I");

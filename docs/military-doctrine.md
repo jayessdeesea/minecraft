@@ -1646,7 +1646,10 @@ under 24 raw iron - every surface chest's last look summed, not one chest's. Wit
 alarm the released squads are dealt across them in turn, food first, so an odd one out or a lone
 squad farms (operator, 2026-11-17: more people means more throughput, not less latency - the wheat
 and the trees grow at their own pace, and more hands in parallel bring in more at a time) ("[PL -> Bravo] released from
-the flatten ...: to the force's IRON shortfall"); stalled on that work - trees already cut,
+the flatten ...: to the force's IRON shortfall"). The squads on the ground the platoon leader sends to farm for their own
+Class I RED are dealt the same way while wood is short too - the second of them to the trees seen, or with none to the
+keep, whose wood party cuts ("[PL -> Bravo] by day, food and wood both short ...": live, every squad farmed and nobody
+cut at 0 logs); stalled on that work - trees already cut,
 "nothing left to gather" - it's given the platoon leader's objective instead. Short of nothing, to the platoon leader's own
 objective for them, or the camp's work where that's the ground too. They're called back as the
 levels widen (`ChainOfCommand.onFlattenCrew`, "[PL] the ground's level wants N builder(s)"). The heights are the

@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.command.PlatoonSergeant;
 import io.github.jayessdeesea.minecraft.command.Progress;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Resource;
+import io.github.jayessdeesea.minecraft.command.ResourceSite;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
@@ -167,6 +168,45 @@ class ChainOfCommandTest {
 
         assertEquals(wood, chain.byDay(wood, asking), "its request answered: the order stands");
         assertTrue(chain.byDay(wood, squad("Bravo", "Bob")).task() instanceof Objective.Task.Keep, "no request: the keep");
+    }
+
+    /**
+     * Food and wood both short, the squads asking for food are dealt across both, food first: of three,
+     * two farm and one cuts (operator, 2026-11-17). Live, every squad farmed and nobody cut at 0 logs.
+     */
+    @Test
+    void withFoodAndWoodBothShortTheHungrySquadsAreDealtAcrossBoth() {
+        ChainOfCommand three = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+        three.setKeepByDay(true);
+        three.setGround((x, z, nearY) -> OptionalInt.of(64));
+        three.onTime(TimeOfDay.of(1000, true));
+        three.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
+        Objective farm = new Objective("Farm", new Position(-48, 64, 44), "Food", new Objective.Task.Farm());
+        List<PlatoonSergeant.Shortfall> alarms = List.of(PlatoonSergeant.Shortfall.FOOD, PlatoonSergeant.Shortfall.WOOD);
+        List<ResourceSite> woods = List.of(new ResourceSite(Resource.WOOD, new Position(30, 64, 30), 10));
+
+        Objective alpha = three.byDay(farm, hungry("Alpha", "Alice"), alarms, woods);
+        Objective bravo = three.byDay(farm, hungry("Bravo", "Bob"), alarms, woods);
+        Objective charlie = three.byDay(farm, hungry("Charlie", "Carol"), alarms, woods);
+
+        assertEquals(farm, alpha, "the first to the farm");
+        assertEquals(new Objective.Task.Gather(Resource.WOOD), bravo.task(), "the second to the trees");
+        assertEquals(farm, charlie, "the odd one to the farm");
+        assertEquals(farm, three.byDay(farm, hungry("Bravo", "Bob"), List.of(PlatoonSergeant.Shortfall.FOOD), woods),
+                "food alone short: its farm stands");
+    }
+
+    private static SquadStatus hungry(String name, String soldier) {
+        return new SquadStatus(name, new Report.InPosition(),
+                List.of(new SoldierStatus(soldier, new Position(0.5, 64, 0.5), new Order.Idle(), new Report.InPosition(), Optional.empty())),
+                List.of(), Optional.empty(), false, OptionalInt.empty(), Optional.empty(),
+                Optional.of(new io.github.jayessdeesea.minecraft.command.Subsistence.Status(
+                        io.github.jayessdeesea.minecraft.command.Subsistence.Rating.RED, List.of(soldier), List.of(soldier))));
     }
 
     @Test
