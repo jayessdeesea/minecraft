@@ -986,8 +986,8 @@ in the open is: a trench by a wall is one a soldier pillars out of) cuts
 its way out the same way, so a squad that wakes up sealed in after a restart, or walled in by a hut
 it never finished, walks out - but not one down its mine, whose tunnels wall every soldier in them
 (live, a miner at y=30 was taken for shut in, the mine for the squad's base, and its way out cut
-from the stairs' top for an hour), nor a builder on the flatten, walled by its own trenches and
-steps; one of either boxed in is the recovery drill's. And a soldier the squad's drill misses - reporting "no route" from a
+from the stairs' top for an hour), nor anyone on the flatten's ground or its bench, walled by its
+trenches and steps; one of either boxed in is the recovery drill's. And a soldier the squad's drill misses - reporting "no route" from a
 pocket it can walk no more than 128 cells of by the route planner's own moves, under the walled
 camp's own floor - breaks the wall
 nearest where it's sent from where it stands (`bot.supply.WayOut`), keeping to that break until

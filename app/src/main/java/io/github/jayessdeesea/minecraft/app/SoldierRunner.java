@@ -4147,10 +4147,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // taken for shut in a room, the room taken for the squad's base, and its way out cut
                     // for an hour from the stairs' top, the doorway routine holding two soldiers' hands.
                     .filter(st -> state.stairs == null || st.position().y() >= state.stairs.head().y() - MINE_BELOW)
-                    // Nor a builder on the flatten: its trenches and steps wall it in as a hut would, and a
-                    // room read there is no base. Live, one on the east bench at y=83 was taken for shut in;
-                    // a builder boxed in is the recovery drill's.
-                    .filter(st -> !keepHands.contains(st.name()))
+                    // Nor a builder on the flatten, nor anyone on its ground: its trenches and steps wall a
+                    // soldier in as a hut would, and a room read there is no base. Live, a builder on the
+                    // east bench at y=83 and the farm squad's soldier crossing the site were taken for shut
+                    // in; one boxed in is the recovery drill's.
+                    // - while one's dug: with none, the site is the keep's ground round the camp, and the
+                    // camp's own huts are what the check is for (SquadSimulationTest's camp on a slope).
+                    .filter(st -> !keepHands.contains(st.name()) && (keepHands.isEmpty() || !chainOfCommand.flatten()
+                            .benchedContains((int) Math.floor(st.position().x()), (int) Math.floor(st.position().z()))))
                     // Walled by what a squad builds with, not a tree: live, a soldier up a canopy was
                     // taken for shut in a hut, cut a doorway out of the leaves, and fell ten blocks.
                     .flatMap(st -> PatrolBase.enclosing(st.position(), c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z())
