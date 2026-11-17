@@ -318,7 +318,10 @@ them it's on the dig again and another goes - after
 making itself a stone axe from the cobblestone it carries, a log in 15 ticks rather than the hand's
 60. The rest dig. The foreman says it on the net: "KEEP WOOD 16", "KEEP PLANT x z". The grove is a
 tree farm (§ 12) sited once with the depot: of the ground in rings round the depot's stand that a
-soldier can walk to from it, and no more than 4 blocks over its height, any depth under it -
+soldier can walk to from it, and no more than 4 blocks over its height, any depth under it - with
+none, the wood party clears the nearest such ground whose trees keep it from being one, felling
+them whole, and the grove is sought again every two minutes until it's sited (operator,
+2026-11-17: we can clear an area for a grove as well) -
 live (field350-364), with level ground only 6 under the depot's stand the keep had no grove at all,
 and nothing was replanted. Live, a grove on a hilltop past the
 site's bench had its planter put a pillar up the bench's outer row from the level to reach it, each

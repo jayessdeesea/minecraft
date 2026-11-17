@@ -2104,11 +2104,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     LOG.info("[{}] the keep's depot: {} chest(s) laid out at {}", squad, keepChests.size(), keepChests);
                 }
             }
-            if (keep != null && !keepGroveSought) {
+            // Sought again while there's none, as its ground is cleared: once, it stayed none all day.
+            if (keep != null && (!keepGroveSought || keepGrove == null && clockwork.millis() - keepGroveSoughtAt >= GROVE_RESITE_MILLIS)) {
                 keepGroveSought = true;
+                keepGroveSoughtAt = clockwork.millis();
                 keepGrove = siteKeepGrove(keep).orElse(null);
                 if (keepGrove == null) {
-                    LOG.warn("[{}] nowhere near the keep's depot to plant its grove", squad);
+                    LOG.warn("[{}] nowhere near the keep's depot to plant its grove yet", squad);
                 } else {
                     LOG.info("[{}] the keep's grove round {}: {} cells, a sapling every {} blocks", squad, keepGrove.centre(),
                             keepGrove.plot().size(), TreeFarm.SPACING);
@@ -3205,6 +3207,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (!inCrew.contains(h.name())) {
                 continue;
             }
+            // The grove's ground to clear, while it has none: dug open to a sapling's headroom - logs and
+            // leaves alike, a neighbour's canopy too, the highest first - not gathered from, which takes
+            // the logs and leaves the leaves over it (operator, 2026-11-17: the lumberjack might have to
+            // clear existing wood, which might be what's blocking the sky).
+            BlockPos toClear = keepGroveToClear;
+            if (keepParty.cutters().contains(h.name()) && grove == null && toClear != null) {
+                orders.put(h.name(), new Order.Dig(new Box(toClear.x() - TREE_FARM_RADIUS, toClear.y(), toClear.z() - TREE_FARM_RADIUS,
+                        toClear.x() + TREE_FARM_RADIUS, toClear.y() + TreeFarm.HEADROOM, toClear.z() + TREE_FARM_RADIUS), except));
+                continue;
+            }
             if (keepParty.cutters().contains(h.name())) {
                 Position trees = keepWoodAt(onKeep, grove);
                 int tx = (int) Math.floor(trees.x()), ty = (int) Math.floor(trees.y()), tz = (int) Math.floor(trees.z());
@@ -3362,7 +3374,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         TreeFarm grove = keepGrove;
         Supply logsMeasured = logsSupply;
         PlatoonSergeant.Wood wood = new PlatoonSergeant.Wood(chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
-                onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream()).anyMatch(r -> r.resource() == Resource.WOOD),
+                onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream()).anyMatch(r -> r.resource() == Resource.WOOD)
+                        || grove == null && keepGroveToClear != null, // the grove's ground to clear is trees seen
                 grove != null && !Forester.planted(world, grove), now < keepGroveBarredUntil,
                 logsMeasured == null ? 0 : logsMeasured.reorderPoint(), logsMeasured == null ? 0 : logsMeasured.objective());
         PlatoonSergeant.WoodParty was = keepParty;
@@ -3486,8 +3499,22 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Raw ore a smelter draws at a time: a stack, one furnace load. */
     static final int SMELT_DRAW = 64;
 
-    /** Where the wood party cuts: the trees nearest the depot a keep squad last saw, else round the grove, else the depot. */
+    /** The ground the wood party clears for the keep's grove, while it has none: its trees cut first. */
+    private volatile BlockPos keepGroveToClear;
+    /** When the keep's grove was last sought. */
+    private volatile long keepGroveSoughtAt;
+    /** How often a grove not yet sited is sought again, its ground cleared meanwhile. */
+    static final long GROVE_RESITE_MILLIS = 120_000;
+
+    /**
+     * Where the wood party cuts: the ground being cleared for the keep's grove, while it has none; else
+     * the trees nearest the depot a keep squad last saw, else round the grove, else the depot.
+     */
     private Position keepWoodAt(List<String> onKeep, TreeFarm grove) {
+        BlockPos clearing = keepGroveToClear;
+        if (grove == null && clearing != null) {
+            return new Position(clearing.x() + 0.5, clearing.y(), clearing.z() + 0.5);
+        }
         return onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream())
                 .filter(site -> site.resource() == Resource.WOOD).map(ResourceSite::location)
                 .min(Comparator.comparingDouble(l -> Math.hypot(l.x() - chainOfCommand.flatten().depot().x(), l.z() - chainOfCommand.flatten().depot().z())))
@@ -3526,15 +3553,34 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Set<BlockPos> walkable = Pathfinder.reachable(world, depot.stand(), 4 * GROVE_RING + TREE_FARM_RADIUS + 4, FARM_REACH_BUDGET);
         TreeFarm best = null;
         int bestScore = Integer.MAX_VALUE;
+        // Why each ring's site was passed over, said with "nowhere": a grove that never sites is a wood
+        // supply that never grows (live, field350-365, the keep had none and nothing said why).
+        Map<String, Integer> passedOver = new java.util.TreeMap<>();
+        // The nearest site walked to whose trees keep it from being a grove: cleared by the wood party
+        // (operator, 2026-11-17: we can clear an area for a grove as well).
+        BlockPos toClear = null;
         for (int r = GROVE_RING; r <= 4 * GROVE_RING; r += GROVE_RING / 2) {
             for (int[] way : ways) {
                 int cx = depot.stand().x() + way[0] * r, cz = depot.stand().z() + way[1] * r;
                 Box plot = around(cx, cz, TREE_FARM_RADIUS + 2);
                 if (avoid.stream().anyMatch(a -> overlaps(a, plot))) {
+                    passedOver.merge("kept clear", 1, Integer::sum);
                     continue;
                 }
-                Optional<TreeFarm> grove = TerrainSurveyor.surface(world, cx, cz, chainOfCommand.flatten().floor() + 60)
-                        .flatMap(ground -> TreeFarm.site(world, ground, TREE_FARM_RADIUS))
+                Optional<BlockPos> surface = TerrainSurveyor.surface(world, cx, cz, chainOfCommand.flatten().floor() + 60);
+                Optional<TreeFarm> sited = surface.flatMap(ground -> TreeFarm.site(world, ground, TREE_FARM_RADIUS));
+                String why = surface.isEmpty() ? "no ground" : sited.isEmpty() ? "no plot" : sited.get().plot().size() < GROVE_MIN_CELLS ? "too small"
+                        : !(walkable.contains(sited.get().centre().offset(0, 1, 0)) || walkable.contains(sited.get().centre())) ? "not walked to"
+                        : sited.get().centre().y() - depot.stand().y() > GROVE_RISE ? "over the depot" : null;
+                if (why != null) {
+                    passedOver.merge(why, 1, Integer::sum);
+                }
+                if (toClear == null && ("no plot".equals(why) || "too small".equals(why))
+                        && (walkable.contains(surface.get()) || walkable.contains(surface.get().offset(0, 1, 0)))
+                        && surface.get().y() - depot.stand().y() <= GROVE_RISE) {
+                    toClear = surface.get();
+                }
+                Optional<TreeFarm> grove = sited
                         .filter(g -> g.plot().size() >= GROVE_MIN_CELLS)
                         .filter(g -> walkable.contains(g.centre().offset(0, 1, 0)) || walkable.contains(g.centre()))
                         // And not over the depot: one on a hill is walked to from the depot, but
@@ -3552,6 +3598,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                 }
             }
+        }
+        keepGroveToClear = best == null ? toClear : null;
+        if (best == null) {
+            LOG.warn("[Keep] no grove round the depot's stand at {}: the sites passed over - {}, {} cells walkable from it{}",
+                    depot.stand(), passedOver, walkable.size(), toClear == null ? "" : " - the wood party clears " + toClear + " for one");
         }
         return Optional.ofNullable(best);
     }

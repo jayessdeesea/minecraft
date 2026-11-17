@@ -12,6 +12,18 @@ Gathering strips what's near and moves on. A force that holds ground for days ne
 grows back where it stands. Which kind is possible depends entirely on the terrain. That's a real
 planning decision for the general: read the survey, pick what the ground supports.
 
+## Where they go: production chunks (operator, 2026-11-17)
+The long-term shape: whole chunks set aside at sea level for production - one or more for wheat,
+one or more for trees - each levelled, fenced round, and entered by gates, so the work is laid
+out on a grid the force can plan by the chunk (yield a chunk a day, hands a chunk) rather than
+fitted round whatever ground is near the camp. Until then: the camp's farm by its water, and the
+keep's grove, cleared for if the ground near the depot is wooded.
+
+Built so far: the keep's grove sited round its depot, any depth under it, and its ground cleared by
+the wood party when none qualifies; trees felled whole and replanted (docs/military-doctrine.md § 4).
+Left: siting and levelling production chunks; fences and gates round them (fences are classed and
+dug today - `ClearingTest.aFenceAndTheGroundUnderItAreDug` - but never built); gates walked through.
+
 ## Doctrine
 **Base camps** (ATP 3-37.10): a camp that is held longer develops its own sustainment instead of
 living off resupply runs. What gets built depends on the site.
