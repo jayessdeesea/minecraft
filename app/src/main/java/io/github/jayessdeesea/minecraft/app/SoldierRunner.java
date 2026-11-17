@@ -2543,7 +2543,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false);
         for (Tasking.Hand hand : crew) {
             // Short for the fill: to the stockpile for a load, and kept at it until it carries one.
-            boolean short_ = toDig.isEmpty() && !toFill.isEmpty() && !orders.containsKey(hand.name());
+            // Nor one the recovery drill has: its stair is its way out (live, field337, Jack's stair up was
+            // laid out 366 blocks long, and he walked at the depot 130 blocks off and above instead).
+            boolean short_ = toDig.isEmpty() && !toFill.isEmpty() && !orders.containsKey(hand.name()) && !state.recovery.recovering(hand.name());
             if (short_ && stocked && stockpileFor(hand.name()).isPresent()) {
                 if (keepDrawing.add(hand.name())) {
                     LOG.info("[{}] {} goes to the stockpile for cobblestone for the keep", squad, hand.name());
