@@ -71,6 +71,9 @@ public final class TerrainSurveyor {
      * water, the nearest cell beside him he could stand or swim in.
      */
     /** Where a body at {@code cell} would be standing or swimming: at it, just under it, or beside it. */
+    /** The overworld's lowest block, bedrock's bottom: no surface is under it. */
+    static final int WORLD_FLOOR = -64;
+
     public static BlockPos groundAt(WorldView world, BlockPos cell) {
         return groundUnder(world, cell);
     }
@@ -79,9 +82,12 @@ public final class TerrainSurveyor {
      * The surface of column ({@code x}, {@code z}): the highest cell from {@code fromY} down with
      * solid ground under it and room for a body - not a cave's floor under a hill, as
      * {@link #groundAt}, which looks only a few blocks under a guess, finds. Empty with none.
+     * Down to the world's floor: 256 under the sky's top was y=64, and ground at y=62 never read -
+     * live (field334-343), the mine sites west of the keep found no ground, and one was sited at a
+     * soldier's height down the old mine.
      */
     public static java.util.Optional<BlockPos> surface(WorldView world, int x, int z, int fromY) {
-        for (int y = fromY; y > fromY - 256; y--) {
+        for (int y = fromY; y > WORLD_FLOOR; y--) {
             if (world.isSolid(x, y - 1, z) && !world.isSolid(x, y, z) && !world.isSolid(x, y + 1, z) && !world.isHazard(x, y, z)) {
                 return java.util.Optional.of(new BlockPos(x, y, z));
             }

@@ -43,6 +43,29 @@ class TerrainSurveyorTest {
         }
     };
 
+    /** Ground under y=64 is read from the sky's top: a scan 256 deep from y=319 stopped at y=64. */
+    @Test
+    void lowGroundIsReadFromTheTopOfTheSky() {
+        WorldView low = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < 63;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(Optional.of(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(-90, 63, -24)),
+                TerrainSurveyor.surface(low, -90, -24, 319));
+    }
+
     private static TerrainSurvey.Sample at(TerrainSurvey survey, int x, int z) {
         return survey.samples().stream().filter(s -> s.x() == x && s.z() == z).findFirst().orElseThrow();
     }
