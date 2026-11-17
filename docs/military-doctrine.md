@@ -475,7 +475,11 @@ the squad to falls.
   recharged, backs off inside 2.5 blocks, which is outside a zombie's reach, and holds in
   between. It gets away from creepers instead: of the headings round straight away, the one that
   gains it the most distance, so a wall at its back turns it sideways, and when no heading gains
-  any it strikes the creeper, knocking it back out of its blast's reach. No step in a fight -
+  any it strikes the creeper, knocking it back out of its blast's reach. One that holds it inside
+  its reach for ten seconds (`DeterministicSoldier.CREEPER_STANDOFF_TICKS`) - in a tunnel it can't
+  be gone round, and backing off only keeps the distance - it engages: closes, and strikes (the
+  engagement doctrine: both can reach, blocking the path; live, a miner stood a minute 2.9 blocks
+  from one in a one-wide tunnel). No step in a fight -
   closing, backing off, getting clear, taking cover - is taken over a drop deeper than 3 blocks,
   the most the server charges nothing for, unless water lies under it: a route plans its drops,
   a fight doesn't, and soldiers fighting on the roofs of the camp's huts backed off their edges.

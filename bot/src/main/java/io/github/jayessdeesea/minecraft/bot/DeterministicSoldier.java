@@ -550,7 +550,16 @@ public final class DeterministicSoldier implements Soldier {
                 // else the heading nearest that the ground allows. Boxed in, strike it: a hit knocks
                 // it back out of its blast's reach. Live, a soldier with a wall at her back stood still
                 // while one closed from six blocks to three and blew.
-                if (!evade(world, threat) && ticksUntilAttack == 0 && range <= ATTACK_REACH && !shieldRaised()) {
+                // And one that holds it there - in a tunnel it can't be gone round, and backing off only
+                // keeps the distance - is engaged once the standoff has gone on (the engagement
+                // doctrine: both can reach, blocking the path): live (field320), a miner stood a minute
+                // 2.9 blocks from one in a one-wide tunnel.
+                creeperStandoff = nearest.entityId() == standoffWith ? creeperStandoff + 1 : 1;
+                standoffWith = nearest.entityId();
+                boolean engage = creeperStandoff > CREEPER_STANDOFF_TICKS;
+                if (engage && range > ATTACK_REACH) {
+                    stepGuarded(world, threat.x(), threat.z());
+                } else if ((engage || !evade(world, threat)) && ticksUntilAttack == 0 && range <= ATTACK_REACH && !shieldRaised()) {
                     attack = OptionalInt.of(nearest.entityId());
                     Kit carried = kit;
                     ticksUntilAttack = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon()).ticksToCharge();
@@ -607,6 +616,12 @@ public final class DeterministicSoldier implements Soldier {
         applyVerticalMovement(world);
         return attack;
     }
+
+    /** Ticks a creeper holds a soldier inside its blast's reach before it's engaged: ten seconds. */
+    static final int CREEPER_STANDOFF_TICKS = 200;
+    /** How long the creeper it's backing off from has held it, and which one. */
+    private int creeperStandoff;
+    private int standoffWith = -1;
 
     /** How far off a creeper stops being contact for a soldier with no bow: past its blast. */
     static final double CREEPER_CLEAR = 4.5;

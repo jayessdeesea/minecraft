@@ -21,6 +21,7 @@ import java.util.OptionalInt;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -622,6 +623,45 @@ class DeterministicSoldierTest {
             struck = alice.tick(boxed).isPresent();
         }
         assertTrue(struck);
+    }
+
+    /**
+     * In a one-wide tunnel with room behind her, a creeper that keeps her inside its reach is engaged
+     * once the standoff has gone on (the engagement doctrine): live (field320), a miner stood a
+     * minute 2.9 blocks from one, backing off the same block.
+     */
+    @Test
+    void aCreeperHoldingHerInATunnelIsEngagedAfterAStandoff() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, 64, 0.5));
+        // A tunnel along x, one wide, open both ways; the creeper always 2.9 east of her.
+        java.util.concurrent.atomic.AtomicReference<Position> at = new java.util.concurrent.atomic.AtomicReference<>(alice.status().position());
+        WorldView tunnel = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND || y <= GROUND + 2 && z != 0;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                Position p = at.get();
+                return List.of(new TrackedEntity(1, HostileMobRegistry.typeIdOf("creeper"), new Position(p.x() + 2.9, 64, 0.5)));
+            }
+        };
+
+        boolean struck = false;
+        for (int tick = 0; tick < DeterministicSoldier.CREEPER_STANDOFF_TICKS + 40 && !struck; tick++) {
+            struck = alice.tick(tunnel).isPresent();
+            at.set(alice.status().position());
+            if (tick < DeterministicSoldier.CREEPER_STANDOFF_TICKS - 1) {
+                assertFalse(struck, "not before the standoff has gone on, tick " + tick);
+            }
+        }
+        assertTrue(struck, "engaged once it has");
     }
 
     @Test
