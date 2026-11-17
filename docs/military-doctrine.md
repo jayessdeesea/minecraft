@@ -1368,7 +1368,7 @@ soldier in less than a full set of armour: worked out, its main tunnel is run on
 past its last stretch it's cut a level deeper off the same stairs, 16 blocks down, a fresh main
 tunnel there (`Staircase.deeper`; operator, 2026-11-16: go deeper, or pick other sites) - "[Outcome]
 the mine at ... is worked out at y=16 - its next level cut at y=0" - down to just above bedrock; past
-that it's said dried up, once - by a squad's second pair too, when no level is left under theirs, and blocked when water or lava beside its stairs stops every cutter on it (live, a fresh well stopped at its 58th step, every level under it) - and
+that it's said dried up, once - by a squad's second pair too, when no level is left under theirs, and blocked when water or lava beside a step of its stairs stops any cutter on it (live, a fresh well stopped at its 58th step, every level under it) - and
 the keep's mine moves on (a squad's Mine task reads DONE only when every one of its cutters on its level is done; and by day any of the squad still down its last mine, within 64 of its head, climbs its stairs to the head before the day's work - live, a squad at a fresh mine's landing at dawn was sent to wedge places in the rock): the night shift and a squad released for iron are sent to a fresh site 32
 blocks further west, its head 8 clear of the flatten site and its bench (`ChainOfCommand.onMineDriedUp`,
 "[PL] the keep's mine at ... is dried up - the night shift's mine moves to ..."; kept on disk, so a

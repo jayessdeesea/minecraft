@@ -4988,13 +4988,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // Worked out when every cutter on it - every squad's - has its share cut, not when one has.
                 List<String> crew = mineCrew(state.stairs);
                 boolean workedOut = !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done);
-                // Stopped by water or lava beside the stairs, every cutter: the shaft goes no deeper, and
-                // the keep's mine moves on as from one dried up. Live (field348), a fresh well stopped at its
-                // 58th step, y=8, every squad's level under it, and its crews stood at the head.
-                boolean blocked = !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Stopped s
-                        && s.why().contains("water or lava"));
-                if (blocked && driedUp.add(state.stairs.head())) {
-                    String why = ((Miner.Progress.Stopped) stairsProgress.get(crew.getFirst())).why();
+                // Stopped by water or lava beside a step of the stairs, any cutter: the shaft goes no deeper
+                // for anyone, and the keep's mine moves on as from one dried up. Live (field348), a fresh well
+                // stopped at its 58th step, y=8, every squad's level under it, and its crews stood at the head;
+                // not every cutter: those waiting their turn below read "step 1" all night (field351).
+                Optional<String> blockedBy = crew.stream().map(stairsProgress::get)
+                        .filter(p -> p instanceof Miner.Progress.Stopped s && s.why().contains("water or lava beside step"))
+                        .map(p -> ((Miner.Progress.Stopped) p).why()).findFirst();
+                if (blockedBy.isPresent() && driedUp.add(state.stairs.head())) {
+                    String why = blockedBy.get();
                     LOG.warn("[Outcome] the mine at {} is blocked at y={}: {} - SHORT", state.stairs.head(), state.stairs.bottom(), why);
                     chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
                 }
