@@ -982,7 +982,9 @@ it stands, through gaps a body fits through, down into a hole and up a step with
 out within 16 cells - a pit in the floor is part of a roofed room, not a way out, though a drop
 in the open is: a trench by a wall is one a soldier pillars out of) cuts
 its way out the same way, so a squad that wakes up sealed in after a restart, or walled in by a hut
-it never finished, walks out. And a soldier the squad's drill misses - reporting "no route" from a
+it never finished, walks out - but not one down its mine, whose tunnels wall every soldier in them
+(live, a miner at y=30 was taken for shut in, the mine for the squad's base, and its way out cut
+from the stairs' top for an hour). And a soldier the squad's drill misses - reporting "no route" from a
 pocket it can walk no more than 128 cells of by the route planner's own moves, under the walled
 camp's own floor - breaks the wall
 nearest where it's sent from where it stands (`bot.supply.WayOut`), keeping to that break until

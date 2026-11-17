@@ -4130,6 +4130,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // taken for shut in, cut a "doorway" into the ground beside it every few seconds,
                     // and never got its load.
                     .filter(st -> !keepFetching.contains(st.name()))
+                    // Not down a mine: its tunnels wall every soldier in them. Live, a miner at y=30 was
+                    // taken for shut in a room, the room taken for the squad's base, and its way out cut
+                    // for an hour from the stairs' top, the doorway routine holding two soldiers' hands.
+                    .filter(st -> state.stairs == null || st.position().y() >= state.stairs.head().y() - MINE_BELOW)
                     // Walled by what a squad builds with, not a tree: live, a soldier up a canopy was
                     // taken for shut in a hut, cut a doorway out of the leaves, and fell ten blocks.
                     .flatMap(st -> PatrolBase.enclosing(st.position(), c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z())
