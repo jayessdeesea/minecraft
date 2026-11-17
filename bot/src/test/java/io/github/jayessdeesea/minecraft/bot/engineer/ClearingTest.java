@@ -198,6 +198,40 @@ class ClearingTest {
                 "knowing its step, the ground's top");
     }
 
+    /**
+     * The force's own step over the ground sets no level: the ground's top is cut, not the step from
+     * beside it. Live (field313), a builder sent for its own step put another, and went between two.
+     */
+    @Test
+    void aStepOverTheGroundIsNoTopToCut() {
+        BlockPos step = new BlockPos(3, 66, 2);
+        WorldView withStep = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return MOUND.isSolid(x, y, z) || step.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return MOUND.isSoil(x, y, z) || step.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        List<BlockPos> cover = Clearing.toClear(withStep, SKY, Set.of());
+
+        assertEquals(new BlockPos(2, 65, 2), Clearing.next(withStep, cover, new Position(0.5, 64, 0.5), Set.of(), s -> true, step::equals)
+                .orElseThrow().block(), "the ground's top, not the step a block over it");
+    }
+
     @Test
     void highGroundIsDugFromTheTopDown() {
         assertEquals(List.of(new BlockPos(2, 65, 2), new BlockPos(-2, 64, -2), new BlockPos(2, 64, 2)),

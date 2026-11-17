@@ -31,7 +31,8 @@ crew's ticks:
   out. Built: a builder standing on the force's own step cuts from there, the step under it too
   (Clearing.next), so it takes its climb down with it; and a cut from the air never aims at the
   force's own step (Clearing.fromTheAir) - field301's builder went between two steps on a dirt
-  tower's top for two minutes, the crew waiting on the level. Done when a wide level's pace line shows
+  tower's top for two minutes, the crew waiting on the level; and a step over the ground sets no
+  level for a cut from the ground either (Clearing.next, field313). Done when a wide level's pace line shows
   steps put no more than its blocks' share, and the level goes at its crew's rate.
   Field269, 30 minutes after: 323 steps still, three quarters on the east bench at y=85-86 under
   the hill beyond the site (to about y=90, the floor at 77) - builders on the hill with no walk

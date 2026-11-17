@@ -254,7 +254,14 @@ public final class Clearing {
                 .filter(c -> !excluded.contains(c) && !world.isLog(c.x(), c.y(), c.z()) && world.leaves(c.x(), c.y(), c.z()).isEmpty()
                         && !world.isSolid(c.x(), c.y() + 1, c.z()) && diggable(world, c.x(), c.y(), c.z()))
                 .toList();
-        int topLevel = ground.stream().mapToInt(BlockPos::y).max().orElse(Integer.MIN_VALUE);
+        // The force's own steps don't set the level while ground is left: a step put up to reach the
+        // top is no top to reach. Live (field313), a builder's step a block over the hilltop's ground
+        // became the level, it was sent to cut that step from beside it, put another, and went back
+        // and forth between two stands for two minutes. A step over the level is cut from on it - its
+        // way down - and the rest once the ground's gone (the rules of a clearing: scaffolding comes
+        // down with the levels).
+        List<BlockPos> real = ground.stream().filter(c -> !steps.test(c)).toList();
+        int topLevel = (real.isEmpty() ? ground : real).stream().mapToInt(BlockPos::y).max().orElse(Integer.MIN_VALUE);
         List<BlockPos> level = ground.stream().filter(c -> c.y() == topLevel).toList();
         int minX = level.stream().mapToInt(BlockPos::x).min().orElse(0);
         int minZ = level.stream().mapToInt(BlockPos::z).min().orElse(0);
@@ -268,7 +275,12 @@ public final class Clearing {
             // first: live, a soldier near a low block of a mound was handed it under one still there,
             // its digger refused it every try, and it said it couldn't clear the camp.
             boolean isGround = !world.isLog(block.x(), block.y(), block.z()) && world.leaves(block.x(), block.y(), block.z()).isEmpty();
-            if (isGround && (world.isSolid(block.x(), block.y() + 1, block.z()) || block.y() != topLevel)) {
+            // A step over the level: only the one under its builder's feet, cut from on it.
+            boolean stepOver = isGround && steps.test(block) && block.y() > topLevel;
+            if (stepOver && !(canStandHere && block.equals(here.offset(0, -1, 0)))) {
+                continue;
+            }
+            if (isGround && !stepOver && (world.isSolid(block.x(), block.y() + 1, block.z()) || block.y() != topLevel)) {
                 continue;
             }
             // In digging order: past the best score, nothing later can beat it.

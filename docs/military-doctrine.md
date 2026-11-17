@@ -1647,7 +1647,10 @@ from it, since the rectangles keep the blocks apart, not the builders (live, a t
 was a rectangle one cell wide with every stand beside it outside, and went from builder to builder
 as each timed out); the force's own steps are never the block - its eyes level with it, that its route
 builds a dirt pillar up to (`Pathfinder` offers pillar steps in open air under a goal overhead).
-The pillar is dirt in its strip, so it's the next top layer, dug back down from on top of it. A
+The pillar is the force's own steps: no top layer of its own while ground is left (`Clearing.next`) -
+a step over the level is cut only from on it, its builder's way down, and the rest once the ground
+is gone (live, a builder's step a block over a hilltop was taken for the level, cut from beside it,
+and another put up, two stands in turn for two minutes). A
 builder carrying fewer than 4 blocks to climb on fetches a load of 32 dirt from a borrow pit off
 its squad's side of the keep first - on the ground's surface there, found from above - and when
 its fetchers find nothing left, the squad's next pit is off another side, round the keep in turn
