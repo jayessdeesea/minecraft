@@ -306,8 +306,9 @@ leggings, with 74 raw copper in chests.
 
 The keep's wood party - the platoon sergeant's, `command.PlatoonSergeant` (operator, 2026-11-14: trees are everywhere - break from the dig, harvest
 some, build crates at the depot and replant; a spruce every four blocks; the lumberjacks use axes)
-is the foreman's errand in place of a rectangle, two builders at most and a third of the crew,
-never the foreman. One
+is the foreman's errand in place of a rectangle, two builders at most and a third of the crew -
+but one at least while the logs are under their reserve and the crew is two or more - never the
+foreman. One
 plants the keep's grove while it has a cell with nothing growing, with a sapling carried or trees
 seen. Between them the builders and the stockpile hold logs against the logs' levels: under Class
 IV's reorder point (below) - never under the reserve, 64 - the whole party cuts; from there to the

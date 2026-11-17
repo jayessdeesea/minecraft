@@ -269,7 +269,9 @@ public final class PlatoonSergeant {
         // The platoon sergeant tasks producers when the stock crosses its reorder point (backlog/
         // maturity-model.md, the gate), and stands them down at the stockage objective.
         boolean out = wood.treesSeen() && logs < wood.back();
-        int size = Math.min(WOOD_PARTY, crew.size() / 3);
+        // A third of the crew, and never none while the logs are under their reserve and two can be spared
+        // one: live (field378), the crew down to two, the party was nobody 38 s after it was Carol, at 3 logs.
+        int size = Math.min(WOOD_PARTY, Math.max(crew.size() / 3, out && logs < wood.out() && crew.size() >= 2 ? 1 : 0));
         List<String> candidates = crew.stream().map(Hand::name).filter(n -> !n.equals(foreman)).sorted(Comparator.reverseOrder()).toList();
         // Cutting first while the depot is short: wood now before trees later. In strength under the
         // reserve, one standing to the most.

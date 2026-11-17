@@ -154,8 +154,10 @@ class PlatoonSergeantTest {
     void aThirdOfTheCrewAtMost() {
         assertEquals(1, PlatoonSergeant.woodParty(crew(0, "Alice", "Bob", "Carol", "Dana", "Eli"), "Alice",
                 PlatoonSergeant.WoodParty.NONE, SHORT).cutters().size());
-        assertEquals(0, PlatoonSergeant.woodParty(crew(0, "Alice", "Bob"), "Alice",
-                PlatoonSergeant.WoodParty.NONE, SHORT).cutters().size(), "two builders: both dig");
+        assertEquals(1, PlatoonSergeant.woodParty(crew(0, "Alice", "Bob"), "Alice",
+                PlatoonSergeant.WoodParty.NONE, SHORT).cutters().size(), "two builders, the logs under their reserve: one cuts");
+        assertEquals(0, PlatoonSergeant.woodParty(crew(0, "Alice"), "Alice",
+                PlatoonSergeant.WoodParty.NONE, SHORT).cutters().size(), "one builder, the foreman: it digs");
     }
 
     @Test
