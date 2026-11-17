@@ -95,9 +95,12 @@ crew's ticks:
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at
   plan time and the foreman holds them till done or due (the operator's protocol). Wanted
   (operator, 2026-11-16: do a better job assigning): rectangles sized by their estimated time -
-  the walk, the climb and the blocks' hardness, not their count - and a builder done with its own
-  takes half of the most that's left of another's, as a newcomer does now. "Done, waiting for the
-  level" was 15-35% of the crew's ticks on wide levels.
+  the walk, the climb and the blocks' hardness, not their count. (A builder done with its own
+  taking half of the most that's left of another's is built.) "Done, waiting for the level" was
+  15-35% of the crew's ticks on wide levels. On hilltop levels of 27-49 blocks with the crew sized
+  for the levels under them, "waiting, no rectangle" was 30%: more builders than shares, the level
+  at a time held (the clearing rules) - a squad with no share there is a candidate for the
+  released squads' work (backlog/flatten-campaign.md).
 - **Blocks that stop soldiers, and fences (operator, 2026-11-16).** Built: a refused step and a
   stall name the blocks there ("wildflowers P"), counted and said at the 1st, 10th and 100th of a
   kind ("[Blocks] ..."). Every state the server has is classed (tools/block-class-generator), so an

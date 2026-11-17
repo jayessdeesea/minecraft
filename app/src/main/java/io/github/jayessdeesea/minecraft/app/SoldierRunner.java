@@ -2817,19 +2817,22 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     LOG.info("[Keep] {}'s {} {} - given to {}", orphan.getKey(), boxesSaid(work),
                             names.contains(orphan.getKey()) ? "timed out" : "left behind", to);
                 }
-                // One given nothing yet this level - come onto it once it was dealt, a squad called back
-                // to a wide level, or not there when it was: half of the most that's left of one builder's,
-                // split between them. The one split of held work; one done with its own waits. Live, a
-                // builder on hand but not dealt in at the level's start stood the level out.
+                // One with nothing to cut - given nothing yet this level (come onto it once it was dealt, a
+                // squad called back to a wide level, or not there when it was), or done with its own -
+                // takes half of the most that's left of one builder's, split between them (operator,
+                // 2026-11-16: do a better job assigning). Live, a builder on hand but not dealt in at the
+                // level's start stood the level out, and "done, waiting for the level" was 10-35% of the
+                // crew's ticks while one builder had 50 digs left and two had 3.
                 for (LevelPlan.Builder newcomer : all) {
-                    if (keepDealt.contains(newcomer.name()) || boxes.getOrDefault(newcomer.name(), List.of()).stream().anyMatch(hasWork)) {
+                    if (given.contains(newcomer.name()) || boxes.getOrDefault(newcomer.name(), List.of()).stream().anyMatch(hasWork)) {
                         continue;
                     }
+                    boolean doneWithItsOwn = keepDealt.contains(newcomer.name());
                     Optional<Map.Entry<String, List<LevelPlan.Column>>> most = boxes.entrySet().stream()
                             .map(e -> Map.entry(e.getKey(), columns.stream().filter(c -> e.getValue().stream().anyMatch(b -> c.x() >= b.minX()
                                     && c.x() <= b.maxX() && c.z() >= b.minZ() && c.z() <= b.maxZ())).toList()))
                             .max(Comparator.comparingInt(e -> e.getValue().size()));
-                    if (most.isEmpty() || most.get().getValue().size() < BLOCKS_A_BUILDER) {
+                    if (most.isEmpty() || most.get().getValue().size() < SPLIT_AT) {
                         continue;
                     }
                     String holder = most.get().getKey();
@@ -2845,7 +2848,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     keepDealt.add(newcomer.name());
                     given.add(holder);
                     given.add(newcomer.name());
-                    LOG.info("[Keep] {} comes onto the level: {}'s split, {} - {} keeps {}", newcomer.name(), holder,
+                    LOG.info("[Keep] {} {}: {}'s split, {} - {} keeps {}", newcomer.name(),
+                            doneWithItsOwn ? "is done with its own" : "comes onto the level", holder,
                             boxesSaid(split.get(newcomer.name())), holder, boxesSaid(split.get(holder)));
                 }
                 plan = new KeepPlan(level, names, Map.copyOf(boxes), plan.at());
@@ -3132,6 +3136,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** A builder's standard share of a level, the crew sized from it: one builder to a level of 24 blocks or fewer. */
     static final int BLOCKS_A_BUILDER = 24;
+    /** Blocks left in one builder's rectangles worth splitting with one that has none: half each, a share or two. */
+    static final int SPLIT_AT = 4 * LevelPlan.MIN_SHARE;
     /** Blocks over the site's highest a rectangle reaches: a step put up over it after the plan is still dug from its top. */
     static final int CEILING_SLACK = 8;
     /** Levels under the one being dug that size its crew too: it's sized for the widest of them. */

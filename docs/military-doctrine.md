@@ -1524,9 +1524,11 @@ one or more touching rectangles and keeps them till they're cleared - its comple
 before: live, on hilltop levels a builder stood that second after every rectangle - or till they're due: a minute to get there and six seconds a block
 (`SoldierRunner.dueMillis`); due and not done, they're given to the nearest builder who's done
 ("[Keep] Bob's ... timed out - given to Carol"), as a builder's are when it goes off the crew. A
-builder given nothing yet on the level - come onto it once it was dealt, a squad called back to a
-wide one, or not there when it was - takes half of the most that's left of one builder's, the one
-time held work is split; one done with its own waits for a timeout. Ground left that nobody on
+builder with nothing to cut - given nothing yet on the level (come onto it once it was dealt, a
+squad called back to a wide one, or not there when it was), or done with its own (operator,
+2026-11-16: do a better job assigning) - takes half of the most that's left of one builder's,
+once that's 16 blocks or more (`SoldierRunner.SPLIT_AT`): "[Keep] Carol is done with its own:
+Bob's split, ..." Held work is split no other way. Ground left that nobody on
 the crew holds - its holders all gone off it, at nightfall say - has the level dealt again, fresh,
 once there are builders to deal it to: live, at dawn a level's 269 blocks were nobody's for half
 an hour. Nothing is dealt again while
