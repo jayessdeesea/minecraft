@@ -812,7 +812,8 @@ dirt - so one squad's quarrying walls another's camp. Raw ore and ingots go thro
 (`bot.supply.MetalPool`): a soldier keeps the iron or copper - ore or ingots - its next piece of
 kit takes only if it can make that piece with it, or with what the surface chests hold added -
 which it then draws, ingots before ore, from the nearest chest last seen holding it (an outpost's,
-the camp's, the main depot's), its armourer waiting rather than walking off to dig. Any other ore or
+the camp's, the main depot's) and still standing - one the world no longer shows is forgotten, not
+walked to (live, a draw went seven times to a mine's old stash at y=24 that wasn't there), its armourer waiting rather than walking off to dig. Any other ore or
 ingot it carries is the force's, and goes in once it has 3. Live, eleven raw copper lay in four
 packs, none enough for a piece; and (field300) 74 raw copper lay in outpost and camp chests while
 draws looked in the main depot's alone, and three soldiers wore no armour. Logs carried show in each
