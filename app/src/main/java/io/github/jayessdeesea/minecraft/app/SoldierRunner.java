@@ -5147,6 +5147,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         };
     }
 
+    /** Soldiers stranded with water beside their way up, to plug it first - squad loops write, tick loops read. */
+    private final Set<String> sealToClimb = ConcurrentHashMap.newKeySet();
+
     /** The engineer's stair up for a soldier stranded below, from where it stands: the cells to dig. */
     private Function<SoldierStatus, Optional<List<Cell>>> stairUp(String squadName) {
         return stuck -> {
@@ -5158,6 +5161,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             stair.ifPresentOrElse(
                     s -> LOG.info("[{}] RECOVERY: {} is stranded below at {} - a stair up laid out, {} blocks to dig", squadName, stuck.name(), at, s.size()),
                     () -> LOG.warn("[{}] RECOVERY: {} is stranded at {} and no stair up can be dug from there either - {}", squadName, stuck.name(), at, whyNot));
+            // Water beside the way up - a cut that would let it in, or a step that is water - plugged with what
+            // it carries, so the stair can be dug: live (field393), Eli stood in a pocket at y=-43 beside a
+            // waterfall with 48 cobblestone, every heading barred by the water or the dirt it would let in.
+            BlockPos feet = BlockPos.containing(at.x(), at.y(), at.z());
+            boolean waterNear = false;
+            for (int dx = -2; dx <= 2 && !waterNear; dx++) {
+                for (int dz = -2; dz <= 2 && !waterNear; dz++) {
+                    for (int dy = -1; dy <= 3 && !waterNear; dy++) {
+                        waterNear = world.isWater(feet.x() + dx, feet.y() + dy, feet.z() + dz);
+                    }
+                }
+            }
+            if (stair.isEmpty() && waterNear) {
+                if (sealToClimb.add(stuck.name())) {
+                    LOG.warn("[{}] RECOVERY: {} plugs the water beside its way up at {} first", squadName, stuck.name(), at);
+                }
+            } else {
+                sealToClimb.remove(stuck.name());
+            }
             return stair;
         };
     }
@@ -7472,7 +7494,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Stuck in water: plug the sources round it - stopping the flow, and each block one more
             // to climb out by - nearest first, from where it floats.
             turns.put(Hands.Routine.SEALER, turn(sealing::get, free -> {
-                if (!free || !stuckInWater || inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.LOG) == 0) {
+                if (!free || !stuckInWater && !sealToClimb.contains(name)
+                        || inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.LOG) == 0) {
                     if (sealing.getAndSet(false)) {
                         sealer.stop();
                     }
@@ -7500,10 +7523,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (sources.isEmpty()) {
                     sealing.set(false);
                     sealer.stop();
+                    sealToClimb.remove(name);
                     return;
                 }
                 if (!sealing.getAndSet(true)) {
-                    LOG.warn("{} stuck in the water at {} - fills the {} cell(s) of water round it", name, at, sources.size());
+                    LOG.warn("{} {} at {} - fills the {} cell(s) of water round it", name,
+                            stuckInWater ? "stuck in the water" : "stranded beside water", at, sources.size());
                 }
                 if (sealer.tickInPlace(at, world, sources) instanceof Builder.Progress.Failed) {
                     sealer.retrySkipped();
