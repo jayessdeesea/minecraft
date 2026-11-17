@@ -271,8 +271,12 @@ public final class PlatoonSergeant {
         boolean out = wood.treesSeen() && logs < wood.back();
         // A third of the crew, and never none while the logs are under their reserve and two can be spared
         // one: live (field378), the crew down to two, the party was nobody 38 s after it was Carol, at 3 logs.
-        int size = Math.min(WOOD_PARTY, Math.max(crew.size() / 3, out && logs < wood.out() && crew.size() >= 2 ? 1 : 0));
-        List<String> candidates = crew.stream().map(Hand::name).filter(n -> !n.equals(foreman)).sorted(Comparator.reverseOrder()).toList();
+        // Under one cutter's load a lone builder - the foreman too - cuts: an emergency is a signal to
+        // change (operator, 2026-11-17), and live (field391) the keep's one builder dug on at 0 logs.
+        boolean bare = logs < WOOD_LOAD;
+        int size = Math.min(WOOD_PARTY, Math.max(crew.size() / 3, out && logs < wood.out() && (crew.size() >= 2 || bare) ? 1 : 0));
+        List<String> candidates = crew.stream().map(Hand::name).filter(n -> !n.equals(foreman) || crew.size() == 1 && bare)
+                .sorted(Comparator.reverseOrder()).toList();
         // Cutting first while the depot is short: wood now before trees later. In strength under the
         // reserve, one standing to the most.
         int cutters = !out ? 0 : logs < wood.out() ? size : Math.min(1, size);

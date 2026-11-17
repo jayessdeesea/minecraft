@@ -308,7 +308,8 @@ The keep's wood party - the platoon sergeant's, `command.PlatoonSergeant` (opera
 some, build crates at the depot and replant; a spruce every four blocks; the lumberjacks use axes)
 is the foreman's errand in place of a rectangle, two builders at most and a third of the crew -
 but one at least while the logs are under their reserve and the crew is two or more - never the
-foreman. One
+foreman, unless it's the crew's one builder with the logs under one cutter's load (16), when it cuts
+(live, the keep's lone builder dug on at 0 logs). One
 plants the keep's grove while it has a cell with nothing growing, with a sapling carried or trees
 seen. Between them the builders and the stockpile hold logs against the logs' levels: under Class
 IV's reorder point (below) - never under the reserve, 64 - the whole party cuts; from there to the

@@ -156,8 +156,10 @@ class PlatoonSergeantTest {
                 PlatoonSergeant.WoodParty.NONE, SHORT).cutters().size());
         assertEquals(1, PlatoonSergeant.woodParty(crew(0, "Alice", "Bob"), "Alice",
                 PlatoonSergeant.WoodParty.NONE, SHORT).cutters().size(), "two builders, the logs under their reserve: one cuts");
-        assertEquals(0, PlatoonSergeant.woodParty(crew(0, "Alice"), "Alice",
-                PlatoonSergeant.WoodParty.NONE, SHORT).cutters().size(), "one builder, the foreman: it digs");
+        assertEquals(Set.of("Alice"), PlatoonSergeant.woodParty(crew(0, "Alice"), "Alice",
+                PlatoonSergeant.WoodParty.NONE, SHORT).cutters(), "one builder, the foreman, under one load of logs: it cuts");
+        assertEquals(0, PlatoonSergeant.woodParty(crew(PlatoonSergeant.WOOD_LOAD, "Alice"), "Alice",
+                PlatoonSergeant.WoodParty.NONE, SHORT).cutters().size(), "one builder with a load in hand, under the reserve: it digs");
     }
 
     @Test

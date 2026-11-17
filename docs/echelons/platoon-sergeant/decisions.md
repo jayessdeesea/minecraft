@@ -17,9 +17,11 @@ platoon leader sees what it decides only as state: specialists produce, missions
 | A squad's farmers | each command cycle | the squad's Class I, who of it is hungry with no squadmate to share, and the force's rations as measured (`command.Supply`) | half the squad to the camp's farm when it's RED or the force's rations are under their safety level, one when it's short or they're under their reorder point, none otherwise |
 | The keep's wood party | each time the keep's foreman plans, about every 5 seconds | each builder's logs and saplings, the stockpile's logs, whether the keep's squads have seen trees, whether the keep's grove has a bare cell and whether its planting waits | the builders off the dig to cut trees and the one planting the grove ([military-doctrine.md § 4](../../military-doctrine.md#4-reports-upward), "The keep's wood party") |
 
-The party is two builders at most and a third of the crew, never the foreman. It goes out to cut
-when the crew and the stockpile hold fewer logs than Class IV's reorder point (`command.Supply`),
-never under 8, and comes back at its stockage objective, never under 16; a cutter back with
+The party is two builders at most and a third of the crew, never the foreman unless the foreman
+is the crew's one builder and the logs are nearly gone. It goes out to cut when the crew and the
+stockpile hold fewer logs than Class IV's reorder point (`command.Supply`), never under the logs'
+reserve, and comes back at its stockage objective, never under their most (the levels:
+[military-doctrine.md](../../military-doctrine.md), "The stockpile's levels"); a cutter back with
 16 logs is on the dig again. A place left over plants the grove. With no trees seen and no sapling
 carried there is no party.
 
