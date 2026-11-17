@@ -4574,7 +4574,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // anything (operator, 2026-11-17). Live (field359-362), Ivy stood half an hour in a stone slot 26
             // under the hill, its cave big enough not to be "a pocket", her goals at her own height on the
             // far side of it - never stranded, so never dug out. Not one sent somewhere underground: a miner.
-            boolean buried = s.order() instanceof Order.MoveTo m && buried(from) && !buried(new Position(m.x(), m.y(), m.z()));
+            // And only with none of the ground it can walk to out from under it: one in a cut it walks out
+            // of every day isn't stranded (live, field365, the farm squad at the mine's head).
+            boolean buried = s.order() instanceof Order.MoveTo m && buried(from) && !buried(new Position(m.x(), m.y(), m.z()))
+                    && walkable.stream().allMatch(c -> buried(new Position(c.x() + 0.5, c.y(), c.z() + 0.5)));
             if (cells <= CUT_OFF_CELLS || below || buried) {
                 walksSaid.remove(s.name());
                 return Recovery.stranded(s) ? s : new SoldierStatus(s.name(), s.position(), s.order(), new Report.Cantco(String.format(Locale.ROOT,
@@ -4587,10 +4590,26 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }).toList();
     }
 
-    /** Whether {@code at} is more than {@link #UNDERGROUND} under its column's surface: in a cave, not on the ground. */
+    /**
+     * Whether {@code at} is under the ground: more than {@link #UNDERGROUND} blocks of rock or soil over
+     * it in its column - a tree's leaves and logs aren't ground. Live (field365), three of the farm squad
+     * at the mine's head, under a tree whose top was 16 over them, were read as buried and given a stair
+     * up through it.
+     */
     private boolean buried(Position at) {
         int x = (int) Math.floor(at.x()), z = (int) Math.floor(at.z());
-        return world.isLoaded(x, z) && TerrainSurveyor.surface(world, x, z, Keep.SKY_TOP).filter(top -> top.y() > at.y() + UNDERGROUND).isPresent();
+        if (!world.isLoaded(x, z)) {
+            return false;
+        }
+        int y0 = (int) Math.floor(at.y()) + 2;
+        int top = TerrainSurveyor.surface(world, x, z, Keep.SKY_TOP).map(BlockPos::y).orElse(y0);
+        int ground = 0;
+        for (int y = y0; y < top; y++) {
+            if (world.isSolid(x, y, z) && !world.isLog(x, y, z) && world.leaves(x, y, z).isEmpty()) {
+                ground++;
+            }
+        }
+        return ground > UNDERGROUND;
     }
 
     /** How far under the ground over it a stranded soldier is under the ground, for the drill: a stair up, not down. */
@@ -5702,9 +5721,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 String own = isCutter ? soldierName : cutter;
                 Position cutterAt = own == null ? rest
                         : depositTo(own, statuses).or(() -> armourers.get(own).standAt()).or(() -> miners.get(own).standAt()).orElse(rest);
+                // No pickaxe, no mine (operator, 2026-11-17: we can't go into the mines without a pickaxe -
+                // be prepared to mine): by night it stays at the head, off the stairs, making one if it
+                // can. Live (field364), Fran, Jack and Pete with no pickaxe and the farm squad's Mia and Ned
+                // stood the night on the stairs between y=1 and y=11, the cutters queued behind them, and
+                // the night's ore was 0 of 16.
+                boolean staysUp = dark && !isCutter
+                        && !statuses.get(i).condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false);
                 // One holding the top goes on its errand first: its kit at the workshop, torches made, the stairs lit.
-                // Not by night: the top is the dark, and the squad stays down with its cutter.
-                Optional<Position> errand = isCutter || dark ? Optional.empty()
+                // Not by night, but for one staying up: the top is the dark, and the squad stays down with its cutter.
+                Optional<Position> errand = isCutter || dark && !staysUp ? Optional.empty()
                         : depositTo(soldierName, statuses).or(() -> Optional.ofNullable(armourers.get(soldierName)).flatMap(Armourer::standAt))
                         .or(() -> Optional.ofNullable(torchmakers.get(soldierName)).flatMap(Torchmaker::standAt))
                         .or(() -> Optional.ofNullable(lamplighters.get(soldierName))
@@ -5717,7 +5743,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // name - not on its cutter's cell: live, ten soldiers of four squads stood in one cell on
                 // the stairs and moved as one (operator, 2026-11-15: everyone needs their space bubble).
                 Position place = isCutter ? cutterAt
-                        : dark ? nightPlace(stairs, soldierName).orElse(cutterAt)
+                        : dark && !staysUp ? nightPlace(stairs, soldierName).orElse(cutterAt)
                         : new Position(stairs.head().x() - 1.5 + i, stairs.head().y(), stairs.head().z() + 3.5);
                 // Exactly where a cut wants it - or the head, where the next cut starts; but waiting the
                 // night out at the landing, as loosely as the rest: live, the landing's stand lost its
@@ -5726,7 +5752,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 boolean cutting = isCutter && !(dark && cutterAt.equals(rest) && !rest.equals(centre(stairs.head())));
                 byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(),
                         // Its own step by night, held to it: a body's width, so two don't settle in one cell.
-                        cutting ? 0.3 : dark ? (isCutter ? MINE_FOLLOW : 0.6) : 1.5, cutting ? 0.5 : dark ? MINE_FOLLOW : 4, Risk.LOW));
+                        cutting ? 0.3 : dark && !staysUp ? (isCutter ? MINE_FOLLOW : 0.6) : 1.5, cutting ? 0.5 : dark && !staysUp ? MINE_FOLLOW : 4, Risk.LOW));
                 continue;
             }
             Order given = eased.get(i);

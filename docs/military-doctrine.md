@@ -431,8 +431,9 @@ risk and its own condition into a fall allowance:
 So a safe route always wins when one exists, and a fall is planned only when there's none, on
 foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier with no such
 route - its own planner having tried building its way with whatever it carries - is stranded: cut off in
-a pocket, below where it's sent with no way up, or under the ground - more than 8 under its column's
-surface - and sent to the surface, however big its cave (operator, 2026-11-17: a soldier digs itself
+a pocket, below where it's sent with no way up, or under the ground - more than 8 blocks of rock or
+soil over it, a tree's leaves and logs not counted, and none of the ground it can walk to out from
+under it - and sent to the surface, however big its cave (operator, 2026-11-17: a soldier digs itself
 out of anything; live, Ivy stood half an hour in a stone slot 26 under a hill, her cave too big to
 be a pocket). It's reported "no route" 20 squad cycles in a row (about
 20 seconds), since one failed hop across the camp isn't a soldier stuck; "no route" to where it's
@@ -1481,7 +1482,10 @@ the first cuts the stairs and the main tunnel, and the branch roots along the ma
 into contiguous stretches, one a cutter, both sides, so each works a part of the mine of its own.
 The rest wait on the stairs, each a step of its own - three behind its cutter and up, then the
 last steps above the landing, and with too few steps cut for the line, the rest beside the head,
-four abreast - until the main tunnel is cut through - started from
+four abreast - but never one with no pickaxe, which stays at the head, beside the shaft, making
+itself one if it can (operator, 2026-11-17: we can't go into the mines without a pickaxe - be
+prepared to mine; live, three with none and two of the farm squad stood the night on the stairs,
+the cutters queued behind them, and the night's ore was 0 of 16) - until the main tunnel is cut through - started from
 a root its cutter still stood on, two stood on one cell - and the mine is worked out only when
 every cutter's share is. Live, four squads' cutters each worked the whole mine and stood on one
 another.

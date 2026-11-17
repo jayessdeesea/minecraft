@@ -604,7 +604,9 @@ class SquadSimulationTest {
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        // Spares: a pickaxe worn out by the day's dig leaves one up top by night (no pickaxe, no mine).
+                        new int[]{39, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{40, SimServer.ITEM_STONE_PICKAXE, 1})));
         runner.run();
 
         clock.advance(4 * 60_000);
@@ -660,7 +662,9 @@ class SquadSimulationTest {
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        // Spares: a pickaxe worn out by the day's dig leaves one up top by night (no pickaxe, no mine).
+                        new int[]{39, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{40, SimServer.ITEM_STONE_PICKAXE, 1})));
         runner.run();
 
         clock.advance(6 * 60_000);
@@ -761,7 +765,9 @@ class SquadSimulationTest {
                 .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})));
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        // Spares: a pickaxe worn out by the day's dig leaves one up top by night (no pickaxe, no mine).
+                        new int[]{39, SimServer.ITEM_STONE_PICKAXE, 1}, new int[]{40, SimServer.ITEM_STONE_PICKAXE, 1})));
         runner.run();
 
         clock.advance(5 * 60_000);
