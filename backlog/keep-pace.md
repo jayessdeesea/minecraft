@@ -139,10 +139,11 @@ crew's ticks:
   each column's top in this scan, in the last cycle's, and read live. Field327: (19, -43) "scan 88,
   last cycle's 71, live 87" - 17 blocks counted as ground in one cycle that weren't the cycle
   before, too many to have been built in a second - and (18, -30) "scan 90, last cycle's 85, live
-  89", with builders putting steps at y=89 for stands at y=91 there. So a column's blocks go in and
-  out of the scan's ground between cycles: next, log for a risen column whether its top cell is in
-  `scaffolding`, in the squad's `digExcept`, or in the siteClear cache's age - the three that decide
-  it. Not the step record's pruning: an unloaded cell reads solid, and isn't pruned. Left: a builder's own step to stand on is the level's to dig and is dug from under it and put
+  89", with builders putting steps at y=89 for stands at y=91 there. Found (field329, the rise naming
+  the risen columns and whether their blocks are steps): the live read's follow-down landed on the
+  force's own step just put up and took it for the column's top - "live 86, over last's a step
+  true" - raising the level every few seconds; fixed, it passes over steps. The scan's top a block
+  over the step, not a step, is a climber's fresh step caught before it's on the record. Left: a builder's own step to stand on is the level's to dig and is dug from under it and put
   back at one cell (Eli at (19, 89, -11)); keeping steps out of the dig by age left a spire's
   climbing steps standing in the squad simulation - it wants the step that's under someone's feet,
   not a recent one.

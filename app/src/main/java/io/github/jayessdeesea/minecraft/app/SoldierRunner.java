@@ -2707,13 +2707,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (fights.stream().anyMatch(f -> Math.hypot(f.x() - (x + 0.5), f.z() - (z + 0.5)) <= KEEP_FIGHT_CLEAR)) {
                     return Integer.MIN_VALUE;
                 }
-                if (t == Integer.MIN_VALUE || !world.isLoaded(x, z) || world.isSolid(x, t, z)) {
+                // A top since put on the step record - the scan caught it before it was - is followed down too.
+                if (t == Integer.MIN_VALUE || !world.isLoaded(x, z) || world.isSolid(x, t, z) && !scaffolding.contains(new BlockPos(x, t, z))) {
                     return t;
                 }
                 int row = Math.max(0, Math.max(Math.max(dug.minX() - x, x - dug.maxX()), Math.max(dug.minZ() - z, z - dug.maxZ())));
                 int lowest = Math.max(dug.minY() + row, t - LIVE_TOP_DROP);
+                // Never onto the force's own step: it's no ground. Live (field329), the follow-down landed on
+                // the step a climber had just put up, read it as the column's top, and raised the level to it
+                // - "live 86, over last's a step true" - every few seconds on the hilltop.
                 for (int y = t - 1; y >= lowest; y--) {
-                    if (world.isSolid(x, y, z)) {
+                    if (world.isSolid(x, y, z) && !scaffolding.contains(new BlockPos(x, y, z))) {
                         return y;
                     }
                 }

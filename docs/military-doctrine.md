@@ -1603,7 +1603,7 @@ Level by level, in lock step, planned by the keep's foreman (`command.LevelPlan`
 2026-11-14): one soldier the squad leader appoints - the first builder of the first squad on the
 keep, again whenever that one is off it. The site's level is the highest ground left anywhere on
 it - read live from the world over the site's scan, a column cut since followed down a few blocks
-to what's left of it (`SoldierRunner.LIVE_TOP_DROP`), not dropped, so a tower being cut doesn't
+to what's left of it (`SoldierRunner.LIVE_TOP_DROP`), past any of the force's own steps, not dropped, so a tower being cut doesn't
 drop the level and raise it again at each block - and nobody digs lower till it's gone, so the site comes down as one flat floor: nobody climbs
 over a neighbour's ground. A builder's own step or pillar (`SoldierRunner.scaffolding`, kept on disk
 across restarts - lost, every step left standing read as ground, and the dirt tower's leftovers set
