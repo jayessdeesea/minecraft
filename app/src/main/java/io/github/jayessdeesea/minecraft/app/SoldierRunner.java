@@ -1575,6 +1575,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .map(c -> new Position(c.x(), c.y(), c.z())).toList()));
         chestStore.load(MINE_SITE).filter(l -> l.size() == 1).map(List::getFirst)
                 .ifPresent(c -> chainOfCommand.setKeepMine(new Position(c.x(), c.y(), c.z())));
+        // A kept mine whose well is dead - found dried up or blocked before a restart - moves on at once:
+        // live (field382), the night shift was sent back down the mine field381 had found dried up.
+        Position kept = chainOfCommand.keepMine();
+        if (deadWells.stream().anyMatch(w -> w.x() == (int) Math.floor(kept.x()) && w.z() == (int) Math.floor(kept.z()))) {
+            chainOfCommand.onMineDriedUp((int) Math.floor(kept.x()), (int) Math.floor(kept.z())).ifPresent(this::keepMineSite);
+        }
         this.planBook = new PlanBook(Path.of(stateDir));
         this.scoreboard = new Scoreboard(Path.of(stateDir));
         this.camp = camp.isBlank() ? null : Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
@@ -4540,7 +4546,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (level != null && driedUp.add(level.head().offset(0, level.bottom(), 0))) {
                     LOG.warn("[Outcome] [{}] the mine at {} is dried up for its second level: every level cut down to y={} - SHORT",
                             squad, first.head(), level.bottom());
-                    chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
+                    chainOfCommand.onMineDriedUp(state.stairs.head().x(), state.stairs.head().z()).ifPresent(this::keepMineSite); // by its head, not the finder's order (field381)
                 }
                 return level;
             }
@@ -5496,7 +5502,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     deadWell(state.stairs.head());
                     String why = blockedBy.get();
                     LOG.warn("[Outcome] the mine at {} is blocked at y={}: {} - SHORT", state.stairs.head(), state.stairs.bottom(), why);
-                    chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
+                    chainOfCommand.onMineDriedUp(state.stairs.head().x(), state.stairs.head().z()).ifPresent(this::keepMineSite); // by its head, not the finder's order (field381)
                 }
                 // Settled by mine, not by squad: live, four squads on one mine each took the others' stale
                 // DONE for their own, and it ran on from 24 blocks to 96 in seconds with nothing cut.
@@ -5513,7 +5519,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         deadWell(state.stairs.head());
                         LOG.warn("[Outcome] the mine at {} is dried up: every level cut down to y={}, and ore still wanted - SHORT",
                                 state.stairs.head(), state.stairs.bottom());
-                        chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
+                        chainOfCommand.onMineDriedUp(state.stairs.head().x(), state.stairs.head().z()).ifPresent(this::keepMineSite); // by its head, not the finder's order (field381)
                     }
                     if (longer.isPresent()) {
                         mineExtendedAt.put(state.stairs.head(), now);
@@ -5625,7 +5631,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                     if (seen) {
                         LOG.warn("[Outcome] no well can be sited at or round x={} z={} - SHORT", x, z);
-                        chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
+                        chainOfCommand.onMineDriedUp(state.stairs.head().x(), state.stairs.head().z()).ifPresent(this::keepMineSite); // by its head, not the finder's order (field381)
                     }
                 }
                 state.stairsFor = new int[]{x, z};
