@@ -130,6 +130,7 @@ public final class Recovery {
                 ? byName.get(e.getKey()).position().y() <= e.getValue().pillar.get().getLast().y() + 0.5
                 : e.getValue().cut.isPresent()
                 ? byName.get(e.getKey()).position().y() >= e.getValue().cut.get().stream().mapToInt(Cell::y).max().orElse(0) - 0.5
+                || offTheCut(byName.get(e.getKey()).position(), e.getValue().cut.get())
                 : Cohesion.distance(byName.get(e.getKey()).position(), e.getValue().at) > MOVED_OFF));
         for (SoldierStatus s : reported) {
             int stuck = stranded(s) ? strandedFor.merge(s.name(), 1, Integer::sum) : 0;
@@ -286,6 +287,19 @@ public final class Recovery {
     public Optional<Order.MoveTo> escape(String soldier) {
         return Optional.ofNullable(escaping.get(soldier));
     }
+
+    /**
+     * Whether {@code at} is off {@code cut} - more than {@link #CUT_STRAY} from every cell of it - so it's
+     * laid again from there: its digger is always beside the next cell. Live (field343), Jack walked
+     * 8 blocks off and 2 down from where his stair up was laid, no cell of it had a stand he could
+     * reach, and he stood under it.
+     */
+    static boolean offTheCut(Position at, List<Cell> cut) {
+        return cut.stream().allMatch(c -> Math.hypot(Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z()), c.y() - at.y()) > CUT_STRAY);
+    }
+
+    /** How far from every cell of its stair up a stranded soldier is off it. */
+    static final double CUT_STRAY = 4;
 
     /** An {@code Order.Dig} of just {@code cells}, as a tunnel - cut cell by cell under rock: their box, and every other cell in it kept. */
     static Order.Dig dig(List<Cell> cells) {

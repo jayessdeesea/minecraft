@@ -289,4 +289,12 @@ class RecoveryTest {
                 new Recovery().orders(empty, IDLE, NO_STAIR), "nobody sent for Dana: she goes down to Carol, the nearest");
         assertEquals(IDLE, new Recovery().orders(fighting, IDLE, NO_STAIR));
     }
+
+    /** A digger beside its stair up is on it; one walked off before it began is off it, and it's laid again. */
+    @Test
+    void aSoldierWalkedOffItsStairUpIsOffIt() {
+        List<Cell> stair = List.of(new Cell(12, -50, -125), new Cell(12, -49, -125), new Cell(13, -49, -125));
+        assertEquals(false, Recovery.offTheCut(new Position(11.5, -51, -124.7), stair), "stood where it was laid");
+        assertEquals(true, Recovery.offTheCut(new Position(5.7, -53, -130.5), stair), "8 off and 2 down (field343)");
+    }
 }
