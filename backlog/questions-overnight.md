@@ -54,3 +54,14 @@ Each names its backlog item and what the answer changes. Built meanwhile on the 
    the hill cut back at 1:1 all the way up, or stepped benches every 4 feet (Appendix B's
    benching) - so the side is a slope a soldier walks; it's a great deal more to dig on a hill
    site. The answer decides the bench's width: fixed, or the cut's depth.
+
+6. **What a soldier does about a creeper in its way that doesn't come on** (the contact drill).
+   Field277-284: two creepers stood all night at (64, 45, -61.5) and (71, 48, -48.5) in the caves
+   east of the site, not moving, and Bravo's soldiers sent there stood 4.3 to 8 blocks from them.
+   As built: never closed on - kept clear of, struck only when boxed in and within reach - and
+   since 550, carried on past when more than 4.5 blocks off; inside that, backed off, which in a
+   cave with no room to back into is standing still. The alternatives: (a) routes go round a
+   creeper by its blast radius, as round lava - and where none does, the soldier waits; (b) one
+   that hasn't moved in a minute is fought - closed on and struck, a hit knocking it back - at
+   the risk of its blast; (c) a bow for the squad that meets one, and it's shot. The answer
+   decides whether a creeper is an obstacle or an enemy.
