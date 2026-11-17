@@ -84,7 +84,11 @@ public final class Armourer {
     private final Fitter fitter;
 
     public synchronized boolean active() {
-        return digger != null || crafter.active() || fitter.active();
+        // Its walk to a table, a furnace or the workshop too: not under way, the next routine to start
+        // took its hands, its errand was dropped as no longer wanted, and taken up again when they were
+        // free - live (field390), Hal set off for the mine's workshop for a copper chestplate 103 times
+        // in a night, every 2 s, and never got there.
+        return digger != null || crafter.active() || fitter.active() || toStation != null;
     }
 
     /** Whether a run making {@code recipe} is under way. */
@@ -204,7 +208,23 @@ public final class Armourer {
                 fitter.stop(soldier, world);
             }
         }
+        // A walk to a station that doesn't get there is given up, its hands let go: held for the walk,
+        // they'd otherwise be held for good.
+        if (toStation == null) {
+            errandTo = null;
+        } else if (!toStation.equals(errandTo)) {
+            errandTo = toStation;
+            errandFrom = ticks;
+        } else if (ticks - errandFrom > ERRAND_TICKS && digger == null && !crafter.active() && !fitter.active()) {
+            giveUp("not at " + BlockPos.containing(toStation.x(), toStation.y(), toStation.z()) + " in " + ERRAND_TICKS / 20 + " s");
+        }
     }
+
+    /** The station walk under way, and the tick it began. */
+    private Position errandTo;
+    private long errandFrom;
+    /** How long a walk to a station is given: the mine's bottom to its workshop, by the stairs. */
+    static final int ERRAND_TICKS = 1800;
 
     /** The making itself, after {@link #tick}'s bookkeeping: whether it fitted out the workshop this tick. */
     private boolean tickMaking(Position soldier, WorldView world, boolean threatened, Optional<Workshop> workshop) {
