@@ -4882,14 +4882,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 upkeeping.remove(soldierName);
                 route(soldierName, dig);
                 // The routine with the hands says where to stand, as below: a load to put in, a table to
-                // make kit at, ore to fetch. Live, every flatten builder's walk to a chest was steered to
+                // make kit at, ore to fetch. A chest's stand, if none is found to walk to, its depot's
+                // stand - never the chest itself: live, soldiers sent onto the lid stood on it, and the
+                // load didn't go in. Live, every flatten builder's walk to a chest was steered to
                 // its clearer's stand instead - "last seen 32 blocks off" when the walk timed out - and
                 // not one load went in.
                 Hands.Routine holding = handsHeld.get(soldierName);
                 Position here = statuses.get(i).position();
                 Optional<Position> routine = holding == null || holding == Hands.Routine.CLEARER ? Optional.empty()
                         : standOf(soldierName, holding).map(p -> holding == Hands.Routine.DEPOSITOR
-                        ? chestStand(here, p).orElse(p) : p);
+                        ? chestStand(here, p).or(() -> Optional.ofNullable(workshops.get(soldierName))
+                                .filter(w -> w.chest().filter(c -> c.x() == (int) Math.floor(p.x()) && c.z() == (int) Math.floor(p.z())).isPresent())
+                                .map(w -> new Position(w.stand().x() + 0.5, w.stand().y(), w.stand().z() + 0.5))).orElse(p) : p);
                 if (routine.isPresent()) {
                     byName.get(soldierName).receiveOrder(new Order.MoveTo(routine.get().x(), routine.get().y(), routine.get().z(), 0.3, 0.5, Risk.LOW));
                     continue;
