@@ -128,6 +128,11 @@ public interface WorldView {
         return false;
     }
 
+    /** Whether nothing is to be built in the cell: a way kept open, a staircase's (a route plans no step in it). */
+    default boolean noBuild(int x, int y, int z) {
+        return false;
+    }
+
     /** Whether the block is farmland (it's also {@link #isSolid}). */
     default boolean isFarmland(int x, int y, int z) {
         return false;

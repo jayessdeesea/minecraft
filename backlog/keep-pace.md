@@ -83,9 +83,8 @@ crew's ticks:
   (-25, 28, -25) and (-25, 26, -23). The log shows step 8, (-27, 62, -25), cut again and again by
   the miners (07:02-07:41) while walkers put their route steps into it ("[Dana] its step at
   -27 62 -25 keeps being refused"): soldiers crossing the shaft's open top build into the stairs'
-  own cells, and some stay. Wanted: the route planner never builds into a staircase's cut cells
-  (Pathfinder, a no-build set alongside its avoid set), and the cutter clears the stairs from the
-  head down when it finds them blocked. Separately, the camp's stairs are kept on disk twice - "to
+  own cells, and some stay. Built: no route builds in a staircase's steps (WorldView.noBuild).
+  Left: the cutter clearing the stairs from the head down when it finds them blocked. Separately, the camp's stairs are kept on disk twice - "to
   y=24" by Bravo's miner, "to y=16" by Alpha - two plans for one shaft.
 - **The uneven split.** As split, a level's best was 192 s against 123 s shared evenly (8
   builders); one builder had 50 digs while two had 3. `LevelPlan` shares rectangles by blocks at

@@ -264,7 +264,7 @@ public final class Pathfinder {
                                     int blocksLeft, int heading) {
         List<Move> moves = new ArrayList<>(9);
         boolean afloat = swimmable(world, from);
-        if (canPillar && !afloat && open(world, from.x(), from.y() + 2, from.z()) && !spoilsFarm(world, from)) {
+        if (canPillar && !afloat && open(world, from.x(), from.y() + 2, from.z()) && !spoils(world, from)) {
             moves.add(new Move(from.offset(0, 1, 0), PILLAR_COST, 1)); // a block placed where it stood
         }
         if (heading != 0 && !afloat && blocksLeft > 0) {
@@ -429,7 +429,7 @@ public final class Pathfinder {
                 return List.of();
             }
         }
-        if (spoilsFarm(world, step)) {
+        if (spoils(world, step)) {
             return List.of();
         }
         if (heldUp(world, step, to)) {
@@ -437,19 +437,22 @@ public final class Pathfinder {
         }
         // Nothing beside the step: first a block it can go against.
         BlockPos under = dy < 0 ? from.offset(0, -2, 0) : step.offset(0, -1, 0);
-        if (!open(world, under.x(), under.y(), under.z()) || spoilsFarm(world, under)) {
+        if (!open(world, under.x(), under.y(), under.z()) || spoils(world, under)) {
             return List.of();
         }
         return List.of(under, step);
     }
 
     /**
-     * Whether a block put down at {@code cell} would spoil a farm: on farmland, which turns to dirt
+     * Whether a block put down at {@code cell} would spoil a farm or a way kept open: on farmland, which turns to dirt
      * under it, or in a crop. Live, soldiers climbing out of the camp's farm in its hollow built
      * their steps on the cells beside them, and a third of the farm lay under cobblestone.
      */
-    static boolean spoilsFarm(WorldView world, BlockPos cell) {
-        return world.isFarmland(cell.x(), cell.y() - 1, cell.z()) || world.wheatAge(cell.x(), cell.y(), cell.z()).isPresent();
+    static boolean spoils(WorldView world, BlockPos cell) {
+        return world.isFarmland(cell.x(), cell.y() - 1, cell.z()) || world.wheatAge(cell.x(), cell.y(), cell.z()).isPresent()
+                // Or a cell kept open - a staircase's: live, soldiers crossing a mine shaft's open top put
+                // their route's steps into its stairs, and those left there blocked the way up.
+                || world.noBuild(cell.x(), cell.y(), cell.z());
     }
 
     /** Whether walking off into {@code edge} lands unhurt on ground within {@link #MAX_DROP}, or in water. */

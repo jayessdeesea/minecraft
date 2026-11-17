@@ -1213,6 +1213,10 @@ camp's ground level that isn't on a tree, so an oak grown over the head doesn't 
 canopy. When none can be sited, the log says why at the objective itself - the first step's
 water, lava or open cave.
 
+Nothing is built in a staircase's steps: every squad's stairs and the camp's are kept open
+(`WorldView.noBuild`), and no route puts a pillar or a step in them - live, soldiers crossing a
+shaft's open top put their steps into its stairs, and those left there blocked the way up, the
+miners on them stranded below.
 The camp's staircase is kept on disk, as the wall and the farm are (its head and last step,
 `app.WallStore` kind `stairs`), and after a restart it's cut on down where it was sited rather
 than sited again - as it is for any mine ordered within 24 blocks of the camp, the platoon leader's

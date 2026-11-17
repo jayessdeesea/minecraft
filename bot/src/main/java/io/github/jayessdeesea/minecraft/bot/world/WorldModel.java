@@ -25,6 +25,20 @@ public final class WorldModel implements WorldView {
         return chunks.isSolid(x, y, z);
     }
 
+    /** The cells kept open - the force's staircases' - as the squad loops last set them. */
+    private volatile java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> keptOpen = java.util.Set.of();
+
+    /** Sets the cells nothing is built in ({@link #noBuild}): the squad loops' staircases. */
+    public void keepOpen(java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> cells) {
+        keptOpen = java.util.Set.copyOf(cells);
+    }
+
+    @Override
+    public boolean noBuild(int x, int y, int z) {
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> open = keptOpen;
+        return !open.isEmpty() && open.contains(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(x, y, z));
+    }
+
     @Override
     public boolean isTorch(int x, int y, int z) {
         return chunks.isTorch(x, y, z);

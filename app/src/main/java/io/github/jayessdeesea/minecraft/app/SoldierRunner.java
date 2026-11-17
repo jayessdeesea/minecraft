@@ -1355,6 +1355,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (yieldingToAnExperiment()) {
             return;
         }
+        // The force's staircases' steps kept open: no route builds in them (WorldView.noBuild). Live,
+        // soldiers crossing a mine shaft's open top put their steps into its stairs, and those left
+        // there blocked the way up - miners on them stranded below.
+        faults.run("the stairs kept open", () -> {
+            Set<BlockPos> stairsOpen = new HashSet<>();
+            java.util.function.Consumer<Staircase> keep = st -> st.cuts().stream().filter(c -> c.tunnel() < 0)
+                    .forEach(c -> stairsOpen.addAll(c.cells()));
+            squadStates.values().forEach(st -> Optional.ofNullable(st.stairs).ifPresent(keep));
+            campStairs().ifPresent(keep);
+            world.keepOpen(stairsOpen);
+        });
         if (camp != null && footholdTicks++ % FOOTHOLD_EVERY == 0) {
             // Its own request: a measure that fails costs the measure, not the squads' orders.
             faults.run("the foothold's measure", () -> measureFoothold().ifPresent(f -> {
