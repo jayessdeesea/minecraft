@@ -39,7 +39,7 @@ public final class PlatoonSergeant {
         IRON
     }
 
-    /** Raw iron the stockpile is short below: a pickaxe each for eight builders. */
+    /** Iron - raw or ingots - the stockpile is short below: a pickaxe each for eight builders. */
     public static final int IRON_RESERVE = 24;
 
     /**
@@ -55,7 +55,7 @@ public final class PlatoonSergeant {
         if (squads.stream().anyMatch(s -> s.classFour().isPresent()) || stockpile.filter(st -> st.logs() < Keep.LOGS_WANTED).isPresent()) {
             return Optional.of(Shortfall.WOOD);
         }
-        if (stockpile.filter(st -> st.rawIron() < IRON_RESERVE).isPresent()) {
+        if (stockpile.filter(st -> st.rawIron() + st.ironIngots() < IRON_RESERVE).isPresent()) {
             return Optional.of(Shortfall.IRON);
         }
         return Optional.empty();

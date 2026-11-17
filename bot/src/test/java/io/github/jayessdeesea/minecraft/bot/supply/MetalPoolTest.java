@@ -50,6 +50,19 @@ class MetalPoolTest {
                 "a shield takes iron: the copper is the force's");
     }
 
+    /** Live (field300): the force's ingots lay one or two to a pack, none enough for a piece. */
+    @Test
+    void pooledIngotsAreDrawnFirstAndLooseOnesGoIn() {
+        Optional<Stockpile> ingots = Optional.of(new Stockpile(0, 0, 0, 0, 10, 0, 0, 6));
+        MetalPool.Plan plan = MetalPool.plan(carrying(2, 0), Optional.of(Recipe.COPPER_CHESTPLATE), ingots);
+        assertEquals(Optional.of(new MetalPool.Draw(ItemClass.COPPER_INGOT, 6)), plan.draw(), "two raw carried, six ingots pooled: the ingots");
+
+        Inventory oneIngot = new Inventory();
+        oneIngot.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.IRON_INGOT), 1});
+        assertEquals(Set.of(ItemClass.IRON_INGOT), MetalPool.plan(oneIngot, Optional.of(Recipe.COPPER_CHESTPLATE), Optional.empty()).stock(),
+                "an iron ingot its copper piece doesn't want is the force's");
+    }
+
     @Test
     void oreThatMakesThePieceIsKept() {
         MetalPool.Plan plan = MetalPool.plan(carrying(8, 1), Optional.of(Recipe.COPPER_CHESTPLATE), pooled(4, 4));

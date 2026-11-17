@@ -115,6 +115,17 @@ with another:
 So the suite takes about as long as its slowest test, not the sum of them. While working on a
 change, run its own tests (`-Dtest=...`); the whole suite before a deploy or push.
 
+## Check the outcome of what the force is sent to do
+
+A task sent to produce something - a night's mining, a wood party's trip, a smelt, a draw for
+armour - is checked when it ends against what it should have produced, and a miss is dug into
+until its cause is known, not let stand (operator, 2026-11-16: "if we send people to do something,
+like mine, and they don't return with results, we need to dig into why"). A task that can't
+produce any more says so - a mine dried up is reported, not read as DONE night after night. Live,
+the keep's mine read DONE for days on about 18 ores in all, and copper for four soldiers' armour
+sat in chests no draw looked in; nothing said so until the operator saw soldiers without armour.
+A check is a logged `[Outcome]` line, read in every live check with the alerts.
+
 ## Profile every sixteenth commit
 
 When the commit count on main (`git rev-list --count HEAD`) is a multiple of 16, the live

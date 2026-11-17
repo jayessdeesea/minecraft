@@ -1204,6 +1204,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .map(cell -> new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5));
     }
 
+    /** The nearest surface chest last seen holding {@code metal} - raw ore or an ingot - to {@code from}. */
+    private Optional<Position> metalChest(ItemClass metal, Position from) {
+        java.util.function.ToIntFunction<Stockpile> count = switch (metal) {
+            case RAW_IRON -> Stockpile::rawIron;
+            case RAW_COPPER -> Stockpile::rawCopper;
+            case IRON_INGOT -> Stockpile::ironIngots;
+            case COPPER_INGOT -> Stockpile::copperIngots;
+            default -> throw new IllegalArgumentException(metal + " isn't a metal drawn");
+        };
+        return chestsSeen.entrySet().stream().filter(e -> count.applyAsInt(e.getValue()) > 0)
+                .map(e -> new Position(e.getKey().x() + 0.5, e.getKey().y(), e.getKey().z() + 0.5))
+                .min(java.util.Comparator.comparingDouble(p -> Math.hypot(p.x() - from.x(), p.z() - from.z())));
+    }
+
     /** Whether an item at {@code item} lies at a depot's dump: left there, not picked up again. */
     private boolean atADump(Position item) {
         Workshop keep = keepWorkshop;
@@ -5765,7 +5779,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 chainOfCommand.onStores(new Stockpile(chests.stream().mapToInt(Stockpile::logs).sum(),
                         chests.stream().mapToInt(Stockpile::stone).sum(), chests.stream().mapToInt(Stockpile::rations).sum(),
                         chests.stream().mapToInt(Stockpile::rawIron).sum(), chests.stream().mapToInt(Stockpile::rawCopper).sum(),
-                        chests.stream().mapToInt(Stockpile::dirt).sum()));
+                        chests.stream().mapToInt(Stockpile::dirt).sum(), chests.stream().mapToInt(Stockpile::ironIngots).sum(),
+                        chests.stream().mapToInt(Stockpile::copperIngots).sum()));
             }
             if (mine.isEmpty() && Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).equals(stockpileFor(name))) {
                 // Only the stockpile draws come from: an outpost depot's chest, or another the load went
@@ -5954,9 +5969,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Raw ore through the common stockpile (bot.supply.MetalPool): what its next piece can't
             // be made from goes in; what the stockpile completes it with is drawn - and the armourer
             // waits for the draw rather than walking off to dig.
-            MetalPool.Plan metal = MetalPool.plan(inventory, rung, chainOfCommand.stockpile());
-            Optional<MetalPool.Draw> metalDraw = metal.draw().filter(d -> stockpileFor(name).isPresent());
-            boolean drawingMetal = metalDraw.isPresent() || depositor.drawing(ItemClass.RAW_IRON) || depositor.drawing(ItemClass.RAW_COPPER);
+            // Counted over every surface chest, and drawn from the one holding it: live (field300), 64 raw
+            // copper lay in an outpost depot's chests and 10 in the camp's, enough for four soldiers' armour,
+            // while draws looked only in the main depot's - and three soldiers wore none.
+            MetalPool.Plan metal = MetalPool.plan(inventory, rung, chainOfCommand.stores());
+            Optional<MetalPool.Draw> metalDraw = metal.draw().filter(d -> metalChest(d.ore(), status.position()).isPresent());
+            boolean drawingMetal = metalDraw.isPresent() || MetalPool.METALS.stream().anyMatch(depositor::drawing);
             if (drawingMetal) {
                 rung.ifPresent(tools::remove);
             }
@@ -6298,10 +6316,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
-                } else if (metalDraw.isPresent() || depositor.drawing(ItemClass.RAW_IRON) || depositor.drawing(ItemClass.RAW_COPPER)) {
+                } else if (metalDraw.isPresent() || MetalPool.METALS.stream().anyMatch(depositor::drawing)) {
                     ItemClass ore = metalDraw.map(MetalPool.Draw::ore)
-                            .orElse(depositor.drawing(ItemClass.RAW_IRON) ? ItemClass.RAW_IRON : ItemClass.RAW_COPPER);
-                    depositor.tickDraw(status.position(), stockpile, ore, metalDraw.map(MetalPool.Draw::carry).orElse(inventory.count(ore)),
+                            .orElseGet(() -> MetalPool.METALS.stream().filter(depositor::drawing).findFirst().orElseThrow());
+                    Optional<Position> holding = metalDraw.flatMap(d -> metalChest(d.ore(), status.position())).or(depositor::chestAt);
+                    depositor.tickDraw(status.position(), holding, ore, metalDraw.map(MetalPool.Draw::carry).orElse(inventory.count(ore)),
                             free && !threatened && fort == null && metalDraw.isPresent());
                 } else {
                     Set<ItemClass> pooled = new HashSet<>(metal.stock());

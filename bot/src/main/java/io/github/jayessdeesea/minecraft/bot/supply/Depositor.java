@@ -369,7 +369,8 @@ public final class Depositor {
     /** The chest as it stands open. */
     private Stockpile seen() {
         return new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE), chest.chestCount(ItemClass.FOOD),
-                chest.chestCount(ItemClass.RAW_IRON), chest.chestCount(ItemClass.RAW_COPPER), chest.chestCount(ItemClass.DIRT));
+                chest.chestCount(ItemClass.RAW_IRON), chest.chestCount(ItemClass.RAW_COPPER), chest.chestCount(ItemClass.DIRT),
+                chest.chestCount(ItemClass.IRON_INGOT), chest.chestCount(ItemClass.COPPER_INGOT));
     }
 
     /** Raw ore put in on this trip: the force's, every bit of it carried. */

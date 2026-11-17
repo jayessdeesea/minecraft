@@ -776,6 +776,11 @@ public class ChainOfCommand implements DisposableBean {
         this.stores = stores;
     }
 
+    /** What every surface chest held when last looked in, summed, if any has been. */
+    public Optional<Stockpile> stores() {
+        return Optional.ofNullable(stores);
+    }
+
     /** What the stockpile held when a soldier last looked in it, if anyone has. */
     public Optional<Stockpile> stockpile() {
         return Optional.ofNullable(stockpile);

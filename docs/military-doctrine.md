@@ -788,11 +788,14 @@ wears out in 59 blocks. What the chest holds when it's
 opened goes to the platoon leader (`PlatoonLeader.receiveStockpile`), shown with the supply point. It's drawn on
 too: a mason out of blocks, when the stockpile was last seen holding a load of cobblestone, walks
 over and shift-clicks stacks out until it carries a load (`Depositor.tickDraw`) before it digs any
-dirt - so one squad's quarrying walls another's camp. Raw ore goes through it the same way
-(`bot.supply.MetalPool`): a soldier keeps the iron or copper ore its next piece of kit takes only
-if it can make that piece with it, or with the stockpile's added - which it then draws, its
-armourer waiting rather than walking off to dig. Any other raw ore it carries is the force's, and
-goes in once it has 3. Live, eleven raw copper lay in four packs, none enough for a piece. Logs carried show in each
+dirt - so one squad's quarrying walls another's camp. Raw ore and ingots go through it the same way
+(`bot.supply.MetalPool`): a soldier keeps the iron or copper - ore or ingots - its next piece of
+kit takes only if it can make that piece with it, or with what the surface chests hold added -
+which it then draws, ingots before ore, from the nearest chest last seen holding it (an outpost's,
+the camp's, the main depot's), its armourer waiting rather than walking off to dig. Any other ore or
+ingot it carries is the force's, and goes in once it has 3. Live, eleven raw copper lay in four
+packs, none enough for a piece; and (field300) 74 raw copper lay in outpost and camp chests while
+draws looked in the main depot's alone, and three soldiers wore no armour. Logs carried show in each
 soldier's LACE (`Kit.logs`) and in the squad's LOGSTAT as materials.
 
 Food is grown as well as gathered. The survey also reports ground to farm: the largest plot of
