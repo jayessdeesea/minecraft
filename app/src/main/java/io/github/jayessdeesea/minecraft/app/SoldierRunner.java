@@ -3412,7 +3412,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         TreeFarm grove = keepGrove;
         Supply logsMeasured = logsSupply;
         PlatoonSergeant.Wood wood = new PlatoonSergeant.Wood(chainOfCommand.stockpile().map(Stockpile::logs).orElse(0),
-                onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream()).anyMatch(r -> r.resource() == Resource.WOOD)
+                treesSeenLately(onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream()).anyMatch(r -> r.resource() == Resource.WOOD), now)
                         || grove == null && keepGroveToClear != null, // the grove's ground to clear is trees seen
                 grove != null && !Forester.planted(world, grove), now < keepGroveBarredUntil,
                 logsMeasured == null ? 0 : logsMeasured.reorderPoint(), logsMeasured == null ? 0 : logsMeasured.objective());
@@ -3431,6 +3431,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         keepParty = party;
+    }
+
+    /** When a keep squad last saw trees - the squad loop writes and reads it. */
+    private volatile long keepTreesSeenAt = Long.MIN_VALUE / 2;
+    /** How long trees once seen are counted seen: a survey that misses them doesn't stand the wood party down. */
+    static final long TREES_SEEN_MILLIS = 120_000;
+
+    /**
+     * Whether trees are seen now, or were within {@link #TREES_SEEN_MILLIS}: live (field374), Ivy was put
+     * on the wood party, off it 21 s later ("nobody cut(s) trees" at 5 logs) and on it again 30 s after,
+     * each a survey that did or didn't see the trees, her rectangle handed back and forth with Bob.
+     */
+    private boolean treesSeenLately(boolean seenNow, long now) {
+        if (seenNow) {
+            keepTreesSeenAt = now;
+        }
+        return now - keepTreesSeenAt <= TREES_SEEN_MILLIS;
     }
 
     /** Whether {@code name} is off the dig in the keep's wood party. */
