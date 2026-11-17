@@ -171,7 +171,12 @@ public final class Depositor {
             }
             case Script.Status.Interrupted _ -> finish();
             case Script.Status.Failed failed -> {
-                LOG.warn("{} couldn't stockpile its load: {}: {}", name, failed.step(), failed.reason());
+                // Where it was, by this routine's last look, against the chest: a soldier within the chest's
+                // reach by every other measure failed its walk five times running (backlog/keep-pace.md).
+                LOG.warn("{} couldn't stockpile its load: {}: {} - last seen at {}, the chest at {}, {} blocks off", name, failed.step(),
+                        failed.reason(), soldierAt, at, soldierAt == null ? "?" : String.format(java.util.Locale.ROOT, "%.1f",
+                                Math.sqrt(Math.pow(soldierAt.x() - (Math.floor(at.x()) + 0.5), 2) + Math.pow(soldierAt.y() - Math.floor(at.y()), 2)
+                                        + Math.pow(soldierAt.z() - (Math.floor(at.z()) + 0.5), 2))));
                 if (failed.step().equals(PUT_IN)) {
                     full = Optional.of(at);
                 }
