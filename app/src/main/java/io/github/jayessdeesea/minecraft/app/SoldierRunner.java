@@ -2787,9 +2787,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .map(c -> {
                             long key = ((long) c.x() << 32) ^ (c.z() & 0xffffffffL);
                             Integer was = last.get(key);
+                            // And whether the blocks that came into the scan are steps on the record: the step
+                            // over last cycle's top, and the top now.
+                            int topNow = top.applyAsInt(c.x(), c.z());
+                            String steps = was == null || topNow <= was ? ""
+                                    : ", over last's a step " + scaffolding.contains(new BlockPos(c.x(), was + 1, c.z()))
+                                    + ", top a step " + scaffolding.contains(new BlockPos(c.x(), topNow, c.z()));
                             return c.x() + " " + c.z() + (world.isLoaded(c.x(), c.z()) ? " seen" : " remembered")
-                                    + " (scan " + top.applyAsInt(c.x(), c.z()) + ", last cycle's " + (was == null ? "none" : was)
-                                    + ", live " + calm.applyAsInt(c.x(), c.z()) + ")";
+                                    + " (scan " + topNow + ", last cycle's " + (was == null ? "none" : was)
+                                    + ", live " + calm.applyAsInt(c.x(), c.z()) + steps + ")";
                         }).toList());
             }
             Map<Long, Integer> scanned = new HashMap<>();

@@ -136,8 +136,13 @@ crew's ticks:
   disk: the level fell from 87 to 82 and rose back three times in ten minutes on hilltop columns
   (14..17, -30..-33) and (19, -39..-41), each "seen" - loaded throughout - so it's not the memory of
   unloaded columns: something takes loaded columns out of the site's scan for a while. A rise now logs
-  each column's top in this scan, in the last cycle's, and read live ("scan 87, last cycle's none,
-  live 87"): read the next rises off it. Left: a builder's own step to stand on is the level's to dig and is dug from under it and put
+  each column's top in this scan, in the last cycle's, and read live. Field327: (19, -43) "scan 88,
+  last cycle's 71, live 87" - 17 blocks counted as ground in one cycle that weren't the cycle
+  before, too many to have been built in a second - and (18, -30) "scan 90, last cycle's 85, live
+  89", with builders putting steps at y=89 for stands at y=91 there. So a column's blocks go in and
+  out of the scan's ground between cycles: next, log for a risen column whether its top cell is in
+  `scaffolding`, in the squad's `digExcept`, or in the siteClear cache's age - the three that decide
+  it. Not the step record's pruning: an unloaded cell reads solid, and isn't pruned. Left: a builder's own step to stand on is the level's to dig and is dug from under it and put
   back at one cell (Eli at (19, 89, -11)); keeping steps out of the dig by age left a spire's
   climbing steps standing in the squad simulation - it wants the step that's under someone's feet,
   not a recent one.
