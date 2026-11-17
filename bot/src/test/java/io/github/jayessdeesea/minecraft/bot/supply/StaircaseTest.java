@@ -79,6 +79,26 @@ class StaircaseTest {
     }
 
     /**
+     * A well's levels at y % 4 == 0 (the rules of a mine): each its own tunnels, out through the wall
+     * its walkway's on at that height - east, south and west in turn - so no two levels one above
+     * another run the same way, and none goes back through the shaft.
+     */
+    @Test
+    void aWellsLevelsEveryFourRunOffDifferentWays() {
+        Staircase well = Staircase.well(0, 0, 70, 12);
+        Set<BlockPos> stands = new HashSet<>();
+        for (int level : new int[]{12, 8, 4}) {
+            Staircase at = well.atLevel(level).orElseThrow();
+            BlockPos landing = at.landingStand();
+            assertTrue(!at.inShaft(landing.x(), landing.z()), "the landing's out of the shaft at y=" + level + ": " + landing);
+            BlockPos last = at.step(at.steps() - 1);
+            stands.add(new BlockPos(landing.x() - last.x(), 0, landing.z() - last.z()));
+        }
+        assertTrue(stands.size() == 3, "three ways: " + stands);
+        assertFalse(well.atLevel(10).isPresent(), "not off the y % 4 == 0 heights");
+    }
+
+    /**
      * A mine run on as far as it goes is cut a level deeper off the same stairs: the steps above are
      * the same, a fresh main tunnel under them, down to just above bedrock and no further.
      */

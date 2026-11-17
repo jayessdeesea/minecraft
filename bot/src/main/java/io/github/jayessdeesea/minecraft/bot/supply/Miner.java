@@ -235,7 +235,9 @@ public final class Miner {
         if (k != lastStep) {
             if (cut.tunnel() < 0) {
                 LOG.info("{} cuts step {} of {} down at {}", name, k + 1, stairs.steps(), cut.feet());
-            } else if (lastStep < 0 || cuts.get(lastStep).tunnel() != cut.tunnel()) {
+            } else if (lastStep < 0 || lastStep >= cuts.size() || cuts.get(lastStep).tunnel() != cut.tunnel()) {
+                // Past the end when its mine changed under it - a level deeper has fewer cuts than the
+                // stretches run before it: live (field312), every tick on the new level failed here.
                 LOG.info("{} cuts {} of the mine from {}", name, cut.tunnel() == 0 ? "the main tunnel" : "branch " + cut.tunnel(), cut.feet());
             }
             lastStep = k;

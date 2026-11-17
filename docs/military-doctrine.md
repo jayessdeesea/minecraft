@@ -1373,15 +1373,18 @@ that breaks one is a step back):**
    it's cut.
 6. **The yield checked.** Each level's ore is checked against what it should give, and one dried
    up is said so (docs/conventions.md, check the outcome).
-Built today: tunnels two high at the stairs' bottom, branches shared out as stretches among the
-mine's cutters, ore in reach taken, holes in the well filled, the tunnels lit, the yield checked at
-dawn, a level deeper when one is worked out. Not yet: a level for each squad at y % 4 == 0, tunnels
-three high, a direction per soldier, a vein's holes filled, a torch stock carried down
-(backlog/mining.md).
+Built today: a squad to a level - each squad on a mine off the camp works its own level of the
+shaft at y % 4 == 0, the base's if nobody else does, else the first free one under every other
+squad's, kept on disk by squad; a well's level runs out through the wall its walkway's on at that
+height, so levels one over another run east, south and west in turn; a level's crew is its own
+squad's cutters, and a level worked out goes to the next free one under the rest. Tunnels two
+high, branches shared as stretches among the level's cutters, ore in reach taken, holes in the
+well filled, the tunnels lit, the yield checked at dawn. Not yet: tunnels three high, a direction
+per soldier, a vein's holes filled, a torch stock carried down (backlog/mining.md).
 
-Squads sharing a mine each work its deepest level, and the longest any
-has run it there - not each its own: live, one squad took the mine a level deeper while the others
-kept the worked-out level above, read DONE on it, and the new level was run on with nothing cut.
+Squads on one mine each work their own level (the rules of a mine, above): live, squads sharing
+one level's stretches took one another's stale DONE for their own, and it was run on with nothing
+cut.
 
 A mine is shared among the cutters on it - every squad's, in order by name (`Staircase.share`):
 the first cuts the stairs and the main tunnel, and the branch roots along the main tunnel are cut

@@ -98,7 +98,12 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
     /** Out from the shaft from the last step, along an axis it's already off centre on: never back through it. */
     private int[] outward() {
         if (well) {
-            return new int[]{1, 0}; // east, out of the north-east corner
+            // Out through the wall the walkway's on at the landing (WELL_RING's order): east down the
+            // east side from the north-east corner, south along the south, west, then north. At the
+            // levels y % 4 == 0 that's east, south and west in turn, so levels one above another run
+            // off different ways (the rules of a mine).
+            int i = Math.floorMod(-bottom, WELL_TURN);
+            return i <= 3 ? new int[]{1, 0} : i <= 6 ? new int[]{0, 1} : i <= 9 ? new int[]{-1, 0} : new int[]{0, -1};
         }
         int[] d = RING[Math.floorMod(steps() - 1, RING.length)];
         return d[0] != 0 ? new int[]{d[0], 0} : new int[]{0, d[1]};
@@ -114,6 +119,16 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
 
     /** How much deeper a mine's next level is cut: fresh rock a level under the last one's branches. */
     public static final int LEVEL_DROP = 16;
+    /** The heights a mine's levels are at: a multiple of this (the rules of a mine: y % 4 == 0). */
+    public static final int LEVEL_EVERY = 4;
+
+    /** This mine's stairs down to a level at {@code level} instead - the same steps, its own tunnels there - if it can be. */
+    public java.util.Optional<Staircase> atLevel(int level) {
+        if (level >= head.y() || level < DEEPEST || well && Math.floorMod(level, LEVEL_EVERY) != 0) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(new Staircase(head, level, 1, well));
+    }
 
     /**
      * This mine a level deeper (operator, 2026-11-16: go deeper, or pick other sites): its stairs cut
@@ -378,8 +393,8 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
             throw new IllegalArgumentException("a staircase from " + head + " goes down, to no deeper than " + DEEPEST + ", not " + bottom);
         }
         if (well && (!head.equals(wellCell(Math.floorDiv(head.x(), 16), Math.floorDiv(head.z(), 16), head.y()))
-                || Math.floorMod(bottom, WELL_TURN) != 0)) {
-            throw new IllegalArgumentException("a well's head is its walkway's cell at its height, and its landing at y = 12k: "
+                || Math.floorMod(bottom, LEVEL_EVERY) != 0)) {
+            throw new IllegalArgumentException("a well's head is its walkway's cell at its height, and its landing at y = 4k: "
                     + head + " to " + bottom);
         }
     }

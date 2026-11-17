@@ -15,8 +15,7 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
 
 ## Done when
 - **The rules of a mine (operator, 2026-11-16; docs/military-doctrine.md § 16):** a level for each
-  squad at y % 4 == 0 off the shaft, tunnels three high; each soldier its own direction from its
-  level's landing; a vein followed to its last block in reach and its holes filled back with
+  squad is built; tunnels three high; each soldier its own direction from its level's landing; a vein followed to its last block in reach and its holes filled back with
   cobblestone or dirt; every miner going down with a stock of torches. Today's shared stretches of
   one level are replaced by this.
 - **The stairwell standard and the cutter's upkeep are built** (docs/military-doctrine.md § 16):

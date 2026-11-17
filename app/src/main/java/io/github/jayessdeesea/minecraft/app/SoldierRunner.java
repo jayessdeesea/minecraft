@@ -3823,8 +3823,38 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** The soldiers cutting {@code stairs}, every squad's, by name. */
     private List<String> mineCrew(Staircase stairs) {
-        return cutting.entrySet().stream().filter(e -> e.getValue().head().equals(stairs.head()))
+        return cutting.entrySet().stream().filter(e -> e.getValue().head().equals(stairs.head()) && e.getValue().bottom() == stairs.bottom())
                 .map(Map.Entry::getKey).sorted().toList();
+    }
+
+    /** Where a squad's own level of the mine ordered at ({@code x}, {@code z}) is kept on disk. */
+    private static String levelKey(int x, int z, String squad) {
+        // A file's name: a unit's name may be a path ("Alpha/miner"), which won't write.
+        return "mine" + x + "," + z + " " + squad.replaceAll("[^A-Za-z0-9]", "-");
+    }
+
+    /**
+     * The squad's own level off {@code base}'s stairs (the rules of a mine: a squad to a level): the
+     * base's own level if no other squad works it, else the next free y % 4 == 0 under every level
+     * the others work - kept on disk as the squad's.
+     */
+    private Staircase ownLevel(Staircase base, String squad, int x, int z) {
+        boolean taken = squadStairs.entrySet().stream().anyMatch(e -> !e.getKey().equals(squad)
+                && e.getValue().head().equals(base.head()) && e.getValue().bottom() == base.bottom());
+        Staircase level = taken ? freeLevel(base, squad).orElse(base) : base;
+        if (level != base) {
+            LOG.info("[{}] MINE: its own level of the mine at {}: y={}", squad, base.head(), level.bottom());
+        }
+        mineStore.save(mineKey(levelKey(x, z, squad), level.well()), toKeep(level));
+        return level;
+    }
+
+    /** The next level free of every squad's on {@code mine}'s stairs: the first y % 4 == 0 under the deepest of them. */
+    private Optional<Staircase> freeLevel(Staircase mine, String squad) {
+        int deepest = squadStairs.entrySet().stream().filter(e -> e.getValue().head().equals(mine.head()))
+                .mapToInt(e -> e.getValue().bottom()).min().orElse(mine.bottom());
+        int next = Math.floorDiv(Math.min(deepest, mine.bottom()) - 1, Staircase.LEVEL_EVERY) * Staircase.LEVEL_EVERY;
+        return mine.atLevel(next);
     }
 
     /** Slots past a soldier's load that make a trip to the depot of their own: fewer go with its next load. */
@@ -4658,12 +4688,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 long now = clockwork.millis();
                 // One mine, several squads on it: each works the longest any of them has run it.
                 Staircase mine = state.stairs;
-                // Its deepest level first, then the longest run there: live (field308), one squad took the
-                // mine a level deeper while the others kept the worked-out level above, read DONE on it,
-                // and the new level was run on from 24 blocks to 48 in thirty seconds with nothing cut.
-                Comparator<Staircase> furthest = Comparator.comparingInt((Staircase o2) -> -o2.bottom()).thenComparingInt(Staircase::stretches);
-                state.stairs = squadStairs.values().stream().filter(o2 -> o2.head().equals(mine.head()))
-                        .max(furthest).filter(o2 -> furthest.compare(o2, mine) > 0).orElse(mine);
+                // Each squad its own level (the rules of a mine): nothing taken from another's. Live
+                // (field308), squads sharing one level's stretches took one another's stale DONE for
+                // their own, and the mine was run on with nothing cut.
                 // Worked out when every cutter on it - every squad's - has its share cut, not when one has.
                 List<String> crew = mineCrew(state.stairs);
                 boolean workedOut = !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done);
@@ -4673,7 +4700,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // 2026-11-16: by now everyone should have armour). Run on a stretch, then a level deeper.
                 if (workedOut && oreWanted() && now - mineExtendedAt.getOrDefault(state.stairs.head(), 0L) >= EXTEND_SETTLE_MILLIS) {
                     Optional<Staircase> run = state.stairs.extended();
-                    Optional<Staircase> longer = run.or(state.stairs::deeper);
+                    Optional<Staircase> longer = run.or(() -> freeLevel(state.stairs, squadName));
                     if (run.isEmpty() && longer.isPresent()) {
                         LOG.warn("[Outcome] the mine at {} is worked out at y={} - its next level cut at y={}", state.stairs.head(),
                                 state.stairs.bottom(), longer.get().bottom());
@@ -4686,7 +4713,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         mineExtendedAt.put(state.stairs.head(), now);
                         stairsProgress.clear();
                         if (!nearCamp(x, z)) {
-                            mineStore.save(mineKey("mine" + x + "," + z, longer.get().well()), toKeep(longer.get())); // the camp's is saved with it below
+                            mineStore.save(mineKey(levelKey(x, z, squadName), longer.get().well()), toKeep(longer.get())); // the camp's is saved with it below
                         }
                         treeClaims.addAll(longer.get().walkway());
                         LOG.info("[{}] MINE: worked out, the force short of iron - its main tunnel run on to {} blocks", squadName,
@@ -4723,7 +4750,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // A mine off the camp is kept on disk by the x and z it was ordered at: after a restart it's
             // cut on down, not sited again over its own half-cut steps.
             if (kept.isEmpty() && !nearCamp(x, z)) {
-                kept = keptMine("mine" + x + "," + z);
+                // Its own level first, kept by squad; else the mine's stairs, and a level of its own off them.
+                Optional<Staircase> own = keptMine(levelKey(x, z, squadName));
+                kept = own.isPresent() ? own : keptMine("mine" + x + "," + z).map(shared -> ownLevel(shared, squadName, x, z));
             }
             if (kept.isPresent()) {
                 LOG.info("[{}] MINE: the staircase kept on disk: down from {} to y={}", squadName, kept.get().head(), kept.get().bottom());
@@ -4748,12 +4777,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             LOG.info("[{}] MINE: a staircase down from {} to y={}", squadName, sited.get().head(), sited.get().bottom());
             state.stairsFor = new int[]{x, z};
+            Staircase level = sited.get();
             if (!nearCamp(x, z)) {
                 mineStore.save(mineKey("mine" + x + "," + z, true), toKeep(sited.get()));
+                level = ownLevel(sited.get(), squadName, x, z);
             }
             // Its stairs and tunnels are claimed: no table, furnace or other digger goes in them.
-            treeClaims.addAll(sited.get().walkway());
-            return sited.get();
+            treeClaims.addAll(level.walkway());
+            return level;
         }).orElse(null);
         state.stairs = stairs;
         if (stairs == null) {
