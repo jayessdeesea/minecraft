@@ -35,15 +35,17 @@ class PlatoonSergeantTest {
     void aReleasedSquadGoesToTheGravestShortfall() {
         Optional<Stockpile> plenty = Optional.of(new Stockpile(Keep.LOGS_RESERVE, 0, Subsistence.STOCKPILE_RESERVE, PlatoonSergeant.IRON_RESERVE, 0));
         Optional<Stockpile> lowBread = Optional.of(new Stockpile(Keep.LOGS_RESERVE, 0, Subsistence.STOCKPILE_RESERVE - 1, PlatoonSergeant.IRON_RESERVE, 0));
-        Optional<Stockpile> noIron = Optional.of(new Stockpile(Keep.LOGS_RESERVE, 0, 0, 0, 0));
+        Optional<Stockpile> noIron = Optional.of(new Stockpile(Keep.LOGS_RESERVE, 0, Subsistence.STOCKPILE_RESERVE, 0, 0));
         Optional<Stockpile> lowLogs = Optional.of(new Stockpile(Keep.LOGS_RESERVE - 1, 0, Subsistence.STOCKPILE_RESERVE, PlatoonSergeant.IRON_RESERVE, 0));
-        Optional<Stockpile> noLogs = Optional.of(new Stockpile(0, 0, 0, 0, 0));
+        Optional<Stockpile> noLogs = Optional.of(new Stockpile(0, 0, Subsistence.STOCKPILE_RESERVE, PlatoonSergeant.IRON_RESERVE, 0));
         SquadStatus fed = squad(Optional.of(new Subsistence.Status(Subsistence.Rating.GREEN, List.of(), List.of())), Optional.empty());
         SquadStatus hungry = squad(Optional.of(new Subsistence.Status(Subsistence.Rating.RED, List.of("Bob"), List.of("Bob"))), Optional.empty());
         SquadStatus asking = squad(Optional.empty(), Optional.of("Class IV RED"));
 
         assertEquals(Optional.empty(), PlatoonSergeant.shortfall(List.of(fed), plenty));
-        assertEquals(Optional.of(PlatoonSergeant.Shortfall.FOOD), PlatoonSergeant.shortfall(List.of(fed), lowBread), "the bread reserve, last");
+        assertEquals(Optional.of(PlatoonSergeant.Shortfall.FOOD), PlatoonSergeant.shortfall(List.of(fed), lowBread), "the bread reserve");
+        assertEquals(List.of(PlatoonSergeant.Shortfall.FOOD, PlatoonSergeant.Shortfall.WOOD, PlatoonSergeant.Shortfall.IRON),
+                PlatoonSergeant.shortfalls(List.of(fed), Optional.of(new Stockpile(0, 0, 0, 0, 0))), "every alarm, food first");
         assertEquals(Optional.empty(), PlatoonSergeant.shortfall(List.of(fed), Optional.empty()), "nothing seen, nothing known short");
         assertEquals(Optional.of(PlatoonSergeant.Shortfall.IRON), PlatoonSergeant.shortfall(List.of(fed), noIron));
         assertEquals(Optional.of(PlatoonSergeant.Shortfall.WOOD), PlatoonSergeant.shortfall(List.of(fed), noLogs));

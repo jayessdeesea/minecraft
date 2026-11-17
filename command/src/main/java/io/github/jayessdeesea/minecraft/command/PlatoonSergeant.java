@@ -50,23 +50,32 @@ public final class PlatoonSergeant {
      * squads' own requests are known. Empty with none.
      */
     public static Optional<Shortfall> shortfall(List<SquadStatus> squads, Optional<Stockpile> stockpile) {
-        if (squads.stream().anyMatch(s -> s.classOne().filter(c -> c.rating() == Subsistence.Rating.RED).isPresent())) {
-            return Optional.of(Shortfall.FOOD);
+        return shortfalls(squads, stockpile).stream().findFirst();
+    }
+
+    /**
+     * Every shortfall in alarm, food first (operator, 2026-11-17): released squads are dealt across them
+     * in turn - more people work more in parallel, not one shortfall at a time, since the wheat and the
+     * trees take their time to grow whoever waits on them - and with an odd number, or one squad, food
+     * gets the extra. Food: a squad's Class I RED or the stockpile's bread under its reserve; wood: a
+     * Class IV request or the stockpile's logs under their reserve; iron: under {@link #IRON_RESERVE}.
+     * With no stockpile seen, only the squads' own ratings and requests are known.
+     */
+    public static List<Shortfall> shortfalls(List<SquadStatus> squads, Optional<Stockpile> stockpile) {
+        List<Shortfall> alarms = new ArrayList<>();
+        if (squads.stream().anyMatch(s -> s.classOne().filter(c -> c.rating() == Subsistence.Rating.RED).isPresent())
+                || stockpile.filter(st -> st.rations() < Subsistence.STOCKPILE_RESERVE).isPresent()) {
+            alarms.add(Shortfall.FOOD);
         }
         // Under the reserve, not under a depot's 16: live (field362), the keep's crew was one builder, its wood
-        // party none, and the stockpile at 3 logs - nobody could make a pickaxe or a shovel, and the night's ore
-        // was 7 of 16.
+        // party none, and the stockpile at 3 logs - nobody could make a pickaxe or a shovel.
         if (squads.stream().anyMatch(s -> s.classFour().isPresent()) || stockpile.filter(st -> st.logs() < Keep.LOGS_RESERVE).isPresent()) {
-            return Optional.of(Shortfall.WOOD);
+            alarms.add(Shortfall.WOOD);
         }
         if (stockpile.filter(st -> st.rawIron() + st.ironIngots() < IRON_RESERVE).isPresent()) {
-            return Optional.of(Shortfall.IRON);
+            alarms.add(Shortfall.IRON);
         }
-        // Last, the bread reserve: a little priority when the stockpile runs low (operator, 2026-11-17).
-        if (stockpile.filter(st -> st.rations() < Subsistence.STOCKPILE_RESERVE).isPresent()) {
-            return Optional.of(Shortfall.FOOD);
-        }
-        return Optional.empty();
+        return List.copyOf(alarms);
     }
 
     /**

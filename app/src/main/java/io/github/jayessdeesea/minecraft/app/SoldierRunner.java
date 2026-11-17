@@ -4567,7 +4567,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // a stair up laid out for one, another sent further down.
             boolean below = s.order() instanceof Order.MoveTo m && m.y() - from.y() > CUT_OFF_RISE && cells < CUT_OFF_BUDGET
                     && walkable.stream().noneMatch(c -> c.y() >= m.y() - m.verticalTolerance() - 1);
-            if (cells <= CUT_OFF_CELLS || below) {
+            // Or under the ground and sent to the surface, whatever the cave: a soldier digs itself out of
+            // anything (operator, 2026-11-17). Live (field359-362), Ivy stood half an hour in a stone slot 26
+            // under the hill, its cave big enough not to be "a pocket", her goals at her own height on the
+            // far side of it - never stranded, so never dug out. Not one sent somewhere underground: a miner.
+            boolean buried = s.order() instanceof Order.MoveTo m && buried(from) && !buried(new Position(m.x(), m.y(), m.z()));
+            if (cells <= CUT_OFF_CELLS || below || buried) {
                 walksSaid.remove(s.name());
                 return Recovery.stranded(s) ? s : new SoldierStatus(s.name(), s.position(), s.order(), new Report.Cantco(String.format(Locale.ROOT,
                         "no route from (%.0f, %.0f, %.0f): cut off in a pocket of %d cells", from.x(), from.y(), from.z(), cells)), s.condition());
@@ -4577,6 +4582,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             return Recovery.stranded(s) ? new SoldierStatus(s.name(), s.position(), s.order(), new Report.Moving(), s.condition()) : s;
         }).toList();
+    }
+
+    /** Whether {@code at} is more than {@link #UNDERGROUND} under its column's surface: in a cave, not on the ground. */
+    private boolean buried(Position at) {
+        int x = (int) Math.floor(at.x()), z = (int) Math.floor(at.z());
+        return world.isLoaded(x, z) && TerrainSurveyor.surface(world, x, z, Keep.SKY_TOP).filter(top -> top.y() > at.y() + UNDERGROUND).isPresent();
     }
 
     /** How far under the ground over it a stranded soldier is under the ground, for the drill: a stair up, not down. */

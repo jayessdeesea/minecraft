@@ -425,7 +425,11 @@ risk and its own condition into a fall allowance:
 
 So a safe route always wins when one exists, and a fall is planned only when there's none, on
 foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier with no such
-route - its own planner having tried building its way with whatever it carries - is stranded - reported "no route" 20 squad cycles in a row (about
+route - its own planner having tried building its way with whatever it carries - is stranded: cut off in
+a pocket, below where it's sent with no way up, or under the ground - more than 8 under its column's
+surface - and sent to the surface, however big its cave (operator, 2026-11-17: a soldier digs itself
+out of anything; live, Ivy stood half an hour in a stone slot 26 under a hill, her cave too big to
+be a pocket). It's reported "no route" 20 squad cycles in a row (about
 20 seconds), since one failed hop across the camp isn't a soldier stuck; "no route" to where it's
 going outranks whatever its routine reports. The squad's recovery drill (`command.Recovery`) picks
 the nearest squadmate carrying 24 or more blocks - one at a time, never in contact - and sets it
@@ -1598,10 +1602,13 @@ at each new level the foreman says the builders its blocks want, one to 24 block
 (`SoldierRunner.CREW_LOOK_AHEAD`) - live, a hilltop's last blocks let all but two go, and the next
 level, 1,038 blocks, was dealt to those two - and only as many squads as that takes are sent to the ground, in
 the order of battle, the farm squad never; the rest are released to what the force is short of
-(operator, 2026-11-16; `PlatoonSergeant.shortfall`): the camp's farm while a squad is Class I RED,
-the nearest trees seen while the keep's builders ask for logs or the surface chests hold fewer
-than it wants, the keep's mine while they hold under 24 raw iron - every surface chest's last look
-summed, not one chest's ("[PL -> Bravo] released from
+(operator, 2026-11-16; `PlatoonSergeant.shortfalls`): the camp's farm while a squad is Class I RED
+or the surface chests hold under the bread reserve, the nearest trees seen while the keep's
+builders ask for logs or the chests hold under the logs' reserve, the keep's mine while they hold
+under 24 raw iron - every surface chest's last look summed, not one chest's. With more than one in
+alarm the released squads are dealt across them in turn, food first, so an odd one out or a lone
+squad farms (operator, 2026-11-17: more people means more throughput, not less latency - the wheat
+and the trees grow at their own pace, and more hands in parallel bring in more at a time) ("[PL -> Bravo] released from
 the flatten ...: to the force's IRON shortfall"); stalled on that work - trees already cut,
 "nothing left to gather" - it's given the platoon leader's objective instead. Short of nothing, to the platoon leader's own
 objective for them, or the camp's work where that's the ground too. They're called back as the

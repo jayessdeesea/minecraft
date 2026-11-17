@@ -327,6 +327,16 @@ public class ChainOfCommand implements DisposableBean {
      * the keep's mine - not the platoon leader's objective for it.
      */
     Objective byDay(Objective objective, SquadStatus squad, Optional<PlatoonSergeant.Shortfall> shortfall, List<ResourceSite> woods) {
+        return byDay(objective, squad, shortfall.stream().toList(), List.copyOf(woods));
+    }
+
+    /**
+     * As {@link #byDay(Objective, SquadStatus, Optional, List)}, the released squads dealt across every
+     * shortfall in {@code alarms} in turn, food first (PlatoonSergeant#shortfalls): the first released
+     * squad to the first, the next to the next, round again - with three squads and food and wood in
+     * alarm, two farm and one cuts (operator, 2026-11-17: more people means more throughput).
+     */
+    Objective byDay(Objective objective, SquadStatus squad, List<PlatoonSergeant.Shortfall> alarms, List<ResourceSite> woods) {
         if (!keepByDay || time == null || (time.dark() || sheltering()) && !surfacing()) {
             return objective;
         }
@@ -348,6 +358,8 @@ public class ChainOfCommand implements DisposableBean {
         int perSquad = Math.max(1, squad.soldiers().size());
         int squadsWanted = wanted == Integer.MAX_VALUE ? builders.size() : Math.max(1, (wanted + perSquad - 1) / perSquad);
         if (builders.indexOf(squad.squadName()) >= squadsWanted) {
+            int released = builders.indexOf(squad.squadName()) - squadsWanted;
+            Optional<PlatoonSergeant.Shortfall> shortfall = alarms.isEmpty() ? Optional.empty() : Optional.of(alarms.get(released % alarms.size()));
             Optional<Objective> needed = shortfall.flatMap(s -> toShortfall(s, squad, woods, wanted));
             // Not sent again to what it's just said it can't do there: live (field296), a squad sent
             // for wood to trees already cut said "nothing left to gather" and was sent back each decision.
@@ -1086,7 +1098,7 @@ public class ChainOfCommand implements DisposableBean {
                 }
                 long millis = clockwork.millis() - started;
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
-                Optional<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfall(statuses, Optional.ofNullable(stores));
+                List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores));
                 List<ResourceSite> woods = statuses.stream().flatMap(s -> s.resources().stream()).toList();
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
