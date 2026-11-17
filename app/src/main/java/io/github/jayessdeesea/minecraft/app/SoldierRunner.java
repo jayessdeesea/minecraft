@@ -888,7 +888,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             // Grown once a run to feed the camp: the plots round the waters beside its own.
             if (keptFarm != null) {
-                keptFarm = FarmPlan.grown(world, keptFarm, CAMP_FARM_CELLS, CAMP_FARM_VERTICAL, walkable::contains);
+                keptFarm = FarmPlan.grown(world, keptFarm, campFarmCells(), CAMP_FARM_VERTICAL, walkable::contains);
                 campFarmGrown = true;
             }
             if (keptFarm != null && !keptFarm.equals(before)) {
@@ -1067,13 +1067,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How far round the camp its farm is looked for: the water it needs can be a way off. */
     private static final int CAMP_FARM_RADIUS = 48;
     /**
-     * The cells the camp's farm is grown to: enough to feed the force and build its basic load, not
-     * only its meals. Hydrated wheat ripens in half an hour or so, three wheat a loaf: live, 97
-     * cells made about 20 loaves an hour, as many as eight soldiers ate, and hunting added next to
-     * nothing - none of them carried more than a few rations. One water's plot is a quarter of it
-     * by a pond.
+     * The cells the camp's farm is grown to for each soldier on the roster: enough to feed the force
+     * and build its basic load, not only its meals. Hydrated wheat ripens in half an hour or so,
+     * three wheat a loaf: live, 97 cells made about 20 loaves an hour, as many as eight soldiers ate,
+     * and hunting added next to nothing - none of them carried more than a few rations. Live
+     * (field369), 192 cells - eight soldiers' worth - left a force of sixteen with 12 at no bread:
+     * the farm is the force's size, not a fixed one (operator, 2026-11-17: an emergency is a signal
+     * to change).
      */
+    static final int CAMP_FARM_CELLS_A_SOLDIER = 24;
+
+    /** The least the camp's farm is grown to, whatever the force: eight soldiers' worth, a pond or two. */
     static final int CAMP_FARM_CELLS = 192;
+
+    /** The cells the camp's farm is grown to: {@link #CAMP_FARM_CELLS_A_SOLDIER} for every soldier, and never under {@link #CAMP_FARM_CELLS}. */
+    private int campFarmCells() {
+        return Math.max(CAMP_FARM_CELLS, CAMP_FARM_CELLS_A_SOLDIER * roster.squads().stream().mapToInt(s -> s.soldiers().size()).sum());
+    }
     /** And how far up or down: a camp on a hill farms by the water below it. */
     private static final int CAMP_FARM_VERTICAL = 32;
     /** Farm cells a farmer couldn't work, passed over by every farmer for a while. */
@@ -1084,7 +1094,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private static final int FARM_REACH_BUDGET = 40_000;
     /** The camp's farm ground by water, as the foothold last measured it: kept by squads short of food. */
     private volatile FarmPlan campFarm;
-    /** Whether the camp's farm has been grown to {@link #CAMP_FARM_CELLS} this run, as far as the ground allows. */
+    /** Whether the camp's farm has been grown to {@link #campFarmCells} this run, as far as the ground allows. */
     private boolean campFarmGrown;
     /** The camp's ground, found once. */
     private BlockPos campGround;
