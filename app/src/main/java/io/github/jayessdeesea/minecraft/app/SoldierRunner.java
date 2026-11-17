@@ -3721,6 +3721,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private volatile BlockPos keepGroveToClear;
     /** When the keep's grove was last sought. */
     private volatile long keepGroveSoughtAt;
+    /** How far from the keep's depot its wood party goes for trees: the ground the keep's squads work. */
+    static final int KEEP_WOOD_REACH = 64;
     /** How often a grove not yet sited is sought again, its ground cleared meanwhile. */
     static final long GROVE_RESITE_MILLIS = 120_000;
 
@@ -3733,8 +3735,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (grove == null && clearing != null) {
             return new Position(clearing.x() + 0.5, clearing.y(), clearing.z() + 0.5);
         }
+        // Trees on the surface near the depot only: live (field377), Ivy and Liam were sent 120 blocks off to
+        // "trees" at y=-28 - a mineshaft's timbers a mining squad's survey saw - never a surface soldier
+        // routed down into a cave (backlog/long-routes.md).
+        Position depot = chainOfCommand.flatten().depot();
         return onKeep.stream().flatMap(u -> chainOfCommand.resourcesSeen(u).stream())
                 .filter(site -> site.resource() == Resource.WOOD).map(ResourceSite::location)
+                .filter(l -> !buried(l) && Math.hypot(l.x() - depot.x(), l.z() - depot.z()) <= KEEP_WOOD_REACH)
                 .min(Comparator.comparingDouble(l -> Math.hypot(l.x() - chainOfCommand.flatten().depot().x(), l.z() - chainOfCommand.flatten().depot().z())))
                 .orElseGet(() -> grove != null ? new Position(grove.centre().x() + 0.5, grove.centre().y(), grove.centre().z() + 0.5)
                         : chainOfCommand.flatten().depot());
