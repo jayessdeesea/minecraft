@@ -1309,6 +1309,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             case IRON_INGOT -> Stockpile::ironIngots;
             case COPPER_INGOT -> Stockpile::copperIngots;
             case LOG -> Stockpile::logs;
+            case COBBLESTONE -> Stockpile::stone;
             default -> throw new IllegalArgumentException(metal + " isn't drawn from the chest holding it");
         };
         // A chest the world no longer shows is forgotten, not walked to: live (field324), a draw went
@@ -2587,8 +2588,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // The dig's own cobblestone first, from the depot: it climbs as well as dirt, and the depots
             // hold thousands of it. Live (field347), every pit round the keep was dug out in turn and
             // builders stood a minute at a time finding no dirt, with the depots' rows full of stone.
-            boolean depotStone = chainOfCommand.stockpile().map(st -> st.stone() >= Tasking.LOAD).orElse(false)
-                    && stockpileFor(h.name()).isPresent();
+            // Counted over every surface chest: the stockpile is the one chest last looked in, and live
+            // (field349-352) that read under a load all night, and no builder ever drew.
+            boolean depotStone = chainOfCommand.stores().map(st -> st.stone() >= Tasking.LOAD).orElse(false);
             if (fetching && depotStone) {
                 if (keepClimbDrawing.add(h.name())) {
                     LOG.info("[{}] {} carries {} blocks to climb on - draws a load of cobblestone from the depot first", squad, h.name(), blocks);
@@ -6965,7 +6967,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (unstash.isPresent()) {
                     depositor.tickDraw(status.position(), Optional.of(unstash.get().chest()), unstash.get().ore(), unstash.get().carry(),
                             free && !threatened);
-                } else if (drawingStone.contains(name) || keepDrawing.contains(name) || keepClimbDrawing.contains(name)) {
+                } else if (keepClimbDrawing.contains(name)) {
+                    // From the nearest chest holding stone, as metal and logs are drawn.
+                    depositor.tickDraw(status.position(), metalChest(ItemClass.COBBLESTONE, status.position()).or(() -> stockpile),
+                            ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
+                } else if (drawingStone.contains(name) || keepDrawing.contains(name)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.COBBLESTONE, WALL_BLOCKS_LOAD, free && !threatened);
                 } else if (drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stockpile(), logsAt)
                         || depositor.drawing(ItemClass.LOG)) {
