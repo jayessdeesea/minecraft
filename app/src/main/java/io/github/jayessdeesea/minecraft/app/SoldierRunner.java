@@ -3676,7 +3676,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     return Optional.of(new Order.MoveTo(foot.x() + 0.5, foot.y(), foot.z() + 0.5, 2, 3, Risk.LOW));
                 }
             }
-            tree = nearestLog(at).map(this::treeAt).orElse(null);
+            // A tree of its own: never one another cutter is felling (work in parallel - nobody on another's
+            // share). Live (field380), Liam was given the tree Bob had taken 13 s before.
+            Set<BlockPos> others = new HashSet<>();
+            felling.forEach((other, logs) -> {
+                if (!other.equals(cutter)) {
+                    others.addAll(logs);
+                }
+            });
+            tree = nearestLog(at, others).map(this::treeAt).orElse(null);
             if (tree == null) {
                 felling.remove(cutter);
                 return Optional.empty();
@@ -3714,7 +3722,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     /** The log nearest {@code at}, within {@link #TREE_LOOK} across and up or down. */
-    private Optional<BlockPos> nearestLog(Position at) {
+    private Optional<BlockPos> nearestLog(Position at, Set<BlockPos> held) {
         int ax = (int) Math.floor(at.x()), ay = (int) Math.floor(at.y()), az = (int) Math.floor(at.z());
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
@@ -3722,7 +3730,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             for (int z = az - TREE_LOOK; z <= az + TREE_LOOK; z++) {
                 for (int y = ay - TREE_LOOK; y <= ay + TREE_LOOK; y++) {
                     double d = Math.hypot(x - ax, z - az) + Math.abs(y - ay) * 0.5;
-                    if (d < bestDistance && world.isLog(x, y, z) && !treesLeft.contains(new BlockPos(x, y, z))) {
+                    BlockPos cell = new BlockPos(x, y, z);
+                    if (d < bestDistance && world.isLog(x, y, z) && !treesLeft.contains(cell) && !held.contains(cell)) {
                         best = new BlockPos(x, y, z);
                         bestDistance = d;
                     }
