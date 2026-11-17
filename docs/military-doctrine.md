@@ -1601,7 +1601,9 @@ keep, again whenever that one is off it. The site's level is the highest ground 
 it - read live from the world over the site's scan, a column cut since followed down a few blocks
 to what's left of it (`SoldierRunner.LIVE_TOP_DROP`), not dropped, so a tower being cut doesn't
 drop the level and raise it again at each block - and nobody digs lower till it's gone, so the site comes down as one flat floor: nobody climbs
-over a neighbour's ground. A builder's own step or pillar (`SoldierRunner.scaffolding`), and a
+over a neighbour's ground. A builder's own step or pillar (`SoldierRunner.scaffolding`, kept on disk
+across restarts - lost, every step left standing read as ground, and the dirt tower's leftovers set
+the level back up to y=91 after every restart), and a
 tree's logs and leaves, are no ground and don't set the level - counted as the highest, it held every builder at its level for
 one block while eight stood by - but every level shares out any step standing at or over it with
 its ground - a step isn't dropped from the record the moment it reads open, for 20 seconds, since

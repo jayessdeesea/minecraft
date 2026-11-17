@@ -606,6 +606,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The chests found full, kept on disk: live, after every restart the crew found each again by a failed trip. */
     private final WallStore chestStore;
     /**
+     * The steps the soldiers have built and not yet taken down, kept on disk: lost at a restart, every
+     * step left standing read as ground - live, the dirt tower's leftover steps at y=90-91 set the
+     * flatten's level back up to them after every restart, and builders put more up to reach them.
+     */
+    private final WallStore stepStore;
+    /**
      * The camp's mine - its staircase, as its head and its last step's feet - kept on disk like the
      * wall. After a restart the same staircase is cut on down, not sited afresh: live, sited again
      * from wherever the squad stood, thirty-odd staircases were started round the mine head, until
@@ -1291,10 +1297,25 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * the server hasn't confirmed yet reads open for a moment, and dropped then it lands as ground.
      */
     private void pruneSteps() {
-        long fresh = clockwork.millis() - STEP_FRESH_MILLIS;
+        long now = clockwork.millis();
+        long fresh = now - STEP_FRESH_MILLIS;
         scaffolding.removeIf(c -> !world.isSolid(c.x(), c.y(), c.z()) && stepPlacedAt.getOrDefault(c, Long.MIN_VALUE) < fresh);
         stepPlacedAt.keySet().removeIf(c -> !scaffolding.contains(c));
+        // To disk when it's changed, a few seconds apart at most: a step a moment old is worth losing.
+        Set<BlockPos> steps = Set.copyOf(scaffolding);
+        if (!steps.equals(stepsSaved) && now - stepsSavedAt >= STEPS_SAVE_MILLIS) {
+            stepStore.save(STEPS, List.copyOf(steps));
+            stepsSaved = steps;
+            stepsSavedAt = now;
+        }
     }
+
+    /** The key the steps are kept under, and how often at most they're written. */
+    private static final String STEPS = "placed";
+    static final long STEPS_SAVE_MILLIS = 5_000;
+    /** The steps as last written, and when - the squad loop's own. */
+    private volatile Set<BlockPos> stepsSaved = Set.of();
+    private volatile long stepsSavedAt = Long.MIN_VALUE / 2;
     /** How near the camp an objective is for its squad to craft at the camp's workshop. */
     private static final int CAMP_WORKSHOP_RANGE = 48;
     /** Ticks to each soldier's next stand-to check. */
@@ -1373,6 +1394,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.farmStore = new WallStore(Path.of(stateDir), "farm");
         this.mineStore = new WallStore(Path.of(stateDir), "stairs");
         this.chestStore = new WallStore(Path.of(stateDir), "chests");
+        this.stepStore = new WallStore(Path.of(stateDir), "steps");
+        stepStore.load(STEPS).ifPresent(scaffolding::addAll);
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
         this.planBook = new PlanBook(Path.of(stateDir));
         this.scoreboard = new Scoreboard(Path.of(stateDir));
