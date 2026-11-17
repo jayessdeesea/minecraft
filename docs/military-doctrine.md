@@ -1682,7 +1682,9 @@ a step over the level is cut only from on it, its builder's way down, and the re
 is gone (live, a builder's step a block over a hilltop was taken for the level, cut from beside it,
 and another put up, two stands in turn for two minutes). A
 builder carrying fewer than 4 blocks to climb on fetches a load of 32 dirt from a borrow pit off
-its squad's side of the keep first - on the ground's surface there, found from above - and when
+its squad's side of the keep first - on the ground's surface there, found from above, and its dirt
+looked for within 16 of the pit's point nearest the fetcher, the pit running the side's whole length
+(`SoldierRunner.nearestIn`) - and when
 its fetchers find nothing left, the squad's next pit is off another side, round the keep in turn
 (never west, the depot's side, where a pit takes the ground from under the workshop): live, one with a single block stood all day 15 under its
 strip's top, the hilltop it dug being stone. And one stranded up a pillar of its own - called off

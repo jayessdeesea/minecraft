@@ -1015,6 +1015,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return OptionalInt.empty();
     }
 
+    /**
+     * The point of {@code box} nearest {@code soldier}, at the box's middle height: where a gather from
+     * it is looked for round. Its middle was 16 blocks' search in a pit 130 long - live (field340), the
+     * keep's borrow pit along the site's side, its middle by the depots and dug out, and builders sent
+     * for dirt stood a minute at a time finding none.
+     */
+    static Position nearestIn(Box box, Position soldier) {
+        double x = Math.max(box.minX() + 0.5, Math.min(box.maxX() + 0.5, soldier.x()));
+        double z = Math.max(box.minZ() + 0.5, Math.min(box.maxZ() + 0.5, soldier.z()));
+        return new Position(x, (box.minY() + box.maxY()) / 2.0, z);
+    }
+
     /** How far round a site its ground is looked for. */
     static final int GROUND_NEAR = 8;
     /** How far under the ground at its site a kept mine's head may be before it reads sited from below. */
@@ -2546,9 +2558,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             LOG.warn("[{}] no ground at x={} z={} for the keep's borrow pit - its builders fetch no dirt", squad, pitX, pitZ);
         }
         for (SoldierStatus h : hands) {
-            // Not one the recovery drill has: stranded, it can't walk to a pit, and its stair is its way
-            // out - live (field333), Jack, cut off at y=-46 150 blocks off, was sent for a load of dirt.
-            if (!(orders.get(h.name()) instanceof Order.Dig) || pitGround.isEmpty() || state.recovery.recovering(h.name())) {
+            if (!(orders.get(h.name()) instanceof Order.Dig) || pitGround.isEmpty()) {
                 keepFetching.remove(h.name());
                 continue;
             }
@@ -2567,9 +2577,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false);
         for (Tasking.Hand hand : crew) {
             // Short for the fill: to the stockpile for a load, and kept at it until it carries one.
-            // Nor one the recovery drill has: its stair is its way out (live, field337, Jack's stair up was
-            // laid out 366 blocks long, and he walked at the depot 130 blocks off and above instead).
-            boolean short_ = toDig.isEmpty() && !toFill.isEmpty() && !orders.containsKey(hand.name()) && !state.recovery.recovering(hand.name());
+            boolean short_ = toDig.isEmpty() && !toFill.isEmpty() && !orders.containsKey(hand.name());
             if (short_ && stocked && stockpileFor(hand.name()).isPresent()) {
                 if (keepDrawing.add(hand.name())) {
                     LOG.info("[{}] {} goes to the stockpile for cobblestone for the keep", squad, hand.name());
@@ -6988,8 +6996,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     Box b = groundRun.box();
                     // Not while it's on its way to make kit, as for a clear: a lumberjack sent for an axe
                     // chopped by hand on the way, and had its logs before it reached the table.
-                    gatherer.tick(status.position(), world, Optional.of(groundRun.resource()),
-                            new Position((b.minX() + b.maxX()) / 2.0 + 0.5, (b.minY() + b.maxY()) / 2.0, (b.minZ() + b.maxZ()) / 2.0 + 0.5),
+                    gatherer.tick(status.position(), world, Optional.of(groundRun.resource()), nearestIn(b, status.position()),
                             free && !inContact && !foodCalls && armourer.standAt().isEmpty(), OptionalInt.of(groundRun.amount()));
                 } else {
                     gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
