@@ -1177,6 +1177,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     private void depotChestFull(Position full) {
+        // Known full, whatever comes next: no load is taken to it again (the depositor's notFull).
+        fullChests.add(BlockPos.containing(full.x(), full.y(), full.z()));
         synchronized (keepPlanLock) {
             List<BlockPos> cells = keepChests;
             int at = keepChestAt;
@@ -4145,6 +4147,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // taken for shut in a room, the room taken for the squad's base, and its way out cut
                     // for an hour from the stairs' top, the doorway routine holding two soldiers' hands.
                     .filter(st -> state.stairs == null || st.position().y() >= state.stairs.head().y() - MINE_BELOW)
+                    // Nor a builder on the flatten: its trenches and steps wall it in as a hut would, and a
+                    // room read there is no base. Live, one on the east bench at y=83 was taken for shut in;
+                    // a builder boxed in is the recovery drill's.
+                    .filter(st -> !keepHands.contains(st.name()))
                     // Walled by what a squad builds with, not a tree: live, a soldier up a canopy was
                     // taken for shut in a hut, cut a doorway out of the leaves, and fell ten blocks.
                     .flatMap(st -> PatrolBase.enclosing(st.position(), c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z())
@@ -6171,7 +6177,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             : cutting.containsKey(name) ? Optional.of(LoadPlan.MINING) : Optional.empty();
                     boolean surplusTrip = plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
                     // A flatten builder's load into the nearest depot standing a chest (keepOutposts).
-                    Optional<Position> deposit = keepHands.contains(name) ? chestOf(shop.orElse(null)).or(() -> stockpile) : stockpile;
+                    // Not to a chest known full: a trip there fails, and is made again. Live (field285), with
+                    // the depots' rows filled with cobblestone, the crew's ticks were 38% depositor - trip
+                    // after failed trip. With every chest it could go to full, it carries on full
+                    // (backlog/questions-overnight.md, question 4).
+                    java.util.function.Predicate<Position> notFull = c -> !fullChests.contains(BlockPos.containing(c.x(), c.y(), c.z()));
+                    Optional<Position> deposit = (keepHands.contains(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile) : stockpile)
+                            .filter(notFull);
                     // Not up out of the mine by night for a load - the stash's ore goes in below; the rest
                     // waits for day. Live, the night shift's loads were for the camp's chest 85 blocks off
                     // and up the stairs, into the dark.

@@ -218,6 +218,8 @@ its west edge, evenly spread (`Flatten.depots`) - three for x=-16..16 z=-64..64,
 - the middle one the main depot, the others outposts, each a hasty workshop with its own row of
 chests. A builder's load goes into the depot nearest it, and its chest is fitted there; draws -
 food, logs, tools - are from the main depot, whose chests hold the stores.
+No load is taken to a chest known full: with every chest a builder could go to full, it carries on
+full (live, with the depots' rows full of cobblestone, the crew's ticks were 38% failed trips).
 Every builder on the flatten's crew stocks and draws at the depot while a chest of it stands,
 whatever its own squad's task - live, the builders of squads sent to it from the mine carried 53 of
 92 loads to the camp's chest 70 blocks off. The depot is a row of chests, not one (operator, 2026-11-14): six cells laid out round the
@@ -984,7 +986,8 @@ in the open is: a trench by a wall is one a soldier pillars out of) cuts
 its way out the same way, so a squad that wakes up sealed in after a restart, or walled in by a hut
 it never finished, walks out - but not one down its mine, whose tunnels wall every soldier in them
 (live, a miner at y=30 was taken for shut in, the mine for the squad's base, and its way out cut
-from the stairs' top for an hour). And a soldier the squad's drill misses - reporting "no route" from a
+from the stairs' top for an hour), nor a builder on the flatten, walled by its own trenches and
+steps; one of either boxed in is the recovery drill's. And a soldier the squad's drill misses - reporting "no route" from a
 pocket it can walk no more than 128 cells of by the route planner's own moves, under the walled
 camp's own floor - breaks the wall
 nearest where it's sent from where it stands (`bot.supply.WayOut`), keeping to that break until
