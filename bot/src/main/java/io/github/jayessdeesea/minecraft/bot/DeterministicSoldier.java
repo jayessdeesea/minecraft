@@ -513,7 +513,10 @@ public final class DeterministicSoldier implements Soldier {
         // between - has no way to the soldier either: not a fight, and the soldier carries on. Live,
         // the farm squad stood a night's start "in contact" with one across from it, stepping at it
         // into what stopped it, none of them striking; once it comes within reach, it's a fight.
-        if (!threats.isEmpty() && !threats.get(0).shoots() && !threats.get(0).explodes()
+        // A creeper too: one with no way to the soldier never comes within its blast. Live, three of a
+        // squad stood a night in a cave 5 to 8 blocks from creepers, each backing off it with nowhere to
+        // back to and too far to strike, and none of them moved.
+        if (!threats.isEmpty() && !threats.get(0).shoots()
                 && distance(position, threats.get(0).position()) > ATTACK_REACH && pinned(world, threats.get(0).position())) {
             threats = List.of();
         }
