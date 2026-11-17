@@ -429,8 +429,8 @@ public class ChainOfCommand implements DisposableBean {
     /**
      * The keep's mine as it stands: {@link #KEEP_MINE} until it's dried up, then a fresh site
      * {@link #MINE_SITE_STEP} further west each time, clear of the flatten site and its bench
-     * (operator, 2026-11-16: move to other sites or go deeper). Not kept on disk: after a restart
-     * the old site's levels, kept on disk, read worked out again and move it on.
+     * (operator, 2026-11-16: move to other sites or go deeper). Kept on disk by the soldier runner,
+     * and set back from it at start-up ({@link #setKeepMine}).
      */
     private volatile Position keepMine = KEEP_MINE;
     /** How far west each fresh mine site is from the last: two chunks. */
@@ -441,6 +441,12 @@ public class ChainOfCommand implements DisposableBean {
     /** The keep's mine as it stands. */
     Position keepMine() {
         return keepMine;
+    }
+
+    /** The keep's mine as it was left, read back from disk at start-up. */
+    void setKeepMine(Position site) {
+        LOG.info("[PL] the keep's mine, kept on disk: {}", site);
+        keepMine = site;
     }
 
     /**

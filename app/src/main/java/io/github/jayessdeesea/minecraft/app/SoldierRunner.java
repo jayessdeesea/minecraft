@@ -1400,6 +1400,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.stepStore = new WallStore(Path.of(stateDir), "steps");
         stepStore.load(STEPS).ifPresent(scaffolding::addAll);
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
+        chestStore.load(MINE_SITE).filter(l -> l.size() == 1).map(List::getFirst)
+                .ifPresent(c -> chainOfCommand.setKeepMine(new Position(c.x(), c.y(), c.z())));
         this.planBook = new PlanBook(Path.of(stateDir));
         this.scoreboard = new Scoreboard(Path.of(stateDir));
         this.camp = camp.isBlank() ? null : Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
@@ -3863,6 +3865,19 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * as the whole - live (field310), "0 ore block(s) taken" for the last minutes of one.
      */
     private volatile boolean wasDark = true;
+    /**
+     * The keep's mine moved on, to disk: lost at a restart, the night shift went back to the old
+     * site, dried up, and had to work it out again before it moved.
+     */
+    private void keepMineSite(Position site) {
+        synchronized (chestStore) {
+            chestStore.save(MINE_SITE, List.of(BlockPos.containing(site.x(), site.y(), site.z())));
+        }
+    }
+
+    /** The key the keep's mine as it stands is kept under. */
+    private static final String MINE_SITE = "keepmine";
+
     /** The mines said dried up, by head: said once. */
     private final Set<BlockPos> driedUp = ConcurrentHashMap.newKeySet();
 
@@ -3949,7 +3964,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (level != null && driedUp.add(level.head().offset(0, level.bottom(), 0))) {
                     LOG.warn("[Outcome] [{}] the mine at {} is dried up for its second level: every level cut down to y={} - SHORT",
                             squad, first.head(), level.bottom());
-                    chainOfCommand.onMineDriedUp(x, z);
+                    chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
                 }
                 return level;
             }
@@ -4853,7 +4868,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     if (longer.isEmpty() && driedUp.add(state.stairs.head())) {
                         LOG.warn("[Outcome] the mine at {} is dried up: every level cut down to y={}, and ore still wanted - SHORT",
                                 state.stairs.head(), state.stairs.bottom());
-                        chainOfCommand.onMineDriedUp(x, z);
+                        chainOfCommand.onMineDriedUp(x, z).ifPresent(this::keepMineSite);
                     }
                     if (longer.isPresent()) {
                         mineExtendedAt.put(state.stairs.head(), now);
