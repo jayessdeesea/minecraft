@@ -132,7 +132,11 @@ crew's ticks:
   landed after reading open was dropped from the record and counted as ground - fixed, kept 20 s.
   Found (field294): a column whose top was cut since the site's last scan dropped out of the level
   whole, a dirt tower in the outer rows flickering it 88-74-88 at each cut - fixed, the column's
-  top followed down live (`SoldierRunner.LIVE_TOP_DROP`). Left: a builder's own step to stand on is the level's to dig and is dug from under it and put
+  top followed down live (`SoldierRunner.LIVE_TOP_DROP`). Field324, after that and the steps kept on
+  disk: the level fell from 87 to 82 and rose back three times in ten minutes on hilltop columns
+  (14..17, -30..-33) and (19, -39..-41), each "seen" - loaded throughout - so it's not the memory of
+  unloaded columns: something takes loaded columns out of the site's scan for a while. Next: log,
+  at a rise, whether the column was in the last scan's cells and under which squad's `except`. Left: a builder's own step to stand on is the level's to dig and is dug from under it and put
   back at one cell (Eli at (19, 89, -11)); keeping steps out of the dig by age left a spire's
   climbing steps standing in the squad simulation - it wants the step that's under someone's feet,
   not a recent one.

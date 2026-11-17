@@ -100,7 +100,7 @@ public final class Miner {
     static OptionalInt firstUncut(WorldView world, List<Staircase.Cut> cuts, Set<Integer> blocked) {
         for (int k = 0; k < cuts.size(); k++) {
             Staircase.Cut cut = cuts.get(k);
-            if (blocked.contains(cut.tunnel()) || cut.cells().stream().noneMatch(c -> Staircase.uncut(world, c))) {
+            if (blocked.contains(cut.tunnel()) || cut.cells().stream().noneMatch(c -> cut.toCut(world, c))) {
                 continue;
             }
             BlockPos stand = cut.stand();
@@ -300,6 +300,7 @@ public final class Miner {
             }
             return new Progress.Working(k, cuts.size());
         }
+        breacher.keepStations(cut.recess());
         breacher.tick(world, cut.cells());
         return new Progress.Working(k, cuts.size());
     }
@@ -472,7 +473,7 @@ public final class Miner {
     /** Whether a cut of a tunnel not {@code skipped} is still to cut - its stand not open yet. */
     private static boolean notReached(WorldView world, List<Staircase.Cut> cuts, Set<Integer> skipped) {
         return cuts.stream().anyMatch(c -> !skipped.contains(c.tunnel())
-                && c.cells().stream().anyMatch(cell -> Staircase.uncut(world, cell)));
+                && c.cells().stream().anyMatch(cell -> c.toCut(world, cell)));
     }
 
     /** The first cut, all open, with ore in sight of its stand ({@link #oreInSight}) - empty when none has. */
@@ -482,7 +483,7 @@ public final class Miner {
         for (int k = 0; k < cuts.size(); k++) {
             Staircase.Cut cut = cuts.get(k);
             if (blocked.contains(cut.tunnel()) || share.filter(mine -> !mine.contains(cut.tunnel())).isPresent()
-                    || cut.cells().stream().anyMatch(c -> Staircase.uncut(world, c))) {
+                    || cut.cells().stream().anyMatch(c -> cut.toCut(world, c))) {
                 continue;
             }
             if (oreInSight(world, stairs, cut.stand(), cut, floors, tier).isPresent()) {

@@ -217,11 +217,26 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
      * left. {@code tunnel} is -1 for a step of the stairs, else which tunnel it's in: 0 the main
      * tunnel, then each branch - one blocked is given up, the rest go on.
      */
-    public record Cut(BlockPos stand, List<BlockPos> cells, int tunnel) {
+    public record Cut(BlockPos stand, List<BlockPos> cells, int tunnel, boolean recess) {
+
+        /** A cut of the stairs or a tunnel - no recess. */
+        public Cut(BlockPos stand, List<BlockPos> cells, int tunnel) {
+            this(stand, cells, tunnel, false);
+        }
 
         /** Where the feet are once it's cut. */
         public BlockPos feet() {
             return cells.getLast();
+        }
+
+        /**
+         * Whether {@code cell} of this cut is still to cut. A recess's table, furnace or chest is left
+         * standing - what was put there; anywhere else a table or furnace is in the way and is cut -
+         * live (field324), the camp's stairs were laid through its workshop's table, and the miner
+         * stood at step 1 of 184 - and only a chest, whose contents would spill, is left.
+         */
+        public boolean toCut(WorldView world, BlockPos cell) {
+            return recess ? uncut(world, cell) : world.isSolid(cell.x(), cell.y(), cell.z()) && !world.isChest(cell.x(), cell.y(), cell.z());
         }
     }
 
@@ -374,13 +389,13 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
                 // The landing: a recess each side of the tunnel's first cell, off the walkway, where
                 // a table and a furnace stand - there's no room for one anywhere on the stairs.
                 for (BlockPos recess : landing()) {
-                    cuts.add(new Cut(feet, List.of(recess.offset(0, 1, 0), recess), 0));
+                    cuts.add(new Cut(feet, List.of(recess.offset(0, 1, 0), recess), 0, true));
                 }
             }
             if (i == 2) {
                 // The store: a recess each side of the second cell, for the stash's chests.
                 for (BlockPos recess : store()) {
-                    cuts.add(new Cut(feet, List.of(recess.offset(0, 1, 0), recess), 0));
+                    cuts.add(new Cut(feet, List.of(recess.offset(0, 1, 0), recess), 0, true));
                 }
             }
         }

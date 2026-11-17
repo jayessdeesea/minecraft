@@ -41,13 +41,23 @@ class MinerTest {
     private final Set<BlockPos> placed = new HashSet<>();
     /** Chests standing - a stash in the store's recess. */
     private final Set<BlockPos> chests = new HashSet<>();
+    /** Crafting tables standing in the world, till dug. */
+    private final Set<BlockPos> tables = new HashSet<>();
     private final List<Runnable> answers = new ArrayList<>();
 
     private final WorldView world = new WorldView() {
         @Override
         public boolean isSolid(int x, int y, int z) {
             BlockPos cell = new BlockPos(x, y, z);
-            return tree.contains(cell) || placed.contains(cell) || chests.contains(cell) || y < GROUND && !dug.contains(cell) && !water.contains(cell) && !cave.contains(cell);
+            return tree.contains(cell) || placed.contains(cell) || chests.contains(cell) || tables.contains(cell) && !dug.contains(cell)
+                    || y < GROUND && !dug.contains(cell) && !water.contains(cell) && !cave.contains(cell);
+        }
+
+        @Override
+        public Optional<io.github.jayessdeesea.minecraft.bot.world.Workstation> workstation(int x, int y, int z) {
+            BlockPos cell = new BlockPos(x, y, z);
+            return tables.contains(cell) && !dug.contains(cell) ? Optional.of(io.github.jayessdeesea.minecraft.bot.world.Workstation.CRAFTING_TABLE)
+                    : Optional.empty();
         }
 
         @Override
@@ -203,6 +213,22 @@ class MinerTest {
         assertTrue(dug.contains(vein), "the ore at " + vein + " mined");
         assertTrue(placed.contains(vein), "and its hole filled back: " + placed);
         assertTrue(cut.cells().stream().noneMatch(placed::contains), "the strip itself left open");
+    }
+
+    /**
+     * A table standing in a step of the stairs is in the way and is cut; only a recess's is left.
+     * Live (field324), the camp's stairs were laid through its workshop's table, and the miner stood
+     * at step 1 of 184.
+     */
+    @Test
+    void aTableInAStepIsCutNotLeftStanding() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 20);
+        BlockPos table = stairs.cells(1).get(1);
+        tables.add(table);
+
+        dig(stairs, 20000);
+
+        assertTrue(dug.contains(table), "the table in step 1 at " + table + " cut");
     }
 
     @Test

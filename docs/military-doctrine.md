@@ -1292,7 +1292,10 @@ the landing. Until one of them has a pickaxe, every one makes one.
 
 Nothing is crafted on the stairs. At the bottom, beside the main tunnel's first cell, the cutter
 cuts a **landing**: a recess each side (`Staircase.landing`), the mine base's table and furnace
-(§11), never dug out again once they stand. A step on, beside the main tunnel's second cell, it cuts
+(§11), never dug out again once they stand - in a recess only: a table or furnace standing in a
+step or a tunnel is in the way and is cut like any block (`Staircase.Cut.toCut`; live, the camp's
+stairs were laid through its workshop's table, and the miner stood at step 1 of 184), and only a
+chest, whose contents would spill, is left wherever it is. A step on, beside the main tunnel's second cell, it cuts
 the **store** (`Staircase.store`): the mine's stash, a chest in its recess. A soldier down the mine
 carrying 8 or more raw iron, raw copper and diamonds fits the chest if it isn't standing - as a
 workshop's is (§ 12), from a chest carried down or with 4 logs or more, so a pickaxe's handles are

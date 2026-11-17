@@ -153,9 +153,21 @@ public final class Breacher {
                 .orElse(Hardness.HAND);
     }
 
-    /** Solid, and to be broken: a workshop's table, furnace or chest in a cut - the landing's recesses - is left standing. */
+    /**
+     * Solid, and to be broken: a workshop's table, furnace or chest in a cut - the landing's recesses -
+     * is left standing; with stations not kept, only a chest is.
+     */
     private boolean solid(BlockPos cell) {
-        return Staircase.uncut(world, cell);
+        return keepStations ? Staircase.uncut(world, cell)
+                : world.isSolid(cell.x(), cell.y(), cell.z()) && !world.isChest(cell.x(), cell.y(), cell.z());
+    }
+
+    /** Whether a table or furnace in the cells it's given is left standing: yes but for a mine's stairs and tunnels. */
+    private boolean keepStations = true;
+
+    /** Whether the cells it's given next keep their tables and furnaces standing (Staircase.Cut#toCut). */
+    public synchronized void keepStations(boolean keep) {
+        this.keepStations = keep;
     }
 
     private boolean pickaxeInHand() {
