@@ -82,4 +82,7 @@ the world, not from reports, and shown to the squad leader and the platoon leade
 - **A graduated slope where the site is cut into a hill.** Built: the bench is twelve rows, 1:1,
   and the depots and pits stand past it (docs/military-doctrine.md, clearing rule 6). Left: a hill
   higher than twelve over the floor still stands as a wall past the twelfth row - whether that wants
-  rows to the full depth, live, once the big site's east side is cut down to it.
+  rows to the full depth, live, once the big site's east side is cut down to it. Live (field389),
+  with the level at y=90 and the depot at y=71, the way down off the site's top ran past (27, 93, -7)
+  and (51, 93, 2): 118 crowding alerts there in a day, two ways at once, and Alice failed five walks
+  running to the stockpile from (27.7, 93, -7.4).

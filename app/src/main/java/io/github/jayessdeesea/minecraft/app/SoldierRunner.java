@@ -3447,7 +3447,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         keepParty = party;
+        // Nobody cutting under the reserve says why, once a minute: live (field390), a day went by at 3-19
+        // logs with the party never out and no line to say what held it.
+        int logsNow = crew.stream().mapToInt(PlatoonSergeant.Hand::logs).sum() + wood.stockpileLogs();
+        if (party.cutters().isEmpty() && logsNow < wood.out() && now - keepWoodWhyAt >= WOOD_WHY_MILLIS) {
+            keepWoodWhyAt = now;
+            LOG.warn("[Keep] nobody cuts at {} logs, under the reserve of {}: crew {}, trees seen lately {}, a known tree {}, the grove's ground to clear {}",
+                    logsNow, (int) wood.out(), crew.size(), now - keepTreesSeenAt <= TREES_SEEN_MILLIS,
+                    knownTree(now).map(Position::toString).orElse("none within " + KEEP_WOOD_REACH), keepGroveToClear);
+        }
     }
+
+    /** When the keep last said why nobody cuts - squad loops only. */
+    private volatile long keepWoodWhyAt = Long.MIN_VALUE / 2;
+    static final long WOOD_WHY_MILLIS = 60_000;
 
     /** When a keep squad last saw trees - the squad loop writes and reads it. */
     private volatile long keepTreesSeenAt = Long.MIN_VALUE / 2;
