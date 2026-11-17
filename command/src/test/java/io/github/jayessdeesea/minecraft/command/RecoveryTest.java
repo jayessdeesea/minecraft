@@ -295,6 +295,7 @@ class RecoveryTest {
     void aSoldierWalkedOffItsStairUpIsOffIt() {
         List<Cell> stair = List.of(new Cell(12, -50, -125), new Cell(12, -49, -125), new Cell(13, -49, -125));
         assertEquals(false, Recovery.offTheCut(new Position(11.5, -51, -124.7), stair), "stood where it was laid");
+        assertEquals(false, Recovery.offTheCut(new Position(9.65, -53, -127.35), stair), "on its way to its first cut's stand (field345)");
         assertEquals(true, Recovery.offTheCut(new Position(5.7, -53, -130.5), stair), "8 off and 2 down (field343)");
     }
 }

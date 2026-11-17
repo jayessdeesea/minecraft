@@ -298,8 +298,12 @@ public final class Recovery {
         return cut.stream().allMatch(c -> Math.hypot(Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z()), c.y() - at.y()) > CUT_STRAY);
     }
 
-    /** How far from every cell of its stair up a stranded soldier is off it. */
-    static final double CUT_STRAY = 4;
+    /**
+     * How far from every cell of its stair up a stranded soldier is off it. Not 4: its walk to its
+     * first cut's stand took Jack 5 from the nearest cell, and the stair was let go and laid again
+     * every few seconds (field345).
+     */
+    static final double CUT_STRAY = 6;
 
     /** An {@code Order.Dig} of just {@code cells}, as a tunnel - cut cell by cell under rock: their box, and every other cell in it kept. */
     static Order.Dig dig(List<Cell> cells) {
