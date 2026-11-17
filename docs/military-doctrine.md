@@ -1392,8 +1392,9 @@ strips on the world's x % 3 or z % 3 off each level's spine, three high, its two
 each side. Ore in reach taken, holes in the well filled, the tunnels lit, the yield checked at
 dawn. A mine's cutter keeps only its backfill's bulk with its pack full - a stack of cobblestone
 and half of dirt (`Pack.MINER_COBBLESTONE_KEPT`) - the rest thrown before anything else, so a slot
-for ore is never taken by it. Not yet: a squad of four on two levels, a vein's holes filled, a torch
-stock carried down (backlog/mining.md).
+for ore is never taken by it. A cutter under 8 torches makes up to 32 from the coal it mines
+(`SoldierRunner.MINER_TORCHES`). Not yet: a squad of four on two levels, a vein's holes filled
+(backlog/mining.md).
 
 Squads on one mine each work their own level (the rules of a mine, above): live, squads sharing
 one level's stretches took one another's stale DONE for their own, and it was run on with nothing

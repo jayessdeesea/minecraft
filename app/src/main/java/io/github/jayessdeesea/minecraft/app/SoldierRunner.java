@@ -3821,6 +3821,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return at < 0 ? stairs.share(0, 1) : stairs.share(at, crew.size());
     }
 
+    /** Torches a mine's cutter carries (the rules of a mine: torches enough), and the mark under which it makes more. */
+    static final int MINER_TORCHES = 32, MINER_TORCHES_LOW = 8;
+
     /** Cutters on a level: two, one to each side of its spine (the rules of a mine). */
     static final int CUTTERS_A_LEVEL = 2;
 
@@ -6381,9 +6384,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Securing ground: a soldier out of torches makes more where it stands, then puts them down.
             List<BlockPos> lights = lighting.getOrDefault(name, List.of());
             boolean torchesWanted = !lights.isEmpty() && inventory.count(ItemClassRegistry.ItemClass.TORCH) == 0;
+            // A mine's cutter keeps a stock to light its strips as it cuts them (the rules of a mine:
+            // torches enough): under its low mark, it makes up to its stock from the coal it mines.
+            boolean minerShort = cutting.containsKey(name) && inventory.count(ItemClassRegistry.ItemClass.TORCH) < MINER_TORCHES_LOW;
             turns.put(Hands.Routine.TORCHMAKER, turn(torchmaker::active,
                     free -> torchmaker.tick(status.position(), world, !free ? 0 : atWorkshop ? Torchmaker.TORCHES
-                            : torchesWanted ? Math.min(LIGHTING_TORCHES, (lights.size() + 3) / 4 * 4) : 0, threatened, workshop)));
+                            : torchesWanted ? Math.min(LIGHTING_TORCHES, (lights.size() + 3) / 4 * 4)
+                            : minerShort ? MINER_TORCHES : 0, threatened, workshop)));
             // Stuck in water: plug the sources round it - stopping the flow, and each block one more
             // to climb out by - nearest first, from where it floats.
             turns.put(Hands.Routine.SEALER, turn(sealing::get, free -> {

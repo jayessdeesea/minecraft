@@ -16,10 +16,8 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
 ## Done when
 - **The rules of a mine (operator, 2026-11-16; docs/military-doctrine.md § 16):** a level for each
   squad, and the grid - strips on the world's thirds, three high, two cutters a level by side - are
-  built, and the pack's cap on a cutter's cobblestone and dirt. Left: a squad of four on two levels; the pack carrying cobblestone and
-  dirt only to the backfill's stack, ore always with room; a vein followed to its last block in reach and its holes filled back with
-  cobblestone or dirt; every miner going down with a stock of torches. Today's shared stretches of
-  one level are replaced by this.
+  built, and the pack's cap on a cutter's cobblestone and dirt, and its torch stock. Left: a squad
+  of four on two levels; a vein's holes filled back with cobblestone or dirt once it's taken.
 - **The stairwell standard and the cutter's upkeep are built** (docs/military-doctrine.md § 16):
   the 4x4 well in chunk-local 6..9, its north-east corner at every y = 12k, holes filled and wall
   ore put back. What's left: live, a mine sited to it and cut to its landing; the main tunnel's
