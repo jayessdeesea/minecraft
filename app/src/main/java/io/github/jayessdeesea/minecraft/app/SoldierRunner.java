@@ -888,7 +888,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             // Grown once a run to feed the camp: the plots round the waters beside its own.
             if (keptFarm != null) {
-                keptFarm = FarmPlan.grown(world, keptFarm, campFarmCells(), CAMP_FARM_VERTICAL, walkable::contains);
+                // Out to the waters within 32 of its own, not 16: live (field371), the ground within 16 held 165
+                // cells, the target 384, and the farm didn't grow.
+                keptFarm = FarmPlan.grown(world, keptFarm, campFarmCells(), CAMP_FARM_VERTICAL, walkable::contains, CAMP_FARM_GROWN_RADIUS);
                 campFarmGrown = true;
             }
             if (keptFarm != null && !keptFarm.equals(before)) {
@@ -1077,6 +1079,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     static final int CAMP_FARM_CELLS_A_SOLDIER = 24;
 
+    /** How far round its own water the camp's farm takes in more waters' plots as it grows. */
+    static final int CAMP_FARM_GROWN_RADIUS = 32;
     /** The least the camp's farm is grown to, whatever the force: eight soldiers' worth, a pond or two. */
     static final int CAMP_FARM_CELLS = 192;
 

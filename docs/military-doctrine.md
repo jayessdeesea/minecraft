@@ -188,7 +188,7 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    and kept while its water is there - on disk too, under `minecraft.state-dir` as the wall is
    (`app.WallStore`), since sited again after a restart it moved to another pond. Once a run it's
    grown toward 24 cells a soldier on the roster, never under 192 - 384 for sixteen - with the plots round the waters
-   within 16 blocks of its own
+   within 32 blocks of its own - live, within 16 the ground held 165 cells of 384 wanted
    (`FarmPlan.grown`): one water's plot is 80 cells at best and about half that by a pond. Sized
    to build the basic load, not only to feed: live, 97 cells made about 20 loaves an hour, as many
    as eight soldiers ate, and none carried more than a few rations; and 192, eight soldiers' worth,

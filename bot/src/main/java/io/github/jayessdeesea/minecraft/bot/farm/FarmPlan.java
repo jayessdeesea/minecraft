@@ -86,10 +86,15 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot) {
      * of 44 cells fed eight soldiers a few loaves an hour, and they went hungry.
      */
     public static FarmPlan grown(WorldView world, FarmPlan farm, int want, int vertical, Predicate<BlockPos> walkable) {
+        return grown(world, farm, want, vertical, walkable, GROWN_RADIUS);
+    }
+
+    /** As {@link #grown(WorldView, FarmPlan, int, int, Predicate)}, the waters looked for out to {@code radius} of its own. */
+    public static FarmPlan grown(WorldView world, FarmPlan farm, int want, int vertical, Predicate<BlockPos> walkable, int radius) {
         LinkedHashSet<BlockPos> plot = new LinkedHashSet<>(farm.plot());
         while (plot.size() < want) {
             Set<BlockPos> taken = Set.copyOf(plot);
-            Optional<FarmPlan> next = site(world, farm.water(), GROWN_RADIUS, vertical,
+            Optional<FarmPlan> next = site(world, farm.water(), radius, vertical,
                     stand -> walkable.test(stand) && !taken.contains(stand.offset(0, -1, 0)));
             if (next.isEmpty()) {
                 break;
