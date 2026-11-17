@@ -234,7 +234,7 @@ counts are read each time a load goes in, or a chest is opened and found full.
 | Material | Reserve | Most | Past the most |
 |---|---|---|---|
 | Diamonds, raw iron, iron ingots | - | none | never shed; the depot's row grows for them |
-| Logs | 64 | 256 | never shed; the keep's wood party works to these |
+| Logs | 64 | 256 | never shed; the keep's wood party works to these, and under the reserve a released squad is sent for wood; to the most, one with nothing else to do, before bread |
 | Bread | 64 | 1,024 | under the reserve a released squad farms; to the most, one with nothing else to do; past it, it stays in the packs - each soldier carries up to 128, half of it to share |
 | Wheat | 64 | 256 | past a farmer's 64 goes in |
 | Raw copper, copper ingots | 64 | 256 | raw copper left out of the metal pool, thrown last by a full pack |

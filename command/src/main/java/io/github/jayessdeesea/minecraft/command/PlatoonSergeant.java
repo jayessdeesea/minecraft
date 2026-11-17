@@ -45,7 +45,7 @@ public final class PlatoonSergeant {
     /**
      * The gravest of what the force is short of, for a squad the flatten doesn't need (operator,
      * 2026-11-16: "send people to the mines, help farming, hunting"): food first - a squad's Class I
-     * RED - then wood, a Class IV request or the stockpile under {@link Keep#LOGS_WANTED}, then
+     * RED - then wood, a Class IV request or the stockpile under the logs' reserve ({@link Keep#LOGS_RESERVE}), then
      * iron, then the stockpile's bread under its reserve. With no stockpile seen, only food and the
      * squads' own requests are known. Empty with none.
      */
@@ -53,7 +53,10 @@ public final class PlatoonSergeant {
         if (squads.stream().anyMatch(s -> s.classOne().filter(c -> c.rating() == Subsistence.Rating.RED).isPresent())) {
             return Optional.of(Shortfall.FOOD);
         }
-        if (squads.stream().anyMatch(s -> s.classFour().isPresent()) || stockpile.filter(st -> st.logs() < Keep.LOGS_WANTED).isPresent()) {
+        // Under the reserve, not under a depot's 16: live (field362), the keep's crew was one builder, its wood
+        // party none, and the stockpile at 3 logs - nobody could make a pickaxe or a shovel, and the night's ore
+        // was 7 of 16.
+        if (squads.stream().anyMatch(s -> s.classFour().isPresent()) || stockpile.filter(st -> st.logs() < Keep.LOGS_RESERVE).isPresent()) {
             return Optional.of(Shortfall.WOOD);
         }
         if (stockpile.filter(st -> st.rawIron() + st.ironIngots() < IRON_RESERVE).isPresent()) {
