@@ -1354,8 +1354,9 @@ that it's said dried up, once. A mine worked out - every tunnel cut, the ore in 
 pickaxe and the force hasn't the three iron for one is run on: its main tunnel 24 blocks further,
 branches along it, up to 96, a stretch at most every half minute a mine (`Staircase.extended`, `[Squad] MINE: worked out, the force short of
 iron - its main tunnel run on to 48 blocks`), and kept on disk by the tunnel's end. Live, the mine
-read DONE all night with one raw iron in the force. Squads sharing a mine each work the longest any
-has run it.
+read DONE all night with one raw iron in the force. Squads sharing a mine each work its deepest level, and the longest any
+has run it there - not each its own: live, one squad took the mine a level deeper while the others
+kept the worked-out level above, read DONE on it, and the new level was run on with nothing cut.
 
 A mine is shared among the cutters on it - every squad's, in order by name (`Staircase.share`):
 the first cuts the stairs and the main tunnel, and the branch roots along the main tunnel are cut

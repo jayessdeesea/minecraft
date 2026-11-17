@@ -4640,8 +4640,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 long now = clockwork.millis();
                 // One mine, several squads on it: each works the longest any of them has run it.
                 Staircase mine = state.stairs;
-                state.stairs = squadStairs.values().stream().filter(o2 -> o2.head().equals(mine.head()) && o2.bottom() == mine.bottom())
-                        .max(Comparator.comparingInt(Staircase::stretches)).filter(o2 -> o2.stretches() > mine.stretches()).orElse(mine);
+                // Its deepest level first, then the longest run there: live (field308), one squad took the
+                // mine a level deeper while the others kept the worked-out level above, read DONE on it,
+                // and the new level was run on from 24 blocks to 48 in thirty seconds with nothing cut.
+                Comparator<Staircase> furthest = Comparator.comparingInt((Staircase o2) -> -o2.bottom()).thenComparingInt(Staircase::stretches);
+                state.stairs = squadStairs.values().stream().filter(o2 -> o2.head().equals(mine.head()))
+                        .max(furthest).filter(o2 -> furthest.compare(o2, mine) > 0).orElse(mine);
                 // Worked out when every cutter on it - every squad's - has its share cut, not when one has.
                 List<String> crew = mineCrew(state.stairs);
                 boolean workedOut = !crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done);
