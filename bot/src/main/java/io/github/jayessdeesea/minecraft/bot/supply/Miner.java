@@ -279,10 +279,12 @@ public final class Miner {
             if (!seen.get().equals(ore)) {
                 ore = seen.get();
                 oreTicks = 0;
+                oreFound++;
                 LOG.info("{} mines the ore at {} beside the stairs", name, ore);
             }
             if (++oreTicks > ORE_PATIENCE_TICKS) {
                 LOG.warn("{} leaves the ore at {}: not broken in {} ticks", name, ore, ORE_PATIENCE_TICKS);
+                oreLeft++;
                 leftOre.add(ore);
                 breacher.stop();
             } else {
@@ -292,6 +294,14 @@ public final class Miner {
         }
         breacher.tick(world, cut.cells());
         return new Progress.Working(k, cuts.size());
+    }
+
+    /** Ore blocks it set about mining, and of them those it left unbroken: what it took is the difference. */
+    private int oreFound, oreLeft;
+
+    /** Ore blocks it has mined since it was made - the night's yield is the change over the night ({@code [Outcome]}). */
+    public synchronized int oreTaken() {
+        return oreFound - oreLeft;
     }
 
     /** Holes to fill in the well, last found last: what was taken out of its walls, and what it found open. */

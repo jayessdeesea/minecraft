@@ -1455,6 +1455,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 });
             }));
         }
+        // Dusk: the ore taken so far, for the night's yield at dawn (nightsMining).
+        chainOfCommand.time().ifPresent(t -> {
+            if (t.dark() && !wasDark) {
+                oreAtDusk = miners.values().stream().mapToInt(Miner::oreTaken).sum();
+            }
+            wasDark = t.dark();
+        });
         chainOfCommand.time().flatMap(t -> {
                     List<SoldierStatus> all = activeSoldiers.values().stream().map(DeterministicSoldier::status).toList();
                     int hungry = (int) all.stream().filter(s -> s.condition().map(SoldierRunner::wantsFood).orElse(false)).count();
@@ -1463,6 +1470,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             squadStates.values().stream().mapToInt(st -> st.register.takeChurned()).sum());
                 })
                 .ifPresent(dawn -> {
+                    nightsMining();
                     LOG.info("[AAR] {}\n  {}\n  {}\n  {}", dawn.review(), String.join("\n  ", chainOfCommand.requestReview()),
                             String.join("\n  ", registerReview()), String.join("\n  ", faults.review()));
                     LOG.info("[Scoreboard] {}", scoreboard.add(dawn.score()));
@@ -3631,8 +3639,37 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private boolean ironShort() {
         int iron = soldierIron.values().stream().mapToInt(Integer::intValue).sum()
-                + chainOfCommand.stockpile().map(Stockpile::rawIron).orElse(0);
+                + chainOfCommand.stores().map(s -> s.rawIron() + s.ironIngots()).orElse(0);
         return !ironPickaxe() && iron < IRON_A_PICKAXE;
+    }
+
+    /**
+     * Ore blocks a night's mining should bring up at least (docs/conventions.md, check the outcome):
+     * every squad works the mine through the night, and a mine with tunnels to cut finds a vein or
+     * two a stretch. Under it, the night is said SHORT and dug into.
+     */
+    static final int NIGHT_ORE = 16;
+    /** The mine's cutters' ore taken, summed, at dusk: the night's yield is the change by dawn. */
+    private volatile Integer oreAtDusk;
+    /** Whether it was dark at the squad loop's last look: dusk is the change. */
+    private volatile boolean wasDark;
+    /** The mines said dried up, by head: said once. */
+    private final Set<BlockPos> driedUp = ConcurrentHashMap.newKeySet();
+
+    /** At dusk, the ore taken so far; at dawn, the night's yield against {@link #NIGHT_ORE}. */
+    private void nightsMining() {
+        int taken = miners.values().stream().mapToInt(Miner::oreTaken).sum();
+        Integer dusk = oreAtDusk;
+        oreAtDusk = null;
+        if (dusk == null) {
+            return; // the garrison came up in the night: no dusk to measure from
+        }
+        int night = taken - dusk;
+        if (night < NIGHT_ORE) {
+            LOG.warn("[Outcome] the night's mining: {} ore block(s) taken, {} expected - SHORT", night, NIGHT_ORE);
+        } else {
+            LOG.info("[Outcome] the night's mining: {} ore block(s) taken, {} expected", night, NIGHT_ORE);
+        }
     }
 
     /** How long after one stretch is added before a mine read done again may have another: its miners' ticks catch up. */
@@ -4494,6 +4531,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // DONE for their own, and it ran on from 24 blocks to 96 in seconds with nothing cut.
                 if (workedOut && ironShort() && now - mineExtendedAt.getOrDefault(state.stairs.head(), 0L) >= EXTEND_SETTLE_MILLIS) {
                     Optional<Staircase> longer = state.stairs.extended();
+                    if (longer.isEmpty() && driedUp.add(state.stairs.head())) {
+                        LOG.warn("[Outcome] the mine at {} is dried up: every tunnel cut, its main tunnel at {} blocks, and the force still"
+                                + " short of iron - SHORT", state.stairs.head(), state.stairs.tunnel());
+                    }
                     if (longer.isPresent()) {
                         mineExtendedAt.put(state.stairs.head(), now);
                         stairsProgress.clear();
