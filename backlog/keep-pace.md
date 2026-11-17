@@ -135,8 +135,9 @@ crew's ticks:
   top followed down live (`SoldierRunner.LIVE_TOP_DROP`). Field324, after that and the steps kept on
   disk: the level fell from 87 to 82 and rose back three times in ten minutes on hilltop columns
   (14..17, -30..-33) and (19, -39..-41), each "seen" - loaded throughout - so it's not the memory of
-  unloaded columns: something takes loaded columns out of the site's scan for a while. Next: log,
-  at a rise, whether the column was in the last scan's cells and under which squad's `except`. Left: a builder's own step to stand on is the level's to dig and is dug from under it and put
+  unloaded columns: something takes loaded columns out of the site's scan for a while. A rise now logs
+  each column's top in this scan, in the last cycle's, and read live ("scan 87, last cycle's none,
+  live 87"): read the next rises off it. Left: a builder's own step to stand on is the level's to dig and is dug from under it and put
   back at one cell (Eli at (19, 89, -11)); keeping steps out of the dig by age left a spire's
   climbing steps standing in the squad simulation - it wants the step that's under someone's feet,
   not a recent one.

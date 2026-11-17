@@ -26,6 +26,14 @@ Three times in one day the shared `ChunkCache` showed a block the server didn't 
 
 Block Update (0x08) and Section Blocks Update (0x56) are both decoded.
 
+The other way round too (field326): the model held air at (-11, 65, 3) where the server had
+dirt - probed - and Dana's step there was refused nine times, "the model has air PASSABLE there,
+grass_block SOIL under it", while she stood at y=66 on it. No stand-in was taken back in the run
+("[World] ... stand-in block(s) ... taken back" never logged), so it's a block update missed or
+misread, not a placement the model rolled back. Most "refused step at air" lines in `[Blocks]`
+(10 in that run) are likely this. A refused step at a cell the model has open could be taken as
+the server's word that it's solid, and the model told so.
+
 ## Done when
 - The cause is found and a test shows it: which change the server made that the model missed.
 - Live, a console sweep of the camp's wall and stockpile matches the model.

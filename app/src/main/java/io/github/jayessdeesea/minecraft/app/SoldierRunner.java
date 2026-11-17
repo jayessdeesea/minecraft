@@ -2778,10 +2778,30 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             // A level that rises again - ground come back over one dug - says which columns raised it and
             // whether they're seen or remembered: backlog/keep-pace.md's flicker in the bench's outer rows.
+            // With each column, its top in this scan, in the last cycle's, and as read live - so a rise is told
+            // apart: a column the last scan didn't have (the scan's), one it had and the live read dropped
+            // (the live check's), or ground really come back (both had it lower).
             if (plan != null && plan.level() != Integer.MIN_VALUE && level > plan.level()) {
+                Map<Long, Integer> last = lastScanTops;
                 LOG.info("[Keep] the level rose from y={} to y={}: {}", plan.level(), level, columns.stream().limit(4)
-                        .map(c -> c.x() + " " + c.z() + (world.isLoaded(c.x(), c.z()) ? " seen" : " remembered")).toList());
+                        .map(c -> {
+                            long key = ((long) c.x() << 32) ^ (c.z() & 0xffffffffL);
+                            Integer was = last.get(key);
+                            return c.x() + " " + c.z() + (world.isLoaded(c.x(), c.z()) ? " seen" : " remembered")
+                                    + " (scan " + top.applyAsInt(c.x(), c.z()) + ", last cycle's " + (was == null ? "none" : was)
+                                    + ", live " + calm.applyAsInt(c.x(), c.z()) + ")";
+                        }).toList());
             }
+            Map<Long, Integer> scanned = new HashMap<>();
+            for (int x = site.minX(); x <= site.maxX(); x++) {
+                for (int z = site.minZ(); z <= site.maxZ(); z++) {
+                    int t = top.applyAsInt(x, z);
+                    if (t != Integer.MIN_VALUE) {
+                        scanned.put(((long) x << 32) ^ (z & 0xffffffffL), t);
+                    }
+                }
+            }
+            lastScanTops = scanned;
             if (plan == null || plan.level() != level) {
                 keepLevelAt = now;
                 // The crew its blocks want, for the squads sent (backlog/flatten-campaign.md): a standard
@@ -3019,6 +3039,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * a builder dealt in with none here is done - written under {@link #keepPlanLock}, read by ticks.
      */
     private final Map<String, Long> keepDue = new ConcurrentHashMap<>();
+    /** The site's columns' tops in the keep's last scan, for a rise's line: the keep's squad loop writes and reads. */
+    private volatile Map<Long, Integer> lastScanTops = Map.of();
     /** Each of the ground's columns' top as last seen loaded, by packed x and z - squad loops, under its own lock. */
     private final Map<Long, Integer> keepColumnTops = new HashMap<>();
     /** Ore in the dig whose rectangle's holder can't take it, by squad as each last saw it: the ore errand's too. */
