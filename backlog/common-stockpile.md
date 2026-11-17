@@ -48,7 +48,7 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
 - The general isn't shown the ore in the stockpile: its line says logs and cobblestone only.
 - A mine's levels go deeper (built). Left: a copper level at about y=48, where copper is
   commonest, for armour; the fresh site a dried-up mine moves to (built: 32 west) at a chunk's
-  centre (backlog/chunk-stairwells.md), and kept on disk; and a squad sent to it for iron isn't told DONE while it's cut.
+  centre (backlog/chunk-stairwells.md), and kept on disk.
 
 ## Done when
 - A miner follows a vein - the ore behind the ore it took - not only the faces its cuts touch.

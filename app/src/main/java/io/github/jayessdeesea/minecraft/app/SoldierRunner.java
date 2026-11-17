@@ -4199,10 +4199,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             }
             case Objective.Task.Mine() -> {
-                if (state.stairs != null && statuses.stream().anyMatch(s -> stairsProgress.get(s.name()) instanceof Miner.Progress.Done)) {
+                // Done when every one of the squad's cutters on its level is, not the first: live (field330),
+                // Alpha read DONE and UNDER_WAY by turns each second while its pair cut on. And the steps are
+                // its own stairs', not the most any mine has cut - "122 of 70 steps down".
+                List<String> crew = state.stairs == null ? List.of() : mineCrew(state.stairs).stream()
+                        .filter(n -> statuses.stream().anyMatch(s -> s.name().equals(n))).toList();
+                if (!crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done)) {
                     done = Optional.of("the stairs are cut down to y=" + state.stairs.bottom() + ", and the ore beside them taken");
                 } else if (state.stairs != null) {
-                    left = Optional.of("the stairs " + stairsCut.get() + " of " + state.stairs.steps() + " steps down");
+                    left = Optional.of("the stairs " + state.stairs.stepsCut(world) + " of " + state.stairs.steps() + " steps down");
                 }
             }
             case Objective.Task.Patrol() -> left = Optional.of("walking the round, on watch");

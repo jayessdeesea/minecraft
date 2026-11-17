@@ -1364,7 +1364,7 @@ past its last stretch it's cut a level deeper off the same stairs, 16 blocks dow
 tunnel there (`Staircase.deeper`; operator, 2026-11-16: go deeper, or pick other sites) - "[Outcome]
 the mine at ... is worked out at y=16 - its next level cut at y=0" - down to just above bedrock; past
 that it's said dried up, once - by a squad's second pair too, when no level is left under theirs - and
-the keep's mine moves on: the night shift and a squad released for iron are sent to a fresh site 32
+the keep's mine moves on (a squad's Mine task reads DONE only when every one of its cutters on its level is done): the night shift and a squad released for iron are sent to a fresh site 32
 blocks further west, its head 8 clear of the flatten site and its bench (`ChainOfCommand.onMineDriedUp`,
 "[PL] the keep's mine at ... is dried up - the night shift's mine moves to ..."; held in memory, so
 after a restart the old site's levels, kept on disk, read worked out again and move it on). A mine worked out - every tunnel cut, the ore in sight of them taken - while nobody carries an iron
