@@ -80,3 +80,7 @@ The keep's dig runs with no supply behind it (operator, 2026-11-14). Live:
   ore through it. The keep's depot should be a stockpile like the camp's, not a second mechanism.
 - Iron's path is backlog/common-stockpile.md and backlog/mining.md: a tunnel to ore seen from the
   stairs, then the first two ingots to one iron pickaxe for the miner.
+  - **Trees taller than a body's reach:** a cutter fells a tree whole up to 5 above where it stands
+    (`Gatherer`, `Digger.Target.LOG`); a trunk taller than that leaves its top logs ("leaves N log(s)
+    of the tree out of reach") and their leaves standing. Left: pillar up under the trunk for the
+    rest, then down again.

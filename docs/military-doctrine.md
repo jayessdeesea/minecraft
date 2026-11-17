@@ -310,12 +310,17 @@ IV's reorder point (below) - never under the reserve, 64 - the whole party cuts;
 stockage objective - never under the most, 256 - one builder stays on it, a producer kept at work
 so the reserve is refilled before it's an emergency (operator, 2026-11-17: an emergency is a signal
 to change; live, the party went out at 3 logs and was one builder); at the most none does. The
-party cuts where a keep squad last saw trees, 16 logs a builder - back with
+party cuts where a keep squad last saw trees, 16 logs a builder - each tree it starts felled whole,
+the load or not, its top logs from its own steps, and a sapling planted where it stood (`bot.supply.
+Gatherer`; operator, 2026-11-17: get all the wood, so the trees fall, so you get saplings and
+replant - live, cutters took what was in reach and walked on, and nothing was replanted) - back with
 them it's on the dig again and another goes - after
 making itself a stone axe from the cobblestone it carries, a log in 15 ticks rather than the hand's
 60. The rest dig. The foreman says it on the net: "KEEP WOOD 16", "KEEP PLANT x z". The grove is a
 tree farm (§ 12) sited once with the depot: of the ground in rings round the depot's stand that a
-soldier can walk to from it, and within 4 blocks of its height - live, a grove on a hilltop past the
+soldier can walk to from it, and no more than 4 blocks over its height, any depth under it -
+live (field350-364), with level ground only 6 under the depot's stand the keep had no grove at all,
+and nothing was replanted. Live, a grove on a hilltop past the
 site's bench had its planter put a pillar up the bench's outer row from the level to reach it, each
 step the site's highest ground - clear of
 the slab and its borrow pits, the depot, the mine's head, the farm and the camp, with room for 16

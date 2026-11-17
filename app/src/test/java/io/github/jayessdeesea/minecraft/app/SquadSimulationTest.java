@@ -2223,6 +2223,43 @@ class SquadSimulationTest {
     }
 
     /**
+     * A tree felled whole and replanted (operator, 2026-11-17: get all the wood, so the trees fall,
+     * so you get saplings and replant): one spruce six logs tall west of the keep, a cutter with
+     * saplings. Every log comes down - the top ones at a body's reach - and a sapling goes in where it
+     * stood. Live, cutters took what was in reach and walked on, and nothing was replanted.
+     */
+    @Test
+    void aTreeIsFelledWholeAndReplanted() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= -6 && x <= 5 && z >= -6 && z <= 5 && y > GROUND && y <= GROUND + 3
+                ? SimServer.DIRT
+                : x == -40 && z == 0 && y > GROUND && y <= GROUND + 6 ? SimServer.SPRUCE_LOG
+                : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob,Carol");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(-8.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.itemNamedOrMinus("stone_sword"), 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{39, SimServer.itemNamedOrMinus("stone_shovel"), 1},
+                        new int[]{40, SimServer.itemNamedOrMinus("stone_axe"), 1},
+                        new int[]{41, SimServer.itemNamedOrMinus("spruce_sapling"), 8},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(10 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        for (int y = GROUND + 1; y <= GROUND + 6; y++) {
+            assertTrue(server.block(-40, y, 0) != SimServer.SPRUCE_LOG, "the log at y=" + y + " cut; " + events);
+        }
+        assertEquals(SimServer.SPRUCE_SAPLING, server.block(-40, GROUND + 1, 0), "a sapling where it stood; " + events);
+    }
+
+    /**
      * The keep's wood party (operator, 2026-11-14: trees are everywhere; a sapling every four
      * blocks): three builders, no logs between them, a dirt mound on the keep and a row of spruce
      * well west of the depot. The foreman sends one to cut trees and one to plant the keep's grove,

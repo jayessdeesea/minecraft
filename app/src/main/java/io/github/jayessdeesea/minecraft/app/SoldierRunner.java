@@ -3537,10 +3537,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .flatMap(ground -> TreeFarm.site(world, ground, TREE_FARM_RADIUS))
                         .filter(g -> g.plot().size() >= GROVE_MIN_CELLS)
                         .filter(g -> walkable.contains(g.centre().offset(0, 1, 0)) || walkable.contains(g.centre()))
-                        // And level with the depot: one on a hill is walked to from the depot, but
+                        // And not over the depot: one on a hill is walked to from the depot, but
                         // climbed to from the dig - live, the planter pillared the bench's outer row
-                        // from the level up to a grove 13 blocks over it.
-                        .filter(g -> Math.abs(g.centre().y() - depot.stand().y()) <= GROVE_RISE);
+                        // from the level up to a grove 13 blocks over it. Below it, walked down to, it's
+                        // as good: live (field350-364), the keep had no grove at all, every ring's
+                        // ground 6 under the depot's stand at y=75 (operator, 2026-11-17: the area
+                        // round -49, 69, -15 a grove).
+                        .filter(g -> g.centre().y() - depot.stand().y() <= GROVE_RISE);
                 if (grove.isPresent()) {
                     int score = groveScore(grove.get(), r);
                     if (score < bestScore) {

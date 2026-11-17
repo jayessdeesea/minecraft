@@ -1,9 +1,15 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
+import io.github.jayessdeesea.minecraft.bot.farm.TreeFarm;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
+import io.github.jayessdeesea.minecraft.bot.script.Script;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
+import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.protocol.BlockFace;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Resource;
@@ -12,6 +18,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -54,6 +61,24 @@ public final class Gatherer {
 
     /** Trees this soldier failed at (out of reach, or the log wouldn't break) - not tried again. */
     private final Set<BlockPos> avoid = new HashSet<>();
+    /**
+     * The tree it's felling: its logs still standing, every one cut before the next tree, the load
+     * or not - a tree left half-standing holds its leaves, which then never fall for their saplings
+     * (operator, 2026-11-17: get all the wood, so the trees fall, so you get saplings and replant).
+     * Live, cutters took what was in reach and walked on, and nothing was replanted.
+     */
+    private final Set<BlockPos> tree = new HashSet<>();
+    /** Where the tree it's felling stood - its lowest log - replanted once the last log is down. */
+    private BlockPos stump;
+    /** The replanting under way: to the stump, a sapling in hand, planted. */
+    private Script replanting;
+    private Position soldierAt;
+    /** How far across from the log first cut a tree's logs are looked for: a spruce's or an oak's spread. */
+    static final int TREE_REACH = 4;
+    /** The most logs taken as one tree: a dark oak's or a giant spruce's, not a forest's. */
+    static final int TREE_LOGS = 96;
+    static final int PLANT_WALK_TICKS = 400;
+    static final int ANSWER_TICKS = 40;
     private int retry;
     private boolean reportedFull;
     private boolean exhausted;
@@ -79,7 +104,7 @@ public final class Gatherer {
     private final Set<BlockPos> steps;
 
     public synchronized boolean active() {
-        return digger != null;
+        return digger != null || replanting != null;
     }
 
     /** Whether the woods around the objective are worked out: the last search found nothing in reach. */
@@ -89,8 +114,14 @@ public final class Gatherer {
 
     /** Where the soldier should be standing while it gathers, if anywhere. */
     public synchronized Optional<Position> standAt() {
+        if (replanting != null && plantAt != null) {
+            return Optional.of(new Position(plantAt.x() + 0.5, plantAt.y(), plantAt.z() + 0.5));
+        }
         return digger == null ? Optional.empty() : Optional.of(digger.standAt());
     }
+
+    /** The stump being replanted. */
+    private BlockPos plantAt;
 
     /**
      * Each tick: gathers {@code resource} around {@code around} while {@code wanted}; empty
@@ -140,7 +171,21 @@ public final class Gatherer {
             stop(); // a pickaxe first - Armourer makes one
             return;
         }
-        if (inventory.count(item) >= load) {
+        soldierAt = soldier;
+        if (replanting != null) {
+            switch (replanting.tick()) {
+                case Script.Status.Running _ -> {
+                    return;
+                }
+                case Script.Status.Done _, Script.Status.Interrupted _ -> {
+                }
+                case Script.Status.Failed(String step, String reason) -> LOG.info("{} couldn't replant the tree at {}: {}: {}", name, plantAt, step, reason);
+            }
+            replanting = null;
+            plantAt = null;
+        }
+        // A tree started is felled whole, the load or not.
+        if (inventory.count(item) >= load && tree.isEmpty()) {
             if (!reportedFull) {
                 LOG.info("{} carries {} {} - done gathering", name, inventory.count(item), item);
                 reportedFull = true;
@@ -165,7 +210,11 @@ public final class Gatherer {
             case Digger.Progress.Working working -> {
             }
             case Digger.Progress.Done done -> {
+                BlockPos cut = digger.spot().block();
                 digger.release();
+                if (target == Digger.Target.LOG) {
+                    felled(world, cut);
+                }
                 next(world, soldier, around, target);
             }
             case Digger.Progress.Failed(String why) -> {
@@ -181,6 +230,10 @@ public final class Gatherer {
 
     /** Stops gathering: frees its claims and takes its weapon back in hand. */
     private void stop() {
+        tree.clear();
+        stump = null;
+        replanting = null;
+        plantAt = null;
         if (digger == null) {
             return;
         }
@@ -212,6 +265,42 @@ public final class Gatherer {
                 target == Digger.Target.LOG ? FAR_REACH_BUDGET : REACH_BUDGET,
                 inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT), inventory.slotOf(ItemClass.PICKAXE) >= 0).keySet();
         excluded.addAll(avoid);
+        // The rest of the tree it's felling first, from wherever it can get to - up its own steps, on the
+        // blocks it carries - and only then another tree; with the tree down, its stump replanted.
+        if (target == Digger.Target.LOG) {
+            tree.removeIf(c -> !world.isLog(c.x(), c.y(), c.z()));
+            if (!tree.isEmpty()) {
+                Set<BlockPos> others = new HashSet<>(excluded);
+                int minX = tree.stream().mapToInt(BlockPos::x).min().orElseThrow() - 1, maxX = tree.stream().mapToInt(BlockPos::x).max().orElseThrow() + 1;
+                int minY = tree.stream().mapToInt(BlockPos::y).min().orElseThrow() - 1, maxY = tree.stream().mapToInt(BlockPos::y).max().orElseThrow() + 1;
+                int minZ = tree.stream().mapToInt(BlockPos::z).min().orElseThrow() - 1, maxZ = tree.stream().mapToInt(BlockPos::z).max().orElseThrow() + 1;
+                for (int x = minX; x <= maxX; x++) {
+                    for (int y = minY; y <= maxY; y++) {
+                        for (int z = minZ; z <= maxZ; z++) {
+                            if (world.isLog(x, y, z) && !tree.contains(new BlockPos(x, y, z))) {
+                                others.add(new BlockPos(x, y, z));
+                            }
+                        }
+                    }
+                }
+                BlockPos base = stump != null ? stump : tree.iterator().next();
+                Optional<Digger.Spot> rest = Digger.findSpotAmong(world, base, others, target, TREE_REACH + 2, walkable);
+                if (rest.isPresent()) {
+                    exhausted = false;
+                    digger = new Digger(name, session, inventory, claims, rest.get(), Digger.walkTicks(soldier, rest.get().stand()));
+                    return;
+                }
+                LOG.info("{} leaves {} log(s) of the tree at {} out of reach", name, tree.size(), base);
+                tree.clear();
+            }
+            if (stump != null) {
+                replant(world);
+                if (replanting != null) {
+                    digger = null;
+                    return;
+                }
+            }
+        }
         // Nearest first, then further out: none within reach of the objective is a reason to look
         // wider before asking for help - live, a camp long since cleared of trees had a wood a
         // minute's walk off, and its squad stood reporting CANTCO.
@@ -242,5 +331,98 @@ public final class Gatherer {
         }
         exhausted = false;
         digger = new Digger(name, session, inventory, claims, spot.get(), Digger.walkTicks(soldier, spot.get().stand()));
+    }
+
+    /**
+     * A log of a tree cut at {@code cut}: the first of a tree takes in the rest of it - its logs joined
+     * to it, within {@link #TREE_REACH} across - and its stump, the lowest; each after it comes off.
+     */
+    private void felled(WorldView world, BlockPos cut) {
+        tree.remove(cut);
+        if (!tree.isEmpty() || stump != null) {
+            return;
+        }
+        java.util.ArrayDeque<BlockPos> open = new java.util.ArrayDeque<>(List.of(cut));
+        Set<BlockPos> seen = new HashSet<>(List.of(cut));
+        BlockPos lowest = cut;
+        while (!open.isEmpty() && tree.size() < TREE_LOGS) {
+            BlockPos at = open.poll();
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        BlockPos next = at.offset(dx, dy, dz);
+                        if (Math.abs(next.x() - cut.x()) > TREE_REACH || Math.abs(next.z() - cut.z()) > TREE_REACH
+                                || !seen.add(next) || !world.isLog(next.x(), next.y(), next.z())) {
+                            continue;
+                        }
+                        tree.add(next);
+                        open.add(next);
+                        if (next.y() < lowest.y()) {
+                            lowest = next;
+                        }
+                    }
+                }
+            }
+        }
+        stump = lowest;
+        if (!tree.isEmpty()) {
+            LOG.info("{} fells the tree at {}: {} more log(s)", name, stump, tree.size());
+        }
+    }
+
+    /** Plants a sapling where the felled tree stood, on its soil, if it carries one. */
+    private void replant(WorldView world) {
+        BlockPos cell = stump;
+        stump = null;
+        if (!world.isSoil(cell.x(), cell.y() - 1, cell.z()) || world.isSolid(cell.x(), cell.y(), cell.z()) || TreeFarm.planted(world, cell)) {
+            return;
+        }
+        int slot = -1;
+        for (int s = 0; s < Inventory.SLOTS && slot < 0; s++) {
+            if (ItemClassRegistry.classOf(inventory.itemAt(s)).equals(Optional.of(ItemClass.SAPLING))) {
+                slot = s;
+            }
+        }
+        if (slot < 0) {
+            LOG.info("{} has no sapling to replant the tree at {} - its leaves will drop some as they fall", name, cell);
+            return;
+        }
+        int item = inventory.itemAt(slot);
+        String sapling = ItemClassRegistry.nameOf(item).orElse("sapling");
+        plantAt = cell;
+        replanting = new Script(name, List.of(
+                new Step("walk to the stump at " + cell, () -> {
+                }, new Expect("standing on the stump", () -> soldierAt != null
+                        && Math.hypot(soldierAt.x() - (cell.x() + 0.5), soldierAt.z() - (cell.z() + 0.5)) < 0.6
+                        && Math.abs(soldierAt.y() - cell.y()) < 0.6), PLANT_WALK_TICKS),
+                new Step(sapling + " in hand", () -> heldItem() == item, () -> takeInHand(item),
+                        new Expect(sapling + " in hand", () -> heldItem() == item), ANSWER_TICKS),
+                new Step("plant " + sapling + " at " + cell, () -> TreeFarm.planted(world, cell), () -> {
+                    session.useBlockFace(cell.x(), cell.y() - 1, cell.z(), BlockFace.UP);
+                    LOG.info("{} replants the tree at {} with {}", name, cell, sapling);
+                }, new Expect("a sapling at " + cell, () -> TreeFarm.planted(world, cell)), ANSWER_TICKS)));
+    }
+
+    private int heldItem() {
+        return inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
+    }
+
+    /** Holds {@code item}: from the hotbar, or swapped into a spare hotbar slot. */
+    private void takeInHand(int item) {
+        int slot = -1;
+        for (int s = 0; s < Inventory.SLOTS && slot < 0; s++) {
+            if (inventory.itemAt(s) == item) {
+                slot = s;
+            }
+        }
+        if (slot < 0) {
+            throw new IllegalStateException("no " + ItemClassRegistry.nameOf(item).orElse("sapling") + " carried - " + inventory.summary());
+        }
+        int hotbar = slot >= Inventory.HOTBAR_FIRST ? slot - Inventory.HOTBAR_FIRST : inventory.spareHotbarSlot();
+        if (slot < Inventory.HOTBAR_FIRST) {
+            session.swapWithHotbar(0, 0, slot, hotbar); // stale state: the server resends the inventory
+        }
+        session.selectHotbarSlot(hotbar);
+        inventory.selectHotbar(hotbar);
     }
 }

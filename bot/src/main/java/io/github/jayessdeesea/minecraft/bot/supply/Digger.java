@@ -70,7 +70,7 @@ final class Digger {
          * A log, with the best axe carried - or bare-handed, since a sword wears and digs no faster.
          * Reached up to 3 blocks above the feet.
          */
-        LOG(70, 3, null, 0, ItemClass.LOG),
+        LOG(70, 5, null, 0, ItemClass.LOG), // a body's reach up a trunk: 4.5 from the eyes
         /** Plain stone, with a pickaxe - by hand it drops nothing. At feet or head height. */
         STONE(35, 1, ItemClass.PICKAXE, 0, ItemClass.COBBLESTONE),
         /** Cobblestone put down over the camp's floor, with a pickaxe: hardness 2, a third longer than stone. At feet or head height. */
