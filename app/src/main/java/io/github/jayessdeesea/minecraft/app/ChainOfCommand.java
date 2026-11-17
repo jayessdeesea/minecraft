@@ -395,7 +395,7 @@ public class ChainOfCommand implements DisposableBean {
         Foothold base = foothold;
         return switch (shortfall) {
             case FOOD -> Optional.ofNullable(base).map(b -> new Objective("Work the camp's farm", b.camp(), why + "food", new Objective.Task.Farm()));
-            case IRON -> Optional.of(new Objective("Mine the keep's mine for iron", KEEP_MINE, why + "iron", new Objective.Task.Mine()));
+            case IRON -> Optional.of(new Objective("Mine the keep's mine for iron", keepMine, why + "iron", new Objective.Task.Mine()));
             case WOOD -> {
                 Position from = squad.soldiers().isEmpty() ? flatten.centre() : squad.soldiers().getFirst().position();
                 yield woods.stream().filter(w -> w.resource() == Resource.WOOD)
@@ -426,6 +426,56 @@ public class ChainOfCommand implements DisposableBean {
      * borrow pit (x -25..-20, z -17..17).
      */
     static final Position KEEP_MINE = new Position(Keep.MIN - 10, ChainOfCommand.MINE_DEPTH, Keep.MIN - 8);
+    /**
+     * The keep's mine as it stands: {@link #KEEP_MINE} until it's dried up, then a fresh site
+     * {@link #MINE_SITE_STEP} further west each time, clear of the flatten site and its bench
+     * (operator, 2026-11-16: move to other sites or go deeper). Not kept on disk: after a restart
+     * the old site's levels, kept on disk, read worked out again and move it on.
+     */
+    private volatile Position keepMine = KEEP_MINE;
+    /** How far west each fresh mine site is from the last: two chunks. */
+    static final int MINE_SITE_STEP = 32;
+    /** How far round a mine's head is kept clear of the flatten site and its bench: the stairs' well. */
+    static final int MINE_SITE_CLEAR = 8;
+
+    /** The keep's mine as it stands. */
+    Position keepMine() {
+        return keepMine;
+    }
+
+    /**
+     * The mine ordered at ({@code x}, {@code z}) is dried up - every level cut and ore still wanted:
+     * if it's the keep's mine as it stands, the keep's mine moves on to a fresh site. Returns the site
+     * it moved to, or empty for another mine's.
+     */
+    Optional<Position> onMineDriedUp(int x, int z) {
+        Position was = keepMine;
+        if ((int) Math.floor(was.x()) != x || (int) Math.floor(was.z()) != z) {
+            return Optional.empty();
+        }
+        Flatten site = flatten;
+        double nx = was.x() - MINE_SITE_STEP;
+        while (cutsInto(site, (int) Math.floor(nx), (int) Math.floor(was.z()))) {
+            nx -= MINE_SITE_STEP;
+        }
+        Position next = new Position(nx, was.y(), was.z());
+        keepMine = next;
+        LOG.warn("[PL] the keep's mine at {} is dried up - the night shift's mine moves to {}", was, next);
+        return Optional.of(next);
+    }
+
+    /** Whether a mine headed at ({@code x}, {@code z}) would cut into {@code site} or its bench. */
+    private static boolean cutsInto(Flatten site, int x, int z) {
+        for (int dx = -MINE_SITE_CLEAR; dx <= MINE_SITE_CLEAR; dx++) {
+            for (int dz = -MINE_SITE_CLEAR; dz <= MINE_SITE_CLEAR; dz++) {
+                if (site.benchedContains(x + dx, z + dz)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** How deep the night shift cuts: the iron, commonest round y=16. */
     static final int MINE_DEPTH = 16;
 
@@ -442,7 +492,7 @@ public class ChainOfCommand implements DisposableBean {
         // 65 blocks off and 48 down, the climb out and the walk to the keep were two-fifths of the
         // day (field151; operator, 2026-11-13: cutting a second mine is fine).
         if (keepByDay) {
-            return Optional.of(new Objective("Cut the keep's mine down to the iron through the night", KEEP_MINE,
+            return Optional.of(new Objective("Cut the keep's mine down to the iron through the night", keepMine,
                     "Stone for the keep's slab, and the night spent working underground beside it", new Objective.Task.Mine()));
         }
         Position c = camp.camp();

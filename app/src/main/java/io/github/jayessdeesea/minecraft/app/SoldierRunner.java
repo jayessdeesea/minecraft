@@ -3945,6 +3945,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .filter(n -> left == null || n.bottom() < left.bottom());
             squadStairs.remove(key);
             if (next.isEmpty()) {
+                // No level left under it: the mine is dried up for this pair too.
+                if (level != null && driedUp.add(level.head().offset(0, level.bottom(), 0))) {
+                    LOG.warn("[Outcome] [{}] the mine at {} is dried up for its second level: every level cut down to y={} - SHORT",
+                            squad, first.head(), level.bottom());
+                    chainOfCommand.onMineDriedUp(x, z);
+                }
                 return level;
             }
             if (level != null) {
@@ -4842,6 +4848,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     if (longer.isEmpty() && driedUp.add(state.stairs.head())) {
                         LOG.warn("[Outcome] the mine at {} is dried up: every level cut down to y={}, and ore still wanted - SHORT",
                                 state.stairs.head(), state.stairs.bottom());
+                        chainOfCommand.onMineDriedUp(x, z);
                     }
                     if (longer.isPresent()) {
                         mineExtendedAt.put(state.stairs.head(), now);

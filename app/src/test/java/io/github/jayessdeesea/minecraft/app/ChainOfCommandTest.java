@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ChainOfCommandTest {
@@ -209,6 +210,29 @@ class ChainOfCommandTest {
         two.onTime(TimeOfDay.of(TimeOfDay.DAWN - ChainOfCommand.SURFACE_LEAD_TICKS + 1, true));
         Objective climbingOut = two.sheltered(two.byDay(WALL, squad("Bravo", "Bob")), squad("Bravo", "Bob"));
         assertTrue(climbingOut.task() instanceof Objective.Task.Keep, "just before sunrise it climbs out to the day's work: " + climbingOut);
+    }
+
+    @Test
+    void aDriedUpKeepMineMovesWestClearOfTheFlatten() {
+        ChainOfCommand two = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice"), true, "model");
+        Position first = ChainOfCommand.KEEP_MINE;
+        assertEquals(Optional.empty(), two.onMineDriedUp(100, 100), "another mine's drying up leaves the keep's where it is");
+        assertEquals(first, two.keepMine());
+
+        Position next = two.onMineDriedUp((int) Math.floor(first.x()), (int) Math.floor(first.z())).orElseThrow();
+        assertEquals(first.x() - ChainOfCommand.MINE_SITE_STEP, next.x());
+        assertEquals(first.z(), next.z());
+        assertEquals(next, two.keepMine());
+        for (int dx = -ChainOfCommand.MINE_SITE_CLEAR; dx <= ChainOfCommand.MINE_SITE_CLEAR; dx++) {
+            assertFalse(two.flatten().benchedContains((int) next.x() + dx, (int) next.z()), "clear of the flatten site and its bench");
+        }
+        assertEquals(Optional.empty(), two.onMineDriedUp((int) Math.floor(first.x()), (int) Math.floor(first.z())),
+                "the old site's word, said again, moves it no further");
     }
 
     private static SquadStatus squad(String name, String soldier) {
