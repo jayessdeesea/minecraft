@@ -1045,6 +1045,15 @@ class SquadSimulationTest {
         assertPlugsItsWayOut(SimServer.ITEM_OAK_LOG, 8);
     }
 
+    /**
+     * With no blocks at all, only a pickaxe, it cuts one from the pit's side and plugs with that: live
+     * (field387), a soldier floated 13 minutes in a pit with a pickaxe and nothing to build with.
+     */
+    @Test
+    void aSoldierStuckInWaterWithNoBlocksCutsOneFromTheBank() {
+        assertPlugsItsWayOut(SimServer.ITEM_STONE_PICKAXE, 1);
+    }
+
     private void assertPlugsItsWayOut(int blocks, int count) {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::floodedPitInCamp, 1000);

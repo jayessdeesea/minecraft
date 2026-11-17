@@ -4887,6 +4887,24 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Logs that fit out a depot: one for its table, two for its chest. */
     static final int DEPOT_LOGS = 3;
+    /**
+     * A block beside a soldier afloat at {@code at} it can cut for footing: level with its head first,
+     * then its feet, then below - one a clear digs, with nothing over it that falls or flows into the hole.
+     */
+    private Optional<BlockPos> bankBlock(Position at) {
+        int x = (int) Math.floor(at.x()), y = (int) Math.floor(at.y()), z = (int) Math.floor(at.z());
+        for (int dy : new int[]{1, 0, -1}) {
+            for (int[] h : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                int cx = x + h[0], cy = y + dy, cz = z + h[1];
+                if (world.isSolid(cx, cy, cz) && Clearing.diggable(world, cx, cy, cz)
+                        && !world.falls(cx, cy + 1, cz) && !world.isHazard(cx, cy + 1, cz)) {
+                    return Optional.of(new BlockPos(cx, cy, cz));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
     /** How far above or below a soldier its goal can be for a wall between them to be what stops it. */
     static final int WAY_OUT_RISE = 3;
     /** How long a soldier sent to the camp's farm stays at it, whatever the squad's rating does meanwhile. */
@@ -7292,6 +7310,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // the camp's heaps went to break the camp's own west wall.
                 if (!wayOut.get().stream().allMatch(offTheWall())) {
                     wayOut.set(List.of());
+                }
+                // Stuck in the water with nothing to build with: a block cut from the bank beside it, the
+                // footing its sealer plugs the water with - a soldier digs itself out of anything. Live
+                // (field387), Ned floated 13 minutes in a pit at (-42, 61, 29), a pickaxe in its pack and no
+                // block to plug the water or step up onto, every route "no route".
+                if (wayOut.get().isEmpty() && stuckInWater && exit == null && fort == null && !inContact
+                        && inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.LOG) == 0) {
+                    bankBlock(at).filter(c -> java.util.stream.Stream.of(c).allMatch(offTheWall())).ifPresent(c -> {
+                        wayOut.set(List.of(c));
+                        LOG.warn("{} stuck in the water at {} with no blocks - cuts one from the bank at {}", name, at, c);
+                    });
                 }
                 // Stood in a block - at its feet or its head - it breaks that first, whatever its orders:
                 // live, four soldiers stood a day and a night in dirt at the farm, suffocating as fast

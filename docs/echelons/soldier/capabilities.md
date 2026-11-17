@@ -33,7 +33,9 @@ seconds or when stuck:
   seconds, it's stuck in the water: carrying cobblestone, dirt or - with neither - logs, which it
   otherwise keeps for tools and won't build a route on, it puts a block into the water
   within 4 of it from where it floats - sources first, which stop the flow, then the water nearest
-  it, flowing or not, which is footing to climb out by. And it reports CANTCO "no route from (x, y, z) out of the water", which
+  it, flowing or not, which is footing to climb out by. Carrying none of them, it first cuts a block
+  from the bank beside it - level with its head, then its feet, then below; one with nothing over
+  it that falls or flows - and plugs with that. And it reports CANTCO "no route from (x, y, z) out of the water", which
   the squad's recovery drill reads as stranded - cut off, with no route to a squadmate either -
   when it has too few blocks to build its own way:
   a squadmate with blocks is sent to build it a stair (docs/military-doctrine.md § 7). Live, two
