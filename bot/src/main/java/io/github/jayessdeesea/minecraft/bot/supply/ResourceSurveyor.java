@@ -41,6 +41,27 @@ public final class ResourceSurveyor {
     private ResourceSurveyor() {
     }
 
+    /** How far round a log a tree's leaves are looked for. */
+    static final int LEAF_REACH = 4;
+
+    /**
+     * Whether the log at {@code cell} is a tree's: leaves within {@link #LEAF_REACH} of it, round it and over it.
+     * A structure's logs have none - live (field432), an ancient city's dark oak at y=-52, under the miners,
+     * was a stand of wood the squad was sent to gather, 115 blocks under the surface.
+     */
+    static boolean leafy(WorldView world, BlockPos cell) {
+        for (int dx = -LEAF_REACH; dx <= LEAF_REACH; dx++) {
+            for (int dz = -LEAF_REACH; dz <= LEAF_REACH; dz++) {
+                for (int dy = -1; dy <= 2 * LEAF_REACH; dy++) {
+                    if (world.leaves(cell.x() + dx, cell.y() + dy, cell.z() + dz).isPresent()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     /** Trees then stone, each nearest first. */
     public static List<ResourceSite> survey(WorldView world, Position around) {
         BlockPos centre = BlockPos.containing(around.x(), around.y(), around.z());
@@ -50,7 +71,7 @@ public final class ResourceSurveyor {
             for (int dz = -SURVEY_RADIUS; dz <= SURVEY_RADIUS; dz++) {
                 for (int dy = -SURVEY_HEIGHT; dy <= SURVEY_HEIGHT; dy++) {
                     BlockPos cell = centre.offset(dx, dy, dz);
-                    if (world.isLog(cell.x(), cell.y(), cell.z())) {
+                    if (world.isLog(cell.x(), cell.y(), cell.z()) && leafy(world, cell)) {
                         logs.add(cell);
                     } else if (world.isStone(cell.x(), cell.y(), cell.z()) && exposed(world, cell)) {
                         stone.add(cell);

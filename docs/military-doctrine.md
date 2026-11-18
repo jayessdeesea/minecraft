@@ -898,7 +898,8 @@ beyond the objective's reach it reports CANTCO, which the squad leader passes up
 can choose another place. To choose, the platoon leader
 reads what each squad can see within 64 blocks of the soldier at its middle height: for trees and for stone open to
 the sky, the nearest site and the two biggest (not cave walls, which no gatherer can
-reach), each with its count, distance and direction (`bot.supply.ResourceSurveyor`,
+reach; and trees only where logs have leaves near them - a structure's logs, an ancient city's dark oak deep
+under the miners, aren't wood: `ResourceSurveyor.leafy`), each with its count, distance and direction (`bot.supply.ResourceSurveyor`,
 `command.SquadStatus.resources`). A soldier that can't make the pickaxe it needs - no trees in reach
 - reports CANTCO too.
 

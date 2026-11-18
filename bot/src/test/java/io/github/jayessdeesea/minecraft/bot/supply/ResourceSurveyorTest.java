@@ -16,7 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ResourceSurveyorTest {
 
-    private static WorldView logsAt(Set<BlockPos> logs) {
+    /** Columns of x whose trunks have no crown. */
+    private final Set<Integer> bare = new HashSet<>();
+
+    private WorldView logsAt(Set<BlockPos> logs) {
         return new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
@@ -31,6 +34,13 @@ class ResourceSurveyorTest {
             @Override
             public boolean isLog(int x, int y, int z) {
                 return logs.contains(new BlockPos(x, y, z));
+            }
+
+            // A tree's crown: leaves over each trunk of four, none over a lone log or a bare column.
+            @Override
+            public java.util.Optional<String> leaves(int x, int y, int z) {
+                return y == 68 && logs.contains(new BlockPos(x, 67, z)) && logs.contains(new BlockPos(x, 64, z)) && !bare.contains(x)
+                        ? java.util.Optional.of("oak") : java.util.Optional.empty();
             }
 
             @Override
@@ -58,6 +68,18 @@ class ResourceSurveyorTest {
 
         assertEquals(List.of(new ResourceSite(Resource.WOOD, new Position(21, 66, 1), 8),
                 new ResourceSite(Resource.WOOD, new Position(-40, 66, 0), 4)), stands);
+    }
+
+    /** A structure's logs - an ancient city's dark oak, no leaves near - aren't wood to gather. */
+    @Test
+    void logsWithNoLeavesNearArentAStand() {
+        Set<BlockPos> logs = new HashSet<>();
+        trunk(logs, 30, 0);
+        trunk(logs, 31, 0);
+        bare.add(30);
+        bare.add(31);
+
+        assertEquals(List.of(), ResourceSurveyor.survey(logsAt(logs), new Position(0.5, 64, 0.5)));
     }
 
     @Test
