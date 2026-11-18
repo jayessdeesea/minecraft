@@ -67,6 +67,13 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
             Map.of('P', ItemClass.PLANKS, 'S', ItemClass.STICK));
     public static final Recipe BUCKET = material("bucket", ItemClass.BUCKET, 1, Station.TABLE, List.of("I I", " I "),
             Map.of('I', ItemClass.IRON_INGOT));
+    /**
+     * White wool from four string, in the grid: a bed's wool where there are no sheep to take it from. Live
+     * (field440-445), no soldier carried a bed or a block of wool - the ground round the camp hunted out - while
+     * the night's spiders drop string (operator, 2026-11-18: beds, for a safe respawn).
+     */
+    public static final Recipe WOOL = material("white wool", ItemClass.WOOL, 1, Station.GRID, List.of("SS", "SS"),
+            Map.of('S', ItemClass.STRING));
     /** A bed: three white wool over any three planks (backlog/rest-plan.md). */
     public static final Recipe BED = material("bed", ItemClass.BED, 1, Station.TABLE, List.of("WWW", "PPP"),
             Map.of('W', ItemClass.WOOL, 'P', ItemClass.PLANKS));
@@ -110,7 +117,7 @@ public record Recipe(String name, ItemClass makes, Optional<String> item, int yi
 
     /** Every recipe a soldier knows. */
     public static final List<Recipe> ALL = List.of(PLANKS, STICKS, CRAFTING_TABLE, TORCHES, FURNACE, CHARCOAL, IRON_INGOT, COPPER_INGOT, SHIELD,
-            WOODEN_HOE, BREAD, CHEST, LADDER, FENCE, FENCE_GATE, BUCKET, BED, COPPER_HELMET, COPPER_CHESTPLATE, COPPER_LEGGINGS, COPPER_BOOTS,
+            WOODEN_HOE, BREAD, CHEST, LADDER, FENCE, FENCE_GATE, BUCKET, WOOL, BED, COPPER_HELMET, COPPER_CHESTPLATE, COPPER_LEGGINGS, COPPER_BOOTS,
             BOW, ARROWS, WOODEN_SHOVEL, STONE_SHOVEL,
             WOODEN_SWORD, WOODEN_PICKAXE, STONE_SWORD, STONE_PICKAXE, STONE_AXE, IRON_SWORD, IRON_PICKAXE, IRON_AXE,
             IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS,

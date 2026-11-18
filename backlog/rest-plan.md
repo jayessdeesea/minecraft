@@ -11,7 +11,9 @@ doctrine: ATP 3-21.8 (patrol base priorities of work - rest plan)
 Beds are the safe respawn: a soldier's bed in the lit, walled camp, used once to set its spawn there (using a bed
 sets the spawn by day too). Wanted first, ahead of sleeping through nights. Live (field421-443), soldiers killed at
 night respawned at the world's spawn on the keep's open site and were shot there again, Eli four times in a night.
-Seen (field443): no soldier carried a bed or wool - the sheep-hunting for wool isn't yielding yet.
+Seen (field443): no soldier carried a bed or wool - the sheep-hunting for wool isn't yielding yet. Built:
+wool from string, drawn from the depot (docs/military-doctrine.md § 11). Left: placing each soldier's bed in the
+camp and using it once to set its spawn - and a soldier whose bed is placed no longer wants string for another.
 
 ## Why
 A Minecraft player needs no sleep to keep going, but sleep does three things the squads go
@@ -52,8 +54,8 @@ part of the unit sleeps (ATP 3-21.8, ch. 7).
   nothing here: sleeping takes no time and leaves nobody worse off for it.
 - **Turns, where they matter, are for phantoms.** A soldier kept awake for night work - a
   torchbearer, a sentry - needs to sleep one night in three, so the rest plan rotates who stays up.
-- **Beds** are made: a soldier without one hunts sheep for three white wool and crafts it
-  (docs/military-doctrine.md § 11). Left: shears (2 iron ingots), which take wool without
+- **Beds** are made: a soldier without one makes its wool from the depot's string or hunts sheep
+  for it (docs/military-doctrine.md § 11). Left: shears (2 iron ingots), which take wool without
   killing the sheep - more wool per sheep, and the flock left to grow back.
 
 ## Done when

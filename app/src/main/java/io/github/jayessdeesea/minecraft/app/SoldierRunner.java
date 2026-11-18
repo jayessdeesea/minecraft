@@ -1251,7 +1251,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final int KEEP_FULL_AT = 4;
     /**
      * What a keep builder keeps of each kind once its pack is near full, worth least first: a slot of
-     * dirt to climb on, a stack of seeds, a few saplings, no fences, a little string and flint, one
+     * dirt to climb on, a stack of seeds, a few saplings, no fences, a bed's string and a little flint, one
      * crafting table, the slab's cobblestone. The rest goes into the depot on its next trip while the
      * depot's under its most of it ({@link StockLevels}), and is thrown where it stands only once it
      * isn't (operator, 2026-11-17: fill a slot, dump it when something better comes along; none of it
@@ -1265,7 +1265,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         kept.put(ItemClassRegistry.ItemClass.SEEDS, 64);
         kept.put(ItemClassRegistry.ItemClass.FENCE, 0);
         kept.put(ItemClassRegistry.ItemClass.SAPLING, 16);
-        kept.put(ItemClassRegistry.ItemClass.STRING, 8);
+        kept.put(ItemClassRegistry.ItemClass.STRING, 12); // a bed's three wool
         kept.put(ItemClassRegistry.ItemClass.FLINT, 16);
         kept.put(ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);
         kept.put(ItemClassRegistry.ItemClass.PLANKS, 16);
@@ -1408,6 +1408,28 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         BlockPos stand = depot.stand();
         return TerrainSurveyor.surface(world, stand.x() - DUMP_OFF, stand.z(), stand.y() + CEILING_SLACK)
                 .map(cell -> new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5));
+    }
+
+    /**
+     * The string a soldier still wants for a bed: none once it has one, else what its wool and string fall
+     * short of the bed's three wool, four string a wool.
+     */
+    static int bedString(Inventory inventory) {
+        if (inventory.count(ItemClass.BED) > 0) {
+            return 0;
+        }
+        int perWool = Recipe.WOOL.ingredients().get(ItemClass.STRING);
+        int wanted = Recipe.BED.ingredients().get(ItemClass.WOOL) - inventory.count(ItemClass.WOOL);
+        return Math.max(0, wanted * perWool - inventory.count(ItemClass.STRING));
+    }
+
+    /** The nearest stockpile chest, not to be salvaged, last seen holding string - to {@code from}. */
+    private Optional<Position> stringChest(Position from) {
+        return chestStock.entrySet().stream()
+                .filter(e -> chestsSeen.containsKey(e.getKey()) && !condemned.contains(e.getKey())
+                        && e.getValue().getOrDefault(ItemClass.STRING, 0) > 0)
+                .map(e -> new Position(e.getKey().x() + 0.5, e.getKey().y(), e.getKey().z() + 0.5))
+                .min(java.util.Comparator.comparingDouble(p -> Math.hypot(p.x() - from.x(), p.z() - from.z())));
     }
 
     /** The nearest surface chest last seen holding {@code metal} - raw ore or an ingot - to {@code from}. */
@@ -7657,8 +7679,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     && inventory.count(ItemClass.ARROWS) < ARROWS_WANTED) {
                 tools.add(Recipe.ARROWS);
             }
-            // A bed of its own, once it has the wool (backlog/rest-plan.md).
-            if (inventory.count(ItemClass.BED) == 0 && inventory.count(ItemClass.WOOL) >= Recipe.BED.ingredients().get(ItemClass.WOOL)) {
+            // A bed of its own, once it has the wool - or the string to make it, four a wool (backlog/rest-plan.md).
+            if (inventory.count(ItemClass.BED) == 0 && inventory.count(ItemClass.WOOL) + inventory.count(ItemClass.STRING)
+                    / Recipe.WOOL.ingredients().get(ItemClass.STRING) >= Recipe.BED.ingredients().get(ItemClass.WOOL)) {
                 tools.add(Recipe.BED);
             }
             boolean rearming = rung.filter(r -> bareHanded && r.makes() == ItemClassRegistry.ItemClass.WEAPON)
@@ -8029,6 +8052,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
+                } else if (depositor.drawing(ItemClass.STRING) || bedString(inventory) > 0
+                        && stringChest(status.position()).isPresent()) {
+                    // A bed's string from the depot, for a soldier without one (operator, 2026-11-18: beds, for a
+                    // safe respawn): the night's spiders' string is stored there, four to a wool.
+                    depositor.tickDraw(status.position(), stringChest(status.position()).or(depositor::chestAt), ItemClass.STRING,
+                            inventory.count(ItemClass.STRING) + bedString(inventory), free && !threatened && fort == null && bedString(inventory) > 0);
                 } else if (metalDraw.isPresent() || MetalPool.METALS.stream().anyMatch(depositor::drawing)) {
                     ItemClass ore = metalDraw.map(MetalPool.Draw::ore)
                             .orElseGet(() -> MetalPool.METALS.stream().filter(depositor::drawing).findFirst().orElseThrow());

@@ -763,10 +763,12 @@ leaves for a while what it can't reach (`bot.supply.Scavenger`). A rung is held
 once something as good is, and one whose materials can't be had is passed over, not waited on.
 A tool that wears out is made again, since it no longer holds its rung.
 
-Off the ladder, a soldier without a bed makes one - three white wool over three planks - and,
-short of the wool, hunts sheep for it by day like the chicken for a feather. Only white wool
-counts: a bed wants three of one colour, and most sheep are white. Placing the bed and lying down
-in it are backlog/rest-plan.md.
+Off the ladder, a soldier without a bed makes one - three white wool over three planks. Each wool
+can be made from four string in the grid (`Recipe.WOOL`), so a soldier short of it draws the
+string it lacks from the depot, where the night's spiders' string is stored (`SoldierRunner.bedString`;
+a keep builder keeps a bed's twelve), and, short of both, hunts sheep by day like the chicken for a
+feather. Only white wool counts: a bed wants three of one colour, and most sheep are white. Placing
+the bed and lying down in it are backlog/rest-plan.md.
 
 A soldier on ground work - a dig of the camp's or the keep's ground, or dirt for a wall - makes a
 shovel if it has none, stone if it carries the cobblestone: it digs soil and gravel with its

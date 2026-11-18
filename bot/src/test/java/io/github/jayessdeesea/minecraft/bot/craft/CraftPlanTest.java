@@ -105,4 +105,11 @@ class CraftPlanTest {
     void nothingToDoWhenItsAlreadyCarried() {
         assertTrue(CraftPlan.of(Map.of(Recipe.TORCHES, 4), Stock.of(Map.of(ItemClass.TORCH, 9)), Set.of()).nothingToDo());
     }
+
+    /** A bed from string: twelve string make its three wool in the grid, and nothing is short. */
+    @Test
+    void aBedsWoolIsMadeFromString() {
+        CraftPlan plan = CraftPlan.of(Map.of(Recipe.BED, 1), Stock.of(Map.of(ItemClass.STRING, 12, ItemClass.PLANKS, 3)), WORKSHOP);
+        assertTrue(plan.short_().isEmpty(), "nothing short: " + plan.short_());
+    }
 }
