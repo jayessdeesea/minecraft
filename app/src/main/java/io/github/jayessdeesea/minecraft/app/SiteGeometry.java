@@ -189,4 +189,22 @@ final class SiteGeometry {
     static double distance(Position a, Position b) {
         return Math.sqrt((a.x() - b.x()) * (a.x() - b.x()) + (a.y() - b.y()) * (a.y() - b.y()) + (a.z() - b.z()) * (a.z() - b.z()));
     }
+
+    private static final org.apache.logging.log4j.Logger LOG = org.apache.logging.log4j.LogManager.getLogger(SiteGeometry.class);
+
+    /**
+     * Forgets each of {@code seen}'s chests the world, loaded there, no longer shows - and says which, and what
+     * the world shows there instead: live (field452), the force's stores flipped between 34 logs and 1 every
+     * half minute, a chest of logs dropped and seen again.
+     */
+    static void forgetChestsGone(java.util.Map<BlockPos, ?> seen, io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
+        seen.keySet().removeIf(c -> {
+            boolean gone = world.isLoaded(c.x(), c.z()) && !world.isChest(c.x(), c.y(), c.z());
+            if (gone) {
+                LOG.warn("[Stores] the chest at {} is forgotten: the world there shows solid {}, hazard {}, its section known {}", c,
+                        world.isSolid(c.x(), c.y(), c.z()), world.isHazard(c.x(), c.y(), c.z()), world.openSection(c.x(), c.y(), c.z()));
+            }
+            return gone;
+        });
+    }
 }

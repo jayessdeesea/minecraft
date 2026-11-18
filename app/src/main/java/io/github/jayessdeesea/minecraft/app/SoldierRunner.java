@@ -1359,7 +1359,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         };
         // A chest the world no longer shows is forgotten, not walked to: live (field324), a draw went
         // seven times to a mine's old stash at y=24 that wasn't there, and failed each time.
-        chestsSeen.keySet().removeIf(c -> world.isLoaded(c.x(), c.z()) && !world.isChest(c.x(), c.y(), c.z()));
+        forgetChestsGone(chestsSeen, world);
         return chestsSeen.entrySet().stream().filter(e -> count.applyAsInt(e.getValue()) > 0)
                 .map(e -> new Position(e.getKey().x() + 0.5, e.getKey().y(), e.getKey().z() + 0.5))
                 .min(java.util.Comparator.comparingDouble(p -> Math.hypot(p.x() - from.x(), p.z() - from.z())));
