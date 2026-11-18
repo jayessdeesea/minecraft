@@ -4626,8 +4626,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** The soldiers cutting {@code stairs}, every squad's, by name. */
     private List<String> mineCrew(Staircase stairs) {
+        // Not one the recovery drill has: it cuts nothing, and counted in it shifts every other cutter's share
+        // as it comes and goes. Live (field410-411), Eli, stranded and flipping between his squad's two units,
+        // was in Bravo's crew one cycle and out the next, and Dana's share flipped with it - branches 47 and
+        // 49 started in turn every second or two, 188 times a night, and the level took no ore.
         return cutting.entrySet().stream().filter(e -> e.getValue().head().equals(stairs.head()) && e.getValue().bottom() == stairs.bottom())
-                .map(Map.Entry::getKey).sorted().toList();
+                .map(Map.Entry::getKey).filter(n -> !recovering.contains(n)).sorted().toList();
     }
 
     /**

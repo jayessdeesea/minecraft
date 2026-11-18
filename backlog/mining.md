@@ -48,6 +48,10 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   Built: in a mine's galleries only the pocket rule strands a soldier, not the buried or below ones
   (`SoldierRunner.cutOff`, `MINE_GALLERY_REACH`). Left: whether the pocket rule alone still fires on
   the 1x1 spiral's bottom - watch "cut off in a pocket" in the mine.
+- **A cutter's share flipping.** Live (field410-411), Dana started branches 47 and 49 in turn every
+  1-3 s, 188 times a night, her level's tunnels not growing, as a stranded squadmate came in and out
+  of the mine's crew (fixed: none the drill has is counted). Watch "cuts branch" counts per level: a
+  level whose starts run to hundreds a night is flipping again.
 - **The mine base has one furnace for the night shift.** Live (field395, 15:48), five soldiers set
   about smelting at the keep mine's base within ten seconds - copper leggings, boots, a chestplate,
   two iron pickaxes - and a furnace is one soldier's at a time (`Crafter.usable`), so the rest waited
