@@ -1219,7 +1219,19 @@ public class ChainOfCommand implements DisposableBean {
                 statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
                 List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores));
                 platoonLeader.receiveDayWork(new DayWork(shortfall, Optional.ofNullable(stores), flatten, keepLevel, keepBlocksLeft));
-                List<Objective> objectives = platoonLeader.decide(forThePlatoonLeader(statuses, edge));
+                List<Objective> objectives;
+                try {
+                    objectives = platoonLeader.decide(forThePlatoonLeader(statuses, edge));
+                } catch (RuntimeException e) {
+                    // No decision: each squad's standing order still goes through the rules - the night rule, the
+                    // guardrails - as the platoon leader's would. Live (field440), a reply refused at dusk left every
+                    // squad on its day's work in the open through the night, and nobody went down the mines.
+                    if (statuses.stream().anyMatch(st -> st.standing().isEmpty())) {
+                        throw e;
+                    }
+                    LOG.error("[PL] no decision - the standing orders go through the rules as they stand: {}", e.getMessage(), e);
+                    objectives = statuses.stream().map(st -> st.standing().orElseThrow()).toList();
+                }
                 if (missionVersion.get() != missionAsked) {
                     LOG.info("[PL] discarding a decision made under superseded orders");
                     return; // the order that superseded it woke the platoon leader: the next SITREP asks again

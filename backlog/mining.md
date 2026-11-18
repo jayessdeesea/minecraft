@@ -59,6 +59,11 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   on it: Ivy's run was cut off when another took it, and she stood beside it a minute, twice. Surplus
   to need, no locks (work in parallel): a base's furnaces sized to its shift - `Workshop` holds one
   furnace, so its landing, fitter and crafter would each take several. About two cut-off runs a night.
+- **The climb-out reads a hillside as the mine.** Live (field440), Liam on a slope at (18, 74, -6) under a hill,
+  38 blocks from Charlie's mine head at y=96, was sent "climbs out of the mine to its head first" every 2 s,
+  alternating with his armourer's copper errand, and stood. `SoldierRunner`'s climb-out wants the soldier
+  in the mine's galleries (as `cutOff`'s `inAMine` reads it: under the head by `MINE_BELOW`, within the
+  branches' reach of the head's column and on the mine's cells), not under any rock near the head.
 - **A respawn at the mine head has nothing to re-arm with.** Live (field427-435), five soldiers killed
   by night respawned, were sent down their squad's mine (LinkUp's shelter), and stood the night at its
   head's workshop: "can't make wooden pickaxe and wooden sword: no LOG within 48 blocks", the depot's
