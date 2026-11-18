@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import static io.github.jayessdeesea.minecraft.app.SoldierErrands.*;
 import static io.github.jayessdeesea.minecraft.app.SiteGeometry.*;
 import static io.github.jayessdeesea.minecraft.app.Slots.setSlot;
+import static io.github.jayessdeesea.minecraft.app.Slots.turn;
 import io.github.jayessdeesea.minecraft.bot.craft.WorkLoad;
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.engineer.Stairway;
@@ -7931,6 +7932,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (stairs == null) {
                     miner.stop();
                 } else {
+                    if (status.report() instanceof Report.Cantco(String why) && why.startsWith("no route") && status.order() instanceof Order.MoveTo to
+                            && miner.standAt().filter(st -> Math.hypot(st.x() - to.x(), st.z() - to.z()) < 0.5 && Math.abs(st.y() - to.y()) < 1).isPresent()) {
+                        miner.unreachable(why); // its cut's stand has no route (Miner.unreachable)
+                    }
                     Miner.Progress cut = miner.tick(status.position(), world, stairs,
                             free && !threatened && armourer.standAt().isEmpty(), Optional.of(mineShare(name, stairs)),
                             Math.max(0, mineCrew(stairs).indexOf(name)));
@@ -8490,20 +8495,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private static final double RECORDED_HOSTILE_RADIUS = 24;
 
 
-    /** One routine's turn at the soldier's hands. */
-    private static Hands.Turn turn(BooleanSupplier active, Consumer<Boolean> tick) {
-        return new Hands.Turn() {
-            @Override
-            public boolean active() {
-                return active.getAsBoolean();
-            }
-
-            @Override
-            public void tick(boolean free) {
-                tick.accept(free);
-            }
-        };
-    }
 
     /**
      * Fires from {@code protocol}'s watchdog (or any other unexpected close - see {@code

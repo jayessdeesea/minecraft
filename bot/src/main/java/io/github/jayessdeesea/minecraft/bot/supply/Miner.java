@@ -141,6 +141,29 @@ public final class Miner {
     /** How far above the stairs' bottom a cutter still works a mine cut to the bottom for its ore. */
     static final int PROSPECT_FROM = 8;
 
+    /** The tunnel of the cut whose stand it's sent to, and for how many ticks that stand has had no route. */
+    private int standingTunnel = Integer.MIN_VALUE;
+    private int unreachableTicks;
+    /** Ticks a cut's stand may have no route before its tunnel is given up: ten seconds' tries. */
+    static final int UNREACHABLE_TICKS = 200;
+
+    /**
+     * Its stand has no route ({@code why}): a tunnel's, given up as a blocked one is once that's held
+     * {@link #UNREACHABLE_TICKS} - its next cut is another tunnel's, and with the main tunnel given up the
+     * strips off it are its partner's to cut. Not the stairs': there's no other way down. Live (field458-459),
+     * six cutters stood all night two blocks from a stand walled off from them, and their partners waited.
+     */
+    public synchronized void unreachable(String why) {
+        if (standAt == null || standingTunnel < 0 || ++unreachableTicks < UNREACHABLE_TICKS) {
+            return;
+        }
+        if (blocked.add(standingTunnel)) {
+            LOG.warn("{} gives up tunnel {} of the mine: its cut's stand at {} has no route - {}", name, standingTunnel, standAt, why);
+        }
+        standAt = null;
+        unreachableTicks = 0;
+    }
+
     /** Tunnels given up for water, lava or a cave beside them. */
     private final Set<Integer> blocked = new HashSet<>();
     /** Tunnels over a cave left until the miner carries blocks to floor it. */
@@ -333,6 +356,10 @@ public final class Miner {
         keptTunnel = cut.tunnel() > 0 ? cut.tunnel() : -1;
         BlockPos from = cut.stand();
         standAt = new Position(from.x() + 0.5, from.y(), from.z() + 0.5);
+        if (standingTunnel != cut.tunnel()) {
+            standingTunnel = cut.tunnel();
+            unreachableTicks = 0;
+        }
         if (k != lastStep) {
             if (cut.tunnel() < 0) {
                 LOG.info("{} cuts step {} of {} down at {}", name, k + 1, stairs.steps(), cut.feet());

@@ -1546,7 +1546,9 @@ that breaks one is a step back):**
    and no more (docs/echelons/tenets.md, work in parallel). A miner whose strips come off the spine
    cuts each as soon as the spine has passed its root, clear of where the spine's cutter works
    (`Miner.clearOfTheMain`, 4 across) - not once the whole spine is through: live (field454-457), seven
-   waited all night on one cutter's spine.
+   waited all night on one cutter's spine. A cut whose stand has had no route for ten seconds has its
+   tunnel given up, as one blocked by water is (`Miner.unreachable`) - never the stairs': live
+   (field458-459), six cutters stood a night two blocks from stands walled off from them.
 2. **A grid that sees every block, with the least digging.** A level is at a height a multiple of
    4 (y % 4 == 0): a spine out from the shaft's landing, and strips off it both ways at every third
    block of the world's grid along it - x % 3 == 0 for a spine along x, z % 3 == 0 for one along z.

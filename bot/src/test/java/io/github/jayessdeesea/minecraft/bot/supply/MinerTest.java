@@ -585,6 +585,55 @@ class MinerTest {
         assertTrue(byTheMainsEnd > 0, "the second miner had cut some of its branches by the time the main tunnel was through");
     }
 
+    /**
+     * A strip's stand with no route from where its cutter stands is given up after ten seconds of it - the next
+     * cut is another tunnel's; the stairs' never are. Live (field458-459), six cutters stood all night two
+     * blocks from a stand walled off from them.
+     */
+    @Test
+    void aStandWithNoRouteGivesUpItsTunnelButNeverTheStairs() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        Set<BlockPos> cut = new HashSet<>();
+        Miner miner = new Miner("Miner", recording(cut), new Inventory());
+        Position at = new Position(0.5, GROUND, 0.5);
+        miner.tick(at, world, stairs, true);
+        Position onTheStairs = miner.standAt().orElseThrow();
+        for (int i = 0; i < 2 * Miner.UNREACHABLE_TICKS; i++) {
+            miner.unreachable("no route");
+        }
+        assertEquals(Optional.of(onTheStairs), miner.standAt(), "the stairs are never given up");
+
+        for (int tick = 0; tick < 200_000; tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            miner.tick(at, world, stairs, true);
+            at = miner.standAt().orElse(at);
+            if (stairs.cuts().stream().filter(c -> c.tunnel() > 0).anyMatch(c -> c.cells().stream().anyMatch(cut::contains))) {
+                break;
+            }
+        }
+        Position onAStrip = miner.standAt().orElseThrow();
+        int strip = stairs.cuts().stream().filter(c -> c.tunnel() > 0 && c.cells().stream().anyMatch(cut::contains))
+                .mapToInt(Staircase.Cut::tunnel).findFirst().orElseThrow(); // the strip it's on
+        for (int i = 0; i < Miner.UNREACHABLE_TICKS; i++) {
+            miner.unreachable("no route");
+        }
+        Set<BlockPos> before = new HashSet<>(cut);
+        for (int tick = 0; tick < 20_000; tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            miner.tick(at, world, stairs, true);
+            at = miner.standAt().orElse(at);
+        }
+        Set<BlockPos> stripCells = new HashSet<>();
+        stairs.cuts().stream().filter(c -> c.tunnel() == strip).forEach(c -> stripCells.addAll(c.cells()));
+        Set<BlockPos> after = new HashSet<>(cut);
+        after.removeAll(before);
+        after.retainAll(stripCells);
+        assertTrue(after.size() <= 3, "tunnel " + strip + " given up: at most the cut under way finished, not " + after.size() + " more");
+        assertTrue(cut.size() > before.size(), "and it went on with another tunnel");
+    }
+
     private static boolean allTrue(boolean[] flags) {
         for (boolean f : flags) {
             if (!f) {
