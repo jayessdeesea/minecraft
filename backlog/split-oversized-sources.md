@@ -18,6 +18,9 @@ lists the files over it, each capped at its length then, to shrink to under.
   soldier owns how, never what; backlog/echelon-contracts.md, the runner keeps only the
   connections). What it does - the routines' wiring, the world model, the depot and its chests,
   the keep, the mine - moves into classes of their own beside it, one responsibility each.
+- Begun: `app.SoldierErrands` holds the errands the soldier still decides for itself (its food, logs
+  and a bed's string from the stockpile, what its pack keeps) - each to become the squad leader's
+  order, the class to empty.
 - **`bot.DeterministicSoldier`**: its fight, its moves and its survival as separate pure parts.
 - **`app.ChainOfCommand`**: the platoon leader's guardrails apart from the wiring of the echelons.
 - **The tests** (`SquadSimulationTest`, `DeterministicSoldierTest`, `SimServer`): split by the

@@ -917,6 +917,15 @@ under the miners, aren't wood: `ResourceSurveyor.leafy`; nor is a log a gatherer
 `command.SquadStatus.resources`). A soldier that can't make the pickaxe it needs - no trees in reach
 - reports CANTCO too.
 
+**Wood by duty** (operator, 2026-11-18; `command.WoodDuties`). A squad sent for wood works the forest
+48 blocks across round its objective by duty, not as one body: each woodcutter has a strip of it to
+itself - no two on one tree - stands only inside it (`Gatherer`'s box), takes a load of 16 logs to the
+stockpile at a time, replants each stump it fells, and is exhausted once its strip is cut out, as an
+`Order.Gather` from a box is. With two or more, the last on the roster is the planter: it plants
+the grid cells across the whole forest that the felling has opened to the sky (`TreeFarm.site`),
+taking a sapling from leaves when it has none, while the scavenger picks up what dropped. The wild
+forest first; a grove once there is one (backlog/renewables.md).
+
 The supply point's chest is also the stockpile; with no supply point set up, the stockpile is the
 chest of the soldier's workshop (§11), fitted by the first soldier with a full load and nowhere to
 put it - crafted from 8 planks at the workshop's table, placed in its cell. A soldier with a full load walks it over and puts in

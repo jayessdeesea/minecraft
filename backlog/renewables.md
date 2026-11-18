@@ -16,12 +16,11 @@ planning decision for the general: read the survey, pick what the ground support
 The platoon leader puts a squad or two at the camp on renewables by need (docs/echelons/tenets.md,
 stock levels drive production); the squad leader gives each soldier a duty, an area and a chest; the
 soldier does only the how.
-- **Wood: woodcutters and a planter.** Each woodcutter has its own sector, fells its trees, and
-  puts the logs, saplings and sticks it picks up into its chest. A planter comes along after the
-  leaves have decayed, picks up what dropped, clears the ground and replants. The wild forest
-  first - there is no grove yet; the grove once there is one, unless the force is short. (A
-  woodcutter could replant a sapling at the stump at once, so the tree starts sooner; the planter
-  is then left the drops and the gaps.)
+- **Wood: woodcutters and a planter.** Built for the wild forest (docs/military-doctrine.md § 12, wood
+  by duty). Left: the grove's turn - the squad on the grove once it's planted, the wild forest only
+  when the force is short; the planter drawing saplings from the depot before it breaks leaves; the
+  squad leader (DrillSquadLeader) giving the duties as its plans, so they show in its view, rather
+  than the runner deriving them from the objective.
 - **Wheat: harvesters.** A harvester's plots are harvested and replanted in one pass - a ripe crop
   drops its seed in the cell, so the replant is a click, not a trip through the chest - checking
   each cell is tilled. Wheat and spare seed go into the chest. (The operator's sketch put the

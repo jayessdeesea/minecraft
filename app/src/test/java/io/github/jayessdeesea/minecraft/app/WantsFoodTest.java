@@ -16,13 +16,13 @@ class WantsFoodTest {
 
     @Test
     void aWoundedSoldierWantsFoodUntilItCanHeal() {
-        assertTrue(SoldierRunner.wantsFood(of(2, 15)), "wounded at food 15: it doesn't heal there");
-        assertFalse(SoldierRunner.wantsFood(of(2, Condition.REGENERATION_FOOD)), "at the food it heals at");
+        assertTrue(SoldierErrands.wantsFood(of(2, 15)), "wounded at food 15: it doesn't heal there");
+        assertFalse(SoldierErrands.wantsFood(of(2, Condition.REGENERATION_FOOD)), "at the food it heals at");
     }
 
     @Test
     void aWellSoldierWantsFoodOnlyWhenHungry() {
-        assertFalse(SoldierRunner.wantsFood(of(Condition.MAX_HEALTH, 15)));
-        assertTrue(SoldierRunner.wantsFood(of(Condition.MAX_HEALTH, SoldierRunner.HUNT_BELOW_FOOD)));
+        assertFalse(SoldierErrands.wantsFood(of(Condition.MAX_HEALTH, 15)));
+        assertTrue(SoldierErrands.wantsFood(of(Condition.MAX_HEALTH, SoldierErrands.HUNT_BELOW_FOOD)));
     }
 }

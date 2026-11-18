@@ -23,18 +23,18 @@ class BedStringTest {
 
     @Test
     void aSoldierWithNothingWantsTwelveString() {
-        assertEquals(12, SoldierRunner.bedString(inventory));
+        assertEquals(12, SoldierErrands.bedString(inventory));
     }
 
     @Test
     void woolAndStringCarriedCountTowardTheBed() {
         carrying("white_wool", 1).carrying("string", 5);
-        assertEquals(3, SoldierRunner.bedString(inventory), "two wool short, eight string, five carried");
+        assertEquals(3, SoldierErrands.bedString(inventory), "two wool short, eight string, five carried");
     }
 
     @Test
     void aSoldierWithABedWantsNone() {
         carrying("white_bed", 1);
-        assertEquals(0, SoldierRunner.bedString(inventory));
+        assertEquals(0, SoldierErrands.bedString(inventory));
     }
 }

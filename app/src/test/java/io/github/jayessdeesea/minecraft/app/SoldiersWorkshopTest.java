@@ -15,8 +15,8 @@ class SoldiersWorkshopTest {
 
     @Test
     void aSoldierOfTheKeepsSquadOffItsWorkBakesAtTheCamp() {
-        assertSame(KEEP, SoldierRunner.soldiersWorkshop(KEEP, KEEP, CAMP, true), "a builder: the keep's");
-        assertSame(CAMP, SoldierRunner.soldiersWorkshop(KEEP, KEEP, CAMP, false), "fed first at the camp's farm: the camp's");
-        assertSame(KEEP, SoldierRunner.soldiersWorkshop(KEEP, KEEP, null, false), "no camp's yet: the keep's");
+        assertSame(KEEP, SoldierErrands.soldiersWorkshop(KEEP, KEEP, CAMP, true), "a builder: the keep's");
+        assertSame(CAMP, SoldierErrands.soldiersWorkshop(KEEP, KEEP, CAMP, false), "fed first at the camp's farm: the camp's");
+        assertSame(KEEP, SoldierErrands.soldiersWorkshop(KEEP, KEEP, null, false), "no camp's yet: the keep's");
     }
 }

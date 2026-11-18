@@ -11,6 +11,7 @@ import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.protocol.BlockFace;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.Box;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.protocol.PlaySession;
@@ -61,6 +62,8 @@ public final class Gatherer {
 
     /** Trees this soldier failed at (out of reach, or the log wouldn't break) - not tried again. */
     private final Set<BlockPos> avoid = new HashSet<>();
+    /** The box it's kept within, if any - its last tick's. */
+    private Optional<Box> within = Optional.empty();
     /**
      * The tree it's felling: its logs still standing, every one cut before the next tree, the load
      * or not - a tree left half-standing holds its leaves, which then never fall for their saplings
@@ -146,6 +149,17 @@ public final class Gatherer {
      */
     public synchronized void tick(Position soldier, WorldView world, Optional<Resource> resource, Position around,
                                   boolean wanted, OptionalInt amount) {
+        tick(soldier, world, resource, around, wanted, amount, Optional.empty());
+    }
+
+    /**
+     * As {@link #tick(Position, WorldView, Optional, Position, boolean, OptionalInt)}, kept {@code within} a
+     * box when one is given - a woodcutter's strip (command.WoodDuties): it stands only inside it, so no two
+     * woodcutters work one tree, and it's exhausted once the strip is cut out.
+     */
+    public synchronized void tick(Position soldier, WorldView world, Optional<Resource> resource, Position around,
+                                  boolean wanted, OptionalInt amount, Optional<Box> within) {
+        this.within = within;
         if (retry > 0) {
             retry--;
         }
@@ -264,6 +278,11 @@ public final class Gatherer {
         Set<BlockPos> walkable = Pathfinder.climbs(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), span,
                 target == Digger.Target.LOG ? FAR_REACH_BUDGET : REACH_BUDGET,
                 inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT), inventory.slotOf(ItemClass.PICKAXE) >= 0).keySet();
+        if (within.isPresent()) {
+            Box box = within.get();
+            walkable = walkable.stream().filter(c -> box.contains(c.x(), Math.max(box.minY(), Math.min(box.maxY(), c.y())), c.z()))
+                    .collect(java.util.stream.Collectors.toSet());
+        }
         excluded.addAll(avoid);
         // The rest of the tree it's felling first, from wherever it can get to - up its own steps, on the
         // blocks it carries - and only then another tree; with the tree down, its stump replanted.

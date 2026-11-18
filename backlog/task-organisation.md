@@ -47,6 +47,9 @@ Each a squad-simulation scenario, then seen live:
   crafting, without a `rearm`. "Out of supplies" is a soldier below its basic load that can't make
   it up: a request to its squad leader saying what's short (docs/military-doctrine.md § 4). Live,
   a miner whose pickaxe wore out, with no logs within 48 blocks, came up and stood reporting CANTCO.
+  In the squad simulation, a woodcutter short of a shovel - for the camp's dig its upkeep gave it
+  first - fetched a handle's log from outside its strip (`WoodDutiesSimulationTest`): the kit's
+  errand overrides the duty's ground.
 - **Awaiting orders.** A soldier whose plan leaves it nothing to do reports so, and the squad
   leader's view and the idle alert say whose plan ran dry - rather than the runner's upkeep
   filling it. Camp upkeep and the hungry squad's farm become the squad's drills writing plans
