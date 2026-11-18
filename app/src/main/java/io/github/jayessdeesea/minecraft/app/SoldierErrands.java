@@ -136,7 +136,10 @@ final class SoldierErrands {
 
     /** What a mine's cutter keeps: its backfill's dirt, and ore before the rest (the rules of a mine). */
     static final Map<ItemClassRegistry.ItemClass, Integer> MINE_CARRIED = Map.of(
-            ItemClassRegistry.ItemClass.DIRT, Pack.MINER_DIRT_KEPT, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);
+            ItemClassRegistry.ItemClass.DIRT, Pack.MINER_DIRT_KEPT, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1,
+            // And a stack of cobblestone, its floors' and backfill's (the rules of a mine): live (field462), Alice
+            // stored every block and stood a night at a cave in her level's main tunnel with none to floor it.
+            ItemClassRegistry.ItemClass.COBBLESTONE, Pack.MINER_COBBLESTONE_KEPT);
 
     /**
      * The string a soldier still wants for a bed: none once it has one, else what its wool and string fall
