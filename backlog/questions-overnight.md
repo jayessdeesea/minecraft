@@ -11,6 +11,14 @@ site's west edge, which for that ground is about x=-50 to -55 - on the camp's fa
 The north edge, z < -16, keeps it off the farm; I've assumed that. Salvage (backlog/salvage-and-pack.md) is
 built once the place is settled.
 
+## Shooting creepers (backlog/engagement-doctrine.md)
+Four creeper deaths tonight (Dana, Gus, Ivy, Liam), each in melee: boxed in, or engaged after the 10 s
+standoff (`DeterministicSoldier.CREEPER_STANDOFF_TICKS`), a stone sword's four hits outlasting its fuse. A
+soldier with a bow never shoots one - creepers are left out of the archery branch, per "a creeper on the route
+is gone round, not fought" (2026-11-16). Should a soldier with a bow and arrows shoot a creeper from outside its
+blast (past 5 blocks) rather than wait for it to close? The answer changes the engagement doctrine; going round
+stays the rule for one without a bow.
+
 ## A safe spawn (backlog/rest-plan.md)
 A soldier killed at night respawns at the world's spawn, on the keep's open site: Alice was shot there three times
 in two and a half minutes (field421). Which: beds in the lit camp (backlog/rest-plan.md - a soldier respawns at its

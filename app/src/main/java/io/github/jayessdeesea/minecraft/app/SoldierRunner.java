@@ -4891,7 +4891,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 : on.entrySet().stream().min(Comparator.comparingDouble(e -> Math.hypot(e.getValue().x() - first.get().x(), e.getValue().z() - first.get().z())))
                 .map(Map.Entry::getKey).orElse(null);
         if (!java.util.Objects.equals(was, now2)) {
-            LOG.info("[Keep] salvage: {}", now2 == null ? "done - every chest on the ground emptied" : now2 + " empties the chests on the ground into the depot");
+            LOG.info("[Keep] salvage: {}", now2 != null ? now2 + " empties the chests on the ground into the depot"
+                    : first.isEmpty() ? "done - every chest on the ground emptied" : "no keep hand on the ground to empty them for now");
         }
         salvager = now2;
         return condemned;
