@@ -22,6 +22,9 @@ In its user prompt (`command-ai/src/main/resources/prompts/platoon-leader-user-p
 - **Each squad's Class I** (`command.Subsistence`): GREEN, AMBER, or RED with the request for
   food the squad can't get itself, which the platoon leader answers with a farm or game
   ([military-doctrine.md § 4](../../military-doctrine.md#4-reports-upward)).
+- **The day's work** (`command.DayWork`, `<day_work>`): what the force is short of, each with the task that
+  answers it, the stockpile as last seen, and the ground to flatten with its level and blocks left - from
+  which it assigns who farms, works a grove, cuts, mines and flattens (operator, 2026-11-17).
 - **A squad's Class IV request** (`PlatoonSergeant.classFour`): the keep's builders short of logs, between
   them and the stockpile, for the depot's chest, pickaxes and torches - answered with a `WOOD` task
   at trees a squad has reported, after food (same section).
@@ -55,7 +58,7 @@ It keeps nothing between calls but each squad's current objective (backlog/opera
 | `FORTIFY` | Wall in the ground 8 blocks out each way. |
 | `MINE` | Cut a spiral staircase down to the given depth. |
 | `PATROL` | Walk the round inside the wall line, on watch ([military-doctrine.md § 15](../../military-doctrine.md#15-securing-the-camp)). |
-| `KEEP` | Build the main base's keep at the origin, wherever the objective points ([military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)). |
+| `KEEP` | Flatten the ground set to flatten, a level at a time to its floor, wherever the objective points ([military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)). |
 
 ## When it decides
 When woken, never on a clock (backlog/fleet-command.md): at once on an operator's mission or

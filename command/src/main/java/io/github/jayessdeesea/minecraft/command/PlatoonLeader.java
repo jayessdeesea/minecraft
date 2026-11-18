@@ -26,6 +26,9 @@ public interface PlatoonLeader {
     /** Where the camp stands in building a lodgment, measured (docs/military-doctrine.md §17). */
     void receiveFoothold(Foothold foothold);
 
+    /** Where the day's work stands: what's short, the stocks, the flatten's progress - computed, not worked out. */
+    void receiveDayWork(DayWork work);
+
     /** The overworld's time of day, as the server last sent it. */
     void receiveTime(TimeOfDay time);
 

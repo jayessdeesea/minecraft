@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Flatten;
+import io.github.jayessdeesea.minecraft.command.DayWork;
 import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -41,6 +42,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.OptionalInt;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -351,6 +353,14 @@ public class ChainOfCommand implements DisposableBean {
             }
             return new Objective("Keep the camp's farm", at, "Food for the force: the farm squad's standing job", new Objective.Task.None());
         }
+        // The platoon leader's day's work stands - who farms, who works a grove, who cuts, mines and flattens
+        // (operator, 2026-11-17); the guardrails over all of it come after (guarded).
+        if (dayWork(objective.task())) {
+            return objective.task() instanceof Objective.Task.Keep
+                    ? new Objective("Flatten " + flatten.describe(), spread(flatten.centre(), squad.squadName()),
+                    "The ground the operator ordered flattened", new Objective.Task.Keep())
+                    : objective;
+        }
         // Only as many squads on the ground as its level wants (backlog/flatten-campaign.md): the rest
         // released - to the platoon leader's own objective for them, or the camp's work where that's
         // the ground too - and called back as the levels widen. Live, every squad stood on a level
@@ -413,39 +423,88 @@ public class ChainOfCommand implements DisposableBean {
             return new Objective("Work the camp while the ground's level is small", base != null ? base.camp() : objective.location(),
                     "Released from the flatten: its level wants " + wanted + " builder(s)", new Objective.Task.None());
         }
-        if (objective.task() instanceof Objective.Task.Keep) {
-            return objective;
-        }
-        boolean answersWood = objective.task() instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD && squad.classFour().isPresent();
-        boolean answersFood = objective.task() instanceof Objective.Task.Farm
-                && squad.classOne().filter(c -> c.rating() == Subsistence.Rating.RED).isPresent();
-        // Food and wood both short: the squads asking for food dealt across both, food first - with three,
-        // two farm and one cuts (operator, 2026-11-17: put workers on both; an odd one to food). The one
-        // dealt wood goes to the trees seen, or with none seen to the keep, whose wood party cuts at the
-        // logs' reserve. Live (field393), every squad answered its Class I RED with the farm, the keep's
-        // crew was nobody, and nobody cut at 0 logs.
-        if (answersFood && alarms.contains(PlatoonSergeant.Shortfall.FOOD) && alarms.contains(PlatoonSergeant.Shortfall.WOOD)) {
-            List<PlatoonSergeant.Shortfall> both = List.of(PlatoonSergeant.Shortfall.FOOD, PlatoonSergeant.Shortfall.WOOD);
-            if (both.get(Math.max(0, builders.indexOf(squad.squadName())) % both.size()) == PlatoonSergeant.Shortfall.WOOD) {
-                Objective wood = toShortfall(PlatoonSergeant.Shortfall.WOOD, squad, woods, wanted)
-                        .orElseGet(() -> new Objective("Flatten " + flatten.describe(), spread(flatten.centre(), squad.squadName()),
-                                "The ground the operator ordered flattened, its wood party out for logs", new Objective.Task.Keep()));
-                LOG.info("[PL -> {}] by day, food and wood both short: to the {} for logs, not '{}'", squad.squadName(),
-                        wood.task() instanceof Objective.Task.Keep ? "keep's wood party" : "trees", objective.mission());
-                return wood;
-            }
-        }
-        if (answersWood || answersFood) {
-            LOG.info("[PL -> {}] by day, ordered '{}' ({}) answering the squad's {} request: it stands over the keep rule",
-                    squad.squadName(), objective.mission(), objective.task(), answersWood ? "Class IV" : "Class I");
-            return objective;
-        }
         Flatten site = flatten;
         Objective keep = new Objective("Flatten " + site.describe(),
                 spread(site.centre(), squad.squadName()), "The ground the operator ordered flattened", new Objective.Task.Keep());
         LOG.warn("[PL -> {}] by day, ordered '{}' ({}) - the operator's rule puts it on the keep instead",
                 squad.squadName(), objective.mission(), objective.task());
         return keep;
+    }
+
+    /** Whether {@code task} is the day's work the platoon leader assigns: farm, grove, wood, mine, flatten. */
+    private static boolean dayWork(Objective.Task task) {
+        return task instanceof Objective.Task.Farm || task instanceof Objective.Task.TreeFarm || task instanceof Objective.Task.Mine
+                || task instanceof Objective.Task.Keep || task instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD;
+    }
+
+    /** Whether {@code objective} answers {@code shortfall}. */
+    private static boolean covers(Objective objective, PlatoonSergeant.Shortfall shortfall) {
+        Objective.Task t = objective.task();
+        return switch (shortfall) {
+            case FOOD -> t instanceof Objective.Task.Farm;
+            case WOOD -> t instanceof Objective.Task.TreeFarm || t instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD;
+            case IRON -> t instanceof Objective.Task.Mine;
+        };
+    }
+
+    /**
+     * The guardrails over the day's work, all squads at once (operator, 2026-11-17: one squad on the flatten,
+     * two or three collecting resources if necessary): if no squad flattens, one is put on it; if something
+     * the force is short of has nobody on it, a squad doubling up on another shortfall - or on the flatten
+     * while another is too - is moved to it. Each move is said, loudly: the platoon leader's to get right.
+     */
+    List<Objective> guarded(List<Objective> day, List<SquadStatus> statuses, List<PlatoonSergeant.Shortfall> alarms, List<ResourceSite> woods) {
+        if (!keepByDay || time == null || (time.dark() || sheltering()) && !surfacing()) {
+            return day;
+        }
+        List<Objective> out = new ArrayList<>(day);
+        List<Integer> movable = new ArrayList<>();
+        for (int i = 0; i < statuses.size(); i++) {
+            if (farmSquad.filter(statuses.get(i).squadName()::equals).isEmpty()) {
+                movable.add(i);
+            }
+        }
+        if (!movable.isEmpty() && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
+            int k = spare(out, movable, alarms).orElse(movable.getFirst());
+            String name = statuses.get(k).squadName();
+            LOG.warn("[Guardrail] no squad on the flatten - {} put on it, not '{}'", name, out.get(k).mission());
+            out.set(k, new Objective("Flatten " + flatten.describe(), spread(flatten.centre(), name),
+                    "The ground the operator ordered flattened", new Objective.Task.Keep()));
+        }
+        for (PlatoonSergeant.Shortfall s : alarms) {
+            boolean coveredByFarmSquad = s == PlatoonSergeant.Shortfall.FOOD && farmSquad.isPresent();
+            if (coveredByFarmSquad || out.stream().anyMatch(o -> covers(o, s))) {
+                continue;
+            }
+            Optional<Integer> k = spare(out, movable, alarms);
+            Optional<Objective> work = k.flatMap(i -> toShortfall(s, statuses.get(i), woods, flattenBuilders));
+            if (work.isEmpty()) {
+                LOG.warn("[Guardrail] short of {} with nobody on it, and no squad to spare or nowhere to do it", s);
+                continue;
+            }
+            LOG.warn("[Guardrail] short of {} with nobody on it - {} to it, not '{}'", s, statuses.get(k.get()).squadName(), out.get(k.get()).mission());
+            out.set(k.get(), work.get());
+        }
+        return out;
+    }
+
+    /**
+     * A squad that can be moved without leaving anything bare: one on a shortfall another squad covers too,
+     * one on the flatten while another is, or one on neither; the last such, so the first keep theirs.
+     */
+    private static Optional<Integer> spare(List<Objective> out, List<Integer> movable, List<PlatoonSergeant.Shortfall> alarms) {
+        long flattening = out.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count();
+        for (int j = movable.size() - 1; j >= 0; j--) {
+            int i = movable.get(j);
+            Objective o = out.get(i);
+            boolean keep = o.task() instanceof Objective.Task.Keep;
+            Optional<PlatoonSergeant.Shortfall> mine = alarms.stream().filter(s -> covers(o, s)).findFirst();
+            boolean doubled = mine.isPresent() && out.stream().filter(x -> covers(x, mine.get())).count() > 1;
+            if (keep ? flattening > 1 : mine.isEmpty() || doubled) {
+                return Optional.of(i);
+            }
+        }
+        return Optional.empty();
     }
 
     /** The work that makes good {@code shortfall} for a squad released from the flatten, if there's somewhere to do it. */
@@ -702,6 +761,15 @@ public class ChainOfCommand implements DisposableBean {
     private volatile int flattenBuilders = Integer.MAX_VALUE;
 
     /** The foreman's word on its new level: {@code builders} wanted on it, the squads to send sized from it. */
+    /** The flatten's level and the blocks left on it, as the keep's foreman last dealt it. */
+    public void onKeepLevel(int level, int blocksLeft) {
+        keepLevel = OptionalInt.of(level);
+        keepBlocksLeft = blocksLeft;
+    }
+
+    private volatile OptionalInt keepLevel = OptionalInt.empty();
+    private volatile int keepBlocksLeft;
+
     public void onFlattenCrew(int builders) {
         if (builders != flattenBuilders) {
             LOG.info("[PL] the ground's level wants {} builder(s) - squads on it sized to that", builders);
@@ -1115,6 +1183,8 @@ public class ChainOfCommand implements DisposableBean {
                         squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
                         s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList();
                 statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
+                List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores));
+                platoonLeader.receiveDayWork(new DayWork(shortfall, Optional.ofNullable(stores), flatten, keepLevel, keepBlocksLeft));
                 List<Objective> objectives = platoonLeader.decide(statuses);
                 if (missionVersion.get() != missionAsked) {
                     LOG.info("[PL] discarding a decision made under superseded orders");
@@ -1122,12 +1192,15 @@ public class ChainOfCommand implements DisposableBean {
                 }
                 long millis = clockwork.millis() - started;
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
-                List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores));
                 List<ResourceSite> woods = statuses.stream().flatMap(s -> s.resources().stream()).toList();
+                List<Objective> byDay = new ArrayList<>();
+                for (int i = 0; i < statuses.size(); i++) {
+                    byDay.add(byDay(objectives.get(i), statuses.get(i), shortfall, woods));
+                }
+                List<Objective> dayWork = guarded(byDay, statuses, shortfall, woods);
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
-                    Objective given = sheltered(grounded(byDay(objectives.get(i), statuses.get(i), shortfall, woods),
-                            statuses.get(i).soldiers()), statuses.get(i));
+                    Objective given = sheltered(grounded(dayWork.get(i), statuses.get(i).soldiers()), statuses.get(i));
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
                         LOG.info("[PL -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
                         // The feedback not taken: the squad said its task is finished or stuck, and it was kept.

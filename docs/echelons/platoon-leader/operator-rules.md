@@ -27,10 +27,12 @@ before dark, to plan the night:
   shelters with it (`ChainOfCommand.sheltering`).
 
 ## The keep by day (`minecraft.platoon-leader.keep-by-day`)
-By day, every squad builds the main base's keep (task `KEEP`, [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)),
-whatever the platoon leader orders; a squad already on it holds it - but for the platoon leader's answer to a
-request the squad raised, which stands: `WOOD` to its Class IV RED, `FARM` to its Class I RED
-(a request outranks the standing rule, or it's never answered). The night rule still comes first,
+By day the platoon leader assigns the day's work (operator, 2026-11-17): its `FARM`, `TREE_FARM`, `WOOD`,
+`MINE` and `KEEP` orders stand, request or not; any other order by day is put on the keep (task `KEEP`,
+[military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)), or, past the squads the keep's level
+wants, sent to what the force is short of. Over all of it, guardrails that act loudly ("[Guardrail]",
+`ChainOfCommand.guarded`): no squad on the flatten, one is put on it; something short with nobody on it, a
+squad doubling up elsewhere is moved to it. The farm squad keeps the camp's farm. The night rule still comes first,
 but for the night shift's last 30 seconds, when the squads climb out to it. A squad's miner, with no
 order of its own, builds the keep with it by day: the whole squad mines by night.
 

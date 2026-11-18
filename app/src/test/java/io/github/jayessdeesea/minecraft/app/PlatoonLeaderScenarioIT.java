@@ -1,5 +1,9 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.command.Flatten;
+import io.github.jayessdeesea.minecraft.command.Stockpile;
+import io.github.jayessdeesea.minecraft.command.PlatoonSergeant;
+import io.github.jayessdeesea.minecraft.command.DayWork;
 import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.Kit;
@@ -54,6 +58,11 @@ class PlatoonLeaderScenarioIT {
 
     private static final Objective SECURE_CAMP = new Objective("Light the camp's ground with torches", new Position(3000, 151, 3000),
             "No monster spawns inside the camp", new Objective.Task.Secure());
+
+    /** The day's work, computed, for the situations that assign it. */
+    private static final Map<String, DayWork> DAY_WORK = Map.of(
+            "short-of-food-and-wood", new DayWork(List.of(PlatoonSergeant.Shortfall.FOOD, PlatoonSergeant.Shortfall.WOOD),
+                    Optional.of(new Stockpile(3, 40, 2, 0, 0, 0)), new Flatten(2984, 2984, 3016, 3016, 150), OptionalInt.of(152), 640));
 
     /** The camp's progress, for the situations that have a camp to build up. */
     private static final Map<String, Foothold> FOOTHOLDS = Map.of(
@@ -244,6 +253,26 @@ class PlatoonLeaderScenarioIT {
                         }
                         return failures;
                     }),
+            // The day's work assigned (operator, 2026-11-17): food and wood both short, three squads - one
+            // stays on the flatten, the others to the farm and the trees.
+            new Situation("short-of-food-and-wood", "By day, every squad builds the main base's keep at the origin (KEEP): "
+                    + "flatten the ground set to flatten. Feed the force and keep it in logs.", TimeOfDay.of(2000, true),
+                    List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty()), fresh("Charlie", 3000, Optional.empty())),
+                    (squads, given) -> {
+                        List<String> failures = new ArrayList<>();
+                        if (given.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
+                            failures.add("nobody left on the flatten");
+                        }
+                        if (given.stream().noneMatch(o -> o.task() instanceof Objective.Task.Farm)) {
+                            failures.add("nobody on the food");
+                        }
+                        if (given.stream().noneMatch(o -> o.task() instanceof Objective.Task.TreeFarm
+                                || o.task() instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD)) {
+                            failures.add("nobody on the wood");
+                        }
+                        return failures.isEmpty() ? failures : List.of(String.join(", ", failures) + ": "
+                                + given.stream().map(o -> o.task().getClass().getSimpleName()).toList());
+                    }),
             new Situation("walking-to-site", BASE_MISSION, TimeOfDay.of(7000, true),
                     List.of(fresh("Alpha", 2996, Optional.of(ALPHA_BASE)), fresh("Bravo", 3004, Optional.of(BRAVO_BASE))),
                     PlatoonLeaderScenarioIT::buildsOnThePlatform),
@@ -313,6 +342,7 @@ class PlatoonLeaderScenarioIT {
                 SpringAiPlatoonLeader platoonLeader = new SpringAiPlatoonLeader(client, prompts, situation.mission(), "");
                 platoonLeader.receiveTime(situation.time());
                 Optional.ofNullable(FOOTHOLDS.get(situation.name())).ifPresent(platoonLeader::receiveFoothold);
+                Optional.ofNullable(DAY_WORK.get(situation.name())).ifPresent(platoonLeader::receiveDayWork);
                 long start = System.nanoTime();
                 List<String> failures;
                 try {

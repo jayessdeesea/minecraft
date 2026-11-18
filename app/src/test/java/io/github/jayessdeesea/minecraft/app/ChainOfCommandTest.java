@@ -116,8 +116,8 @@ class ChainOfCommandTest {
         Objective released = two.byDay(WALL, squad("Bravo", "Bob"));
         assertEquals(WALL, released, "the other to the platoon leader's own objective");
         Objective keep = two.byDay(WALL, squad("Alpha", "Alice"));
-        assertTrue(two.byDay(keep, squad("Bravo", "Bob")).task() instanceof Objective.Task.Mine,
-                "the ground given it, the next mine cut instead (operator, 2026-11-17)");
+        assertTrue(two.byDay(keep, squad("Bravo", "Bob")).task() instanceof Objective.Task.Keep,
+                "the ground given it by the platoon leader: its day's work stands (operator, 2026-11-17)");
 
         Objective toTheMine = two.byDay(WALL, squad("Bravo", "Bob"), Optional.of(PlatoonSergeant.Shortfall.IRON), List.of());
         assertTrue(toTheMine.task() instanceof Objective.Task.Mine, "released, to the force's shortfall: " + toTheMine);
@@ -167,7 +167,8 @@ class ChainOfCommandTest {
                 PlatoonSergeant.classFour(1, 0, false));
 
         assertEquals(wood, chain.byDay(wood, asking), "its request answered: the order stands");
-        assertTrue(chain.byDay(wood, squad("Bravo", "Bob")).task() instanceof Objective.Task.Keep, "no request: the keep");
+        assertEquals(wood, chain.byDay(wood, squad("Bravo", "Bob")), "no request: the platoon leader's day's work stands all the same");
+        assertTrue(chain.byDay(WALL, squad("Bravo", "Bob")).task() instanceof Objective.Task.Keep, "work that isn't the day's: the keep");
     }
 
     /**
@@ -190,17 +191,18 @@ class ChainOfCommandTest {
         List<PlatoonSergeant.Shortfall> alarms = List.of(PlatoonSergeant.Shortfall.FOOD, PlatoonSergeant.Shortfall.WOOD);
         List<ResourceSite> woods = List.of(new ResourceSite(Resource.WOOD, new Position(30, 64, 30), 10));
 
-        Objective alpha = three.byDay(farm, hungry("Alpha", "Alice"), alarms, woods);
-        Objective bravo = three.byDay(farm, hungry("Bravo", "Bob"), alarms, woods);
-        Objective charlie = three.byDay(farm, hungry("Charlie", "Carol"), alarms, woods);
+        List<SquadStatus> squads = List.of(hungry("Alpha", "Alice"), hungry("Bravo", "Bob"), hungry("Charlie", "Carol"));
+        // The platoon leader sends all three to the farm: its orders stand, and the guardrails put one on the
+        // flatten and one on the wood nobody was sent to - one flattens, one farms, one cuts (operator, 2026-11-17).
+        List<Objective> day = squads.stream().map(s -> three.byDay(farm, s, alarms, woods)).toList();
+        List<Objective> guarded = three.guarded(day, squads, alarms, woods);
 
-        // Short of anything, one squad stays on the ground (its own farm, answering its request) and the rest
-        // are released across the shortfalls, food first: two farm and one cuts.
-        assertEquals(farm, alpha, "the first to the farm");
-        assertTrue(bravo.task() instanceof Objective.Task.Farm, "the second, released, to the food shortfall: " + bravo);
-        assertEquals(new Objective.Task.Gather(Resource.WOOD), charlie.task(), "the third, released, to the trees");
-        assertTrue(three.byDay(farm, hungry("Bravo", "Bob"), List.of(PlatoonSergeant.Shortfall.FOOD), woods).task() instanceof Objective.Task.Farm,
-                "food alone short: it farms");
+        assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count(), "one on the flatten: " + guarded);
+        assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Farm).count(), "one farms: " + guarded);
+        assertEquals(1, guarded.stream().filter(o -> o.task().equals(new Objective.Task.Gather(Resource.WOOD))).count(), "one cuts: " + guarded);
+        List<Objective> idle = three.guarded(day, squads, List.of(), woods);
+        assertEquals(1, idle.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count(), "short of nothing: one onto the flatten");
+        assertEquals(2, idle.stream().filter(o -> o.task() instanceof Objective.Task.Farm).count(), "and the platoon leader's farms stand");
     }
 
     /**

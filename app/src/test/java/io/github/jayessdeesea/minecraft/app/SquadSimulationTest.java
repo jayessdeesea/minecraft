@@ -122,6 +122,10 @@ class SquadSimulationTest {
             }
 
             @Override
+            public void receiveDayWork(io.github.jayessdeesea.minecraft.command.DayWork work) {
+            }
+
+            @Override
             public void receiveTime(TimeOfDay time) {
             }
 

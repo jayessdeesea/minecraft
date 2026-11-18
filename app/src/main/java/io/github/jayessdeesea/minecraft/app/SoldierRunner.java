@@ -3090,6 +3090,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // resources if necessary): a level's last blocks at the bench's edge, sized to one builder
                     // or none, let every squad go elsewhere and the level stood. Live (field395-414), y=90 stood a day
                     // at 520, 55, 12, 6 blocks left - "0 of 0 builders" for hours - and the next level waited on it.
+                    chainOfCommand.onKeepLevel(level, columns.size());
                     chainOfCommand.onFlattenCrew(Math.max(MIN_KEEP_BUILDERS, (Math.max(columns.size(), ahead) + BLOCKS_A_BUILDER - 1)
                             / BLOCKS_A_BUILDER));
                 }

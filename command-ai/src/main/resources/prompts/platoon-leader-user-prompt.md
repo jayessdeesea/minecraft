@@ -20,6 +20,11 @@ It is also the stockpile: soldiers carrying a full load of gathered logs or cobb
 </supply_point>
 
 «endif»
+«if(dayWork)»
+<day_work>
+«dayWork»</day_work>
+
+«endif»
 «if(foothold)»
 <foothold>
 «foothold»</foothold>

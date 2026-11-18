@@ -54,6 +54,7 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
     private final Deque<String> remarks = new ConcurrentLinkedDeque<>();
     /** The camp's progress through the lodgment's phases - a soldier's thread writes, the platoon leader's reads. */
     private volatile Foothold foothold;
+    private volatile io.github.jayessdeesea.minecraft.command.DayWork dayWork; // the chain of command writes before it asks
     /** Daylight left, in ticks, above which a squad still in its patrol base is told the night is over: two minutes. */
     static final long MORNING_AT_LEAST = 2400;
     /** How many of the operator's remarks the platoon leader keeps in view. */
@@ -76,6 +77,34 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
     @Override
     public void receiveFoothold(Foothold foothold) {
         this.foothold = foothold;
+    }
+
+    @Override
+    public void receiveDayWork(io.github.jayessdeesea.minecraft.command.DayWork work) {
+        this.dayWork = work;
+    }
+
+    /** The day's work as the prompt says it: each shortfall with the task that answers it, the stocks, the flatten. */
+    static String describe(io.github.jayessdeesea.minecraft.command.DayWork work) {
+        StringBuilder out = new StringBuilder();
+        if (work.shortfalls().isEmpty()) {
+            out.append("The force is short of nothing: every squad but the farm squad can flatten (KEEP).\n");
+        }
+        for (io.github.jayessdeesea.minecraft.command.PlatoonSergeant.Shortfall s : work.shortfalls()) {
+            out.append(switch (s) {
+                case FOOD -> "Short of FOOD: a squad on FARM at a \"ground to farm\" site.";
+                case WOOD -> "Short of WOOD: a squad on WOOD at trees it has seen, or on TREE_FARM to plant a grove.";
+                case IRON -> "Short of IRON: a squad on MINE.";
+            }).append('\n');
+        }
+        work.stores().ifPresent(st -> out.append("The stockpile: ").append(st.logs()).append(" logs (reserve ")
+                .append(io.github.jayessdeesea.minecraft.command.Keep.LOGS_RESERVE).append("), ").append(st.rations())
+                .append(" rations, ").append(st.rawIron()).append(" raw iron.\n"));
+        out.append("The ground to flatten (KEEP): ").append(work.flatten().describe());
+        work.keepLevel().ifPresent(level -> out.append(", now at y=").append(level).append(" with ").append(work.keepBlocksLeft())
+                .append(" block(s) left on that level"));
+        out.append(".\n");
+        return out.toString();
     }
 
     @Override
@@ -115,7 +144,7 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
 
     private PromptContext context(List<SquadStatus> squadStatuses) {
         return buildContext(prompts, mission, Optional.ofNullable(time), supplyPoint, Optional.ofNullable(stockpile), List.copyOf(remarks),
-                Optional.ofNullable(foothold), squadStatuses);
+                Optional.ofNullable(foothold), Optional.ofNullable(dayWork), squadStatuses);
     }
 
     /** The foothold's phases and standards, the earliest unmet phase named: the lookup done for the model. */
@@ -170,6 +199,14 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
     static PromptContext buildContext(PlatoonLeaderPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
                                       Optional<Stockpile> stockpile, List<String> remarks,
                                       Optional<Foothold> foothold, List<SquadStatus> squadStatuses) {
+        return buildContext(prompts, mission, time, supplyPoint, stockpile, remarks, foothold, Optional.empty(), squadStatuses);
+    }
+
+    /** As the overload above, with the day's work computed for it ({@link #receiveDayWork}). */
+    static PromptContext buildContext(PlatoonLeaderPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
+                                      Optional<Stockpile> stockpile, List<String> remarks,
+                                      Optional<Foothold> foothold, Optional<io.github.jayessdeesea.minecraft.command.DayWork> dayWork,
+                                      List<SquadStatus> squadStatuses) {
         StringBuilder squads = new StringBuilder();
         for (SquadStatus squad : squadStatuses) {
             StringBuilder soldiers = new StringBuilder();
@@ -208,6 +245,7 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
         params.put("stockpile", stockpile.map(s -> "Last seen holding " + s.logs() + " logs and " + s.stone() + " cobblestone.")
                 .orElse("Nobody has looked inside yet."));
         params.put("foothold", foothold.<Object>map(SpringAiPlatoonLeader::describe).orElse(false));
+        params.put("dayWork", dayWork.<Object>map(SpringAiPlatoonLeader::describe).orElse(false));
         params.put("squads", squads.toString());
         return new PromptContext(prompts.user(), params);
     }

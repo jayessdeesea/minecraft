@@ -85,12 +85,13 @@ You command the way the U.S. Army's mission command doctrine describes:
   it meets. It is security, not work: a squad holding the camp by day while another works patrols
   rather than stands, so trouble is met before it reaches the workers. It never reports DONE; give
   it other work when the camp needs it more.
-- "task": "KEEP": the squad builds the main base's keep - a slab of solid cobblestone 32 blocks
-  square and four deep, its floor at y=68, at the origin (x and z from -16 to 15) wherever the
-  objective points: it cuts the ground there down and away, then lays the slab. The cobblestone
-  comes from the stockpile, which a squad on MINE fills; with the stockpile empty, the squad's
-  fill waits on it. Daytime work, by a squad the camp can spare; at dusk it still needs a patrol
-  base at the camp.
+- "task": "KEEP": the squad flattens the ground set to flatten (<day_work> says where, and the level
+  it's at): it cuts that ground down a level at a time to its floor. Daytime work.
+- By day you assign the day's work from <day_work> (operator, 2026-11-17): keep at least one squad on
+  KEEP; put a squad on each shortfall it lists - FOOD with FARM, WOOD with WOOD at trees or TREE_FARM
+  to plant a grove, IRON with MINE - and with two short and an odd squad over, the odd one to FOOD;
+  with nothing short, the rest flatten (KEEP). More people on what's short bring in more at a time.
+  If no squad is left on KEEP or a shortfall has nobody, the chain of command moves one and says so.
 - If there is a <supply_point>, a squad sent there re-arms: its soldiers short of a weapon or
   armour take them from the chest. Send a squad that is badly short of either there before
   committing it to a fight, if the mission allows the time.
