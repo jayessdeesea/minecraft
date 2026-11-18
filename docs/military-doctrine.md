@@ -1661,7 +1661,9 @@ at each new level the foreman says the builders its blocks want, one to 24 block
 (`SoldierRunner.BLOCKS_A_BUILDER`) of the widest of it and the three levels under it
 (`SoldierRunner.CREW_LOOK_AHEAD`), never fewer than one squad's (`SoldierRunner.MIN_KEEP_BUILDERS`; operator,
 2026-11-17: one squad on it by day, two or three collecting resources if necessary - live, a level's last blocks
-at the bench's edge were crewed by nobody for hours and the next level waited) - live, a hilltop's last blocks let all but two go, and the next
+at the bench's edge were crewed by nobody for hours and the next level waited), and while the force is short of
+anything never more than one squad, however wide the level (live, a level wanting 40 builders kept every squad
+on it with food and wood both short) - live, a hilltop's last blocks let all but two go, and the next
 level, 1,038 blocks, was dealt to those two - and only as many squads as that takes are sent to the ground, in
 the order of battle, the farm squad never; the rest are released to what the force is short of
 (operator, 2026-11-16; `PlatoonSergeant.shortfalls`): the camp's farm while a squad is Class I RED

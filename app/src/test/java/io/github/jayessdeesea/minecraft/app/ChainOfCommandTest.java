@@ -194,11 +194,38 @@ class ChainOfCommandTest {
         Objective bravo = three.byDay(farm, hungry("Bravo", "Bob"), alarms, woods);
         Objective charlie = three.byDay(farm, hungry("Charlie", "Carol"), alarms, woods);
 
+        // Short of anything, one squad stays on the ground (its own farm, answering its request) and the rest
+        // are released across the shortfalls, food first: two farm and one cuts.
         assertEquals(farm, alpha, "the first to the farm");
-        assertEquals(new Objective.Task.Gather(Resource.WOOD), bravo.task(), "the second to the trees");
-        assertEquals(farm, charlie, "the odd one to the farm");
-        assertEquals(farm, three.byDay(farm, hungry("Bravo", "Bob"), List.of(PlatoonSergeant.Shortfall.FOOD), woods),
-                "food alone short: its farm stands");
+        assertTrue(bravo.task() instanceof Objective.Task.Farm, "the second, released, to the food shortfall: " + bravo);
+        assertEquals(new Objective.Task.Gather(Resource.WOOD), charlie.task(), "the third, released, to the trees");
+        assertTrue(three.byDay(farm, hungry("Bravo", "Bob"), List.of(PlatoonSergeant.Shortfall.FOOD), woods).task() instanceof Objective.Task.Farm,
+                "food alone short: it farms");
+    }
+
+    /**
+     * Short of anything, one squad flattens and the rest go to what's short, however wide the level
+     * (operator, 2026-11-17); short of nothing, the level's sizing stands.
+     */
+    @Test
+    void shortOfAnythingOneSquadFlattensAndTheRestCollect() {
+        ChainOfCommand three = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+        three.setKeepByDay(true);
+        three.setGround((x, z, nearY) -> OptionalInt.of(64));
+        three.onTime(TimeOfDay.of(1000, true));
+        three.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
+        three.onFlattenCrew(40);
+        List<PlatoonSergeant.Shortfall> food = List.of(PlatoonSergeant.Shortfall.FOOD);
+
+        assertTrue(three.byDay(WALL, squad("Alpha", "Alice"), food, List.of()).task() instanceof Objective.Task.Keep, "the first flattens");
+        assertTrue(three.byDay(WALL, squad("Bravo", "Bob"), food, List.of()).task() instanceof Objective.Task.Farm, "the second farms");
+        assertTrue(three.byDay(WALL, squad("Bravo", "Bob"), List.of(), List.of()).task() instanceof Objective.Task.Keep,
+                "short of nothing: the level's sizing, every squad on it");
     }
 
     private static SquadStatus hungry(String name, String soldier) {

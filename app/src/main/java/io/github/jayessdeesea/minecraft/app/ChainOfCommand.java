@@ -359,6 +359,12 @@ public class ChainOfCommand implements DisposableBean {
         int wanted = flattenBuilders;
         int perSquad = Math.max(1, squad.soldiers().size());
         int squadsWanted = wanted == Integer.MAX_VALUE ? builders.size() : Math.max(1, (wanted + perSquad - 1) / perSquad);
+        // Short of anything, one squad on the ground and the rest to what's short (operator, 2026-11-17: one
+        // squad on it during the day, two or three collecting resources if necessary). Live (field416), a level
+        // wanting 40 builders kept every squad on it with food and wood both short.
+        if (!alarms.isEmpty()) {
+            squadsWanted = Math.min(squadsWanted, 1);
+        }
         if (builders.indexOf(squad.squadName()) >= squadsWanted) {
             int released = builders.indexOf(squad.squadName()) - squadsWanted;
             Optional<PlatoonSergeant.Shortfall> shortfall = alarms.isEmpty() ? Optional.empty() : Optional.of(alarms.get(released % alarms.size()));
