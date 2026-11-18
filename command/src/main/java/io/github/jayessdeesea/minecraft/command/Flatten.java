@@ -17,8 +17,20 @@ import java.util.Optional;
  * @param maxX its east edge
  * @param maxZ its south edge
  * @param top  the ground's top, kept: the floor is walked at {@code top + 1}
+ * @param side the edge its depots stand off
  */
-public record Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
+public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side) {
+
+    /**
+     * The edge a site's depots stand off: the west, as the keep's; or the north, where the west's ground is
+     * taken - the farm-and-grove ground's west edge is the camp's farm by the water (operator, 2026-11-17).
+     */
+    public enum Side { WEST, NORTH }
+
+    /** A site with its depots off its west edge. */
+    public Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
+        this(minX, minZ, maxX, maxZ, top, Side.WEST);
+    }
 
     /** The keep's first ground: x and z -16..16 taken down to y=63 (operator, 2026-11-15). */
     public static final Flatten KEEP = new Flatten(Keep.MIN, Keep.MIN, Keep.MAX, Keep.MAX, Keep.TOP);
@@ -26,7 +38,7 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
     /** The lowest and highest a site's top can be: the world's floor and its build limit. */
     static final int LOWEST = -64, HIGHEST = 318;
 
-    /** How far off the site's west edge its depot stands: off the dig, on ground nothing digs. */
+    /** How far off the site's edge its depot stands: off the dig and its bench, on ground nothing digs. */
     public static final int DEPOT_OFF = Flatten.BENCH + 4;
 
     public Flatten {
@@ -36,15 +48,24 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
         if (top < LOWEST || top > HIGHEST) {
             throw new IllegalArgumentException("a site's top is within the world: " + top);
         }
+        java.util.Objects.requireNonNull(side, "a site's depot side");
     }
 
     /**
-     * The site {@code text} names: "x1 z1 x2 z2 y", its corners either way round - what the operator
-     * types after {@code !flatten}. Empty for anything else.
+     * The site {@code text} names: "x1 z1 x2 z2 y", its corners either way round, and "north" after them
+     * for its depots off its north edge - what the operator types after {@code !flatten}. Empty for anything else.
      */
     public static Optional<Flatten> parse(String text) {
         String[] words = text.strip().split("[\\s,]+");
-        if (words.length != 5) {
+        if (words.length != 5 && words.length != 6) {
+            return Optional.empty();
+        }
+        Side side;
+        if (words.length == 5) {
+            side = Side.WEST;
+        } else if (words[5].equalsIgnoreCase("north") || words[5].equalsIgnoreCase("west")) {
+            side = Side.valueOf(words[5].toUpperCase(Locale.ROOT));
+        } else {
             return Optional.empty();
         }
         try {
@@ -53,7 +74,7 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
             if (y < LOWEST || y > HIGHEST) {
                 return Optional.empty();
             }
-            return Optional.of(new Flatten(Math.min(x1, x2), Math.min(z1, z2), Math.max(x1, x2), Math.max(z1, z2), y));
+            return Optional.of(new Flatten(Math.min(x1, x2), Math.min(z1, z2), Math.max(x1, x2), Math.max(z1, z2), y, side));
         } catch (NumberFormatException e) {
             return Optional.empty();
         }
@@ -122,26 +143,28 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
         return new Position((minX + maxX + 1) / 2.0, floor(), (minZ + maxZ + 1) / 2.0);
     }
 
-    /** Where its builders' depot goes: off its west edge, halfway along it, on ground nothing digs. */
+    /** Where its builders' depot goes: off its depot side's edge, halfway along it, on ground nothing digs. */
     public Position depot() {
-        return new Position(minX - DEPOT_OFF, floor(), Math.floorDiv(minZ + maxZ, 2));
+        return side == Side.WEST ? new Position(minX - DEPOT_OFF, floor(), Math.floorDiv(minZ + maxZ, 2))
+                : new Position(Math.floorDiv(minX + maxX, 2), floor(), minZ - DEPOT_OFF);
     }
 
     /** How far apart its depots stand along its west edge: none of it more than about half that from one. */
     static final int DEPOT_SPACING = 48;
 
     /**
-     * Its depots (operator, 2026-11-15: a site this big needs more than one): off its west edge, one
-     * every {@link #DEPOT_SPACING} blocks along it, evenly spread, {@link #depot} among them - the
+     * Its depots (operator, 2026-11-15: a site this big needs more than one): off its depot side's edge,
+     * one every {@link #DEPOT_SPACING} blocks along it, evenly spread, {@link #depot} among them - the
      * middle one. x=-16..16 z=-64..64 has three, at z=-43, 0 and 43; a keep's one.
      */
     public java.util.List<Position> depots() {
-        int length = maxZ - minZ + 1;
+        boolean west = side == Side.WEST;
+        int from = west ? minZ : minX, length = (west ? maxZ - minZ : maxX - minX) + 1;
         int count = Math.max(1, (length + DEPOT_SPACING - 1) / DEPOT_SPACING);
         java.util.List<Position> depots = new java.util.ArrayList<>();
         for (int i = 0; i < count; i++) {
-            int z = i == count / 2 ? (int) depot().z() : minZ + (2 * i + 1) * length / (2 * count);
-            depots.add(new Position(minX - DEPOT_OFF, floor(), z));
+            int along = i == count / 2 ? (int) (west ? depot().z() : depot().x()) : from + (2 * i + 1) * length / (2 * count);
+            depots.add(west ? new Position(minX - DEPOT_OFF, floor(), along) : new Position(along, floor(), minZ - DEPOT_OFF));
         }
         return java.util.List.copyOf(depots);
     }
@@ -151,8 +174,9 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
         return Math.max(maxX - minX, maxZ - minZ) / 2 + 1;
     }
 
-    /** As the operator would say it: "x=-16..16 z=16..32 to y=63". */
+    /** As the operator would say it: "x=-16..16 z=16..32 to y=63", and "depots north" for a north side. */
     public String describe() {
-        return String.format(Locale.ROOT, "x=%d..%d z=%d..%d to y=%d", minX, maxX, minZ, maxZ, top);
+        return String.format(Locale.ROOT, "x=%d..%d z=%d..%d to y=%d", minX, maxX, minZ, maxZ, top)
+                + (side == Side.NORTH ? ", depots north" : "");
     }
 }

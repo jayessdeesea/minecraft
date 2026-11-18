@@ -64,4 +64,16 @@ class FlattenTest {
         assertEquals(big.depot(), big.depots().get(1));
         assertEquals(java.util.List.of(Flatten.KEEP.depot()), Flatten.KEEP.depots());
     }
+
+    /** The farm-and-grove ground: its depots off its north edge, clear of the camp's farm off its west. */
+    @Test
+    void aSiteWithItsDepotsNorthHasThemOffItsNorthEdge() {
+        Flatten farm = Flatten.parse("-48 -16 -16 16 62 north").orElseThrow();
+        assertEquals(Flatten.Side.NORTH, farm.side());
+        assertEquals(new Position(-32, 63, -16 - Flatten.DEPOT_OFF), farm.depot());
+        assertEquals(java.util.List.of(farm.depot()), farm.depots());
+        assertEquals("x=-48..-16 z=-16..16 to y=62, depots north", farm.describe());
+        assertEquals(Flatten.Side.WEST, Flatten.parse("-48 -16 -16 16 62").orElseThrow().side());
+        assertEquals(java.util.Optional.empty(), Flatten.parse("-48 -16 -16 16 62 up"));
+    }
 }

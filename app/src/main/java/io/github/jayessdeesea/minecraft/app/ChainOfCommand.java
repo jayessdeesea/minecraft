@@ -810,7 +810,7 @@ public class ChainOfCommand implements DisposableBean {
         LOG.warn("[{} -> PL] {} - not an order", operator, command);
         transmit("[PL -> " + operator + "] SAY AGAIN: " + command + " is not an order. Orders: " + OperatorOrders.MISSION
                 + " <what to do>, " + OperatorOrders.ESCORT + " [player], " + OperatorOrders.FLATTEN
-                + " <x1> <z1> <x2> <z2> <y>; anything else is passed to the platoon leader as a remark");
+                + " <x1> <z1> <x2> <z2> <y> [north]; anything else is passed to the platoon leader as a remark");
     }
 
     /** Operator orders being followed down the chain - each is dropped once carried out or superseded. */

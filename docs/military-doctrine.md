@@ -1671,7 +1671,8 @@ The main base is built beside the foothold, which stays the base until it's done
 taken down to y=63 (operator, 2026-11-15), its floor walked at feet 64. Flattening is a primitive
 of its own, not the keep's (operator, 2026-11-15): the task digs whatever ground is set to flatten
 (`command.Flatten`, a rectangle and a level) - the keep's first ground to begin with, then any the
-operator names with `!flatten` - with its depot off the site's west edge, sited again when the
+operator names with `!flatten` - with its depot off the site's west edge, or its north
+(`Flatten.Side`: the farm-and-grove ground's west edge is the camp's farm), sited again when the
 site moves away from the one standing. Its crew is sized to its level (backlog/flatten-campaign.md):
 at each new level the foreman says the builders its blocks want, one to 24 blocks
 (`SoldierRunner.BLOCKS_A_BUILDER`) of the widest of it and the three levels under it
