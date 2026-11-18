@@ -3328,7 +3328,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Set<Cell> aside = new HashSet<>();
         squadStates.values().forEach(s -> aside.addAll(s.keepOreAside));
         keepOreBeyondHolder.values().forEach(aside::addAll);
-        return aside.stream().filter(c -> c.y() >= level - 1)
+        // Only ore still there: one taken, or gone with its pillar, isn't an errand. Live (field427), a cell at
+        // y=87 over the level at y=62 was dealt to Alice, Gus and Bob in turn 310 times in five minutes, each
+        // finding nothing to cut there, and the keep's crew stood.
+        return aside.stream().filter(c -> c.y() >= level - 1 && world.isOre(c.x(), c.y(), c.z()))
                 .filter(c -> {
                     Optional<Hardness> hardness = world.hardness(c.x(), c.y(), c.z());
                     java.util.function.Predicate<String> can = n -> hardness.map(hd -> hd.drops(pickaxeTiers.getOrDefault(n, Hardness.HAND))).orElse(false);
