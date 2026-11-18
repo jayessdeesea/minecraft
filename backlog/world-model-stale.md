@@ -36,6 +36,14 @@ the server's word that it's solid, and the model told so. Not every one: a squad
 too (field333, Bob pillaring into the cell Alice stood in), and a step now waits for a body in its
 cell to move rather than being sent ("[Bob] its step at ... waits for Alice to move out of it").
 
+- **A snag marked solid where the server has air is never broken, and never let go.** Live (field443), Pete
+  on his stair up at (23, 37, 15) failed "break (23, 37, 16): expected broken within 40 ticks" 46 times in
+  five minutes, the dig's break time waited out each time; Bob, boxed in at (43, 55, -10), had 45 cells round
+  him made snags in a night ("the model takes it as a block, and breaks it") and broke none. A break the
+  server never answers says the model's block isn't there: wanted, after a few unanswered breaks of one
+  cell, the cell put back to what the server last sent (or probed), and what really stops the body looked for -
+  an entity, a part block the model reads as passable.
+
 ## Done when
 - The cause is found and a test shows it: which change the server made that the model missed.
 - Live, a console sweep of the camp's wall and stockpile matches the model.
