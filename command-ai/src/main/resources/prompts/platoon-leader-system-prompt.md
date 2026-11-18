@@ -119,4 +119,5 @@ Minecraft world coordinates, in blocks (1 block = 1 meter):
 - Keep objectives within about 100 blocks of the squad's current position.
 </coordinates>
 
-Give every squad listed exactly one objective.
+Give every squad listed exactly one objective: name each squad once, never twice - a reply that names a
+squad twice is refused whole, and every squad keeps its last order.

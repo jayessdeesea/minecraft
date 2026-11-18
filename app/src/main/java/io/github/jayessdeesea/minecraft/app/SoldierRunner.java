@@ -3966,7 +3966,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Walked to from the depot, not climbed: live, the grove went on a hilltop past the site's
         // bench, and its planter put a pillar up the bench's outer row to reach it, ten steps at a go,
         // each of them the site's highest ground while it stood.
-        Set<BlockPos> walkable = Pathfinder.reachable(world, depot.stand(), 4 * GROVE_RING + TREE_FARM_RADIUS + 4, FARM_REACH_BUDGET);
+        Set<BlockPos> walkable = Pathfinder.reachable(world, depot.stand(), GROVE_RINGS * GROVE_RING + TREE_FARM_RADIUS + 4, FARM_REACH_BUDGET);
         TreeFarm best = null;
         int bestScore = Integer.MAX_VALUE;
         // Why each ring's site was passed over, said with "nowhere": a grove that never sites is a wood
@@ -3976,7 +3976,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // (operator, 2026-11-17: we can clear an area for a grove as well).
         BlockPos toClear = null;
         int toClearCells = 0;
-        for (int r = GROVE_RING; r <= 4 * GROVE_RING; r += GROVE_RING / 2) {
+        for (int r = GROVE_RING; r <= GROVE_RINGS * GROVE_RING; r += GROVE_RING / 2) {
             for (int[] way : ways) {
                 int cx = depot.stand().x() + way[0] * r, cz = depot.stand().z() + way[1] * r;
                 Box plot = around(cx, cz, TREE_FARM_RADIUS + 2);
@@ -4055,8 +4055,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final long PLANTER_RETRY_MILLIS = 5 * 60_000;
     /** How far out from the depot the keep's grove is first looked for, and the steps out from there. */
     static final int GROVE_RING = 16;
-    /** Fewest cells the keep's grove is sited with: 16 or more trees growing, and wood is never short (operator, 2026-11-14). */
-    static final int GROVE_MIN_CELLS = 16;
+    /**
+     * Fewest cells the keep's grove is sited with: groves of what the ground holds, several of them, sought
+     * farther out (operator, 2026-11-17) - live (field350-418), no site within 64 of the depot held 16, and the
+     * keep had no grove at all. It had been 16 (operator, 2026-11-14: 16 or more trees growing).
+     */
+    static final int GROVE_MIN_CELLS = 8;
+    /** How many {@link #GROVE_RING}s out the keep's grove is sought: 96 blocks. */
+    static final int GROVE_RINGS = 6;
     /** The world's sea level: water's top at y=62, the ground beside it at 63. */
     static final int SEA_LEVEL = 63;
     /** Half the side of the square round the keep's centre its grove keeps out of: the slab and its borrow pits. */

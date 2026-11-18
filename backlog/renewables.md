@@ -26,7 +26,9 @@ dug today - `ClearingTest.aFenceAndTheGroundUnderItAreDug` - but never built); g
 
 ## The keep's grove (operator, 2026-11-17)
 No site near the depot holds 16 cells: several groves, each what the ground holds, and the search
-for them travels farther than the 64 blocks round the depot it's held to now.
+for them travels farther. Built: a grove of 8 cells or more, sought out to 96 blocks
+(`SoldierRunner.GROVE_MIN_CELLS`, `GROVE_RINGS`). Left: a second grove sited once the first is
+planted - the keep holds one (`keepGrove`).
 
 ## Doctrine
 **Base camps** (ATP 3-37.10): a camp that is held longer develops its own sustainment instead of

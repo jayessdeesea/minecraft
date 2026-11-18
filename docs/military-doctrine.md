@@ -331,7 +331,8 @@ same way, up to a body's reach, and plants a sapling where it stood (`bot.supply
 them it's on the dig again and another goes - after
 making itself a stone axe from the cobblestone it carries, a log in 15 ticks rather than the hand's
 60. The rest dig. The foreman says it on the net: "KEEP WOOD 16", "KEEP PLANT x z". The grove is a
-tree farm (§ 12) sited once with the depot: of the ground in rings round the depot's stand that a
+tree farm (§ 12) of 8 cells or more, sited with the depot out to 96 blocks (operator, 2026-11-17: several
+groves, of what the ground holds, sought farther): of the ground in rings round the depot's stand that a
 soldier can walk to from it, and no more than 4 blocks over its height, any depth under it - with
 none, the wood party clears the nearest such ground whose trees keep it from being one, felling
 them whole, and the grove is sought again every two minutes until it's sited (operator,

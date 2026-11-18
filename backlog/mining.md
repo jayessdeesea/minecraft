@@ -62,7 +62,13 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
 
 - **Unworked rock (operator, 2026-11-17).** The night's ore thin at the levels worked (field399-413,
   one ore block in 70-100 cut): new branch headings off the main tunnel into rock no branch has
-  passed. The keep's mine still doesn't move on yield.
+  passed. The keep's mine still doesn't move on yield. Where it is: every level's one main tunnel runs
+  straight out from its last step, away from the shaft (`Staircase.outward`), the same way on every
+  level - so the levels four apart have all worked one slab, and the rock round the shaft the other
+  ways is untouched. Turning a level's tunnel another way at the landing would cut through the
+  spiral's own steps, and mines on disk keep the shape they were cut to: a heading per level off a
+  short spur clear of the ring wants designing, not a flag. The night's ore came back once the branch
+  flipping and the deaths were fixed (63, 83 ore, field419-421), so it waits.
 - **The far faces (operator, 2026-11-17).** Skeletons and creepers kill miners at faces 90 blocks
   out: soldiers learn to make bows and arrows (`Recipe.BOW`, `Recipe.ARROWS` - string from spiders,
   feathers from chickens) so an archer across a cave is answered, not closed on.
