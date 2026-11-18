@@ -24,9 +24,13 @@ soldier does only the how.
 - **Wheat and bread: harvesters and a baker.** Built (docs/military-doctrine.md § 12, the farm by
   duty). Left: a harvester drawing seed from the depot when it's out, before it breaks grass for
   it.
-- **Stock levels**: built (`command.ProductionLevels`, shown to the platoon leader). Left: a squad
-  on a kind kept on it to its most (`ProductionLevels.wanted`) in the guardrails, and the levels
-  raised for a mission (`ProductionLevels.with`) by the platoon leader. Food before wood; both at once.
+- **Stock levels**: built (`command.ProductionLevels`, shown to the platoon leader, logged as
+  `[Stores]`; a producing squad kept on it to its most, docs/echelons/platoon-leader/operator-rules.md).
+  Left: the levels raised for a mission (`ProductionLevels.with`) by the platoon leader.
+- **Seen live (field448):** two farm squads harvested about 300 wheat in a day, and it was baked and
+  eaten as it came - the harvesters under their basic load bake for themselves, the stockpile held
+  0-3 wheat at each of the baker's four draws, and rations were cross-levelled one at a time. The
+  farm's yield, not its duties, is what's short: more ground and denser farms.
 
 Done when: a live day with logs and bread both under their minimum puts one squad on each, every
 producer working only its duty's share, and both stocks rising to their most.

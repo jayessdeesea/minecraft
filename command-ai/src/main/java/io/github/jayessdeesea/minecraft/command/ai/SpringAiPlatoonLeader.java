@@ -102,16 +102,8 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
                 case IRON -> "Short of IRON: a squad on MINE.";
             }).append('\n');
         }
-        work.stores().ifPresent(st -> {
-            out.append("The stockpile, each against its least and most:");
-            for (io.github.jayessdeesea.minecraft.command.Renewable kind : io.github.jayessdeesea.minecraft.command.Renewable.values()) {
-                io.github.jayessdeesea.minecraft.command.ProductionLevels.StockLevel level = work.levels().of(kind);
-                out.append(' ').append(kind.name().toLowerCase(Locale.ROOT)).append(' ').append(st.count(kind))
-                        .append(" (").append(level.least()).append('-').append(level.most()).append(')')
-                        .append(st.count(kind) < level.least() ? " SHORT" : "").append(',');
-            }
-            out.append(" raw iron ").append(st.rawIron()).append(".\n");
-        });
+        work.stores().ifPresent(st -> out.append("The stockpile, each against its least and most: ").append(work.levels().describe(st))
+                .append(", raw iron ").append(st.rawIron()).append(".\n"));
         out.append("The ground to flatten (KEEP): ").append(work.flatten().describe());
         work.keepLevel().ifPresent(level -> out.append(", now at y=").append(level).append(" with ").append(work.keepBlocksLeft())
                 .append(" block(s) left on that level"));

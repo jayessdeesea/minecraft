@@ -57,6 +57,18 @@ public record ProductionLevels(Map<Renewable, StockLevel> levels) {
         return new ProductionLevels(changed);
     }
 
+    /** {@code stock} said against these levels, a short one marked: "bread 12 (64-1024) SHORT, wheat 30 (64-1024), ...". */
+    public String describe(Stockpile stock) {
+        StringBuilder out = new StringBuilder();
+        for (Renewable kind : Renewable.values()) {
+            StockLevel level = of(kind);
+            out.append(out.isEmpty() ? "" : ", ").append(kind.name().toLowerCase(java.util.Locale.ROOT)).append(' ').append(stock.count(kind))
+                    .append(" (").append(level.least()).append('-').append(level.most()).append(')')
+                    .append(stock.count(kind) < level.least() ? " SHORT" : "");
+        }
+        return out.toString();
+    }
+
     /** The kinds {@code stock} holds less than their least of. */
     public Set<Renewable> short_(ToIntFunction<Renewable> stock) {
         Set<Renewable> short_ = EnumSet.noneOf(Renewable.class);

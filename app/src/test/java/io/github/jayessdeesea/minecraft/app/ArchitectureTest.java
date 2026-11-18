@@ -88,7 +88,7 @@ class ArchitectureTest {
             "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 8576,
             "app/src/test/java/io/github/jayessdeesea/minecraft/app/SquadSimulationTest.java", 3761,
             "bot/src/main/java/io/github/jayessdeesea/minecraft/bot/DeterministicSoldier.java", 1572,
-            "app/src/main/java/io/github/jayessdeesea/minecraft/app/ChainOfCommand.java", 1330,
+            "app/src/main/java/io/github/jayessdeesea/minecraft/app/ChainOfCommand.java", 1308,
             "bot/src/test/java/io/github/jayessdeesea/minecraft/bot/DeterministicSoldierTest.java", 1324,
             "app/src/test/java/io/github/jayessdeesea/minecraft/app/SimServer.java", 1071);
 

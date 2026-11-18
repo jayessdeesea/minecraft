@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import static io.github.jayessdeesea.minecraft.app.DayWorkRules.*;
 import io.github.jayessdeesea.minecraft.command.DrillSquadLeader;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.SquadLeader;
@@ -436,21 +437,7 @@ public class ChainOfCommand implements DisposableBean {
         return keep;
     }
 
-    /** Whether {@code task} is the day's work the platoon leader assigns: farm, grove, wood, mine, flatten. */
-    private static boolean dayWork(Objective.Task task) {
-        return task instanceof Objective.Task.Farm || task instanceof Objective.Task.TreeFarm || task instanceof Objective.Task.Mine
-                || task instanceof Objective.Task.Keep || task instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD;
-    }
 
-    /** Whether {@code objective} answers {@code shortfall}. */
-    private static boolean covers(Objective objective, PlatoonSergeant.Shortfall shortfall) {
-        Objective.Task t = objective.task();
-        return switch (shortfall) {
-            case FOOD -> t instanceof Objective.Task.Farm;
-            case WOOD -> t instanceof Objective.Task.TreeFarm || t instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD;
-            case IRON -> t instanceof Objective.Task.Mine;
-        };
-    }
 
     /**
      * The guardrails over the day's work, all squads at once (operator, 2026-11-17: one squad on the flatten,
@@ -509,27 +496,23 @@ public class ChainOfCommand implements DisposableBean {
             LOG.warn("[Guardrail] short of {} with nobody on it - {} to it, not '{}'", s, statuses.get(k.get()).squadName(), out.get(k.get()).mission());
             out.set(k.get(), work.get());
         }
+        // A squad producing stays on it to the product's most (operator, 2026-11-18; ProductionLevels.wanted) - not
+        // when it's moved to something short, or it's the one squad on the flatten.
+        for (int i : movable) {
+            Optional<Objective> was = statuses.get(i).standing();
+            Optional<PlatoonSergeant.Shortfall> making = was.flatMap(DayWorkRules::producing);
+            int j = i;
+            boolean onlyFlattener = out.get(i).task() instanceof Objective.Task.Keep
+                    && out.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count() == 1;
+            if (making.isPresent() && underItsMost(stores, making.get()) && producing(out.get(i)).isEmpty() && !onlyFlattener
+                    && alarms.stream().noneMatch(s -> covers(out.get(j), s))) {
+                LOG.warn("[Guardrail] {} kept on its {} work to the stock's most - not '{}'", statuses.get(i).squadName(), making.get(), out.get(i).mission());
+                out.set(i, was.get());
+            }
+        }
         return out;
     }
 
-    /**
-     * A squad that can be moved without leaving anything bare: one on a shortfall another squad covers too,
-     * one on the flatten while another is, or one on neither; the last such, so the first keep theirs.
-     */
-    private static Optional<Integer> spare(List<Objective> out, List<Integer> movable, List<PlatoonSergeant.Shortfall> alarms) {
-        long flattening = out.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count();
-        for (int j = movable.size() - 1; j >= 0; j--) {
-            int i = movable.get(j);
-            Objective o = out.get(i);
-            boolean keep = o.task() instanceof Objective.Task.Keep;
-            Optional<PlatoonSergeant.Shortfall> mine = alarms.stream().filter(s -> covers(o, s)).findFirst();
-            boolean doubled = mine.isPresent() && out.stream().filter(x -> covers(x, mine.get())).count() > 1;
-            if (keep ? flattening > 1 : mine.isEmpty() || doubled) {
-                return Optional.of(i);
-            }
-        }
-        return Optional.empty();
-    }
 
     /** The work that makes good {@code shortfall} for a squad released from the flatten, if there's somewhere to do it. */
     private Optional<Objective> toShortfall(PlatoonSergeant.Shortfall shortfall, SquadStatus squad, List<ResourceSite> woods, int wanted) {
@@ -654,17 +637,6 @@ public class ChainOfCommand implements DisposableBean {
         return Optional.ofNullable(next);
     }
 
-    /** Whether a mine headed at ({@code x}, {@code z}) would cut into {@code site} or its bench. */
-    private static boolean cutsInto(Flatten site, int x, int z) {
-        for (int dx = -MINE_SITE_CLEAR; dx <= MINE_SITE_CLEAR; dx++) {
-            for (int dz = -MINE_SITE_CLEAR; dz <= MINE_SITE_CLEAR; dz++) {
-                if (site.benchedContains(x + dx, z + dz)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
 
     /** How deep the night shift cuts: the iron, commonest round y=16. */
     static final int MINE_DEPTH = 16;
@@ -1019,10 +991,16 @@ public class ChainOfCommand implements DisposableBean {
      * for wood one decision and iron the next, as soldiers looked in different chests.
      */
     private volatile Stockpile stores;
+    private volatile String storesSaid = "";
 
     /** The surface chests' contents, summed, as a soldier last saw them change. */
     public void onStores(Stockpile stores) {
         this.stores = stores;
+        String said = io.github.jayessdeesea.minecraft.command.ProductionLevels.STANDING.describe(stores);
+        if (!said.equals(storesSaid)) { // for a log watch: the renewables against their levels, as they change
+            storesSaid = said;
+            LOG.info("[Stores] {}", said);
+        }
     }
 
     /** What every surface chest held when last looked in, summed, if any has been. */

@@ -14,6 +14,7 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
+import io.github.jayessdeesea.minecraft.command.Stockpile;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import org.junit.jupiter.api.Test;
@@ -365,5 +366,37 @@ class ChainOfCommandTest {
 
         assertEquals(wood, guarded.get(0), "Alpha keeps the wood it was sent to: " + guarded);
         assertTrue(guarded.get(1).task() instanceof Objective.Task.Keep, "Bravo flattens: " + guarded);
+    }
+
+    /**
+     * A squad farming stays on the farm while the stockpile's bread is under its most, though the platoon leader
+     * sends it elsewhere; at its most, the platoon leader's order stands (operator, 2026-11-18: in between, a squad
+     * on it stays on it).
+     */
+    @Test
+    void aSquadProducingStaysOnItToTheStocksMost() {
+        ChainOfCommand two = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+        two.setKeepByDay(true);
+        two.setGround((x, z, nearY) -> OptionalInt.of(64));
+        two.onTime(TimeOfDay.of(1000, true));
+        Objective farm = new Objective("Farm", new Position(-48, 64, 44), "Food", new Objective.Task.Farm());
+        Objective mine = new Objective("Mine", new Position(10, 20, 10), "Iron", new Objective.Task.Mine());
+        List<SquadStatus> squads = List.of(standing("Alpha", "Alice", farm), standing("Bravo", "Bob", WALL));
+
+        two.onStores(new Stockpile(100, 0, 100, 50, 0, 0, 0, 0));
+        assertEquals(farm, two.guarded(List.of(mine, WALL), squads, List.of(), List.of()).getFirst(), "100 bread, under 1024: still farming");
+        two.onStores(new Stockpile(100, 0, 1024, 50, 0, 0, 0, 0));
+        assertEquals(mine, two.guarded(List.of(mine, WALL), squads, List.of(), List.of()).getFirst(), "at its most: the platoon leader's order stands");
+    }
+
+    private static SquadStatus standing(String squad, String soldier, Objective objective) {
+        return new SquadStatus(squad, new Report.InPosition(),
+                List.of(new SoldierStatus(soldier, new Position(0.5, 64, 0.5), new Order.Idle(), new Report.InPosition(), Optional.empty())),
+                List.of(), Optional.of(objective), false, OptionalInt.empty(), Optional.empty(), Optional.empty(), Optional.empty());
     }
 }
