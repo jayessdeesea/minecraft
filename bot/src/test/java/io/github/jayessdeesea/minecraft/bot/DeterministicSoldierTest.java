@@ -375,11 +375,11 @@ class DeterministicSoldierTest {
 
     @Test
     void anArrowAimedFlatAtANearMarkAndHigherForAFarOne() {
-        double near = DeterministicSoldier.aimPitch(8, 0).orElseThrow();
-        double far = DeterministicSoldier.aimPitch(30, 0).orElseThrow();
+        double near = Ballistics.aimPitch(8, 0).orElseThrow();
+        double far = Ballistics.aimPitch(30, 0).orElseThrow();
         assertTrue(near < 0 && near > -3, "a little up, a short shot: " + near);
         assertTrue(far < near, "higher for a longer one: " + far);
-        assertTrue(DeterministicSoldier.aimPitch(8, -6).orElseThrow() > 0, "down, at a mark below");
+        assertTrue(Ballistics.aimPitch(8, -6).orElseThrow() > 0, "down, at a mark below");
     }
 
     @Test

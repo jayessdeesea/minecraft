@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot;
 
+import static io.github.jayessdeesea.minecraft.bot.Ballistics.*;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
 import io.github.jayessdeesea.minecraft.bot.nav.Goal;
@@ -99,10 +100,6 @@ public final class DeterministicSoldier implements Soldier {
     static final double BOW_RANGE = 16;
     /** Ticks a bow takes to draw to full power, which the arrow needs to fly true at range. */
     static final int FULL_DRAW_TICKS = 20;
-    /** An arrow loosed at full draw: blocks a tick, then 1% drag and 0.05 gravity each tick (vanilla's). */
-    static final double ARROW_SPEED = 3.0;
-    private static final double ARROW_DRAG = 0.99;
-    private static final double ARROW_GRAVITY = 0.05;
 
     /** Whether the soldier has a bow drawn - to be told to the server (use it, then release it). */
     public boolean drawing() {
@@ -123,40 +120,6 @@ public final class DeterministicSoldier implements Soldier {
     /** Ticks the bow has been drawn. Tick loop only. */
     private int drawTicks;
 
-    /**
-     * The pitch, in degrees as the game counts them (up is negative), that sends an arrow loosed at
-     * full draw from the eyes to a point {@code across} blocks away horizontally and {@code up}
-     * blocks higher - the flatter of the two arcs, found by flying the arrow as the server does.
-     * Empty when no arc reaches that far.
-     */
-    static OptionalDouble aimPitch(double across, double up) {
-        OptionalDouble best = OptionalDouble.empty();
-        double bestMiss = 0.5; // hit within half a block, or not at all
-        for (double elevation = -60; elevation <= 45; elevation += 0.25) {
-            double theta = Math.toRadians(elevation);
-            double x = 0, y = 0, vx = ARROW_SPEED * Math.cos(theta), vy = ARROW_SPEED * Math.sin(theta);
-            for (int tick = 0; tick < 100 && x < across; tick++) {
-                double nx = x + vx, ny = y + vy;
-                if (nx >= across) {
-                    y += vy * (across - x) / vx;
-                    x = across;
-                    break;
-                }
-                x = nx;
-                y = ny;
-                vx *= ARROW_DRAG;
-                vy = vy * ARROW_DRAG - ARROW_GRAVITY;
-            }
-            if (x >= across && Math.abs(y - up) < bestMiss) {
-                bestMiss = Math.abs(y - up);
-                best = OptionalDouble.of(-elevation);
-                if (bestMiss < 0.05) {
-                    break; // the flat arc, close enough: a steeper one only flies longer
-                }
-            }
-        }
-        return best;
-    }
 
     /** Whether it carries what shooting takes: a bow, and arrows for it. */
     private boolean canShoot() {
@@ -477,6 +440,10 @@ public final class DeterministicSoldier implements Soldier {
             // Hit with nothing in reach: someone is shooting - find the shooter.
             threats = visible(world, world.nearbyHostiles(position, UNDER_FIRE_RADIUS));
         }
+        // An enderman only in self-defense: just hit, and it at hand - a swing at one passing provokes it. Live
+        // (field451), Eli at the mine's bottom swung at three in eight seconds, and was killed by them.
+        threats = threats.stream().filter(t -> !t.fightsOnlyAtHand() || underFireTicks > 0
+                && Math.hypot(t.position().x() - position.x(), t.position().z() - position.z()) <= ATTACK_REACH + 1).toList();
         if (underFireTicks > 0) {
             underFireTicks--;
         }
