@@ -81,7 +81,10 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   short spur clear of the ring wants designing, not a flag. The night's ore came back once the branch
   flipping and the deaths were fixed (63, 83 ore, field419-421), so it waited - and now it doesn't:
   field443's two nights took 0 ore of 16 each, every level crewed, 34 branches cut and no ore in any, the
-  miners armed (weapons and two or three pickaxes each); the worked slabs are spent. Next for the mine.
+  miners armed (weapons and two or three pickaxes each). But not one "mines the ore" line in either night -
+  none beside the stairs either - against 21 and 13 the nights before (field440-441): an end that sudden
+  looks more like ore not seen (`Miner.oreInSight` / `WorldView.isOre`) than rock spent. First, probe a
+  branch wall field443 cut (console `execute if block`) for ore the model doesn't show; then the headings.
 - **The far faces (operator, 2026-11-17).** Skeletons and creepers kill miners at faces 90 blocks
   out: soldiers learn to make bows and arrows (`Recipe.BOW`, `Recipe.ARROWS` - string from spiders,
   feathers from chickens) so an archer across a cave is answered, not closed on.
