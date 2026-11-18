@@ -317,4 +317,21 @@ class ChainOfCommandTest {
                 List.of(new SoldierStatus(soldier, new Position(0.5, 64, 0.5), new Order.Idle(), new Report.InPosition(), Optional.empty())),
                 List.of(), Optional.empty(), false);
     }
+
+    /** At dusk or dawn the platoon leader is shown no standing order to keep: the last phase's work lapses. */
+    @Test
+    void atADuskOrDawnWakeNoStandingOrderIsOfferedToKeep() {
+        Objective night = new Objective("Cut the keep's mine down to the iron through the night", new Position(0, 64, 0), "ore",
+                new Objective.Task.Mine());
+        SquadStatus alpha = new SquadStatus("Alpha", new Report.InPosition(), List.of(), List.of(), Optional.of(night), false,
+                java.util.OptionalInt.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+        assertEquals(Optional.empty(), ChainOfCommand.forThePlatoonLeader(List.of(alpha), true).getFirst().standing());
+        assertEquals(Optional.of(night), ChainOfCommand.forThePlatoonLeader(List.of(alpha), false).getFirst().standing());
+    }
+
+    @Test
+    void buildersWantedBeforeTheFirstPlanSaysSo() {
+        assertEquals("its level not planned yet", ChainOfCommand.buildersWanted(Integer.MAX_VALUE));
+        assertEquals("its level wants 40 builder(s)", ChainOfCommand.buildersWanted(40));
+    }
 }

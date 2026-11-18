@@ -7873,7 +7873,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // hands were free, his clearer not stuck, and no cell of his 304 cut in four hours.
             // Its way out is held only by a hostile at hand, not one in sight across the cave: live (field403),
             // Alice stood on her stair up at y=18 while a spider 10 below and 8 across was in sight.
-            boolean stairThreat = inContact || !world.nearbyHostiles(status.position(), STAIR_THREAT_RADIUS).isEmpty();
+            // Nor by its own contact report, which a hostile in sight makes: live (field426), Eli's stair up at y=-43
+            // was held "a hostile at hand: []" ten times a minute by a skeleton across the cave, till it shot him
+            // where he stood - the stair cut into the rock is out of its sight.
+            boolean stairThreat = !world.nearbyHostiles(status.position(), STAIR_THREAT_RADIUS).isEmpty();
             if (clearingTunnel.contains(name) && !clearer.active() && !clearing.getOrDefault(name, List.of()).isEmpty()) {
                 String hold = stairThreat ? "a hostile at hand: " + world.nearbyHostiles(status.position(), STAIR_THREAT_RADIUS).stream()
                         .map(h -> HostileMobRegistry.nameOf(h.typeId())).sorted().toList()

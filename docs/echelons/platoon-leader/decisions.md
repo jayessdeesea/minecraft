@@ -66,5 +66,7 @@ remark, dawn, dusk and dusk near, a squad with no objective, and an escort attac
 if a minute has passed since its last decision, on a squad's task finished or stalled, its Class I
 RED, or its squad leader's CANTCO. Contact wakes nobody: it's the squad's to handle, and live, a new
 contact every few seconds at night asked the platoon leader every ten. Each wake is a log line with
-its cause, `[PL] wakes: dusk near`; a day with nothing asked has only dawn's. A failed call (a malformed
+its cause, `[PL] wakes: dusk near`; a day with nothing asked has only dawn's. At dusk and dawn it's shown
+no standing order to keep: the last phase's work lapses, and every squad is given the next
+(`ChainOfCommand.forThePlatoonLeader`; live, at each dawn it kept the night's mining for every squad). A failed call (a malformed
 reply, the model down) is logged loudly, and the squads keep their last objectives.

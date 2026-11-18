@@ -389,8 +389,8 @@ public class ChainOfCommand implements DisposableBean {
             }
             if (needed.isPresent() && !stalledOnIt) {
                 if (!needed.get().equals(squad.standing().orElse(null))) {
-                    LOG.info("[PL -> {}] released from the flatten ({} builder(s) wanted): to the force's {} shortfall - '{}'",
-                            squad.squadName(), wanted, shortfall.get(), needed.get().mission());
+                    LOG.info("[PL -> {}] released from the flatten ({}): to the force's {} shortfall - '{}'",
+                            squad.squadName(), buildersWanted(wanted), shortfall.get(), needed.get().mission());
                 }
                 return needed.get();
             }
@@ -421,7 +421,7 @@ public class ChainOfCommand implements DisposableBean {
             }
             Foothold base = foothold;
             return new Objective("Work the camp while the ground's level is small", base != null ? base.camp() : objective.location(),
-                    "Released from the flatten: its level wants " + wanted + " builder(s)", new Objective.Task.None());
+                    "Released from the flatten: " + buildersWanted(wanted), new Objective.Task.None());
         }
         Flatten site = flatten;
         Objective keep = new Objective("Flatten " + site.describe(),
@@ -518,7 +518,7 @@ public class ChainOfCommand implements DisposableBean {
 
     /** The work that makes good {@code shortfall} for a squad released from the flatten, if there's somewhere to do it. */
     private Optional<Objective> toShortfall(PlatoonSergeant.Shortfall shortfall, SquadStatus squad, List<ResourceSite> woods, int wanted) {
-        String why = "Released from the flatten (its level wants " + wanted + " builder(s)): the force is short of ";
+        String why = "Released from the flatten (" + buildersWanted(wanted) + "): the force is short of ";
         Foothold base = foothold;
         return switch (shortfall) {
             case FOOD -> Optional.ofNullable(base).map(b -> new Objective("Work the camp's farm", b.camp(), why + "food", new Objective.Task.Farm()));
@@ -1172,12 +1172,30 @@ public class ChainOfCommand implements DisposableBean {
         }
     }
 
+    /**
+     * The squads as the platoon leader is shown them: at dusk or dawn with no standing order to keep - the
+     * night's or the day's work lapses with it, and each squad is given the next. Live (field423-425), at
+     * every dawn the platoon leader kept 'Cut the keep's mine down to the iron through the night' for every
+     * squad, and the guardrails made the day's work.
+     */
+    static List<SquadStatus> forThePlatoonLeader(List<SquadStatus> statuses, boolean edge) {
+        return edge ? statuses.stream().map(s -> new SquadStatus(s.squadName(), s.report(), s.soldiers(), s.resources(), Optional.empty(),
+                s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList() : statuses;
+    }
+
+    /** The builders the ground's level wants, said: "not planned yet" before its foreman's first plan. */
+    static String buildersWanted(int wanted) {
+        return wanted == Integer.MAX_VALUE ? "its level not planned yet" : "its level wants " + wanted + " builder(s)";
+    }
+
     private void askPlatoonLeader(List<Sitrep> sitreps, long now) {
         if (!platoonLeaderBusy.compareAndSet(false, true)) {
             return;
         }
+        boolean edge;
         synchronized (wakeCauses) {
             LOG.info("[PL] wakes: {}", String.join("; ", wakeCauses));
+            edge = wakeCauses.contains("dusk") || wakeCauses.contains("dawn");
             wakeCauses.clear();
         }
         wakeAtOnce = false;
@@ -1194,7 +1212,7 @@ public class ChainOfCommand implements DisposableBean {
                 statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
                 List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores));
                 platoonLeader.receiveDayWork(new DayWork(shortfall, Optional.ofNullable(stores), flatten, keepLevel, keepBlocksLeft));
-                List<Objective> objectives = platoonLeader.decide(statuses);
+                List<Objective> objectives = platoonLeader.decide(forThePlatoonLeader(statuses, edge));
                 if (missionVersion.get() != missionAsked) {
                     LOG.info("[PL] discarding a decision made under superseded orders");
                     return; // the order that superseded it woke the platoon leader: the next SITREP asks again
