@@ -6229,17 +6229,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 mining.remove(soldierName);
             }
-            // Not one the recovery drill has: its order is its stair up, as on the ground. Live (field393-406),
-            // Eli, stranded at y=-43, was the night shift's cutter of a dead mine's stairs 70 blocks off, and
-            // each night the mine's orders sent him there, "no route", over the stair laid for him.
-            boolean drilled = state.recovery.ordered(soldierName);
-            if (stairs != null && cutters.contains(soldierName) && !drilled) {
+            // The mine's orders stand over the recovery drill's for a mining squad: the drill reads miners in
+            // their tunnels as stranded, and live (field408), with its order outranking the mine's, Hal was
+            // given a stair up 26 times in a night, three crews stood empty and the night took no ore
+            // (backlog/mining.md, the shaft's bottom reads as a pocket; backlog/long-routes.md, Eli).
+            if (stairs != null && cutters.contains(soldierName)) {
                 cutting.put(soldierName, cutters.indexOf(soldierName) < CUTTERS_A_LEVEL || secondLevel == null ? stairs : secondLevel);
             } else {
                 cutting.remove(soldierName);
                 stairsProgress.remove(soldierName);
             }
-            if (stairs != null && !squadInContact && !drilled) {
+            if (stairs != null && !squadInContact) {
                 // No hut on a mining squad's hands: the branch below never reaches where a patrol base's
                 // plan is let go, and live, a squad sent from its night's base to the mine went on
                 // building the base's doorway at the stairs' head, reporting Fortifying.

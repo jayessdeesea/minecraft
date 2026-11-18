@@ -46,8 +46,14 @@ objective, which is where the squad last saw some.
   clearer's stuck reason once. Found by it (field402): hands free, clearer not stuck - his supply
   run, short of rations, took his hands for the supply point 115 up whenever they came free (fixed:
   none for one the drill has); then by night, Bravo/miner's mine orders sent him to the dead mine's
-  stairs over his own (fixed: the drill's order outranks the mine's). Left: his unit still flips
-  Bravo/Bravo-miner at dusk and dawn, its recovery begun afresh each time.
+  stairs over his own. The drill's order outranking the mine's was tried and taken back: the drill
+  reads miners in their tunnels as stranded, and with it a night took no ore (field408) - wants the
+  drill's stranded reading fixed for the mine first (backlog/mining.md). Left (field408): his unit
+  still flips Bravo/Bravo-miner at dusk and dawn, each a new `Recovery` that takes reports to find
+  him stranded again, and in that gap his armourer and supply run take his hands for walks with no
+  route; and his pocket holds hostiles within 4 - a skeleton most of the time - that hold the cut
+  (`STAIR_THREAT_RADIUS`) when he could fight them. Wanted: a stranded soldier kept in its unit, its
+  episode carried across, till it's out; and one held by a hostile at hand fights it, then cuts.
 - **Stranded with no pickaxe (field360, 06:29).** Kate, routed into a cave at y=47 on her way to the
   mine, was pulled out by recovery 35 under the ground at y=62 with two shovels, no pickaxe, no
   cobblestone, one log and no bread: her 88-block stair up is dug by hand, 150 ticks a stone block
