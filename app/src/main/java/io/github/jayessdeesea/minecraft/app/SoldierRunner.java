@@ -3463,6 +3463,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         keepParty = party;
+        // Off the party, its tree is let go of, its patience with it too: live (field399), Liam's tree was
+        // kept through his night down the mine, and given up as out of reach at dawn - its three minutes
+        // run out while he was 70 blocks under it.
+        felling.keySet().retainAll(party.cutters());
+        fellingLeft.keySet().retainAll(party.cutters());
+        fellingSince.keySet().retainAll(party.cutters());
         // Nobody cutting under the reserve says why, once a minute: live (field390), a day went by at 3-19
         // logs with the party never out and no line to say what held it.
         int logsNow = crew.stream().mapToInt(PlatoonSergeant.Hand::logs).sum() + wood.stockpileLogs();
