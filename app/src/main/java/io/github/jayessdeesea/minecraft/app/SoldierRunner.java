@@ -5157,6 +5157,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         };
     }
 
+    /** How near a hostile holds a stranded soldier off cutting its stair up. */
+    static final double STAIR_THREAT_RADIUS = 4;
     /** What last held each soldier on a stair up from cutting - tick loops only, each its own key. */
     private final Map<String, String> stairHolds = new ConcurrentHashMap<>();
     /** Soldiers on a stair up whose clearer has no stand yet, said once - squad loops only. */
@@ -7820,9 +7822,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             soldierIron.put(name, inventory.count(ItemClassRegistry.ItemClass.RAW_IRON) + inventory.count(ItemClassRegistry.ItemClass.IRON_INGOT));
             // On a stair up and not cutting: what holds it, said each time that changes - live (field401), Eli's
             // hands were free, his clearer not stuck, and no cell of his 304 cut in four hours.
+            // Its way out is held only by a hostile at hand, not one in sight across the cave: live (field403),
+            // Alice stood on her stair up at y=18 while a spider 10 below and 8 across was in sight.
+            boolean stairThreat = inContact || !world.nearbyHostiles(status.position(), STAIR_THREAT_RADIUS).isEmpty();
             if (clearingTunnel.contains(name) && !clearer.active()) {
-                String hold = threatened ? "a hostile in sight: " + world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).stream()
-                        .map(h -> HostileMobRegistry.nameOf(h.typeId()) + " at " + h.position()).toList()
+                String hold = stairThreat ? "a hostile at hand: " + world.nearbyHostiles(status.position(), STAIR_THREAT_RADIUS).stream()
+                        .map(h -> HostileMobRegistry.nameOf(h.typeId())).sorted().toList()
                         : foodCalls ? "a meal or game in sight" : null;
                 String was = stairHolds.get(name);
                 if (hold != null && !hold.equals(was)) {
@@ -7843,7 +7848,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // shovel set out for the workshop three times a second for as long as it dug. Nor while
                     // it's on its way to fit the depot's chest, a walk as handless: there, one with a full
                     // pack and the logs for the next chest dug on beside a full one.
-                    clearing.getOrDefault(name, List.of()), free && !(keepHands.contains(name) ? inContact : threatened) && !foodCalls
+                    clearing.getOrDefault(name, List.of()), free && !(keepHands.contains(name) ? inContact
+                            : clearingTunnel.contains(name) ? stairThreat : threatened) && !foodCalls
                             && (clearingTunnel.contains(name) // its way out comes before any errand
                             || armourer.standAt().isEmpty() && storeWalks.getOrDefault(name, Optional.empty()).isEmpty()),
                     // Its stands in its rectangle or a column beside it: the last block of a rectangle one
