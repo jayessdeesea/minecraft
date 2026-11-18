@@ -26,6 +26,11 @@ faces die to skeletons and creepers (5 killed in field408, 2 in field409, arrows
 faces 90 blocks out), and the recovery drill reads miners at work in their tunnels as stranded (Hal
 16 times, Olga 12 in a night - backlog/mining.md, the shaft's bottom reads as a pocket). The second
 I'm working on; the first may want the faces lit or walled, or shorter branches - your call.
+And the keep's site at dusk (field412): Kate and Bob, in melee with zombies on the flatten's floor at
+(13.7, 61, -61), were shot by a skeleton 30 s apart - the site is 33x129 of open ground with no
+torches, and the squads cross it for the mine as the dark comes. Lighting the site as the camp's
+ground is lit (12 blocks, no dark cell) would deny it spawns; whether the keep's crew lights its
+ground, or the squads leave it before dusk, is yours.
 
 ## Endermen: fight back or not (tools/entity-hostility-generator)
 Live (field410, 19:47), endermen killed Carol and Gus within 12 s at Alpha's level y=8 - its
