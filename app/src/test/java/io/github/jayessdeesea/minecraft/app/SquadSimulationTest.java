@@ -2192,6 +2192,35 @@ class SquadSimulationTest {
         assertEquals(SimServer.AIR, server.block(-5, GROUND + 1, -5), "the chest; " + events);
     }
 
+    /**
+     * Salvage (backlog/salvage-and-pack.md): a chest standing on the ground to flatten, iron in it, is emptied
+     * before it's dug - broken, a chest spills what it holds on the ground.
+     */
+    @Test
+    void aChestOnTheGroundToFlattenIsEmptiedBeforeItsDug() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> flat(x, y, z), 1000);
+        server.stockedChest(-5, GROUND + 1, -5, SimServer.ITEM_RAW_IRON, 16);
+        Roster roster = new Roster("Alpha:Alice");
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Build the keep", Keep.CENTRE, "The main base's keep",
+                new Objective.Task.Keep())), squadLeader(Keep.CENTRE),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.itemNamedOrMinus("stone_pickaxe"), 1},
+                        new int[]{10, SimServer.ITEM_DIRT, 64})))
+                .run();
+
+        clock.advance(8 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        assertEquals(SimServer.AIR, server.block(-5, GROUND + 1, -5), "the chest dug; " + events);
+        assertTrue(server.log.contains("Alice broke a chest at -5," + (GROUND + 1) + ",-5 holding 0 item(s)"),
+                "emptied before it was dug; " + server.log.stream().filter(l -> l.contains("chest")).toList());
+    }
+
     /** Emerald ore, which only an iron pickaxe gets the drop from (the block registry's state id). */
     private static final int EMERALD_ORE = 11315;
 

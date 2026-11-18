@@ -38,15 +38,9 @@ them, and wood is already the bottleneck. And nothing decides what a full pack t
   kit and the stockpile as last seen, so the dawn AAR can show it.
 - **Pickup:** a drop within reach is taken if it's worth more than the walk; waiting for one that
   may not come (a sapling from leaves) only if it's scarce.
-- **Salvage:** the clearing and ground work's targets include placed blocks on ground being
-  reworked; chests are emptied into the stockpile before they're taken down.
-  How, from what's built (2026-11-17): a kept depot chest standing inside the ground to flatten
-  (`Flatten.contains`) is condemned once the depot is sited off the site again. A salvager - one
-  builder off the dig, chosen as the keep's smelter is (`SoldierRunner.smelter`) - draws what the
-  chest holds a pack at a time (`chestStock` has each chest's contents; `Depositor.tickDraw` draws a
-  class from a given chest), and deposits it at a depot that isn't condemned (`stockpileFor`, the
-  condemned ones left out). A chest seen empty leaves the kept structures (the dig's except) and is
-  dug with the ground. Wanted before the farm-and-grove ground (backlog/flatten-campaign.md).
+- **Salvage of chests: built** (docs/military-doctrine.md § 17). Left: placed blocks other than chests
+  on ground being reworked - torches, planks, tables, fences, a hut - taken down and kept; and what a
+  chest holds of no depot kind (tools, armour), which spills when it's dug.
 - **The pack:** when full, the least valuable stack is dropped (or deposited, at the stockpile)
   to make room for a more valuable one.
 

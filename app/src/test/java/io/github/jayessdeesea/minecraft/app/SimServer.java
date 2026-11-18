@@ -137,6 +137,14 @@ final class SimServer {
         chests.put(key(x, y, z), held);
     }
 
+    /** Stands a chest at the cell holding one stack, {@code count} of {@code item}. */
+    void stockedChest(int x, int y, int z, int item, int count) {
+        set(x, y, z, CHEST);
+        int[][] held = new int[CHEST_SLOTS][];
+        held[0] = new int[]{item, count};
+        chests.put(key(x, y, z), held);
+    }
+
     private static long key(int x, int y, int z) {
         return ((long) x & 0x3FFFFFF) << 38 | ((long) z & 0x3FFFFFF) << 12 | (y - MIN_Y) & 0xFFF;
     }
@@ -660,6 +668,8 @@ final class SimServer {
             int state = block(x, y, z);
             if (state == CHEST) {
                 open = key(x, y, z);
+                // A chest the world was made with holds nothing till something's put in: as the server's.
+                chests.computeIfAbsent(open, k -> new int[CHEST_SLOTS][]);
                 openId = nextId++;
                 listeners.onContainer().accept(new ContainerUpdate.Opened(openId, GENERIC_9X3_MENU));
                 sync();
@@ -995,6 +1005,11 @@ final class SimServer {
             if (state == CHEST) {
                 // A broken chest spills what it held; the digger beside it picks it up.
                 int[][] held = chests.remove(key(x, y, z));
+                int holding = 0;
+                for (int[] stack : held == null ? new int[0][] : held) {
+                    holding += stack == null ? 0 : stack[1];
+                }
+                log.add(name + " broke a chest at " + x + "," + y + "," + z + " holding " + holding + " item(s)");
                 if (held != null) {
                     for (int[] stack : held) {
                         for (int i = 0; stack != null && i < stack[1]; i++) {

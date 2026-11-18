@@ -1673,7 +1673,11 @@ of its own, not the keep's (operator, 2026-11-15): the task digs whatever ground
 (`command.Flatten`, a rectangle and a level) - the keep's first ground to begin with, then any the
 operator names with `!flatten` - with its depot off the site's west edge, or its north
 (`Flatten.Side`: the farm-and-grove ground's west edge is the camp's farm), sited again when the
-site moves away from the one standing. Its crew is sized to its level (backlog/flatten-campaign.md):
+site moves away from the one standing. A chest standing on the ground to flatten - the old depot's, the
+site moved onto it - is salvaged before it's dug: the site is looked over for chests every 30 s from the
+world, one of the keep's hands draws by day the depot kind each holds most of, its pack's loads going to
+the depot as any builder's, and till a chest is seen empty it stands on a 3x3 pillar of the ground under
+it, in reach (`SoldierRunner.condemned`, `salvageFor`). Dug, a chest spills what it holds. Its crew is sized to its level (backlog/flatten-campaign.md):
 at each new level the foreman says the builders its blocks want, one to 24 blocks
 (`SoldierRunner.BLOCKS_A_BUILDER`) of the widest of it and the three levels under it
 (`SoldierRunner.CREW_LOOK_AHEAD`), never fewer than one squad's (`SoldierRunner.MIN_KEEP_BUILDERS`; operator,

@@ -2306,6 +2306,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * its workshop's chest once it stands (backlog/sites.md).
      */
     private Optional<Position> stockpileFor(String soldier) {
+        // Never a chest being salvaged: loads put into it would be drawn out again, and it never empties.
+        return stockpileOrSalvaged(soldier).filter(p -> !condemned.contains(BlockPos.containing(p.x(), p.y(), p.z())));
+    }
+
+    private Optional<Position> stockpileOrSalvaged(String soldier) {
         if (supplyPoint.isPresent()) {
             return supplyPoint;
         }
@@ -2532,6 +2537,23 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // simulation, a block laid was the dig's again, and dug and laid in turn.
                     if (world.isStone(x, y, z) || world.isCobblestone(x, y, z)) {
                         digExcept.add(new Cell(x, y, z));
+                    }
+                }
+            }
+        }
+        // Salvage (backlog/salvage-and-pack.md): a chest standing on the ground to flatten - the old depot's,
+        // the site moved onto it - is emptied into the depot before it's dug; till it's seen empty it stands
+        // on a pillar of the ground under it and round it, so its salvager can still reach it. Dug, a chest
+        // spills what it holds on the ground.
+        Set<BlockPos> condemnedNow = condemned(ground, hands);
+        for (BlockPos c : condemnedNow) {
+            if (emptied(c)) {
+                continue;
+            }
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    for (int y = ground.bottom(); y <= c.y(); y++) {
+                        digExcept.add(new Cell(c.x() + dx, y, c.z() + dz));
                     }
                 }
             }
@@ -4762,6 +4784,102 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** A draw from a mine's stash: its chest, centred, the ore, and how much to carry when done. */
     record Unstash(Position chest, ItemClass ore, int carry) {
+    }
+
+    /** Chests standing on the ground to flatten, to salvage before they're dug - keep squad loops write, ticks read. */
+    private volatile Set<BlockPos> condemned = Set.of();
+    /** The keep hand salvaging them; null with none - keep squad loops write, ticks read. */
+    private volatile String salvager;
+    /** When the ground to flatten was last looked over for chests, and the site it was. */
+    private volatile long condemnedAt = Long.MIN_VALUE;
+    private volatile Flatten condemnedFor;
+    /** How often the ground to flatten is looked over for chests standing on it. */
+    static final long CONDEMNED_LOOK_MILLIS = 30_000;
+    /** How far over the site's floor a chest on it is looked for. */
+    static final int CONDEMNED_ABOVE = 48;
+
+    /**
+     * The chests standing on {@code ground}'s dig - in its columns, at or over its floor - but a mine's stash:
+     * looked over every {@link #CONDEMNED_LOOK_MILLIS} from the world, not from what's been opened, since a
+     * depot left behind by a restart is known to nobody. Its salvager kept, or the nearest of the keep's
+     * hands - every squad's - to the first chest still to empty.
+     */
+    private Set<BlockPos> condemned(Flatten ground, List<SoldierStatus> hands) {
+        long now = clockwork.millis();
+        if (!ground.equals(condemnedFor) || now - condemnedAt >= CONDEMNED_LOOK_MILLIS) {
+            Set<BlockPos> stashes = squadStairs.values().stream().flatMap(s -> s.store().stream()).collect(Collectors.toSet());
+            Set<BlockPos> found = new HashSet<>();
+            for (int x = ground.minX(); x <= ground.maxX(); x++) {
+                for (int z = ground.minZ(); z <= ground.maxZ(); z++) {
+                    if (!world.isLoaded(x, z)) {
+                        continue;
+                    }
+                    for (int y = ground.bottom(); y <= ground.bottom() + CONDEMNED_ABOVE; y++) {
+                        BlockPos cell = new BlockPos(x, y, z);
+                        if (world.isChest(x, y, z) && !stashes.contains(cell)) {
+                            found.add(cell);
+                        }
+                    }
+                }
+            }
+            Set<BlockPos> was = condemned;
+            if (!found.equals(was)) {
+                LOG.info("[Keep] salvage: {} chest(s) on the ground to flatten, {} still to empty - {}", found.size(),
+                        found.stream().filter(c -> !emptied(c)).count(), found);
+            }
+            condemned = Set.copyOf(found);
+            condemnedAt = now;
+            condemnedFor = ground;
+        }
+        Optional<BlockPos> first = condemned.stream().filter(c -> !emptied(c)).min(Comparator.comparing(BlockPos::toString));
+        Map<String, Position> on = new HashMap<>();
+        keepHandsAt.values().forEach(on::putAll);
+        hands.forEach(h -> on.put(h.name(), h.position()));
+        String was = salvager;
+        String now2 = first.isEmpty() ? null : was != null && on.containsKey(was) ? was
+                : on.entrySet().stream().min(Comparator.comparingDouble(e -> Math.hypot(e.getValue().x() - first.get().x(), e.getValue().z() - first.get().z())))
+                .map(Map.Entry::getKey).orElse(null);
+        if (!java.util.Objects.equals(was, now2)) {
+            LOG.info("[Keep] salvage: {}", now2 == null ? "done - every chest on the ground emptied" : now2 + " empties the chests on the ground into the depot");
+        }
+        salvager = now2;
+        return condemned;
+    }
+
+    /** Whether the chest at {@code chest} was last seen holding none of the depot's kinds. */
+    private boolean emptied(BlockPos chest) {
+        Map<ItemClass, Integer> seen = chestStock.get(chest);
+        return seen != null && seen.values().stream().allMatch(n -> n == 0);
+    }
+
+    /**
+     * The salvager's next draw (backlog/salvage-and-pack.md): by day, with room in its pack, the depot's kind
+     * the nearest chest still to empty was last seen holding most of - cobblestone to look in one not yet
+     * opened. Its pack full, the depot gets the load as any builder's (stockpileFor).
+     */
+    private Optional<Unstash> salvageFor(String name, Position at, Inventory inventory, boolean dark) {
+        if (dark || !name.equals(salvager)) {
+            return Optional.empty();
+        }
+        int free = 0;
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            if (inventory.itemAt(slot) < 0) {
+                free++;
+            }
+        }
+        if (free < UNSTASH_FREE) {
+            return Optional.empty();
+        }
+        Optional<BlockPos> chest = condemned.stream().filter(c -> !emptied(c))
+                .min(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z())));
+        if (chest.isEmpty()) {
+            return Optional.empty();
+        }
+        Map<ItemClass, Integer> seen = chestStock.getOrDefault(chest.get(), Map.of());
+        Map.Entry<ItemClass, Integer> most = seen.entrySet().stream().filter(e -> e.getValue() > 0).max(Map.Entry.comparingByValue())
+                .orElse(Map.entry(ItemClass.COBBLESTONE, UNSTASH_LOAD));
+        return Optional.of(new Unstash(new Position(chest.get().x() + 0.5, chest.get().y(), chest.get().z() + 0.5), most.getKey(),
+                inventory.count(most.getKey()) + Math.min(UNSTASH_LOAD, most.getValue())));
     }
 
     /** Raw ore a soldier takes from a stash at a time: a stack. */
@@ -7398,7 +7516,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean darkNow = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
             boolean stashOre = darkNow && working != null && mineOfChest(chestCentre(working)).isPresent()
                     && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;
-            Optional<Unstash> unstash = unstashFor(status.position(), inventory, darkNow);
+            Optional<Unstash> unstash = unstashFor(status.position(), inventory, darkNow)
+                    .or(() -> salvageFor(name, status.position(), inventory, darkNow));
             // A farmer's hoe, and its wheat baked into bread three at a time.
             FarmPlan field = farming.get(name);
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
