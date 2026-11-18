@@ -85,6 +85,9 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   none beside the stairs either - against 21 and 13 the nights before (field440-441): an end that sudden
   looks more like ore not seen (`Miner.oreInSight` / `WorldView.isOre`) than rock spent. First, probe a
   branch wall field443 cut (console `execute if block`) for ore the model doesn't show; then the headings.
+  When: ore last seen in field441 (13 on its night, 743 running); field442 (744) 0 in 7 cuts, field443 (745)
+  0 over three nights and the days between. Neither 744 (an enderman back-off) nor 745 (a log under the sky)
+  touches `Miner`; the cut is at 744's deploy, 2026-11-18 03:15.
 - **The far faces (operator, 2026-11-17).** Skeletons and creepers kill miners at faces 90 blocks
   out: soldiers learn to make bows and arrows (`Recipe.BOW`, `Recipe.ARROWS` - string from spiders,
   feathers from chickens) so an archer across a cave is answered, not closed on.
