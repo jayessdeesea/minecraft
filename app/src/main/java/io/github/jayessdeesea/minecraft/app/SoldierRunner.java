@@ -4887,7 +4887,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // live (field433) the same salvager was chosen again in the pocket at y=56, 7 under the floor.
         on.values().removeIf(p -> p.y() < ground.bottom() - SALVAGER_BELOW);
         String was = salvager;
-        String now2 = first.isEmpty() ? null : was != null && on.containsKey(was) ? was
+        // Kept while it's connected and the drill hasn't it, on the keep's rolls this cycle or not: live (field437),
+        // the salvager went Jack, Liam, Jack in four minutes as each came off and on the dig, each trip begun lost.
+        boolean keep = was != null && activeSoldiers.containsKey(was) && !recovering.contains(was);
+        String now2 = first.isEmpty() ? null : keep || was != null && on.containsKey(was) ? was
                 : on.entrySet().stream().min(Comparator.comparingDouble(e -> Math.hypot(e.getValue().x() - first.get().x(), e.getValue().z() - first.get().z())))
                 .map(Map.Entry::getKey).orElse(null);
         if (!java.util.Objects.equals(was, now2)) {
