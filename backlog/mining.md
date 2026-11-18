@@ -87,7 +87,9 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   branch wall field443 cut (console `execute if block`) for ore the model doesn't show; then the headings.
   When: ore last seen in field441 (13 on its night, 743 running); field442 (744) 0 in 7 cuts, field443 (745)
   0 over three nights and the days between. Neither 744 (an enderman back-off) nor 745 (a log under the sky)
-  touches `Miner`; the cut is at 744's deploy, 2026-11-18 03:15.
+  touches `Miner`; the cut is at 744's deploy, 2026-11-18 03:15. And the seeing works: at 04:26 Mia mined ore
+  beside Delta's stairs at (64, -2, 108) - so the faces worked are the likelier cause after all, the probe to
+  confirm it, and the headings the fix.
 - **The far faces (operator, 2026-11-17).** Skeletons and creepers kill miners at faces 90 blocks
   out: soldiers learn to make bows and arrows (`Recipe.BOW`, `Recipe.ARROWS` - string from spiders,
   feathers from chickens) so an archer across a cave is answered, not closed on.
