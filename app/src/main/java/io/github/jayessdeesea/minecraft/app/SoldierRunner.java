@@ -5157,6 +5157,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         };
     }
 
+    /** Soldiers on a stair up whose clearer has no stand yet, said once - squad loops only. */
+    private final Set<String> stairWaitSaid = ConcurrentHashMap.newKeySet();
     /** Soldiers stranded with water beside their way up, to plug it first - squad loops write, tick loops read. */
     private final Set<String> sealToClimb = ConcurrentHashMap.newKeySet();
 
@@ -6319,7 +6321,21 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     byName.get(soldierName).receiveOrder(new Order.MoveTo(routine.get().x(), routine.get().y(), routine.get().z(), 0.3, 0.5, Risk.LOW));
                     continue;
                 }
-                // Where the clearer stands for its next cut; until it has one, toward the stair's foot.
+                // A stair up starts at its feet: until its clearer has a stand it holds where it is, and says
+                // why once - live (field393-400), Eli's 304-block stair up was laid four times and he was sent each
+                // time to the dig's top corner, 107 up through the rock, "no route", and stood.
+                if (dig.tunnel() && clearers.get(soldierName).standAt().isEmpty()) {
+                    if (stairWaitSaid.add(soldierName)) {
+                        List<BlockPos> cells = clearing.getOrDefault(soldierName, List.of());
+                        LOG.warn("[{}] {} has its stair up but its clearer no stand yet - holds at {}: {} cell(s) to cut, the first {}, hands {}, clearer {}",
+                                squadName, soldierName, here, cells.size(), cells.stream().limit(3).toList(),
+                                holding == null ? "free" : holding, clearers.get(soldierName).stuck().orElse("not stuck"));
+                    }
+                    byName.get(soldierName).receiveOrder(new Order.MoveTo(here.x(), here.y(), here.z(), 3, 3, Risk.LOW));
+                    continue;
+                }
+                stairWaitSaid.remove(soldierName);
+                // Where the clearer stands for its next cut; until it has one, toward the dig's corner.
                 Position at = clearers.get(soldierName).standAt().orElse(new Position(dig.box().minX() + 0.5, dig.box().maxY() + 1,
                         dig.box().minZ() + 0.5));
                 byName.get(soldierName).receiveOrder(new Order.MoveTo(at.x(), at.y(), at.z(), clearers.get(soldierName).standAt().isPresent() ? 0.3 : 3,
