@@ -477,7 +477,12 @@ public class ChainOfCommand implements DisposableBean {
         }
         for (PlatoonSergeant.Shortfall s : alarms) {
             boolean coveredByFarmSquad = s == PlatoonSergeant.Shortfall.FOOD && farmSquad.isPresent();
-            if (coveredByFarmSquad || out.stream().anyMatch(o -> covers(o, s))) {
+            // With no trees seen - the squads up from a night underground - the keep's own wood party is on it,
+            // cutting the trees the world model holds near the depot (SoldierRunner.knownTree). Live (field419), at
+            // dawn short of wood with no trees reported, the guardrail found nowhere to send anyone.
+            boolean coveredByTheKeep = s == PlatoonSergeant.Shortfall.WOOD && woods.stream().noneMatch(w -> w.resource() == Resource.WOOD)
+                    && out.stream().anyMatch(o -> o.task() instanceof Objective.Task.Keep);
+            if (coveredByFarmSquad || coveredByTheKeep || out.stream().anyMatch(o -> covers(o, s))) {
                 continue;
             }
             Optional<Integer> k = spare(out, movable, alarms);
