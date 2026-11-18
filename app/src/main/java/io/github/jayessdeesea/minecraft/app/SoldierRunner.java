@@ -4834,6 +4834,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private volatile Flatten condemnedFor;
     /** How often the ground to flatten is looked over for chests standing on it. */
     static final long CONDEMNED_LOOK_MILLIS = 30_000;
+    /** How far under the site's floor a keep hand may stand and still be its salvager. */
+    static final int SALVAGER_BELOW = 2;
     /** How far over the site's floor a chest on it is looked for. */
     static final int CONDEMNED_ABOVE = 48;
 
@@ -4877,6 +4879,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Not one the recovery drill has: live (field432), the first salvager was shut in at y=56 under the
         // keep's site, nearest by its column, and every trip it began was dropped as it cut its way out.
         on.keySet().removeIf(recovering::contains);
+        // Nor one under the site's floor, wherever the drill stands with it: a restart forgets who it had, and
+        // live (field433) the same salvager was chosen again in the pocket at y=56, 7 under the floor.
+        on.values().removeIf(p -> p.y() < ground.bottom() - SALVAGER_BELOW);
         String was = salvager;
         String now2 = first.isEmpty() ? null : was != null && on.containsKey(was) ? was
                 : on.entrySet().stream().min(Comparator.comparingDouble(e -> Math.hypot(e.getValue().x() - first.get().x(), e.getValue().z() - first.get().z())))
@@ -5369,9 +5374,20 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return stuck -> {
             Position at = stuck.position();
             Map<String, String> whyNot = new LinkedHashMap<>();
+            // Never through what no ground work digs - the camp's walls and huts, its mine, a squad's stairs: live
+            // (field433), Pete, inside the camp at dusk, was read as in a pocket and given a stair up 15 blocks long
+            // out through it.
+            Set<Cell> kept = groundExcept();
             Optional<List<Cell>> stair = Stairway.up(world,
                             BlockPos.containing(at.x(), at.y(), at.z()), whyNot)
-                    .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList());
+                    .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList())
+                    .filter(cells -> {
+                        boolean through = cells.stream().anyMatch(kept::contains);
+                        if (through) {
+                            whyNot.put("kept", "the way up cuts the camp's kept ground");
+                        }
+                        return !through;
+                    });
             stair.ifPresentOrElse(
                     s -> LOG.info("[{}] RECOVERY: {} is stranded below at {} - a stair up laid out, {} blocks to dig", squadName, stuck.name(), at, s.size()),
                     () -> LOG.warn("[{}] RECOVERY: {} is stranded at {} and no stair up can be dug from there either - {}", squadName, stuck.name(), at, whyNot));

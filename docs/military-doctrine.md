@@ -482,7 +482,7 @@ a soldier stood a quarter of an hour on a ledge with 8 logs, no squadmate carryi
 below - boxed in a pocket, with no stair down to lay, or more than 8 under the ground over it, where
 a stair down leads only further in (live, one in a cave at y=-51 had a one-block stair down laid out
 to its floor, carried no block, and stood) - gets the engineer's stair up instead, laid again from where it stands once it's more than 6 off every cell of it, and dug through any ore on its way whatever the pickaxe, the drop lost (live, an ore cell a stone pickaxe couldn't take was set aside, and the stair stood uncut) (live, one walked off 8 before it began, and stood under it with no cell in reach)
-(`Stairway.up`) - its hands the stair's alone till it's out, no load put in nor stack picked up, no walk to the supply point for food (live, a stranded soldier with no rations set off for one 115 blocks up whenever its hands came free, and its stair up was never cut), and its cutting held only by a hostile within 4, not one in sight across the cave nor its own contact report (live, a spider 10 below held one on its stair all night; a skeleton across a cave held another till it shot him where he stood), nor given ground on the keep at all - its rectangle, the stockpile's cobblestone or a pit's dirt - nor anything to make, whose walk to a workshop would take it off the stair (live, an iron pickaxe walked one off its stair up every second),
+(`Stairway.up`) - its hands the stair's alone till it's out, no load put in nor stack picked up, no walk to the supply point for food (live, a stranded soldier with no rations set off for one 115 blocks up whenever its hands came free, and its stair up was never cut), and never laid through the ground work's kept cells - the camp's walls and huts, its mine, a squad's stairs - and its cutting held only by a hostile within 4, not one in sight across the cave nor its own contact report (live, a spider 10 below held one on its stair all night; a skeleton across a cave held another till it shot him where he stood), nor given ground on the keep at all - its rectangle, the stockpile's cobblestone or a pit's dirt - nor anything to make, whose walk to a workshop would take it off the stair (live, an iron pickaxe walked one off its stair up every second),
 past it, as on a stair down (live, two in a cave under the mine's stairs held theirs for both, with
 no route to either, and stood; and one on a ledge with its stair down laid out held its for a
 stockpile, its order the stair's, and stood) -: the cells to dig, one block up and one along a step to open ground, up to 136
@@ -1680,7 +1680,8 @@ site moves away from the one standing. A chest standing on the ground to flatten
 site moved onto it - is salvaged before it's dug: the site is looked over for chests every 30 s from the
 world, one of the keep's hands draws by day the depot kind each holds most of, its pack's loads going to
 the depot as any builder's, and till a chest is seen empty it stands on a 3x3 pillar of the ground under
-it, in reach (`SoldierRunner.condemned`, `salvageFor`). Dug, a chest spills what it holds. A site whose
+it, in reach (`SoldierRunner.condemned`, `salvageFor`); its salvager is a keep hand on the ground, never one
+the recovery drill has nor one more than 2 under the floor. Dug, a chest spills what it holds. A site whose
 top is soil (`Flatten.soil`, ground for groves and the farm) has its top layer in the dig too: its soil kept,
 its rock dug, and once the dig's done the gaps filled with dirt alone (`Order.Fill.Material.SOIL`), a builder
 short of dirt sent for a load of it from the ground east of the site past its bench, which the keep's site
