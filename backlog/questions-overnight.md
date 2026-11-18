@@ -26,3 +26,12 @@ faces die to skeletons and creepers (5 killed in field408, 2 in field409, arrows
 faces 90 blocks out), and the recovery drill reads miners at work in their tunnels as stranded (Hal
 16 times, Olga 12 in a night - backlog/mining.md, the shaft's bottom reads as a pocket). The second
 I'm working on; the first may want the faces lit or walled, or shorter branches - your call.
+
+## Endermen: fight back or not (tools/entity-hostility-generator)
+Live (field410, 19:47), endermen killed Carol and Gus within 12 s at Alpha's level y=8 - its
+second miner while the first lay dead - and neither fought: the enderman isn't on the curated
+hostile list (neutral until looked at or hit), so it's never contact, and a soldier facing its cut
+can catch its eye. Six died in field410 in all (two skeletons' arrows at the faces, a creeper at
+the stairs, a skeleton on the surface at dusk, the two endermen). Which: endermen on the hostile
+list - fought on sight, which provokes the ones that weren't coming (my lean: only once one is
+within 4, coming at us); or left neutral and the cuts kept from facing one; or neither?
