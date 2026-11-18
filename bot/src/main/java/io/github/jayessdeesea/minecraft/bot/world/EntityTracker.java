@@ -75,6 +75,14 @@ public final class EntityTracker {
     }
 
     /** Hostile entities within {@code radius} (3D distance) of {@code center}, nearest first. */
+    /** The endermen within {@code radius} of {@code center}, however far: what a soldier mustn't look in the eye. */
+    public List<Position> endermenWithin(Position center, double radius) {
+        double radiusSquared = radius * radius;
+        return hostiles.values().stream()
+                .filter(e -> HostileMobRegistry.fightsOnlyAtHand(e.typeId) && distanceSquared(center, e.position) <= radiusSquared)
+                .map(e -> e.position).toList();
+    }
+
     /** How near a mob fought only in self-defense (HostileMobRegistry#fightsOnlyAtHand) counts as hostile. */
     public static final double AT_HAND = 3;
 

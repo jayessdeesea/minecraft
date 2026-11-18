@@ -8158,7 +8158,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             } else {
                 badPositionLogged.remove(name);
-                session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), soldier.pitch(), soldier.onGround());
+                // Never an enderman's eyes met: its facing turned down off them (operator, 2026-11-17: do not provoke).
+                float pitch = io.github.jayessdeesea.minecraft.bot.EndermanGaze.pitch(
+                        new Position(current.x(), current.y() + 1.62, current.z()), soldier.yaw(), soldier.pitch(),
+                        entityTracker.endermenWithin(current, 64));
+                session.reportPosition(current.x(), current.y(), current.z(), soldier.yaw(), pitch, soldier.onGround());
             }
             // The bow: drawn with Use Item once it's in hand, loosed with its release - after the
             // position, so the server has the aim the arrow flies on.

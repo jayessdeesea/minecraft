@@ -545,7 +545,8 @@ the squad to falls.
   attacks on sight. The enderman, neutral till its eye is caught or it's hit, is on it for self-defense
   only - in contact within 3 blocks, coming at the soldier, never sought (`HostileMobRegistry.fightsOnlyAtHand`,
   `EntityTracker.AT_HAND`): live, endermen killed seven miners at the mine's base in two nights, none
-  striking back.
+  striking back. And never looked in the eye, which is what provokes one: a soldier's facing as it's sent
+  is turned down off any enderman's eyes within 64 (`bot.EndermanGaze`, vanilla's own test with a margin).
 - **The soldier's reflex.** A soldier in contact fights the nearest hostile at arm's length
   (`DeterministicSoldier.tick`): it closes to its 3-block reach at a sprint, strikes when its attack has
   recharged, backs off inside 2.5 blocks, which is outside a zombie's reach, and holds in
