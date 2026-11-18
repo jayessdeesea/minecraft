@@ -15,8 +15,12 @@ public final class DangerAreas {
     public static final double RADIUS = 16;
     /** How many deaths there within {@link #WINDOW_MILLIS} make it a danger area. */
     public static final int DEATHS = 3;
-    /** The window deaths are counted over: a day and a night. */
-    public static final long WINDOW_MILLIS = 20 * 60_000;
+    /**
+     * The window deaths are counted over: three hours, nine days and nights. Live (field450-455), a mine's
+     * stairs killed eight in three and a half hours, never three within one day - fifteen minutes to an
+     * hour apart.
+     */
+    public static final long WINDOW_MILLIS = 3 * 60 * 60_000L;
 
     private record Death(Position at, long millis) {
     }
@@ -27,6 +31,18 @@ public final class DangerAreas {
     public void killed(Position at, long millis) {
         deaths.add(new Death(at, millis));
         deaths.removeIf(d -> millis - d.millis() > WINDOW_MILLIS);
+    }
+
+    /** The deaths still in the window as of {@code now}, each x, y, z and when: to be kept across a restart. */
+    public List<long[]> rows(long now) {
+        return deaths.stream().filter(d -> now - d.millis() <= WINDOW_MILLIS)
+                .map(d -> new long[]{(long) Math.floor(d.at().x()), (long) Math.floor(d.at().y()), (long) Math.floor(d.at().z()), d.millis()})
+                .toList();
+    }
+
+    /** Deaths kept from before a restart, as {@link #rows}. */
+    public void restore(List<long[]> rows) {
+        rows.forEach(r -> deaths.add(new Death(new Position(r[0] + 0.5, r[1], r[2] + 0.5), r[3])));
     }
 
     /** How many were killed within {@link #RADIUS} across of column ({@code x}, {@code z}) in the window before {@code now}. */

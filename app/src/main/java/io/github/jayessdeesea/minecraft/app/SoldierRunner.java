@@ -1538,6 +1538,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.farmStore = new WallStore(Path.of(stateDir), "farm");
         this.mineStore = new WallStore(Path.of(stateDir), "stairs");
         this.chestStore = new WallStore(Path.of(stateDir), "chests");
+        this.dangerAreas = new DangerAreaBook(chestStore);
         this.stepStore = new WallStore(Path.of(stateDir), "steps");
         stepStore.load(STEPS).ifPresent(scaffolding::addAll);
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
@@ -4502,7 +4503,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private static final String MINES_TRIED = "minestried";
 
     /** Where soldiers were killed lately (command.DangerAreas) - death handlers write, squad loops read, under its lock. */
-    private final DangerAreas dangerAreas = new DangerAreas();
+    private final DangerAreaBook dangerAreas;
     /** Mine heads worked out or blocked, never sited again - kept on disk. Squad loop, read at siting. */
     private final Set<BlockPos> deadWells = ConcurrentHashMap.newKeySet();
     /** The key the dead wells are kept under. */
@@ -5778,10 +5779,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .filter(p -> p instanceof Miner.Progress.Stopped s && s.why().contains("water or lava beside step"))
                         .map(p -> ((Miner.Progress.Stopped) p).why()).findFirst();
                 // A danger area too (command.DangerAreas): soldiers killed again and again by its stairs, it's bypassed.
-                long killed;
-                synchronized (dangerAreas) {
-                    killed = dangerAreas.near(state.stairs.head().x() + 0.5, state.stairs.head().z() + 0.5, now);
-                }
+                long killed = dangerAreas.near(state.stairs.head().x() + 0.5, state.stairs.head().z() + 0.5, now);
                 if (killed >= DangerAreas.DEATHS && blockedBy.isEmpty()) {
                     blockedBy = Optional.of(killed + " killed within " + (int) DangerAreas.RADIUS + " blocks of its stairs in a day - a danger area");
                 }
@@ -7085,11 +7083,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     LOG.warn("[Casualty] {}", recorders.computeIfAbsent(name, n -> new FlightRecorder()).casualty(name, death));
                     String cause = death.contains("[") ? death.substring(0, death.indexOf('[')) : death;
                     casualties.merge(cause, 1, Integer::sum);
-                    Optional.ofNullable(activeSoldiers.get(name)).ifPresent(s -> {
-                        synchronized (dangerAreas) {
-                            dangerAreas.killed(s.status().position(), clockwork.millis());
-                        }
-                    });
+                    Optional.ofNullable(activeSoldiers.get(name)).ifPresent(s -> dangerAreas.killed(s.status().position(), clockwork.millis()));
                     afterActionReview.death(name, cause);
                     afterActionReview.commands.casualty(squadTask(unitOf(name, definition.squad())), Optional.ofNullable(activeSoldiers.get(name))
                             .map(s -> s.status().order().getClass().getSimpleName()).orElse("none"));

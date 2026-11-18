@@ -54,6 +54,32 @@ final class WallStore {
         }
     }
 
+    /** Rows of numbers kept under {@code key}, if any were - each row as it was saved. */
+    Optional<List<long[]>> loadRows(String key) {
+        Path file = file(key);
+        if (!Files.exists(file)) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(JSON.readValue(file.toFile(), new TypeReference<List<long[]>>() {
+            }));
+        } catch (IOException e) {
+            throw new UncheckedIOException("the " + kind + " rows in " + file + " won't read", e);
+        }
+    }
+
+    /** Keeps {@code rows} under {@code key}, written whole or not at all. */
+    void saveRows(String key, List<long[]> rows) {
+        try {
+            Files.createDirectories(directory);
+            Path temporary = directory.resolve(file(key).getFileName() + ".tmp");
+            JSON.writeValue(temporary.toFile(), rows);
+            Files.move(temporary, file(key), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            throw new UncheckedIOException("the " + kind + " rows for " + key + " won't write to " + directory, e);
+        }
+    }
+
     /** The key ("x,z") of every layout of this kind kept. */
     List<String> keys() {
         if (!Files.isDirectory(directory)) {
