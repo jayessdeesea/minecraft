@@ -1458,8 +1458,10 @@ where it meets the tunnel. Ore under a tunnel's floor is
 left so as not to hole it. A tunnel over an open cave is floored: cobblestone put in the gap under
 its next cell, against the solid block beside it - or, in a wide cave with none, against a block put
 beside the gap first, built out from the stone it touches - and the tunnel goes on - 24 blocks a tunnel at the
-most (`Miner.BRIDGE_TRIES`), with cobblestone or else dirt; with neither carried the tunnel waits
-while the others are cut, and their stone floors it. Live, every branch met a cave and was given
+most (`Miner.BRIDGE_TRIES`), with cobblestone or else dirt; with 4 or fewer carried the tunnel waits
+while the others are cut, and their stone floors it - the last 4 kept back to climb or bridge out with
+(`Miner.FLOOR_RESERVE`: live, one floored a cave with all four it carried and stood stranded between
+its holes all night). Live, every branch met a cave and was given
 up, and the squads spent their nights with nothing left to cut. A tunnel that would let in water or lava, or whose cave is
 wider than that, is given up alone, and the rest are cut; so are branches off a stretch of main
 tunnel that was given up. The camp's mine standard (§ 17) is met once the stairs reach the bottom.

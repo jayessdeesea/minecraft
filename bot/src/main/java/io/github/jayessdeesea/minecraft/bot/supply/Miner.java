@@ -126,7 +126,20 @@ public final class Miner {
     /** Tunnels over a cave left until the miner carries blocks to floor it. */
     private final Set<Integer> waiting = new HashSet<>();
 
-    /** What a cave is floored with: cobblestone, else dirt - empty with neither. */
+    /** Blocks a miner keeps back from flooring a cave: what it climbs or bridges its way out with. */
+    static final int FLOOR_RESERVE = 4;
+
+    /**
+     * What a cave is floored with: as {@link #bridgeBlock()}, with {@link #FLOOR_RESERVE} kept back. Live
+     * (field423), Fran floored four cells of a cave under the gallery at y=-12 with the four blocks she
+     * carried, stood between its holes with none, and was stranded the rest of the night.
+     */
+    private Optional<ItemClassRegistry.ItemClass> floorBlock() {
+        int carried = inventory.count(ItemClassRegistry.ItemClass.COBBLESTONE) + inventory.count(ItemClassRegistry.ItemClass.DIRT);
+        return carried > FLOOR_RESERVE ? bridgeBlock() : Optional.empty();
+    }
+
+    /** What water is sealed with: cobblestone, else dirt - empty with neither. */
     private Optional<ItemClassRegistry.ItemClass> bridgeBlock() {
         return inventory.count(ItemClassRegistry.ItemClass.COBBLESTONE) > 0 ? Optional.of(ItemClassRegistry.ItemClass.COBBLESTONE)
                 : inventory.count(ItemClassRegistry.ItemClass.DIRT) > 0 ? Optional.of(ItemClassRegistry.ItemClass.DIRT) : Optional.empty();
@@ -158,7 +171,8 @@ public final class Miner {
         OptionalInt next;
         Staircase.Cut cut;
         Optional<ItemClassRegistry.ItemClass> bridging = bridgeBlock();
-        if (bridging.isPresent()) {
+        Optional<ItemClassRegistry.ItemClass> flooring = floorBlock();
+        if (flooring.isPresent()) {
             waiting.clear(); // blocks again: the tunnels that waited on them are cut on
         }
         while (true) {
@@ -267,16 +281,16 @@ public final class Miner {
                 // with nothing to floor it with, or too wide a cave, they stop. Live, the stairs met
                 // a cave at step 11 and stopped; the CANTCO went unanswered for an hour and the mine
                 // below was out of everyone's reach.
-                if (support.isPresent() && bridging.isPresent() && bridged.getOrDefault(cut.tunnel(), 0) < BRIDGE_TRIES) {
-                    return bridge(soldier, cut, next.getAsInt(), cuts.size(), support.get(), bridging.get(), free);
+                if (support.isPresent() && flooring.isPresent() && bridged.getOrDefault(cut.tunnel(), 0) < BRIDGE_TRIES) {
+                    return bridge(soldier, cut, next.getAsInt(), cuts.size(), support.get(), flooring.get(), free);
                 }
                 stop();
                 return new Progress.Stopped(hazard.get() + (hazard.get().startsWith("no floor")
-                        ? " - not floored: " + (bridging.isEmpty() ? "no blocks carried" : whyNotBridgeable(world, cut, bridged.getOrDefault(cut.tunnel(), 0))) : ""));
+                        ? " - not floored: " + (flooring.isEmpty() ? "no more than " + FLOOR_RESERVE + " blocks carried" : whyNotBridgeable(world, cut, bridged.getOrDefault(cut.tunnel(), 0))) : ""));
             }
             if (support.isPresent() && bridged.getOrDefault(cut.tunnel(), 0) < BRIDGE_TRIES) {
-                if (bridging.isPresent()) {
-                    return bridge(soldier, cut, next.getAsInt(), cuts.size(), support.get(), bridging.get(), free);
+                if (flooring.isPresent()) {
+                    return bridge(soldier, cut, next.getAsInt(), cuts.size(), support.get(), flooring.get(), free);
                 }
                 // Nothing to floor it with yet: it waits, not given up - the next tunnel's stone is
                 // the bridge. Live, a miner with no cobblestone gave up the main tunnel at its first

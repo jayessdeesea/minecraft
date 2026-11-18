@@ -419,6 +419,35 @@ class MinerTest {
     }
 
     /**
+     * Its last blocks aren't laid in a cave's floor: with no more than {@link Miner#FLOOR_RESERVE}, the
+     * tunnel over it waits - they're what it climbs or bridges its way out with. Live, a miner floored a
+     * cave with all four it carried and was stranded between its holes the night through.
+     */
+    @Test
+    void aMinersLastBlocksArentLaidInACavesFloor() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        List<Staircase.Cut> branch = stairs.cuts().stream().filter(c -> c.tunnel() == 1).toList();
+        BlockPos gap = branch.get(2).feet().offset(0, -1, 0);
+        cave.add(gap);
+        Inventory inventory = new Inventory();
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{IntStream.range(0, 4096)
+                .filter(id -> ItemClassRegistry.nameOf(id).equals(Optional.of("cobblestone"))).findFirst().orElseThrow(), Miner.FLOOR_RESERVE});
+        Miner miner = new Miner("Alice", session, inventory);
+        Position soldier = new Position(0.5, GROUND, 0.5);
+        for (int tick = 0; tick < 60000; tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            if (!(miner.tick(soldier, world, stairs, true) instanceof Miner.Progress.Working)) {
+                break;
+            }
+            soldier = miner.standAt().orElse(soldier);
+        }
+
+        assertTrue(!placed.contains(gap), "the cave not floored with its last blocks: " + placed);
+        assertTrue(!dug.containsAll(branch.getLast().cells()), "the branch over it waits");
+    }
+
+    /**
      * A mine long cut is worked again for its ore: ore in sight of a tunnel the miner cut before -
      * passed by, or one it couldn't harvest then - is mined before the mine counts as done. Live,
      * no miner mined ore in twelve runs: the tunnels were cut, and nobody went back down them.
