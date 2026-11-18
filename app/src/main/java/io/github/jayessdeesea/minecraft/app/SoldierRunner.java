@@ -5157,6 +5157,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         };
     }
 
+    /** What last held each soldier on a stair up from cutting - tick loops only, each its own key. */
+    private final Map<String, String> stairHolds = new ConcurrentHashMap<>();
     /** Soldiers on a stair up whose clearer has no stand yet, said once - squad loops only. */
     private final Set<String> stairWaitSaid = ConcurrentHashMap.newKeySet();
     /** Soldiers stranded with water beside their way up, to plug it first - squad loops write, tick loops read. */
@@ -7812,6 +7814,22 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<BlockPos> wall = walling.getOrDefault(name, List.of());
             pickaxeTiers.put(name, Clearer.bestPickaxeTier(inventory));
             soldierIron.put(name, inventory.count(ItemClassRegistry.ItemClass.RAW_IRON) + inventory.count(ItemClassRegistry.ItemClass.IRON_INGOT));
+            // On a stair up and not cutting: what holds it, said each time that changes - live (field401), Eli's
+            // hands were free, his clearer not stuck, and no cell of his 304 cut in four hours.
+            if (clearingTunnel.contains(name) && !clearer.active()) {
+                String hold = threatened ? "a hostile in sight: " + world.nearbyHostiles(status.position(), REARM_CLEAR_RADIUS).stream()
+                        .map(h -> HostileMobRegistry.nameOf(h.typeId()) + " at " + h.position()).toList()
+                        : foodCalls ? "a meal or game in sight" : null;
+                String was = stairHolds.get(name);
+                if (hold != null && !hold.equals(was)) {
+                    LOG.warn("{} on its stair up doesn't cut: {}", name, hold);
+                }
+                if (hold == null) {
+                    stairHolds.remove(name);
+                } else {
+                    stairHolds.put(name, hold);
+                }
+            }
             turns.put(Hands.Routine.CLEARER, turn(clearer::active, free -> clearer.tick(status.position(), world,
                     // No new block while it's on its way to make kit: the walk to a workshop holds no hands,
                     // so each block taken dropped the errand and each gap between blocks began it again.
