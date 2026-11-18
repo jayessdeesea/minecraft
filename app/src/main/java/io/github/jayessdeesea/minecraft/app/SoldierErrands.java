@@ -122,6 +122,13 @@ final class SoldierErrands {
         return java.util.Collections.unmodifiableMap(kept);
     }
 
+    /**
+     * Logs a soldier not gathering wood carries before the rest is a load for the stockpile: a stack. Live
+     * (field452-454), a draw for 8 took a whole stack of 28 - a shift-click moves a stack - and it went back in a
+     * minute later at 16, the stockpile bare for the next.
+     */
+    static final int LOGS_KEPT_DRAWN = 64;
+
     /** Wheat a loaf takes. */
     static final int BREAD_WHEAT = 3;
     /** Wheat the baker draws at a time: a stack. */

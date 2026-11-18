@@ -815,7 +815,10 @@ a builder put one step every tick for four minutes, 700 times.
 With no tree in reach for its kit's logs, or its torches' with ground to light and none carried, it draws 8 from the nearest surface chest seen holding
 them, as metal is drawn, while the stores were last seen holding that many, or haven't been seen
 since a restart (`SoldierRunner.drawsLogs`): live, a miner at the mine's head couldn't make a
-pickaxe with 71 logs in the keep's depot, his own stockpile the camp's chest.
+pickaxe with 71 logs in the keep's depot, his own stockpile the camp's chest. The logs it draws it keeps
+for its kit, up to a stack (`SoldierErrands.LOGS_KEPT_DRAWN`): only a soldier gathering wood stores its
+16 as a load. Live (field452-454), a draw for 8 took a whole stack of 28 - a shift-click moves the stack -
+and it went back in a minute later, the stockpile bare for the next.
 
 A soldier on its order's work - cutting a mine, a wood or farm duty, building the keep - never digs
 its kit's makings itself (operator, 2026-11-18: a farmer doesn't start chopping trees because it has
@@ -1560,7 +1563,9 @@ that breaks one is a step back):**
    takes, about a stack; past that they're left, never carried at the cost of a slot for ore,
    ingots or tools.
 6. **Torches enough.** Every miner goes down with torches enough for its strips, and lights them as
-   they're cut.
+   they're cut. A cutter short of them makes more from the coal it mines, never charcoal from
+   its logs: that wants a furnace, and live (squad simulation), it held the cutter at the mine's head bound
+   for the workshop while the step it had started went uncut.
 7. **The yield checked.** Each level's ore is checked against what it should give, and one dried
    up is said so (docs/conventions.md, check the outcome).
 Built today: a squad to a level - each squad on a mine off the camp works its own level of the

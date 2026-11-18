@@ -8,6 +8,7 @@ import io.github.jayessdeesea.minecraft.bot.craft.LoadPlan;
 import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import static io.github.jayessdeesea.minecraft.app.SoldierErrands.*;
 import static io.github.jayessdeesea.minecraft.app.SiteGeometry.*;
+import static io.github.jayessdeesea.minecraft.app.Slots.setSlot;
 import io.github.jayessdeesea.minecraft.bot.craft.WorkLoad;
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.engineer.Stairway;
@@ -4241,6 +4242,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, FarmDuties.Duty> farmDuties = new ConcurrentHashMap<>();
     /** Soldiers whose gather is a woodcutter's, kept to its strip (command.WoodDuties) - squad loop writes, tick reads. */
     private final Set<String> woodcutters = ConcurrentHashMap.newKeySet();
+    /** Whether {@code name} gathers wood - a producer, whose 16 logs are a load (SoldierErrands.LOGS_KEPT_DRAWN). */
+    private boolean gathersWood(String name) {
+        return woodcutters.contains(name) || Optional.ofNullable(groundGather.get(name)).filter(g -> g.resource() == Resource.WOOD).isPresent()
+                || Optional.ofNullable(gathering.get(name)).filter(o -> o.task().equals(new Objective.Task.Gather(Resource.WOOD))).isPresent();
+    }
     /** Soldiers with a wood duty, woodcutter or planter - squad loop writes, tick reads. */
     private final Set<String> woodDutied = ConcurrentHashMap.newKeySet();
     /** Each soldier's {@code Order.Gather} from the ground work's drill - squad loop writes, tick reads. */
@@ -7123,20 +7129,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Where failed joins are tried again from; set by {@link #run}. */
     private volatile ScheduledExecutorService reconnects;
 
-    /** One inventory slot, its enchantments named through this session's synced registry. */
-    private static Kit setSlot(Inventory inventory, int slot, Optional<ItemSlot> item, List<String> enchantmentNames) {
-        if (item.isEmpty()) {
-            return inventory.setSlot(slot, null);
-        }
-        Map<String, Integer> named = new HashMap<>();
-        item.get().enchantments().forEach((id, level) -> {
-            if (id < 0 || id >= enchantmentNames.size()) {
-                throw new IllegalStateException("enchantment " + id + " isn't in the synced registry of " + enchantmentNames.size());
-            }
-            named.put(enchantmentNames.get(id), level);
-        });
-        return inventory.setSlot(slot, new int[]{item.get().itemId(), item.get().count()}, named);
-    }
 
     private void onJoined(SoldierDefinition definition, PlaySession session, PlayerPosition spawn,
                            AtomicReference<ScheduledExecutorService> activeScheduler,
@@ -7547,7 +7539,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // On the keep, a full load is a full pack: what it digs is the slab's fill or the chest's, and
             // carried while there's room - live, its builders walked a chest a load of 16 logs at a time.
             boolean fullLoad = keepHands.contains(name) ? Pack.freeSlots(inventory) <= KEEP_FULL_AT
-                    : carried != null && (carried.logs() >= Gatherer.CARRY_LOGS || carried.stone() >= Gatherer.CARRY_STONE);
+                    : carried != null && (carried.logs() >= (gathersWood(name) ? Gatherer.CARRY_LOGS : LOGS_KEPT_DRAWN) || carried.stone() >= Gatherer.CARRY_STONE);
             CrossLevel.Transfer giving = deliveries.get(name);
             boolean atBuildPlace = fort != null && fort.allInside() && !inContact
                     && Math.hypot(status.position().x() - fort.stand().x(), status.position().z() - fort.stand().z()) < 0.2;
@@ -7649,7 +7641,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     ? Optional.of(torchShortfall(inventory, workshops.get(name))) : Optional.empty();
             // A mine's cutter keeps a stock to light its strips as it cuts them (the rules of a mine:
             // torches enough): under its low mark, it makes up to its stock from the coal it mines.
-            boolean minerShort = cutting.containsKey(name) && inventory.count(ItemClassRegistry.ItemClass.TORCH) < MINER_TORCHES_LOW;
+            boolean minerShort = cutting.containsKey(name) && inventory.count(ItemClassRegistry.ItemClass.TORCH) < MINER_TORCHES_LOW
+                    && inventory.count(ItemClassRegistry.ItemClass.COAL) > 0; // its coal only: logs for charcoal took it up to the workshop
             turns.put(Hands.Routine.TORCHMAKER, turn(torchmaker::active,
                     free -> torchmaker.tick(status.position(), world, !free ? 0 : atWorkshop ? Torchmaker.TORCHES
                             : torchesWanted ? Math.min(LIGHTING_TORCHES, (lights.size() + 3) / 4 * 4)

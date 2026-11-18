@@ -57,15 +57,7 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
 - Simulation: one squad's miner stocks ore it mined; the other squad's soldier draws it and makes armour.
 - Live: armour slots filled climb over a day, with no lone ore trips.
 
-## A draw takes a whole stack, and it goes back in (field452-454)
-The force's stores read 28 logs, 0, 27, 0: a soldier drawing 8 logs shift-clicks, which moves the whole
-stack of 28, and at 16 logs carried its load counts full, so 27 go back in a minute later and the next
-soldier draws them out again - the stockpile bare whenever a consumer needs it. Two ways out:
-- **Draw only what's wanted**: a stack larger than the need picked up and the rest put back (a right-click
-  takes half) rather than shift-clicked whole.
-- **Keep what's drawn**: only a soldier gathering wood stores its 16 logs as a load. Tried (2026-11-18): it
-  unmasked a deadlock at a mine's head in the squad simulation
-  (`SquadSimulationTest.atNightTheSecondSquadWorksTheCampsMineBelowGround`) - a craft interrupting the cutter's
-  first step, and four miners stood on the head's cell after it, step 1 never cut; the deposit trips had been
-  breaking the crowd up. Seen live too (field448-449: Jack and Ivy stationary at `Mining[step=1]`). The
-  deadlock wants fixing first.
+## A draw takes a whole stack
+Built: what's drawn is kept for the kit, up to a stack (docs/military-doctrine.md § 11). Left: drawing only
+what's wanted - a stack larger than the need picked up and the rest put back (a right-click takes half) -
+so the next consumer finds some.
