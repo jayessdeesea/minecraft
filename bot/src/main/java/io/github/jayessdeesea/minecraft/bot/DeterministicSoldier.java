@@ -542,6 +542,10 @@ public final class DeterministicSoldier implements Soldier {
                     Kit carried = kit;
                     ticksUntilAttack = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon()).ticksToCharge();
                 }
+            // An enderman at hand is fought only with a weapon: bare fists against its 40 health lose. Live (field441),
+            // Pete, on his way to make a stone sword, punched one ten times at the depot and was killed, twice in 90 s.
+            } else if (nearest.fightsOnlyAtHand() && !armedForMelee()) {
+                stepGuarded(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
             // An archer well below - across a cave's drop - out-shoots a sword as surely as one it has no route to:
             // the engagement doctrine's it-can-I-can't cell, cover and carry on. Live (field410-419), Alice, Hal and
             // Gus closed on skeletons in the caves under their faces and were shot 12-28 blocks down.

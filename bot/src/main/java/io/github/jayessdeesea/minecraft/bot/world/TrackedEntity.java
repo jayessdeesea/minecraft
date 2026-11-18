@@ -16,4 +16,9 @@ public record TrackedEntity(int entityId, int typeId, Position position) {
     public boolean shoots() {
         return HostileMobRegistry.shoots(typeId);
     }
+
+    /** Whether this one is fought only at hand, in self-defense - an enderman. */
+    public boolean fightsOnlyAtHand() {
+        return HostileMobRegistry.fightsOnlyAtHand(typeId);
+    }
 }
