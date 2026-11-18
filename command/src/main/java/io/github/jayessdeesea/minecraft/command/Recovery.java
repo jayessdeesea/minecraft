@@ -332,30 +332,9 @@ public final class Recovery {
      */
     static final double CUT_STRAY = 6;
 
-    /** An {@code Order.Dig} of just {@code cells}, as a tunnel - cut cell by cell under rock: their box, and every other cell in it kept. */
+    /** An {@code Order.Dig} of just {@code cells}, as a tunnel - cut cell by cell under rock. */
     static Order.Dig dig(List<Cell> cells) {
-        int[] lo = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE}, hi = {Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};
-        for (Cell c : cells) {
-            lo[0] = Math.min(lo[0], c.x());
-            lo[1] = Math.min(lo[1], c.y());
-            lo[2] = Math.min(lo[2], c.z());
-            hi[0] = Math.max(hi[0], c.x());
-            hi[1] = Math.max(hi[1], c.y());
-            hi[2] = Math.max(hi[2], c.z());
-        }
-        Set<Cell> in = Set.copyOf(cells);
-        Set<Cell> except = new HashSet<>();
-        for (int x = lo[0]; x <= hi[0]; x++) {
-            for (int y = lo[1]; y <= hi[1]; y++) {
-                for (int z = lo[2]; z <= hi[2]; z++) {
-                    Cell c = new Cell(x, y, z);
-                    if (!in.contains(c)) {
-                        except.add(c);
-                    }
-                }
-            }
-        }
-        return new Order.Dig(new Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]), Set.copyOf(except), true);
+        return Order.Dig.of(cells);
     }
 
     /** Whether {@code fetcher} can go on fetching: still in the squad, and neither stranded nor rejoining itself. */

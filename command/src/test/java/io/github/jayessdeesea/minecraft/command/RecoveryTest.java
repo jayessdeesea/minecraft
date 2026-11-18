@@ -122,8 +122,8 @@ class RecoveryTest {
 
         Order.Dig dig = (Order.Dig) orders.get(1);
         assertEquals(new Box(0, 61, 0, 2, 63, 0), dig.box());
-        assertEquals(Set.of(new Cell(0, 61, 0), new Cell(0, 63, 0), new Cell(2, 61, 0), new Cell(2, 63, 0)), dig.except(),
-                "every cell of the box but the stair's kept");
+        assertEquals(Set.copyOf(stair), dig.cells(), "the stair's cells and no others");
+        assertTrue(dig.tunnel(), "cut cell by cell under rock");
     }
 
     @Test

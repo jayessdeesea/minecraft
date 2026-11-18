@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -53,16 +54,34 @@ public sealed interface Order {
      * and reported. One call for a whole region, as a squad leader gives it: "dig x=0..31,
      * y=64..88, z=0..31" - the soldier works out the cells. A {@code tunnel} is dug cell by cell
      * from where the digger stands instead - a stair cut up out of a pocket, under rock, where no
-     * cell has an open top (docs/military-doctrine.md § 7).
+     * cell has an open top (docs/military-doctrine.md § 7). A tunnel's {@code cells}, when given,
+     * are the only ones dug - the box is theirs - rather than the box but {@code except}.
      */
-    record Dig(Box box, Set<Cell> except, boolean tunnel) implements Order {
+    record Dig(Box box, Set<Cell> except, boolean tunnel, Set<Cell> cells) implements Order {
         public Dig {
             except = Set.copyOf(except);
+            cells = Set.copyOf(cells);
         }
 
         /** A dig of ground: from an open top, level by level. */
         public Dig(Box box, Set<Cell> except) {
             this(box, except, false);
+        }
+
+        public Dig(Box box, Set<Cell> except, boolean tunnel) {
+            this(box, except, tunnel, Set.of());
+        }
+
+        /**
+         * A tunnel dig of just {@code cells}, cell by cell under rock: their box, and nothing else in it.
+         * Named, not the box's complement kept: live (field424), a stair up 302 blocks long kept tens of
+         * thousands of cells, looked up every second, and was two thirds of the garrison's time.
+         */
+        public static Dig of(Collection<Cell> cells) {
+            Box box = new Box(cells.stream().mapToInt(Cell::x).min().orElseThrow(), cells.stream().mapToInt(Cell::y).min().orElseThrow(),
+                    cells.stream().mapToInt(Cell::z).min().orElseThrow(), cells.stream().mapToInt(Cell::x).max().orElseThrow(),
+                    cells.stream().mapToInt(Cell::y).max().orElseThrow(), cells.stream().mapToInt(Cell::z).max().orElseThrow());
+            return new Dig(box, Set.of(), true, Set.copyOf(cells));
         }
     }
 

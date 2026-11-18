@@ -2871,21 +2871,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** A dig of the haul road's cells and no others: a tunnel dig, cell by cell from where the cutter stands. */
     private static Order.Dig roadDig(AccessRoute road) {
-        int minX = road.toCut().stream().mapToInt(BlockPos::x).min().orElseThrow(), maxX = road.toCut().stream().mapToInt(BlockPos::x).max().orElseThrow();
-        int minY = road.toCut().stream().mapToInt(BlockPos::y).min().orElseThrow(), maxY = road.toCut().stream().mapToInt(BlockPos::y).max().orElseThrow();
-        int minZ = road.toCut().stream().mapToInt(BlockPos::z).min().orElseThrow(), maxZ = road.toCut().stream().mapToInt(BlockPos::z).max().orElseThrow();
-        Set<BlockPos> cut = new HashSet<>(road.toCut());
-        Set<Cell> except = new HashSet<>();
-        for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
-                for (int z = minZ; z <= maxZ; z++) {
-                    if (!cut.contains(new BlockPos(x, y, z))) {
-                        except.add(new Cell(x, y, z));
-                    }
-                }
-            }
-        }
-        return new Order.Dig(new Box(minX, minY, minZ, maxX, maxY, maxZ), except, true);
+        return Order.Dig.of(road.toCut().stream().map(b -> new Cell(b.x(), b.y(), b.z())).toList());
     }
 
     /** Each squad's hands on the keep and where they stand, as its last keep cycle saw them - the squad loop's. */
@@ -4274,7 +4260,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private void route(String soldier, Order order) {
         switch (order) {
             case Order.Dig d -> {
-                clearing.put(soldier, Clearing.toClear(world, d.box(), d.except(), d.tunnel()));
+                clearing.put(soldier, d.tunnel() && !d.cells().isEmpty() ? Clearing.toCut(world, d.cells())
+                        : Clearing.toClear(world, d.box(), d.except(), d.tunnel()));
                 clearingStrip.put(soldier, d.box());
                 if (d.tunnel()) {
                     clearingTunnel.add(soldier);
@@ -7837,8 +7824,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     boolean downForTheNight = nightFloor != null && status.position().y() < nightFloor - MINE_BELOW && !stashOre;
                     boolean breadWanted = toDepot && !StockLevels.atMost(ItemClass.FOOD, this::stocked);
                     depositor.storesFood(breadWanted);
+                    // Not while the recovery drill has it: its way out is its work, as for the supply run. Live
+                    // (field424), Eli on his stair up from y=-43 set off for the depot 49 times in ten minutes, each
+                    // trip taking his hands from the stair and dropped as no longer wanted.
                     depositor.tick(status.position(), deposit, free && (fullLoad || breadWanted && Depositor.surplusFood(inventory) || poolOre || stashOre
-                                    || surplusTrip || stockTrip) && !threatened && fort == null && !downForTheNight, pooled,
+                                    || surplusTrip || stockTrip) && !threatened && fort == null && !downForTheNight && !recovering.contains(name), pooled,
                             inv -> {
                                 List<Integer> slots = new ArrayList<>(plan.map(p -> p.surplus(inv)).orElse(List.of()));
                                 if (toDepot) {

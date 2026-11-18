@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.command.Cell;
 import io.github.jayessdeesea.minecraft.command.Position;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -89,6 +90,16 @@ public final class Clearing {
         }
         cells.sort(Comparator.comparingInt(c -> order(world, c)));
         return List.copyOf(cells);
+    }
+
+    /**
+     * Of a tunnel's named {@code cells} ({@code Order.Dig.of}), those that break, lowest first: the
+     * recovery drill's stair up, the keep's haul road.
+     */
+    public static List<BlockPos> toCut(WorldView world, Collection<Cell> cells) {
+        return cells.stream().filter(c -> world.isSolid(c.x(), c.y(), c.z()) && diggable(world, c.x(), c.y(), c.z()))
+                .map(c -> new BlockPos(c.x(), c.y(), c.z()))
+                .sorted(Comparator.comparingInt(BlockPos::y).thenComparingInt(BlockPos::x).thenComparingInt(BlockPos::z)).toList();
     }
 
     /**
