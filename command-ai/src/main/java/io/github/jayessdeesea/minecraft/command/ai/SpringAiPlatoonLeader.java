@@ -202,6 +202,18 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
         return buildContext(prompts, mission, time, supplyPoint, stockpile, remarks, foothold, Optional.empty(), squadStatuses);
     }
 
+    /**
+     * The reply asked for, counted and named: one objective a squad, in the order listed, the foothold's standards shared
+     * out among them. Live (field427-428), told only "name each squad once", the platoon leader gave every squad an
+     * objective for each unmet standard - lighting, arms, trees - twelve in all, and the reply was refused.
+     */
+    static String roster(List<SquadStatus> squadStatuses) {
+        List<String> names = squadStatuses.stream().map(SquadStatus::squadName).toList();
+        return names.size() + " objective(s), exactly one for each of " + String.join(", ", names) + ", in that order. Each squad gets"
+                + " the single job that matters most for it; unmet standards are shared out among the squads, never one standard"
+                + " given to every squad.";
+    }
+
     /** As the overload above, with the day's work computed for it ({@link #receiveDayWork}). */
     static PromptContext buildContext(PlatoonLeaderPrompts prompts, String mission, Optional<TimeOfDay> time, Optional<Position> supplyPoint,
                                       Optional<Stockpile> stockpile, List<String> remarks,
@@ -247,6 +259,7 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
         params.put("foothold", foothold.<Object>map(SpringAiPlatoonLeader::describe).orElse(false));
         params.put("dayWork", dayWork.<Object>map(SpringAiPlatoonLeader::describe).orElse(false));
         params.put("squads", squads.toString());
+        params.put("roster", roster(squadStatuses));
         return new PromptContext(prompts.user(), params);
     }
 

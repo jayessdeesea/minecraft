@@ -522,7 +522,8 @@ and a canopy over the camp, a 4-block drop from the ground that the squad's LOW 
 laid out, its stair or cut is looked for again after 30 reports (`Recovery.REPLAN_LOOKS`); and one the drill has
 stays in its unit till it's out - a miner isn't dealt to its squad by day and its miners' unit by night, each move
 beginning the drill afresh (live, one was dealt back and forth at every dusk and dawn, its stair never cut) - nor
-sent off with a load for the depot, its hands taken from the stair each time (live, 49 times in ten minutes): the ground round it
+sent off with a load for the depot, its hands taken from the stair each time (live, 49 times in ten minutes), nor
+given rations across squads, a squadmate walked at it where nobody can reach (live, a level's only miner, all night): the ground round it
 changes - water it plugs, a squadmate's dig - and live, a soldier plugged the water barring its pocket and stood on
 its walk down, the stair up never looked for again. A recovery lasts until the
 stranded soldier has moved two blocks off where it was stuck. Its own report flickers as it

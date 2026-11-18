@@ -68,5 +68,8 @@ RED, or its squad leader's CANTCO. Contact wakes nobody: it's the squad's to han
 contact every few seconds at night asked the platoon leader every ten. Each wake is a log line with
 its cause, `[PL] wakes: dusk near`; a day with nothing asked has only dawn's. At dusk and dawn it's shown
 no standing order to keep: the last phase's work lapses, and every squad is given the next
-(`ChainOfCommand.forThePlatoonLeader`; live, at each dawn it kept the night's mining for every squad). A failed call (a malformed
+(`ChainOfCommand.forThePlatoonLeader`; live, at each dawn it kept the night's mining for every squad). Its
+prompt ends counting and naming the reply asked for - one objective for each squad, in the order listed, the
+foothold's standards shared out among them (`SpringAiPlatoonLeader.roster`; live, it gave every squad an
+objective for each unmet standard, twelve in all, and the reply was refused). A failed call (a malformed
 reply, the model down) is logged loudly, and the squads keep their last objectives.

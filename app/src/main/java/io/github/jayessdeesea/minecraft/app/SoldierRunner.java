@@ -1803,7 +1803,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }));
         Map<String, CrossLevel.Transfer> was = acrossSquads;
         Map<String, CrossLevel.Transfer> now = new HashMap<>();
-        PlatoonSergeant.crossRations(outOfContact, busy, was.values()).forEach(t -> now.put(t.giver(), t));
+        // Nobody the recovery drill has, giving or given: where it's stuck nobody gets to, as for its own squad's
+        // hand-overs. Live (field428), Pete - the whole crew of Delta's second level - walked at Olga, stranded in
+        // the water at y=-3, fourteen times in the night, half a minute each, and the level stood.
+        List<SoldierStatus> able = outOfContact.stream().filter(s -> !recovering.contains(s.name())).toList();
+        PlatoonSergeant.crossRations(able, busy, was.values()).forEach(t -> now.put(t.giver(), t));
         now.values().stream().filter(t -> !was.containsValue(t))
                 .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL across squads: {} rations", t.giver(), t.receiver(), t.count()));
         acrossSquads = Map.copyOf(now);

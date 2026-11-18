@@ -30,4 +30,4 @@ It is also the stockpile: soldiers carrying a full load of gathered logs or cobb
 «foothold»</foothold>
 
 «endif»
-«squads»Give each squad its objective now.
+«squads»Give each squad its objective now: «roster»

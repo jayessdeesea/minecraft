@@ -212,4 +212,14 @@ class SpringAiPlatoonLeaderTest {
                 () -> SpringAiPlatoonLeader.toObjectives(new PlatoonLeaderReply(List.of(objective("Alpha"), objective("Bravo"), objective("Charlie"))), squads));
         assertEquals(2, SpringAiPlatoonLeader.toObjectives(new PlatoonLeaderReply(List.of(objective("Bravo"), objective("Alpha"))), squads).size());
     }
+
+    @Test
+    void theReplyAskedForIsCountedAndNamed() {
+        SquadStatus alpha = new SquadStatus("Alpha", new Report.InPosition(), List.of(), List.of(), Optional.empty(), false,
+                java.util.OptionalInt.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+        SquadStatus bravo = new SquadStatus("Bravo", new Report.InPosition(), List.of(), List.of(), Optional.empty(), false,
+                java.util.OptionalInt.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+        String roster = SpringAiPlatoonLeader.roster(List.of(alpha, bravo));
+        assertEquals("2 objective(s), exactly one for each of Alpha, Bravo, in that order", roster.substring(0, roster.indexOf(". ")));
+    }
 }
