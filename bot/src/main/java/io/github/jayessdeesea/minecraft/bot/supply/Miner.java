@@ -75,6 +75,12 @@ public final class Miner {
     private int oreTicks;
     private Position standAt;
     private int lastStep = -1;
+    /**
+     * The branch it's on, kept till it's cut, blocked or waiting: live (field410-412), Dana stood between
+     * the roots of branches 47 and 49, each picked in turn every second or two as her share shifted under
+     * her, 112-418 times a night, her stand moving 3 blocks each time and never reached - no ore.
+     */
+    private int keptTunnel = -1;
 
     public Miner(String name, PlaySession session, Inventory inventory) {
         this.name = name;
@@ -163,7 +169,13 @@ public final class Miner {
             // the main tunnel's cutter still stands on, two stood on one cell.
             boolean mainOpen = !blocked.contains(0) && share.filter(mine -> !mine.contains(0)).isPresent()
                     && notReached(world, cuts.stream().filter(c -> c.tunnel() <= 0).toList(), Set.of());
-            next = mainOpen ? OptionalInt.empty() : firstUncut(world, cuts, skipped);
+            OptionalInt held = OptionalInt.empty();
+            int kept = keptTunnel;
+            if (kept > 0 && !blocked.contains(kept) && !waiting.contains(kept)) {
+                Set<Integer> others = cuts.stream().map(Staircase.Cut::tunnel).filter(t -> t != kept).collect(Collectors.toSet());
+                held = firstUncut(world, cuts, others);
+            }
+            next = held.isPresent() ? held : mainOpen ? OptionalInt.empty() : firstUncut(world, cuts, skipped);
             if (next.isEmpty() && share.isPresent() && (mainOpen || notReached(world, cuts, skipped))) {
                 // Its tunnels' roots not cut to yet: it waits at the landing once the stairs are down;
                 // before, on the stairs a few steps behind the one cutting, down the mine with it - at
@@ -281,6 +293,7 @@ public final class Miner {
             blocked.add(cut.tunnel());
         }
         int k = next.getAsInt();
+        keptTunnel = cut.tunnel() > 0 ? cut.tunnel() : -1;
         BlockPos from = cut.stand();
         standAt = new Position(from.x() + 0.5, from.y(), from.z() + 0.5);
         if (k != lastStep) {
