@@ -1354,6 +1354,32 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
     }
 
+    /**
+     * Cells the model took as a block on a soldier's word (DeterministicSoldier.takeSnag), when - every soldier's,
+     * since the model is shared - and cells taken back from it, when.
+     */
+    private final Map<BlockPos, Long> snags = new ConcurrentHashMap<>();
+    private final Map<BlockPos, Long> snagsTakenBack = new ConcurrentHashMap<>();
+    /** How long a snag taken back isn't marked again: what stops the body there isn't a block. */
+    static final long SNAG_TAKEN_BACK_MILLIS = 120_000;
+
+    /**
+     * A snag that wouldn't break - the server never answered the break, so the block the model took on a soldier's
+     * word isn't there - taken back, whichever breaker tried it (backlog/world-model-stale.md). Live (field443), Bob
+     * had 45 cells round him made snags in a night and Pete failed one 46 times: only the doorway's breaker on the
+     * newest snag ever took one back, and the rest walled them in.
+     */
+    private Optional<BlockPos> takeBackSnag(String name, Breacher breacher) {
+        Optional<BlockPos> failed = breacher.takeFailure().filter(snags::containsKey);
+        failed.ifPresent(cell -> {
+            snags.remove(cell);
+            snagsTakenBack.put(cell, clockwork.millis());
+            chunkCache.setBlock(cell.x(), cell.y(), cell.z(), 0);
+            LOG.warn("[World] {}'s snag at {} wouldn't break - not a block; the model takes it back", name, cell);
+        });
+        return failed;
+    }
+
     /** What each surface chest held when a load last went in: the stockpile is all of them, not one. */
     private final Map<BlockPos, Stockpile> chestsSeen = new ConcurrentHashMap<>();
 
@@ -7466,8 +7492,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .map(Map.Entry::getKey).findFirst();
                 if (standingThere.isPresent()) {
                     LOG.warn("[World] {} stuck short of {} {} times - {} stands there", name, cell, DeterministicSoldier.SNAG_TRIES, standingThere.get());
-                } else if (!world.isSolid(cell.x(), cell.y(), cell.z())) {
+                } else if (!world.isSolid(cell.x(), cell.y(), cell.z())
+                        && clockwork.millis() - snagsTakenBack.getOrDefault(cell, Long.MIN_VALUE / 2) >= SNAG_TAKEN_BACK_MILLIS) {
                     chunkCache.setBlock(cell.x(), cell.y(), cell.z(), STONE_STATE);
+                    snags.put(cell, clockwork.millis());
                     LOG.warn("[World] {} stuck short of {} {} times - the model takes it as a block, and breaks it", name, cell, DeterministicSoldier.SNAG_TRIES);
                     snagMarked.set(cell);
                     wayOut.set(List.of(cell, cell.offset(0, 1, 0)));
@@ -7769,11 +7797,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                     // The server never broke it: the snag the model took as a block on this soldier's word
                     // isn't one - taken back, or the phantom would wall it in for good (field164, Bob).
-                    doorway.takeFailure().filter(cell -> cell.equals(snagMarked.get())).ifPresent(cell -> {
-                        chunkCache.setBlock(cell.x(), cell.y(), cell.z(), 0);
+                    takeBackSnag(name, doorway).ifPresent(cell -> {
                         snagMarked.set(null);
                         wayOut.set(List.of());
-                        LOG.warn("[World] {}'s snag at {} wouldn't break - not a block; the model takes it back", name, cell);
                     });
                 } else {
                     doorway.stop();
@@ -8413,6 +8439,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<BlockPos> cut = soldier.cutting();
             if (!cut.isEmpty()) {
                 stepCutter.tick(world, cut);
+                takeBackSnag(name, stepCutter); // a step cut into a snag that isn't a block, as the doorway's
             } else {
                 stepCutter.stop();
             }

@@ -36,7 +36,9 @@ the server's word that it's solid, and the model told so. Not every one: a squad
 too (field333, Bob pillaring into the cell Alice stood in), and a step now waits for a body in its
 cell to move rather than being sent ("[Bob] its step at ... waits for Alice to move out of it").
 
-- **A snag marked solid where the server has air is never broken, and never let go.** Live (field443), Pete
+- **Built:** a snag either breaker can't break - the doorway's or the step cutter's - is taken back, every soldier's
+  snags kept garrison-wide (`SoldierRunner.takeBackSnag`), and not marked again for two minutes. Before it:
+  **a snag marked solid where the server has air was never broken, and never let go.** Live (field443), Pete
   on his stair up at (23, 37, 15) failed "break (23, 37, 16): expected broken within 40 ticks" 46 times in
   five minutes, the dig's break time waited out each time; Bob, boxed in at (43, 55, -10), had 45 cells round
   him made snags in a night ("the model takes it as a block, and breaks it") and broke none. A break the
