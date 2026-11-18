@@ -805,7 +805,9 @@ it left there, and a squadmate waits for it.
   patrol base or on its wall.
 - **The mine base's**, at the bottom of the camp's stairs (§16): for a soldier more than 3 blocks
   down, once the landing is cut. By night it's a mining squad's only workshop, so nobody climbs
-  out into the dark for a tool. Only for a soldier under the ground or within 32 across of the mine's
+  out into the dark for a tool - and no armour is made there: the shift's work is the ore, and
+  armour waits for the day's workshop (live, the night's ore fell from 51 to 18 as miners queued at
+  the base's one furnace for copper armour). Only for a soldier under the ground or within 32 across of the mine's
   head: one on the surface elsewhere uses its squad's own (live, a soldier on the surface 70 blocks off was sent down to a
   dried-up mine's base at y=-48, walked through the caves, and was stranded).
 

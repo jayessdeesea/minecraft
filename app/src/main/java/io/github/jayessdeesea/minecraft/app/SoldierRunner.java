@@ -7257,7 +7257,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Not a keep builder's with a full load: it unloads first. A rung is made through planks,
             // sticks and a table, each a slot; in the squad simulation a builder four slots from full
             // made the tool load's swords until it had no slot for the next.
-            Optional<Recipe> rung = keepHands.contains(name) && Pack.freeSlots(inventory) <= KEEP_FULL_AT ? Optional.empty() : ladderStep.get();
+            // Armour isn't made down the mine by night: the shift's work is the ore, and its base has one
+            // furnace. Live (field392-397), the night's ore fell 51, 27, 44, 25, 18 as its miners walked to the
+            // base for copper armour 222-440 times a run, and gave it up 12-39 times, the furnace held.
+            // By day it's made at the squad's workshop on the surface.
+            boolean belowByNight = chainOfCommand.time().map(TimeOfDay::dark).orElse(false) && underground(status.position());
+            Optional<Recipe> rung = (keepHands.contains(name) && Pack.freeSlots(inventory) <= KEEP_FULL_AT ? Optional.<Recipe>empty() : ladderStep.get())
+                    .filter(r -> !(belowByNight && r.makes() == ItemClassRegistry.ItemClass.ARMOUR));
             rung.ifPresent(tools::add);
             // A lumberjack's axe: a builder sent to cut trees for the keep makes a stone one first, from
             // the cobblestone it carries (operator, 2026-11-14: the lumberjacks use axes).

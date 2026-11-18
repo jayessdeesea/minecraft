@@ -32,6 +32,17 @@ objective, which is where the squad last saw some.
 - Fran and Bob died gathering 50-60 blocks out (a creeper, pillagers). A gather that far from the
   camp is its own question: the general's tree farm is meant to bring the wood in.
 
+- **A stair up laid and never dug (field393-397, Eli).** Sent down to a dried-up mine's base for a
+  chestplate (fixed: a surface soldier crafts at its squad's workshop), Eli was stranded in a pocket
+  at (-86, -43, -18) beside a waterfall. Plugging the water (fixed) let the engineer lay a stair up,
+  304 blocks, at 16:06 and again at 16:15 and 16:25 - and he stood on, his order a MoveTo to the
+  dig box's top corner (-101.5, 64, -29.5), "no route". That order is the stair-up branch's fallback
+  when the clearer has no stand (`SoldierRunner`, "until it has one, toward the stair's foot" - the
+  box's min corner at its top, not its foot). Two suspects, not yet told apart: his unit flips
+  Bravo/Bravo-miner every ~10 min, each flip a new `Recovery` and a window in which his armourer
+  takes his hands for a walk to a workshop he can't reach; and the clearer finding no stand for the
+  stair's lowest cut from inside the pocket. Next: log the clearer's first cell and stand for a
+  recovery dig, and the stair's first cells.
 - **Stranded with no pickaxe (field360, 06:29).** Kate, routed into a cave at y=47 on her way to the
   mine, was pulled out by recovery 35 under the ground at y=62 with two shovels, no pickaxe, no
   cobblestone, one log and no bread: her 88-block stair up is dug by hand, 150 ticks a stone block
