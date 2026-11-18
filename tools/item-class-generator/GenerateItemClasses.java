@@ -49,7 +49,7 @@ public class GenerateItemClasses {
         Map<Integer, String> classes = new TreeMap<>();
         Set<String> unmatched = new TreeSet<>(WEAPONS);
         unmatched.addAll(ROUNDS);
-        unmatched.addAll(Set.of("stick", "crafting_table", "cobblestone", "wooden_pickaxe", "furnace", "coal", "charcoal", "torch",
+        unmatched.addAll(Set.of("stick", "crafting_table", "cobblestone", "cobbled_deepslate", "wooden_pickaxe", "furnace", "coal", "charcoal", "torch",
                 "raw_iron", "iron_ingot", "shield", "wheat_seeds", "wheat", "wooden_hoe", "dirt",
                 "string", "flint", "feather", "diamond", "raw_copper", "copper_ingot", "white_wool", "white_bed"));
         unmatched.addAll(MINERALS);
@@ -65,7 +65,9 @@ public class GenerateItemClasses {
                     : name.endsWith("_planks") ? 'P'
                     : name.equals("stick") ? 'S'
                     : name.equals("crafting_table") ? 'C'
-                    : name.equals("cobblestone") ? 'K'
+                    // Cobbled deepslate is cobblestone below y=0: vanilla's stone tools and furnace take it, and it
+                    // floors and walls as well. Live (field427), Olga at y=-3, stranded with "no blocks", threw away 16.
+                    : name.equals("cobblestone") || name.equals("cobbled_deepslate") ? 'K'
                     : name.endsWith("_pickaxe") ? 'X'
                     : food.contains(name) ? 'F'
                     : name.equals("furnace") ? 'U'

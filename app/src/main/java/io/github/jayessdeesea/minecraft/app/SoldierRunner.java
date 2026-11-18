@@ -5278,7 +5278,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             List<SoldierStatus> reported = cutOff(statuses.stream().map(s -> ownReports.getOrDefault(s.name(), s)).toList());
             orders = ReactToContact.orders(statuses, state.recovery.orders(reported,
                     Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, formation(order, statuses), state.recovery::recovering,
-                                    chainOfCommand.time().map(TimeOfDay::dark).orElse(false))),
+                                    chainOfCommand.time().map(TimeOfDay::dark).orElse(false),
+                                    // The squad's mine by night: where a replacement too far to link up goes, under the ground.
+                                    chainOfCommand.mineObjective(Plan.squadOf(squadName)).map(Objective::location))),
                             order.objective(), nightSupply(order.objective())), stairDown(squadName), stairUp(squadName), pillarDown(squadName)));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);

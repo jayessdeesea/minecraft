@@ -422,7 +422,9 @@ on a builder in a dead end at a mine's bottom and stood on the stair above him a
 squad member, and within 6 blocks it has linked up and gets a formation slot again. After dark, one more than
 32 from its squad holds where it respawned till dawn: live, three killed at the mine's faces respawned at the keep,
 set off 110 blocks east across the dark, and each was shot on the way. Killed again where it waited, it links up
-after all: live, one waiting at the world's spawn was shot there three times in two and a half minutes. Recognition is
+after all: live, one waiting at the world's spawn was shot there three times in two and a half minutes. With
+its squad's mine for the night, it goes down that instead, neither waiting nor crossing the open (live, one was
+shot four times in three minutes, at the spawn and on the way from it, its squad 140 blocks off and the mine 35). Recognition is
 just knowing where the squad is.
 
 Each death is logged as a casualty report (`[Casualty]`, `app.FlightRecorder`): the server's death
@@ -1459,7 +1461,7 @@ where it meets the tunnel. Ore under a tunnel's floor is
 left so as not to hole it. A tunnel over an open cave is floored: cobblestone put in the gap under
 its next cell, against the solid block beside it - or, in a wide cave with none, against a block put
 beside the gap first, built out from the stone it touches - and the tunnel goes on - 24 blocks a tunnel at the
-most (`Miner.BRIDGE_TRIES`), with cobblestone or else dirt; with 4 or fewer carried the tunnel waits
+most (`Miner.BRIDGE_TRIES`), with cobblestone - cobbled deepslate counts, as vanilla's recipes count it - or else dirt; with 4 or fewer carried the tunnel waits
 while the others are cut, and their stone floors it - the last 4 kept back to climb or bridge out with
 (`Miner.FLOOR_RESERVE`: live, one floored a cave with all four it carried and stood stranded between
 its holes all night). Live, every branch met a cave and was given

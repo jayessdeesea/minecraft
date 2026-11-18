@@ -68,6 +68,20 @@ class LinkUpTest {
         assertEquals(103, order.x(), 0.01, "twice dead: it closes on its squad");
     }
 
+    /** With the squad's mine to go down, a far replacement after dark goes down it, neither waiting nor crossing the open. */
+    @Test
+    void afterDarkAFarReplacementGoesDownItsSquadsMine() {
+        LinkUp linkUp = new LinkUp();
+        linkUp.reconstitute(List.of(soldier("Alice", 100, 0, new Report.Moving(), 0), soldier("Bob", 103, 0, new Report.Moving(), 0)));
+        List<SoldierStatus> formed = linkUp.reconstitute(List.of(
+                soldier("Alice", 0, 0, new Report.Idle(), 2), soldier("Bob", 103, 0, new Report.Moving(), 0)));
+        int alice = formed.indexOf(formed.stream().filter(s -> s.name().equals("Alice")).findFirst().orElseThrow());
+        Order.MoveTo order = (Order.MoveTo) linkUp.orders(formed, slots(2), n -> false, true,
+                java.util.Optional.of(new Position(35, 16, 8))).get(alice);
+        assertEquals(35, order.x(), 0.01, "down the squad's mine");
+        assertEquals(16, order.y(), 0.01);
+    }
+
     @Test
     void aLoneReplacementKeepsItsOwnOrder() {
         LinkUp linkUp = new LinkUp();

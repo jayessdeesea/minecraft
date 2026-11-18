@@ -1,12 +1,13 @@
 # Generated from the pinned server jar's `--reports` registries.json by
 # tools/item-class-generator. One counted item per line: <id> <class> <name>,
 # W weapon, A armour, R arrows; and what a wooden sword is made from: L logs, P planks,
-# S stick, C crafting table; K cobblestone, X pickaxes; F food eaten as rations;
+# S stick, C crafting table; K cobblestone or cobbled deepslate, X pickaxes; F food eaten as rations;
 # U furnace, O coal or charcoal, T torch; M raw iron, N iron ingot, H shield;
 # E wheat seeds, Y wheat, Z hoes, B saplings, D dirt; J string, Q flint, V feathers, I diamonds, G raw copper, c copper ingot.
 # h chest, l ladder, f wooden fences, g fence gates, b bucket, w water bucket; u white wool, d beds; v shovels;
 # m minerals - redstone, lapis, emerald, gold, quartz, amethyst.
 # Everything NOT listed is just carried.
+9 K cobbled_deepslate
 55 D dirt
 62 K cobblestone
 63 P oak_planks

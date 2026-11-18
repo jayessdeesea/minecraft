@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 
 /**
@@ -103,6 +104,17 @@ public final class LinkUp {
      */
     public List<Order> orders(List<SoldierStatus> reconstituted, List<Order> formationOrders, java.util.function.Predicate<String> stranded,
                               boolean dark) {
+        return orders(reconstituted, formationOrders, stranded, dark, Optional.empty());
+    }
+
+    /**
+     * As {@link #orders(List, List, java.util.function.Predicate, boolean)}, with the squad's {@code shelter} for
+     * the night - its mine, under the ground: a replacement too far to link up across the dark goes down it rather
+     * than wait in the open. Live (field427), Hal was shot four times in three minutes, waiting at the world's spawn
+     * and crossing from it to his squad 140 blocks off; the squad's mine was 35 away.
+     */
+    public List<Order> orders(List<SoldierStatus> reconstituted, List<Order> formationOrders, java.util.function.Predicate<String> stranded,
+                              boolean dark, Optional<Position> shelter) {
         List<SoldierStatus> formed = reconstituted.stream().filter(s -> !(s.report() instanceof Report.LinkingUp)).toList();
         boolean inContact = formed.stream().anyMatch(s -> s.report() instanceof Report.InContact);
         List<Order> orders = new ArrayList<>(formationOrders);
@@ -115,6 +127,11 @@ public final class LinkUp {
                 // Alice was shot at the world's spawn three times in two and a half minutes, waiting for dawn there.
                 int deaths = soldier.condition().map(Condition::deaths).orElse(0);
                 boolean killedWaiting = deaths > linkedDeaths.getOrDefault(soldier.name(), 0) + 1;
+                if (dark && shelter.isPresent() && horizontalDistance(target, soldier.position()) > NIGHT_LINK_REACH) {
+                    Position down = shelter.get();
+                    orders.set(i, new Order.MoveTo(down.x(), down.y(), down.z(), APPROACH_TOLERANCE, VERTICAL_TOLERANCE, Risk.LOW));
+                    continue;
+                }
                 if (dark && !killedWaiting && horizontalDistance(target, soldier.position()) > NIGHT_LINK_REACH) {
                     Position here = soldier.position();
                     orders.set(i, new Order.MoveTo(here.x(), here.y(), here.z(), APPROACH_TOLERANCE, VERTICAL_TOLERANCE, Risk.LOW));
