@@ -3086,7 +3086,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             }
                         }
                     }
-                    chainOfCommand.onFlattenCrew(Math.max(1, (Math.max(columns.size(), ahead) + BLOCKS_A_BUILDER - 1)
+                    // Never fewer than one squad (operator, 2026-11-17: one squad on it by day, two or three collecting
+                    // resources if necessary): a level's last blocks at the bench's edge, sized to one builder
+                    // or none, let every squad go elsewhere and the level stood. Live (field395-414), y=90 stood a day
+                    // at 520, 55, 12, 6 blocks left - "0 of 0 builders" for hours - and the next level waited on it.
+                    chainOfCommand.onFlattenCrew(Math.max(MIN_KEEP_BUILDERS, (Math.max(columns.size(), ahead) + BLOCKS_A_BUILDER - 1)
                             / BLOCKS_A_BUILDER));
                 }
             }
@@ -4048,6 +4052,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** A builder's standard share of a level, the crew sized from it: one builder to a level of 24 blocks or fewer. */
     static final int BLOCKS_A_BUILDER = 24;
+    /** The fewest builders the keep's level is crewed with by day: one squad, whatever its size. */
+    static final int MIN_KEEP_BUILDERS = 4;
     /** How far down a column whose top was cut since the site's scan is followed live: a scan's few cuts. */
     static final int LIVE_TOP_DROP = 4;
     /** Blocks left in one builder's rectangles worth splitting with one that has none: half each, a share or two. */
