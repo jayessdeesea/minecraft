@@ -220,7 +220,7 @@ public final class Clearer {
             }
         }
         // Stands it can get to from where it is - on foot, on the blocks it carries, or cutting steps.
-        BlockPos feet = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
+        BlockPos feet = Pathfinder.standingCell(world, soldier.x(), soldier.y(), soldier.z());
         int span = cover.stream().mapToInt(c -> Math.max(Math.abs(c.x() - feet.x()), Math.abs(c.z() - feet.z()))).max().orElse(0) + REACH_MARGIN;
         Set<BlockPos> reachable = Pathfinder.climbs(world, feet, span, REACH_BUDGET,
                 inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT),

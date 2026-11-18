@@ -68,6 +68,45 @@ public final class Pathfinder {
     private Pathfinder() {
     }
 
+    /**
+     * The cell a body at ({@code x}, {@code y}, {@code z}) stands in: the one it's in, unless that has no
+     * floor and the body, 0.6 wide, stands on the edge of a block beside it - then that block's cell,
+     * the nearest such. Live, a farmer on a block's edge over the crop beside it planned every route
+     * from the crop's cell, with no floor, and reported no route for good; and a stranded soldier's
+     * clearer, its stands looked for from the floorless cell, found none to cut its stair up from.
+     */
+    public static BlockPos standingCell(WorldView world, double x, double y, double z) {
+        BlockPos here = BlockPos.containing(x, y, z);
+        // On a block not quite a block high - farmland, a path - its feet are just under the next
+        // cell, and that's the one it stands in: live, farmers planned every route from inside the
+        // farmland under them, and reported "no route" to the cell they stood in.
+        if (world.isSolid(here.x(), here.y(), here.z()) && y - here.y() >= PARTIAL_BLOCK_TOP) {
+            here = here.offset(0, 1, 0);
+        }
+        if (standable(world, here) || swimmable(world, here)) {
+            return here;
+        }
+        BlockPos best = here;
+        double bestDistance = Double.MAX_VALUE;
+        for (int cx = (int) Math.floor(x - HALF_WIDTH); cx <= (int) Math.floor(x + HALF_WIDTH - EPSILON); cx++) {
+            for (int cz = (int) Math.floor(z - HALF_WIDTH); cz <= (int) Math.floor(z + HALF_WIDTH - EPSILON); cz++) {
+                BlockPos cell = new BlockPos(cx, here.y(), cz);
+                double distance = Math.hypot(cx + 0.5 - x, cz + 0.5 - z);
+                if (!cell.equals(here) && standable(world, cell) && distance < bestDistance) {
+                    best = cell;
+                    bestDistance = distance;
+                }
+            }
+        }
+        return best;
+    }
+
+    /** Half a body's width: a player's box is 0.6 x 1.8 x 0.6. */
+    private static final double HALF_WIDTH = 0.3;
+    private static final double EPSILON = 1e-9;
+    /** Feet this far up a solid cell are on its top: farmland and paths are 15/16 high. */
+    public static final double PARTIAL_BLOCK_TOP = 0.75;
+
     public static boolean standable(WorldView world, BlockPos cell) {
         return clear(world, cell) && world.isSolid(cell.x(), cell.y() - 1, cell.z());
     }

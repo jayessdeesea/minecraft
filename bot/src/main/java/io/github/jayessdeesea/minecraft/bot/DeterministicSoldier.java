@@ -201,33 +201,11 @@ public final class DeterministicSoldier implements Soldier {
      * crop's cell, with no floor, and it reported no route for good.
      */
     static BlockPos standingCell(WorldView world, Position at) {
-        BlockPos here = BlockPos.containing(at.x(), at.y(), at.z());
-        // On a block not quite a block high - farmland, a path - its feet are just under the next
-        // cell, and that's the one it stands in: live, farmers planned every route from inside the
-        // farmland under them, and reported "no route" to the cell they stood in.
-        if (world.isSolid(here.x(), here.y(), here.z()) && at.y() - here.y() >= PARTIAL_BLOCK_TOP) {
-            here = here.offset(0, 1, 0);
-        }
-        if (Pathfinder.standable(world, here) || Pathfinder.swimmable(world, here)) {
-            return here;
-        }
-        BlockPos best = here;
-        double bestDistance = Double.MAX_VALUE;
-        for (int x = (int) Math.floor(at.x() - HALF_WIDTH); x <= (int) Math.floor(at.x() + HALF_WIDTH - EPSILON); x++) {
-            for (int z = (int) Math.floor(at.z() - HALF_WIDTH); z <= (int) Math.floor(at.z() + HALF_WIDTH - EPSILON); z++) {
-                BlockPos cell = new BlockPos(x, here.y(), z);
-                double distance = Math.hypot(x + 0.5 - at.x(), z + 0.5 - at.z());
-                if (!cell.equals(here) && Pathfinder.standable(world, cell) && distance < bestDistance) {
-                    best = cell;
-                    bestDistance = distance;
-                }
-            }
-        }
-        return best;
+        return Pathfinder.standingCell(world, at.x(), at.y(), at.z());
     }
     private static final double EPSILON = 1e-9;
     /** Feet this far up a solid cell are on its top: farmland and paths are 15/16 high. */
-    static final double PARTIAL_BLOCK_TOP = 0.75;
+    static final double PARTIAL_BLOCK_TOP = Pathfinder.PARTIAL_BLOCK_TOP;
     /** Swimming at the surface, blocks per tick: about vanilla's 2 blocks/s, half a walk. */
     static final double SWIM_STEP = 0.1;
     /** Afloat, the feet this far into the top block of water: the head stays out, so no drowning. */
