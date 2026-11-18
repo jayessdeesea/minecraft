@@ -76,4 +76,14 @@ class FlattenTest {
         assertEquals(Flatten.Side.WEST, Flatten.parse("-48 -16 -16 16 62").orElseThrow().side());
         assertEquals(java.util.Optional.empty(), Flatten.parse("-48 -16 -16 16 62 up"));
     }
+
+    /** A soil site: its top layer's in the dig, for its rock; read in either order with "north". */
+    @Test
+    void aSoilSitesTopLayerIsInItsDig() {
+        Flatten farm = Flatten.parse("-48 -16 -16 16 62 soil north").orElseThrow();
+        assertEquals(new Flatten(-48, -16, -16, 16, 62, Flatten.Side.NORTH, true), farm);
+        assertEquals(62, farm.dig().minY());
+        assertEquals(63, Flatten.parse("-48 -16 -16 16 62 north").orElseThrow().dig().minY());
+        assertEquals("x=-48..-16 z=-16..16 to y=62, depots north, topped with soil", farm.describe());
+    }
 }

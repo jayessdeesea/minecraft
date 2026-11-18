@@ -39,14 +39,9 @@ the world, not from reports, and shown to the squad leader and the platoon leade
    more hands.
 
 ## The farm and grove ground (operator, 2026-11-17)
-Flatten x=-48..-16, z=-16..16 first - the keep's ground run west - to a block under sea level, y=62,
-the keep's own floor, and backfill its top with dirt: a level of soil for groves and the farm, which
-no site near the depot has had (backlog/renewables.md). Before it:
-- **Salvage:** the depot's chests at (-27, 71, 5) stand in it, and the dig takes no chest down - each
-  is emptied into the new depot first, then dug (backlog/salvage-and-pack.md, not built).
-- **The new depot** off the site, clear of the camp's farm at x=-60 - the north edge, z < -16, rather
-  than the west edge the depot is sited off now (operator's call, asked 2026-11-17).
-- About 1,100 columns from y=70-75 to 62, eight to thirteen levels, one squad on it by day.
+x=-48..-16, z=-16..16 to y=62, topped with soil: under way (`!flatten -48 -16 -16 16 62 north soil` -
+the north depot, salvage and the soil top are built, docs/military-doctrine.md § 17). Left: the groves
+and the farm moved onto it once it's down (backlog/renewables.md), and the keep's site after it.
 
 
 - **Built:** the crew sized to the level under way, squads released and called back

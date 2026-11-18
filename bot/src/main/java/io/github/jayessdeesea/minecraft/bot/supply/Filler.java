@@ -27,6 +27,8 @@ public final class Filler {
     static final List<ItemClass> MATERIALS = List.of(ItemClass.COBBLESTONE, ItemClass.DIRT);
     /** What a floor endermen can't take apart is filled with: the keep's slab. */
     public static final List<ItemClass> STONE = List.of(ItemClass.COBBLESTONE);
+    /** What ground to grow on is filled with: a soil site's top. */
+    public static final List<ItemClass> SOIL = List.of(ItemClass.DIRT);
 
     private final String name;
     private final Inventory inventory;

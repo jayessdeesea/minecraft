@@ -91,13 +91,26 @@ public sealed interface Order {
      * shaft, make a floor. A cell it can't reach is left and reported. {@code stoneOnly}: cobblestone
      * and never dirt - a floor endermen can't take apart.
      */
-    record Fill(Box box, Set<Cell> except, boolean stoneOnly) implements Order {
+    record Fill(Box box, Set<Cell> except, Material material) implements Order {
+        /** What a fill puts in: cobblestone or dirt, cobblestone alone (a floor endermen can't take apart), or dirt alone (soil to grow on). */
+        public enum Material { ANY, STONE, SOIL }
+
         public Fill {
             except = Set.copyOf(except);
+            java.util.Objects.requireNonNull(material, "a fill's material");
+        }
+
+        public Fill(Box box, Set<Cell> except, boolean stoneOnly) {
+            this(box, except, stoneOnly ? Material.STONE : Material.ANY);
         }
 
         public Fill(Box box, Set<Cell> except) {
-            this(box, except, false);
+            this(box, except, Material.ANY);
+        }
+
+        /** Whether it's filled with cobblestone alone. */
+        public boolean stoneOnly() {
+            return material == Material.STONE;
         }
     }
 

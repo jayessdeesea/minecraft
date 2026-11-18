@@ -59,6 +59,26 @@ public final class Tasking {
     }
 
     /**
+     * Each of {@code hands}'s command for a soil site's top (Flatten.soil): a strip of {@code fill} each, in
+     * dirt only - {@code hands}' blocks counting dirt alone - and one short of dirt sent for a load of it
+     * from {@code borrow}, ground to be dug anyway.
+     */
+    public static Map<String, Order> soil(List<Hand> hands, Optional<Box> fill, Box borrow, Set<Cell> except, Set<String> gathering) {
+        Map<String, Order> orders = new LinkedHashMap<>();
+        if (hands.isEmpty() || fill.isEmpty()) {
+            return orders;
+        }
+        List<Box> strips = fill.get().strips(hands.size());
+        for (int i = 0; i < hands.size(); i++) {
+            Hand hand = hands.get(i);
+            boolean fetching = gathering.contains(hand.name()) ? hand.blocks() < LOAD : hand.blocks() < LOW;
+            orders.put(hand.name(), fetching ? new Order.Gather(Resource.SOIL, borrow, LOAD)
+                    : new Order.Fill(strips.get(i % strips.size()), except, Order.Fill.Material.SOIL));
+        }
+        return orders;
+    }
+
+    /**
      * Each of {@code hands}'s command for the ground work round {@code feet}: {@code dig} and
      * {@code fill} the boxes with work left in them (empty when there's none), {@code except} the
      * cells neither touches, {@code gathering} those sent for dirt last cycle.

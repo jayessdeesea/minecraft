@@ -59,4 +59,14 @@ class TaskingTest {
     void eachSoldiersBorrowPitIsOnItsOwnSide() {
         assertEquals(4, IntStream.range(0, 4).mapToObj(i -> Groundwork.borrowPit(FEET, 8, i)).distinct().count());
     }
+
+    /** A soil top: one carrying dirt fills its strip with dirt alone; one without is sent for a load. */
+    @Test
+    void aSoilTopIsFilledWithDirtAndOneShortFetchesIt() {
+        Box top = new Box(0, 62, 0, 9, 62, 9), borrow = new Box(20, 63, 0, 29, 80, 9);
+        java.util.Map<String, Order> orders = Tasking.soil(java.util.List.of(new Tasking.Hand("Alice", 64), new Tasking.Hand("Bob", 0)),
+                java.util.Optional.of(top), borrow, java.util.Set.of(), java.util.Set.of());
+        assertEquals(Order.Fill.Material.SOIL, ((Order.Fill) orders.get("Alice")).material());
+        assertEquals(borrow, ((Order.Gather) orders.get("Bob")).box());
+    }
 }

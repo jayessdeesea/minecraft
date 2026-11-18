@@ -1679,7 +1679,11 @@ site moves away from the one standing. A chest standing on the ground to flatten
 site moved onto it - is salvaged before it's dug: the site is looked over for chests every 30 s from the
 world, one of the keep's hands draws by day the depot kind each holds most of, its pack's loads going to
 the depot as any builder's, and till a chest is seen empty it stands on a 3x3 pillar of the ground under
-it, in reach (`SoldierRunner.condemned`, `salvageFor`). Dug, a chest spills what it holds. Its crew is sized to its level (backlog/flatten-campaign.md):
+it, in reach (`SoldierRunner.condemned`, `salvageFor`). Dug, a chest spills what it holds. A site whose
+top is soil (`Flatten.soil`, ground for groves and the farm) has its top layer in the dig too: its soil kept,
+its rock dug, and once the dig's done the gaps filled with dirt alone (`Order.Fill.Material.SOIL`), a builder
+short of dirt sent for a load of it from the ground east of the site past its bench, which the keep's site
+there has to have dug anyway (`Tasking.soil`). Its crew is sized to its level (backlog/flatten-campaign.md):
 at each new level the foreman says the builders its blocks want, one to 24 blocks
 (`SoldierRunner.BLOCKS_A_BUILDER`) of the widest of it and the three levels under it
 (`SoldierRunner.CREW_LOOK_AHEAD`), never fewer than one squad's (`SoldierRunner.MIN_KEEP_BUILDERS`; operator,

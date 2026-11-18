@@ -18,8 +18,10 @@ import java.util.Optional;
  * @param maxZ its south edge
  * @param top  the ground's top, kept: the floor is walked at {@code top + 1}
  * @param side the edge its depots stand off
+ * @param soil whether its top is soil: its rock dug out of the top layer and the gaps filled with dirt, ground to
+ *             grow on (operator, 2026-11-17: the farm-and-grove ground, backfilled with dirt)
  */
-public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side) {
+public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side, boolean soil) {
 
     /**
      * The edge a site's depots stand off: the west, as the keep's; or the north, where the west's ground is
@@ -30,6 +32,11 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side
     /** A site with its depots off its west edge. */
     public Flatten(int minX, int minZ, int maxX, int maxZ, int top) {
         this(minX, minZ, maxX, maxZ, top, Side.WEST);
+    }
+
+    /** A site whose top is left as it is. */
+    public Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side) {
+        this(minX, minZ, maxX, maxZ, top, side, false);
     }
 
     /** The keep's first ground: x and z -16..16 taken down to y=63 (operator, 2026-11-15). */
@@ -52,21 +59,26 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side
     }
 
     /**
-     * The site {@code text} names: "x1 z1 x2 z2 y", its corners either way round, and "north" after them
-     * for its depots off its north edge - what the operator types after {@code !flatten}. Empty for anything else.
+     * The site {@code text} names: "x1 z1 x2 z2 y", its corners either way round, then "north" for its depots
+     * off its north edge and "soil" for a top of soil, either or both - what the operator types after
+     * {@code !flatten}. Empty for anything else.
      */
     public static Optional<Flatten> parse(String text) {
         String[] words = text.strip().split("[\\s,]+");
-        if (words.length != 5 && words.length != 6) {
+        if (words.length < 5 || words.length > 7) {
             return Optional.empty();
         }
-        Side side;
-        if (words.length == 5) {
-            side = Side.WEST;
-        } else if (words[5].equalsIgnoreCase("north") || words[5].equalsIgnoreCase("west")) {
-            side = Side.valueOf(words[5].toUpperCase(Locale.ROOT));
-        } else {
-            return Optional.empty();
+        Side side = Side.WEST;
+        boolean soil = false;
+        for (int i = 5; i < words.length; i++) {
+            String word = words[i].toLowerCase(Locale.ROOT);
+            switch (word) {
+                case "north", "west" -> side = Side.valueOf(word.toUpperCase(Locale.ROOT));
+                case "soil" -> soil = true;
+                default -> {
+                    return Optional.empty();
+                }
+            }
         }
         try {
             int x1 = Integer.parseInt(words[0]), z1 = Integer.parseInt(words[1]);
@@ -74,7 +86,7 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side
             if (y < LOWEST || y > HIGHEST) {
                 return Optional.empty();
             }
-            return Optional.of(new Flatten(Math.min(x1, x2), Math.min(z1, z2), Math.max(x1, x2), Math.max(z1, z2), y, side));
+            return Optional.of(new Flatten(Math.min(x1, x2), Math.min(z1, z2), Math.max(x1, x2), Math.max(z1, z2), y, side, soil));
         } catch (NumberFormatException e) {
             return Optional.empty();
         }
@@ -90,9 +102,9 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side
         return top + 1;
     }
 
-    /** Everything from its bottom to the top of the world: dug out, top down. */
+    /** Everything from its bottom to the top of the world - and a soil site's top layer, its rock - dug out, top down. */
     public Box dig() {
-        return new Box(minX, bottom(), minZ, maxX, Keep.SKY_TOP, maxZ);
+        return new Box(minX, soil ? top : bottom(), minZ, maxX, Keep.SKY_TOP, maxZ);
     }
 
     /**
@@ -177,6 +189,6 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side
     /** As the operator would say it: "x=-16..16 z=16..32 to y=63", and "depots north" for a north side. */
     public String describe() {
         return String.format(Locale.ROOT, "x=%d..%d z=%d..%d to y=%d", minX, maxX, minZ, maxZ, top)
-                + (side == Side.NORTH ? ", depots north" : "");
+                + (side == Side.NORTH ? ", depots north" : "") + (soil ? ", topped with soil" : "");
     }
 }

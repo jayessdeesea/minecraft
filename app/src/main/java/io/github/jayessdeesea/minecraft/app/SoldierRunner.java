@@ -2543,7 +2543,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 for (int y = slab.minY(); y <= slab.maxY(); y++) {
                     // The slab's own cobblestone, and rock, which is as good: kept. Live in the squad
                     // simulation, a block laid was the dig's again, and dug and laid in turn.
-                    if (world.isStone(x, y, z) || world.isCobblestone(x, y, z)) {
+                    // A soil site's top keeps its soil instead, and its rock is dug for dirt to go in.
+                    if (ground.soil() ? world.isSoil(x, y, z) : world.isStone(x, y, z) || world.isCobblestone(x, y, z)) {
                         digExcept.add(new Cell(x, y, z));
                     }
                 }
@@ -2669,8 +2670,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         java.util.function.IntBinaryOperator stepTop = (x, z) -> stepTops.getOrDefault(((long) x << 32) ^ (z & 0xffffffffL), Integer.MIN_VALUE);
         int layer = tops.values().stream().mapToInt(Integer::intValue).max()
                 .orElse(stepTops.values().stream().mapToInt(Integer::intValue).max().orElse(ground.bottom()));
-        // Not built up for now (operator, 2026-11-15): taken down to its ground and left.
-        List<BlockPos> toFill = toDig.isEmpty() && Keep.FILL ? Clearing.toFill(world, fillShare, kept) : List.of();
+        // Not built up for now (operator, 2026-11-15): taken down to its ground and left. A soil site's top
+        // is: the gaps its rock left, filled with dirt.
+        Box soilShare = slab.strips(Math.max(1, onKeep.size())).get(share);
+        List<BlockPos> toFill = !toDig.isEmpty() ? List.of() : ground.soil() ? Clearing.toFill(world, soilShare, kept)
+                : Keep.FILL ? Clearing.toFill(world, fillShare, kept) : List.of();
         state.keepDigLeft = toDig.size();
         keepDigLeftBySquad.put(squad, toDig.size());
         state.keepFillLeft = toDig.isEmpty() ? toFill.size() : -1;
@@ -2693,7 +2697,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Each soldier a fixed range of x and z, its strip of the squad's share, from its floor up
         // (operator, 2026-11-13: you get this x range and this z range, top down) - not cut from
         // where work is left: a strip that narrow left no stand beside its last block.
-        Map<String, Order> orders = new HashMap<>(toDig.isEmpty() ? Tasking.keep(crew, Optional.empty(), bounds(toFill), kept) : Map.of());
+        Map<String, Order> orders = new HashMap<>(!toDig.isEmpty() ? Map.of()
+                : ground.soil() ? Tasking.soil(hands.stream().map(h -> new Tasking.Hand(h.name(),
+                        h.condition().flatMap(c -> c.kit()).map(Kit::dirt).orElse(0))).toList(), bounds(toFill), soilBorrow(ground), kept, state.fetchingDirt)
+                : Tasking.keep(crew, Optional.empty(), bounds(toFill), kept));
+        if (toDig.isEmpty() && ground.soil()) {
+            state.fetchingDirt.clear();
+            orders.forEach((n, o) -> {
+                if (o instanceof Order.Gather) {
+                    state.fetchingDirt.add(n);
+                }
+            });
+        }
         if (!toDig.isEmpty()) {
             orders.putAll(foremansNet(squad, onKeep, hands, crew, top, stepTop, layer, digExcept));
         } else {
@@ -4275,6 +4290,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return chainOfCommand.flatten().slab().contains(cell.x(), cell.y(), cell.z()) || walls.values().stream().anyMatch(w -> w.contains(cell));
     }
 
+    /**
+     * Where a soil site's dirt comes from: the ground east of it over its top, which the keep's own site
+     * there is to have dug anyway - not a borrow pit holed into ground that's kept.
+     */
+    private static Box soilBorrow(Flatten ground) {
+        return new Box(ground.maxX() + Flatten.BENCH + 1, ground.bottom(), ground.minZ(),
+                ground.maxX() + Flatten.BENCH + 16, Keep.SKY_TOP, ground.maxZ());
+    }
+
     /** The register's name for a command on the keep. */
     private static String keepTask(Order order) {
         return order instanceof Order.Fill ? "fill the keep" : "dig the keep";
@@ -4315,6 +4339,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else {
                     stoneFilling.remove(soldier);
                 }
+                if (f.material() == Order.Fill.Material.SOIL) {
+                    soilFilling.add(soldier);
+                } else {
+                    soilFilling.remove(soldier);
+                }
                 clearing.remove(soldier);
                 clearingTunnel.remove(soldier);
                 groundGather.remove(soldier);
@@ -4337,6 +4366,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Soldiers whose fill is in cobblestone only - the keep's - squad loop writes, tick reads. */
     private final Set<String> stoneFilling = ConcurrentHashMap.newKeySet();
+    /** Soldiers whose fill is in dirt alone: a soil site's top (Flatten.soil) - squad loop writes, tick reads. */
+    private final Set<String> soilFilling = ConcurrentHashMap.newKeySet();
 
     /** Each soldier's {@code Order.Gather} from the ground work's drill - squad loop writes, tick reads. */
     private final Map<String, Order.Gather> groundGather = new ConcurrentHashMap<>();
@@ -7354,6 +7385,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Filler plainFiller = new Filler(name, session, inventory);
         // The keep's slab is cobblestone only: a filler of its own, the plain one's dirt never in it.
         Filler paver = new Filler(name, session, inventory, Filler.STONE);
+        Filler soiler = new Filler(name, session, inventory, Filler.SOIL);
         fillers.put(name, plainFiller);
         // Logs too, last: live, a farmer with two logs and no dirt floated beside its farm for minutes.
         Builder sealer = new Builder(name, session, inventory, List.of(ItemClass.COBBLESTONE, ItemClass.DIRT, ItemClass.LOG));
@@ -8046,8 +8078,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     keepHands.contains(name) ? Optional.ofNullable(clearingStrip.get(name))
                             .map(b -> new Box(b.minX() - 1, b.minY(), b.minZ() - 1, b.maxX() + 1, b.maxY(), b.maxZ() + 1)) : Optional.empty(),
                     clearingTunnel.contains(name), scaffolding::contains)));
-            Filler filler = stoneFilling.contains(name) ? paver : plainFiller;
-            (filler == paver ? plainFiller : paver).stop();
+            Filler filler = soilFilling.contains(name) ? soiler : stoneFilling.contains(name) ? paver : plainFiller;
+            Stream.of(plainFiller, paver, soiler).filter(f -> f != filler).forEach(Filler::stop);
             fillers.put(name, filler);
             turns.put(Hands.Routine.FILLER, turn(filler::active, free -> {
                 filler.tick(status.position(), world, filling.getOrDefault(name, List.of()), free && !threatened && !foodCalls);

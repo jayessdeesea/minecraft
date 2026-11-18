@@ -166,9 +166,10 @@ doesn't authenticate names, so the list guards against accidents, not impostors.
 absolute coordinates ("hold x=-40 z=0"): the platoon leader re-reads the mission at every re-plan, so
 "40 blocks west of here" moves the objective another 40 blocks each time.
 
-`!flatten <x1> <z1> <x2> <z2> <y> [north]` sets the ground the squads flatten by day (with
+`!flatten <x1> <z1> <x2> <z2> <y> [north] [soil]` sets the ground the squads flatten by day (with
 `keep-by-day`): that rectangle taken down to y, everything above it dug out - `!flatten -16 16 16 32 63`;
-`north` stands its depots off its north edge rather than its west.
+`north` stands its depots off its north edge rather than its west, and `soil` makes its top layer soil -
+its rock dug out and the gaps filled with dirt.
 It starts as `minecraft.flatten` in `application.yml`; the WILCO on the net names the site taken over.
 
 `!escort` attaches Alpha to you as a protective detail, and `!escort <player>` to another
