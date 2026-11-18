@@ -16,6 +16,10 @@ import io.github.jayessdeesea.minecraft.command.PatrolBase;
 import io.github.jayessdeesea.minecraft.command.Plan;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import io.github.jayessdeesea.minecraft.bot.engineer.AccessRoute;
+import io.github.jayessdeesea.minecraft.bot.farm.TreeFarm;
+import io.github.jayessdeesea.minecraft.bot.supply.Staircase;
+import io.github.jayessdeesea.minecraft.command.Cell;
 
 import static io.github.jayessdeesea.minecraft.app.SoldierRunner.*;
 
@@ -142,5 +146,43 @@ final class SiteGeometry {
 
     static long column(int x, int z) {
         return ((long) x << 32) | (z & 0xffffffffL);
+    }
+
+    /** A dig of the haul road's cells and no others: a tunnel dig, cell by cell from where the cutter stands. */
+    static Order.Dig roadDig(AccessRoute road) {
+        return Order.Dig.of(road.toCut().stream().map(b -> new Cell(b.x(), b.y(), b.z())).toList());
+    }
+
+    /**
+     * How a grove site ranks, lowest best (operator, 2026-11-14: tree farms on flat ground, ideally
+     * at sea level): its cells' rise from lowest to highest counts most, then how far its middle is
+     * off sea level, then how far it is from the depot, {@code ring} blocks.
+     */
+    static int groveScore(TreeFarm grove, int ring) {
+        int low = grove.plot().stream().mapToInt(BlockPos::y).min().orElseThrow();
+        int high = grove.plot().stream().mapToInt(BlockPos::y).max().orElseThrow();
+        return 8 * (high - low) + Math.abs(grove.centre().y() - (SEA_LEVEL + 1)) + ring / 8;
+    }
+
+    /** A staircase as kept on disk: its head, its last step, and - once run on - its main tunnel's end. */
+    static Staircase keptStairs(List<BlockPos> kept, boolean well) {
+        return Staircase.kept(kept.get(0), kept.get(1), kept.size() == 3 ? Optional.of(kept.get(2)) : Optional.empty(), well);
+    }
+
+    /** Where a mine is kept on disk by {@code base}: a well's under its own key, a spiral's under the base. */
+    static String mineKey(String base, boolean well) {
+        return well ? "well " + base : base;
+    }
+
+    /** What's kept on disk of {@code stairs}: see {@link #keptStairs}. */
+    static List<BlockPos> toKeep(Staircase stairs) {
+        return stairs.stretches() == 1 ? List.of(stairs.head(), stairs.step(stairs.steps() - 1))
+                : List.of(stairs.head(), stairs.step(stairs.steps() - 1), stairs.tunnelEnd());
+    }
+
+    /** Where a squad's own level of the mine ordered at ({@code x}, {@code z}) is kept on disk. */
+    static String levelKey(int x, int z, String squad) {
+        // A file's name: a unit's name may be a path ("Alpha/miner"), which won't write.
+        return "mine" + x + "," + z + " " + squad.replaceAll("[^A-Za-z0-9]", "-");
     }
 }

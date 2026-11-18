@@ -104,6 +104,7 @@ import io.github.jayessdeesea.minecraft.command.Stockpile;
 import io.github.jayessdeesea.minecraft.command.Subsistence;
 import io.github.jayessdeesea.minecraft.command.TaskRegister;
 import io.github.jayessdeesea.minecraft.command.Tasking;
+import io.github.jayessdeesea.minecraft.command.DangerAreas;
 import io.github.jayessdeesea.minecraft.command.FarmDuties;
 import io.github.jayessdeesea.minecraft.command.WoodDuties;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
@@ -2883,10 +2884,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         keepRoadCutter = cutter;
     }
 
-    /** A dig of the haul road's cells and no others: a tunnel dig, cell by cell from where the cutter stands. */
-    private static Order.Dig roadDig(AccessRoute road) {
-        return Order.Dig.of(road.toCut().stream().map(b -> new Cell(b.x(), b.y(), b.z())).toList());
-    }
 
     /** Each squad's hands on the keep and where they stand, as its last keep cycle saw them - the squad loop's. */
     private final Map<String, Map<String, Position>> keepHandsAt = new ConcurrentHashMap<>();
@@ -3990,16 +3987,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return Optional.ofNullable(best);
     }
 
-    /**
-     * How a grove site ranks, lowest best (operator, 2026-11-14: tree farms on flat ground, ideally
-     * at sea level): its cells' rise from lowest to highest counts most, then how far its middle is
-     * off sea level, then how far it is from the depot, {@code ring} blocks.
-     */
-    static int groveScore(TreeFarm grove, int ring) {
-        int low = grove.plot().stream().mapToInt(BlockPos::y).min().orElseThrow();
-        int high = grove.plot().stream().mapToInt(BlockPos::y).max().orElseThrow();
-        return 8 * (high - low) + Math.abs(grove.centre().y() - (SEA_LEVEL + 1)) + ring / 8;
-    }
 
 
     private static boolean overlaps(Box a, Box b) {
@@ -4454,15 +4441,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return campStairs;
     }
 
-    /** A staircase as kept on disk: its head, its last step, and - once run on - its main tunnel's end. */
-    private static Staircase keptStairs(List<BlockPos> kept, boolean well) {
-        return Staircase.kept(kept.get(0), kept.get(1), kept.size() == 3 ? Optional.of(kept.get(2)) : Optional.empty(), well);
-    }
 
-    /** Where a mine is kept on disk by {@code base}: a well's under its own key, a spiral's under the base. */
-    private static String mineKey(String base, boolean well) {
-        return well ? "well " + base : base;
-    }
 
     /** The mine kept on disk by {@code base}: a well's first, else a spiral cut before the standard. */
     private Optional<Staircase> keptMine(String base) {
@@ -4470,11 +4449,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .or(() -> mineStore.load(base).filter(k -> k.size() == 2 || k.size() == 3).map(k -> keptStairs(k, false)));
     }
 
-    /** What's kept on disk of {@code stairs}: see {@link #keptStairs}. */
-    private static List<BlockPos> toKeep(Staircase stairs) {
-        return stairs.stretches() == 1 ? List.of(stairs.head(), stairs.step(stairs.steps() - 1))
-                : List.of(stairs.head(), stairs.step(stairs.steps() - 1), stairs.tunnelEnd());
-    }
 
     /** The iron an iron pickaxe takes. */
     private static final int IRON_A_PICKAXE = 3;
@@ -4527,6 +4501,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The key the sites the keep's mine has left are kept under. */
     private static final String MINES_TRIED = "minestried";
 
+    /** Where soldiers were killed lately (command.DangerAreas) - death handlers write, squad loops read, under its lock. */
+    private final DangerAreas dangerAreas = new DangerAreas();
     /** Mine heads worked out or blocked, never sited again - kept on disk. Squad loop, read at siting. */
     private final Set<BlockPos> deadWells = ConcurrentHashMap.newKeySet();
     /** The key the dead wells are kept under. */
@@ -4665,11 +4641,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return level;
     }
 
-    /** Where a squad's own level of the mine ordered at ({@code x}, {@code z}) is kept on disk. */
-    private static String levelKey(int x, int z, String squad) {
-        // A file's name: a unit's name may be a path ("Alpha/miner"), which won't write.
-        return "mine" + x + "," + z + " " + squad.replaceAll("[^A-Za-z0-9]", "-");
-    }
 
     /**
      * The squad's own level off {@code base}'s stairs (the rules of a mine: a squad to a level): the
@@ -5806,6 +5777,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Optional<String> blockedBy = crew.stream().map(stairsProgress::get)
                         .filter(p -> p instanceof Miner.Progress.Stopped s && s.why().contains("water or lava beside step"))
                         .map(p -> ((Miner.Progress.Stopped) p).why()).findFirst();
+                // A danger area too (command.DangerAreas): soldiers killed again and again by its stairs, it's bypassed.
+                long killed;
+                synchronized (dangerAreas) {
+                    killed = dangerAreas.near(state.stairs.head().x() + 0.5, state.stairs.head().z() + 0.5, now);
+                }
+                if (killed >= DangerAreas.DEATHS && blockedBy.isEmpty()) {
+                    blockedBy = Optional.of(killed + " killed within " + (int) DangerAreas.RADIUS + " blocks of its stairs in a day - a danger area");
+                }
                 if (blockedBy.isPresent() && driedUp.add(state.stairs.head())) {
                     deadWell(state.stairs.head());
                     String why = blockedBy.get();
@@ -7106,6 +7085,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     LOG.warn("[Casualty] {}", recorders.computeIfAbsent(name, n -> new FlightRecorder()).casualty(name, death));
                     String cause = death.contains("[") ? death.substring(0, death.indexOf('[')) : death;
                     casualties.merge(cause, 1, Integer::sum);
+                    Optional.ofNullable(activeSoldiers.get(name)).ifPresent(s -> {
+                        synchronized (dangerAreas) {
+                            dangerAreas.killed(s.status().position(), clockwork.millis());
+                        }
+                    });
                     afterActionReview.death(name, cause);
                     afterActionReview.commands.casualty(squadTask(unitOf(name, definition.squad())), Optional.ofNullable(activeSoldiers.get(name))
                             .map(s -> s.status().order().getClass().getSimpleName()).orElse("none"));
