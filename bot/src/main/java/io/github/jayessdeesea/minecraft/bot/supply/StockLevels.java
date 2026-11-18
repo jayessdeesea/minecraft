@@ -3,6 +3,8 @@ package io.github.jayessdeesea.minecraft.bot.supply;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.command.ProductionLevels;
+import io.github.jayessdeesea.minecraft.command.Renewable;
 import io.github.jayessdeesea.minecraft.command.Subsistence;
 
 import java.util.ArrayList;
@@ -51,11 +53,11 @@ public final class StockLevels {
         levels.put(ItemClass.LOG, new Level(io.github.jayessdeesea.minecraft.command.Keep.LOGS_RESERVE,
                 io.github.jayessdeesea.minecraft.command.Keep.LOGS_MOST));
         levels.put(ItemClass.FOOD, new Level(Subsistence.STOCKPILE_RESERVE, Subsistence.STOCKPILE_MOST));
-        levels.put(ItemClass.WHEAT, new Level(64, 256)); // bread's own levels are Subsistence's
+        levels.put(ItemClass.WHEAT, renewable(Renewable.WHEAT));
         // So common they're all but had on demand (operator, 2026-11-17): handy, never hoarded.
         levels.put(ItemClass.COBBLESTONE, new Level(0, 256));
-        levels.put(ItemClass.SAPLING, new Level(64, 256));
-        levels.put(ItemClass.SEEDS, new Level(64, 256));
+        levels.put(ItemClass.SAPLING, renewable(Renewable.SAPLINGS));
+        levels.put(ItemClass.SEEDS, renewable(Renewable.SEEDS));
         levels.put(ItemClass.STRING, new Level(64, 256));
         levels.put(ItemClass.FLINT, new Level(64, 256));
         levels.put(ItemClass.FENCE, new Level(0, 64));
@@ -65,6 +67,12 @@ public final class StockLevels {
         levels.put(ItemClass.STICK, new Level(0, 256));
         levels.put(ItemClass.DIRT, new Level(0, 256));
         return Collections.unmodifiableMap(levels);
+    }
+
+    /** A renewable's depot level: its production level's (ProductionLevels, the one table). */
+    private static Level renewable(Renewable kind) {
+        ProductionLevels.StockLevel level = ProductionLevels.STANDING.of(kind);
+        return new Level(level.least(), level.most());
     }
 
     /** How many of a kind make a trip of their own for a short reserve: a part-stack. */

@@ -237,11 +237,17 @@ counts are read each time a load goes in, or a chest is opened and found full.
 | Material | Reserve | Most | Past the most |
 |---|---|---|---|
 | Diamonds, raw iron, iron ingots | - | none | never shed; the depot's row grows for them |
-| Logs | 64 | 256 | never shed; the keep's wood party works to these, and under the reserve a released squad is sent for wood; to the most, one with nothing else to do, before bread |
-| Bread | 64 | 1,024 | under the reserve a released squad farms; to the most, one with nothing else to do; past it, it stays in the packs - each soldier carries up to 128, half of it to share |
-| Wheat | 64 | 256 | past a farmer's 64 goes in |
+| Logs | its least | its most | never shed; the keep's wood party works to these, and under the least a released squad is sent for wood; to the most, one with nothing else to do, before bread |
+| Bread | its least | its most | under the least a released squad farms; to the most, one with nothing else to do; past it, it stays in the packs - each soldier carries up to 128, half of it to share |
+| Wheat | its least | its most | past a farmer's 64 goes in |
+| Saplings, seeds | their least | their most | thrown by a full pack |
 | Raw copper, copper ingots | 64 | 256 | raw copper left out of the metal pool, thrown last by a full pack |
-| Saplings, seeds, string, flint | 64 | 256 | thrown by a full pack |
+| String, flint | 64 | 256 | thrown by a full pack |
+
+The renewables' least and most - bread, wheat, seeds, logs, saplings - are the force's production
+levels, one table for the depot and the platoon leader both (`command.ProductionLevels.STANDING`;
+docs/echelons/tenets.md, stock levels drive production). The platoon leader is shown each against
+them, a short one marked.
 | Fences | 0 | 64 | thrown by a full pack |
 | Planks, sticks | 0 | 256 | a soldier keeps 16 of each to craft with; thrown by a full pack past the most |
 | Crafting tables | 1 | 4 | thrown by a full pack |

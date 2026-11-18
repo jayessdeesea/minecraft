@@ -27,13 +27,13 @@ public final class Subsistence {
      * Bread the stockpile keeps in reserve, for whoever's short (operator, 2026-11-17: 64 to 256):
      * under it, a squad the work doesn't need goes to the farm, once nothing graver is short.
      */
-    public static final int STOCKPILE_RESERVE = 64;
+    public static final int STOCKPILE_RESERVE = ProductionLevels.STANDING.of(Renewable.BREAD).least();
     /**
      * Bread the stockpile is stocked to, and not past: the rest stays in the packs. Between the
      * reserve and this, a squad with nothing else to do farms - the lowest priority there is
      * (operator, 2026-11-17: low priority to get to 1024, but if the workers are idle, do it).
      */
-    public static final int STOCKPILE_MOST = 1024;
+    public static final int STOCKPILE_MOST = ProductionLevels.STANDING.of(Renewable.BREAD).most();
     /**
      * Rations a soldier carries before it puts the rest in the stockpile: two basic loads, the second
      * there to share (operator, 2026-11-17: carry up to 128, so they can share it with the others).

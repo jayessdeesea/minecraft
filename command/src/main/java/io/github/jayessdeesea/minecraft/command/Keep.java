@@ -56,9 +56,9 @@ public final class Keep {
      * Logs the stockpile keeps in reserve (operator, 2026-11-17: a camp goes through a lot of wood, and
      * an emergency is a signal to change): under it the wood party goes out in strength.
      */
-    public static final int LOGS_RESERVE = 64;
+    public static final int LOGS_RESERVE = ProductionLevels.STANDING.of(Renewable.LOGS).least();
     /** Logs the stockpile is stocked to: under it, one builder stays on the wood; at it, none does. */
-    public static final int LOGS_MOST = 256;
+    public static final int LOGS_MOST = ProductionLevels.STANDING.of(Renewable.LOGS).most();
 
     /**
      * Everything from the dig's bottom up to the top of the world: dug out, top down. Not to a fixed height over the floor: ground is dug only from an open top,

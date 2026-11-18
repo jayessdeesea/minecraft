@@ -231,4 +231,13 @@ class SpringAiPlatoonLeaderTest {
         assertTrue(said.contains("3 soldier(s) short of a sword or a full set of armour"), said);
         assertTrue(said.contains("Food and arms come first: no squad on KEEP today"), said);
     }
+
+    /** The day's work shows each renewable in the stockpile against its least and most, a short one marked. */
+    @Test
+    void theDaysWorkShowsTheStockpileAgainstItsLevels() {
+        String said = SpringAiPlatoonLeader.describe(new io.github.jayessdeesea.minecraft.command.DayWork(List.of(),
+                Optional.of(new io.github.jayessdeesea.minecraft.command.Stockpile(70, 0, 12, 5, 0, 0, 0, 0, 30, 200, 9)),
+                new io.github.jayessdeesea.minecraft.command.Flatten(0, 0, 9, 9, 63), OptionalInt.empty(), 0));
+        assertTrue(said.contains("bread 12 (64-1024) SHORT, wheat 30 (64-1024) SHORT, seeds 200 (64-1024), logs 70 (64-1024), saplings 9 (4-64), raw iron 5."), said);
+    }
 }

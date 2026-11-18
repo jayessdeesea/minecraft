@@ -64,12 +64,12 @@ public final class PlatoonSergeant {
     public static List<Shortfall> shortfalls(List<SquadStatus> squads, Optional<Stockpile> stockpile) {
         List<Shortfall> alarms = new ArrayList<>();
         if (squads.stream().anyMatch(s -> s.classOne().filter(c -> c.rating() == Subsistence.Rating.RED).isPresent())
-                || stockpile.filter(st -> st.rations() < Subsistence.STOCKPILE_RESERVE).isPresent()) {
+                || productShort(stockpile, Shortfall.FOOD)) {
             alarms.add(Shortfall.FOOD);
         }
         // Under the reserve, not under a depot's 16: live (field362), the keep's crew was one builder, its wood
         // party none, and the stockpile at 3 logs - nobody could make a pickaxe or a shovel.
-        if (squads.stream().anyMatch(s -> s.classFour().isPresent()) || stockpile.filter(st -> st.logs() < Keep.LOGS_RESERVE).isPresent()) {
+        if (squads.stream().anyMatch(s -> s.classFour().isPresent()) || productShort(stockpile, Shortfall.WOOD)) {
             alarms.add(Shortfall.WOOD);
         }
         if (stockpile.filter(st -> st.rawIron() + st.ironIngots() < IRON_RESERVE).isPresent()) {
@@ -84,6 +84,12 @@ public final class PlatoonSergeant {
             alarms.add(Shortfall.IRON);
         }
         return List.copyOf(alarms);
+    }
+
+    /** Whether the stockpile holds less than its least of a product - bread, logs - that {@code shortfall}'s work makes. */
+    static boolean productShort(Optional<Stockpile> stockpile, Shortfall shortfall) {
+        return stockpile.map(st -> ProductionLevels.STANDING.short_(st::count).stream()
+                .anyMatch(kind -> kind.product() && kind.shortfall() == shortfall)).orElse(false);
     }
 
     /** Whether {@code soldier} carries no sword - its kit known. */

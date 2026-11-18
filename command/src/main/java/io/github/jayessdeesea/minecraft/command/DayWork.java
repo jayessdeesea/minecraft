@@ -23,6 +23,11 @@ public record DayWork(List<PlatoonSergeant.Shortfall> shortfalls, Optional<Stock
         this(shortfalls, stores, flatten, keepLevel, keepBlocksLeft, 0);
     }
 
+    /** The levels the force keeps its renewables at - the standing ones until a mission raises them. */
+    public ProductionLevels levels() {
+        return ProductionLevels.STANDING;
+    }
+
     /** Whether food and arms come first, and nobody flattens (operator, 2026-11-18). */
     public boolean foodAndArmsFirst() {
         return shortfalls.contains(PlatoonSergeant.Shortfall.FOOD) || unarmed > 0;

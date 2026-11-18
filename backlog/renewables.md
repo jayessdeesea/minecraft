@@ -27,17 +27,9 @@ soldier does only the how.
   each cell is tilled. Wheat and spare seed go into the chest. (The operator's sketch put the
   replant after a chest trip; one pass is proposed as cheaper - to confirm.)
 - **Bread: a baker** draws wheat and puts bread in the chest, at any table.
-- **Stock levels to start** (operator; dynamic later, docs/echelons/tenets.md):
-
-  | Kind | Minimum | Most |
-  |---|---|---|
-  | Seeds | 64 | 1024 |
-  | Wheat | 64 | 1024 |
-  | Bread | 64 | 1024 |
-  | Saplings | 4 | 64 |
-  | Logs | 64 | 1024 |
-
-  Food before wood; both at once.
+- **Stock levels**: built (`command.ProductionLevels`, shown to the platoon leader). Left: a squad
+  on a kind kept on it to its most (`ProductionLevels.wanted`) in the guardrails, and the levels
+  raised for a mission (`ProductionLevels.with`) by the platoon leader. Food before wood; both at once.
 
 Done when: a live day with logs and bread both under their minimum puts one squad on each, every
 producer working only its duty's share, and both stocks rising to their most.

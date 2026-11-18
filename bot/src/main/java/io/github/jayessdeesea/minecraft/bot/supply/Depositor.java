@@ -438,7 +438,8 @@ public final class Depositor {
         stockSeen = java.util.Collections.unmodifiableMap(stock);
         return new Stockpile(chest.chestCount(ItemClass.LOG), chest.chestCount(ItemClass.COBBLESTONE), chest.chestCount(ItemClass.FOOD),
                 chest.chestCount(ItemClass.RAW_IRON), chest.chestCount(ItemClass.RAW_COPPER), chest.chestCount(ItemClass.DIRT),
-                chest.chestCount(ItemClass.IRON_INGOT), chest.chestCount(ItemClass.COPPER_INGOT));
+                chest.chestCount(ItemClass.IRON_INGOT), chest.chestCount(ItemClass.COPPER_INGOT), chest.chestCount(ItemClass.WHEAT),
+                chest.chestCount(ItemClass.SEEDS), chest.chestCount(ItemClass.SAPLING));
     }
 
     /** Whether a trip puts in the bread it carries past its basic load: not once the depot has its most (StockLevels). */

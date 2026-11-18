@@ -7403,12 +7403,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Optional.ofNullable(stashing.get()).filter(d -> d.full().isEmpty()).flatMap(Depositor::chestAt)
                         .map(chest -> BlockPos.containing(chest.x(), chest.y(), chest.z()))
                         .filter(fullChests::remove).ifPresent(chest -> saveFullChests());
-                List<Stockpile> chests = List.copyOf(chestsSeen.values());
-                chainOfCommand.onStores(new Stockpile(chests.stream().mapToInt(Stockpile::logs).sum(),
-                        chests.stream().mapToInt(Stockpile::stone).sum(), chests.stream().mapToInt(Stockpile::rations).sum(),
-                        chests.stream().mapToInt(Stockpile::rawIron).sum(), chests.stream().mapToInt(Stockpile::rawCopper).sum(),
-                        chests.stream().mapToInt(Stockpile::dirt).sum(), chests.stream().mapToInt(Stockpile::ironIngots).sum(),
-                        chests.stream().mapToInt(Stockpile::copperIngots).sum()));
+                chainOfCommand.onStores(Stockpile.sum(chestsSeen.values()));
             }
             if (mine.isEmpty() && Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).equals(stockpileFor(name))) {
                 // Only the stockpile draws come from: an outpost depot's chest, or another the load went
