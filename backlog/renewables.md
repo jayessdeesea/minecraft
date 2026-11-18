@@ -1,6 +1,6 @@
 ---
 status: proposed
-priority: P3
+priority: P1
 depends-on: [patrol-base, subsistence]
 doctrine: ATP 3-37.10 (base camps)
 ---
@@ -11,6 +11,36 @@ doctrine: ATP 3-37.10 (base camps)
 Gathering strips what's near and moves on. A force that holds ground for days needs supply that
 grows back where it stands. Which kind is possible depends entirely on the terrain. That's a real
 planning decision for the general: read the survey, pick what the ground supports.
+
+## Production duties (operator, 2026-11-18)
+The platoon leader puts a squad or two at the camp on renewables by need (docs/echelons/tenets.md,
+stock levels drive production); the squad leader gives each soldier a duty, an area and a chest; the
+soldier does only the how.
+- **Wood: woodcutters and a planter.** Each woodcutter has its own sector, fells its trees, and
+  puts the logs, saplings and sticks it picks up into its chest. A planter comes along after the
+  leaves have decayed, picks up what dropped, clears the ground and replants. The wild forest
+  first - there is no grove yet; the grove once there is one, unless the force is short. (A
+  woodcutter could replant a sapling at the stump at once, so the tree starts sooner; the planter
+  is then left the drops and the gaps.)
+- **Wheat: harvesters.** A harvester's plots are harvested and replanted in one pass - a ripe crop
+  drops its seed in the cell, so the replant is a click, not a trip through the chest - checking
+  each cell is tilled. Wheat and spare seed go into the chest. (The operator's sketch put the
+  replant after a chest trip; one pass is proposed as cheaper - to confirm.)
+- **Bread: a baker** draws wheat and puts bread in the chest, at any table.
+- **Stock levels to start** (operator; dynamic later, docs/echelons/tenets.md):
+
+  | Kind | Minimum | Most |
+  |---|---|---|
+  | Seeds | 64 | 1024 |
+  | Wheat | 64 | 1024 |
+  | Bread | 64 | 1024 |
+  | Saplings | 4 | 64 |
+  | Logs | 64 | 1024 |
+
+  Food before wood; both at once.
+
+Done when: a live day with logs and bread both under their minimum puts one squad on each, every
+producer working only its duty's share, and both stocks rising to their most.
 
 ## Where they go: production chunks (operator, 2026-11-17)
 The long-term shape: whole chunks set aside at sea level for production - one or more for wheat,

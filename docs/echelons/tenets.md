@@ -13,7 +13,10 @@ review). Most of the time nothing changes; the point is to look.
   chooses where to stand, which cell next, which route ([orders.md](soldier/orders.md)). It keeps
   to the task it's given, preempted only for a while by what it can't avoid - a fight, its own
   survival - and never fails over to a secondary task on its own (operator, 2026-11-17): stuck at
-  its task, it tries twice, then another way, and asks its squad leader once out of ways.
+  its task, it tries twice, then another way, and asks its squad leader once out of ways. What it
+  draws from which chest, what it crafts, what it hunts and what it stores are its squad leader's
+  orders, not its own errands (operator, 2026-11-18: the soldiers are responsible for the how, not
+  the what). A soldier that decides a what on its own is a defect to move up the chain.
 - **Asks its squad leader for help only when out of ways of its own**, saying what it tried and
   what's in the way (CANTCO, [military-doctrine.md § 4](../military-doctrine.md#4-reports-upward)).
   Supplies are the exception: running low on food, it asks its squadmates before it's out, and
@@ -25,6 +28,9 @@ review). Most of the time nothing changes; the point is to look.
 - **Owns the plan for each of its soldiers**: who has which role where, who is sent off on what
   ([military-doctrine.md § 18](../military-doctrine.md#18-task-organisation)). A soldier with
   nothing to do is the squad leader's miss.
+- **Owns each producer's duty**: what it produces, its area and its chest (operator, 2026-11-18) -
+  a woodcutter's sector of forest, the planter that follows it, a harvester's plots, a baker's
+  furnace. Duties split a squad's work into shares that don't overlap, passed on through chests.
 - **Thinks in few round trips.** The model decides allocation - who, where, how many - on its slow
   clock; the drills step every workflow every second, and the model sees each as a summary
   ([drills.md](squad-leader/drills.md)).
@@ -38,6 +44,9 @@ review). Most of the time nothing changes; the point is to look.
 - **Measures, doesn't guess.** It decides on the camp's standards and the squads' reports, never
   on raw world data.
 - **Never names a soldier.** Who does the work is its squad leader's.
+- **Owns what the force produces, against its stock levels** (operator, 2026-11-18): which squads
+  farm, cut and bake, put on a kind below its minimum and taken off it at its most - food before
+  wood, both at once when squads allow.
 
 ## Across the echelons: specialists produce, missions consume
 The operator's (2026-11-12). The force's materials are the force's, not a squad's or a soldier's.
@@ -52,6 +61,15 @@ The operator's (2026-11-12). The force's materials are the force's, not a squad'
   never a soldier's own errand to make up.
 - Built so far: logs, cobblestone, bread and raw ore. Ingots, and the mine worked for ore, are
   [backlog/common-stockpile.md](../../backlog/common-stockpile.md).
+
+## Across the echelons: stock levels drive production
+The operator's (2026-11-18). Each renewable the force keeps - seeds, wheat, bread, saplings, logs -
+has a minimum and a most. Below the minimum a squad is put on producing it; at the most it's taken
+off; in between, a squad on it stays on it, so nobody flaps from job to job. The levels are
+dynamic: raised before an external mission, so rations are harvested and kept on site, and the
+minimum rises as the force grows - while farms get denser and closer, so the same hands keep up.
+Production works the wild forest while there is no grove, and the grove once there is one, unless
+the force is short.
 
 ## Across the echelons: an emergency is a signal to change
 The operator's (2026-11-17): as the force expands it needs more and more supplies at its

@@ -35,6 +35,15 @@ Four tenets about maintaining the project's own self-model, not about Minecraft 
    delete every sentence describing a specific attempt or dead end — if a future reader loses
    nothing they'd act on, it was history, not knowledge, and shouldn't have been written down.
 
+## Source files stay under 1000 lines
+
+The operator's (2026-11-18). A file past 1000 lines holds more than one responsibility, and the
+next change lands in it because it's already there - the way the soldier runner collected the
+leaders' decisions. `ArchitectureTest.sourceFilesStayUnder1000Lines` enforces it as a ratchet: a
+file already over the limit is listed with its present length, may only shrink, and comes off the
+list once under; a new file over the limit fails the build. What's left to split is
+[backlog/split-oversized-sources.md](../backlog/split-oversized-sources.md).
+
 ## No fallbacks — fail loud, not gracefully-wrong
 
 Tenet, not a suggestion: when something is ambiguous, missing, or violates an invariant, the

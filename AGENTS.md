@@ -36,6 +36,8 @@ Each points to its home, which has the reasons.
 - **Model calls go through Spring AI's abstraction only**, provider chosen in config; nothing
   Anthropic-specific in decision logic. [docs/stack.md](docs/stack.md#stack)
 - **One pinned protocol version, offline mode only.** [docs/stack.md](docs/stack.md#target-environment)
+- **Source files under 1000 lines**, a ratchet `ArchitectureTest` enforces.
+  [docs/conventions.md](docs/conventions.md#source-files-stay-under-1000-lines)
 - **No mutable global state: inject it.** State lives in objects passed in, never in statics or
   singletons, so tests run in parallel - each owns its clock, server, directory and log.
   [docs/conventions.md](docs/conventions.md#no-mutable-global-state)
