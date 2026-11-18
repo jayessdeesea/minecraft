@@ -33,6 +33,11 @@ objective, which is where the squad last saw some.
   came back to their start - live (field433), Alice planned the same 69-step leg toward Alpha's mine
   head 31 times in the night, moving all the while, each ending one block short of the goal; the
   WARN's positions say next time whether it's the walker or the goal.
+- The armourer's ore is only ore the planner can route to. `Armourer.spotFor` takes a stand from
+  `Pathfinder.reachable`'s flood, which finds some the planner then can't route to: live (field428-438),
+  Eli was sent for copper 51 blocks under him and Dana for iron 73 under her from the surface, each
+  "no route" for a minute or two till the dig timed out. Wanted: the flood and the planner agree on what's
+  walkable (drops are the likely difference), or the spot is routed to before it's chosen.
 
 ## Notes
 - Fran and Bob died gathering 50-60 blocks out (a creeper, pillagers). A gather that far from the

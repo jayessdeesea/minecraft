@@ -11,6 +11,13 @@ site's west edge, which for that ground is about x=-50 to -55 - on the camp's fa
 The north edge, z < -16, keeps it off the farm; I've assumed that. Salvage (backlog/salvage-and-pack.md) is
 built once the place is settled.
 
+## Arms before the flatten? (docs/echelons/platoon-leader/operator-rules.md)
+At dawn (field438) 15 of 16 soldiers were bare-handed - kit lost with each death, no logs to make sticks
+(the depot at 3-11 of 16 logs). The platoon leader ordered "Arm the 15 soldiers who are bare-handed", and the
+guardrail put that squad on the flatten instead (one squad on the flatten, always). Should a force mostly
+unarmed put arms - wood for sticks, then swords and pickaxes - before the flatten, the guardrail standing
+aside for it? Or does the flatten keep its squad whatever?
+
 ## Shooting creepers (backlog/engagement-doctrine.md)
 Four creeper deaths tonight (Dana, Gus, Ivy, Liam), each in melee: boxed in, or engaged after the 10 s
 standoff (`DeterministicSoldier.CREEPER_STANDOFF_TICKS`), a stone sword's four hits outlasting its fuse. A
