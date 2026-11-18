@@ -34,7 +34,9 @@ final class DayWorkRules {
         Objective.Task t = objective.task();
         return switch (shortfall) {
             case FOOD -> t instanceof Objective.Task.Farm;
-            case WOOD -> t instanceof Objective.Task.TreeFarm || t instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD;
+            // Only felling: a grove planted is wood in a day or two, not logs today - live (field449-450), the
+            // stockpile at 0 logs all day, its WOOD shortfall read as covered by Charlie's TREE_FARM.
+            case WOOD -> t instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD;
             case IRON -> t instanceof Objective.Task.Mine;
         };
     }
@@ -74,7 +76,6 @@ final class DayWorkRules {
     static Optional<PlatoonSergeant.Shortfall> producing(Objective objective) {
         return switch (objective.task()) {
             case Objective.Task.Farm f -> Optional.of(PlatoonSergeant.Shortfall.FOOD);
-            case Objective.Task.TreeFarm t -> Optional.of(PlatoonSergeant.Shortfall.WOOD);
             case Objective.Task.Gather(var r) when r == Resource.WOOD -> Optional.of(PlatoonSergeant.Shortfall.WOOD);
             default -> Optional.empty();
         };

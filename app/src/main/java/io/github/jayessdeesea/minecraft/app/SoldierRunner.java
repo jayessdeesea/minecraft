@@ -7465,7 +7465,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;
             Optional<Unstash> unstash = unstashFor(status.position(), inventory, darkNow)
                     .or(() -> salvageFor(name, status.position(), inventory, darkNow));
-            armourer.digsItsMakings(!(cutting.containsKey(name) || woodDutied.contains(name) || farmDuties.containsKey(name) || keepHands.contains(name)));
+            armourer.digsItsMakings(inventory.meleeWeapons() == 0 // bare-handed, its weapon is its own upkeep (docs/echelons/tenets.md)
+                    || !(cutting.containsKey(name) || woodDutied.contains(name) || farmDuties.containsKey(name) || keepHands.contains(name)));
             // A farmer's hoe, and its wheat baked into bread three at a time - by its baker, on a farm that has one.
             FarmDuties.Duty farmDuty = farmDuties.get(name);
             FarmPlan field = farmDuty == null || farming.get(name) == null ? farming.get(name) : farmDuty.kind() == FarmDuties.Kind.BAKER ? null
@@ -8501,9 +8502,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How far out a flight recorder notes the nearest hostile. */
     private static final double RECORDED_HOSTILE_RADIUS = 24;
 
-    private static double distance(Position a, Position b) {
-        return Math.sqrt((a.x() - b.x()) * (a.x() - b.x()) + (a.y() - b.y()) * (a.y() - b.y()) + (a.z() - b.z()) * (a.z() - b.z()));
-    }
 
     /** One routine's turn at the soldier's hands. */
     private static Hands.Turn turn(BooleanSupplier active, Consumer<Boolean> tick) {

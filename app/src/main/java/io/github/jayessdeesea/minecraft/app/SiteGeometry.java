@@ -185,4 +185,8 @@ final class SiteGeometry {
         // A file's name: a unit's name may be a path ("Alpha/miner"), which won't write.
         return "mine" + x + "," + z + " " + squad.replaceAll("[^A-Za-z0-9]", "-");
     }
+
+    static double distance(Position a, Position b) {
+        return Math.sqrt((a.x() - b.x()) * (a.x() - b.x()) + (a.y() - b.y()) * (a.y() - b.y()) + (a.z() - b.z()) * (a.z() - b.z()));
+    }
 }

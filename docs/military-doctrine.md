@@ -820,7 +820,8 @@ A soldier on its order's work - cutting a mine, a wood or farm duty, building th
 its kit's makings itself (operator, 2026-11-18: a farmer doesn't start chopping trees because it has
 no hoe; `Armourer.digsItsMakings`): it says what it's short of, and draws it from the stockpile as
 above, which the force's producers fill. Live (field449), a night's mining took no ore while its
-cutters went off to dig a log and iron ore for iron pickaxes, one killed out there. Any other soldier
+cutters went off to dig a log and iron ore for iron pickaxes, one killed out there. A bare-handed soldier still gets its
+weapon's makings itself: staying armed is its own upkeep (docs/echelons/tenets.md). Any other soldier
 digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach -
 a tree or ore looked for at any height it can walk to, up a slope or down the mine's stairs, and
