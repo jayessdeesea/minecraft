@@ -42,6 +42,11 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
 1. The matrix at contact and bypass in routing: a creeper on the route gone round is built
    (docs/military-doctrine.md, contact). Left: a hostile not on the path and not targeting
    carried past - a melee hostile in contact is closed on today whatever it's doing.
+   Live (field410), Alice and Hal at Alpha's y=12 faces each closed on a skeleton in the cave
+   under them and were shot 16 blocks down, 13 s after they left their cut - a route to the archer
+   existed (down the cave, or by digging), so neither was "pinned" (`DeterministicSoldier.pinned`)
+   and both crossed the open below its bow. The it-can-I-can't cell wants an archer far below or
+   across a cave counted as out of reach: cover, carry on, report.
 2. The order fields and their defaults through Order, the squad leader and the soldier.
    A creeper holding a soldier inside its reach ten seconds is engaged (built); the rest of the
    both-reach cell - criteria and weapons control by order - is phase 2's.
