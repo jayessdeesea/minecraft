@@ -112,6 +112,22 @@ class HandoverTest {
         assertFalse(handover.active());
     }
 
+    /** A receiver it couldn't walk up to isn't walked at again for a while, whatever it's asked. */
+    @Test
+    void aReceiverItCouldntGetToIsntWalkedAtAgainForAWhile() {
+        Handover handover = new Handover("Bob", session, carrying(36, 16));
+        Position stuck = new Position(40, 64, 0);
+        for (int t = 0; t < 2000 && (t == 0 || handover.active()); t++) {
+            tick(handover, stuck, toAlice(3));
+        }
+        assertFalse(handover.active(), "the walk up failed");
+        for (int t = 0; t < Handover.COOLDOWN_TICKS + 100; t++) {
+            tick(handover, stuck, toAlice(3));
+        }
+        assertFalse(handover.active(), "not walked at again past its cooldown");
+        assertTrue(handover.barred("Alice"));
+    }
+
     @Test
     void aDeliveryWithdrawnOnTheWayIsDropped() {
         Handover handover = new Handover("Bob", session, carrying(36, 16));

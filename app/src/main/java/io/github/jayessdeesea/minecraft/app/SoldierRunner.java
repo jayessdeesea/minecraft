@@ -1182,6 +1182,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Each connected soldier's tree planting, by name. */
     private final Map<String, Forester> foresters = new ConcurrentHashMap<>();
+
+    /** Whether {@code transfer}'s giver couldn't get to its receiver lately (Handover.barred). */
+    private boolean barredHandover(CrossLevel.Transfer transfer) {
+        Handover giver = handovers.get(transfer.giver());
+        return giver != null && giver.barred(transfer.receiver());
+    }
     /** The tree farm each soldier plants, while its squad's objective is one - squad loop writes, tick reads. */
     private final Map<String, TreeFarm> planting = new ConcurrentHashMap<>();
     /** Each connected soldier's staircase cutting, by name. */
@@ -1803,11 +1809,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }));
         Map<String, CrossLevel.Transfer> was = acrossSquads;
         Map<String, CrossLevel.Transfer> now = new HashMap<>();
+        // Nor a giver at a receiver it couldn't get to (Handover.barred): another giver is looked for instead.
         // Nobody the recovery drill has, giving or given: where it's stuck nobody gets to, as for its own squad's
         // hand-overs. Live (field428), Pete - the whole crew of Delta's second level - walked at Olga, stranded in
         // the water at y=-3, fourteen times in the night, half a minute each, and the level stood.
         List<SoldierStatus> able = outOfContact.stream().filter(s -> !recovering.contains(s.name())).toList();
-        PlatoonSergeant.crossRations(able, busy, was.values()).forEach(t -> now.put(t.giver(), t));
+        PlatoonSergeant.crossRations(able, busy, was.values().stream().filter(t -> !barredHandover(t)).toList())
+                .stream().filter(t -> !barredHandover(t)).forEach(t -> now.put(t.giver(), t));
         now.values().stream().filter(t -> !was.containsValue(t))
                 .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL across squads: {} rations", t.giver(), t.receiver(), t.count()));
         acrossSquads = Map.copyOf(now);

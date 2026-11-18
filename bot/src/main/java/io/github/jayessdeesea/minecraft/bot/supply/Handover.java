@@ -85,6 +85,15 @@ public final class Handover {
     private int remaining;
     private Position backTo;
     private int sinceThrow;
+    /** Ticks this handover has run, and when each receiver it couldn't get to was last tried. */
+    private long ticks;
+    private final java.util.Map<String, Long> unreached = new java.util.HashMap<>();
+    /**
+     * How long a receiver it couldn't get to isn't walked at again: five minutes. Live (field430), Mia, in
+     * Delta's mine at y=-4, walked at Liam in Charlie's at y=-16 - near as the crow flies, rock between -
+     * ten times in the night, half a minute each, and her level's crew stood at one.
+     */
+    static final int UNREACHED_TICKS = 6000;
     /** Logs the giver kept, once the throws are answered for. */
     private int kept;
 
@@ -92,6 +101,12 @@ public final class Handover {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
+    }
+
+    /** Whether {@code receiver} was out of its reach on a delivery in the last {@link #UNREACHED_TICKS}: not walked at again yet. */
+    public synchronized boolean barred(String receiver) {
+        Long at = unreached.get(receiver);
+        return at != null && ticks - at < UNREACHED_TICKS;
     }
 
     public synchronized boolean active() {
@@ -142,8 +157,9 @@ public final class Handover {
         soldierAt = soldier;
         offered = delivery;
         sinceThrow++;
+        ticks++;
         if (script == null) {
-            if (delivery.isEmpty() || cooldown > 0) {
+            if (delivery.isEmpty() || cooldown > 0 || barred(delivery.get().receiver())) {
                 return Optional.empty();
             }
             start(delivery.get());
@@ -161,6 +177,7 @@ public final class Handover {
             case Script.Status.Interrupted _ -> finish();
             case Script.Status.Failed failed -> {
                 LOG.warn("{} couldn't hand {} to {}: {}: {}", name, what(), receiver, failed.step(), failed.reason());
+                unreached.put(receiver, ticks);
                 finish();
             }
         }
