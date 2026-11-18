@@ -465,7 +465,11 @@ public class ChainOfCommand implements DisposableBean {
             }
         }
         if (!movable.isEmpty() && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
-            int k = spare(out, movable, alarms).orElse(movable.getFirst());
+            // The squad already flattening, if one is, so the flatten keeps its crew: live (field418), the platoon
+            // leader put nobody on it twice running and the guardrail moved Charlie, then Alpha, two minutes apart.
+            Optional<Integer> flattening = movable.stream()
+                    .filter(i -> statuses.get(i).standing().filter(o -> o.task() instanceof Objective.Task.Keep).isPresent()).findFirst();
+            int k = flattening.or(() -> spare(out, movable, alarms)).orElse(movable.getFirst());
             String name = statuses.get(k).squadName();
             LOG.warn("[Guardrail] no squad on the flatten - {} put on it, not '{}'", name, out.get(k).mission());
             out.set(k, new Objective("Flatten " + flatten.describe(), spread(flatten.centre(), name),

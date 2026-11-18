@@ -87,8 +87,8 @@ You command the way the U.S. Army's mission command doctrine describes:
   it other work when the camp needs it more.
 - "task": "KEEP": the squad flattens the ground set to flatten (<day_work> says where, and the level
   it's at): it cuts that ground down a level at a time to its floor. Daytime work.
-- By day you assign the day's work from <day_work> (operator, 2026-11-17): keep at least one squad on
-  KEEP; put a squad on each shortfall it lists - FOOD with FARM, WOOD with WOOD at trees or TREE_FARM
+- By day you assign the day's work from <day_work> (operator, 2026-11-17): one squad - every day, short
+  of anything or not - on KEEP, and keep the same squad on it from one order to the next; put a squad on each shortfall it lists - FOOD with FARM, WOOD with WOOD at trees or TREE_FARM
   to plant a grove, IRON with MINE - and with two short and an odd squad over, the odd one to FOOD;
   with nothing short, the rest flatten (KEEP). More people on what's short bring in more at a time.
   If no squad is left on KEEP or a shortfall has nobody, the chain of command moves one and says so.
