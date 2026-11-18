@@ -38,6 +38,24 @@ class LinkUpTest {
      * A one-man unit's soldier, respawned, has nobody to link up with: it keeps its own order. Live,
      * a farmer alone in its detachment died, and its orders failed every tick until it rejoined.
      */
+    /**
+     * After dark a replacement far from its squad holds where it respawned till dawn, and closes on it by
+     * day: live, three killed at the mine's faces respawned at the keep and were shot crossing the dark.
+     */
+    @Test
+    void afterDarkAFarReplacementWaitsForDawn() {
+        LinkUp linkUp = new LinkUp();
+        linkUp.reconstitute(List.of(soldier("Alice", 100, 0, new Report.Moving(), 0), soldier("Bob", 103, 0, new Report.Moving(), 0)));
+        List<SoldierStatus> formed = linkUp.reconstitute(List.of(
+                soldier("Alice", 0, 0, new Report.Idle(), 1), soldier("Bob", 103, 0, new Report.Moving(), 0)));
+        Order.MoveTo night = (Order.MoveTo) linkUp.orders(formed, slots(2), n -> false, true).get(formed.indexOf(
+                formed.stream().filter(s -> s.name().equals("Alice")).findFirst().orElseThrow()));
+        assertEquals(0, night.x(), 0.01, "it holds where it respawned");
+        Order.MoveTo day = (Order.MoveTo) linkUp.orders(formed, slots(2), n -> false, false).get(formed.indexOf(
+                formed.stream().filter(s -> s.name().equals("Alice")).findFirst().orElseThrow()));
+        assertEquals(103, day.x(), 0.01, "by day it closes on its squad");
+    }
+
     @Test
     void aLoneReplacementKeepsItsOwnOrder() {
         LinkUp linkUp = new LinkUp();

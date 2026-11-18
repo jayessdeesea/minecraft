@@ -418,7 +418,9 @@ takes point. While anyone in the squad is in contact the replacement holds at th
 which is where the point man last stood with nobody in contact. Otherwise it closes on the nearest
 - never one the recovery drill (§7) has, whatever that one reports: live, a soldier rejoining closed
 on a builder in a dead end at a mine's bottom and stood on the stair above him at "no route" -
-squad member, and within 6 blocks it has linked up and gets a formation slot again. Recognition is
+squad member, and within 6 blocks it has linked up and gets a formation slot again. After dark, one more than
+32 from its squad holds where it respawned till dawn: live, three killed at the mine's faces respawned at the keep,
+set off 110 blocks east across the dark, and each was shot on the way. Recognition is
 just knowing where the squad is.
 
 Each death is logged as a casualty report (`[Casualty]`, `app.FlightRecorder`): the server's death

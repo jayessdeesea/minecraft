@@ -92,6 +92,17 @@ public final class LinkUp {
      * stair above him at "no route".
      */
     public List<Order> orders(List<SoldierStatus> reconstituted, List<Order> formationOrders, java.util.function.Predicate<String> stranded) {
+        return orders(reconstituted, formationOrders, stranded, false);
+    }
+
+    /**
+     * As {@link #orders(List, List, java.util.function.Predicate)}, after dark ({@code dark}) a replacement
+     * further than {@link #NIGHT_LINK_REACH} from its squad holds where it respawned till dawn: live (field410),
+     * Alice, Liam and Hal, killed at the mine's faces, respawned at the keep and set off across the dark for
+     * their squads 110 blocks east, and each was shot on the way - eight dead in the night.
+     */
+    public List<Order> orders(List<SoldierStatus> reconstituted, List<Order> formationOrders, java.util.function.Predicate<String> stranded,
+                              boolean dark) {
         List<SoldierStatus> formed = reconstituted.stream().filter(s -> !(s.report() instanceof Report.LinkingUp)).toList();
         boolean inContact = formed.stream().anyMatch(s -> s.report() instanceof Report.InContact);
         List<Order> orders = new ArrayList<>(formationOrders);
@@ -100,6 +111,11 @@ public final class LinkUp {
             // Nobody formed to close on - a one-man unit's soldier, respawned - it keeps its own order.
             if (soldier.report() instanceof Report.LinkingUp && !formed.isEmpty()) {
                 Position target = inContact && rallyPoint != null ? rallyPoint : nearest(linkUpCandidates(formed, stranded), soldier.position()).position();
+                if (dark && horizontalDistance(target, soldier.position()) > NIGHT_LINK_REACH) {
+                    Position here = soldier.position();
+                    orders.set(i, new Order.MoveTo(here.x(), here.y(), here.z(), APPROACH_TOLERANCE, VERTICAL_TOLERANCE, Risk.LOW));
+                    continue;
+                }
                 // A replacement rejoining is never worth more of its health than the squad's own order.
                 Risk risk = formationOrders.get(i) instanceof Order.MoveTo slot ? slot.risk() : Risk.LOW;
                 orders.set(i, new Order.MoveTo(target.x(), target.y(), target.z(), APPROACH_TOLERANCE, VERTICAL_TOLERANCE, risk));
@@ -116,6 +132,9 @@ public final class LinkUp {
         List<SoldierStatus> able = formed.stream().filter(s -> !(s.report() instanceof Report.Cantco) && !stranded.test(s.name())).toList();
         return able.isEmpty() ? List.of(formed.getFirst()) : able;
     }
+
+    /** How far a replacement walks to its squad after dark: beyond it, it waits for dawn where it respawned. */
+    public static final double NIGHT_LINK_REACH = 32;
 
     private boolean isReplacement(SoldierStatus soldier) {
         int deaths = soldier.condition().map(Condition::deaths).orElse(0);

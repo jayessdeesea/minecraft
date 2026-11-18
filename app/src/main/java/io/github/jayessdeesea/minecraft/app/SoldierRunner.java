@@ -5260,7 +5260,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             .forEach(freed -> LOG.info("[{}] RECOVERY: the stair up for {} is dug - {} walks out", squadName, freed, freed)));
             List<SoldierStatus> reported = cutOff(statuses.stream().map(s -> ownReports.getOrDefault(s.name(), s)).toList());
             orders = ReactToContact.orders(statuses, state.recovery.orders(reported,
-                    Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, formation(order, statuses), state.recovery::recovering)),
+                    Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, formation(order, statuses), state.recovery::recovering,
+                                    chainOfCommand.time().map(TimeOfDay::dark).orElse(false))),
                             order.objective(), nightSupply(order.objective())), stairDown(squadName), stairUp(squadName), pillarDown(squadName)));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
