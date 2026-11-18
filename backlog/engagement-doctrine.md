@@ -52,8 +52,8 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
    Live (field410), Alice and Hal at Alpha's y=12 faces each closed on a skeleton in the cave
    under them and were shot 16 blocks down, 13 s after they left their cut - a route to the archer
    existed (down the cave, or by digging), so neither was "pinned" (`DeterministicSoldier.pinned`)
-   and both crossed the open below its bow. The it-can-I-can't cell wants an archer far below or
-   across a cave counted as out of reach: cover, carry on, report.
+   and both crossed the open below its bow. Built for an archer more than 4 below (`DeterministicSoldier.ARCHER_BELOW`):
+   cover, carry on. Left: one across a cave at the soldier's own height, and the report.
 2. The order fields and their defaults through Order, the squad leader and the soldier.
    A creeper holding a soldier inside its reach ten seconds is engaged (built); the rest of the
    both-reach cell - criteria and weapons control by order - is phase 2's.

@@ -541,6 +541,10 @@ the squad to falls.
   than 32 blocks off - a weapon for one bare-handed aside - as no resupply walk goes that far, and a
   respawn far from its squad holds where it is till dawn (operator, 2026-11-17; live, two were shot on
   their way to a workshop for kit).
+- **An archer well below** - more than 4 blocks under the soldier, across a cave's drop - is out of a sword's
+  reach whatever route might go down to it: the soldier takes cover and carries on, as from one it has no route
+  to (the engagement doctrine's it-can-I-can't cell; `DeterministicSoldier.ARCHER_BELOW`). Live, three miners
+  closed on skeletons in the caves under their faces and were shot 12-28 blocks down.
 - **What's hostile.** The curated list (`tools/entity-hostility-generator`, `HostileMobRegistry`): what
   attacks on sight. The enderman, neutral till its eye is caught or it's hit, is on it for self-defense
   only - in contact within 3 blocks, coming at the soldier, never sought (`HostileMobRegistry.fightsOnlyAtHand`,

@@ -542,7 +542,10 @@ public final class DeterministicSoldier implements Soldier {
                     Kit carried = kit;
                     ticksUntilAttack = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon()).ticksToCharge();
                 }
-            } else if (nearest.shoots() && (!armedForMelee() || pinned(world, threat))) {
+            // An archer well below - across a cave's drop - out-shoots a sword as surely as one it has no route to:
+            // the engagement doctrine's it-can-I-can't cell, cover and carry on. Live (field410-419), Alice, Hal and
+            // Gus closed on skeletons in the caves under their faces and were shot 12-28 blocks down.
+            } else if (nearest.shoots() && (!armedForMelee() || threat.y() < position.y() - ARCHER_BELOW || pinned(world, threat))) {
                 // An archer out-fights a bare hand from any range, and a sword it can't be closed on:
                 // get out of its sight, and stay out.
                 Optional<Position> cover = coverFrom(world, threat);
@@ -594,6 +597,9 @@ public final class DeterministicSoldier implements Soldier {
         applyVerticalMovement(world);
         return attack;
     }
+
+    /** How far below a soldier an archer is out of its reach for a sword, however a route might go down to it. */
+    static final double ARCHER_BELOW = 4;
 
     /** Ticks a creeper holds a soldier inside its blast's reach before it's engaged: ten seconds. */
     static final int CREEPER_STANDOFF_TICKS = 200;
