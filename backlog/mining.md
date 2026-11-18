@@ -107,3 +107,14 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
 Built: a miner cuts its strips as the spine passes their roots (docs/military-doctrine.md, the rules of a
 mine). Left: a wait at step 1 past a few minutes said loudly - a waiting miner reports `Mining[step=1]`
 and raises no `[Alert]`.
+
+## A cut's stand two blocks off, and no route all night (field458)
+The second night on parallel strips took 7 ore of 16: seven soldiers reported "no route" all night
+instead of waiting. Alice and Bob stood at (151, -24, -7), their cut's stand (151, -24, -9) two blocks
+off; Ivy and Jack at (55, 1, -11) for (57, 1, -10), on Charlie's stairs. Nothing broke through - no
+snag was marked, no breacher ran: `Miner.firstUncut` skips a cut whose stand is solid, but not one whose
+stand is open and walled off from the soldier. Wanted: a cut's stand with no route from beside it is
+cut to - the cells between dug as the cut's own - or the cut skipped, as a blocked tunnel is. Also seen:
+Eli at the surface for his level 118 blocks straight below, and Hal and Carol for faces 100 blocks off,
+"no route" each report (backlog/long-routes.md).
+
