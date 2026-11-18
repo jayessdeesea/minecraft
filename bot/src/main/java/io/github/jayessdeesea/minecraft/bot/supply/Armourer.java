@@ -303,7 +303,10 @@ public final class Armourer {
         }
         Optional<ItemClass> next = DUG.keySet().stream().filter(short_::containsKey).findFirst();
         if (!short_.keySet().stream().allMatch(DUG::containsKey) || next.isEmpty() || !digsItsMakings) {
-            giveUp("short of " + short_ + " - " + inventory.summary());
+            // Said once a cooldown, not each tick: live (field450), 2168 lines in six minutes.
+            if (cooldown == 0) {
+                giveUp("short of " + short_ + " - " + inventory.summary());
+            }
         } else if (digger != null || cooldown == 0) {
             dig(soldier, world, DUG.get(next.get()), short_.get(next.get()));
         }

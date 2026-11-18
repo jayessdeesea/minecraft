@@ -110,7 +110,9 @@ class ArmourerTest {
                 });
         armourer.digsItsMakings(false);
 
-        armourer.tick(new Position(0.5, GROUND + 1, 0.5), withATree, Set.of(Recipe.WOODEN_PICKAXE), false, Optional.empty());
+        for (int tick = 0; tick < 10; tick++) {
+            armourer.tick(new Position(0.5, GROUND + 1, 0.5), withATree, Set.of(Recipe.WOODEN_PICKAXE), false, Optional.empty());
+        }
 
         assertEquals(true, armourer.failure().filter(f -> f.contains("short of") && f.contains("LOG")).isPresent(), "said: " + armourer.failure());
         assertEquals(false, sent.contains("startDigging"), "no tree cut: " + sent);
