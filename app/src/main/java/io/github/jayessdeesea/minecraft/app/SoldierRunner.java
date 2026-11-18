@@ -7828,7 +7828,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (clearingTunnel.contains(name) && !clearer.active()) {
                 String hold = stairThreat ? "a hostile at hand: " + world.nearbyHostiles(status.position(), STAIR_THREAT_RADIUS).stream()
                         .map(h -> HostileMobRegistry.nameOf(h.typeId())).sorted().toList()
-                        : foodCalls ? "a meal or game in sight" : null;
+                        : foodCalls ? "a meal or game in sight"
+                        : clearer.idle().map(why -> "its clearer: " + why).orElse(null);
                 String was = stairHolds.get(name);
                 if (hold != null && !hold.equals(was)) {
                     LOG.warn("{} on its stair up doesn't cut: {}", name, hold);

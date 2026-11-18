@@ -100,6 +100,11 @@ public final class Clearer {
     /** Why it isn't cutting, as of its last tick - empty while it is (the flatten's pace telemetry). */
     private String idle;
 
+    /** Why it's not cutting, as of its last tick, if it isn't: not free, nothing to cut, nothing in reach, a cut failed. */
+    public synchronized Optional<String> idle() {
+        return digger != null ? Optional.empty() : Optional.ofNullable(idle);
+    }
+
     /** Why it isn't cutting: nothing in reach, a cut failed, no tool, not free - empty while it is. */
     public synchronized Optional<String> idleReason() {
         return digger != null ? Optional.empty() : Optional.ofNullable(idle);
