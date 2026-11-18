@@ -87,6 +87,8 @@ final class BlockClassRegistry {
     private static final BitSet GRASS_PLANTS = new BitSet();
     /** Cobblestone, plain or mossy: what soldiers build with, so a block of it over the camp's floor was put there. */
     private static final BitSet COBBLESTONES = new BitSet();
+    /** Pointed dripstone's upward tips: lethal to land on. */
+    private static final BitSet STALAGMITES = new BitSet();
     /** Each wheat state's growth stage, 0 to {@link #RIPE}. Filled while loading. */
     private static final Map<Integer, Integer> WHEAT_AGES = new HashMap<>();
     /** Wheat's last growth stage: ripe, and broken for wheat and seeds. */
@@ -149,6 +151,10 @@ final class BlockClassRegistry {
 
     static boolean isCobblestone(int stateId) {
         return stateId >= 0 && COBBLESTONES.get(stateId);
+    }
+
+    static boolean isStalagmite(int stateId) {
+        return stateId >= 0 && STALAGMITES.get(stateId);
     }
 
     static boolean isGrassPlant(int stateId) {
@@ -261,6 +267,9 @@ final class BlockClassRegistry {
                     }
                     if (fields.length > 2 && (fields[2].equals("cobblestone") || fields[2].equals("mossy_cobblestone"))) {
                         COBBLESTONES.set(stateId);
+                    }
+                    if (fields.length > 6 && fields[6].equals("stalagmite")) {
+                        STALAGMITES.set(stateId);
                     }
                     if (fields.length > 3 && fields[2].equals("wheat")) {
                         WHEAT_AGES.put(stateId, Integer.parseInt(fields[3].substring("age=".length())));

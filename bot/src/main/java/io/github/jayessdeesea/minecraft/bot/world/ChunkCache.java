@@ -176,6 +176,12 @@ public final class ChunkCache {
         return stateId != UNKNOWN && BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.LOG;
     }
 
+    /** Whether the block is a stalagmite's tip - unknown blocks aren't. */
+    public boolean isStalagmite(int x, int y, int z) {
+        int stateId = rawStateIdAt(x, y, z);
+        return stateId != UNKNOWN && BlockClassRegistry.isStalagmite(stateId);
+    }
+
     /** Whether the block is cobblestone, plain or mossy - unknown blocks aren't. */
     public boolean isCobblestone(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);

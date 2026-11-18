@@ -359,6 +359,11 @@ public final class Pathfinder {
                     // was tilled by farmers stepping down onto it off the ground round it - so any way
                     // round within TRAMPLE_COST blocks is taken instead; but never a wall: with the
                     // farm's rim tilled, eight soldiers stood at the camp with "no route" to the keep.
+                    // Never down onto a stalagmite's tip: the fall's 2.5 longer onto it and does double. Live (field423,
+                    // field428), Dana and Alice fell 22 and 13 blocks into caves onto one, each killed.
+                    if (standable(world, down) && drop > 1 && world.isStalagmite(down.x(), down.y() - 1, down.z())) {
+                        break;
+                    }
                     if (standable(world, down)) {
                         double damage = Math.max(0, drop - MAX_DROP) * falls.damageFactor();
                         double trample = world.isFarmland(down.x(), down.y() - 1, down.z()) ? TRAMPLE_COST : 0;

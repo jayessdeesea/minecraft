@@ -616,4 +616,33 @@ class PathfinderTest {
         assertFalse(result.reachesGoal());
         assertTrue(result.path().getLast().x() > 5, "should still make headway: " + result.path().getLast());
     }
+
+    /** A drop it would take into a pit is never taken onto a stalagmite's tip at its bottom. */
+    @Test
+    void noFallIsPlannedOntoAStalagmite() {
+        java.util.function.Function<Boolean, WorldView> pit = tip -> new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND && !(x == 1 && z == 0 && y >= GROUND - 6);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean isStalagmite(int x, int y, int z) {
+                return tip && x == 1 && z == 0 && y == GROUND - 7;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        FallAllowance hard = new FallAllowance(10, 1);
+        assertTrue(Pathfinder.find(pit.apply(false), START, exactly(1, GROUND - 6, 0), 5000, hard).reachesGoal(), "down the pit");
+        assertFalse(Pathfinder.find(pit.apply(true), START, exactly(1, GROUND - 6, 0), 5000, hard).reachesGoal(), "not onto the tip");
+    }
 }

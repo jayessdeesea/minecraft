@@ -3,7 +3,8 @@
 # class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, C = chest, D = soil, O = iron ore, F = farmland (all solid);
 # R = rock (mined with a pickaxe), G = grit (dug by hand, falls), V = leaves, S = any other solid block that breaks;
 # then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, <hardness> on grit, and
-# <hardness> <least pickaxe tier> <tool> on solid, tall, chests and workstations (tier -1: by hand; tool P pickaxe, A axe, S shovel, H none).
+# <hardness> <least pickaxe tier> <tool> on solid, tall, chests and workstations (tier -1: by hand; tool P pickaxe, A axe, S shovel, H none);
+# then stalagmite on a pointed dripstone's upward tip.
 # Every state NOT listed is solid and can't be broken (bedrock and the like: the generator prints the types it classed solid).
 0 P air
 1 Q stone
@@ -33497,7 +33498,7 @@
 33568 H pointed_dripstone
 33569 S pointed_dripstone 1.5 0 P
 33570 H pointed_dripstone
-33571 S pointed_dripstone 1.5 0 P
+33571 S pointed_dripstone 1.5 0 P stalagmite
 33572 H pointed_dripstone
 33573 S pointed_dripstone 1.5 0 P
 33574 H pointed_dripstone

@@ -531,7 +531,8 @@ squadmate to another. A soldier that reports CANTCO prices the riskier
 order that would free it, for example "a route with falls costing 8 of my 20 health exists (MEDIUM
 risk)". The squad leader then decides whether the mission is worth that. It can set risk for one
 soldier (`SquadOrder.soldierRisk`), so freeing a stuck soldier at MEDIUM doesn't expose the rest of
-the squad to falls.
+the squad to falls. No fall is planned onto a stalagmite's tip at any risk: it adds 2.5 blocks to the fall and
+doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 22 blocks into caves onto one).
 
 ## 8. Actions on contact and the react-to-contact drill
 

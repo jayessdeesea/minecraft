@@ -190,7 +190,11 @@ public class GenerateBlockClasses {
                 boolean breakable = Double.parseDouble(hardness.get(id)) >= 0;
                 String tool = pickaxeAll.contains(id) ? "P" : axeAll.contains(id) ? "A" : shovelAll.contains(id) ? "S" : "H";
                 if (cls == 'S' && breakable) {
-                    classes.put(state.get("id").asInt(), "S " + blockName + " " + hardness.get(id) + " " + tier + " " + tool);
+                    // A stalagmite's tip, marked: landing on it adds 2.5 to the fall and doubles its damage (vanilla's
+                    // PointedDripstoneBlock.fallOn) - a drop the planner allows is lethal onto one.
+                    boolean stalagmite = blockName.equals("pointed_dripstone") && state.path("properties").path("thickness").asText().equals("tip")
+                            && state.path("properties").path("vertical_direction").asText().equals("up");
+                    classes.put(state.get("id").asInt(), "S " + blockName + " " + hardness.get(id) + " " + tier + " " + tool + (stalagmite ? " stalagmite" : ""));
                     counts.merge(cls, 1, Integer::sum);
                 } else if (cls != 'S') {
                     String detail = blockName.equals("water") ? " level=" + state.path("properties").path("level").asText()
@@ -211,7 +215,8 @@ public class GenerateBlockClasses {
             out.println("# class P = passable, T = tall (1.5-high collision), H = hazard (liquid, fire, ...), L = log, Q = stone, W = workstation, C = chest, D = soil, O = iron ore, F = farmland (all solid);");
             out.println("# R = rock (mined with a pickaxe), G = grit (dug by hand, falls), V = leaves, S = any other solid block that breaks;");
             out.println("# then level=N on water (0 a source), age=N on wheat, <hardness> <least pickaxe tier> on rock, <hardness> on grit, and");
-            out.println("# <hardness> <least pickaxe tier> <tool> on solid, tall, chests and workstations (tier -1: by hand; tool P pickaxe, A axe, S shovel, H none).");
+            out.println("# <hardness> <least pickaxe tier> <tool> on solid, tall, chests and workstations (tier -1: by hand; tool P pickaxe, A axe, S shovel, H none);");
+            out.println("# then stalagmite on a pointed dripstone's upward tip.");
             out.println("# Every state NOT listed is solid and can't be broken (bedrock and the like: the generator prints the types it classed solid).");
             classes.forEach((id, value) -> out.printf("%d %s%n", id, value));
         }
