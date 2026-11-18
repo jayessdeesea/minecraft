@@ -7558,7 +7558,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             MetalPool.Plan metal = !smelter ? own
                     : new MetalPool.Plan(own.stock().stream().filter(c -> c != ItemClass.RAW_IRON && c != ItemClass.RAW_COPPER)
                     .collect(Collectors.toSet()), toSmelt.map(ore -> new MetalPool.Draw(ore, SMELT_DRAW)));
-            Optional<MetalPool.Draw> metalDraw = metal.draw().filter(d -> metalChest(d.ore(), status.position()).isPresent());
+            // By night, only from a chest in reach, as a workshop is (nightOpen): no walk across the dark for an
+            // ingot. Live (field433), Gus, a miner of Alpha's, set off for the depot 80 blocks up and across 24
+            // times in the night for two iron ingots, each walk dropped as it began, and his level stood.
+            boolean metalByNight = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
+            Optional<MetalPool.Draw> metalDraw = metal.draw().filter(d -> metalChest(d.ore(), status.position())
+                    .filter(c -> !metalByNight || Math.hypot(c.x() - status.position().x(), c.z() - status.position().z()) <= NIGHT_SUPPLY_REACH)
+                    .isPresent());
             // Logs from the nearest chest holding them, as metal is: its own stockpile may hold none. Live
             // (field347), Eli at the mine's head couldn't make a pickaxe, "no LOG within 48 blocks", with
             // 71 logs in the stores - in the keep's depot, and his stockpile the camp's chest.

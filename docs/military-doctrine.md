@@ -549,9 +549,10 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   keep's site to the mine and down its stairs (`ChainOfCommand.SHELTER_LEAD_TICKS`; operator,
   2026-11-17; live, two were shot on the open flatten floor after dusk).
 - **No errands across the dark.** After dark a soldier on the surface makes nothing at a workshop more
-  than 32 blocks off - a weapon for one bare-handed aside - as no resupply walk goes that far, and a
-  respawn far from its squad holds where it is till dawn (operator, 2026-11-17; live, two were shot on
-  their way to a workshop for kit).
+  than 32 blocks off - a weapon for one bare-handed aside - nor draws metal from a chest more than 32 off,
+  as no resupply walk goes that far; a respawn far from its squad goes down its squad's mine (operator,
+  2026-11-17; live, two were shot on their way to a workshop for kit, and a miner set off 24 times in a
+  night for two iron ingots in a depot 80 blocks off).
 - **An archer well below** - more than 4 blocks under the soldier, across a cave's drop - is out of a sword's
   reach whatever route might go down to it: the soldier takes cover and carries on, as from one it has no route
   to (the engagement doctrine's it-can-I-can't cell; `DeterministicSoldier.ARCHER_BELOW`). Live, three miners
