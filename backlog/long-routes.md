@@ -27,9 +27,11 @@ objective, which is where the squad last saw some.
   out, field346), the next order sent him walking off it, down through the caves again toward a goal
   on the surface - y=-52, -22, -29, -26 in turn. A route's leg that goes far below both its start
   and its goal, with no known way up at the far end, is the cave's, not the goal's.
-- A leg planned but not walked is planned again a different way, not the same one. Live (field428),
-  Eli at (-86, 62, -15), sent to his level at y=-48 below, planned the same 214-step leg 69 times in
-  2.5 minutes and stood: the walker couldn't take its first move and the planner gave it again.
+- A leg planned again from where the last began goes round that one's first cells, and says so
+  (built: `DeterministicSoldier.LEG_AVOID_CELLS`, a WARN "plans the same leg again"). Left: why legs
+  came back to their start - live (field433), Alice planned the same 69-step leg toward Alpha's mine
+  head 31 times in the night, moving all the while, each ending one block short of the goal; the
+  WARN's positions say next time whether it's the walker or the goal.
 
 ## Notes
 - Fran and Bob died gathering 50-60 blocks out (a creeper, pillagers). A gather that far from the

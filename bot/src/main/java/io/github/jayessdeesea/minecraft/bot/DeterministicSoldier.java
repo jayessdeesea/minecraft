@@ -827,6 +827,15 @@ public final class DeterministicSoldier implements Soldier {
     private static final int LONG_PLAN_BUDGET = 60_000;
     /** The goal a wide search last failed for, and at which tick - tick loop only. */
     private Goal wideFailedGoal;
+    /** The goal the last leg was planned toward, where it began and its path, and the cells legs since go round. */
+    private Goal legGoal;
+    private BlockPos legFrom;
+    private List<BlockPos> legPath;
+    private final Set<BlockPos> legAvoid = new java.util.HashSet<>();
+    /** How near the last leg's start a new one begins to be the same leg again. */
+    static final int LEG_AGAIN_REACH = 2;
+    /** How many of a leg got nowhere's first cells the next leg goes round. */
+    static final int LEG_AVOID_CELLS = 4;
     private int wideFailedAt;
     /** Ticks before a goal a wide search failed for is searched wide again: five seconds. */
     static final int WIDE_RETRY_TICKS = 100;
@@ -938,6 +947,15 @@ public final class DeterministicSoldier implements Soldier {
                 stuckShortOf(route.get(routeIndex));
             }
             Set<BlockPos> avoid = new java.util.HashSet<>(avoided.keySet());
+            // A leg planned again from where the last began, toward the same goal, goes round the way that one
+            // went: it got nowhere. Live (field428, field433), Eli planned the same 214-step leg 69 times and
+            // Alice the same 69-step leg 31 times in a night, Alpha's two levels standing empty.
+            if (!goal.equals(legGoal)) {
+                legGoal = goal;
+                legAvoid.clear();
+                legFrom = null;
+            }
+            avoid.addAll(legAvoid);
             // A berth round each creeper in the watch: the route goes round, not past it at arm's length.
             for (TrackedEntity creeper : creepers) {
                 BlockPos at = BlockPos.containing(creeper.position().x(), creeper.position().y(), creeper.position().z());
@@ -987,6 +1005,14 @@ public final class DeterministicSoldier implements Soldier {
                     // walked to its end, and searched on from there. Live, Ivy stood half an hour in
                     // two runs at (38, 74, -51), every goal 70 to 120 blocks west.
                     if (isLeg(world, start, wide)) {
+                        if (legFrom != null && Math.abs(legFrom.x() - start.x()) + Math.abs(legFrom.y() - start.y())
+                                + Math.abs(legFrom.z() - start.z()) <= LEG_AGAIN_REACH && legPath != null) {
+                            legPath.stream().skip(1).limit(LEG_AVOID_CELLS).forEach(legAvoid::add);
+                            LOG.warn("{} plans the same leg again from {} toward ({}, {}, {}) - the next goes round its first {} cells",
+                                    name, start, (int) goal.x(), (int) goal.y(), (int) goal.z(), LEG_AVOID_CELLS);
+                        }
+                        legFrom = start;
+                        legPath = wide.path();
                         plan = wide;
                         onLeg = true;
                         LOG.info("{} walks a leg toward ({}, {}, {}): {} steps to {}, {} blocks nearer", name,
