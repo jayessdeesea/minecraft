@@ -182,11 +182,13 @@ public class ChainOfCommand implements DisposableBean {
     /** Every echelon's model decisions, timed and alarmed on. */
     private final ModelCalls modelCalls = new ModelCalls();
     /**
-     * How long before dark the rule starts: none - at nightfall. A hut goes up in a minute or two,
-     * and the first monsters of the night take longer than that to spawn and walk in, so the last
-     * ninety seconds of the day are worked rather than spent waiting in a hut (operator, 2026-11-08).
+     * How long before dark the rule starts: ninety seconds, the walk from the keep's site to the mine's
+     * head and down its stairs - the squads leave the open site before dusk (operator, 2026-11-17: it's
+     * fine if they leave the site before dusk). Live (field412), Kate and Bob, still on the flatten's
+     * floor two and a half minutes after dusk, were shot by a skeleton 30 s apart. It had been none
+     * (operator, 2026-11-08: the last ninety seconds of the day worked, not waited out in a hut).
      */
-    static final long SHELTER_LEAD_TICKS = 0;
+    static final long SHELTER_LEAD_TICKS = 1800;
     /** How long before dark the platoon leader is asked anyway: time to plan the night before it starts. */
     static final long DUSK_DECIDE_TICKS = 1800;
 

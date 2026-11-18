@@ -60,6 +60,13 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   to need, no locks (work in parallel): a base's furnaces sized to its shift - `Workshop` holds one
   furnace, so its landing, fitter and crafter would each take several. About two cut-off runs a night.
 
+- **Unworked rock (operator, 2026-11-17).** The night's ore thin at the levels worked (field399-413,
+  one ore block in 70-100 cut): new branch headings off the main tunnel into rock no branch has
+  passed. The keep's mine still doesn't move on yield.
+- **The far faces (operator, 2026-11-17).** Skeletons and creepers kill miners at faces 90 blocks
+  out: soldiers learn to make bows and arrows (`Recipe.BOW`, `Recipe.ARROWS` - string from spiders,
+  feathers from chickens) so an archer across a cave is answered, not closed on.
+
 ## Notes
 - Diamonds need an iron pickaxe: the equipment ladder (docs/military-doctrine.md § 11) reaches
   one from the iron the stairs open.

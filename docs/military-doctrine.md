@@ -534,6 +534,13 @@ the squad to falls.
 | **React to contact** (battle drill) | The rest of the unit moves to support the element in contact. The leader then decides whether to assault, bypass or break contact. | ATP 3-21.8 (battle drills) |
 
 *How we use it:*
+- **Off the open before dusk.** The night's rule starts ninety seconds before dark, the walk from the
+  keep's site to the mine and down its stairs (`ChainOfCommand.SHELTER_LEAD_TICKS`; operator,
+  2026-11-17; live, two were shot on the open flatten floor after dusk).
+- **No errands across the dark.** After dark a soldier on the surface makes nothing at a workshop more
+  than 32 blocks off - a weapon for one bare-handed aside - as no resupply walk goes that far, and a
+  respawn far from its squad holds where it is till dawn (operator, 2026-11-17; live, two were shot on
+  their way to a workshop for kit).
 - **What's hostile.** The curated list (`tools/entity-hostility-generator`, `HostileMobRegistry`): what
   attacks on sight. The enderman, neutral till its eye is caught or it's hit, is on it for self-defense
   only - in contact within 3 blocks, coming at the soldier, never sought (`HostileMobRegistry.fightsOnlyAtHand`,

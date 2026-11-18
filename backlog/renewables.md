@@ -24,6 +24,10 @@ the wood party when none qualifies; trees felled whole and replanted (docs/milit
 Left: siting and levelling production chunks; fences and gates round them (fences are classed and
 dug today - `ClearingTest.aFenceAndTheGroundUnderItAreDug` - but never built); gates walked through.
 
+## The keep's grove (operator, 2026-11-17)
+No site near the depot holds 16 cells: several groves, each what the ground holds, and the search
+for them travels farther than the 64 blocks round the depot it's held to now.
+
 ## Doctrine
 **Base camps** (ATP 3-37.10): a camp that is held longer develops its own sustainment instead of
 living off resupply runs. What gets built depends on the site.

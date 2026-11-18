@@ -38,6 +38,13 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
   (e.g. RANGED_WEAPON) - the platoon sergeant turns repeated gaps into production or loadout.
 - **Prevention beats engagement**: sleep against phantoms, lighting and walls against ground mobs.
 
+## Decided (operator, 2026-11-17)
+- **Endermen:** engaged only close, never provoked - fought at hand (built: `HostileMobRegistry.fightsOnlyAtHand`),
+  and not looked at, which is what provokes one; a soldier facing its work looks below an enderman's head.
+- **The keep's site at dusk:** the squads leave it before dusk.
+- **After dark:** no soldier walks the surface on an errand - a respawn's link-up (built), a walk to a
+  workshop or the stockpile - as no resupply walk does (`SoldierRunner.nightSupply`).
+
 ## Phases
 1. The matrix at contact and bypass in routing: a creeper on the route gone round is built
    (docs/military-doctrine.md, contact). Left: a hostile not on the path and not targeting

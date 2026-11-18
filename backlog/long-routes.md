@@ -54,6 +54,10 @@ objective, which is where the squad last saw some.
   route; and his pocket holds hostiles within 4 - a skeleton most of the time - that hold the cut
   (`STAIR_THREAT_RADIUS`) when he could fight them. Wanted: a stranded soldier kept in its unit, its
   episode carried across, till it's out; and one held by a hostile at hand fights it, then cuts.
+- **Eli's rescue (operator, 2026-11-17, asked whether to send everyone down).** One fetcher, not the
+  squad - the way down is 117 blocks of cave with skeletons and endermen in it: a stranded soldier kept
+  in one unit till it's out, and stuck past ten minutes, its nearest squadmate with a pickaxe and blocks
+  sent to it (`Recovery`'s fetcher).
 - **Stranded with no pickaxe (field360, 06:29).** Kate, routed into a cave at y=47 on her way to the
   mine, was pulled out by recovery 35 under the ground at y=62 with two shovels, no pickaxe, no
   cobblestone, one log and no bread: her 88-block stair up is dug by hand, 150 ticks a stone block

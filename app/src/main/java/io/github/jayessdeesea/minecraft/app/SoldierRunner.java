@@ -7441,6 +7441,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Nothing made by one the recovery drill has: its hands are the stair's till it's out. Live
             // (field347), Jack's armourer walked him off his stair up every second for the camp's
             // workshop, 200 blocks off and up, for an iron pickaxe, and his clearer never kept a stand.
+            // After dark, on the surface, nothing made at a workshop more than NIGHT_SUPPLY_REACH off - but a
+            // weapon for one bare-handed: the walk there is across the open in the dark (operator, 2026-11-17:
+            // no errands across the surface by night). Live (field410-413), Liam and Gus were shot on their
+            // way to a workshop for kit, Liam 7 blocks under where he'd stood 8 s before.
+            boolean nightOpen = chainOfCommand.time().map(TimeOfDay::dark).orElse(false) && !underground(status.position())
+                    && workshop.map(w -> Math.hypot(w.stand().x() + 0.5 - status.position().x(), w.stand().z() + 0.5 - status.position().z())
+                    > NIGHT_SUPPLY_REACH).orElse(false);
+            if (nightOpen && !rearming && !tools.isEmpty()) {
+                tools.clear();
+            }
             Set<Recipe> craftable = recovering.contains(name) ? Set.of() : fort == null ? tools
                     : waiting && rearming ? Set.of(rung.orElseThrow())
                     : Set.of();
