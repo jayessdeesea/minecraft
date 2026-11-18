@@ -832,6 +832,8 @@ public final class DeterministicSoldier implements Soldier {
     private BlockPos legFrom;
     private List<BlockPos> legPath;
     private final Set<BlockPos> legAvoid = new java.util.HashSet<>();
+    /** How many times running a leg has been planned again from the same cell. */
+    private int legAgain;
     /** How near the last leg's start a new one begins to be the same leg again. */
     static final int LEG_AGAIN_REACH = 2;
     /** How many of a leg got nowhere's first cells the next leg goes round. */
@@ -1010,6 +1012,16 @@ public final class DeterministicSoldier implements Soldier {
                             legPath.stream().skip(1).limit(LEG_AVOID_CELLS).forEach(legAvoid::add);
                             LOG.warn("{} plans the same leg again from {} toward ({}, {}, {}) - the next goes round its first {} cells",
                                     name, start, (int) goal.x(), (int) goal.y(), (int) goal.z(), LEG_AVOID_CELLS);
+                            // Planned and never walked, time after time: its first step is a snag (takeSnag) - a
+                            // block the model hasn't, marked so the next plan breaks it or goes round. Live (field436),
+                            // Gus on the keep's mine stairs at y=44 planned one leg up them every 5 s for minutes.
+                            if (++legAgain >= SNAG_TRIES && legPath.size() > 1) {
+                                snag = legPath.get(1);
+                                legAgain = 0;
+                            }
+                        }
+                        if (legFrom == null || !legFrom.equals(start)) {
+                            legAgain = 0;
                         }
                         legFrom = start;
                         legPath = wide.path();
