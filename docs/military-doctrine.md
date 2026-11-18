@@ -1549,7 +1549,10 @@ that breaks one is a step back):**
    waited all night on one cutter's spine. A cut whose stand has had no route for ten seconds has its
    tunnel given up, as one blocked by water is (`Miner.unreachable`) - only from within 4 of it, where the
    "no route" is the stand's and not the walk's, and never the stairs': live
-   (field458-459), six cutters stood a night two blocks from stands walled off from them.
+   (field458-459), six cutters stood a night two blocks from stands walled off from them. The tunnels
+   given up are the level's, one set for its crew, kept for that level only: a main tunnel given up, the
+   strips whose roots it never reached are no work to wait for, and the level reads done as far as it goes
+   (live, field460-461, Dana gave hers up and Fran waited all night on it).
 2. **A grid that sees every block, with the least digging.** A level is at a height a multiple of
    4 (y % 4 == 0): a spine out from the shaft's landing, and strips off it both ways at every third
    block of the world's grid along it - x % 3 == 0 for a spine along x, z % 3 == 0 for one along z.

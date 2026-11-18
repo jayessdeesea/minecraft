@@ -1029,17 +1029,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return OptionalInt.empty();
     }
 
-    /**
-     * The point of {@code box} nearest {@code soldier}, at the box's middle height: where a gather from
-     * it is looked for round. Its middle was 16 blocks' search in a pit 130 long - live (field340), the
-     * keep's borrow pit along the site's side, its middle by the depots and dug out, and builders sent
-     * for dirt stood a minute at a time finding none.
-     */
-    static Position nearestIn(Box box, Position soldier) {
-        double x = Math.max(box.minX() + 0.5, Math.min(box.maxX() + 0.5, soldier.x()));
-        double z = Math.max(box.minZ() + 0.5, Math.min(box.maxZ() + 0.5, soldier.z()));
-        return new Position(x, (box.minY() + box.maxY()) / 2.0, z);
-    }
 
     /**
      * Ticks to dig column ({@code x}, {@code z}) from {@code from} up to {@code to}: each block's break time
@@ -4509,6 +4498,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The key the sites the keep's mine has left are kept under. */
     private static final String MINES_TRIED = "minestried";
 
+    /** Each level's tunnels given up, its crew's one set (Miner.tick), by stairs head and bottom - ticks write and read. */
+    private final Map<String, Set<Integer>> levelsBlocked = new ConcurrentHashMap<>();
     /** Where soldiers were killed lately (command.DangerAreas) - death handlers write, squad loops read, under its lock. */
     private final DangerAreaBook dangerAreas;
     /** Mine heads worked out or blocked, never sited again - kept on disk. Squad loop, read at siting. */
@@ -7938,7 +7929,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                     Miner.Progress cut = miner.tick(status.position(), world, stairs,
                             free && !threatened && armourer.standAt().isEmpty(), Optional.of(mineShare(name, stairs)),
-                            Math.max(0, mineCrew(stairs).indexOf(name)));
+                            Math.max(0, mineCrew(stairs).indexOf(name)), levelsBlocked.computeIfAbsent(stairs.head() + "/" + stairs.bottom(),
+                                    k -> ConcurrentHashMap.newKeySet()));
                     stairsProgress.put(name, cut);
                     if (cut instanceof Miner.Progress.Working(int step, int steps)) {
                         stairsCut.accumulateAndGet(Math.min(step, stairs.steps()), Math::max);

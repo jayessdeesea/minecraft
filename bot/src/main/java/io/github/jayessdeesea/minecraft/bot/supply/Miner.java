@@ -174,7 +174,9 @@ public final class Miner {
     private String waitSaid = "";
 
     /** Tunnels given up for water, lava or a cave beside them. */
-    private final Set<Integer> blocked = new HashSet<>();
+    private Set<Integer> blocked = new HashSet<>();
+    /** The level - its stairs' head and bottom - {@link #blocked} is for. */
+    private String blockedFor = "";
     /** Tunnels over a cave left until the miner carries blocks to floor it. */
     private final Set<Integer> waiting = new HashSet<>();
 
@@ -218,6 +220,24 @@ public final class Miner {
      * aren't on one cell.
      */
     public synchronized Progress tick(Position soldier, WorldView world, Staircase stairs, boolean free, Optional<Set<Integer>> share, int place) {
+        return tick(soldier, world, stairs, free, share, place, null);
+    }
+
+    /**
+     * As {@link #tick(Position, WorldView, Staircase, boolean, Optional, int)}, the tunnels given up kept in
+     * {@code crewBlocked} - the level's crew's, one set for all of them - or, null, its own for this level.
+     * Live (field460-461), Dana gave up her level's main tunnel and Fran waited all night for it, each with a
+     * set of its own; and a set kept from level to level skipped the next level's tunnels of the same numbers.
+     */
+    public synchronized Progress tick(Position soldier, WorldView world, Staircase stairs, boolean free, Optional<Set<Integer>> share, int place,
+                                      Set<Integer> crewBlocked) {
+        String level = stairs.head() + "/" + stairs.bottom();
+        if (crewBlocked != null) {
+            blocked = crewBlocked;
+        } else if (!level.equals(blockedFor)) {
+            blocked = new HashSet<>();
+        }
+        blockedFor = level;
         this.share = share;
         List<Staircase.Cut> cuts = stairs.cuts();
         OptionalInt next;
@@ -245,7 +265,10 @@ public final class Miner {
             // not every one waiting on the whole of it. Live (field454-457), seven miners waited all night on one
             // cutter's main tunnel, two nights of 5 ore of 16 (backlog/mining.md).
             next = held.isPresent() ? held : mainOpen ? clearOfTheMain(world, cuts, skipped) : firstUncut(world, cuts, skipped);
-            if (next.isEmpty() && share.isPresent() && (mainOpen || notReached(world, cuts, skipped))) {
+            // The main tunnel given up, a strip whose root it never reached is no work to wait for: the level's done
+            // as far as it goes, and the mine moves on.
+            List<Staircase.Cut> reachable = blocked.contains(0) ? cuts.stream().filter(c -> c.tunnel() <= 0 || standOpen(world, c)).toList() : cuts;
+            if (next.isEmpty() && share.isPresent() && (mainOpen || notReached(world, reachable, skipped))) {
                 // Its tunnels' roots not cut to yet: it waits at the landing once the stairs are down;
                 // before, on the stairs a few steps behind the one cutting, down the mine with it - at
                 // the head, its squad waited on it at the top by night.
@@ -617,6 +640,12 @@ public final class Miner {
     private Optional<Set<Integer>> share = Optional.empty();
 
     /** Whether a cut of a tunnel not {@code skipped} is still to cut - its stand not open yet. */
+    /** Whether {@code cut}'s stand is open to stand in - its root cut to. */
+    private static boolean standOpen(WorldView world, Staircase.Cut cut) {
+        BlockPos stand = cut.stand();
+        return !world.isSolid(stand.x(), stand.y(), stand.z()) && !world.isSolid(stand.x(), stand.y() + 1, stand.z());
+    }
+
     private static boolean notReached(WorldView world, List<Staircase.Cut> cuts, Set<Integer> skipped) {
         return cuts.stream().anyMatch(c -> !skipped.contains(c.tunnel())
                 && c.cells().stream().anyMatch(cell -> c.toCut(world, cell)));

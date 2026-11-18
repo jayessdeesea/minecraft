@@ -639,6 +639,29 @@ class MinerTest {
         assertTrue(cut.size() > before.size(), "and it went on with another tunnel");
     }
 
+    /**
+     * A level's main tunnel given up by its cutter, the partner sharing the level's set: not waiting on it all
+     * night, done with what it can reach. Live (field460-461), Dana gave hers up and Fran waited all night on it.
+     */
+    @Test
+    void aPartnerIsDoneWhenTheLevelsMainTunnelIsGivenUp() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        Set<Integer> levelBlocked = new HashSet<>(Set.of(0));
+        Miner partner = new Miner("Partner", recording(new HashSet<>()), new Inventory());
+        Position at = new Position(0.5, GROUND, 0.5);
+        Miner.Progress progress = null;
+        for (int tick = 0; tick < 50_000; tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            progress = partner.tick(at, world, stairs, true, Optional.of(stairs.share(1, 2)), 1, levelBlocked);
+            at = partner.standAt().orElse(at);
+            if (progress instanceof Miner.Progress.Done) {
+                break;
+            }
+        }
+        assertInstanceOf(Miner.Progress.Done.class, progress, "not waiting all night on a main tunnel given up");
+    }
+
     private static boolean allTrue(boolean[] flags) {
         for (boolean f : flags) {
             if (!f) {

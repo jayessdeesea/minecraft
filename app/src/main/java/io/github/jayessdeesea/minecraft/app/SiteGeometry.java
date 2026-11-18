@@ -207,4 +207,16 @@ final class SiteGeometry {
             return gone;
         });
     }
+
+    /**
+     * The point of {@code box} nearest {@code soldier}, at the box's middle height: where a gather from
+     * it is looked for round. Its middle was 16 blocks' search in a pit 130 long - live (field340), the
+     * keep's borrow pit along the site's side, its middle by the depots and dug out, and builders sent
+     * for dirt stood a minute at a time finding none.
+     */
+    static Position nearestIn(Box box, Position soldier) {
+        double x = Math.max(box.minX() + 0.5, Math.min(box.maxX() + 0.5, soldier.x()));
+        double z = Math.max(box.minZ() + 0.5, Math.min(box.maxZ() + 0.5, soldier.z()));
+        return new Position(x, (box.minY() + box.maxY()) / 2.0, z);
+    }
 }

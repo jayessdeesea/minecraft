@@ -13,7 +13,7 @@ class NearestInBoxTest {
 
     @Test
     void aSoldierBesideThePitLooksForItsDirtBesideItself() {
-        Position at = SoldierRunner.nearestIn(PIT, new Position(5.5, 63, 40.5));
+        Position at = SiteGeometry.nearestIn(PIT, new Position(5.5, 63, 40.5));
         assertEquals(21.5, at.x(), "the pit's near edge");
         assertEquals(40.5, at.z(), "level with the soldier, not the pit's middle at z=0");
         assertEquals(62, at.y());
@@ -21,7 +21,7 @@ class NearestInBoxTest {
 
     @Test
     void oneInsideItLooksWhereItStands() {
-        Position at = SoldierRunner.nearestIn(PIT, new Position(23.2, 64, -10.7));
+        Position at = SiteGeometry.nearestIn(PIT, new Position(23.2, 64, -10.7));
         assertEquals(23.2, at.x());
         assertEquals(-10.7, at.z());
     }
