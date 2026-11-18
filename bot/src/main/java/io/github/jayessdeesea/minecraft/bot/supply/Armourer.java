@@ -211,9 +211,15 @@ public final class Armourer {
         // A walk to a station that gets no nearer is given up, its hands let go: held for the walk, they'd
         // otherwise be held for good. No nearer, not not there: live (field393), Dana walking down the
         // mine's 92 steps to its base was given up at 90 s, 50 blocks nearer every leg.
+        // Its errand let go for a tick or two and taken up again is the same errand, its time no nearer
+        // still counted: live (field426), Bob's walk to the farm's workshop was dropped and begun again 91
+        // times in two minutes, 6 above its stand, and never given up.
         if (toStation == null) {
-            errandTo = null;
+            if (++errandGone > ERRAND_GONE_TICKS) {
+                errandTo = null;
+            }
         } else {
+            errandGone = 0;
             double off = Math.sqrt(Math.pow(soldier.x() - toStation.x(), 2) + Math.pow(soldier.y() - toStation.y(), 2)
                     + Math.pow(soldier.z() - toStation.z(), 2));
             if (!toStation.equals(errandTo) || off < errandNearest - ERRAND_GAIN) {
@@ -231,6 +237,9 @@ public final class Armourer {
     private Position errandTo;
     private double errandNearest;
     private long errandFrom;
+    /** Ticks since its errand was let go; past {@link #ERRAND_GONE_TICKS} one begun again is a new one. */
+    private int errandGone;
+    static final int ERRAND_GONE_TICKS = 100;
     /** How long a walk to a station is given to get {@link #ERRAND_GAIN} nearer. */
     static final int ERRAND_TICKS = 1200;
     static final double ERRAND_GAIN = 2;
