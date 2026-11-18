@@ -111,7 +111,11 @@ public final class LinkUp {
             // Nobody formed to close on - a one-man unit's soldier, respawned - it keeps its own order.
             if (soldier.report() instanceof Report.LinkingUp && !formed.isEmpty()) {
                 Position target = inContact && rallyPoint != null ? rallyPoint : nearest(linkUpCandidates(formed, stranded), soldier.position()).position();
-                if (dark && horizontalDistance(target, soldier.position()) > NIGHT_LINK_REACH) {
+                // Killed again where it waited, it waits no more: the spawn's held by what killed it. Live (field421),
+                // Alice was shot at the world's spawn three times in two and a half minutes, waiting for dawn there.
+                int deaths = soldier.condition().map(Condition::deaths).orElse(0);
+                boolean killedWaiting = deaths > linkedDeaths.getOrDefault(soldier.name(), 0) + 1;
+                if (dark && !killedWaiting && horizontalDistance(target, soldier.position()) > NIGHT_LINK_REACH) {
                     Position here = soldier.position();
                     orders.set(i, new Order.MoveTo(here.x(), here.y(), here.z(), APPROACH_TOLERANCE, VERTICAL_TOLERANCE, Risk.LOW));
                     continue;

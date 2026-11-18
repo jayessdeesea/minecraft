@@ -56,6 +56,18 @@ class LinkUpTest {
         assertEquals(103, day.x(), 0.01, "by day it closes on its squad");
     }
 
+    /** Killed again where it waited, it waits no more: it links up across the dark rather than die at the spawn again. */
+    @Test
+    void afterDarkAReplacementKilledWhereItWaitedLinksUp() {
+        LinkUp linkUp = new LinkUp();
+        linkUp.reconstitute(List.of(soldier("Alice", 100, 0, new Report.Moving(), 0), soldier("Bob", 103, 0, new Report.Moving(), 0)));
+        List<SoldierStatus> formed = linkUp.reconstitute(List.of(
+                soldier("Alice", 0, 0, new Report.Idle(), 2), soldier("Bob", 103, 0, new Report.Moving(), 0)));
+        int alice = formed.indexOf(formed.stream().filter(s -> s.name().equals("Alice")).findFirst().orElseThrow());
+        Order.MoveTo order = (Order.MoveTo) linkUp.orders(formed, slots(2), n -> false, true).get(alice);
+        assertEquals(103, order.x(), 0.01, "twice dead: it closes on its squad");
+    }
+
     @Test
     void aLoneReplacementKeepsItsOwnOrder() {
         LinkUp linkUp = new LinkUp();

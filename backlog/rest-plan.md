@@ -31,6 +31,11 @@ without:
   A cheaper first step: a soldier at low health by night takes cover. (The camp's farm, 44 cells
   then, is now grown with the plots by the waters beside it, docs/military-doctrine.md § 4.)
 
+- **Live (field421).** A soldier killed at night respawns at the world's spawn, on the keep's open
+  site, and holds there till dawn (LinkUp's night hold): Alice, killed at the keep's south edge,
+  respawned at (0, 66, 0) and was shot again at (7.6, 65, 3.4) a minute later. A bed in the lit
+  camp is the spawn that ends it.
+
 ## Doctrine
 Rest is one of a patrol base's priorities of work, under a rest plan that keeps security while
 part of the unit sleeps (ATP 3-21.8, ch. 7).
