@@ -113,6 +113,20 @@ final class SoldierErrands {
             ItemClassRegistry.ItemClass.FENCE, 0, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1, ItemClassRegistry.ItemClass.WHEAT, 64,
             ItemClassRegistry.ItemClass.PLANKS, 16, ItemClassRegistry.ItemClass.STICK, 16);
 
+    /** What a harvester keeps: no wheat - it goes to the stockpile, for the baker (command.FarmDuties) - and its seed. */
+    static final Map<ItemClassRegistry.ItemClass, Integer> HARVESTER_CARRIED = harvesterCarried();
+
+    private static Map<ItemClassRegistry.ItemClass, Integer> harvesterCarried() {
+        Map<ItemClassRegistry.ItemClass, Integer> kept = new java.util.HashMap<>(CARRIED);
+        kept.put(ItemClassRegistry.ItemClass.WHEAT, 0);
+        return java.util.Collections.unmodifiableMap(kept);
+    }
+
+    /** Wheat a loaf takes. */
+    static final int BREAD_WHEAT = 3;
+    /** Wheat the baker draws at a time: a stack. */
+    static final int BAKER_WHEAT = 64;
+
     /** What a mine's cutter keeps: its backfill's dirt, and ore before the rest (the rules of a mine). */
     static final Map<ItemClassRegistry.ItemClass, Integer> MINE_CARRIED = Map.of(
             ItemClassRegistry.ItemClass.DIRT, Pack.MINER_DIRT_KEPT, ItemClassRegistry.ItemClass.CRAFTING_TABLE, 1);

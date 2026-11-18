@@ -21,11 +21,9 @@ soldier does only the how.
   when the force is short; the planter drawing saplings from the depot before it breaks leaves; the
   squad leader (DrillSquadLeader) giving the duties as its plans, so they show in its view, rather
   than the runner deriving them from the objective.
-- **Wheat: harvesters.** A harvester's plots are harvested and replanted in one pass - a ripe crop
-  drops its seed in the cell, so the replant is a click, not a trip through the chest - checking
-  each cell is tilled. Wheat and spare seed go into the chest. (The operator's sketch put the
-  replant after a chest trip; one pass is proposed as cheaper - to confirm.)
-- **Bread: a baker** draws wheat and puts bread in the chest, at any table.
+- **Wheat and bread: harvesters and a baker.** Built (docs/military-doctrine.md § 12, the farm by
+  duty). Left: a harvester drawing seed from the depot when it's out, before it breaks grass for
+  it.
 - **Stock levels**: built (`command.ProductionLevels`, shown to the platoon leader). Left: a squad
   on a kind kept on it to its most (`ProductionLevels.wanted`) in the guardrails, and the levels
   raised for a mission (`ProductionLevels.with`) by the platoon leader. Food before wood; both at once.

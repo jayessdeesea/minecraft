@@ -976,6 +976,13 @@ farming there, and the rest of the plot is worked first. A walk to a cell with n
 given up at once (`Farmer.unreachable`), not after the walk's allowance. A cell with a block at head height over
 it - a hut's wall over the farm's edge - isn't tried at all: no one can stand on it.
 
+**The farm by duty** (operator, 2026-11-18; `command.FarmDuties`). The soldiers on a farm are its
+harvesters, each on a share of the plot of its own - a run of it across, so its walk stays short -
+which it harvests and replants in one pass, keeping its seed and taking its wheat to the stockpile.
+With three or more on the farm, the last on the roster is its baker: it draws the stockpile's wheat a
+stack at a time and bakes it, and the bread past its own load goes in. A harvester below its basic
+load still bakes for itself - that's its own upkeep. With two, both harvest and bake as they go.
+
 Each job is an expect script: stand on the cell - landed, not still coming down onto it - item in hand, use it on the cell, and done when
 the server's block update shows farmland or a sprout. A soldier without a hoe makes a wooden one,
 and one carrying three wheat bakes it into bread, the ration every soldier eats (§11) - on an

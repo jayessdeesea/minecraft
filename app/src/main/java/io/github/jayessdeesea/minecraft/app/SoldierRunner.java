@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.bot.craft.Ladder;
 import io.github.jayessdeesea.minecraft.bot.craft.LoadPlan;
 import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import static io.github.jayessdeesea.minecraft.app.SoldierErrands.*;
+import static io.github.jayessdeesea.minecraft.app.SiteGeometry.*;
 import io.github.jayessdeesea.minecraft.bot.craft.WorkLoad;
 import io.github.jayessdeesea.minecraft.bot.engineer.Clearing;
 import io.github.jayessdeesea.minecraft.bot.engineer.Stairway;
@@ -103,6 +104,7 @@ import io.github.jayessdeesea.minecraft.command.Stockpile;
 import io.github.jayessdeesea.minecraft.command.Subsistence;
 import io.github.jayessdeesea.minecraft.command.TaskRegister;
 import io.github.jayessdeesea.minecraft.command.Tasking;
+import io.github.jayessdeesea.minecraft.command.FarmDuties;
 import io.github.jayessdeesea.minecraft.command.WoodDuties;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.WorkOrders;
@@ -1334,11 +1336,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
 
-    /** The nearest stockpile chest, not to be salvaged, last seen holding string - to {@code from}. */
-    private Optional<Position> stringChest(Position from) {
+    /** The nearest stockpile chest, not to be salvaged, last seen holding {@code kind} - to {@code from}. */
+    private Optional<Position> chestHolding(ItemClass kind, Position from) {
         return chestStock.entrySet().stream()
                 .filter(e -> chestsSeen.containsKey(e.getKey()) && !condemned.contains(e.getKey())
-                        && e.getValue().getOrDefault(ItemClass.STRING, 0) > 0)
+                        && e.getValue().getOrDefault(kind, 0) > 0)
                 .map(e -> new Position(e.getKey().x() + 0.5, e.getKey().y(), e.getKey().z() + 0.5))
                 .min(java.util.Comparator.comparingDouble(p -> Math.hypot(p.x() - from.x(), p.z() - from.z())));
     }
@@ -3377,17 +3379,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The time a builder is given to get to its rectangles at all. */
     static final long DUE_SLACK_MILLIS = 60_000;
 
-    /** When {@code boxes}, with {@code columns} left at the level, are due done from now. */
-    private static long dueMillis(List<Box> boxes, List<LevelPlan.Column> columns, int climb) {
-        long blocks = columns.stream().filter(c -> boxes.stream().anyMatch(b -> c.x() >= b.minX() && c.x() <= b.maxX()
-                && c.z() >= b.minZ() && c.z() <= b.maxZ())).count();
-        return DUE_SLACK_MILLIS + blocks * DUE_MILLIS_A_BLOCK + climb * DUE_MILLIS_A_CLIMB;
-    }
 
-    /** Blocks a builder at {@code at} climbs to {@code level}: none from at or over it, or not known where. */
-    private static int climb(Position at, int level) {
-        return at == null ? 0 : Math.max(0, level - (int) Math.floor(at.y()));
-    }
 
     /**
      * Time a rectangle's due is given for each block its builder climbs to it, on steps it puts up -
@@ -3398,36 +3390,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Whether {@code box} has ground, a step or a tree left at or over {@code level}. */
 
-    /**
-     * How high the flatten's rectangles reach: {@link #CEILING_SLACK} over the site's highest ground
-     * or step, not the sky - each builder's rectangle is scanned every squad cycle (Clearing.toClear),
-     * and live (commit 528's profile), from the level to y=319 that was a fifth of the CPU.
-     */
-    private static int siteCeiling(Box site, int level, java.util.function.IntBinaryOperator calm, java.util.function.IntBinaryOperator calmStep) {
-        int ceiling = level;
-        for (int x = site.minX(); x <= site.maxX(); x++) {
-            for (int z = site.minZ(); z <= site.maxZ(); z++) {
-                ceiling = Math.max(ceiling, Math.max(calm.applyAsInt(x, z), calmStep.applyAsInt(x, z)));
-            }
-        }
-        return ceiling + CEILING_SLACK;
-    }
 
-    private static boolean keepColumnsLeft(int level, Box box, java.util.function.IntBinaryOperator top, java.util.function.IntBinaryOperator stepTop) {
-        for (int x = box.minX(); x <= box.maxX(); x++) {
-            for (int z = box.minZ(); z <= box.maxZ(); z++) {
-                if (top.applyAsInt(x, z) >= level || stepTop.applyAsInt(x, z) >= level) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
 
-    /** {@code boxes} as the log says them. */
-    private static String boxesSaid(List<Box> boxes) {
-        return boxes.stream().map(b -> "x=" + b.minX() + ".." + b.maxX() + " z=" + b.minZ() + ".." + b.maxZ()).toList().toString();
-    }
 
     /** The foreman's word to {@code builder} on the net: its rectangles at {@code level}, or to wait. */
     private void sayAssignment(String chief, String builder, int level, List<Box> boxes) {
@@ -3815,12 +3779,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return Optional.of(new Order.Dig(box, keep));
     }
 
-    /** The box round {@code tree}'s logs and its crown. */
-    private static Box treeBox(Set<BlockPos> tree) {
-        return new Box(tree.stream().mapToInt(BlockPos::x).min().orElseThrow() - 2, tree.stream().mapToInt(BlockPos::y).min().orElseThrow(),
-                tree.stream().mapToInt(BlockPos::z).min().orElseThrow() - 2, tree.stream().mapToInt(BlockPos::x).max().orElseThrow() + 2,
-                tree.stream().mapToInt(BlockPos::y).max().orElseThrow() + TREE_CROWN, tree.stream().mapToInt(BlockPos::z).max().orElseThrow() + 2);
-    }
 
     /** The log nearest {@code at}, within {@link #TREE_LOOK} across and up or down. */
     private Optional<BlockPos> nearestLog(Position at, Set<BlockPos> held) {
@@ -4043,10 +4001,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return 8 * (high - low) + Math.abs(grove.centre().y() - (SEA_LEVEL + 1)) + ring / 8;
     }
 
-    /** The column box {@code reach} each way round x, z, all the way up and down. */
-    private static Box around(int x, int z, int reach) {
-        return new Box(x - reach, Integer.MIN_VALUE, z - reach, x + reach, Integer.MAX_VALUE, z + reach);
-    }
 
     private static boolean overlaps(Box a, Box b) {
         return a.minX() <= b.maxX() && b.minX() <= a.maxX() && a.minZ() <= b.maxZ() && b.minZ() <= a.maxZ();
@@ -4231,51 +4185,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return except;
     }
 
-    /** The least box holding every one of {@code cells}, if there are any. */
-    private static Optional<Box> bounds(List<BlockPos> cells) {
-        if (cells.isEmpty()) {
-            return Optional.empty();
-        }
-        int[] lo = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE}, hi = {Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};
-        for (BlockPos c : cells) {
-            lo[0] = Math.min(lo[0], c.x());
-            lo[1] = Math.min(lo[1], c.y());
-            lo[2] = Math.min(lo[2], c.z());
-            hi[0] = Math.max(hi[0], c.x());
-            hi[1] = Math.max(hi[1], c.y());
-            hi[2] = Math.max(hi[2], c.z());
-        }
-        return Optional.of(new Box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]));
-    }
 
     /** Whether {@code cell} is a structure's - a wall line's, or the keep's slab - where a step goes in as cobblestone. */
     private boolean builtCell(BlockPos cell) {
         return chainOfCommand.flatten().slab().contains(cell.x(), cell.y(), cell.z()) || walls.values().stream().anyMatch(w -> w.contains(cell));
     }
 
-    /**
-     * Where a soil site's dirt comes from: the ground east of it over its top, which the keep's own site
-     * there is to have dug anyway - not a borrow pit holed into ground that's kept.
-     */
-    private static Box soilBorrow(Flatten ground) {
-        return new Box(ground.maxX() + Flatten.BENCH + 1, ground.bottom(), ground.minZ(),
-                ground.maxX() + Flatten.BENCH + 16, Keep.SKY_TOP, ground.maxZ());
-    }
 
-    /** The register's name for a command on the keep. */
-    private static String keepTask(Order order) {
-        return order instanceof Order.Fill ? "fill the keep" : "dig the keep";
-    }
 
-    /** The register's name for a ground-work command: what it's on. */
-    private static String groundTask(Order order) {
-        return switch (order) {
-            case Order.Dig _ -> "dig the camp's ground";
-            case Order.Fill _ -> "fill the camp's ground";
-            case Order.Gather g -> "gather " + g.resource();
-            default -> "gather SOIL";
-        };
-    }
 
     /**
      * {@code soldier}'s ground-work command to the routine that does it: a dig's cells to its
@@ -4332,6 +4249,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Soldiers whose fill is in dirt alone: a soil site's top (Flatten.soil) - squad loop writes, tick reads. */
     private final Set<String> soilFilling = ConcurrentHashMap.newKeySet();
 
+    /** Each farmer's duty on its farm (command.FarmDuties), from who was on it last cycle - squad loop writes, tick reads. */
+    private final Map<String, FarmDuties.Duty> farmDuties = new ConcurrentHashMap<>();
     /** Soldiers whose gather is a woodcutter's, kept to its strip (command.WoodDuties) - squad loop writes, tick reads. */
     private final Set<String> woodcutters = ConcurrentHashMap.newKeySet();
     /** Each soldier's {@code Order.Gather} from the ground work's drill - squad loop writes, tick reads. */
@@ -5841,6 +5760,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList());
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         statuses.forEach(s -> woodcutters.remove(s.name()));
+        statuses.forEach(s -> farmDuties.remove(s.name()));
+        farmDuties.putAll(FarmDuties.of(statuses.stream().map(SoldierStatus::name).filter(farming::containsKey).sorted().toList()));
         woodDuties.values().stream().filter(d -> d.order().equals(Optional.ofNullable(ground.get(d.soldier())))).forEach(d -> woodcutters.add(d.soldier()));
         // The fight first: a soldier in contact answers its squad leader until it's over, and takes
         // its ground work up again then.
@@ -7571,8 +7492,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;
             Optional<Unstash> unstash = unstashFor(status.position(), inventory, darkNow)
                     .or(() -> salvageFor(name, status.position(), inventory, darkNow));
-            // A farmer's hoe, and its wheat baked into bread three at a time.
-            FarmPlan field = farming.get(name);
+            // A farmer's hoe, and its wheat baked into bread three at a time - by its baker, on a farm that has one.
+            FarmDuties.Duty farmDuty = farmDuties.get(name);
+            FarmPlan field = farmDuty == null || farming.get(name) == null ? farming.get(name) : farmDuty.kind() == FarmDuties.Kind.BAKER ? null
+                    : new FarmPlan(farming.get(name).water(), FarmDuties.share(farming.get(name).plot().stream()
+                            .sorted(Comparator.comparingInt(BlockPos::x).thenComparingInt(BlockPos::z)).toList(), farmDuty));
+            boolean bakes = farmDuty != null && farmDuty.kind() == FarmDuties.Kind.BAKER;
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
                 tools.add(Recipe.WOODEN_HOE);
             }
@@ -7588,7 +7513,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // And still wanted while a loaf is under way: its wheat in the table's grid isn't carried.
             // Live, a soldier with 4 wheat put 3 in the grid, wanted no bread with the 1 left, and
             // started and dropped the loaf 518 times.
-            if (inventory.count(ItemClass.WHEAT) >= 3 && (field != null || carriedRations < Subsistence.BASIC_LOAD)
+            if (inventory.count(ItemClass.WHEAT) >= BREAD_WHEAT && ((farmDuty == null ? field != null : bakes) || carriedRations < Subsistence.BASIC_LOAD)
                     || armourer.making(Recipe.BREAD)) {
                 tools.add(Recipe.BREAD);
             }
@@ -7970,11 +7895,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
+                } else if (depositor.drawing(ItemClass.WHEAT) || bakes && inventory.count(ItemClass.WHEAT) < BREAD_WHEAT
+                        && chestHolding(ItemClass.WHEAT, status.position()).isPresent()) {
+                    // The baker's wheat, from the stockpile the harvesters fill (command.FarmDuties).
+                    depositor.tickDraw(status.position(), chestHolding(ItemClass.WHEAT, status.position()).or(depositor::chestAt), ItemClass.WHEAT,
+                            BAKER_WHEAT, free && !threatened && fort == null && bakes && inventory.count(ItemClass.WHEAT) < BREAD_WHEAT);
                 } else if (depositor.drawing(ItemClass.STRING) || bedString(inventory) > 0
-                        && stringChest(status.position()).isPresent()) {
+                        && chestHolding(ItemClass.STRING, status.position()).isPresent()) {
                     // A bed's string from the depot, for a soldier without one (operator, 2026-11-18: beds, for a
                     // safe respawn): the night's spiders' string is stored there, four to a wool.
-                    depositor.tickDraw(status.position(), stringChest(status.position()).or(depositor::chestAt), ItemClass.STRING,
+                    depositor.tickDraw(status.position(), chestHolding(ItemClass.STRING, status.position()).or(depositor::chestAt), ItemClass.STRING,
                             inventory.count(ItemClass.STRING) + bedString(inventory), free && !threatened && fort == null && bedString(inventory) > 0);
                 } else if (metalDraw.isPresent() || MetalPool.METALS.stream().anyMatch(depositor::drawing)) {
                     ItemClass ore = metalDraw.map(MetalPool.Draw::ore)
@@ -7995,7 +7925,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     boolean surplusTrip = plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
                     // The depot's kinds past what the pack keeps go in with it while the depot's under its
                     // most (StockLevels) - not into a mine's stash - and a reserve run short is a trip of its own.
-                    Map<ItemClass, Integer> packKept = keepHands.contains(name) ? KEEP_PACK : cutting.containsKey(name) ? MINE_CARRIED : CARRIED;
+                    Map<ItemClass, Integer> packKept = keepHands.contains(name) ? KEEP_PACK : cutting.containsKey(name) ? MINE_CARRIED
+                            : Optional.ofNullable(farmDuties.get(name)).filter(d -> d.kind() == FarmDuties.Kind.HARVESTER).isPresent() ? HARVESTER_CARRIED : CARRIED;
                     boolean toDepot = deposit.flatMap(this::mineOfChest).isEmpty();
                     boolean stockTrip = toDepot && StockLevels.reserveShort(inventory, packKept, this::stocked);
                     // A flatten builder's load into the nearest depot standing a chest (keepOutposts).
