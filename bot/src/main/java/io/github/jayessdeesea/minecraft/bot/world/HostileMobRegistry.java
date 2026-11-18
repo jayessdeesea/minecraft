@@ -55,6 +55,18 @@ public final class HostileMobRegistry {
         return typeId == CREEPER;
     }
 
+    /**
+     * Neutral till provoked, and fought only in self-defense, at hand (operator, 2026-11-16, the
+     * engagement doctrine: attacked and can't break contact, fight): the enderman, whose eye a soldier
+     * facing its cut can catch. Live (field412-413), endermen killed seven miners at the mine's base
+     * in two nights, none of them striking back - unlisted, never in contact.
+     */
+    public static boolean fightsOnlyAtHand(int typeId) {
+        return typeId == ENDERMAN;
+    }
+
+    private static final int ENDERMAN = typeIdOf("enderman");
+
     /** Hostiles that shoot: bows (the skeleton family) and crossbows (pillagers). */
     private static final Set<Integer> SHOOTERS = Set.of(
             typeIdOf("skeleton"), typeIdOf("stray"), typeIdOf("bogged"), typeIdOf("pillager"));

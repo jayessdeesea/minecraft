@@ -21,11 +21,13 @@ public class GenerateEntityHostility {
 
     // Entity types that attack a player on sight - from well-established vanilla mechanics, not
     // guessed. Deliberately excludes neutral/conditionally-hostile mobs (wolves, bees, piglins,
-    // endermen, zombified piglins, iron golems, spiders-in-daylight edge cases aside) - grow this
-    // incrementally if real play shows a gap.
+    // zombified piglins, iron golems, spiders-in-daylight edge cases aside) - grow this
+    // incrementally if real play shows a gap. The enderman is listed for self-defense only - fought
+    // at hand, never sought (bot.world.HostileMobRegistry#fightsOnlyAtHand): live (field412-413),
+    // endermen killed seven miners at the mine's base, none of them striking back.
     private static final Set<String> HOSTILE = Set.of(
             "blaze", "bogged", "breeze", "cave_spider", "creeper", "drowned", "elder_guardian",
-            "ender_dragon", "endermite", "evoker", "ghast", "guardian", "hoglin", "husk",
+            "ender_dragon", "enderman", "endermite", "evoker", "ghast", "guardian", "hoglin", "husk",
             "magma_cube", "phantom", "piglin_brute", "pillager", "ravager", "shulker", "silverfish",
             "skeleton", "slime", "spider", "stray", "vex", "vindicator", "warden", "witch",
             "wither", "wither_skeleton", "zoglin", "zombie", "zombie_villager"

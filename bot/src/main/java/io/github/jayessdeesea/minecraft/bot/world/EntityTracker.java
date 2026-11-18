@@ -75,10 +75,15 @@ public final class EntityTracker {
     }
 
     /** Hostile entities within {@code radius} (3D distance) of {@code center}, nearest first. */
+    /** How near a mob fought only in self-defense (HostileMobRegistry#fightsOnlyAtHand) counts as hostile. */
+    public static final double AT_HAND = 3;
+
     public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
         double radiusSquared = radius * radius;
+        double atHandSquared = Math.min(radius, AT_HAND) * Math.min(radius, AT_HAND);
         return hostiles.entrySet().stream()
-                .filter(e -> distanceSquared(center, e.getValue().position) <= radiusSquared)
+                .filter(e -> distanceSquared(center, e.getValue().position)
+                        <= (HostileMobRegistry.fightsOnlyAtHand(e.getValue().typeId) ? atHandSquared : radiusSquared))
                 .map(e -> new TrackedEntity(e.getKey(), e.getValue().typeId, e.getValue().position))
                 .sorted(Comparator.comparingDouble(entity -> distanceSquared(center, entity.position())))
                 .toList();

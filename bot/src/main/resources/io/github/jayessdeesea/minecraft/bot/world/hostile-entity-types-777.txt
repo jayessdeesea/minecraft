@@ -8,6 +8,7 @@
 32 creeper
 39 drowned
 41 elder_guardian
+42 enderman
 43 endermite
 44 ender_dragon
 47 evoker

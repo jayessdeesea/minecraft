@@ -54,6 +54,19 @@ class EntityTrackerTest {
         assertEquals(List.of(2, 1), hostiles.stream().map(TrackedEntity::entityId).toList());
     }
 
+    /**
+     * An enderman is fought only at hand, in self-defense: one coming at a soldier is in contact, one
+     * across the tunnel isn't - sought, it's provoked. Live, endermen killed seven miners unanswered.
+     */
+    @Test
+    void anEndermanIsHostileOnlyAtHand() {
+        EntityTracker tracker = new EntityTracker();
+        tracker.spawn(1, new UUID(0, 1), HostileMobRegistry.typeIdOf("enderman"), 5, 64, 0, ALICE);
+        assertTrue(tracker.nearbyHostiles(ORIGIN, 8).isEmpty(), "five off: left alone");
+        tracker.spawn(2, new UUID(0, 2), HostileMobRegistry.typeIdOf("enderman"), 2, 64, 0, ALICE);
+        assertEquals(List.of(2), tracker.nearbyHostiles(ORIGIN, 8).stream().map(TrackedEntity::entityId).toList(), "two off: fought");
+    }
+
     @Test
     void ignoresNonHostileEntities() {
         EntityTracker tracker = new EntityTracker();

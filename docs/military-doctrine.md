@@ -534,6 +534,11 @@ the squad to falls.
 | **React to contact** (battle drill) | The rest of the unit moves to support the element in contact. The leader then decides whether to assault, bypass or break contact. | ATP 3-21.8 (battle drills) |
 
 *How we use it:*
+- **What's hostile.** The curated list (`tools/entity-hostility-generator`, `HostileMobRegistry`): what
+  attacks on sight. The enderman, neutral till its eye is caught or it's hit, is on it for self-defense
+  only - in contact within 3 blocks, coming at the soldier, never sought (`HostileMobRegistry.fightsOnlyAtHand`,
+  `EntityTracker.AT_HAND`): live, endermen killed seven miners at the mine's base in two nights, none
+  striking back.
 - **The soldier's reflex.** A soldier in contact fights the nearest hostile at arm's length
   (`DeterministicSoldier.tick`): it closes to its 3-block reach at a sprint, strikes when its attack has
   recharged, backs off inside 2.5 blocks, which is outside a zombie's reach, and holds in
