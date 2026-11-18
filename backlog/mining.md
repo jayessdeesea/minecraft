@@ -102,3 +102,13 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
 - Ladders down a 1x1 shaft are faster to climb than stairs, and a vertical drop with water or
   platforms every 8 blocks is how a player makes one safe. Ladders need a climbing move the
   soldiers don't have; stairs came first because they're walked.
+
+## Nobody waits on another's cut (field454)
+Two nights of 5 ore of 16: about ten soldiers reported `Mining[step=1]` all night - `Miner`'s wait for its
+share's tunnel roots to be cut (`Progress.Working(0, ...)`, waiting behind the one cutting) - while the one
+or two cutting toward them made little way: Eli replanned one leg toward (-161, -56, -17) 109 times
+(backlog/long-routes.md). The parallel-work tenet (docs/echelons/tenets.md) has it that a worker with
+nothing given is a defect of the split, not a rest. Wanted: a waiter whose roots aren't reached cuts toward
+them itself - it carries a pickaxe - or is given its own face; and a wait past a few minutes said loudly
+(`[Alert]`: stationary miners at step 1 raise none, being "Mining").
+

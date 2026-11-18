@@ -74,3 +74,8 @@ objective, which is where the squad last saw some.
   cobblestone, one log and no bread: her 88-block stair up is dug by hand, 150 ticks a stone block
   against 30 with a stone pickaxe - about eleven minutes. Never routing a surface soldier into a
   cave is the fix; a stranded soldier with a carried table and two logs could make a pickaxe first.
+
+- **Seen again (field454):** Eli planned the same leg - 206 steps toward (-183, 8, -21), "47 blocks nearer" -
+  109 times in a night toward his mine's tunnel at (-161, -56, -17); the "plans the same leg again" guard
+  didn't take, and the cutters waiting on his cut waited all night (backlog/mining.md).
+
