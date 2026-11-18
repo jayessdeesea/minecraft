@@ -1342,6 +1342,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Set<BlockPos> fullChests = ConcurrentHashMap.newKeySet();
     /** The key the full chests are kept under. */
     private static final String FULL_CHESTS = "full";
+    /** Chests on the ground to flatten seen empty: kept on disk, so a restart doesn't look in each again. */
+    private static final String SALVAGED = "salvaged";
+    private final Set<BlockPos> salvaged = ConcurrentHashMap.newKeySet();
 
     /** The full chests to disk, as they are now. */
     private void saveFullChests() {
@@ -1576,6 +1579,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.stepStore = new WallStore(Path.of(stateDir), "steps");
         stepStore.load(STEPS).ifPresent(scaffolding::addAll);
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
+        chestStore.load(SALVAGED).ifPresent(salvaged::addAll);
         chestStore.load(DEAD_WELLS).ifPresent(deadWells::addAll);
         chestStore.load(MINES_TRIED).ifPresent(tried -> chainOfCommand.setMinesTried(tried.stream()
                 .map(c -> new Position(c.x(), c.y(), c.z())).toList()));
@@ -4893,10 +4897,22 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return condemned;
     }
 
-    /** Whether the chest at {@code chest} was last seen holding none of the depot's kinds. */
+    /**
+     * Whether the chest at {@code chest} was last seen holding none of the depot's kinds - this run, or before
+     * a restart (salvaged, kept on disk). Live (field432-435), each restart forgot what each of 26 chests
+     * held, and the salvager went round them all again.
+     */
     private boolean emptied(BlockPos chest) {
         Map<ItemClass, Integer> seen = chestStock.get(chest);
-        return seen != null && seen.values().stream().allMatch(n -> n == 0);
+        if (seen != null && seen.values().stream().allMatch(n -> n == 0)) {
+            if (salvaged.add(chest)) {
+                synchronized (chestStore) {
+                    chestStore.save(SALVAGED, List.copyOf(salvaged));
+                }
+            }
+            return true;
+        }
+        return seen == null && salvaged.contains(chest);
     }
 
     /**

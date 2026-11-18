@@ -59,6 +59,12 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   on it: Ivy's run was cut off when another took it, and she stood beside it a minute, twice. Surplus
   to need, no locks (work in parallel): a base's furnaces sized to its shift - `Workshop` holds one
   furnace, so its landing, fitter and crafter would each take several. About two cut-off runs a night.
+- **A respawn at the mine head has nothing to re-arm with.** Live (field427-435), five soldiers killed
+  by night respawned, were sent down their squad's mine (LinkUp's shelter), and stood the night at its
+  head's workshop: "can't make wooden pickaxe and wooden sword: no LOG within 48 blocks", the depot's
+  logs at none. Wanted: a re-arming cache at each mine head - its stash chest holding a pickaxe and a
+  sword's worth of logs (three) kept back from the depot, topped up by day like the mine's torches -
+  and a respawn short of a pickaxe drawing from it before it goes down.
 
 - **Unworked rock (operator, 2026-11-17).** The night's ore thin at the levels worked (field399-413,
   one ore block in 70-100 cut): new branch headings off the main tunnel into rock no branch has
