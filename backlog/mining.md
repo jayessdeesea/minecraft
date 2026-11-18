@@ -43,6 +43,12 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   the recovery drill laid out for it twice in two seconds as it walked on. A 1x1 spiral of 200 steps
   should count as hundreds of cells; whether the flood fill climbs the stair, or the cutter's work
   below the landing breaks it, wants a look (`SoldierRunner.cutOff`, `Pathfinder.reachable`).
+- **The mine base has one furnace for the night shift.** Live (field395, 15:48), five soldiers set
+  about smelting at the keep mine's base within ten seconds - copper leggings, boots, a chestplate,
+  two iron pickaxes - and a furnace is one soldier's at a time (`Crafter.usable`), so the rest waited
+  on it: Ivy's run was cut off when another took it, and she stood beside it a minute, twice. Surplus
+  to need, no locks (work in parallel): a base's furnaces sized to its shift - `Workshop` holds one
+  furnace, so its landing, fitter and crafter would each take several. About two cut-off runs a night.
 
 ## Notes
 - Diamonds need an iron pickaxe: the equipment ladder (docs/military-doctrine.md § 11) reaches

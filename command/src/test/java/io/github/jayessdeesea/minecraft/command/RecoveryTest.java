@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class RecoveryTest {
@@ -220,6 +221,33 @@ class RecoveryTest {
         // Its stair dug, the world says: released, whatever its height.
         assertEquals(List.of("Dana"), recovery.release("Dana"));
         assertEquals(false, recovery.recovering("Dana"));
+    }
+
+    /**
+     * With nothing laid out at first, it's laid out again a while on: live, a soldier plugged the water
+     * barring its pocket and stood on its escape walk, the stair up never looked for again.
+     */
+    @Test
+    void oneStrandedWithNothingLaidOutIsLookedAtAgain() {
+        Position pocket = new Position(0.5, 60, 0.5);
+        Kit pick = new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false, true, 0, false);
+        List<SoldierStatus> squad = List.of(
+                new SoldierStatus("Bob", new Position(3, 64, 0), new Order.Idle(), new Report.InPosition(),
+                        Optional.of(new Condition(20, 20, 0, Optional.of(pick)))),
+                new SoldierStatus("Dana", pocket, new Order.Idle(), STUCK, Optional.of(new Condition(20, 20, 0, Optional.of(pick)))));
+        List<Cell> cut = List.of(new Cell(0, 62, 0), new Cell(1, 61, 0), new Cell(1, 62, 0));
+        java.util.concurrent.atomic.AtomicBoolean plugged = new java.util.concurrent.atomic.AtomicBoolean();
+        Recovery recovery = new Recovery();
+
+        Order first = recovery.orders(squad, List.of(new Order.Idle(), new Order.Idle()), NO_STAIR,
+                s -> plugged.get() ? Optional.of(cut) : Optional.empty()).get(1);
+        assertTrue(first instanceof Order.MoveTo, "nothing laid out: down to its squad itself, " + first);
+        plugged.set(true);
+        Order later = first;
+        for (int i = 0; i < Recovery.REPLAN_LOOKS && !(later instanceof Order.Dig); i++) {
+            later = recovery.orders(squad, List.of(new Order.Idle(), new Order.Idle()), NO_STAIR, s -> plugged.get() ? Optional.of(cut) : Optional.empty()).get(1);
+        }
+        assertEquals(Recovery.dig(cut), later, "the water plugged, its stair up is laid out and dug");
     }
 
     @Test

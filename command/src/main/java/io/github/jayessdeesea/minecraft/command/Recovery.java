@@ -40,6 +40,8 @@ public final class Recovery {
         /** Up a pillar of its own: the pillar's cells, for it to dig down from on top. */
         Optional<List<Cell>> pillar = Optional.empty();
         String fetcher;
+        /** Reports seen with nothing laid out, toward laying it out again. */
+        int looks;
 
         Episode(Position at, Optional<List<Cell>> stair, Optional<List<Cell>> cut) {
             this.at = at;
@@ -52,6 +54,8 @@ public final class Recovery {
     private final Map<String, Episode> recovering = new LinkedHashMap<>();
     /** How many reports in a row each soldier has been stranded for. */
     private final Map<String, Integer> strandedFor = new HashMap<>();
+    /** Reports an episode with nothing laid out is kept before it's laid out afresh. */
+    static final int REPLAN_LOOKS = 30;
     /** This cycle's escapes: each stranded soldier nobody can fetch, sent down to its squad itself. */
     private final Map<String, Order.MoveTo> escaping = new HashMap<>();
     /**
@@ -132,6 +136,11 @@ public final class Recovery {
                 ? byName.get(e.getKey()).position().y() >= e.getValue().cut.get().stream().mapToInt(Cell::y).max().orElse(0) - 0.5
                 || offTheCut(byName.get(e.getKey()).position(), e.getValue().cut.get())
                 : Cohesion.distance(byName.get(e.getKey()).position(), e.getValue().at) > MOVED_OFF));
+        // With nothing laid out, it's laid out again a while on: the ground round it changes - water it
+        // plugs, a squadmate's dig - and the first look's no is no longer so. Live (field396), Eli plugged
+        // the water barring his pocket and stood with his escape walk, the stair up never looked for again.
+        recovering.entrySet().removeIf(e -> e.getValue().stair.isEmpty() && e.getValue().cut.isEmpty()
+                && e.getValue().pillar.isEmpty() && ++e.getValue().looks >= REPLAN_LOOKS);
         for (SoldierStatus s : reported) {
             int stuck = stranded(s) ? strandedFor.merge(s.name(), 1, Integer::sum) : 0;
             if (stuck == 0) {

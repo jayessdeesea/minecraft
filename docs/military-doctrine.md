@@ -510,7 +510,10 @@ and with nobody carrying one to come, the stranded soldier digs the cut by hand.
 fetch it and nothing to build with, the stranded soldier
 goes down to its nearest squadmate itself at MEDIUM risk, over its own routine's stand: a fall
 that leaves it half its health or more. Live, soldiers stood for an hour on hut roofs, the wall
-and a canopy over the camp, a 4-block drop from the ground that the squad's LOW risk wouldn't take. A recovery lasts until the
+and a canopy over the camp, a 4-block drop from the ground that the squad's LOW risk wouldn't take. With nothing
+laid out, its stair or cut is looked for again after 30 reports (`Recovery.REPLAN_LOOKS`): the ground round it
+changes - water it plugs, a squadmate's dig - and live, a soldier plugged the water barring its pocket and stood on
+its walk down, the stair up never looked for again. A recovery lasts until the
 stranded soldier has moved two blocks off where it was stuck. Its own report flickers as it
 retries its route, and a recovery that ended with each flicker would pass the stair from one
 squadmate to another. A soldier that reports CANTCO prices the riskier
