@@ -12,3 +12,12 @@ even with its trees cut (field377: kept clear 37 - the flatten's ground, the cam
 ground 8, no plot 4, too small 7). Which: two or more groves of 8; the search farther out than 64;
 or wait for the production chunks? Until then the wood party fells single trees where they're seen,
 whole, and replants each stump.
+
+## The night's ore: thin at the keep mine's levels (backlog/mining.md)
+Two of three nights came in under 16 ore (field399: 7, field400: 44, field402: 10) with every crew
+working - 48 to 120 blocks cut a level, about 700-800 a night across ten levels at y=12 down to
+-16, and one ore block in 70-100 cut. The branches now run past 96 toward 192 from the head, so
+each night's walk to the faces grows too. The keep's mine doesn't move on yield (operator,
+2026-11-17), so which: levels further down (iron peaks round y=16 but diamonds and redstone
+lie at -58 and below); new branch headings off the main tunnel into unworked rock; a second mine
+for the night shift; or take the yield as the ground's and keep cutting?
