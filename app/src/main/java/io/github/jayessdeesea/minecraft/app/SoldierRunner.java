@@ -2266,9 +2266,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // (field390-393), Eli on the surface 70 blocks off was sent by night to his squad's dried-up mine's
         // base at y=-48 for a chestplate, walked down through the caves, and was stranded at y=-43.
         BlockPos head = state.stairs.head();
-        boolean underground = TerrainSurveyor.surface(world, (int) Math.floor(at.x()), (int) Math.floor(at.z()), Keep.SKY_TOP)
-                .map(top -> top.y() > at.y() + UNDERGROUND).orElse(false);
-        if (!underground && Math.hypot(at.x() - head.x(), at.z() - head.z()) > MINE_SHOP_NEAR) {
+        if (!underground(at) && Math.hypot(at.x() - head.x(), at.z() - head.z()) > MINE_SHOP_NEAR) {
             return state.workshop;
         }
         boolean landing = state.stairs.landingCut(world);
@@ -2277,6 +2275,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         boolean dark = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
         return dark ? (landing ? Workshop.mine(state.stairs) : null) : state.workshop;
+    }
+
+    /** Whether {@code at} is under the ground: the column's surface more than {@link #UNDERGROUND} over it. */
+    private boolean underground(Position at) {
+        return TerrainSurveyor.surface(world, (int) Math.floor(at.x()), (int) Math.floor(at.z()), Keep.SKY_TOP)
+                .map(top -> top.y() > at.y() + UNDERGROUND).orElse(false);
     }
 
     /** How far across from a mine's head a soldier on the surface still crafts at its base: by the head. */
@@ -5917,8 +5921,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // reachable, and its soldiers sent to wedge places in the rock round the point man.
             Staircase cameFrom = state.lastStairs;
             Position below = statuses.get(i).position();
+            // Under the ground, not on the slope by the head below its height: live (field389-396), soldiers
+            // on the ground falling away from the mine's head at y=96 were sent up to it at y=92, sent back down
+            // to the day's work at y=94, and up again - 118 crowding alerts there in a day.
             if (state.stairs == null && cameFrom != null && !squadInContact && !state.recovery.recovering(soldierName)
-                    && below.y() < cameFrom.head().y() - MINE_BELOW
+                    && below.y() < cameFrom.head().y() - MINE_BELOW && underground(below)
                     && Math.hypot(below.x() - cameFrom.head().x(), below.z() - cameFrom.head().z()) <= CLIMB_OUT_NEAR) {
                 Position head = centre(cameFrom.head());
                 if (state.climbingOut.add(soldierName)) {

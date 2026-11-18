@@ -85,4 +85,5 @@ the world, not from reports, and shown to the squad leader and the platoon leade
   rows to the full depth, live, once the big site's east side is cut down to it. Live (field389),
   with the level at y=90 and the depot at y=71, the way down off the site's top ran past (27, 93, -7)
   and (51, 93, 2): 118 crowding alerts there in a day, two ways at once, and Alice failed five walks
-  running to the stockpile from (27.7, 93, -7.4).
+  running to the stockpile from (27.7, 93, -7.4). The (51, 93, 2) half was the mine's climb-out rule
+  sending soldiers on the slope below its head up and back (fixed: under the ground only).
