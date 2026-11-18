@@ -816,7 +816,12 @@ them, as metal is drawn, while the stores were last seen holding that many, or h
 since a restart (`SoldierRunner.drawsLogs`): live, a miner at the mine's head couldn't make a
 pickaxe with 71 logs in the keep's depot, his own stockpile the camp's chest.
 
-It digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
+A soldier on its order's work - cutting a mine, a wood or farm duty, building the keep - never digs
+its kit's makings itself (operator, 2026-11-18: a farmer doesn't start chopping trees because it has
+no hoe; `Armourer.digsItsMakings`): it says what it's short of, and draws it from the stockpile as
+above, which the force's producers fill. Live (field449), a night's mining took no ore while its
+cutters went off to dig a log and iron ore for iron pickaxes, one killed out there. Any other soldier
+digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach -
 a tree or ore looked for at any height it can walk to, up a slope or down the mine's stairs, and
 ore met in a dig of the ground taken for its drop, not broken as a block in the way - every kind:

@@ -11,6 +11,11 @@ import io.github.jayessdeesea.minecraft.command.Position;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
+import io.github.jayessdeesea.minecraft.command.PatrolBase;
+import io.github.jayessdeesea.minecraft.command.Plan;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.github.jayessdeesea.minecraft.app.SoldierRunner.*;
 
@@ -118,5 +123,24 @@ final class SiteGeometry {
             case Order.Gather g -> "gather " + g.resource();
             default -> "gather SOIL";
         };
+    }
+
+    /** {@code w}'s chest cell, centred. */
+    static Position chestCentre(Workshop w) {
+        return w.chest().map(c -> new Position(c.x() + 0.5, c.y(), c.z() + 0.5)).orElse(new Position(0, Integer.MIN_VALUE, 0));
+    }
+
+    static Position centre(BlockPos cell) {
+        return new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
+    }
+
+    static Set<Long> footprint(PatrolBase.Plan plan) {
+        return Stream.concat(plan.floor().stream(), plan.cells().stream())
+                .map(c -> column((int) Math.floor(c.x()), (int) Math.floor(c.z())))
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    static long column(int x, int z) {
+        return ((long) x << 32) | (z & 0xffffffffL);
     }
 }

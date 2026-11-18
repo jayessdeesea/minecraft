@@ -69,6 +69,18 @@ public final class Armourer {
     private final Setbacks<BlockPos> spots = new Setbacks<>(COOLDOWN_TICKS, 20L * COOLDOWN_TICKS);
     private long ticks;
 
+    /**
+     * Whether it may dig what its kit is short of itself. Not a soldier on its order's work (operator,
+     * 2026-11-18: a farmer doesn't start chopping trees because it has no hoe): it says what it's short of
+     * instead, and draws it from the stockpile the force's producers fill (backlog/soldier-order.md).
+     */
+    private volatile boolean digsItsMakings = true;
+
+    /** Lets it dig its own makings, or has it say what it's short of instead. */
+    public void digsItsMakings(boolean digs) {
+        this.digsItsMakings = digs;
+    }
+
     public Armourer(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Map<BlockPos, String> furnaces,
                     Runnable kitChanged) {
         this.name = name;
@@ -290,7 +302,7 @@ public final class Armourer {
             return false;
         }
         Optional<ItemClass> next = DUG.keySet().stream().filter(short_::containsKey).findFirst();
-        if (!short_.keySet().stream().allMatch(DUG::containsKey) || next.isEmpty()) {
+        if (!short_.keySet().stream().allMatch(DUG::containsKey) || next.isEmpty() || !digsItsMakings) {
             giveUp("short of " + short_ + " - " + inventory.summary());
         } else if (digger != null || cooldown == 0) {
             dig(soldier, world, DUG.get(next.get()), short_.get(next.get()));

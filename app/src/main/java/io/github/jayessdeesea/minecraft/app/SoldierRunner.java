@@ -4253,6 +4253,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, FarmDuties.Duty> farmDuties = new ConcurrentHashMap<>();
     /** Soldiers whose gather is a woodcutter's, kept to its strip (command.WoodDuties) - squad loop writes, tick reads. */
     private final Set<String> woodcutters = ConcurrentHashMap.newKeySet();
+    /** Soldiers with a wood duty, woodcutter or planter - squad loop writes, tick reads. */
+    private final Set<String> woodDutied = ConcurrentHashMap.newKeySet();
     /** Each soldier's {@code Order.Gather} from the ground work's drill - squad loop writes, tick reads. */
     private final Map<String, Order.Gather> groundGather = new ConcurrentHashMap<>();
 
@@ -4880,10 +4882,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return squadStairs.values().stream().filter(s -> s.store().getFirst().equals(cell)).findFirst();
     }
 
-    /** {@code w}'s chest cell, centred. */
-    private static Position chestCentre(Workshop w) {
-        return w.chest().map(c -> new Position(c.x() + 0.5, c.y(), c.z() + 0.5)).orElse(new Position(0, Integer.MIN_VALUE, 0));
-    }
 
     /**
      * {@code soldier}'s step on {@code stairs} for the night, holding no cut: a step of its own in a
@@ -5760,6 +5758,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList());
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         statuses.forEach(s -> woodcutters.remove(s.name()));
+        statuses.forEach(s -> woodDutied.remove(s.name()));
+        woodDutied.addAll(woodDuties.keySet());
         statuses.forEach(s -> farmDuties.remove(s.name()));
         farmDuties.putAll(FarmDuties.of(statuses.stream().map(SoldierStatus::name).filter(farming::containsKey).sorted().toList()));
         woodDuties.values().stream().filter(d -> d.order().equals(Optional.ofNullable(ground.get(d.soldier())))).forEach(d -> woodcutters.add(d.soldier()));
@@ -6774,9 +6774,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How much further than the nearest a place a resource was seen may be, and still be shared out to. */
     private static final double SPREAD_BEYOND_NEAREST = 24;
 
-    private static Position centre(BlockPos cell) {
-        return new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
-    }
 
     private void logSquadSitrep() {
         for (Roster.Squad squadDefinition : roster.squads()) {
@@ -6821,11 +6818,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private final Map<String, Set<Long>> baseFootprints = new ConcurrentHashMap<>();
 
-    private static Set<Long> footprint(PatrolBase.Plan plan) {
-        return Stream.concat(plan.floor().stream(), plan.cells().stream())
-                .map(c -> column((int) Math.floor(c.x()), (int) Math.floor(c.z())))
-                .collect(Collectors.toUnmodifiableSet());
-    }
 
     /** How near a waypoint counts as there, for a patrol's next leg. */
     private static final double PATROL_REACHED = 2.5;
@@ -6870,9 +6862,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 || Math.max(Math.abs(cell.x() - camp[0]), Math.abs(cell.z() - camp[1])) != WALL_RADIUS);
     }
 
-    private static long column(int x, int z) {
-        return ((long) x << 32) | (z & 0xffffffffL);
-    }
 
     /**
      * The nearest point to {@code asked}, within {@value #SITE_SEARCH} blocks across and
@@ -7492,6 +7481,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;
             Optional<Unstash> unstash = unstashFor(status.position(), inventory, darkNow)
                     .or(() -> salvageFor(name, status.position(), inventory, darkNow));
+            armourer.digsItsMakings(!(cutting.containsKey(name) || woodDutied.contains(name) || farmDuties.containsKey(name) || keepHands.contains(name)));
             // A farmer's hoe, and its wheat baked into bread three at a time - by its baker, on a farm that has one.
             FarmDuties.Duty farmDuty = farmDuties.get(name);
             FarmPlan field = farmDuty == null || farming.get(name) == null ? farming.get(name) : farmDuty.kind() == FarmDuties.Kind.BAKER ? null

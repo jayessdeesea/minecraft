@@ -40,3 +40,7 @@ handle's log off a woodcutter's strip, `WoodDutiesSimulationTest`).
 - A soldier in a fight goes back to the same task, area and cell after it, in the squad simulation.
 - A farmer without a hoe reports it and is supplied, and fells no tree, in the squad simulation.
 - `SoldierErrands` is empty.
+
+Begun: a soldier on a mine, a duty or the keep no longer digs its kit's makings itself
+(`Armourer.digsItsMakings`) - it says what it's short of and draws it; the request reaching its squad
+leader as a supply request, and the idle soldier's own digging, are left.

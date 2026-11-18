@@ -69,4 +69,50 @@ class ArmourerTest {
                 new CraftPlan.Session(Recipe.Station.TABLE, List.of(new CraftPlan.Batch(Recipe.FURNACE, 1)))), Map.of(), Set.of());
         assertEquals(Set.of(Workstation.CRAFTING_TABLE), Armourer.needed(sword));
     }
+
+    /**
+     * A soldier on its order's work, short of a pickaxe's logs with a tree beside it, doesn't go and cut it:
+     * it says what it's short of (operator, 2026-11-18: a farmer doesn't chop trees because it has no hoe).
+     */
+    @Test
+    void aSoldierOnItsWorkSaysWhatItsShortOfRatherThanDigIt() {
+        java.util.List<String> sent = new java.util.ArrayList<>();
+        io.github.jayessdeesea.minecraft.protocol.PlaySession session = (io.github.jayessdeesea.minecraft.protocol.PlaySession)
+                java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+                        new Class<?>[]{io.github.jayessdeesea.minecraft.protocol.PlaySession.class}, (proxy, method, args) -> {
+                            sent.add(method.getName());
+                            return method.getReturnType() == boolean.class ? Boolean.FALSE : null;
+                        });
+        BlockPos tree = new BlockPos(2, GROUND + 1, 0);
+        WorldView withATree = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= GROUND || new BlockPos(x, y, z).equals(tree);
+            }
+
+            @Override
+            public boolean isLog(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(tree);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Armourer armourer = new Armourer("Alice", session, new io.github.jayessdeesea.minecraft.bot.world.Inventory(),
+                new java.util.HashSet<>(), new java.util.concurrent.ConcurrentHashMap<>(), () -> {
+                });
+        armourer.digsItsMakings(false);
+
+        armourer.tick(new Position(0.5, GROUND + 1, 0.5), withATree, Set.of(Recipe.WOODEN_PICKAXE), false, Optional.empty());
+
+        assertEquals(true, armourer.failure().filter(f -> f.contains("short of") && f.contains("LOG")).isPresent(), "said: " + armourer.failure());
+        assertEquals(false, sent.contains("startDigging"), "no tree cut: " + sent);
+    }
 }
