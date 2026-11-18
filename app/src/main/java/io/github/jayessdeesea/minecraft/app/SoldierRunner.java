@@ -1947,7 +1947,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // mine has its shift. Live, a miner kept the camp alone all day while its squad dug the keep.
             boolean minerOnTheKeep = !chainOfCommand.sheltering() && plan.role() == Role.MINER && plan.current().isEmpty()
                     && taskOf(squad, Objective.Task.Keep.class).isPresent();
-            String unit = escorting || inForTheNight || minerOnTheKeep ? squad : plan.unit(squad, names.get(i));
+            String wanted = escorting || inForTheNight || minerOnTheKeep ? squad : plan.unit(squad, names.get(i));
+            // One the recovery drill has stays in its unit till it's out: each unit's drill is its own, and a move
+            // begins it afresh. Live (field393-408), Eli, stranded at y=-43, was dealt between Bravo and Bravo/miner at
+            // every dusk and dawn, his stair up laid again each time and never cut (operator, 2026-11-17: one
+            // fetcher, not the squad - kept in one unit first).
+            String held = unitOf.get(names.get(i));
+            String unit = recovering.contains(names.get(i)) && held != null && !held.equals(wanted) ? held : wanted;
+            if (!unit.equals(wanted) && heldInUnit.add(names.get(i))) {
+                LOG.info("[{} -> {}] stays in {} while the recovery drill has it, not {}", names.get(i), squad, unit, wanted);
+            } else if (unit.equals(wanted)) {
+                heldInUnit.remove(names.get(i));
+            }
             members.computeIfAbsent(unit, u -> new ArrayList<>()).add(i);
             String was = unitOf.put(names.get(i), unit);
             if (!unit.equals(was == null ? squad : was)) {
@@ -5186,6 +5197,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final double STAIR_THREAT_RADIUS = 4;
     /** What last held each soldier on a stair up from cutting - tick loops only, each its own key. */
     private final Map<String, String> stairHolds = new ConcurrentHashMap<>();
+    /** Soldiers kept in their unit by the recovery drill, said once - squad loops only. */
+    private final Set<String> heldInUnit = ConcurrentHashMap.newKeySet();
     /** Soldiers on a stair up whose clearer has no stand yet, said once - squad loops only. */
     private final Set<String> stairWaitSaid = ConcurrentHashMap.newKeySet();
     /** Soldiers stranded with water beside their way up, to plug it first - squad loops write, tick loops read. */
