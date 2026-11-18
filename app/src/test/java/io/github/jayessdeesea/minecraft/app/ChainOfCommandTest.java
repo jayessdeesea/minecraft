@@ -334,4 +334,32 @@ class ChainOfCommandTest {
         assertEquals("its level not planned yet", ChainOfCommand.buildersWanted(Integer.MAX_VALUE));
         assertEquals("its level wants 40 builder(s)", ChainOfCommand.buildersWanted(40));
     }
+
+    /** The flatten's standing squad, sent by the platoon leader to a shortfall, keeps that order: another flattens. */
+    @Test
+    void theFlattenTakesASquadNotOnAShortfallBeforeItsStandingOne() {
+        ChainOfCommand two = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+        two.setKeepByDay(true);
+        two.setGround((x, z, nearY) -> OptionalInt.of(64));
+        two.onTime(TimeOfDay.of(1000, true));
+        Objective keep = new Objective("Flatten", new Position(0, 64, 0), "The ground", new Objective.Task.Keep());
+        Objective wood = new Objective("Gather wood", new Position(30, 64, 30), "Logs", new Objective.Task.Gather(Resource.WOOD));
+        Objective mine = new Objective("Mine", new Position(40, 64, 0), "Ore", new Objective.Task.Mine());
+        List<SquadStatus> squads = List.of(
+                new SquadStatus("Alpha", new Report.InPosition(), squad("Alpha", "Alice").soldiers(), List.of(), Optional.of(keep), false,
+                        OptionalInt.empty(), Optional.empty(), Optional.empty(), Optional.empty()),
+                new SquadStatus("Bravo", new Report.InPosition(), squad("Bravo", "Bob").soldiers(), List.of(), Optional.of(mine), false,
+                        OptionalInt.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
+
+        List<Objective> guarded = two.guarded(List.of(wood, mine), squads, List.of(PlatoonSergeant.Shortfall.WOOD),
+                List.of(new ResourceSite(Resource.WOOD, new Position(30, 64, 30), 10)));
+
+        assertEquals(wood, guarded.get(0), "Alpha keeps the wood it was sent to: " + guarded);
+        assertTrue(guarded.get(1).task() instanceof Objective.Task.Keep, "Bravo flattens: " + guarded);
+    }
 }

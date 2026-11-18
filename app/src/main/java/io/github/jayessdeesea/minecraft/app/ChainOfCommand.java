@@ -467,9 +467,16 @@ public class ChainOfCommand implements DisposableBean {
         if (!movable.isEmpty() && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
             // The squad already flattening, if one is, so the flatten keeps its crew: live (field418), the platoon
             // leader put nobody on it twice running and the guardrail moved Charlie, then Alpha, two minutes apart.
+            // But not one the platoon leader has just put on a shortfall: live (field431-439), it sent Charlie for wood,
+            // the guardrail took Charlie back onto the flatten as its standing keeper, and then sent Bravo off its
+            // own order to the wood - two of its decisions undone where one squad not on a shortfall would do.
+            java.util.function.IntPredicate onAShortfall = i -> alarms.stream().anyMatch(s -> covers(out.get(i), s));
             Optional<Integer> flattening = movable.stream()
-                    .filter(i -> statuses.get(i).standing().filter(o -> o.task() instanceof Objective.Task.Keep).isPresent()).findFirst();
-            int k = flattening.or(() -> spare(out, movable, alarms)).orElse(movable.getFirst());
+                    .filter(i -> statuses.get(i).standing().filter(o -> o.task() instanceof Objective.Task.Keep).isPresent())
+                    .filter(i -> !onAShortfall.test(i)).findFirst();
+            int k = flattening.or(() -> spare(out, movable, alarms))
+                    .or(() -> movable.stream().filter(i -> !onAShortfall.test(i)).findFirst())
+                    .orElse(movable.getFirst());
             String name = statuses.get(k).squadName();
             LOG.warn("[Guardrail] no squad on the flatten - {} put on it, not '{}'", name, out.get(k).mission());
             out.set(k, new Objective("Flatten " + flatten.describe(), spread(flatten.centre(), name),

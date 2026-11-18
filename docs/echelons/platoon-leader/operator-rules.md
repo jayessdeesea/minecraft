@@ -31,7 +31,8 @@ By day the platoon leader assigns the day's work (operator, 2026-11-17): its `FA
 `MINE` and `KEEP` orders stand, request or not; any other order by day is put on the keep (task `KEEP`,
 [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)), or, past the squads the keep's level
 wants, sent to what the force is short of. Over all of it, guardrails that act loudly ("[Guardrail]",
-`ChainOfCommand.guarded`): no squad on the flatten, one is put on it; something short with nobody on it, a
+`ChainOfCommand.guarded`): no squad on the flatten, one is put on it - one not on a shortfall, its standing
+flattener first; something short with nobody on it, a
 squad doubling up elsewhere is moved to it. The farm squad keeps the camp's farm. The night rule still comes first,
 but for the night shift's last 30 seconds, when the squads climb out to it. A squad's miner, with no
 order of its own, builds the keep with it by day: the whole squad mines by night.
