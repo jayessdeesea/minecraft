@@ -7934,7 +7934,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else {
                     if (status.report() instanceof Report.Cantco(String why) && why.startsWith("no route") && status.order() instanceof Order.MoveTo to
                             && miner.standAt().filter(st -> Math.hypot(st.x() - to.x(), st.z() - to.z()) < 0.5 && Math.abs(st.y() - to.y()) < 1).isPresent()) {
-                        miner.unreachable(why); // its cut's stand has no route (Miner.unreachable)
+                        miner.unreachable(status.position(), why); // its cut's stand has no route (Miner.unreachable)
                     }
                     Miner.Progress cut = miner.tick(status.position(), world, stairs,
                             free && !threatened && armourer.standAt().isEmpty(), Optional.of(mineShare(name, stairs)),

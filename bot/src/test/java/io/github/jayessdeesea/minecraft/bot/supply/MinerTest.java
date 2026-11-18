@@ -599,7 +599,7 @@ class MinerTest {
         miner.tick(at, world, stairs, true);
         Position onTheStairs = miner.standAt().orElseThrow();
         for (int i = 0; i < 2 * Miner.UNREACHABLE_TICKS; i++) {
-            miner.unreachable("no route");
+            miner.unreachable(at, "no route");
         }
         assertEquals(Optional.of(onTheStairs), miner.standAt(), "the stairs are never given up");
 
@@ -613,10 +613,15 @@ class MinerTest {
             }
         }
         Position onAStrip = miner.standAt().orElseThrow();
+        Position farOff = new Position(onAStrip.x() + 40, onAStrip.y() + 60, onAStrip.z());
+        for (int i = 0; i < 2 * Miner.UNREACHABLE_TICKS; i++) {
+            miner.unreachable(farOff, "no route");
+        }
+        assertEquals(Optional.of(onAStrip), miner.standAt(), "far off, the walk's no route: the strip kept");
         int strip = stairs.cuts().stream().filter(c -> c.tunnel() > 0 && c.cells().stream().anyMatch(cut::contains))
                 .mapToInt(Staircase.Cut::tunnel).findFirst().orElseThrow(); // the strip it's on
         for (int i = 0; i < Miner.UNREACHABLE_TICKS; i++) {
-            miner.unreachable("no route");
+            miner.unreachable(at, "no route");
         }
         Set<BlockPos> before = new HashSet<>(cut);
         for (int tick = 0; tick < 20_000; tick++) {

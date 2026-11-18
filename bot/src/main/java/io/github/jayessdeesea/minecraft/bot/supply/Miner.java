@@ -146,6 +146,8 @@ public final class Miner {
     private int unreachableTicks;
     /** Ticks a cut's stand may have no route before its tunnel is given up: ten seconds' tries. */
     static final int UNREACHABLE_TICKS = 200;
+    /** How near its stand a cutter is for a "no route" to be the stand's, not the walk's. */
+    static final double NEAR_STAND = 4;
 
     /**
      * Its stand has no route ({@code why}): a tunnel's, given up as a blocked one is once that's held
@@ -153,8 +155,12 @@ public final class Miner {
      * strips off it are its partner's to cut. Not the stairs': there's no other way down. Live (field458-459),
      * six cutters stood all night two blocks from a stand walled off from them, and their partners waited.
      */
-    public synchronized void unreachable(String why) {
-        if (standAt == null || standingTunnel < 0 || ++unreachableTicks < UNREACHABLE_TICKS) {
+    public synchronized void unreachable(Position soldier, String why) {
+        // Only beside it: from far off, "no route" is the walk there (live, field460, Eli at the surface gave up
+        // tunnel after tunnel of a level 118 blocks under him), not the stand walled off.
+        boolean beside = standAt != null && Math.hypot(standAt.x() - soldier.x(), standAt.z() - soldier.z()) <= NEAR_STAND
+                && Math.abs(standAt.y() - soldier.y()) <= NEAR_STAND;
+        if (!beside || standingTunnel < 0 || ++unreachableTicks < UNREACHABLE_TICKS) {
             return;
         }
         if (blocked.add(standingTunnel)) {
@@ -163,6 +169,9 @@ public final class Miner {
         standAt = null;
         unreachableTicks = 0;
     }
+
+    /** What its last wait was said to be on - said again only when it changes. */
+    private String waitSaid = "";
 
     /** Tunnels given up for water, lava or a cave beside them. */
     private final Set<Integer> blocked = new HashSet<>();
@@ -247,6 +256,15 @@ public final class Miner {
                 int k = step.isEmpty() ? stairs.steps() - 2 - behind : step.getAsInt() - WAIT_BEHIND - behind;
                 BlockPos wait = k >= 0 ? stairs.step(k) : stairs.head();
                 standAt = new Position(wait.x() + 0.5, wait.y(), wait.z() + 0.5);
+                // Why, once a wait: live (field460), eight waited all night at step 1, two to a level, and the
+                // log didn't say on what.
+                String why = (mainOpen ? "the main tunnel not cut through" : "its tunnels' roots not reached") + ", stairs "
+                        + (step.isEmpty() ? "cut" : "uncut from step " + (step.getAsInt() + 1)) + ", waiting for blocks " + waiting
+                        + ", given up " + blocked;
+                if (!why.equals(waitSaid)) {
+                    waitSaid = why;
+                    LOG.info("{} waits at {}: {}", name, wait, why);
+                }
                 return new Progress.Working(0, cuts.size());
             }
             if (next.isEmpty()) {
