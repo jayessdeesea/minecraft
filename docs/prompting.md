@@ -20,7 +20,9 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   as a shortage, a soldier's failed sword reported as the squad's CANTCO), and with those fixed it
   passed every `PlatoonLeaderScenarioIT` situation. Turn each live miss into a situation there first.
 - **A coordinate written out is a coordinate the model copies.** Give positions it shouldn't reuse
-  (an old order's, a resource's) relative to the squad, not as a y.
+  (an old order's, a resource's) relative to the squad, not as their own y - but as all three numbers an
+  objective takes, the squad's own height for the y: given only "x=15 z=-68", the model slid the z into the
+  y and the reply was refused as outside the world, four times in four runs.
 - **A far objective is not an unreachable one.** Told its objective was "outside the surveyed
   area" and shown the highest reachable spot, the squad leader sent its squad to that hill "to
   begin flattening" (live, 2026-11-13: Alpha spent a day on a hilltop by the camp while its share

@@ -49,7 +49,7 @@ class SpringAiPlatoonLeaderTest {
                 Optional.empty(), List.of(ALPHA, BRAVO_IN_BASE)).prompt();
 
         assertTrue(prompt.contains("Standing order: none yet - there is nothing to keep"), prompt);
-        assertTrue(prompt.contains("Standing order: PATROL_BASE - \"Build a shelter\"; its ground x=10 z=10, about level with the squad. Intent: safe until dawn "
+        assertTrue(prompt.contains("Standing order: PATROL_BASE - \"Build a shelter\"; its ground x=10, y=64, z=10, about level with the squad. Intent: safe until dawn "
                 + "Status: the patrol base is built and sealed, the squad inside it."), prompt);
     }
 
@@ -125,12 +125,12 @@ class SpringAiPlatoonLeaderTest {
                 List.of(new ResourceSite(Resource.WOOD,
                         new Position(30, 66, -40), 23)));
 
-        assertEquals("Resources seen: 23 logs around x=30 z=-40, about level with the squad (50 blocks NE).",
+        assertEquals("Resources seen: 23 logs around x=30, y=64, z=-40, about level with the squad (50 blocks NE).",
                 SpringAiPlatoonLeader.describeResources(squad));
         SquadStatus onAPlatform = new SquadStatus("Bravo", new Report.Moving(), List.of(
                 new SoldierStatus("Dana", new Position(0, 151, 0), new Order.Idle(), new Report.Moving(), Optional.empty())),
                 squad.resources());
-        assertTrue(SpringAiPlatoonLeader.describeResources(onAPlatform).contains("around x=30 z=-40, 85 below the squad (50 blocks NE)"));
+        assertTrue(SpringAiPlatoonLeader.describeResources(onAPlatform).contains("around x=30, y=151, z=-40, 85 below the squad (50 blocks NE)"));
         assertTrue(SpringAiPlatoonLeader.describeResources(new SquadStatus("Alpha", new Report.Idle(), List.of()))
                 .contains("no trees, exposed stone or ground to farm"));
     }

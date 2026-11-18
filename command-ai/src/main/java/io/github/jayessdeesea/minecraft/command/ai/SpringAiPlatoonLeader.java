@@ -343,14 +343,16 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
     static final String NO_TREES = " Wood here has to be grown: TREE_FARM on open ground near the camp.";
 
     /**
-     * Where {@code point} is, its height given against the squad at {@code squad} rather than as a
-     * y: a resource's height is where it grows, and an old order's where that was - neither is ground
-     * to send the squad to, and a y written out is a y the model copies.
+     * Where {@code point} is, as the three numbers an objective takes - its x and z, and for y the squad's own
+     * height, not the point's: a resource's height is where it grows, and an old order's where that was, neither
+     * ground to send the squad to (the objective is put on the ground there anyway). Its height is said against
+     * the squad's. Live (field440-443), given "x=15 z=-68", the model wrote x=15, y=-68, z=0 - the z slid into the
+     * y - four replies refused as outside the world.
      */
     static String relative(Position point, Position squad) {
         long dy = Math.round(point.y() - squad.y());
         String level = Math.abs(dy) < 3 ? "about level with the squad" : Math.abs(dy) + (dy < 0 ? " below the squad" : " above the squad");
-        return String.format(Locale.ROOT, "x=%d z=%d, %s", Math.round(point.x()), Math.round(point.z()), level);
+        return String.format(Locale.ROOT, "x=%d, y=%d, z=%d, %s", Math.round(point.x()), Math.round(squad.y()), Math.round(point.z()), level);
     }
 
     /** The eight-point compass direction of a horizontal offset (north is -z). */
