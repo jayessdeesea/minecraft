@@ -21,3 +21,8 @@ each night's walk to the faces grows too. The keep's mine doesn't move on yield 
 2026-11-17), so which: levels further down (iron peaks round y=16 but diamonds and redstone
 lie at -58 and below); new branch headings off the main tunnel into unworked rock; a second mine
 for the night shift; or take the yield as the ground's and keep cutting?
+Since (field406-409, 2, 0 and 8 ore): the shortfall isn't the ground's alone. Miners at the far
+faces die to skeletons and creepers (5 killed in field408, 2 in field409, arrows and blasts at the
+faces 90 blocks out), and the recovery drill reads miners at work in their tunnels as stranded (Hal
+16 times, Olga 12 in a night - backlog/mining.md, the shaft's bottom reads as a pocket). The second
+I'm working on; the first may want the faces lit or walled, or shorter branches - your call.
