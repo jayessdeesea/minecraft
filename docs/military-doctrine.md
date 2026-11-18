@@ -901,7 +901,8 @@ can choose another place. To choose, the platoon leader
 reads what each squad can see within 64 blocks of the soldier at its middle height: for trees and for stone open to
 the sky, the nearest site and the two biggest (not cave walls, which no gatherer can
 reach; and trees only where logs have leaves near them - a structure's logs, an ancient city's dark oak deep
-under the miners, aren't wood: `ResourceSurveyor.leafy`), each with its count, distance and direction (`bot.supply.ResourceSurveyor`,
+under the miners, aren't wood: `ResourceSurveyor.leafy`; nor is a log a gatherer cuts but one under the sky,
+`Digger.Target.underTheSky`), each with its count, distance and direction (`bot.supply.ResourceSurveyor`,
 `command.SquadStatus.resources`). A soldier that can't make the pickaxe it needs - no trees in reach
 - reports CANTCO too.
 

@@ -136,9 +136,26 @@ final class Digger {
             this.dropsAlways = dropsAlways;
         }
 
+        /** How far over a log the column is looked up for ground that would put it underground. */
+        static final int SKY_LOOK = 48;
+
+        /**
+         * Whether nothing but a tree's own logs and leaves stands over {@code log}: a tree's, not a structure's
+         * deep underground. Live (field432, field442), an ancient city's dark oak at y=-52 was wood the gatherers
+         * of two squads were sent 115 blocks down for.
+         */
+        static boolean underTheSky(WorldView world, BlockPos log) {
+            for (int y = log.y() + 1; y <= log.y() + SKY_LOOK; y++) {
+                if (world.isSolid(log.x(), y, log.z()) && !world.isLog(log.x(), y, log.z()) && world.leaves(log.x(), y, log.z()).isEmpty()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         boolean at(WorldView world, BlockPos block) {
             return switch (this) {
-                case LOG -> world.isLog(block.x(), block.y(), block.z());
+                case LOG -> world.isLog(block.x(), block.y(), block.z()) && underTheSky(world, block);
                 case STONE -> world.isStone(block.x(), block.y(), block.z());
                 case COBBLESTONE -> world.isCobblestone(block.x(), block.y(), block.z());
                 case IRON_ORE -> world.isIronOre(block.x(), block.y(), block.z());
