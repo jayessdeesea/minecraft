@@ -1540,7 +1540,10 @@ read DONE all night with one raw iron in the force.
 that breaks one is a step back):**
 1. **Work in parallel.** Each worker has a share no one else touches, held till it's done; nobody
    waits on another or stands in another's way; a little coordination - who has which share -
-   and no more (docs/echelons/tenets.md, work in parallel).
+   and no more (docs/echelons/tenets.md, work in parallel). A miner whose strips come off the spine
+   cuts each as soon as the spine has passed its root, clear of where the spine's cutter works
+   (`Miner.clearOfTheMain`, 4 across) - not once the whole spine is through: live (field454-457), seven
+   waited all night on one cutter's spine.
 2. **A grid that sees every block, with the least digging.** A level is at a height a multiple of
    4 (y % 4 == 0): a spine out from the shaft's landing, and strips off it both ways at every third
    block of the world's grid along it - x % 3 == 0 for a spine along x, z % 3 == 0 for one along z.

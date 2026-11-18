@@ -118,6 +118,26 @@ public final class Miner {
         return OptionalInt.empty();
     }
 
+    /** How far across of where the main tunnel's cutter works a branch isn't started from: no two on one cell. */
+    static final int MAIN_CLEAR = 4;
+
+    /**
+     * The first of {@code cuts} to cut, as {@link #firstUncut}, of a branch whose stand is open and at least
+     * {@link #MAIN_CLEAR} across from where the main tunnel's next cut stands - empty with none.
+     */
+    static OptionalInt clearOfTheMain(WorldView world, List<Staircase.Cut> cuts, Set<Integer> skipped) {
+        Optional<BlockPos> working = cuts.stream().filter(c -> c.tunnel() <= 0 && c.cells().stream().anyMatch(cell -> c.toCut(world, cell)))
+                .map(Staircase.Cut::stand).findFirst();
+        Set<Integer> near = new HashSet<>(skipped);
+        for (Staircase.Cut c : cuts) {
+            if (c.tunnel() <= 0 || working.filter(w -> Math.abs(w.x() - c.stand().x()) + Math.abs(w.z() - c.stand().z()) < MAIN_CLEAR
+                    && Math.abs(w.y() - c.stand().y()) <= 2).isPresent()) {
+                near.add(c.tunnel());
+            }
+        }
+        return firstUncut(world, cuts, near);
+    }
+
     /** How far above the stairs' bottom a cutter still works a mine cut to the bottom for its ore. */
     static final int PROSPECT_FROM = 8;
 
@@ -189,7 +209,10 @@ public final class Miner {
                 Set<Integer> others = cuts.stream().map(Staircase.Cut::tunnel).filter(t -> t != kept).collect(Collectors.toSet());
                 held = firstUncut(world, cuts, others);
             }
-            next = held.isPresent() ? held : mainOpen ? OptionalInt.empty() : firstUncut(world, cuts, skipped);
+            // The main tunnel still being cut: its branches whose roots it has passed, clear of where it's cutting -
+            // not every one waiting on the whole of it. Live (field454-457), seven miners waited all night on one
+            // cutter's main tunnel, two nights of 5 ore of 16 (backlog/mining.md).
+            next = held.isPresent() ? held : mainOpen ? clearOfTheMain(world, cuts, skipped) : firstUncut(world, cuts, skipped);
             if (next.isEmpty() && share.isPresent() && (mainOpen || notReached(world, cuts, skipped))) {
                 // Its tunnels' roots not cut to yet: it waits at the landing once the stairs are down;
                 // before, on the stairs a few steps behind the one cutting, down the mine with it - at

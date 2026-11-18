@@ -551,6 +551,40 @@ class MinerTest {
         }
     }
 
+    /**
+     * Two on one mine: the second cuts its branches as the main tunnel passes their roots, not after the whole
+     * of it is through. Live (field454-457), seven miners waited all night on one cutter's main tunnel.
+     */
+    @Test
+    void aSecondMinerCutsItsBranchesBeforeTheMainTunnelIsThrough() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        int miners = 2;
+        List<Miner> crew = new ArrayList<>();
+        List<Position> at = new ArrayList<>();
+        List<Set<BlockPos>> cutBy = new ArrayList<>();
+        for (int m = 0; m < miners; m++) {
+            Set<BlockPos> mine = new HashSet<>();
+            cutBy.add(mine);
+            crew.add(new Miner("Miner" + m, recording(mine), new Inventory()));
+            at.add(new Position(0.5, GROUND, 0.5));
+        }
+        int byTheMainsEnd = -1;
+        for (int tick = 0; tick < 200_000 && byTheMainsEnd < 0; tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            for (int m = 0; m < miners; m++) {
+                crew.get(m).tick(at.get(m), world, stairs, true, Optional.of(stairs.share(m, miners)), m);
+                at.set(m, crew.get(m).standAt().orElse(at.get(m)));
+            }
+            boolean mainThrough = stairs.cuts().stream().filter(c -> c.tunnel() <= 0)
+                    .allMatch(c -> c.cells().stream().noneMatch(cell -> world.isSolid(cell.x(), cell.y(), cell.z())));
+            if (mainThrough) {
+                byTheMainsEnd = cutBy.get(1).size();
+            }
+        }
+        assertTrue(byTheMainsEnd > 0, "the second miner had cut some of its branches by the time the main tunnel was through");
+    }
+
     private static boolean allTrue(boolean[] flags) {
         for (boolean f : flags) {
             if (!f) {
