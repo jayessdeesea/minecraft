@@ -5016,6 +5016,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final int SURFACE_ABOVE = 128;
     /** The flood fill for whether a soldier reporting no route is in a pocket: how far and how many steps. */
     static final int CUT_OFF_SPAN = 48, CUT_OFF_BUDGET = 20_000;
+    /** How far across from its head a mine's galleries run: its branches, to 192, and a margin. */
+    static final double MINE_GALLERY_REACH = 200;
     /** A soldier that can walk no more cells than this is in a pocket - WayOut's measure of one. */
     static final int CUT_OFF_CELLS = 128;
     /** How far under where it's sent a soldier with no way up to that height is cut off below it. */
@@ -5067,7 +5069,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean buried = s.order() instanceof Order.MoveTo m && cells < CUT_OFF_BUDGET && buried(from)
                     && !buried(new Position(m.x(), m.y(), m.z()))
                     && walkable.stream().allMatch(c -> buried(new Position(c.x() + 0.5, c.y(), c.z() + 0.5)));
-            if (cells <= CUT_OFF_CELLS || below || buried) {
+            // In a mine's galleries - under its head, within its branches' reach - the mine's own stairs are its
+            // way up, past the flood's span: only a pocket of its own strands it there. Live (field408-409),
+            // Hal at his face 90 blocks out at y=-12 was read as buried 16 times a night, Olga 12, given stairs
+            // up through 84 blocks of rock, and with them off the work three crews stood empty.
+            boolean inAMine = squadStates.values().stream().flatMap(st -> Stream.of(st.stairs, st.second, st.lastStairs))
+                    .filter(Objects::nonNull)
+                    .anyMatch(st -> from.y() < st.head().y() - MINE_BELOW
+                            && Math.hypot(from.x() - st.head().x(), from.z() - st.head().z()) <= MINE_GALLERY_REACH);
+            if (cells <= CUT_OFF_CELLS || !inAMine && (below || buried)) {
                 walksSaid.remove(s.name());
                 return Recovery.stranded(s) ? s : new SoldierStatus(s.name(), s.position(), s.order(), new Report.Cantco(String.format(Locale.ROOT,
                         "no route from (%.0f, %.0f, %.0f): cut off in a pocket of %d cells", from.x(), from.y(), from.z(), cells)), s.condition());

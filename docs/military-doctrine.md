@@ -500,7 +500,9 @@ planner's own moves (`SoldierRunner.cutOff`, WayOut's measure of a pocket) - or,
 blocks above itself, can walk to nothing within its order's height of that point, a cave of any
 size under it, by a flood that ran out of ground and not of budget (one on a mine's stairs whose
 flood filled the tunnels first was read as cut off): live, two soldiers stood a night shift in one of 866 cells at y=44, sent up to y=64,
-and no stair up was laid. One with the ground to
+and no stair up was laid. In a mine's galleries - under a squad's mine head, within 200 across of it - only the pocket
+counts: the mine's stairs are its way up, past the flood's span (live, miners at their faces 90 blocks out were read as
+buried a dozen times a night, given stairs up through the rock, and three crews stood empty). One with the ground to
 walk - its order's goal out of reach, a squadmate in a pocket, a plot across water - isn't
 stranded, and nothing is cross-levelled to or from one the drill has: live, the keep's foreman
 spent a day on the stairs with rations for one in a dead end, "stranded" every minute on its way.

@@ -45,6 +45,9 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   below the landing breaks it, wants a look (`SoldierRunner.cutOff`, `Pathfinder.reachable`).
   Live (field408), with the drill's order made to outrank the mine's, Hal at work in his tunnel was
   found stranded and given a stair up 26 times in one night; three crews stood empty, no ore.
+  Built: in a mine's galleries only the pocket rule strands a soldier, not the buried or below ones
+  (`SoldierRunner.cutOff`, `MINE_GALLERY_REACH`). Left: whether the pocket rule alone still fires on
+  the 1x1 spiral's bottom - watch "cut off in a pocket" in the mine.
 - **The mine base has one furnace for the night shift.** Live (field395, 15:48), five soldiers set
   about smelting at the keep mine's base within ten seconds - copper leggings, boots, a chestplate,
   two iron pickaxes - and a furnace is one soldier's at a time (`Crafter.usable`), so the rest waited
