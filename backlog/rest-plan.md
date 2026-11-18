@@ -7,6 +7,12 @@ doctrine: ATP 3-21.8 (patrol base priorities of work - rest plan)
 
 # Rest plan: beds in the patrol base
 
+## Decided (operator, 2026-11-18)
+Beds are the safe respawn: a soldier's bed in the lit, walled camp, used once to set its spawn there (using a bed
+sets the spawn by day too). Wanted first, ahead of sleeping through nights. Live (field421-443), soldiers killed at
+night respawned at the world's spawn on the keep's open site and were shot there again, Eli four times in a night.
+Seen (field443): no soldier carried a bed or wool - the sheep-hunting for wool isn't yielding yet.
+
 ## Why
 A Minecraft player needs no sleep to keep going, but sleep does three things the squads go
 without:

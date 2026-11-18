@@ -260,8 +260,9 @@ class PlatoonLeaderScenarioIT {
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty()), fresh("Charlie", 3000, Optional.empty())),
                     (squads, given) -> {
                         List<String> failures = new ArrayList<>();
-                        if (given.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
-                            failures.add("nobody left on the flatten");
+                        // Food first (operator, 2026-11-18): nobody held on the flatten while the force is short of it.
+                        if (given.stream().anyMatch(o -> o.task() instanceof Objective.Task.Keep)) {
+                            failures.add("a squad on the flatten, food short");
                         }
                         if (given.stream().noneMatch(o -> o.task() instanceof Objective.Task.Farm)) {
                             failures.add("nobody on the food");

@@ -11,9 +11,20 @@ import java.util.OptionalInt;
  * level and the blocks left on it.
  */
 public record DayWork(List<PlatoonSergeant.Shortfall> shortfalls, Optional<Stockpile> stores, Flatten flatten,
-                      OptionalInt keepLevel, int keepBlocksLeft) {
+                      OptionalInt keepLevel, int keepBlocksLeft, long unarmed) {
 
     public DayWork {
         shortfalls = List.copyOf(shortfalls);
+    }
+
+    /** With every soldier armed. */
+    public DayWork(List<PlatoonSergeant.Shortfall> shortfalls, Optional<Stockpile> stores, Flatten flatten,
+                   OptionalInt keepLevel, int keepBlocksLeft) {
+        this(shortfalls, stores, flatten, keepLevel, keepBlocksLeft, 0);
+    }
+
+    /** Whether food and arms come first, and nobody flattens (operator, 2026-11-18). */
+    public boolean foodAndArmsFirst() {
+        return shortfalls.contains(PlatoonSergeant.Shortfall.FOOD) || unarmed > 0;
     }
 }

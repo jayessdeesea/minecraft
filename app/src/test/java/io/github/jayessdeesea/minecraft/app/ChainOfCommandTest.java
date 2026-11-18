@@ -192,13 +192,13 @@ class ChainOfCommandTest {
         List<ResourceSite> woods = List.of(new ResourceSite(Resource.WOOD, new Position(30, 64, 30), 10));
 
         List<SquadStatus> squads = List.of(hungry("Alpha", "Alice"), hungry("Bravo", "Bob"), hungry("Charlie", "Carol"));
-        // The platoon leader sends all three to the farm: its orders stand, and the guardrails put one on the
-        // flatten and one on the wood nobody was sent to - one flattens, one farms, one cuts (operator, 2026-11-17).
+        // The platoon leader sends all three to the farm: its orders stand, and the guardrails put one on the wood
+        // nobody was sent to - and none on the flatten, food short (operator, 2026-11-18: food and arms first).
         List<Objective> day = squads.stream().map(s -> three.byDay(farm, s, alarms, woods)).toList();
         List<Objective> guarded = three.guarded(day, squads, alarms, woods);
 
-        assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count(), "one on the flatten: " + guarded);
-        assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Farm).count(), "one farms: " + guarded);
+        assertEquals(0, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count(), "nobody on the flatten: " + guarded);
+        assertEquals(2, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Farm).count(), "two farm: " + guarded);
         assertEquals(1, guarded.stream().filter(o -> o.task().equals(new Objective.Task.Gather(Resource.WOOD))).count(), "one cuts: " + guarded);
         List<Objective> idle = three.guarded(day, squads, List.of(), woods);
         assertEquals(1, idle.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count(), "short of nothing: one onto the flatten");
@@ -206,8 +206,9 @@ class ChainOfCommandTest {
     }
 
     /**
-     * Short of anything, one squad flattens and the rest go to what's short, however wide the level
-     * (operator, 2026-11-17); short of nothing, the level's sizing stands.
+     * Short of wood, one squad flattens and the rest go to what's short, however wide the level (operator,
+     * 2026-11-17); short of food, nobody flattens (2026-11-18: food and arms first); short of nothing, the
+     * level's sizing stands.
      */
     @Test
     void shortOfAnythingOneSquadFlattensAndTheRestCollect() {
@@ -223,9 +224,12 @@ class ChainOfCommandTest {
         three.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
         three.onFlattenCrew(40);
         List<PlatoonSergeant.Shortfall> food = List.of(PlatoonSergeant.Shortfall.FOOD);
+        List<PlatoonSergeant.Shortfall> wood = List.of(PlatoonSergeant.Shortfall.WOOD);
+        List<ResourceSite> trees = List.of(new ResourceSite(Resource.WOOD, new Position(30, 64, 30), 10));
 
-        assertTrue(three.byDay(WALL, squad("Alpha", "Alice"), food, List.of()).task() instanceof Objective.Task.Keep, "the first flattens");
-        assertTrue(three.byDay(WALL, squad("Bravo", "Bob"), food, List.of()).task() instanceof Objective.Task.Farm, "the second farms");
+        assertTrue(three.byDay(WALL, squad("Alpha", "Alice"), wood, trees).task() instanceof Objective.Task.Keep, "short of wood, the first flattens");
+        assertTrue(three.byDay(WALL, squad("Bravo", "Bob"), wood, trees).task().equals(new Objective.Task.Gather(Resource.WOOD)), "the second cuts");
+        assertTrue(three.byDay(WALL, squad("Alpha", "Alice"), food, List.of()).task() instanceof Objective.Task.Farm, "short of food, even the first farms");
         assertTrue(three.byDay(WALL, squad("Bravo", "Bob"), List.of(), List.of()).task() instanceof Objective.Task.Keep,
                 "short of nothing: the level's sizing, every squad on it");
     }

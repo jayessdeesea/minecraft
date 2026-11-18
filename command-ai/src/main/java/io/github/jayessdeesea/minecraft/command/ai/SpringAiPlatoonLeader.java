@@ -87,7 +87,12 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
     /** The day's work as the prompt says it: each shortfall with the task that answers it, the stocks, the flatten. */
     static String describe(io.github.jayessdeesea.minecraft.command.DayWork work) {
         StringBuilder out = new StringBuilder();
-        if (work.shortfalls().isEmpty()) {
+        if (work.unarmed() > 0) {
+            out.append(work.unarmed()).append(" soldier(s) short of a sword or a full set of armour.\n");
+        }
+        if (work.foodAndArmsFirst()) {
+            out.append("Food and arms come first: no squad on KEEP today - every squad on what's short.\n");
+        } else if (work.shortfalls().isEmpty()) {
             out.append("The force is short of nothing: every squad but the farm squad can flatten (KEEP).\n");
         }
         for (io.github.jayessdeesea.minecraft.command.PlatoonSergeant.Shortfall s : work.shortfalls()) {

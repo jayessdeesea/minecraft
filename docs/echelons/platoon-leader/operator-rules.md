@@ -32,7 +32,9 @@ By day the platoon leader assigns the day's work (operator, 2026-11-17): its `FA
 [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)), or, past the squads the keep's level
 wants, sent to what the force is short of. Over all of it, guardrails that act loudly ("[Guardrail]",
 `ChainOfCommand.guarded`): no squad on the flatten, one is put on it - one not on a shortfall, its standing
-flattener first; something short with nobody on it, a
+flattener first - but never while the force is short of food or a soldier is short of a sword or a full set of
+armour: food and arms come first, and nobody flattens (operator, 2026-11-18; `PlatoonSergeant.unarmed`, which also
+raises WOOD for swords and IRON for armour); something short with nobody on it, a
 squad doubling up elsewhere is moved to it. The farm squad keeps the camp's farm. The night rule still comes first,
 but for the night shift's last 30 seconds, when the squads climb out to it. A squad's miner, with no
 order of its own, builds the keep with it by day: the whole squad mines by night.

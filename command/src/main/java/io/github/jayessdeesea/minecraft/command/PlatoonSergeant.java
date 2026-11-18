@@ -75,7 +75,33 @@ public final class PlatoonSergeant {
         if (stockpile.filter(st -> st.rawIron() + st.ironIngots() < IRON_RESERVE).isPresent()) {
             alarms.add(Shortfall.IRON);
         }
+        // Every soldier armed (operator, 2026-11-18: all soldiers should have swords and armour): one with no
+        // sword is short of the stick it's made on, and one short of armour of the metal.
+        if (!alarms.contains(Shortfall.WOOD) && squads.stream().flatMap(s -> s.soldiers().stream()).anyMatch(PlatoonSergeant::swordless)) {
+            alarms.add(Shortfall.WOOD);
+        }
+        if (!alarms.contains(Shortfall.IRON) && squads.stream().flatMap(s -> s.soldiers().stream()).anyMatch(PlatoonSergeant::unarmoured)) {
+            alarms.add(Shortfall.IRON);
+        }
         return List.copyOf(alarms);
+    }
+
+    /** Whether {@code soldier} carries no sword - its kit known. */
+    static boolean swordless(SoldierStatus soldier) {
+        return soldier.condition().flatMap(Condition::kit).map(k -> k.weapon().filter(w -> w.endsWith("_sword")).isEmpty()).orElse(false);
+    }
+
+    /** Whether {@code soldier} wears less than a full set of armour - its kit known. */
+    static boolean unarmoured(SoldierStatus soldier) {
+        return soldier.condition().flatMap(Condition::kit).map(k -> k.armour() < Kit.ARMOUR_SLOTS).orElse(false);
+    }
+
+    /**
+     * How many of {@code squads}' soldiers are short of their arms - a sword, or a full set of armour
+     * (operator, 2026-11-18): while any is, or the force is short of food, nobody flattens.
+     */
+    public static long unarmed(List<SquadStatus> squads) {
+        return squads.stream().flatMap(s -> s.soldiers().stream()).filter(s -> swordless(s) || unarmoured(s)).count();
     }
 
     /**

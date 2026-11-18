@@ -375,6 +375,11 @@ public class ChainOfCommand implements DisposableBean {
         if (!alarms.isEmpty()) {
             squadsWanted = Math.min(squadsWanted, 1);
         }
+        // And short of food, or with any soldier short of a sword or armour, none (operator, 2026-11-18: food and
+        // arming come before flattening; all soldiers should have swords and armour).
+        if (foodAndArmsFirst(alarms)) {
+            squadsWanted = 0;
+        }
         if (builders.indexOf(squad.squadName()) >= squadsWanted) {
             int released = builders.indexOf(squad.squadName()) - squadsWanted;
             Optional<PlatoonSergeant.Shortfall> shortfall = alarms.isEmpty() ? Optional.empty() : Optional.of(alarms.get(released % alarms.size()));
@@ -464,7 +469,10 @@ public class ChainOfCommand implements DisposableBean {
                 movable.add(i);
             }
         }
-        if (!movable.isEmpty() && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
+        if (foodAndArmsFirst(alarms)) {
+            LOG.warn("[Guardrail] food and arms first - {}{} soldier(s) short of a sword or armour: nobody held on the flatten",
+                    alarms.contains(PlatoonSergeant.Shortfall.FOOD) ? "food short, " : "", unarmedNow);
+        } else if (!movable.isEmpty() && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
             // The squad already flattening, if one is, so the flatten keeps its crew: live (field418), the platoon
             // leader put nobody on it twice running and the guardrail moved Charlie, then Alpha, two minutes apart.
             // But not one the platoon leader has just put on a shortfall: live (field431-439), it sent Charlie for wood,
@@ -1190,6 +1198,14 @@ public class ChainOfCommand implements DisposableBean {
                 s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList() : statuses;
     }
 
+    /** Soldiers short of a sword or armour at the platoon leader's last decision (PlatoonSergeant.unarmed). */
+    private volatile long unarmedNow;
+
+    /** Whether food and arms come first: the force short of food, or a soldier short of its arms (operator, 2026-11-18). */
+    boolean foodAndArmsFirst(List<PlatoonSergeant.Shortfall> alarms) {
+        return alarms.contains(PlatoonSergeant.Shortfall.FOOD) || unarmedNow > 0;
+    }
+
     /** The builders the ground's level wants, said: "not planned yet" before its foreman's first plan. */
     static String buildersWanted(int wanted) {
         return wanted == Integer.MAX_VALUE ? "its level not planned yet" : "its level wants " + wanted + " builder(s)";
@@ -1218,7 +1234,8 @@ public class ChainOfCommand implements DisposableBean {
                         s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList();
                 statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
                 List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores));
-                platoonLeader.receiveDayWork(new DayWork(shortfall, Optional.ofNullable(stores), flatten, keepLevel, keepBlocksLeft));
+                platoonLeader.receiveDayWork(new DayWork(shortfall, Optional.ofNullable(stores), flatten, keepLevel, keepBlocksLeft,
+                        PlatoonSergeant.unarmed(statuses)));
                 List<Objective> objectives;
                 try {
                     objectives = platoonLeader.decide(forThePlatoonLeader(statuses, edge));
@@ -1239,6 +1256,7 @@ public class ChainOfCommand implements DisposableBean {
                 long millis = clockwork.millis() - started;
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
                 List<ResourceSite> woods = statuses.stream().flatMap(s -> s.resources().stream()).toList();
+                unarmedNow = PlatoonSergeant.unarmed(statuses);
                 List<Objective> byDay = new ArrayList<>();
                 for (int i = 0; i < statuses.size(); i++) {
                     byDay.add(byDay(objectives.get(i), statuses.get(i), shortfall, woods));
