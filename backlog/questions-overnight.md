@@ -40,3 +40,6 @@ can catch its eye. Six died in field410 in all (two skeletons' arrows at the fac
 the stairs, a skeleton on the surface at dusk, the two endermen). Which: endermen on the hostile
 list - fought on sight, which provokes the ones that weren't coming (my lean: only once one is
 within 4, coming at us); or left neutral and the cuts kept from facing one; or neither?
+Since (field412-413): four more miners killed by endermen along the y=4 main tunnel and the mine's
+base, x=3 to 48 - Fran, Dana twice, Hal - two of them a minute apart. It's now the night's biggest
+single cause of death; the soldiers never strike back.
