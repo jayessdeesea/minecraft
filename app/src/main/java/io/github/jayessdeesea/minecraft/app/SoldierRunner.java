@@ -4874,6 +4874,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Map<String, Position> on = new HashMap<>();
         keepHandsAt.values().forEach(on::putAll);
         hands.forEach(h -> on.put(h.name(), h.position()));
+        // Not one the recovery drill has: live (field432), the first salvager was shut in at y=56 under the
+        // keep's site, nearest by its column, and every trip it began was dropped as it cut its way out.
+        on.keySet().removeIf(recovering::contains);
         String was = salvager;
         String now2 = first.isEmpty() ? null : was != null && on.containsKey(was) ? was
                 : on.entrySet().stream().min(Comparator.comparingDouble(e -> Math.hypot(e.getValue().x() - first.get().x(), e.getValue().z() - first.get().z())))
