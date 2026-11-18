@@ -701,6 +701,38 @@ class DeterministicSoldierTest {
         assertTrue(struck, "engaged once it has");
     }
 
+    /** A creeper outside its blast, the soldier carrying a bow: shot, as any far-away enemy (operator, 2026-11-18). */
+    @Test
+    void aSoldierWithABowShootsACreeperOutsideItsBlast() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 16, 0, 0, 0, 0, 0,
+                false, false, 0, true));
+        WorldView creeper = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, HostileMobRegistry.typeIdOf("creeper"), new Position(8.5, GROUND, 0.5)));
+            }
+        };
+
+        int loosed = 0;
+        for (int tick = 0; tick < DeterministicSoldier.FULL_DRAW_TICKS; tick++) {
+            alice.tick(creeper);
+            loosed += alice.takeLoose() ? 1 : 0;
+        }
+
+        assertEquals(1, loosed, "shot from 8 blocks, outside its blast");
+    }
+
     @Test
     void getsAwayFromACreeperInsteadOfFightingIt() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));

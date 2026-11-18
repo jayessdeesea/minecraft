@@ -505,7 +505,10 @@ public final class DeterministicSoldier implements Soldier {
             Position threat = nearest.position();
             double range = distance(position, threat);
             boolean shot = false;
-            if (!nearest.explodes() && canShoot() && (range > SHOOT_BEYOND || !armedForMelee()
+            // A creeper too, from outside its blast (operator, 2026-11-18: soldiers with bows shoot far-away
+            // enemies): live (field436-443), six soldiers were killed by creepers in melee, boxed in or after the
+            // standoff, a stone sword's four hits outlasting its fuse; at arm's length it's still got away from.
+            if ((!nearest.explodes() || range > CREEPER_CLEAR) && canShoot() && (range > SHOOT_BEYOND || !armedForMelee()
                     || nearest.shoots() && pinned(world, threat))) {
                 // Out of a sword's reach, or with no sword, or pinned under an archer it can't close
                 // on: stand and shoot back, the bow's arc aimed at it.
