@@ -7432,7 +7432,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // what it would do if free; Hands decides who's free, in its one priority order.
             Map<Hands.Routine, Hands.Turn> turns = new EnumMap<>(Hands.Routine.class);
             turns.put(Hands.Routine.SUPPLY_RUN, turn(run::active,
-                    free -> run.tick(status.position(), supplyPoint, free && Resupply.isShort(status) && !inContact)));
+                    // Not one the recovery drill has: its hands are the stair's till it's out. Live (field401-402),
+                    // Eli, stranded at y=-43 with no rations, set off for the supply point 115 blocks up whenever
+                    // his hands came free, "no route", and his stair up was never cut.
+                    free -> run.tick(status.position(), supplyPoint, free && Resupply.isShort(status) && !inContact
+                            && !recovering.contains(name))));
             // A way out chosen is kept until it's broken, not dropped with the next report: live, a
             // soldier's CANTCO flipped between "no route" and "no blocks to build with" each second,
             // and the break started and stopped forever.

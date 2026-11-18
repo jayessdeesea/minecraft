@@ -43,7 +43,10 @@ objective, which is where the squad last saw some.
   takes his hands for a walk to a workshop he can't reach; and the clearer finding no stand for the
   stair's lowest cut from inside the pocket. Built: the soldier now holds where it is, not the box's
   corner, and "has its stair up but its clearer no stand yet" logs its first cells, hands and the
-  clearer's stuck reason once - read that line next.
+  clearer's stuck reason once. Found by it (field402): hands free, clearer not stuck - his supply
+  run, short of rations, took his hands for the supply point 115 up whenever they came free (fixed:
+  none for one the drill has). Left: at dusk he's dealt back to Bravo/miner, the dead mine's cutter,
+  its recovery begun afresh - a stranded soldier kept in its unit till it's out.
 - **Stranded with no pickaxe (field360, 06:29).** Kate, routed into a cave at y=47 on her way to the
   mine, was pulled out by recovery 35 under the ground at y=62 with two shovels, no pickaxe, no
   cobblestone, one log and no bread: her 88-block stair up is dug by hand, 150 ticks a stone block
