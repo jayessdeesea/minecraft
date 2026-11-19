@@ -87,8 +87,7 @@ class ArchitectureTest {
     static final Map<String, Integer> OVER_THE_LIMIT = Map.of(
             "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 8443,
             "bot/src/main/java/io/github/jayessdeesea/minecraft/bot/DeterministicSoldier.java", 1535,
-            "app/src/main/java/io/github/jayessdeesea/minecraft/app/ChainOfCommand.java", 1262,
-            "bot/src/test/java/io/github/jayessdeesea/minecraft/bot/DeterministicSoldierTest.java", 1324);
+            "app/src/main/java/io/github/jayessdeesea/minecraft/app/ChainOfCommand.java", 1262);
 
     @Test
     void sourceFilesStayUnder1000Lines() throws IOException {
