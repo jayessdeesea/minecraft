@@ -61,4 +61,48 @@ class FarmDutiesTest {
                     .isPresent()).count(), "cell " + cell + " in one harvester's ground");
         }
     }
+
+    /** A plot of x 0..39 at y 63, z 0..9: the first 16 columns a chunk farm's, the rest round a pond. */
+    private static List<Position> plotWithAChunkFarm() {
+        List<Position> plot = new ArrayList<>();
+        for (int x = 0; x < 40; x++) {
+            for (int z = 0; z < 10; z++) {
+                plot.add(new Position(x, 63, z));
+            }
+        }
+        return plot;
+    }
+
+    private static final FarmDuties.Tended CHUNK = new FarmDuties.Tended(new Box(0, 62, 0, 16, 65, 16), new Position(13, 64, 13));
+
+    /** Four on a farm with a chunk farm on it: the last harvester tends the chunk, the other two share the rest, the fourth bakes. */
+    @Test
+    void aChunkFarmHasOneTenderItsYieldToItsChest() {
+        Map<String, DutyOrder> orders = FarmDuties.orders(List.of("Alice", "Bob", "Carl", "Dana"), plotWithAChunkFarm(),
+                Optional.of(new Position(3, 64, 2)), List.of(CHUNK));
+
+        assertEquals(new DutyOrder("Carl", DutyOrder.Duty.HARVESTER, Optional.of(CHUNK.ground()), Optional.of(CHUNK.chest())), orders.get("Carl"));
+        assertEquals(DutyOrder.Duty.BAKER, orders.get("Dana").duty(), "the baker kept");
+        assertEquals(17, orders.get("Alice").ground().orElseThrow().minX(), "the rest of the plot, outside the chunk");
+        assertEquals(39, orders.get("Bob").ground().orElseThrow().maxX());
+        assertEquals(Optional.of(new Position(3, 64, 2)), orders.get("Bob").dump(), "the rest's yield to the farm's dump");
+    }
+
+    /** One harvester keeps the whole plot, the chunk farm with it: a tender would leave the rest untended. */
+    @Test
+    void aLoneHarvesterKeepsTheWholePlot() {
+        Map<String, DutyOrder> orders = FarmDuties.orders(List.of("Alice"), plotWithAChunkFarm(), Optional.empty(), List.of(CHUNK));
+
+        assertEquals(new Box(0, 62, 0, 39, 64, 9), orders.get("Alice").ground().orElseThrow());
+        assertEquals(Optional.empty(), orders.get("Alice").dump());
+    }
+
+    /** A farm that's all chunk farm: each harvester tends one, as many as there are. */
+    @Test
+    void aFarmThatsAllChunkFarmIsAllTended() {
+        List<Position> chunk = plotWithAChunkFarm().stream().filter(p -> p.x() <= 15).toList();
+        Map<String, DutyOrder> orders = FarmDuties.orders(List.of("Alice"), chunk, Optional.empty(), List.of(CHUNK));
+
+        assertEquals(Optional.of(CHUNK.chest()), orders.get("Alice").dump());
+    }
 }

@@ -76,6 +76,17 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
         return new BlockPos(x0() + CHEST, level + 1, z0() + CHEST);
     }
 
+    /** Its ground as a box: the chunk and the fence lines beyond it, from under its level to over its fence. */
+    public io.github.jayessdeesea.minecraft.command.Box box() {
+        return new io.github.jayessdeesea.minecraft.command.Box(x0(), level - 1, z0(), x0() + SIDE, level + 2, z0() + SIDE);
+    }
+
+    /** Its chest's cell as a position: its tender's dump. */
+    public io.github.jayessdeesea.minecraft.command.Position chestAt() {
+        BlockPos c = chest();
+        return new io.github.jayessdeesea.minecraft.command.Position(c.x(), c.y(), c.z());
+    }
+
     /** The ground inside its fence at its level, less its holes and the cell under its chest: 220 cells. */
     public List<BlockPos> ground() {
         List<BlockPos> holes = holes();

@@ -1033,6 +1033,12 @@ have one set of shares and one baker (`DutyBook.onOneFarm`) - which it harvests 
 With three or more on the farm, the last on the roster is its baker: it draws the stockpile's wheat a
 stack at a time and bakes it, and the bread past its own load goes in. A harvester below its basic
 load still bakes for itself - that's its own upkeep. With two, both harvest and bake as they go.
+A chunk farm on the farm has one tender (operator, 2026-11-19: a single soldier at a time works a
+specific farm; `FarmDuties.Tended`): the last harvesters on the roster each tend one - its chunk and
+fence lines its ground, its chest its dump - while one harvester is left for the rest of the plot,
+which the others share; the baker is kept. A lone harvester keeps the whole plot, chunk farm and
+all. A tender's field is its chunk's plot, holes and fixtures; another harvester's field leaves out
+every tended chunk its ground's box takes in (`DutyBook.field`).
 
 Each producer's duty reaches it as one value, its duty order (`command.DutyOrder`, `FarmDuties.orders`,
 `WoodDuties.orders`): the duty (harvester, baker, woodcutter, planter), the ground it works and the dump

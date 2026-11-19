@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.command.Box;
@@ -113,7 +114,8 @@ final class DutyBook {
         soldiers.stream().filter(farming::containsKey).findFirst().ifPresent(first -> {
             List<String> onTheFarm = onOneFarm(first, farming);
             given.putAll(FarmDuties.orders(onTheFarm, onTheFarm.stream().flatMap(n -> farming.get(n).plot().stream()).distinct()
-                    .map(c -> new Position(c.x(), c.y(), c.z())).toList(), dump));
+                    .map(c -> new Position(c.x(), c.y(), c.z())).toList(), dump, onTheFarm.stream().flatMap(n -> farming.get(n).chunks().stream())
+                    .distinct().map(c -> new FarmDuties.Tended(c.box(), c.chestAt())).toList()));
         });
         return given;
     }
@@ -189,16 +191,21 @@ final class DutyBook {
 
     /**
      * {@code soldier}'s field of {@code farm}: the plot's cells in its ground for a harvester, none for the baker - its
-     * work is at the dump - and the whole for a farmer with no farm order.
+     * work is at the dump - and the whole for a farmer with no farm order. A chunk farm's tender has its chunk; the
+     * other harvesters the ground outside the chunks tended, whatever their ground's box takes in.
      */
     FarmPlan field(String soldier, FarmPlan farm) {
         DutyOrder order = orders.get(soldier);
         if (farm == null || order == null || !order.farm()) {
             return farm;
         }
-        java.util.function.Predicate<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> mine = c -> order.ground().filter(g -> g.contains(c.x(), c.y(), c.z())).isPresent();
+        Set<Position> chests = orders.values().stream().flatMap(o -> o.dump().stream()).collect(java.util.stream.Collectors.toSet());
+        List<ChunkFarm> tended = farm.chunks().stream().filter(c -> chests.contains(c.chestAt())).toList();
+        boolean tender = order.dump().filter(d -> tended.stream().anyMatch(c -> c.chestAt().equals(d))).isPresent();
+        java.util.function.Predicate<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> mine = c -> order.ground().filter(g -> g.contains(c.x(), c.y(), c.z())).isPresent()
+                && (tender || tended.stream().noneMatch(t -> t.box().contains(c.x(), c.y(), c.z())));
         return order.duty() == DutyOrder.Duty.BAKER ? null
                 : new FarmPlan(farm.water(), farm.plot().stream().filter(mine).toList(), farm.trenches().stream().filter(mine).toList(),
-                farm.chunks().stream().filter(c -> mine.test(c.chest())).toList());
+                farm.chunks().stream().filter(c -> tender ? order.dump().get().equals(c.chestAt()) : !tended.contains(c) && mine.test(c.chest())).toList());
     }
 }

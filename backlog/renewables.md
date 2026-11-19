@@ -116,7 +116,9 @@ the force can build them:
   four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) - each hydrates the 9x9 round it - in the farmland's
   own layer (water a block below hydrates nothing); and a chest at local (13, 13) for its seed (to 512) and wheat.
   In steady state one soldier tends one farm - harvesting, replanting and mending holed ground as it goes - so the
-  farm stays within a player's simulation distance and grows.
+  farm stays within a player's simulation distance and grows. Built: the tender's duty order, its chunk its ground and
+  its chest its dump (`FarmDuties.Tended`). Left: its seed (to 512) and wheat put in its chest; holed ground mended; the
+  baker drawing from farm chests.
 The first food report (field490, a game day): the force burnt 176 hunger - jumping 87, healing 45, sprinting 37,
 fighting 7 - about 16 loaves at 11 hunger and saturation a loaf, against 15 made from 38 harvests and 10 eaten.
 Jumping is half of it: some 7,000 jumps among fourteen soldiers, about one every two seconds walking. Halving

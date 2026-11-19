@@ -40,6 +40,58 @@ class DutyBookTest {
     }
 
     /**
+     * A farm with a chunk farm on it: the tender's field is its chunk - its plot, its holes and fixtures - and the other
+     * harvesters' the ground outside it, whatever their ground's box takes in.
+     */
+    @Test
+    void aChunkFarmsTenderHasItsChunkAndTheOthersTheRest() {
+        io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm chunk = new io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm(1, 0, 63);
+        List<BlockPos> pond = new ArrayList<>();
+        for (int x = 0; x < 12; x++) {
+            for (int z = 0; z < 16; z++) {
+                pond.add(new BlockPos(x, 63, z));
+            }
+        }
+        FarmPlan farm = new FarmPlan(new BlockPos(6, 62, 2), pond).with(chunk.plan(io.github.jayessdeesea.minecraft.app.DutyBookTest.flat(), c -> true));
+        Map<String, FarmPlan> farming = Map.of("Alice", farm, "Bob", farm, "Carl", farm);
+        DutyBook book = new DutyBook();
+        book.assign("Alpha", List.of("Alice", "Bob", "Carl"), DutyBook.given(List.of("Alice", "Bob", "Carl"), Map.of(), farming, Optional.empty()),
+                Optional.of("FARM"), 0);
+
+        FarmPlan tended = book.field("Bob", farm);
+        assertEquals(List.of(chunk), tended.chunks(), "Bob tends the chunk");
+        assertTrue(tended.plot().stream().allMatch(c -> c.x() >= 16), "its plot the chunk's: " + tended.plot().size());
+        FarmPlan rest = book.field("Alice", farm);
+        assertEquals(List.of(), rest.chunks());
+        assertTrue(rest.plot().stream().allMatch(c -> c.x() < 16) && !rest.plot().isEmpty(), "Alice the pond's ground");
+    }
+
+    /** Grass at y 63 everywhere. */
+    static io.github.jayessdeesea.minecraft.bot.world.WorldView flat() {
+        return new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean isTillable(int x, int y, int z) {
+                return y == 63;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return List.of();
+            }
+        };
+    }
+
+    /**
      * A squad's strips found cut out are its own woodcutters', found after each was given its strip. Live (field476),
      * every squad marked Charlie's strips as its own.
      */
