@@ -7114,7 +7114,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             });
             SoldierStatus status = soldier.status();
-            foodLedger.sample(name, status.condition(), status.position(), soldier.sprinting(), soldier.onGround());
+            foodLedger.sample(name, status.condition(), status.position(), soldier.sprinting(), soldier.onGround(), status.order().getClass().getSimpleName() + "/" + status.report().getClass().getSimpleName());
             boolean bareHanded = status.condition().flatMap(c -> c.kit()).map(k -> k.weapon().isEmpty()).orElse(false);
             boolean inContact = status.report() instanceof Report.InContact;
             // Under threat, routines pause - they pick up where they left off once it's gone.

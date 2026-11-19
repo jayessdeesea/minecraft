@@ -76,6 +76,12 @@ class FoodLedgerTest {
         ledger.sample("Carl", at(20, 20), new Position(9.5, 64, 9.5), false, true);
         ledger.sample("Carl", at(20, 20), new Position(9.5, 64.4, 9.5), false, false);
 
-        assertEquals(List.of("(3,64,4) x5", "(9,64,9) x1"), ledger.days().getFirst().jumpedMost());
+        for (int i = 0; i < 2; i++) {
+            ledger.sample("Carl", at(20, 20), new Position(9.5, 64, 9.5), false, true, "Clear/Working");
+            ledger.sample("Carl", at(20, 20), new Position(9.5, 64.4, 9.5), false, false, "Clear/Working");
+        }
+
+        assertEquals(List.of("(3,64,4) x5", "(9,64,9) Clear/Working x2", "(9,64,9) x1"), ledger.days().getFirst().jumpedMost(),
+                "with what it was doing when it's known");
     }
 }

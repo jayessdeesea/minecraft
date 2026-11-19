@@ -118,7 +118,10 @@ The first food report (field490, a game day): the force burnt 176 hunger - jumpi
 fighting 7 - about 16 loaves at 11 hunger and saturation a loaf, against 15 made from 38 harvests and 10 eaten.
 Jumping is half of it: some 7,000 jumps among fourteen soldiers, about one every two seconds walking. Halving
 it would put the farm in surplus as it is. Left: where those jumps are - real step-ups on rough ground, or
-soldiers jumping in place - from the report's jumped-most cells, and the fix for whichever it is.
+soldiers jumping in place - from the report's jumped-most cells, and the fix for whichever it is. field491's day: 85 of
+235 burnt jumping, the hotspots on the keep's rough ground (x -44..-57, z 38..50, y 72-77), one soldier 51 times
+from one cell while cutting logs there; each cell now says the order and report it was jumped from at, to tell a
+route's step-ups from a routine's jumps in place.
 Measure first: a farm's ripe cells an hour before deciding how many the force needs (a solid block of one crop
 may grow slower than rows); and where the food goes (`[Food]`, `app.FoodLedger`) - if healing dominates, fewer
 falls and fights save more than more farms.

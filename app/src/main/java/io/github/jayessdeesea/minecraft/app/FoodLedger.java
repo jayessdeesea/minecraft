@@ -43,6 +43,16 @@ final class FoodLedger {
 
     /** {@code soldier} as it is this tick: its condition, where it is, whether it sprints and stands on the ground. */
     synchronized void sample(String soldier, java.util.Optional<Condition> condition, Position at, boolean sprinting, boolean onGround) {
+        sample(soldier, condition, at, sprinting, onGround, "");
+    }
+
+    /**
+     * As {@link #sample(String, java.util.Optional, Position, boolean, boolean)}, with what the soldier was {@code doing} - its
+     * order and report - said beside each column it jumped from: a step-up on a route is one thing, a jump at the
+     * same block over and over while it works another.
+     */
+    synchronized void sample(String soldier, java.util.Optional<Condition> condition, Position at, boolean sprinting, boolean onGround,
+                             String doing) {
         Tally t = tallies.computeIfAbsent(soldier, n -> new Tally());
         condition.ifPresent(c -> {
             if (t.food != null && c.food() > t.food) {
@@ -59,7 +69,8 @@ final class FoodLedger {
         });
         if (t.at != null) {
             if (t.onGround && !onGround && at.y() > t.at.y()) {
-                t.jumpsAt.merge((int) Math.floor(t.at.x()) + "," + (int) Math.floor(t.at.y()) + "," + (int) Math.floor(t.at.z()), 1, Integer::sum);
+                t.jumpsAt.merge("(" + (int) Math.floor(t.at.x()) + "," + (int) Math.floor(t.at.y()) + "," + (int) Math.floor(t.at.z()) + ")"
+                        + (doing.isEmpty() ? "" : " " + doing), 1, Integer::sum);
                 if (sprinting) {
                     t.sprintJumps++;
                 } else {
@@ -104,7 +115,7 @@ final class FoodLedger {
                 t.healed * HEALING / EXHAUSTION_A_POINT, (t.jumps * JUMP + t.sprintJumps * SPRINT_JUMP) / EXHAUSTION_A_POINT,
                 t.sprinted * SPRINT_A_METRE / EXHAUSTION_A_POINT, (t.attacks * ATTACK + t.hits * HIT) / EXHAUSTION_A_POINT,
                 t.jumpsAt.entrySet().stream().sorted(Map.Entry.<String, Integer>comparingByValue().reversed()).limit(3)
-                        .map(e -> "(" + e.getKey() + ") x" + e.getValue()).toList())));
+                        .map(e -> e.getKey() + " x" + e.getValue()).toList())));
         tallies.values().forEach(t -> {
             t.eaten = 0;
             t.healed = t.hurt = t.sprinted = 0;
