@@ -129,7 +129,7 @@ crew's ticks:
   `Breacher.MARGIN_TICKS` (5): dirt with a stone shovel 12 ticks against vanilla's 4. The server
   finishes a dig once 70% of its time has gone by, so vanilla's own time for the tool in hand plus
   a tick is margin enough. Done when the break ticks taken are within 10% of best - and
-  `SquadSimulationTest.aSoldierStrandedUpItsOwnPillarDigsItDown` still passes: with the shorter
+  `BuilderSimulationTest.aSoldierStrandedUpItsOwnPillarDigsItDown` still passes: with the shorter
   wait it fails (the soldier builds back up its pillar), as it does with a guard that holds a new
   cut while the soldier is in the air, so the pillar's recovery depends on the time between cuts.
 - **Pickups.** About 10 ticks a dig waiting for the drop.

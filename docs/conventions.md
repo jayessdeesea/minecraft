@@ -117,7 +117,7 @@ with another:
 - **Each test owns its world:** its own `SimClock`, `SimServer`, runner and chain of command, and a
   `@TempDir` for anything on disk - never a fixed path, a working-directory file or a system
   property.
-- **Each scenario owns its log:** `SquadSimulationTest` names the scenario in log4j's
+- **Each scenario owns its log:** each simulation test class names the scenario in log4j's
   `ThreadContext`, and `log4j2-test.xml` routes its lines to `app/target/sim/<scenario>.log`. A
   scenario's whole run is on its test's thread (`SimClock`), so the name follows every line.
 

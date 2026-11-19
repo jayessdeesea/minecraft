@@ -180,8 +180,10 @@ rule, that doc is where the detail and the "why" for each stage lives.
 
 ## Squad simulation: the app's own code, with no server and no model
 
-`app`'s `SquadSimulationTest` runs a whole squad through a task with the real runner, chain of
-command, drills and routines, in seconds:
+`app`'s squad simulation runs a whole squad through a task with the real runner, chain of
+command, drills and routines, in seconds - its scenarios a class a family (`SquadSimulationTest`, and
+beside it the mine's, the keep's and its builders', the wall's, the camp's light, food, recovery, the
+farm's and the wood's duties, routing), each under the 1000-line limit:
 - **Time and threads** come from `Clockwork`: the wall clock and real threads in the app, and in
   the test `SimClock`, which runs every scheduler on one simulated clock, in time order, on the
   test's thread. A run is the same every time, and a task that throws fails it.
