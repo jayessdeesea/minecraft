@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.script.Script;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
@@ -26,6 +27,7 @@ import java.util.function.BooleanSupplier;
  * One soldier keeping its squad's wheat farm ({@link FarmPlan}): each tick it does the most
  * pressing job left, one cell at a time, in this order -
  * <ol>
+ *   <li>its trenches cut ({@link #trenchToCut}), out from the pond, for its water to flow along;</li>
  *   <li>its earthwork ({@link #earthwork}): a block put down on the plot dug off, and the ground round
  *   it cut down to the plot's level, so every cell is walked onto on the flat;</li>
  *   <li>harvest ripe wheat - wheat, and seeds to plant again;</li>
@@ -120,7 +122,8 @@ public final class Farmer {
             }
             for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
                 BlockPos beside = c.offset(d[0], 0, d[1]);
-                if (plot.contains(beside) || !world.isSolid(beside.x(), beside.y(), beside.z()) || world.isWater(beside.x(), beside.y(), beside.z())) {
+                if (plot.contains(beside) || farm.trenches().contains(beside) || !world.isSolid(beside.x(), beside.y(), beside.z())
+                        || world.isWater(beside.x(), beside.y(), beside.z())) {
                     continue;
                 }
                 for (int up = 1; up <= 2; up++) {
@@ -132,6 +135,24 @@ public final class Farmer {
             }
         }
         return List.copyOf(dig);
+    }
+
+    /**
+     * The cells of {@code farm}'s trenches to cut now: ground still, beside water - out from the pond a cell at a time,
+     * so each fills as it's dug: a cell dug ahead of the water is a hole, and a route fills it in again. Cut by the
+     * farmer itself, not its earthwork: a clearing never makes a cut that lets water in, and a trench is that cut.
+     */
+    static List<BlockPos> trenchToCut(WorldView world, FarmPlan farm) {
+        return farm.trenches().stream().filter(c -> world.isSolid(c.x(), c.y(), c.z()) && !world.isWater(c.x(), c.y(), c.z())
+                && (world.isWater(c.x() + 1, c.y(), c.z()) || world.isWater(c.x() - 1, c.y(), c.z())
+                || world.isWater(c.x(), c.y(), c.z() + 1) || world.isWater(c.x(), c.y(), c.z() - 1))).toList();
+    }
+
+    /** Where to stand to cut trench cell {@code c}: on the ground beside it, across the trench - not in its water's way. */
+    private static Optional<BlockPos> trenchStand(WorldView world, BlockPos c) {
+        boolean alongX = world.isWater(c.x() + 1, c.y(), c.z()) || world.isWater(c.x() - 1, c.y(), c.z());
+        return java.util.stream.Stream.of(alongX ? c.offset(0, 1, 1) : c.offset(1, 1, 0), alongX ? c.offset(0, 1, -1) : c.offset(-1, 1, 0))
+                .filter(s -> Pathfinder.standable(world, s)).findFirst();
     }
 
     /** The cells any farmer working this farm couldn't work, for a while. */
@@ -146,7 +167,7 @@ public final class Farmer {
         return farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE
                 || world.isFarmland(c.x(), c.y(), c.z()) && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z())
                 || world.isTillable(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z()))
-                || earthwork(world, farm).stream().anyMatch(c -> !steps.contains(c));
+                || !trenchToCut(world, farm).isEmpty() || earthwork(world, farm).stream().anyMatch(c -> !steps.contains(c));
     }
 
     public synchronized boolean active() {
@@ -263,6 +284,17 @@ public final class Farmer {
         List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !claims.contains(c.offset(0, 1, 0))
                         && !passedOver.barred(c, ticks) && !shared.barred(c, ticks) && !world.isSolid(c.x(), c.y() + 2, c.z()))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()))).toList();
+        // Its trenches first: the ground beside each grows dry till its water's there.
+        for (BlockPos c : trenchToCut(world, farm)) {
+            Optional<BlockPos> stand = claims.contains(c) ? Optional.empty() : trenchStand(world, c);
+            if (stand.isPresent()) {
+                // Farmland it's cut through is no SOIL to a digger: dug as any block.
+                Digger.Target soil = Digger.Target.SOIL.at(world, c) ? Digger.Target.SOIL : Digger.Target.OTHER;
+                digger = new Digger(name, session, inventory, claims, new Digger.Spot(soil, stand.get(), c), Digger.walkTicks(soldier, stand.get()));
+                LOG.info("{} cuts the farm's trench at {} from {}", name, c, stand.get());
+                return;
+            }
+        }
         // Earthwork first: a cell in a hollow walked into for a harvest or a sowing is trampled.
         List<BlockPos> earthwork = unburying(world, farm);
         if (!earthwork.isEmpty()) {

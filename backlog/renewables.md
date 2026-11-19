@@ -105,9 +105,9 @@ Overnight (field480-489) the farm fed about a third of the force: some 85 harves
 stores at 0 bread and wheat. The answer is more farmland, gradually flattened to sea level, and denser farms as
 the force can build them:
 - **Airhead:** ad hoc farms round the ponds by the camp, as now.
-- **Before the bucket:** trenches a block wide cut at farmland level off a pond - flowing water hydrates too, 4
-  blocks either side - for long sea-level strips easy to walk along and harvest. (Or a stream dammed to a block
-  deep with dirt, farmed along its banks.)
+- **Before the bucket:** trenches off a pond, built (docs/military-doctrine.md, the camp's farm). Left: the
+  stream dammed to a block deep with dirt and farmed along its banks; trenches for a squad's FARM order's plot,
+  which is sited round its water alone.
 - **With a bucket (three iron, the buildup):** chunk farms, built one at a time. Each a chunk, flat at sea level,
   fenced on its x%16==0 and z%16==0 lines (shared with the next farm), gates beside the corners; tilled but for
   four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) - each hydrates the 9x9 round it - in the farmland's

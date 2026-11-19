@@ -757,9 +757,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         FarmPlan keptFarm = campFarm;
         if (keptFarm == null) {
             // As it was before a restart, while its water is there.
-            keptFarm = farmStore.load(camp[0] + "," + camp[1]).filter(cells -> cells.size() > 1)
-                    .map(cells -> new FarmPlan(cells.getFirst(), cells.subList(1, cells.size())))
-                    .orElse(null);
+            keptFarm = farmStore.load(camp[0] + "," + camp[1]).filter(cells -> cells.size() > 1).map(cells -> new FarmPlan(cells.getFirst(),
+                    cells.subList(1, cells.size()), farmStore.load(camp[0] + "," + camp[1] + ",trench").orElse(List.of()))).orElse(null);
         }
         boolean resite = keptFarm == null || !world.isWater(keptFarm.water().x(), keptFarm.water().y(), keptFarm.water().z());
         if (resite || !campFarmGrown) {
@@ -778,11 +777,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 campFarmGrown = true;
             }
             if (keptFarm != null && !keptFarm.equals(before)) {
-                LOG.info("[Foothold] the camp's farm: by the water at {}, {} cells", keptFarm.water(), keptFarm.plot().size());
-                List<BlockPos> kept = new ArrayList<>();
-                kept.add(keptFarm.water());
-                kept.addAll(keptFarm.plot());
-                farmStore.save(camp[0] + "," + camp[1], kept);
+                LOG.info("[Foothold] the camp's farm: by the water at {}, {} cells, {} trench cells", keptFarm.water(), keptFarm.plot().size(), keptFarm.trenches().size());
+                farmStore.save(camp[0] + "," + camp[1], Stream.concat(Stream.of(keptFarm.water()), keptFarm.plot().stream()).toList());
+                farmStore.save(camp[0] + "," + camp[1] + ",trench", keptFarm.trenches());
             }
         }
         // Kept however it was found - sited now, or as it was before a restart: live, a farm loaded

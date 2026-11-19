@@ -189,7 +189,12 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    (`app.WallStore`), since sited again after a restart it moved to another pond. Once a run it's
    grown toward 24 cells a soldier on the roster, never under 192 - 384 for sixteen - with the plots round the waters
    within 32 blocks of its own - live, within 16 the ground held 165 cells of 384 wanted
-   (`FarmPlan.grown`): one water's plot is 80 cells at best and about half that by a pond. Sized
+   (`FarmPlan.grown`): one water's plot is 80 cells at best and about half that by a pond. Short of
+   that with no other water near - before the force has a bucket - it grows along trenches off its
+   ponds (`FarmPlan.bestTrench`): a block wide, cut at the farmland's level, up to 7 long (as far as
+   water flows on the flat), with ground under and beside each cell and ending against ground so the
+   water stays in, the trench adding the most ground first and one adding under 12 cells not cut;
+   the ground within 4 of its water is the plot's (operator, 2026-11-19). Sized
    to build the basic load, not only to feed: live, 97 cells made about 20 loaves an hour, as many
    as eight soldiers ate, and none carried more than a few rations; and 192, eight soldiers' worth,
    left sixteen with twelve at no bread (field369).
@@ -974,7 +979,11 @@ tillable ground, dirt or grass, with nothing solid above, at one height within 4
 An objective's task can be `FARM`. The squad keeps the plot round the water nearest the objective,
 the same plot while the objective stays put. Each soldier does the most pressing job left on it,
 one cell at a time (`bot.supply.Farmer`), in this order:
-1. Its earthwork (`Farmer.earthwork`): digs off any cobblestone or soil on a plot cell, and cuts
+1. Its trenches (`Farmer.trenchToCut`), out from the pond a cell beside water at a time, so each
+   fills as it's cut - a cell cut ahead of the water is a hole, and a route fills it in again -
+   from the ground across the trench. The farmer cuts them itself: its earthwork, a clearing, never
+   makes a cut that lets water in (`Clearing.letsInWater`), and a trench is that cut.
+2. Its earthwork (`Farmer.earthwork`): digs off any cobblestone or soil on a plot cell, and cuts
    the ground beside the plot down to its level, up to two blocks - an apron, so every cell is
    walked onto on the flat - but never a step the squad built (`SoldierRunner.scaffolding`): in
    the squad simulation a farmer dug its own step out of the hollow as dirt over the plot, its
@@ -985,11 +994,11 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    camp stood with "no route" to the keep - and never builds a step on it, so a farm in a hollow
    was reached only where the ground happened to be level, and steps built out of it buried a
    third of the camp's farm.
-2. Harvests ripe wheat, for wheat and seeds to plant again.
-3. Plants seeds on bare farmland.
-4. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills
+3. Harvests ripe wheat, for wheat and seeds to plant again.
+4. Plants seeds on bare farmland.
+5. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills
    only under open air.
-5. With no seeds, breaks grass for them, since one in eight drops some - out to 32 blocks, as a
+6. With no seeds, breaks grass for them, since one in eight drops some - out to 32 blocks, as a
    squad soon clears what grows near.
 
 A plot cell whose job fails - its place not walked to, the server not answering, a ripe crop it

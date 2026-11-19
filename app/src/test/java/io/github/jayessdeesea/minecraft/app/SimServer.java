@@ -129,6 +129,26 @@ final class SimServer {
         players.values().forEach(p -> p.listeners.onBlockChanges().accept(List.of(new BlockChange(x, y, z, state))));
     }
 
+    /**
+     * Water flowing into a cell dug beside it, and on over ground along what's open level with it, a level weaker each
+     * block out to 7 from its source - the server's flow on the flat; none down a drop, which no scenario needs.
+     */
+    private void flow(int x, int y, int z) {
+        int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        int level = 8;
+        for (int[] d : sides) {
+            int b = block(x + d[0], y, z + d[1]);
+            level = b >= WATER && b < WATER + 7 ? Math.min(level, b - WATER + 1) : level;
+        }
+        if (level > 7 || block(x, y, z) != AIR || block(x, y - 1, z) == AIR) {
+            return;
+        }
+        set(x, y, z, WATER + level);
+        for (int[] d : sides) {
+            flow(x + d[0], y, z + d[1]);
+        }
+    }
+
     /** Stands a chest at the cell, every slot a stack of {@code item}: a full one, for a scenario to start from. */
     void fullChest(int x, int y, int z, int item) {
         set(x, y, z, CHEST);
@@ -921,6 +941,7 @@ final class SimServer {
             }
             set(x, y, z, AIR);
             log.add(name + " dug " + state + " at " + x + "," + y + "," + z);
+            flow(x, y, z);
             int[] tool = slots[36 + held];
             if (tool != null && uses(tool[0]) != Integer.MAX_VALUE && worn.merge(tool, 1, Integer::sum) >= uses(tool[0])) {
                 worn.remove(tool);

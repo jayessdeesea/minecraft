@@ -304,4 +304,53 @@ class FarmerTest {
         assertEquals(Map.of(PLOT.get(0).offset(0, 1, 0), 0, PLOT.get(1).offset(0, 1, 0), 0), wheat, "and both planted");
         assertTrue(farmer.failure().isEmpty(), farmer.failure().orElse(""));
     }
+
+    /** A farm's trench is cut out from the water: a cell beside water first, one ahead of it not yet. */
+    @Test
+    void aTrenchIsCutOutFromTheWater() {
+        BlockPos trench = new BlockPos(0, GROUND, 1), ahead = new BlockPos(0, GROUND, 2);
+        WorldView wet = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return world.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return world.isHazard(x, y, z);
+            }
+
+            @Override
+            public boolean isWater(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(WATER);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(List.of(trench), Farmer.trenchToCut(wet, new FarmPlan(WATER, PLOT, List.of(trench, ahead))), "not ahead of the water");
+        assertTrue(Farmer.trenchToCut(new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return world.isSolid(x, y, z) && !new BlockPos(x, y, z).equals(trench);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return world.isHazard(x, y, z) || isWater(x, y, z);
+            }
+
+            @Override
+            public boolean isWater(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(trench) || new BlockPos(x, y, z).equals(WATER);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        }, new FarmPlan(WATER, PLOT, List.of(trench))).isEmpty(), "dug and filled: nothing left");
+    }
 }

@@ -1,5 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
+import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.command.Directive;
 import io.github.jayessdeesea.minecraft.command.Keep;
@@ -224,6 +226,33 @@ class TaskOrganisationSimulationTest {
         assertTrue(farmland >= 4, "the camp's farm tilled: " + farmland + " cells");
         List<String> log = Files.readAllLines(Path.of("target/sim/aFarmerSitedWithNoWaterWorksTheCampsFarm.log"));
         assertTrue(log.stream().anyMatch(l -> l.contains("no ground to farm") && l.contains("the camp's farm")), "and says why it's there");
+    }
+
+    /**
+     * The camp's farm grows along a trench off its one-block pond, short of ground before the bucket: the farmer
+     * cuts it at the farmland's level, the pond's water flows down it, and the ground beside it is tilled.
+     */
+    @Test
+    void theCampsFarmGrowsAlongATrenchOffItsPond() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::pondByTheCamp, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.SEEDS), 32}), "0,0");
+        clock.advance(6 * 60_000);
+
+        List<BlockPos> water = new ArrayList<>(), tilled = new ArrayList<>();
+        for (int x = -12; x <= 24; x++) {
+            for (int z = -12; z <= 12; z++) {
+                int b = server.block(x, GROUND, z);
+                if (b > SimServer.WATER && b <= SimServer.WATER + 7) {
+                    water.add(new BlockPos(x, GROUND, z));
+                } else if (b == SimServer.FARMLAND && (Math.abs(x - 6) > FarmPlan.HYDRATION || Math.abs(z) > FarmPlan.HYDRATION)) {
+                    tilled.add(new BlockPos(x, GROUND, z));
+                }
+            }
+        }
+        assertTrue(water.size() >= 3, "a trench cut and the pond's water down it: " + water);
+        assertTrue(!tilled.isEmpty(), "ground past the pond's own reach tilled beside it, along " + water);
     }
 
     /** Flat, with a pool of water at the ground eight blocks south and one east of (8, 8). */

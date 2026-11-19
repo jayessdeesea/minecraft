@@ -196,7 +196,8 @@ final class DutyBook {
         if (farm == null || order == null || !order.farm()) {
             return farm;
         }
-        return order.duty() == DutyOrder.Duty.BAKER ? null : new FarmPlan(farm.water(), farm.plot().stream()
-                .filter(c -> order.ground().filter(g -> g.contains(c.x(), c.y(), c.z())).isPresent()).toList());
+        java.util.function.Predicate<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> mine = c -> order.ground().filter(g -> g.contains(c.x(), c.y(), c.z())).isPresent();
+        return order.duty() == DutyOrder.Duty.BAKER ? null
+                : new FarmPlan(farm.water(), farm.plot().stream().filter(mine).toList(), farm.trenches().stream().filter(mine).toList());
     }
 }
