@@ -100,7 +100,8 @@ armour, arrows, logs, cobblestone, dirt, rations, shield, pickaxe, bow, spare we
   shovel, or fists, which break anything but bedrock, slowly and for no drop. It pillars in open air only straight up to a
   goal over its column: a stand to cut the top of its strip from. Nor tunnel, except as the staircase routine does and
   as the recovery drill's stair up out of a pocket does (docs/military-doctrine.md § 7): a cut the
-  engineer lays, up to 40 steps to the surface, dug cell by cell from where it stands, never under
-  sand, gravel or a liquid.
-- Open doors or gates.
+  engineer lays, up to 40 steps to the surface, dug cell by cell from where it stands - afloat, from the water it
+  floats in - never under sand, gravel or a liquid.
+- Open doors or gates on its route. A farmer opens a chunk farm's gates once they stand and leaves them open
+  (docs/military-doctrine.md, the camp's farm); a route through a shut gate is no route.
 - Decide what to work on. That comes from its squad's task (see [routines.md](routines.md)).

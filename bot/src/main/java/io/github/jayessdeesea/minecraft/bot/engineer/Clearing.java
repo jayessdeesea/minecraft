@@ -137,11 +137,17 @@ public final class Clearing {
         Cut best = null;
         double bestScore = Double.MAX_VALUE;
         int lowest = cover.stream().mapToInt(BlockPos::y).min().orElse(0);
+        // Afloat, where it is: water is no ground to stand on, but a swimmer reaches the rock over it from there. Live
+        // (field490-493), Olga stranded in a lake at y=-5 had her stair up laid and no stand for its first cut for hours.
+        BlockPos here = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
+        boolean afloat = world.isWater(here.x(), here.y(), here.z()) && !world.isSolid(here.x(), here.y() + 1, here.z())
+                && !excluded.contains(here);
         for (BlockPos block : cover) {
             if (excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())) {
                 continue;
             }
-            Optional<BlockPos> stand = standFor(world, block, excluded, reach);
+            Optional<BlockPos> stand = afloat && reach(here, block) <= REACH && safeFrom(world, here, block) ? Optional.of(here)
+                    : standFor(world, block, excluded, reach);
             if (stand.isEmpty()) {
                 continue;
             }

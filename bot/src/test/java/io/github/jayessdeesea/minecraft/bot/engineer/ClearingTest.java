@@ -617,6 +617,56 @@ class ClearingTest {
     }
 
     /**
+     * Afloat in a flooded pocket, with no ground in it to stand on, the stair up's first cut is made from where it floats:
+     * live (field490-493), a soldier stranded in a lake under the ground had its stair up laid and no stand for hours.
+     */
+    @Test
+    void aTunnelIsCutFromWhereItFloatsWhenThereIsNoGround() {
+        Set<BlockPos> rock = new HashSet<>();
+        for (int x = -2; x <= 2; x++) {
+            for (int y = 56; y <= 63; y++) {
+                for (int z = -2; z <= 2; z++) {
+                    if (!(x == 0 && z == 0 && (y == 60 || y == 61))) {
+                        rock.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        BlockPos lake = new BlockPos(0, 60, 0);
+        WorldView base = stone(rock, Set.of());
+        WorldView world = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return base.isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isStone(int x, int y, int z) {
+                return base.isStone(x, y, z);
+            }
+
+            @Override
+            public boolean isWater(int x, int y, int z) {
+                return lake.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return isWater(x, y, z);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Position afloat = new Position(0.5, 60.2, 0.5);
+
+        Clearing.Cut first = Clearing.nextInTunnel(world, List.of(new BlockPos(0, 62, 0)), afloat, Set.of(), s -> true).orElseThrow();
+        assertEquals(lake, first.stand(), "from the water it floats in");
+    }
+
+    /**
      * Dig toward what's known (operator, 2026-11-13): the block it stands on only onto solid ground
      * a block down - its own pillar, dug back down - and the block over its head only with nothing
      * over that to fall on it. To the side, always.
