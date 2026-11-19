@@ -179,11 +179,49 @@ public final class Pathfinder {
      */
     static final double TRAMPLE_COST = 40;
 
-    /** As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance, int, boolean, boolean)}, a step into {@code avoid} costing {@link #AVOID_COST} more. */
+    /**
+     * How many blocks' walk a route that places no block may cost over one that does, for each block it saves
+     * (operator, 2026-11-18: if there are several ways somewhere, walk a bit more rather than place blocks). Over
+     * {@link #PILLAR_COST}, a placed block is worth twelve blocks' walk - without the search itself pricing it so:
+     * dearer in the search, a climb that has to build runs out of its node budget, and a soldier boxed in tunnels
+     * sideways.
+     */
+    static final double DETOUR_PER_BLOCK = 8;
+    /**
+     * The fewest blocks a route places for a way round it to be looked for: a single step up a slope is a builder's
+     * stride - weighed again each step it took, a mason on a slope walked to and fro and left its wall short - and a
+     * route of several is the one worth walking round.
+     */
+    static final int WALK_ROUND_FROM = 2;
+
+    /** A search's route, what it costs, the blocks it places, and whether any step of it is rough ({@link Move#rough}). */
+    private record Search(Result result, double cost, int placed, boolean rough) {
+    }
+
+    /**
+     * As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance, int, boolean, boolean)}, a step into {@code avoid}
+     * costing {@link #AVOID_COST} more. A route to the goal that places blocks is searched again placing none, and that
+     * one taken if it's within {@link #DETOUR_PER_BLOCK} a block saved and a plain walk: no step dug, no crop trampled,
+     * no fall that hurts, no cell it was stuck short of - the allowance is for walking, not for another cost. Only for
+     * a goal no more than a jump above the start: blocks placed to reach one higher are the work, not the way.
+     */
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
                               boolean pickaxe, boolean build, Set<BlockPos> avoid) {
+        Search placing = search(world, start, goal, maxExpanded, falls, blocks, pickaxe, build, avoid);
+        // Blocks placed to reach a goal above, up a jump, are the work - a mason onto its wall's top; only placed
+        // to cross what's in the way are they a route to walk round.
+        if (!placing.result().reachesGoal() || placing.placed() < WALK_ROUND_FROM || goal.y() - goal.verticalTolerance() > start.y() + 1) {
+            return placing.result();
+        }
+        Search walking = search(world, start, goal, maxExpanded, falls, 0, pickaxe, false, avoid);
+        return walking.result().reachesGoal() && !walking.rough() && walking.cost() <= placing.cost() + DETOUR_PER_BLOCK * placing.placed()
+                ? walking.result() : placing.result();
+    }
+
+    private static Search search(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
+                                 boolean pickaxe, boolean build, Set<BlockPos> avoid) {
         if (goal.contains(start)) {
-            return new Result(List.of(), true);
+            return new Search(new Result(List.of(), true), 0, 0, false);
         }
 
         Map<BlockPos, Double> costSoFar = new HashMap<>();
@@ -191,6 +229,9 @@ public final class Pathfinder {
         // Blocks spent on the cheapest way found to each cell: a pillar step needs one left.
         Map<BlockPos, Integer> spent = new HashMap<>();
         spent.put(start, 0);
+        // Whether the cheapest way found to each cell has a rough step in it.
+        Map<BlockPos, Boolean> rough = new HashMap<>();
+        rough.put(start, false);
         PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingDouble(Node::priority));
         costSoFar.put(start, 0.0);
         open.add(new Node(start, goal.estimate(start)));
@@ -203,7 +244,8 @@ public final class Pathfinder {
             BlockPos current = open.poll().cell();
             expanded++;
             if (goal.contains(current)) {
-                return new Result(reconstruct(cameFrom, start, current), true);
+                return new Search(new Result(reconstruct(cameFrom, start, current), true), costSoFar.get(current), spent.get(current),
+                        rough.get(current));
             }
             double estimate = goal.estimate(current);
             if (estimate < closestEstimate) {
@@ -228,13 +270,15 @@ public final class Pathfinder {
                 if (known == null || cost < known) {
                     costSoFar.put(move.to(), cost);
                     spent.put(move.to(), used + move.blocks());
+                    rough.put(move.to(), rough.get(current) || move.rough() || avoid.contains(move.to()));
                     cameFrom.put(move.to(), current);
                     open.add(new Node(move.to(), cost + goal.estimate(move.to())));
                 }
             }
         }
 
-        return new Result(reconstruct(cameFrom, start, closest), false);
+        return new Search(new Result(reconstruct(cameFrom, start, closest), false), costSoFar.get(closest), spent.get(closest),
+                rough.get(closest));
     }
 
     /**
@@ -337,7 +381,7 @@ public final class Pathfinder {
                 List<BlockPos> cut = stepCut(world, from, up, pickaxe);
                 if (!cut.isEmpty()) {
                     double digging = cut.stream().mapToDouble(c -> world.isSoil(c.x(), c.y(), c.z()) ? DIG_COST : STONE_DIG_COST).sum();
-                    moves.add(new Move(up, JUMP_COST + digging));
+                    moves.add(new Move(up, JUMP_COST + digging, 0, true));
                 }
                 continue;
             }
@@ -367,7 +411,7 @@ public final class Pathfinder {
                     if (standable(world, down)) {
                         double damage = Math.max(0, drop - MAX_DROP) * falls.damageFactor();
                         double trample = world.isFarmland(down.x(), down.y() - 1, down.z()) ? TRAMPLE_COST : 0;
-                        moves.add(new Move(down, 1 + drop * 0.5 + damage * falls.costPerDamage() + trample));
+                        moves.add(new Move(down, 1 + drop * 0.5 + damage * falls.costPerDamage() + trample, 0, damage > 0 || trample > 0));
                         break;
                     }
                 }
@@ -564,9 +608,14 @@ public final class Pathfinder {
     }
 
     /** @param blocks how many blocks the move places - a pillar step one, a built step one or two */
-    private record Move(BlockPos to, double cost, int blocks) {
+    /** A move: where to, at what cost, the blocks it places, and whether it's rough - a step dug, a crop trampled, a fall that hurts. */
+    private record Move(BlockPos to, double cost, int blocks, boolean rough) {
         Move(BlockPos to, double cost) {
-            this(to, cost, 0);
+            this(to, cost, 0, false);
+        }
+
+        Move(BlockPos to, double cost, int blocks) {
+            this(to, cost, blocks, false);
         }
     }
 }

@@ -645,4 +645,26 @@ class PathfinderTest {
         assertTrue(Pathfinder.find(pit.apply(false), START, exactly(1, GROUND - 6, 0), 5000, hard).reachesGoal(), "down the pit");
         assertFalse(Pathfinder.find(pit.apply(true), START, exactly(1, GROUND - 6, 0), 5000, hard).reachesGoal(), "not onto the tip");
     }
+
+    /** A wall three high across x=3 with a gap at z={@code gap}: over it by a pillar two high, or round through the gap. */
+    private static WorldView wallWithAGap(int gap) {
+        return world((x, y, z) -> x == 3 && y >= GROUND && y <= GROUND + 2 && Math.abs(z) <= 30 && z != gap);
+    }
+
+    /**
+     * A way round that places nothing is taken over a pillar when it's some blocks more (operator, 2026-11-18: walk
+     * a bit more rather than place blocks); a long way round isn't, and with no way round the pillar is.
+     */
+    @Test
+    void aShortWayRoundIsTakenOverAPillarButNotALongOne() {
+        Goal beyond = new Goal(6.5, GROUND, 0.5, 0.5, 0.5);
+
+        Pathfinder.Result round = Pathfinder.find(wallWithAGap(10), START, beyond, 20000, FallAllowance.NONE, 20, false, true);
+        assertTrue(round.reachesGoal(), "" + round.path());
+        assertTrue(round.path().stream().allMatch(c -> c.y() == GROUND), "through the gap, not over the wall: " + round.path());
+
+        Pathfinder.Result over = Pathfinder.find(wallWithAGap(29), START, beyond, 20000, FallAllowance.NONE, 20, false, true);
+        assertTrue(over.reachesGoal(), "" + over.path());
+        assertTrue(over.path().stream().anyMatch(c -> c.y() > GROUND), "29 blocks round is too far: over the wall: " + over.path());
+    }
 }

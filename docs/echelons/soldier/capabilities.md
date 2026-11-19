@@ -20,6 +20,14 @@ seconds or when stuck:
   only way that reaches its goal (`Pathfinder.stepBuild`): one block a step against ground beside
   it, two in open air. Never on farmland or a crop, which a block put down on spoils; nor does it
   pillar off farmland, or cut a step through it.
+- **Walks round rather than builds** when round is close (operator, 2026-11-18): a route that places
+  blocks is searched again placing none, and that one taken if it's a plain walk - no step dug, no
+  crop trampled, no fall that hurts - costing at most 8 blocks' more for each block it saves
+  (`Pathfinder.DETOUR_PER_BLOCK`): a placed block worth 12 blocks' walk, with the search itself still
+  pricing it at 4, so a climb that must build stays inside its node budget. Only for a route of two
+  blocks or more (`WALK_ROUND_FROM`), and a goal no more than a jump above it: a single step up a
+  slope is a builder's stride, and blocks placed to reach a goal higher - a mason onto its wall's
+  top - are the work.
 - **Doesn't try the same thing forever.** Stuck short of a waypoint - jumping at a block that
   won't take it, a squadmate on the same step - it routes round that cell for 10 seconds, at a
   cost that leaves the cell usable if there's no other way, and comes back to it only after.

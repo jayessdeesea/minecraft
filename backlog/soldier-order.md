@@ -45,14 +45,6 @@ handle's log off a woodcutter's strip, `WoodDutiesSimulationTest`).
 - **Flat at sea level, the airhead too.** The flatten trends the camp and its work areas to sea
   level, for routes and fields; the phase rules for who flattens stand
   ([military-doctrine.md § 17](../docs/military-doctrine.md#17-the-lodgment)).
-- **Walk round rather than build** (operator, 2026-11-18: if there are several ways somewhere,
-  prefer the one that places no blocks). `Pathfinder.PILLAR_COST` is 4: a block and a jump's worth of
-  time. Raised, it breaks two things: at 12, a climb that has to build runs out of its node budget
-  (`PathfinderTest.withBlocksItBuildsAStairUpToAPlatformInOpenAir`). At 6 or 8, a soldier boxed in
-  a pocket with nothing to build with tunnels sideways and ends in a pit at ground level
-  (`aSoldierBoxedInBelowIsDugOutByASquadmateWithAPickaxe`), and at 8 the wall scenarios stall too.
-  It wants the price kept apart from the search: a route found at the old price, then re-costed, or
-  a node budget that scales with the price.
 - **Migrated one assignment map at a time**, the farm first: each map moved into the order is a
   slice out of `SoldierRunner` (backlog/split-oversized-sources.md).
 
