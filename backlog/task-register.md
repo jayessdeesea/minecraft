@@ -51,12 +51,11 @@ base) or forgets it (a tree felled).
   general continues its plan and sees what's stuck, rather than re-deciding from a snapshot.
 
 ## Done when
-- Every tasking the general and the squad leaders give is in a register, with its owner and its
-  last report, visible in the log and the dawn AAR.
-- A tasking whose report the world doesn't bear out is marked stalled within its check interval,
-  in a squad simulation scenario (a soldier reporting work on a cell it can't reach).
-- Completed site taskings appear on the operations map; completed transient ones are gone from
-  the prompt.
+The squad leader's side is built (Built so far). Left:
+- The platoon leader's register over its squads: each squad's tasking with its owner, its last report and its state,
+  in the log and the dawn AAR, and its open taskings one line each in the platoon leader's prompt.
+- `app.RequestLedger` folded into it: a request is a tasking going up.
+- Completed site taskings handed to the operations map; completed transient ones gone from the prompt.
 
 ## Built so far
 - The squad's register over its soldiers (docs/military-doctrine.md § 4): taskings recorded,
@@ -66,6 +65,8 @@ base) or forgets it (a tree felled).
   completed sites handed to the map.
 
 ## Notes
+- Built since, the producers' side of it: `command.DutyOrder` (each producer's order, `app.DutyBook`) and
+  `command.ShareWatch` (a share behind, a squad behind - the squad leader's and the platoon leader's alarms).
 - Built before the register, its pieces: `command.Progress` (a squad's task done or stalled, from the world),
   `app.RequestLedger` (requests timed and alarmed), `bot.supply.Setbacks` (a soldier's escalation
   to CANTCO), `app.WallStore` (one site, persisted).
