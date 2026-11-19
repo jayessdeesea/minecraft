@@ -376,11 +376,6 @@ public class ChainOfCommand implements DisposableBean {
         if (!alarms.isEmpty()) {
             squadsWanted = Math.min(squadsWanted, 1);
         }
-        // And short of food, or with any soldier short of a sword or armour, none (operator, 2026-11-18: food and
-        // arming come before flattening; all soldiers should have swords and armour).
-        if (foodAndArmsFirst(alarms)) {
-            squadsWanted = 0;
-        }
         if (builders.indexOf(squad.squadName()) >= squadsWanted) {
             int released = builders.indexOf(squad.squadName()) - squadsWanted;
             Optional<PlatoonSergeant.Shortfall> shortfall = alarms.isEmpty() ? Optional.empty() : Optional.of(alarms.get(released % alarms.size()));
@@ -456,10 +451,7 @@ public class ChainOfCommand implements DisposableBean {
                 movable.add(i);
             }
         }
-        if (foodAndArmsFirst(alarms)) {
-            LOG.warn("[Guardrail] food and arms first - {}{} soldier(s) short of a sword or armour: nobody held on the flatten",
-                    alarms.contains(PlatoonSergeant.Shortfall.FOOD) ? "food short, " : "", unarmedNow);
-        } else if (!movable.isEmpty() && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
+        if (!movable.isEmpty() && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
             // The squad already flattening, if one is, so the flatten keeps its crew: live (field418), the platoon
             // leader put nobody on it twice running and the guardrail moved Charlie, then Alpha, two minutes apart.
             // But not one the platoon leader has just put on a shortfall: live (field431-439), it sent Charlie for wood,
@@ -647,7 +639,9 @@ public class ChainOfCommand implements DisposableBean {
      */
     Optional<Objective> nightShift(String squad) {
         Foothold camp = foothold;
-        if (camp == null || squads.isEmpty()) {
+        // In foothold, nobody down the mine by night (operator, 2026-11-18: not safe; we don't want to lose the few
+        // resources we have): every squad shelters. Live (field463-470), most deaths were underground at night.
+        if (camp == null || squads.isEmpty() || DayWork.foothold(Optional.ofNullable(stores))) {
             return Optional.empty();
         }
         // Building the keep by day, the night's mine is the keep's own, beside it: from the camp's,
@@ -1177,13 +1171,6 @@ public class ChainOfCommand implements DisposableBean {
                 s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList() : statuses;
     }
 
-    /** Soldiers short of a sword or armour at the platoon leader's last decision (PlatoonSergeant.unarmed). */
-    private volatile long unarmedNow;
-
-    /** Whether food and arms come first: the force short of food, or a soldier short of its arms (operator, 2026-11-18). */
-    boolean foodAndArmsFirst(List<PlatoonSergeant.Shortfall> alarms) {
-        return alarms.contains(PlatoonSergeant.Shortfall.FOOD) || unarmedNow > 0;
-    }
 
 
     private void askPlatoonLeader(List<Sitrep> sitreps, long now) {
@@ -1208,7 +1195,9 @@ public class ChainOfCommand implements DisposableBean {
                         squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
                         s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList();
                 statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
-                List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores));
+                // In foothold, no mining: iron waits for the buildup (operator, 2026-11-18).
+                List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores)).stream()
+                        .filter(s -> s != PlatoonSergeant.Shortfall.IRON || !DayWork.foothold(Optional.ofNullable(stores))).toList();
                 platoonLeader.receiveDayWork(new DayWork(shortfall, Optional.ofNullable(stores), flatten, keepLevel, keepBlocksLeft,
                         PlatoonSergeant.unarmed(statuses)));
                 List<Objective> objectives;
@@ -1231,7 +1220,6 @@ public class ChainOfCommand implements DisposableBean {
                 long millis = clockwork.millis() - started;
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
                 List<ResourceSite> woods = woodSightings.seen(statuses.stream().flatMap(s -> s.resources().stream()).toList(), clockwork.millis());
-                unarmedNow = PlatoonSergeant.unarmed(statuses);
                 List<Objective> byDay = new ArrayList<>();
                 for (int i = 0; i < statuses.size(); i++) {
                     byDay.add(byDay(objectives.get(i), statuses.get(i), shortfall, woods));

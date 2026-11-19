@@ -28,8 +28,19 @@ public record DayWork(List<PlatoonSergeant.Shortfall> shortfalls, Optional<Stock
         return ProductionLevels.STANDING;
     }
 
-    /** Whether food and arms come first, and nobody flattens (operator, 2026-11-18). */
-    public boolean foodAndArmsFirst() {
-        return shortfalls.contains(PlatoonSergeant.Shortfall.FOOD) || unarmed > 0;
+    /** Whether the force is in its foothold (see {@link #foothold(Optional)}). */
+    public boolean foothold() {
+        return foothold(stores);
+    }
+
+    /**
+     * Whether the force, its stores {@code stores}, is still in its foothold (operator, 2026-11-18): short of the
+     * bread or the logs - under their least ({@link ProductionLevels}) - to sustain itself, or not yet seen. In it,
+     * nobody mines at night and the day's work is the food and wood pipeline, one squad at most flattening; out of
+     * it once both are stocked.
+     */
+    public static boolean foothold(Optional<Stockpile> stores) {
+        return stores.map(st -> st.count(Renewable.BREAD) < ProductionLevels.STANDING.of(Renewable.BREAD).least()
+                || st.count(Renewable.LOGS) < ProductionLevels.STANDING.of(Renewable.LOGS).least()).orElse(true);
     }
 }

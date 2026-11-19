@@ -223,13 +223,13 @@ class SpringAiPlatoonLeaderTest {
         assertEquals("2 objective(s), exactly one for each of Alpha, Bravo, in that order", roster.substring(0, roster.indexOf(". ")));
     }
 
-    /** The day's work says food and arms come first, and how many are short of arms. */
+    /** The day's work says the force is in foothold - no stores seen - and how many are short of arms. */
     @Test
-    void theDaysWorkSaysFoodAndArmsComeFirst() {
+    void theDaysWorkSaysTheForceIsInFoothold() {
         String said = SpringAiPlatoonLeader.describe(new io.github.jayessdeesea.minecraft.command.DayWork(List.of(),
                 Optional.empty(), new io.github.jayessdeesea.minecraft.command.Flatten(0, 0, 9, 9, 63), OptionalInt.empty(), 0, 3));
         assertTrue(said.contains("3 soldier(s) short of a sword or a full set of armour"), said);
-        assertTrue(said.contains("Food and arms come first: no squad on KEEP today"), said);
+        assertTrue(said.contains("In foothold - short of the bread or logs to sustain the force"), said);
     }
 
     /** The day's work shows each renewable in the stockpile against its least and most, a short one marked. */

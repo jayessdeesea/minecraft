@@ -193,13 +193,14 @@ class ChainOfCommandTest {
         List<ResourceSite> woods = List.of(new ResourceSite(Resource.WOOD, new Position(30, 64, 30), 10));
 
         List<SquadStatus> squads = List.of(hungry("Alpha", "Alice"), hungry("Bravo", "Bob"), hungry("Charlie", "Carol"));
-        // The platoon leader sends all three to the farm: its orders stand, and the guardrails put one on the wood
-        // nobody was sent to - and none on the flatten, food short (operator, 2026-11-18: food and arms first).
+        // The platoon leader sends all three to the farm: its orders stand, and the guardrails put one on the flatten
+        // and one on the wood nobody was sent to - one flattens, one farms, one cuts (operator, 2026-11-18: the
+        // flatten goes on in foothold, the food and wood each covered).
         List<Objective> day = squads.stream().map(s -> three.byDay(farm, s, alarms, woods)).toList();
         List<Objective> guarded = three.guarded(day, squads, alarms, woods);
 
-        assertEquals(0, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count(), "nobody on the flatten: " + guarded);
-        assertEquals(2, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Farm).count(), "two farm: " + guarded);
+        assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count(), "one on the flatten: " + guarded);
+        assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Farm).count(), "one farms: " + guarded);
         assertEquals(1, guarded.stream().filter(o -> o.task().equals(new Objective.Task.Gather(Resource.WOOD))).count(), "one cuts: " + guarded);
         List<Objective> idle = three.guarded(day, squads, List.of(), woods);
         assertEquals(1, idle.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count(), "short of nothing: one onto the flatten");
@@ -230,7 +231,8 @@ class ChainOfCommandTest {
 
         assertTrue(three.byDay(WALL, squad("Alpha", "Alice"), wood, trees).task() instanceof Objective.Task.Keep, "short of wood, the first flattens");
         assertTrue(three.byDay(WALL, squad("Bravo", "Bob"), wood, trees).task().equals(new Objective.Task.Gather(Resource.WOOD)), "the second cuts");
-        assertTrue(three.byDay(WALL, squad("Alpha", "Alice"), food, List.of()).task() instanceof Objective.Task.Farm, "short of food, even the first farms");
+        assertTrue(three.byDay(WALL, squad("Alpha", "Alice"), food, List.of()).task() instanceof Objective.Task.Keep, "short of food, the first flattens");
+        assertTrue(three.byDay(WALL, squad("Bravo", "Bob"), food, List.of()).task() instanceof Objective.Task.Farm, "and the second farms");
         assertTrue(three.byDay(WALL, squad("Bravo", "Bob"), List.of(), List.of()).task() instanceof Objective.Task.Keep,
                 "short of nothing: the level's sizing, every squad on it");
     }
@@ -268,6 +270,7 @@ class ChainOfCommandTest {
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
         two.onTime(TimeOfDay.of(18000, true));
         two.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
+        two.onStores(new Stockpile(64, 0, 64)); // out of foothold: the night shift mines
 
         Objective alpha = two.sheltered(WALL, squad("Alpha", "Alice"));
         Objective bravo = two.sheltered(WALL, squad("Bravo", "Bob"));
@@ -398,5 +401,22 @@ class ChainOfCommandTest {
         return new SquadStatus(squad, new Report.InPosition(),
                 List.of(new SoldierStatus(soldier, new Position(0.5, 64, 0.5), new Order.Idle(), new Report.InPosition(), Optional.empty())),
                 List.of(), Optional.of(objective), false, OptionalInt.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+    }
+
+    /** In foothold - the stores short of bread or logs - nobody goes down the mine by night: the squad shelters. */
+    @Test
+    void inFootholdNobodyMinesAtNight() {
+        ChainOfCommand two = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+        two.setGround((x, z, nearY) -> OptionalInt.of(64));
+        two.onTime(TimeOfDay.of(18000, true));
+        two.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
+        two.onStores(new Stockpile(0, 300, 0));
+
+        assertTrue(two.sheltered(WALL, squad("Alpha", "Alice")).task() instanceof Objective.Task.PatrolBase, "sheltered, not mining");
     }
 }

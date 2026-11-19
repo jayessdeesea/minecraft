@@ -236,11 +236,11 @@ class SquadSimulationTest {
 
     /**
      * The operator's night rule with two squads: dusk falls, Alpha holds the camp and Bravo goes down
-     * the camp's mine (docs/echelons/platoon-leader/operator-rules.md). In the dark nobody of Bravo stands
-     * at the top of the stairs.
+     * the camp's mine (docs/echelons/platoon-leader/operator-rules.md). In the dark nobody of Bravo stands at the top.
      */
     @Test
     void atNightTheSecondSquadWorksTheCampsMineBelowGround() {
+        new StoresBook(new WallStore(state, "chests")).keep(new Stockpile(64, 0, 64)); // out of foothold: the night shift mines
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 11_000); // an hour before dusk
         Roster roster = new Roster("Alpha:Alice,Bob;Bravo:Carol,Dana");
