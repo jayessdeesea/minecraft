@@ -756,7 +756,6 @@ public class ChainOfCommand implements DisposableBean {
     /** Builders the ground's level under way wants, as its foreman last planned it; {@code Integer.MAX_VALUE} before the first. */
     private volatile int flattenBuilders = Integer.MAX_VALUE;
 
-    /** The foreman's word on its new level: {@code builders} wanted on it, the squads to send sized from it. */
     /** The flatten's level and the blocks left on it, as the keep's foreman last dealt it. */
     public void onKeepLevel(int level, int blocksLeft) {
         keepLevel = OptionalInt.of(level);
@@ -766,6 +765,7 @@ public class ChainOfCommand implements DisposableBean {
     private volatile OptionalInt keepLevel = OptionalInt.empty();
     private volatile int keepBlocksLeft;
 
+    /** The foreman's word on its new level: {@code builders} wanted on it, the squads to send sized from it. */
     public void onFlattenCrew(int builders) {
         if (builders != flattenBuilders) {
             LOG.info("[PL] the ground's level wants {} builder(s) - squads on it sized to that", builders);
