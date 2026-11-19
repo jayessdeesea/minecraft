@@ -5684,8 +5684,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList());
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         statuses.forEach(s -> woodcutters.remove(s.name()));
-        // Each producer's duty order (command.DutyOrder): the wood's duties, the farm's shares of its plot, and the dump
-        // where the squad's yield goes - its stockpile, else the camp's (live, field474: its chest by the farm).
+        // Each producer's duty order (command.DutyOrder): its duty, its ground, and the dump its squad stockpiles at, else the camp's.
         dutyBook.assign(squadName, statuses.stream().map(SoldierStatus::name).toList(), DutyBook.given(statuses.stream().map(SoldierStatus::name).toList(),
                 woodDuties, farming, statuses.stream().findFirst().flatMap(s -> stockpileFor(s.name())).or(() -> chainOfCommand.foothold()
                         .flatMap(Foothold::dump))), objectiveOf(squadName).map(Objective::task)
@@ -7412,7 +7411,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // A farmer's hoe, and its wheat baked into bread three at a time - by its baker, on a farm that has one.
             FarmPlan field = dutyBook.field(name, farming.get(name));
             boolean bakes = dutyBook.is(name, DutyOrder.Duty.BAKER);
-            dutyBook.sample(definition.squad(), name, inventory::count, threatened, clockwork.millis());
+            dutyBook.sample(definition.squad(), name, inventory::count, threatened || field != null && !Farmer.hasWork(world, field, Set.of())
+                    || bakes && chainOfCommand.stores().filter(st -> st.wheat() > 0).isEmpty(), clockwork.millis());
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
                 tools.add(Recipe.WOODEN_HOE);
             }

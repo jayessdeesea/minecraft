@@ -1007,7 +1007,9 @@ leader writes it each cycle, and says it when it changes: `[Alpha -> Alice] DUTY
 what its duty makes or spends - a harvester's wheat and seed, a baker's wheat and bread, a woodcutter's
 logs, a planter's saplings. A share with no change in it for three minutes is behind, and alarmed once
 a spell: `[Alarm] [Alpha] Carl behind its share: woodcutter over x 8..24, ...`. It's said again when the
-share moves (`back at its share`). A soldier in contact is doing what it should, its clock started again.
+share moves (`back at its share`). A soldier in contact is doing what it should, and a share with nothing
+in it to do isn't behind - a harvester's plot growing (`Farmer.hasWork`), a baker with no wheat in the
+stores: each one's clock starts again.
 A soldier of a squad on FARM, TREE_FARM or WOOD with no share for three minutes is alarmed as holding
 without one. The platoon leader's part is the squad's: with half or more of its producers behind,
 `[Alarm] [PL] Alpha's gathering wood is behind its order`, and the squad's progress - what the platoon

@@ -58,14 +58,15 @@ final class DutyBook {
     }
 
     /**
-     * {@code soldier}'s share sampled at {@code now}: what its duty makes or spends, as {@code count} has it; a soldier
-     * in contact is doing what it should, its clock started again. The alarm when it falls behind (command.ShareWatch).
+     * {@code soldier}'s share sampled at {@code now}: what its duty makes or spends, as {@code count} has it. One
+     * {@code paused} - in contact, doing what it should, or with nothing in its share to do (a plot growing, no wheat
+     * in the stores to bake) - isn't behind: its clock starts again. The alarm when it falls behind (command.ShareWatch).
      */
-    void sample(String squad, String soldier, ToIntFunction<ItemClass> count, boolean inContact, long now) {
+    void sample(String squad, String soldier, ToIntFunction<ItemClass> count, boolean paused, long now) {
         DutyOrder order = orders.get(soldier);
         if (order != null) {
             int product = PRODUCTS.get(order.duty()).stream().mapToInt(count).sum();
-            watch.sample(squad, order, inContact ? Integer.MIN_VALUE : product, now).filter(l -> !inContact).ifPresent(LOG::warn);
+            watch.sample(squad, order, paused ? Integer.MIN_VALUE : product, now).filter(l -> !paused).ifPresent(LOG::warn);
         }
     }
 

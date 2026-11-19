@@ -37,11 +37,10 @@ handle's log off a woodcutter's strip, `WoodDutiesSimulationTest`).
   left: the soldier's tick reads its ground from the order for the wood too (the woodcutter's
   `Order.Gather` box and the planter's grove are still worked out apart), and deposits to the order's
   dump rather than `stockpileFor`.
-- **Timeliness by expected rate.** The alarms (`command.ShareWatch`) read a share behind when nothing
-  it makes or spends changes in three minutes, whatever the share holds: a harvester waiting on wheat
-  to ripen and a planter with no opened ground read as behind. Left: each share's rate expected from
-  what its ground holds (ripe cells, standing trees), so a share with nothing to do is told apart from
-  one falling behind, and the squad leader closing the gap (another share, or the squad given back).
+- **Timeliness by expected rate, for the wood.** A harvester with its plot growing and a baker with no
+  wheat in the stores aren't read as behind. Left: a woodcutter with a strip cut out, and a planter with no
+  opened ground, read as behind - the squad leader should tell a share with nothing left from one falling
+  behind, and close the gap (another strip, or the squad given back).
 - **Sea level past the farm and grove.** Once a site is flat, the next is the nearest farm or grove box off
   its level (`Flatten.next`). The camp inside its wall is left at its own height (its floor is paved, not
   cut: the operator's earlier rule), and the wood's ground isn't flattened while it stands. Left: the

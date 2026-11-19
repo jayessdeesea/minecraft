@@ -110,6 +110,10 @@ class FarmDutiesSimulationTest {
                 .stream().filter(l -> l.contains("DUTY:")).toList();
         squad.subList(0, 3).forEach(h -> assertTrue(work.stream().anyMatch(l -> l.contains("[Alpha -> " + h + "] DUTY: harvester over x")), h + ": " + work));
         assertTrue(work.stream().anyMatch(l -> l.contains("[Alpha -> Dana] DUTY: baker")), "Dana: " + work);
+        // And none of them alarmed behind its share while its plot grows: a share with nothing to do isn't behind.
+        List<String> behind = java.nio.file.Files.readAllLines(Path.of("target", "sim", "harvestersWorkTheirOwnSharesAndTheBakerNone.log"))
+                .stream().filter(l -> l.contains("behind its share")).toList();
+        assertEquals(List.of(), behind.stream().filter(l -> l.contains("harvester")).toList());
         assertEquals(0, harvested.getOrDefault("Dana", 0), "the baker harvests none: " + harvested);
     }
 }
