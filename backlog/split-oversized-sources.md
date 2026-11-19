@@ -34,5 +34,37 @@ lists the files over it, each capped at its length then, to shrink to under.
   (docs/architecture.md, the squad simulation), `DeterministicSoldierTest`'s fight into
   `DeterministicSoldierCombatTest`, the sim server's items into `SimItems`.
 
+## A plan for the operator to agree (2026-11-19)
+Not begun - a plan, cut along the tenets, each step a commit of its own with the ratchet lowered behind it.
+
+**`bot.DeterministicSoldier` (1453 lines)** - the soldier's body and mind in one tick. Three parts out, the class left
+a façade whose `tick` asks each in turn and says the report:
+1. `bot.Moves` - the route and the walk: `navigate` (202 lines), `stepToward`, `pillar`, `applyVerticalMovement`,
+   `assessPlan`, `priceOfARiskierRoute`, and their state (the route, its legs, `PlanMemo`, the snags). Pure over a
+   `WorldView` and the soldier's position, as `bot.Body` is - the first to go: least wired to the rest.
+2. `bot.Fight` - the threat chosen, closed with, struck, evaded, covered from (`tick`'s fight half, `evade`,
+   `coverFrom`, `sweepHitsSquadmate`, the shield), and its state (the target, under fire). It hands `Moves` a goal; it
+   never walks itself.
+3. `bot.Survival` - wet and afloat, the fall, stuck in a block, a bed, what it does about each before its order.
+
+**`app.SoldierRunner` (8254 lines)** - what's left is two methods.
+- `onJoined` (1193 lines, each soldier's tick): the routines and their hands (`Hands.Routine`) into a class per
+  soldier, `SoldierTick`, built once a connection. What it decides each tick - its tools wanted, its deposit's chest,
+  its draws, its food (lines 7060-7280) - into one pure function, `TickPlan.of(status, inventory, views)`, a value the
+  routines read. The routines' turns into four families beside it, each a class: supply (`SUPPLY_RUN`, `DEPOSITOR`,
+  `HANDOVER`, `RATIONS`), works (`CLEARER`, `FILLER`, `MASON`, `PLACING`, `BUILDER`, `MINER`), field (`FARMER`,
+  `FORESTER`, `GATHERER`, `HUNTER`, `SCAVENGER`, `LAMPLIGHTER`, `TORCHMAKER`), survival (`DOORWAY`, `SEALER`, `ARMOURER`).
+- `orderSquad` (1300 lines, the squad loop) into the steps it already takes in order, each a class over the squad's
+  state (`SquadState`) and a `SquadView` value (its statuses, the world, the chain), returning orders and the state it
+  changes: the fight and cross-levelling (5079-5150); the base - breaches, lights, its torchbearer (5150-5190); production -
+  its farm, grove, wall, the wood's and farm's duties (5288-5480); support - stairs, the second level, the workshop, its
+  cutters (5474-5700); the lights and patrol round (5706-5740); and the orders handed down (the rest).
+- Then the decisions the tenets give the squad leader - which chest, what to craft, hunt or store - move up into
+  `command.DrillSquadLeader` as orders, as `SoldierErrands` already plans.
+
+**Order of work**: `Moves`, `Fight`, `Survival`; then `TickPlan` and the routine families; then `orderSquad`'s steps.
+Each step keeps every test and squad-simulation scenario passing unchanged - a split, no behaviour change - and lowers
+its file's cap in `ArchitectureTest.OVER_THE_LIMIT`.
+
 ## Done when
 `OVER_THE_LIMIT` is empty.

@@ -37,6 +37,8 @@ priority: P1
   on it: nothing falls in, the field is lit. A soldier can't place a block over water - there's no face to place against;
   the ray passes through water. How did you put them there? Taken by default: the holes left open, torches on the posts.
 
+- **The split plan** (backlog/split-oversized-sources.md, "A plan for the operator to agree"). DeterministicSoldier into Moves, Fight and Survival behind a façade, Moves first; SoldierRunner's onJoined into a per-soldier tick with one pure TickPlan and four routine families; orderSquad into its six steps over SquadState and a SquadView. Each step a split with no behaviour change, the cap lowered behind it. Agree, or cut it otherwise?
+
 Answered 2026-11-19, each now with its item:
 - **Food:** more farmland - trench farms off ponds before the bucket, chunk farms with four water holes after;
   and a food report first, to see why the soldiers eat so much (backlog/renewables.md, More farmland).
