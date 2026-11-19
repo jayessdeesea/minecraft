@@ -36,7 +36,12 @@ public final class ResourceSurveyor {
     static final int MIN_OUTCROP = 8;
     /** An open cell with this much open space above it is under the sky, not in a cave. */
     static final int SKY_CLEARANCE = 12;
-    static final int MAX_STANDS = 3;
+    /**
+     * Stands shown, the nearest and then the biggest: enough that, with the woods found cut out dropped from them
+     * (app.WoodSightings), one is left to send a squad to - live (field478), the one wood it was sent to cut out, three
+     * shown left the platoon leader the spent ones.
+     */
+    static final int MAX_STANDS = 6;
 
     private ResourceSurveyor() {
     }

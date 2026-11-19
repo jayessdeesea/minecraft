@@ -104,6 +104,6 @@ A full day on wood duty felled 12 trees: the woodcutters' strips held no trees (
 the objective", Fran, again and again), Dana alone filled a load of 16, and the stockpile stayed at 0 logs.
 A wood whose every strip its woodcutters found cut out is now dropped from the sightings for a day
 (`WoodSightings.spent`), so the next squad goes to the nearest other seen. Left: the survey looking farther
-once every wood it sees is spent - it shows three stands within 64 blocks, and with all of them cut there's
-nowhere to send anyone. Saplings are 0, so the grove (the lasting answer) waits on the planter's drops.
+once every wood it sees is spent - it shows six stands within 64 blocks (the nearest, then the biggest), and
+with all of them cut there's nowhere to send anyone. Saplings are 0, so the grove (the lasting answer) waits on the planter's drops.
 
