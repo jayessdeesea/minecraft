@@ -4918,11 +4918,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     left = Optional.of("the stairs " + state.stairs.stepsCut(world) + " of " + state.stairs.steps() + " steps down");
                 }
             }
+            case Objective.Task.Gather(Resource r) when r == Resource.WOOD && dutyBook.spent(squad) -> done = Optional.of("every strip of the wood is cut out");
             case Objective.Task.Patrol() -> left = Optional.of("walking the round, on watch");
             default -> {
             }
         }
-        // And, on production, its producers behind their shares: the platoon leader's view of its timeliness.
         Optional<String> behind = dutyBook.behind(squad, statuses.stream().map(SoldierStatus::name).toList(), OrderTrace.taskName(standing.get().task()));
         Progress measured = Progress.of(done, behind.isPresent() ? Optional.of(left.map(l -> l + "; ").orElse("") + behind.get()) : left, statuses, now - state.workedAt);
         if (state.progress == null || state.progress.state() != measured.state()) {

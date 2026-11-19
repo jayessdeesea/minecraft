@@ -502,7 +502,7 @@ public class ChainOfCommand implements DisposableBean {
             int j = i;
             boolean onlyFlattener = out.get(i).task() instanceof Objective.Task.Keep
                     && out.stream().filter(o -> o.task() instanceof Objective.Task.Keep).count() == 1;
-            if (making.isPresent() && underItsMost(stores, making.get()) && producing(out.get(i)).isEmpty() && !onlyFlattener
+            if (making.isPresent() && !done(statuses.get(i)) && underItsMost(stores, making.get()) && producing(out.get(i)).isEmpty() && !onlyFlattener
                     && alarms.stream().noneMatch(s -> covers(out.get(j), s))) {
                 LOG.warn("[Guardrail] {} kept on its {} work to the stock's most - not '{}'", statuses.get(i).squadName(), making.get(), out.get(i).mission());
                 out.set(i, was.get());

@@ -39,7 +39,8 @@ wants, sent to what the force is short of. Over all of it, guardrails that act l
 flattener first - by the phase: none in the SEIZURE, one in the CONSOLIDATION so long as the food and the wood
 each have a squad on them, and from the BUILDUP the level's sizing over the shortfalls (operator, 2026-11-18;
 `PlatoonSergeant.unarmed` raises WOOD for swords and IRON for armour, iron left for the buildup); a squad whose standing work is production - FARM, WOOD - kept on it while the stockpile is under its product's most (bread, logs:
-`command.ProductionLevels`), unless it's moved to something short or is the one squad on the flatten
+`command.ProductionLevels`), unless it's moved to something short, is the one squad on the flatten, or its task
+reads DONE - a wood every strip of which is cut out
 (`DayWorkRules.producing`, operator 2026-11-18); something short with nobody on it, a
 squad doubling up elsewhere is moved to it - wood counted covered only by a squad felling (WOOD), not one
 planting a grove (TREE_FARM): a grove is logs in a day or two, not today (`DayWorkRules.covers`). The trees it can send

@@ -432,4 +432,35 @@ class ChainOfCommandTest {
         assertEquals(new Position(-48, 64, 44), night.location(), "in the camp: " + night);
         assertTrue(night.task() instanceof Objective.Task.None, "sheltered in place, not mining: " + night);
     }
+
+    /**
+     * A squad producing is kept on it to the stock's most - but not once its task is done: live (field478), Charlie held
+     * a wood every strip of which was cut out.
+     */
+    @Test
+    void aSquadIsKeptOnItsProductionUntilItsTaskIsDone() {
+        ChainOfCommand two = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+        two.setKeepByDay(true);
+        two.restorePhase(Phase.BUILDUP, 0);
+        two.onTime(TimeOfDay.of(1000, true));
+        two.onStores(new io.github.jayessdeesea.minecraft.command.Stockpile(0, 0, 0, 0, 0, 0, 0, 0));
+        Objective wood = new Objective("Gather wood", new Position(-26, 65, 78), "logs", new Objective.Task.Gather(Resource.WOOD));
+        Objective keep = new Objective("Flatten", new Position(0, 64, 0), "flat", new Objective.Task.Keep());
+        java.util.function.Function<io.github.jayessdeesea.minecraft.command.Progress.State, SquadStatus> alpha = state -> new SquadStatus("Alpha",
+                new Report.InPosition(), List.of(new SoldierStatus("Alice", new Position(-26, 65, 78), new Order.Idle(), new Report.InPosition(), Optional.empty())),
+                List.of(), Optional.of(wood), false, OptionalInt.empty(), Optional.of(new io.github.jayessdeesea.minecraft.command.Progress(state, "")));
+        SquadStatus bravo = new SquadStatus("Bravo", new Report.InPosition(),
+                List.of(new SoldierStatus("Bob", new Position(0, 64, 0), new Order.Idle(), new Report.InPosition(), Optional.empty())), List.of(),
+                Optional.of(keep), false);
+
+        assertEquals(wood, two.guarded(List.of(WALL, keep), List.of(alpha.apply(io.github.jayessdeesea.minecraft.command.Progress.State.UNDER_WAY), bravo),
+                List.of(), List.of()).getFirst(), "under way: kept on the wood");
+        assertEquals(WALL, two.guarded(List.of(WALL, keep), List.of(alpha.apply(io.github.jayessdeesea.minecraft.command.Progress.State.DONE), bravo),
+                List.of(), List.of()).getFirst(), "the wood cut out: given its next task");
+    }
 }

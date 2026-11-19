@@ -42,8 +42,8 @@ final class DutyBook {
     /** Each squad's strips found cut out, and the objective they were found on. */
     private final Map<String, List<Box>> cutOut = new HashMap<>();
     private final Map<String, Optional<Objective>> cutOutFor = new HashMap<>();
-    /** Each squad's cut-outs said spent, by count: the wood's spent said once a count. */
-    private final Set<String> spentSaid = new java.util.HashSet<>();
+    /** The squads whose wood, on the objective they have, is spent: every strip of it cut out. */
+    private final Set<String> spentSquads = ConcurrentHashMap.newKeySet();
     /** When each producer was given the ground it works. */
     private final Map<String, Long> givenAt = new ConcurrentHashMap<>();
 
@@ -130,6 +130,7 @@ final class DutyBook {
         if (!objective.equals(cutOutFor.get(squad))) {
             cutOutFor.put(squad, objective);
             cutOut.put(squad, new ArrayList<>());
+            spentSquads.remove(squad);
         }
         List<Box> found = cutOut.get(squad);
         orders.values().stream().filter(o -> o.duty() == DutyOrder.Duty.WOODCUTTER && soldiers.contains(o.soldier())
@@ -139,10 +140,19 @@ final class DutyBook {
                     LOG.info("[{}] the strip over x {}..{}, z {}..{} is cut out - the wood shared again without it", squad, g.minX(), g.maxX(),
                             g.minZ(), g.maxZ());
                 });
-        // Every strip cut out - the whole wood shared again - is the wood spent: said once, up the chain.
-        objective.filter(o -> !found.isEmpty() && spentSaid.add(squad + found.size())
-                && WoodDuties.worked(WoodDuties.whole(o.location()), found).equals(WoodDuties.whole(o.location()))).ifPresent(o -> spent.accept(o.location()));
+        // Every strip cut out - the whole wood shared again - is the wood spent: said once an order, up the chain. Live
+        // (field478), said three times over as more strips were found.
+        objective.filter(o -> !found.isEmpty() && !spentSquads.contains(squad)
+                && WoodDuties.worked(WoodDuties.whole(o.location()), found).equals(WoodDuties.whole(o.location()))).ifPresent(o -> {
+            spentSquads.add(squad);
+            spent.accept(o.location());
+        });
         return List.copyOf(found);
+    }
+
+    /** Whether {@code squad}'s wood, on the objective it has, is spent: its task done. */
+    boolean spent(String squad) {
+        return spentSquads.contains(squad);
     }
 
     /** {@code soldier}'s duty order, if it's a producer. */

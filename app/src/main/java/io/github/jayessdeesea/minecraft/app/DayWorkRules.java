@@ -92,6 +92,14 @@ final class DayWorkRules {
         };
     }
 
+    /**
+     * Whether {@code squad}'s task is done - a squad producing is kept on it to the stock's most, but not once it's done:
+     * live (field478), Charlie held a wood every strip of which was cut out.
+     */
+    static boolean done(SquadStatus squad) {
+        return squad.progress().filter(p -> p.state() == io.github.jayessdeesea.minecraft.command.Progress.State.DONE).isPresent();
+    }
+
     /** Whether {@code stores} - as last seen; unseen, not - hold less than the most of the product {@code shortfall}'s work makes. */
     static boolean underItsMost(Stockpile stores, PlatoonSergeant.Shortfall shortfall) {
         return stores != null && java.util.Arrays.stream(Renewable.values()).filter(k -> k.product() && k.shortfall() == shortfall)
