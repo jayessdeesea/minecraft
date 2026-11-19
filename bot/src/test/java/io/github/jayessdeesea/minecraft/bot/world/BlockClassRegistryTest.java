@@ -39,6 +39,14 @@ class BlockClassRegistryTest {
         assertEquals(Hardness.Tool.SHOVEL, BlockClassRegistry.hardness(10).orElseThrow().tool(), "dirt");
         assertEquals(Hardness.Tool.AXE, BlockClassRegistry.hardness(6866).orElseThrow().tool(), "a crafting table");
         assertEquals(Hardness.Tool.HAND, BlockClassRegistry.hardness(661).orElseThrow().tool(), "glass");
+        assertEquals(Hardness.Tool.SHOVEL, BlockClassRegistry.hardness(6875).orElseThrow().tool(), "farmland: a trench is cut through it");
+    }
+
+    /** A fence gate, shut or open, is a gate. */
+    @Test
+    void aFenceGateIsAGate() {
+        assertTrue(BlockClassRegistry.isGate(10387) && BlockClassRegistry.isGate(10385), "oak, shut and open");
+        assertFalse(BlockClassRegistry.isGate(8666), "a fence isn't");
     }
 
     @Test

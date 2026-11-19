@@ -195,6 +195,9 @@ final class BlockClassRegistry {
             case STONE -> Optional.of(new Hardness(1.5, 0));
             case IRON_ORE -> Optional.of(new Hardness(3.0, 1));
             case SOIL -> Optional.of(new Hardness(0.65, Hardness.HAND, Hardness.Tool.SHOVEL));
+            // Farmland, 0.6: dug as any block where a trench is cut through it (live, field492: with no break time
+            // known, a farmer started on the cell and its digger found nothing there, over and over).
+            case FARMLAND -> Optional.of(new Hardness(0.6, Hardness.HAND, Hardness.Tool.SHOVEL));
             case ROCK, GRIT, SOLID, TALL, WORKSTATION -> Optional.ofNullable(HARDNESS.get(stateId));
             default -> Optional.empty();
         };

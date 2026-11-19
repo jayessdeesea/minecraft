@@ -404,6 +404,10 @@ public final class Farmer {
                     Optional<BlockPos> stand = WaterCarrier.beside(world, h);
                     if (stand.isPresent()) {
                         Digger.Target ground = Digger.Target.SOIL.at(world, h) ? Digger.Target.SOIL : Digger.Target.OTHER;
+                        if (!ground.at(world, h)) {
+                            passedOver.failed(h, ticks, "no digger takes the block at " + h + " for the water hole");
+                            continue;
+                        }
                         digger = new Digger(name, session, inventory, claims, new Digger.Spot(ground, stand.get(), h), Digger.walkTicks(soldier, stand.get()));
                         LOG.info("{} digs the farm's water hole at {}", name, h);
                         return;
@@ -417,10 +421,15 @@ public final class Farmer {
         }
         // Its trenches first: the ground beside each grows dry till its water's there.
         for (BlockPos c : trenchToCut(world, farm)) {
-            Optional<BlockPos> stand = claims.contains(c) ? Optional.empty() : trenchStand(world, c);
+            Optional<BlockPos> stand = claims.contains(c) || passedOver.barred(c, ticks) ? Optional.empty() : trenchStand(world, c);
             if (stand.isPresent()) {
-                // Farmland it's cut through is no SOIL to a digger: dug as any block.
+                // Farmland it's cut through is no SOIL to a digger: dug as any block. One no digger takes is passed over:
+                // started on, its digger would find nothing there, over and over.
                 Digger.Target soil = Digger.Target.SOIL.at(world, c) ? Digger.Target.SOIL : Digger.Target.OTHER;
+                if (!soil.at(world, c)) {
+                    passedOver.failed(c, ticks, "no digger takes the block at " + c + " for the trench");
+                    continue;
+                }
                 digger = new Digger(name, session, inventory, claims, new Digger.Spot(soil, stand.get(), c), Digger.walkTicks(soldier, stand.get()));
                 LOG.info("{} cuts the farm's trench at {} from {}", name, c, stand.get());
                 return;
