@@ -237,76 +237,9 @@ public class ChainOfCommand implements DisposableBean {
         return clockwork.millis();
     }
 
-    /**
-     * Where radio traffic is keyed out - the radio operator's connection. Until one is set (no
-     * soldier connected yet), traffic is only logged.
-     */
     /** How the platoon leader's objectives find the ground: their heights are its guesses, the world's are known. */
     public void setGround(Ground ground) {
         this.ground = ground;
-    }
-
-    /** Whether the night rule holds now: under {@link #shelterAtNight}, from just before dark until day. */
-    boolean sheltering() {
-        TimeOfDay now = time;
-        return shelterAtNight && now != null && (now.dark() || now.ticksUntilDark() <= SHELTER_LEAD_TICKS);
-    }
-
-    /**
-     * {@code objective}, or - at night, under {@link #shelterAtNight}, when the platoon leader's order
-     * would leave a squad in the open or take it out of the base it is sealed in - the patrol base it was already
-     * ordered to build, or else one where the squad's point man stands. A guardrail, and a loud one: the platoon leader's own order is logged beside it.
-     */
-    Objective sheltered(Objective objective, SquadStatus squad) {
-        TimeOfDay now = time;
-        if (!shelterAtNight || now == null || !(now.dark() || now.ticksUntilDark() <= SHELTER_LEAD_TICKS)
-                || squad.soldiers().isEmpty()) {
-            return objective;
-        }
-        // The night isn't wasted: every squad goes down the camp's mine (operator, 2026-11-13) -
-        // whatever the platoon leader orders, a patrol base included: seeing the squad out of one, it
-        // ordered one two minutes into the shift. Its shift ends in time to climb out at sunrise.
-        Optional<Objective> nightShift = nightShift(squad.squadName());
-        if (nightShift.isPresent() && surfacing()) {
-            return objective;
-        }
-        if (nightShift.isPresent() && objective.equals(nightShift.get())) {
-            return objective;
-        }
-        // With no camp to go down the mine of, a squad already sealed in is the one most to keep there,
-        // and a base the platoon leader orders is the night's.
-        Position at = squad.soldiers().getFirst().position();
-        // Before the buildup, shelter in place in the camp, not a patrol base wherever it stands (operator, 2026-11-18).
-        Foothold base = foothold;
-        if (phaseNow.beforeBuildup() && base != null) {
-            Objective inCamp = new Objective("Shelter in place in the camp through the night", base.camp(), "Safe until dawn", new Objective.Task.None());
-            if (!objective.equals(inCamp)) {
-                LOG.warn("[PL -> {}] at or near night, in {}, ordered '{}' - shelters in place in the camp", squad.squadName(), phaseNow, objective.mission());
-            }
-            return inCamp;
-        }
-        if (nightShift.isEmpty() && objective.patrolBase()) {
-            return objective;
-        }
-        if (nightShift.isPresent()) {
-            LOG.warn("[PL -> {}] at or near night, ordered '{}' ({}) - the operator's rule sends it down the camp's mine instead, at {}",
-                    squad.squadName(), objective.mission(), objective.task(), at(nightShift.get().location()));
-            return nightShift.get();
-        }
-        // A base already ordered is the one to finish: sited again wherever the point man stands at
-        // each decision, a squad starts hut after hut and finishes none before dawn.
-        Optional<Objective> standing = squads.get(squad.squadName()).objective().filter(Objective::patrolBase);
-        if (standing.isPresent()) {
-            LOG.warn("[PL -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule keeps it on the patrol base it has",
-                    squad.squadName(), objective.mission(), objective.task());
-            return standing.get();
-        }
-        Objective shelter = grounded(new Objective("Build a patrol base where you stand and spend the night in it",
-                new Position(Math.floor(at.x()), at.y(), Math.floor(at.z())), "Squad safe from monsters until dawn",
-                new Objective.Task.PatrolBase()), squad.soldiers());
-        LOG.warn("[PL -> {}] at or near night, out of a patrol base, ordered '{}' ({}) - the operator's rule shelters it instead, at {}",
-                squad.squadName(), objective.mission(), objective.task(), at(shelter.location()));
-        return shelter;
     }
 
     /** Under the operator's day rule, every squad builds the keep by day (minecraft.platoon-leader.keep-by-day). */
@@ -376,12 +309,6 @@ public class ChainOfCommand implements DisposableBean {
      */
     static final long SURFACE_LEAD_TICKS = 600;
 
-    /** Whether the night shift is climbing out: dark, and sunrise within {@link #SURFACE_LEAD_TICKS}. */
-    boolean surfacing() {
-        TimeOfDay now = time;
-        return now != null && now.dark() && now.ticksUntilLight() <= SURFACE_LEAD_TICKS;
-    }
-
     /** Where the camp's mine is cut, from the camp's centre: inside its wall, clear of the huts. */
     static final int MINE_HEAD_DX = 4;
     static final int MINE_HEAD_DZ = -4;
@@ -437,61 +364,41 @@ public class ChainOfCommand implements DisposableBean {
     /** How deep the night shift cuts: the iron, commonest round y=16. */
     static final int MINE_DEPTH = 16;
 
-    /**
-     * The night's work for {@code squad} at the camp's mine - every squad's, its stairs shared
-     * (operator, 2026-11-13: both squads work the mine at night) - or empty with no camp measured yet.
-     */
+    /** Whether the night rule holds now (NightRules#sheltering). */
+    boolean sheltering() {
+        return NightRules.sheltering(night());
+    }
+
+    /** {@code objective}, or the night's shelter for {@code squad} under the operator's night rule (NightRules#sheltered). */
+    Objective sheltered(Objective objective, SquadStatus squad) {
+        return NightRules.sheltered(night(), objective, squad);
+    }
+
+    /** Whether the night shift is climbing out (NightRules#surfacing). */
+    boolean surfacing() {
+        return NightRules.surfacing(night());
+    }
+
+    /** The night's work for {@code squad} at the camp's mine, or empty (NightRules#nightShift). */
     Optional<Objective> nightShift(String squad) {
-        Foothold camp = foothold;
-        // Before the buildup, nobody down the mine by night (operator, 2026-11-18: not safe; we don't want to lose the
-        // few resources we have). Live (field463-470), most deaths were underground at night.
-        if (camp == null || squads.isEmpty() || phaseNow.beforeBuildup()) {
-            return Optional.empty();
-        }
-        // Building the keep by day, the night's mine is the keep's own, beside it: from the camp's,
-        // 65 blocks off and 48 down, the climb out and the walk to the keep were two-fifths of the
-        // day (field151; operator, 2026-11-13: cutting a second mine is fine).
-        if (keepByDay) {
-            return Optional.of(new Objective("Cut the keep's mine down to the iron through the night", mines.keepMine(),
-                    "Stone for the keep's slab, and the night spent working underground beside it", new Objective.Task.Mine()));
-        }
-        Position c = camp.camp();
-        return Optional.of(new Objective("Cut the camp's mine down to the iron through the night",
-                new Position(Math.floor(c.x()) + MINE_HEAD_DX, MINE_DEPTH, Math.floor(c.z()) + MINE_HEAD_DZ),
-                "Stone and iron for the camp, and the night spent working underground", new Objective.Task.Mine()));
+        return NightRules.nightShift(night());
+    }
+
+    /** {@code objective} put on the ground at its x and z (NightRules#grounded). */
+    Objective grounded(Objective objective, List<SoldierStatus> soldiers) {
+        return NightRules.grounded(ground, objective, soldiers);
+    }
+
+    /** The night as its rules read it, now. */
+    private NightRules.Night night() {
+        return new NightRules.Night(shelterAtNight, time, Optional.ofNullable(foothold), phaseNow, keepByDay, mines.keepMine(), squads.isEmpty(),
+                name -> squads.get(name).objective().filter(Objective::patrolBase), ground);
     }
 
     /**
-     * {@code objective} with its height the ground's at its x and z, looked for near the squad's
-     * middle height: the platoon leader guesses heights, and a guess copied from elsewhere in its prompt
-     * lands an objective in the sky or underground. MINE keeps its own: that y is a depth.
+     * Where radio traffic is keyed out - the radio operator's connection. Until one is set (no
+     * soldier connected yet), traffic is only logged.
      */
-    Objective grounded(Objective objective, List<SoldierStatus> soldiers) {
-        if (objective.mine() || soldiers.isEmpty()) {
-            return objective;
-        }
-        Position at = objective.location();
-        // Near the squad's middle height, not its first soldier's: one stranded up a tower or down a
-        // hole would take every objective there with it.
-        double[] heights = soldiers.stream().mapToDouble(s -> s.position().y()).sorted().toArray();
-        int nearY = (int) Math.floor(heights[heights.length / 2]);
-        int x = (int) Math.floor(at.x()), z = (int) Math.floor(at.z());
-        OptionalInt height = ground.heightAt(x, z, nearY);
-        // From a squad down a mine, the ground near its height is the shaft's floor or a cave's: the
-        // objective goes on the surface when that's well above. Live, a wood-gathering objective at
-        // the keep mine's head went to the shaft's bottom, 40 blocks down, and the squad found no tree.
-        OptionalInt surface = ground.surfaceAt(x, z, nearY);
-        if (surface.isPresent() && (height.isEmpty() || surface.getAsInt() - height.getAsInt() > UNDERGROUND)) {
-            height = surface;
-        }
-        if (height.isEmpty() || height.getAsInt() == (int) Math.floor(at.y())) {
-            return objective;
-        }
-        LOG.info("[PL] objective at x={} z={} put on the ground at y={}, not the y={} given", (int) Math.floor(at.x()),
-                (int) Math.floor(at.z()), height.getAsInt(), (int) Math.floor(at.y()));
-        return new Objective(objective.mission(), new Position(at.x(), height.getAsInt(), at.z()), objective.intent(), objective.task());
-    }
-
     public void setRadio(Consumer<String> radio) {
         this.radio = radio;
     }

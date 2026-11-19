@@ -43,7 +43,7 @@ It keeps nothing between calls but each squad's current objective (backlog/opera
 
 ## What it decides: `command.Objective`, one per squad
 - **Where:** a location. Its height is the platoon leader's guess, and is put on the ground there
-  (`ChainOfCommand.grounded`), except for `MINE`, where it's the depth to reach.
+  (`NightRules.grounded`), except for `MINE`, where it's the depth to reach.
 - **What, in words:** the mission and the intent, logged and passed to the squad leader.
 - **The task**, the only part that reaches the soldiers' hands:
 

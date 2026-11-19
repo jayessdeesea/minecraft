@@ -1,7 +1,7 @@
 # Platoon leader: the operator's standing rules
 
 Rules the operator sets in configuration, applied to the platoon leader's objectives after it decides
-(`app.ChainOfCommand.sheltered`). Every override is logged as a WARN beside what the platoon leader had
+(`app.NightRules.sheltered`). Every override is logged as a WARN beside what the platoon leader had
 ordered.
 
 ## Shelter at night (`minecraft.platoon-leader.shelter-at-night`)
@@ -17,7 +17,7 @@ before dark, to plan the night:
   rule it's the keep's own mine, off its north-west corner (`ChainOfCommand.KEEP_MINE`): from the
   camp's, the climb out and the walk were two-fifths of the day. Otherwise the camp's: 4 blocks
   east and 4 north of its centre, inside the wall. Cut to the iron at y=16
-  (`ChainOfCommand.nightShift`); a mine off the camp is kept on disk by where it was ordered, and
+  (`NightRules.nightShift`); a mine off the camp is kept on disk by where it was ordered, and
   cut on down after a restart. The shift ends 30 seconds before sunrise
   (`ChainOfCommand.SURFACE_LEAD_TICKS`): the climb out and the walk to the day's work, so the
   squads come up as the sun burns the undead off the surface, and the day's rule - the keep - takes
@@ -28,7 +28,7 @@ before dark, to plan the night:
   stands. A squad sealed in is never ordered out.
 - **A squad's detachments come in with it**, but for its miners, who work on underground: a
   soldier with any other role, and no order of its own, is in its squad's main body by night, and
-  shelters with it (`ChainOfCommand.sheltering`).
+  shelters with it (`NightRules.sheltering`).
 
 ## The keep by day (`minecraft.platoon-leader.keep-by-day`)
 By day the platoon leader assigns the day's work (operator, 2026-11-17): its `FARM`, `TREE_FARM`, `WOOD`,

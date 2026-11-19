@@ -24,8 +24,9 @@ lists the files over it, each capped at its length then, to shrink to under.
   orders' names.
 - **`bot.DeterministicSoldier`**: its fight, its moves and its survival as separate pure parts.
 - **`app.ChainOfCommand`**: the platoon leader's guardrails apart from the wiring of the echelons. Begun: the
-  day's guardrails are `DayGuardrails`, over the day the chain hands them; the keep's mine sites `MineSites`.
-  Left: the night's rules (`sheltered`, `nightShift`, `grounded`) and the operator's orders.
+  Done: the day's guardrails are `DayGuardrails` and the night's `NightRules`, each over the day or night the
+  chain hands it; the keep's mine sites `MineSites`. It's under the limit; the operator's orders are what's
+  left of its own beside the wiring.
 - The tests are all under: `SquadSimulationTest` split into a class a scenario family beside it
   (docs/architecture.md, the squad simulation), `DeterministicSoldierTest`'s fight into
   `DeterministicSoldierCombatTest`, the sim server's items into `SimItems`.
