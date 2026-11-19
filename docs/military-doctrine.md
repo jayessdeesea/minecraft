@@ -90,7 +90,7 @@ waist-deep in gravel was read as holding there for a day) - raises
 an alert in the log, once a spell (`[Alert]`, `app.IdleWatch`): its report, its order, which
 routine has its hands, and its squad's task. It's logged again when it moves on. A soldier held at
 a table or furnace shows its routine; one with free hands and a task its routines can't start on is
-the chain of command's gap; one jumping in place is stuck. Beside it, the space bubble (operator,
+the chain of command's gap; one jumping in place is stuck. One holding where it was sent by day, while its squad has a task other than sheltering or its patrol base and isn't down the mine for the night, is without work, and is alerted too ("without work", operator 2026-11-18: are you tracking soldiers not getting commands?): the squad leader's gap, not the soldier's. Beside it, the space bubble (operator,
 2026-11-15): one within a body's width (0.6 blocks) of another for 10 seconds, moving or not,
 outside a rest (`app.CrowdWatch`), is alerted too, with
 what it's at, and logged again when it has room: two soldiers in one cell that long are working one

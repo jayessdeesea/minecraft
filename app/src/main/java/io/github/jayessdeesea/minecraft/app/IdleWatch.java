@@ -26,6 +26,36 @@ final class IdleWatch {
     }
 
     private final Map<String, Spell> spells = new HashMap<>();
+    private final String word;
+
+    /** Watching for soldiers stuck: "stationary". */
+    IdleWatch() {
+        this("stationary");
+    }
+
+    /** Watching for soldiers stood still, said as {@code word} in the alert. */
+    IdleWatch(String word) {
+        this.word = word;
+    }
+
+    /**
+     * Whether a soldier {@code resting} is in fact without work: holding where it was sent, by day, while its squad has a
+     * task to do - not hiding, sheltering or down the mine for the night. Live (field472), half the platoon stood in
+     * position on farm and wood objectives with nothing to do, and no alert said so (operator, 2026-11-18: people
+     * standing around everywhere; are you tracking soldiers not getting commands?).
+     */
+    static boolean withoutWork(boolean resting, Optional<io.github.jayessdeesea.minecraft.command.Objective> squadTask, boolean nightBelow) {
+        return resting && !nightBelow && squadTask.map(io.github.jayessdeesea.minecraft.command.Objective::task)
+                .filter(t -> !(t instanceof io.github.jayessdeesea.minecraft.command.Objective.Task.PatrolBase)
+                        && !(t instanceof io.github.jayessdeesea.minecraft.command.Objective.Task.None)).isPresent();
+    }
+
+    /** The nearest of {@code hostiles} to {@code at}, said for an alert: what, where and how far. */
+    static String nearestHostile(java.util.List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> hostiles, Position at) {
+        return hostiles.stream().findFirst().map(h -> ", nearest hostile " + io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry.nameOf(h.typeId())
+                + " at " + h.position() + String.format(Locale.ROOT, " (%.1f off)", Math.sqrt(Math.pow(h.position().x() - at.x(), 2)
+                + Math.pow(h.position().y() - at.y(), 2) + Math.pow(h.position().z() - at.z(), 2)))).orElse(", no hostile within 24");
+    }
 
     /**
      * Whether a soldier at {@code at} under {@code order} is holding where it was sent - within the
@@ -65,7 +95,7 @@ final class IdleWatch {
         }
         if (!spell.alarmed() && now - spell.since() >= IDLE_MILLIS) {
             spells.put(soldier, new Spell(spell.anchor(), spell.since(), true));
-            return Optional.of(String.format(Locale.ROOT, "%s stationary %.0f s at (%.1f, %.1f, %.1f): %s", soldier,
+            return Optional.of(String.format(Locale.ROOT, "%s %s %.0f s at (%.1f, %.1f, %.1f): %s", soldier, word,
                     (now - spell.since()) / 1000.0, position.x(), position.y(), position.z(), doing.get()));
         }
         return Optional.empty();

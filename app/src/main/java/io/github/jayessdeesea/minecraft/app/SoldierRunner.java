@@ -1438,7 +1438,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Ticks to each soldier's next stand-to check. */
     private final Map<String, Integer> standTo = new ConcurrentHashMap<>();
     /** Soldiers stood still by day: an alarm each spell. */
-    private final IdleWatch idleWatch = new IdleWatch();
+    private final IdleWatch idleWatch = new IdleWatch(), withoutWork = new IdleWatch("without work");
     /** Soldiers whose last position wasn't sent for a value that isn't finite: said once a spell - ticks write. */
     private final Set<String> badPositionLogged = ConcurrentHashMap.newKeySet();
 
@@ -8071,10 +8071,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + (foodCalls ? ", food calls" : "") + (threatened ? ", threatened" : "")
                         // In contact with what, and where: live, a squad stood a night "in contact" with
                         // one hostile each, and nothing said what or where it was.
-                        + (status.report() instanceof Report.InContact ? world.nearbyHostiles(status.position(), 24).stream().findFirst()
-                        .map(h -> ", nearest hostile " + HostileMobRegistry.nameOf(h.typeId()) + " at " + h.position() + String.format(java.util.Locale.ROOT,
-                                " (%.1f off)", Math.sqrt(Math.pow(h.position().x() - status.position().x(), 2) + Math.pow(h.position().y() - status.position().y(), 2)
-                                        + Math.pow(h.position().z() - status.position().z(), 2)))).orElse(", no hostile within 24") : "")
+                        + (status.report() instanceof Report.InContact ? IdleWatch.nearestHostile(world.nearbyHostiles(status.position(), 24), status.position()) : "")
                         + ", " + lights.size() + " cells to light with " + inventory.count(ItemClass.TORCH) + " torches"
                         + (lights.isEmpty() ? "" : " (" + lamplighter.passedOver(world, lights) + ")")
                         + (farming.get(name) == null ? "" : ", farm " + farmer.passedOver(world, farming.get(name)))
@@ -8088,6 +8085,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                 afterActionReview.idle(name);
                             }
                         });
+                // And holding where sent by day with work to be had: without work, the squad leader's to give it.
+                withoutWork.update(name, status.position(), clockwork.millis(), !IdleWatch.withoutWork(resting, objectiveOf(unitOf(name, definition.squad())), below != null),
+                        () -> "order " + status.order() + ", report " + status.report()).ifPresent(line -> LOG.warn("[Alert] {}", line));
                 // And on top of another soldier, moving or not (CrowdWatch) - looked at once a second.
                 Map<String, Position> everyone = new HashMap<>();
                 if (crowdTicks.getAndIncrement() % 20 == 0) {

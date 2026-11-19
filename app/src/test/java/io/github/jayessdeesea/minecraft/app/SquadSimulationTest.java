@@ -501,26 +501,6 @@ class SquadSimulationTest {
         assertEquals(0, filled, "cells of the mine filled in");
     }
 
-    /** The camp's mine as kept on disk in {@link #aRestartCutsTheCampsKeptStaircaseOnDown}: from (4, 64, 4) down to y=16. */
-    private static final Staircase KEPT = new Staircase(
-            new BlockPos(4, GROUND + 1, 4), 16);
-
-    /**
-     * Flat, with {@link #KEPT}'s first six steps cut, and a block of dirt dropped on its head - as
-     * live, where the ground over an old shaft read a block higher than when it was sited.
-     */
-    private static int keptStairsCut(int x, int y, int z) {
-        if (x == 4 && y == GROUND + 1 && z == 4) {
-            return SimServer.DIRT;
-        }
-        for (int k = 0; k < 6; k++) {
-            if (KEPT.cells(k).contains(new BlockPos(x, y, z))) {
-                return SimServer.AIR;
-            }
-        }
-        return flat(x, y, z);
-    }
-
     /**
      * After a restart the camp's mine is the staircase kept on disk, cut on down: live, sited again
      * from the ground as it then read, a new one was started over the old each time - until none
@@ -528,9 +508,9 @@ class SquadSimulationTest {
      */
     @Test
     void aRestartCutsTheCampsKeptStaircaseOnDown() {
-        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        KeptStairs.keptInTheBuildup(state);
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsCut, 1000);
+        SimServer server = new SimServer(clock, KeptStairs::keptStairsCut, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
                 "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
@@ -546,7 +526,7 @@ class SquadSimulationTest {
         clock.advance(10 * 60_000);
 
         for (int k = 6; k < 16; k++) {
-            for (BlockPos c : KEPT.cells(k)) {
+            for (BlockPos c : KeptStairs.KEPT.cells(k)) {
                 assertEquals(SimServer.AIR, server.block(c.x(), c.y(), c.z()), "step " + (k + 1) + " of the kept staircase at " + c
                         + "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
             }
@@ -560,9 +540,9 @@ class SquadSimulationTest {
      */
     @Test
     void aMineOrderedElsewhereNearTheCampIsTheCampsKeptStaircase() {
-        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        KeptStairs.keptInTheBuildup(state);
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsCut, 1000);
+        SimServer server = new SimServer(clock, KeptStairs::keptStairsCut, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         // 16 blocks from the kept head each way - beyond where a staircase is sited round a point.
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut a mine shaft near the camp", new Position(-12, 16, -12),
@@ -578,16 +558,8 @@ class SquadSimulationTest {
 
         clock.advance(60_000);
 
-        assertEquals(Optional.of(List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1))), new WallStore(state, "stairs").load("0,0"),
+        assertEquals(Optional.of(List.of(KeptStairs.KEPT.head(), KeptStairs.KEPT.step(KeptStairs.KEPT.steps() - 1))), new WallStore(state, "stairs").load("0,0"),
                 "the camp's staircase still the one kept");
-    }
-
-    /** Every cell of {@link #KEPT}'s cuts - stairs, landing, tunnels - as air: a mine cut to the bottom. */
-    private static final Set<BlockPos> KEPT_CUT = KEPT.cuts().stream()
-            .flatMap(c -> c.cells().stream()).collect(Collectors.toUnmodifiableSet());
-
-    private static int keptStairsAllCut(int x, int y, int z) {
-        return KEPT_CUT.contains(new BlockPos(x, y, z)) ? SimServer.AIR : flat(x, y, z);
     }
 
     /**
@@ -596,9 +568,9 @@ class SquadSimulationTest {
      */
     @Test
     void byNightASquadWithItsMineCutWaitsAtTheLanding() {
-        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        KeptStairs.keptInTheBuildup(state);
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsAllCut, 14_000); // an hour after dusk
+        SimServer server = new SimServer(clock, KeptStairs::keptStairsAllCut, 14_000); // an hour after dusk
         Roster roster = new Roster("Alpha:Alice,Bob");
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
                 "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
@@ -617,7 +589,7 @@ class SquadSimulationTest {
 
         for (String name : List.of("Alice", "Bob")) {
             PlayerPosition at = server.position(name);
-            assertTrue(at.y() < KEPT.head().y() - 24, name + " under the ground by night, not at " + at);
+            assertTrue(at.y() < KeptStairs.KEPT.head().y() - 24, name + " under the ground by night, not at " + at);
         }
         // Waiting the night out down the mine is hiding, not a soldier stuck: no alert for it.
         List<String> alerts;
@@ -630,22 +602,6 @@ class SquadSimulationTest {
         assertEquals(List.of(), alerts);
     }
 
-    /** As {@link #keptStairsAllCut}, the camp's ground lit by torches every 3 blocks, and a mound on it to dig. */
-    private static int keptStairsAllCutInALitCamp(int x, int y, int z) {
-        if (y == GROUND + 1 && Math.floorMod(x, 3) == 0 && Math.floorMod(z, 3) == 0 && Math.abs(x) <= 15 && Math.abs(z) <= 15
-                && !KEPT_CUT.contains(new BlockPos(x, y, z)) && Math.abs(x - 4) > 2 && Math.abs(z - 4) > 2) {
-            return SimServer.TORCH;
-        }
-        if (x >= -6 && x <= -5 && z >= -6 && z <= -5 && y > GROUND && y <= GROUND + 2) {
-            return SimServer.DIRT;
-        }
-        // And its stairs lit, as live.
-        if (KEPT.lights().contains(new BlockPos(x, y, z))) {
-            return SimServer.TORCH;
-        }
-        return keptStairsAllCut(x, y, z);
-    }
-
     /**
      * By night, in a lit camp with ground work to do, the squad down the mine stays down: the camp's
      * upkeep is for those at the camp, and a soldier at the landing 48 blocks under it isn't. Live, one
@@ -654,9 +610,9 @@ class SquadSimulationTest {
      */
     @Test
     void byNightASquadDownTheMineIsntSentUpToKeepALitCamp() {
-        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        KeptStairs.keptInTheBuildup(state);
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsAllCutInALitCamp, 14_000); // an hour after dusk
+        SimServer server = new SimServer(clock, KeptStairs::keptStairsAllCutInALitCamp, 14_000); // an hour after dusk
         Roster roster = new Roster("Alpha:Alice,Bob");
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
                 "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
@@ -678,7 +634,7 @@ class SquadSimulationTest {
                 .map(t -> t.line(0)).toList();
         assertEquals(List.of(), held, "the camp's dig held by soldiers down the mine");
         for (String name : List.of("Alice", "Bob")) {
-            assertTrue(server.position(name).y() < KEPT.head().y() - 24, name + " under the ground by night, not at " + server.position(name));
+            assertTrue(server.position(name).y() < KeptStairs.KEPT.head().y() - 24, name + " under the ground by night, not at " + server.position(name));
         }
     }
 
@@ -723,9 +679,9 @@ class SquadSimulationTest {
      */
     @Test
     void aMineCutBeforeARestartStillCountsAfterIt() {
-        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        KeptStairs.keptInTheBuildup(state);
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsAllCut, 1000);
+        SimServer server = new SimServer(clock, KeptStairs::keptStairsAllCut, 1000);
         Roster roster = new Roster("Alpha:Alice,Bob");
         Position camp = new Position(0.5, GROUND + 1, 0.5);
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
@@ -744,12 +700,6 @@ class SquadSimulationTest {
         assertTrue(mined.met(), "the camp's mine: " + mined.status());
     }
 
-    /** As {@link #keptStairsAllCut}, with the landing's stand's floor gone: ore taken from under it. */
-    private static int keptStairsCutLandingHoled(int x, int y, int z) {
-        BlockPos stand = KEPT.landingStand();
-        return x == stand.x() && y == stand.y() - 1 && z == stand.z() ? SimServer.AIR : keptStairsAllCut(x, y, z);
-    }
-
     /**
      * As live: the landing's stand lost its floor, and the cutter, held by night to exactly that spot,
      * stood in the hole under it reporting no route - stranded, to the recovery drill. With nothing
@@ -757,9 +707,9 @@ class SquadSimulationTest {
      */
     @Test
     void byNightTheCutterWaitsAtALandingWhoseStandLostItsFloor() {
-        new WallStore(state, "stairs").save("0,0", List.of(KEPT.head(), KEPT.step(KEPT.steps() - 1)));
+        KeptStairs.keptInTheBuildup(state);
         SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, SquadSimulationTest::keptStairsCutLandingHoled, 14_000); // an hour after dusk
+        SimServer server = new SimServer(clock, KeptStairs::keptStairsCutLandingHoled, 14_000); // an hour after dusk
         Roster roster = new Roster("Alpha:Alice,Bob");
         ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Cut the mine down to the iron", new Position(4, 16, 4),
                 "Stone and iron for the camp", new Objective.Task.Mine())), squadLeader(new Position(4, GROUND + 1, 4)),
@@ -785,7 +735,7 @@ class SquadSimulationTest {
         }
         assertEquals(List.of(), stranded);
         for (String name : List.of("Alice", "Bob")) {
-            assertTrue(server.position(name).y() < KEPT.head().y() - 24, name + " under the ground by night, not at " + server.position(name));
+            assertTrue(server.position(name).y() < KeptStairs.KEPT.head().y() - 24, name + " under the ground by night, not at " + server.position(name));
         }
     }
 

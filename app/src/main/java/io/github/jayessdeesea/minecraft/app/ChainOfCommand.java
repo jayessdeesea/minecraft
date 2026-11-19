@@ -982,7 +982,6 @@ public class ChainOfCommand implements DisposableBean {
     private volatile Stockpile stores;
     private volatile String storesSaid = "";
     private final WoodSightings woodSightings = new WoodSightings();
-
     /** The lodgment's phase - the platoon leader's to track (Phase); moved on the camp's measured readiness. */
     private final PhaseTracker phases = new PhaseTracker();
     private volatile Phase phaseNow = Phase.SEIZURE;
@@ -1238,7 +1237,8 @@ public class ChainOfCommand implements DisposableBean {
                 List<ResourceSite> woods = woodSightings.seen(statuses.stream().flatMap(s -> s.resources().stream()).toList(), clockwork.millis());
                 List<Objective> byDay = new ArrayList<>();
                 for (int i = 0; i < statuses.size(); i++) {
-                    byDay.add(byDay(objectives.get(i), statuses.get(i), shortfall, woods));
+                    byDay.add(PhaseGuardrails.steady(PhaseGuardrails.noMineBeforeBuildup(byDay(objectives.get(i), statuses.get(i), shortfall, woods), phaseNow,
+                            statuses.get(i).squadName(), toShortfall(PlatoonSergeant.Shortfall.FOOD, statuses.get(i), woods, flattenBuilders)), statuses.get(i)));
                 }
                 List<Objective> dayWork = guarded(byDay, statuses, shortfall, woods);
                 for (int i = 0; i < statuses.size(); i++) {
