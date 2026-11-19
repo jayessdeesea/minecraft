@@ -184,6 +184,14 @@ final class DutyBook {
         return Optional.ofNullable(orders.get(soldier));
     }
 
+    /**
+     * Where {@code soldier}'s yield goes: its duty order's dump, a chest standing there - a chunk farm's tender's the farm's
+     * own - else none, and it stockpiles as any soldier does.
+     */
+    Optional<Position> dump(String soldier, io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
+        return of(soldier).flatMap(DutyOrder::dump).filter(d -> world.isChest((int) Math.floor(d.x()), (int) Math.floor(d.y()), (int) Math.floor(d.z())));
+    }
+
     /** Whether {@code soldier}'s order is {@code duty}. */
     boolean is(String soldier, DutyOrder.Duty duty) {
         return of(soldier).filter(o -> o.duty() == duty).isPresent();

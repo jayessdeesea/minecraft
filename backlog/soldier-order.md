@@ -35,8 +35,8 @@ handle's log off a woodcutter's strip, `WoodDutiesSimulationTest`).
 - **The duty order carries the rest of the OPORD.** A producer's duty, ground and dump are one value
   (`command.DutyOrder`), and the farm's and the wood's duty maps are gone from `SoldierRunner`. What's
   left: the soldier's tick reads its ground from the order for the wood too (the woodcutter's
-  `Order.Gather` box and the planter's grove are still worked out apart), and deposits to the order's
-  dump rather than `stockpileFor`.
+  `Order.Gather` box and the planter's grove are still worked out apart). Its draws - food, stone, logs - still
+  come from `stockpileFor`; only its deposits go to the order's dump.
 - **Timeliness for the wood's middle and its planter.** A strip found cut out at the forest's end is taken off
   and the rest shared again (`WoodDuties.worked`). Left: one cut out in the middle - the wood shared as two
   boxes - and a planter with no opened ground, both still read as behind; and a forest cut out altogether

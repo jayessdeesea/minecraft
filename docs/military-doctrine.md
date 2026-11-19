@@ -1043,7 +1043,8 @@ every tended chunk its ground's box takes in (`DutyBook.field`).
 Each producer's duty reaches it as one value, its duty order (`command.DutyOrder`, `FarmDuties.orders`,
 `WoodDuties.orders`): the duty (harvester, baker, woodcutter, planter), the ground it works and the dump
 its yield goes to - where the squad's yield is stockpiled (its workshop's chest), else the camp's dump
-(docs/echelons/platoon-leader/decisions.md). The squad
+(docs/echelons/platoon-leader/decisions.md); a chunk farm's tender's, the farm's chest. A producer puts its
+load in at its order's dump while a chest stands there, else stockpiles as any soldier does (`DutyBook.dump`). The squad
 leader writes it each cycle, and says it when it changes: `[Alpha -> Alice] DUTY: harvester over x
 6..8, z -4..4, the dump at (3, 64, 2)` (`app.DutyBook`).
 

@@ -307,6 +307,32 @@ class TaskOrganisationSimulationTest {
         assertEquals(SimServer.CHEST, server.block(farm.chest().x(), farm.chest().y(), farm.chest().z()), "its chest" + events);
     }
 
+    /** As {@link #pondOfThreeByTheCamp}, the chunk farm west of the camp's chest stood at its local (13, 13). */
+    private static int pondAndAFarmChest(int x, int y, int z) {
+        return x == -3 && y == GROUND + 1 && z == 13 ? SimServer.CHEST : pondOfThreeByTheCamp(x, y, z);
+    }
+
+    /**
+     * The chunk farm's tender puts its wheat in the farm's own chest, its duty order's dump (operator, 2026-11-19: a chest
+     * on the farm for its seed and wheat): of two keeping the camp's farm, the second tends the chunk.
+     */
+    @Test
+    void theChunkFarmsTenderPutsItsWheatInTheFarmsChest() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::pondAndAFarmChest, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40},
+                 {"soldier": "Bob", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1, GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.BUCKET), 1},
+                        new int[]{9, SimServer.itemOf(ItemClass.WHEAT), 64}), "0,0");
+        clock.advance(8 * 60_000);
+
+        int[][] chest = server.chests.get(SimServer.key(-3, GROUND + 1, 13));
+        int wheat = chest == null ? 0 : java.util.Arrays.stream(chest).filter(st -> st != null && st[0] == SimServer.itemOf(ItemClass.WHEAT))
+                .mapToInt(st -> st[1]).sum();
+        assertTrue(wheat > 0, "wheat in the farm's chest: " + wheat + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
+
     /** Flat, with a pool of water at the ground eight blocks south and one east of (8, 8). */
     private static int poolSouth(int x, int y, int z) {
         return x == 9 && z == 16 && y == GROUND ? SimServer.WATER : SquadSimulationTest.flat(x, y, z);

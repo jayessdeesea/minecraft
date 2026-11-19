@@ -147,7 +147,7 @@ final class SimServer {
         chests.put(key(x, y, z), held);
     }
 
-    private static long key(int x, int y, int z) {
+    static long key(int x, int y, int z) {
         return ((long) x & 0x3FFFFFF) << 38 | ((long) z & 0x3FFFFFF) << 12 | (y - MIN_Y) & 0xFFF;
     }
 

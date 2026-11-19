@@ -15,6 +15,8 @@ priority: P1
 
 - **Merged: the flatten** (backlog/flatten-campaign.md). keep-campaign and keep-pace are sections of flatten-campaign now, each kept verbatim - the flatten kept as the home, being the campaign the keep is one site of. Confirm, or name another.
 
+- **Seed in a farm chest: 512 a chest, or the force's 1024?** (backlog/renewables.md, More farmland) You said a chunk farm's chest holds its excess seed, max 512. The force already caps seed at 1024 stocked across every chest (`ProductionLevels`), and a tender's seed past its pack goes into its farm's chest under that cap. Taken by default: the force-wide cap, one fact in one place. A per-chest 512 would add a second cap counted chest by chest; say if you want it.
+
 Answered 2026-11-19, each now with its item:
 - **Food:** more farmland - trench farms off ponds before the bucket, chunk farms with four water holes after;
   and a food report first, to see why the soldiers eat so much (backlog/renewables.md, More farmland).

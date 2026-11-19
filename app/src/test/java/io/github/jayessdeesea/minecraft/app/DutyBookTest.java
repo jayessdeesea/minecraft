@@ -66,6 +66,42 @@ class DutyBookTest {
         assertTrue(rest.plot().stream().allMatch(c -> c.x() < 16) && !rest.plot().isEmpty(), "Alice the pond's ground");
     }
 
+    /** A producer's yield goes to its order's dump while a chest stands there, and to none of its order's while none does. */
+    @Test
+    void aProducersDumpIsItsOrdersWhileAChestStandsThere() {
+        io.github.jayessdeesea.minecraft.command.Position chest = new io.github.jayessdeesea.minecraft.command.Position(13, 64, 13);
+        DutyBook book = new DutyBook();
+        book.assign("Alpha", List.of("Bob"), Map.of("Bob", new DutyOrder("Bob", DutyOrder.Duty.HARVESTER, Optional.empty(), Optional.of(chest))),
+                Optional.of("FARM"), 0);
+        java.util.Set<BlockPos> chests = new java.util.HashSet<>();
+        io.github.jayessdeesea.minecraft.bot.world.WorldView world = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return chests.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isChest(int x, int y, int z) {
+                return chests.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(Optional.empty(), book.dump("Bob", world), "no chest stands there yet");
+        chests.add(new BlockPos(13, 64, 13));
+        assertEquals(Optional.of(chest), book.dump("Bob", world));
+        assertEquals(Optional.empty(), book.dump("Alice", world), "no order, no dump of its own");
+    }
+
     /** Grass at y 63 everywhere. */
     static io.github.jayessdeesea.minecraft.bot.world.WorldView flat() {
         return new io.github.jayessdeesea.minecraft.bot.world.WorldView() {

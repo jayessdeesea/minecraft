@@ -7569,8 +7569,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // A flatten builder's surplus - cobblestone or dirt past what the stockpile needs - is left
                 // at its depot's dump, a stack of each kept for steps.
                 java.util.function.Predicate<Position> notFull = c -> !fullChests.contains(BlockPos.containing(c.x(), c.y(), c.z()));
-                Optional<Position> deposit = (keepHands.contains(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile) : stockpile)
-                        .filter(notFull);
+                Optional<Position> deposit = (keepHands.contains(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile)
+                        : dutyBook.dump(name, world).or(() -> stockpile)).filter(notFull);
                 Set<ItemClass> surplus = keepHands.contains(name) && !depositor.active() || depositor.dumping() ? surplusKinds(deposit) : Set.of();
                 boolean dumpNow = fullLoad && surplus.stream().anyMatch(c -> inventory.count(c) > Depositor.KEEP);
                 if (depositor.dumping() || dumpNow && !depositor.active()) {
