@@ -7,4 +7,9 @@ package io.github.jayessdeesea.minecraft.command;
  * on the wire.
  */
 public record Position(double x, double y, double z) {
+
+    /** How far it is to {@code other}, straight. */
+    public double distanceTo(Position other) {
+        return Math.sqrt(Math.pow(x - other.x, 2) + Math.pow(y - other.y, 2) + Math.pow(z - other.z, 2));
+    }
 }

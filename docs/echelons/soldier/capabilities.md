@@ -6,7 +6,8 @@ It never calls a model. Everything here it does without being told, as reflexes 
 
 ## Moving
 To the goal its order names, by A* over block cells (`bot.nav.Pathfinder`), re-planned every 2
-seconds or when stuck:
+seconds or when stuck - a wide search asked again from the same cell to the same goal over ground unchanged since
+(`WorldView.stamp`) given its last answer, not searched again (`bot.nav.PlanMemo`):
 - **Walks** level ground, round anything solid, and diagonally only where both sides are clear. A
   corner it clips walking a level stretch is slid along, never jumped onto: a jump costs hunger.
 - **Steps up one block** - a jump, only where its route rises. A fence, at 1.5 blocks, is a wall, not a step.

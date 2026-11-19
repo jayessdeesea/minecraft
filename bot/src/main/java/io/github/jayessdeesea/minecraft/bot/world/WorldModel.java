@@ -65,6 +65,11 @@ public final class WorldModel implements WorldView {
     }
 
     @Override
+    public long stamp(int x, int z, int chunks) {
+        return this.chunks.stamp(x, z, chunks);
+    }
+
+    @Override
     public Optional<Workstation> workstation(int x, int y, int z) {
         return chunks.workstation(x, y, z);
     }

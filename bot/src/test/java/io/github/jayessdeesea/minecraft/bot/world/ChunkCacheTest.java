@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -236,5 +237,20 @@ class ChunkCacheTest {
         int[] section = new int[4096];
         Arrays.fill(section, stateId);
         return section;
+    }
+
+    /** The ground's stamp holds while nothing round it changes, and changes with a block set within its reach - not beyond. */
+    @Test
+    void theGroundsStampChangesOnlyWithTheGroundRoundIt() {
+        ChunkCache cache = new ChunkCache();
+        cache.load(0, 0, List.of(filled(AIR)), "owner");
+        cache.load(10, 0, List.of(filled(AIR)), "owner");
+        long before = cache.stamp(5, 5, 4);
+
+        assertEquals(before, cache.stamp(5, 5, 4), "nothing changed");
+        cache.setBlock(10 * 16 + 1, -60, 1, STONE);
+        assertEquals(before, cache.stamp(5, 5, 4), "a block ten chunks off");
+        cache.setBlock(6, -60, 6, STONE);
+        assertNotEquals(before, cache.stamp(5, 5, 4), "a block in its own chunk");
     }
 }

@@ -35,3 +35,13 @@ given up when walled off, the stair walked in legs), not from a cache. `EntityTr
 next at 8%, a scan of every tracked hostile per call - worth a look if it grows. Left of the item: `cutOff`'s
 flood kept per soldier while its cell holds.
 
+## Measured at 832 and 848
+832: route search about 36% of the samples, most of it `DeterministicSoldier.navigate`'s wide search (60,000 cells,
+made when a cheap plan gains no ground), `EntityTracker.nearbyHostiles` 7.5%. 848 (field494, three minutes, 7,045
+samples): the route planner 39% (2,759) - by its first caller, the wide search in `navigate` 269, `Gatherer.next` 114,
+`navigate`'s cheap search 93 - and `nearbyHostiles` 9% (647, its distance filter over every tracked entity). Built at
+848: the wide search's answer kept (`bot.nav.PlanMemo`) while it's asked again from the same cell to the same goal over
+the same ground - `WorldView.stamp`, the block writes into the chunks within four of the start - round the same cells
+with the same blocks. Left: the next profile's share against 848's 39%; `cutOff`'s flood kept per soldier while its
+cell holds; `nearbyHostiles` by chunk, not a scan of every entity.
+

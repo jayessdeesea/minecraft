@@ -51,6 +51,14 @@ public interface WorldView {
         return false;
     }
 
+    /**
+     * A stamp of the ground round (x, z), {@code chunks} chunks each way: the same while nothing in it changes, so a route
+     * planned over it needn't be planned again. A world that can't say gives a new one each time.
+     */
+    default long stamp(int x, int z, int chunks) {
+        return System.nanoTime();
+    }
+
     /** Whether the block at (x, y, z) is a fence gate - solid shut, open to walk through open. */
     default boolean isGate(int x, int y, int z) {
         return false;

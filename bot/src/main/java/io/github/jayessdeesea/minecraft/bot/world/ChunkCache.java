@@ -128,6 +128,27 @@ public final class ChunkCache {
         version.incrementAndGet();
     }
 
+    /**
+     * The ground round (x, z) as it stands: a stamp of the chunks within {@code chunks} of its own - which are loaded,
+     * and the block writes into each - the same while none of them changes. A route planned over them, planned again
+     * with the same stamp, finds the same.
+     */
+    public long stamp(int x, int z, int chunks) {
+        long stamp = 17;
+        int cx = Math.floorDiv(x, SECTION_SIZE), cz = Math.floorDiv(z, SECTION_SIZE);
+        for (int dx = -chunks; dx <= chunks; dx++) {
+            for (int dz = -chunks; dz <= chunks; dz++) {
+                LoadedChunk chunk = this.chunks.get(chunkKey(cx + dx, cz + dz));
+                long writes = 0;
+                for (int i = 0; chunk != null && i < chunk.writes.length(); i++) {
+                    writes += chunk.writes.get(i);
+                }
+                stamp = stamp * 31 + (chunk == null ? 0 : System.identityHashCode(chunk) * 1_000_003L + writes);
+            }
+        }
+        return stamp;
+    }
+
     /** Drops {@code owner}'s view entirely - for a connection that died without unloading what it saw. */
     public void removeOwner(Object owner) {
         for (Long key : chunks.keySet()) {

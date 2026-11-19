@@ -4,6 +4,7 @@ import static io.github.jayessdeesea.minecraft.bot.Ballistics.*;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
 import io.github.jayessdeesea.minecraft.bot.nav.Goal;
+import io.github.jayessdeesea.minecraft.bot.nav.PlanMemo;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
@@ -462,13 +463,13 @@ public final class DeterministicSoldier implements Soldier {
         // squad stood a night in a cave 5 to 8 blocks from creepers, each backing off it with nowhere to
         // back to and too far to strike, and none of them moved.
         if (!threats.isEmpty() && !threats.get(0).shoots()
-                && distance(position, threats.get(0).position()) > ATTACK_REACH && noWalkTo(world, threats.get(0).position())) {
+                && position.distanceTo(threats.get(0).position()) > ATTACK_REACH && noWalkTo(world, threats.get(0).position())) {
             threats = List.of();
         }
         if (!threats.isEmpty()) {
             TrackedEntity nearest = threats.get(0);
             Position threat = nearest.position();
-            double range = distance(position, threat);
+            double range = position.distanceTo(threat);
             boolean shot = false;
             // A creeper too, from outside its blast (operator, 2026-11-18: soldiers with bows shoot far-away
             // enemies): live (field436-443), six soldiers were killed by creepers in melee, boxed in or after the
@@ -788,6 +789,9 @@ public final class DeterministicSoldier implements Soldier {
     private static final int LONG_PLAN_BUDGET = 60_000;
     /** The goal a wide search last failed for, and at which tick - tick loop only. */
     private Goal wideFailedGoal;
+    /** The last wide search and what it found; its ground stamped this far round its start, in chunks, past its budget's reach. */
+    private final PlanMemo wideMemo = new PlanMemo();
+    static final int WIDE_GROUND_CHUNKS = 4;
     /** The goal the last leg was planned toward, where it began and its path, and the cells legs since go round. */
     private Goal legGoal;
     private BlockPos legFrom;
@@ -945,8 +949,8 @@ public final class DeterministicSoldier implements Soldier {
             // thirds of the soldiers' CPU.
             boolean wideJustFailed = goal.equals(wideFailedGoal) && navTicks - wideFailedAt < WIDE_RETRY_TICKS;
             if (!plan.reachesGoal() && failedPlans > 0 && !wideJustFailed) {
-                Pathfinder.Result wide = Pathfinder.find(world, start, goal, LONG_PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(),
-                        carriesPickaxe(), false, avoid);
+                Pathfinder.Result wide = wideMemo.find(new Object[]{start, goal, world.stamp(start.x(), start.z(), WIDE_GROUND_CHUNKS), Set.copyOf(avoid),
+                        pillarBlocks(), carriesPickaxe()}, () -> Pathfinder.find(world, start, goal, LONG_PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(), carriesPickaxe(), false, avoid));
                 if (wide.reachesGoal()) {
                     plan = wide;
                     wideGoal = goal;
@@ -1275,10 +1279,6 @@ public final class DeterministicSoldier implements Soldier {
             case Order.Idle(), Order.Place _, Order.Dig _, Order.Fill _, Order.Gather _ -> null;
             case Order.MoveTo move -> new Goal(move.x(), move.y(), move.z(), move.horizontalTolerance(), move.verticalTolerance());
         };
-    }
-
-    private static double distance(Position a, Position b) {
-        return Math.sqrt(Math.pow(a.x() - b.x(), 2) + Math.pow(a.y() - b.y(), 2) + Math.pow(a.z() - b.z(), 2));
     }
 
     private void applyVerticalMovement(WorldView world) {
