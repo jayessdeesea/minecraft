@@ -1084,7 +1084,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private void workshopChestFull(Workshop shop, Position full) {
         BlockPos cell = BlockPos.containing(full.x(), full.y(), full.z());
-        if (!shop.chest().equals(Optional.of(cell))) {
+        // A chest that isn't standing isn't full: a load that didn't go in is the chest gone, to be put up again.
+        if (!shop.chest().equals(Optional.of(cell)) || !shop.chestStands(world)) {
             return;
         }
         // Once, when it's found full: the row is laid out from the chest it has, so its "next" can be
@@ -4695,11 +4696,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** The camp's mine's walkway and landing, as kept on disk: empty for no camp, or no mine sited. */
     private List<BlockPos> campMine() {
-        return campStairs().map(s -> {
-            List<BlockPos> cells = new ArrayList<>(s.walkway());
-            cells.addAll(s.landing());
-            return cells;
-        }).orElse(List.of());
+        return campStairs().map(s -> Stream.concat(s.walkway().stream(), s.landing().stream()).toList()).orElse(List.of());
     }
 
     private Set<BlockPos> campKeep() {
@@ -4722,7 +4719,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         // Each workshop's stand, table, furnace and chest - and every chest found full, its row's earlier ones: live
         // (field480, field486), the camp's upkeep dug its full chests out, and the stores they held were forgotten.
-        Stream.concat(shops.stream().flatMap(w -> Stream.concat(Stream.of(w.stand(), w.table(), w.furnace()), w.chest().stream())), fullChests.stream())
+        // And every chest standing in the camp workshop's row: live (field487), idle squads dug them out of it.
+        Stream.concat(Stream.concat(shops.stream().flatMap(w -> Stream.concat(Stream.of(w.stand(), w.table(), w.furnace()), w.chest().stream())), fullChests.stream()),
+                        campWorkshop == null ? Stream.empty() : campWorkshop.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS).stream()
+                                .filter(c -> world.isChest(c.x(), c.y(), c.z())))
                 .forEach(c -> keep.addAll(List.of(c, c.offset(0, -1, 0))));
         return keep;
     }
