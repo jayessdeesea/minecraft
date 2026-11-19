@@ -992,6 +992,7 @@ public class ChainOfCommand implements DisposableBean {
      */
     private volatile Stockpile stores;
     private volatile String storesSaid = "";
+    private final WoodSightings woodSightings = new WoodSightings();
 
     /** The surface chests' contents, summed, as a soldier last saw them change. */
     public void onStores(Stockpile stores) {
@@ -1184,10 +1185,6 @@ public class ChainOfCommand implements DisposableBean {
         return alarms.contains(PlatoonSergeant.Shortfall.FOOD) || unarmedNow > 0;
     }
 
-    /** The builders the ground's level wants, said: "not planned yet" before its foreman's first plan. */
-    static String buildersWanted(int wanted) {
-        return wanted == Integer.MAX_VALUE ? "its level not planned yet" : "its level wants " + wanted + " builder(s)";
-    }
 
     private void askPlatoonLeader(List<Sitrep> sitreps, long now) {
         if (!platoonLeaderBusy.compareAndSet(false, true)) {
@@ -1233,7 +1230,7 @@ public class ChainOfCommand implements DisposableBean {
                 }
                 long millis = clockwork.millis() - started;
                 Map<String, Optional<Objective>> decided = new LinkedHashMap<>();
-                List<ResourceSite> woods = statuses.stream().flatMap(s -> s.resources().stream()).toList();
+                List<ResourceSite> woods = woodSightings.seen(statuses.stream().flatMap(s -> s.resources().stream()).toList(), clockwork.millis());
                 unarmedNow = PlatoonSergeant.unarmed(statuses);
                 List<Objective> byDay = new ArrayList<>();
                 for (int i = 0; i < statuses.size(); i++) {

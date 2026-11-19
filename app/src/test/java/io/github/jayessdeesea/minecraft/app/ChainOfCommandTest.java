@@ -336,8 +336,8 @@ class ChainOfCommandTest {
 
     @Test
     void buildersWantedBeforeTheFirstPlanSaysSo() {
-        assertEquals("its level not planned yet", ChainOfCommand.buildersWanted(Integer.MAX_VALUE));
-        assertEquals("its level wants 40 builder(s)", ChainOfCommand.buildersWanted(40));
+        assertEquals("its level not planned yet", DayWorkRules.buildersWanted(Integer.MAX_VALUE));
+        assertEquals("its level wants 40 builder(s)", DayWorkRules.buildersWanted(40));
     }
 
     /** The flatten's standing squad, sent by the platoon leader to a shortfall, keeps that order: another flattens. */

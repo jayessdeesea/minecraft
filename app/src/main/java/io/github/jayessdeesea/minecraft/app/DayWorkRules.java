@@ -86,4 +86,9 @@ final class DayWorkRules {
         return stores != null && java.util.Arrays.stream(Renewable.values()).filter(k -> k.product() && k.shortfall() == shortfall)
                 .anyMatch(k -> stores.count(k) < ProductionLevels.STANDING.of(k).most());
     }
+
+    /** The builders the ground's level wants, said: "not planned yet" before its foreman's first plan. */
+    static String buildersWanted(int wanted) {
+        return wanted == Integer.MAX_VALUE ? "its level not planned yet" : "its level wants " + wanted + " builder(s)";
+    }
 }
