@@ -990,14 +990,16 @@ it - a hut's wall over the farm's edge - isn't tried at all: no one can stand on
 
 **The farm by duty** (operator, 2026-11-18; `command.FarmDuties`). The soldiers on a farm are its
 harvesters, each on a share of the plot of its own - a run of the plot's whole columns of x, so no
-cell is in two shares and its walk stays short - which it harvests and replants in one pass, keeping its seed and taking its wheat to the stockpile.
+cell is in two shares and its walk stays short; shared among everyone farming the plot, whatever
+their squad, so two squads on one farm have one set of shares and one baker - which it harvests and replants in one pass, keeping its seed and taking its wheat to the stockpile.
 With three or more on the farm, the last on the roster is its baker: it draws the stockpile's wheat a
 stack at a time and bakes it, and the bread past its own load goes in. A harvester below its basic
 load still bakes for itself - that's its own upkeep. With two, both harvest and bake as they go.
 
 Each producer's duty reaches it as one value, its duty order (`command.DutyOrder`, `FarmDuties.orders`,
 `WoodDuties.orders`): the duty (harvester, baker, woodcutter, planter), the ground it works and the dump
-its yield goes to - the squad's work area's dump (docs/echelons/platoon-leader/decisions.md). The squad
+its yield goes to - the squad's work area's dump (docs/echelons/platoon-leader/decisions.md): the camp
+workshop's chest, else the depot's. The squad
 leader writes it each cycle, and says it when it changes: `[Alpha -> Alice] DUTY: harvester over x
 6..8, z -4..4, the dump at (3, 64, 2)` (`app.DutyBook`).
 

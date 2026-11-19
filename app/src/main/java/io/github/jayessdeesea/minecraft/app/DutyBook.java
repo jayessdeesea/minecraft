@@ -88,14 +88,18 @@ final class DutyBook {
 
     /**
      * The duty orders of {@code soldiers}, their yield to {@code dump}: the wood's {@code woodDuties}, and on the farm -
-     * those {@code farming} - the shares of its plot.
+     * those {@code farming} - the shares of its plot among everyone farming it, whatever their squad: one set of shares
+     * and one baker to a farm. Live (field473), Alpha's and Delta's first harvesters were both given x -31..-20 of the
+     * camp's farm, each squad sharing the plot among its own.
      */
     static Map<String, DutyOrder> given(List<String> soldiers, Map<String, WoodDuties.Duty> woodDuties, Map<String, FarmPlan> farming,
                                         Optional<Position> dump) {
-        List<String> onTheFarm = soldiers.stream().filter(farming::containsKey).sorted().toList();
         Map<String, DutyOrder> given = new HashMap<>(WoodDuties.orders(woodDuties, dump));
-        onTheFarm.stream().findFirst().map(farming::get).ifPresent(f -> given.putAll(FarmDuties.orders(onTheFarm, f.plot().stream()
-                .map(c -> new Position(c.x(), c.y(), c.z())).toList(), dump)));
+        soldiers.stream().filter(farming::containsKey).findFirst().map(farming::get).ifPresent(f -> {
+            List<String> onTheFarm = farming.entrySet().stream().filter(e -> e.getValue().water().equals(f.water()))
+                    .map(Map.Entry::getKey).sorted().toList();
+            given.putAll(FarmDuties.orders(onTheFarm, f.plot().stream().map(c -> new Position(c.x(), c.y(), c.z())).toList(), dump));
+        });
         return given;
     }
 
