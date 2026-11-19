@@ -64,4 +64,18 @@ class FoodLedgerTest {
         assertTrue(review.get(1).startsWith("[Food] Bob ate 2.0 loaves"), review.get(1));
         assertTrue(review.get(2).startsWith("[Food] Alice ate 1.0 loaves"), review.get(2));
     }
+
+    /** The columns jumped from most: one jumped from over and over is a soldier jumping in place. */
+    @Test
+    void theColumnsJumpedFromMostAreSaid() {
+        FoodLedger ledger = new FoodLedger();
+        for (int i = 0; i < 5; i++) {
+            ledger.sample("Carl", at(20, 20), new Position(3.5, 64, 4.5), false, true);
+            ledger.sample("Carl", at(20, 20), new Position(3.5, 64.4, 4.5), false, false);
+        }
+        ledger.sample("Carl", at(20, 20), new Position(9.5, 64, 9.5), false, true);
+        ledger.sample("Carl", at(20, 20), new Position(9.5, 64.4, 9.5), false, false);
+
+        assertEquals(List.of("(3,64,4) x5", "(9,64,9) x1"), ledger.days().getFirst().jumpedMost());
+    }
 }

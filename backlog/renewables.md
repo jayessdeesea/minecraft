@@ -113,6 +113,11 @@ the force can build them:
   own layer (water a block below hydrates nothing); and a chest at local (13, 13) for its seed (to 512) and wheat.
   In steady state one soldier tends one farm - harvesting, replanting and mending holed ground as it goes - so the
   farm stays within a player's simulation distance and grows.
+The first food report (field490, a game day): the force burnt 176 hunger - jumping 87, healing 45, sprinting 37,
+fighting 7 - about 16 loaves at 11 hunger and saturation a loaf, against 15 made from 38 harvests and 10 eaten.
+Jumping is half of it: some 7,000 jumps among fourteen soldiers, about one every two seconds walking. Halving
+it would put the farm in surplus as it is. Left: where those jumps are - real step-ups on rough ground, or
+soldiers jumping in place - from the report's jumped-most cells, and the fix for whichever it is.
 Measure first: a farm's ripe cells an hour before deciding how many the force needs (a solid block of one crop
 may grow slower than rows); and where the food goes (`[Food]`, `app.FoodLedger`) - if healing dominates, fewer
 falls and fights save more than more farms.

@@ -1763,7 +1763,8 @@ alarm by day (§ 3); and where the food went (`[Food]`, `app.FoodLedger`; operat
 soldiers need to eat so much) - each soldier's loaves eaten, taken with their saturation, against the hunger the
 server's rules burn for what it did: 6 exhaustion a health point healed, 0.05 a jump (0.2 sprinting), 0.1 a metre
 sprinted, 0.1 a blow struck or taken, 4 to a point of hunger; walking burns nothing. What's left unexplained is a
-cause not counted. Scored at the dawn's one look, the lit ground and the wall, going in and out of
+cause not counted. Each soldier's line ends with the cells it jumped from most - one jumped from over and over is a
+soldier jumping in place, not crossing ground. Scored at the dawn's one look, the lit ground and the wall, going in and out of
 met 36 times a run, decided the day by when the look fell.
 
 The same dawn scores the day on the garrison's scoreboard (`app.Scoreboard`, `scoreboard.jsonl` in
