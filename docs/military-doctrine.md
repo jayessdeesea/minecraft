@@ -998,8 +998,8 @@ load still bakes for itself - that's its own upkeep. With two, both harvest and 
 
 Each producer's duty reaches it as one value, its duty order (`command.DutyOrder`, `FarmDuties.orders`,
 `WoodDuties.orders`): the duty (harvester, baker, woodcutter, planter), the ground it works and the dump
-its yield goes to - the squad's work area's dump (docs/echelons/platoon-leader/decisions.md): the camp
-workshop's chest, else the depot's. The squad
+its yield goes to - where the squad's yield is stockpiled (its workshop's chest), else the camp's dump
+(docs/echelons/platoon-leader/decisions.md). The squad
 leader writes it each cycle, and says it when it changes: `[Alpha -> Alice] DUTY: harvester over x
 6..8, z -4..4, the dump at (3, 64, 2)` (`app.DutyBook`).
 

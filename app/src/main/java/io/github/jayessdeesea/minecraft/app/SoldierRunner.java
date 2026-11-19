@@ -1988,10 +1988,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How many cells of {@code level} are still to dig or fill, as the world shows. */
     private int levelLeft(Directive.Level level) {
         Set<Cell> except = groundExcept();
-        return Clearing.toClear(world, new Box(level.minX(),
-                        level.y(), level.minZ(), level.maxX(), level.y() + LEVEL_ABOVE, level.maxZ()), except).size()
-                + Clearing.toFill(world, new Box(level.minX(),
-                        level.y() - LEVEL_BELOW, level.minZ(), level.maxX(), level.y() - 1, level.maxZ()), except).size();
+        return Clearing.toClear(world, new Box(level.minX(), level.y(), level.minZ(), level.maxX(), level.y() + LEVEL_ABOVE, level.maxZ()), except).size()
+                + Clearing.toFill(world, new Box(level.minX(), level.y() - LEVEL_BELOW, level.minZ(), level.maxX(), level.y() - 1, level.maxZ()), except).size();
     }
 
     /** The objective {@code unit} works to: a detachment's own, or its squad's from the platoon leader. */
@@ -5686,9 +5684,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList());
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         statuses.forEach(s -> woodcutters.remove(s.name()));
-        // Each producer's duty order (command.DutyOrder): the wood's duties, the farm's shares of its plot, the dump.
+        // Each producer's duty order (command.DutyOrder): the wood's duties, the farm's shares of its plot, and the dump
+        // where the squad's yield goes - its stockpile, else the camp's (live, field474: its chest by the farm).
         dutyBook.assign(squadName, statuses.stream().map(SoldierStatus::name).toList(), DutyBook.given(statuses.stream().map(SoldierStatus::name).toList(),
-                woodDuties, farming, chainOfCommand.foothold().flatMap(Foothold::dump)), objectiveOf(squadName).map(Objective::task)
+                woodDuties, farming, statuses.stream().findFirst().flatMap(s -> stockpileFor(s.name())).or(() -> chainOfCommand.foothold()
+                        .flatMap(Foothold::dump))), objectiveOf(squadName).map(Objective::task)
                 .filter(PhaseGuardrails::production).map(OrderTrace::taskName), clockwork.millis());
         woodDuties.values().stream().filter(d -> d.order().equals(Optional.ofNullable(ground.get(d.soldier())))).forEach(d -> woodcutters.add(d.soldier()));
         // The fight first: a soldier in contact answers its squad leader until it's over, and takes
