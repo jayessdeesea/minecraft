@@ -37,4 +37,23 @@ class DutyBookTest {
         assertNotEquals(alpha.get("Alice").ground(), alpha.get("Mia").ground());
         assertEquals(1, alpha.values().stream().filter(o -> o.duty() == DutyOrder.Duty.BAKER).count(), "one baker to the farm");
     }
+
+    /**
+     * A squad's strips found cut out are its own woodcutters', found after each was given its strip. Live (field476),
+     * every squad marked Charlie's strips as its own.
+     */
+    @Test
+    void aSquadsStripsCutOutAreItsOwnWoodcuttersFoundAfterTheyWereGiven() {
+        DutyBook book = new DutyBook();
+        io.github.jayessdeesea.minecraft.command.Box strip = new io.github.jayessdeesea.minecraft.command.Box(8, 56, -24, 24, 88, 24);
+        book.assign("Charlie", List.of("Ivy"), Map.of("Ivy", new DutyOrder("Ivy", DutyOrder.Duty.WOODCUTTER, Optional.of(strip), Optional.empty())),
+                Optional.of("WOOD"), 100);
+        Optional<io.github.jayessdeesea.minecraft.command.Objective> wood = Optional.of(new io.github.jayessdeesea.minecraft.command.Objective(
+                "Wood", new io.github.jayessdeesea.minecraft.command.Position(0, 64, 0), "logs",
+                new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.WOOD)));
+
+        assertEquals(List.of(), book.cutOut("Charlie", List.of("Ivy"), wood, n -> 50), "found nothing before it was given the strip");
+        assertEquals(List.of(), book.cutOut("Alpha", List.of("Alice"), wood, n -> 200), "Charlie's woodcutter isn't Alpha's");
+        assertEquals(List.of(strip), book.cutOut("Charlie", List.of("Ivy"), wood, n -> 200));
+    }
 }

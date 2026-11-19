@@ -117,18 +117,19 @@ final class DutyBook {
     }
 
     /**
-     * The strips {@code squad}'s woodcutters have found cut out on its {@code objective}: each woodcutter's ground added
-     * once its gather found nothing in it - {@code foundNothingAt} - after it was given that ground, said once;
-     * forgotten when the objective moves. Live in the squad simulation, a gather that found nothing in the old strip
-     * marked the new one cut out the moment it was given.
+     * The strips {@code squad}'s woodcutters - of its {@code soldiers} - have found cut out on its {@code objective}: each
+     * one's ground added once its gather found nothing in it - {@code foundNothingAt} - after it was given that ground,
+     * said once; forgotten when the objective moves. Live in the squad simulation, a gather that found nothing in the
+     * old strip marked the new one cut out the moment it was given; and live (field476), every squad marked Charlie's
+     * strips as its own.
      */
-    synchronized List<Box> cutOut(String squad, Optional<Objective> objective, ToLongFunction<String> foundNothingAt) {
+    synchronized List<Box> cutOut(String squad, List<String> soldiers, Optional<Objective> objective, ToLongFunction<String> foundNothingAt) {
         if (!objective.equals(cutOutFor.get(squad))) {
             cutOutFor.put(squad, objective);
             cutOut.put(squad, new ArrayList<>());
         }
         List<Box> found = cutOut.get(squad);
-        orders.values().stream().filter(o -> o.duty() == DutyOrder.Duty.WOODCUTTER
+        orders.values().stream().filter(o -> o.duty() == DutyOrder.Duty.WOODCUTTER && soldiers.contains(o.soldier())
                         && foundNothingAt.applyAsLong(o.soldier()) > givenAt.getOrDefault(o.soldier(), Long.MAX_VALUE))
                 .flatMap(o -> o.ground().stream()).filter(g -> !found.contains(g)).toList().forEach(g -> {
                     found.add(g);
