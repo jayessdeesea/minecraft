@@ -2225,10 +2225,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return dark ? (landing ? Workshop.mine(state.stairs) : null) : state.workshop;
     }
 
-    /** Whether {@code at} is under the ground: the column's surface more than {@link #UNDERGROUND} over it. */
+    private final SurfaceCache surfaces = new SurfaceCache();
+    /** Whether {@code at} is under the ground: the column's surface, a second or two old, more than {@link #UNDERGROUND} over it. */
     private boolean underground(Position at) {
-        return TerrainSurveyor.surface(world, (int) Math.floor(at.x()), (int) Math.floor(at.z()), Keep.SKY_TOP)
-                .map(top -> top.y() > at.y() + UNDERGROUND).orElse(false);
+        return surfaces.underground(world, at, UNDERGROUND, clockwork.millis());
     }
 
     /** How far across from a mine's head a soldier on the surface still crafts at its base: by the head. */
