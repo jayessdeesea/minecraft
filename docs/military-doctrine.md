@@ -1557,6 +1557,8 @@ that breaks one is a step back):**
    (live, field460-461, Dana gave hers up and Fran waited all night on it). A cutter on its mine's
    stairs whose stand is far along them walks there a leg of 12 steps at a time (`Miner.byTheStairs`):
    live, Eli at the head stood a night "no route" to his level 118 blocks down a thousand-step stair.
+   A tunnel waiting for blocks to floor a cave, its cutter idle a minute with none, is given up too
+   (`Miner.BLOCKLESS_TICKS`): live (field462-465), Alice's main tunnel waited three nights.
 2. **A grid that sees every block, with the least digging.** A level is at a height a multiple of
    4 (y % 4 == 0): a spine out from the shaft's landing, and strips off it both ways at every third
    block of the world's grid along it - x % 3 == 0 for a spine along x, z % 3 == 0 for one along z.

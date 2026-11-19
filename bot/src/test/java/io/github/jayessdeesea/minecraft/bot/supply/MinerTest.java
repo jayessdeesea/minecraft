@@ -683,6 +683,31 @@ class MinerTest {
                 "beside it: the stand itself");
     }
 
+    /**
+     * A cave across a strip and no blocks ever to floor it: given up after a minute idle on it, not waited on
+     * all night. Live (field462-465), Alice's main tunnel waited three nights for blocks she never had.
+     */
+    @Test
+    void aTunnelWaitingForBlocksThatNeverComeIsGivenUp() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        List<Staircase.Cut> main = stairs.cuts().stream().filter(c -> c.tunnel() == 0).toList();
+        cave.add(main.get(main.size() / 2).feet().offset(0, -1, 0));
+        Miner miner = new Miner("Alice", session, new Inventory());
+        Position soldier = new Position(0.5, GROUND, 0.5);
+        Miner.Progress progress = null;
+        for (int tick = 0; tick < 200_000; tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            progress = miner.tick(soldier, world, stairs, true, Optional.of(stairs.share(0, 2)), 0);
+            if (progress instanceof Miner.Progress.Done) {
+                break;
+            }
+            soldier = miner.standAt().orElse(soldier);
+        }
+        assertInstanceOf(Miner.Progress.Done.class, progress, "done with what it could cut, not waiting for blocks all night");
+        assertTrue(placed.isEmpty(), "nothing to floor it with, nothing laid");
+    }
+
     private static boolean allTrue(boolean[] flags) {
         for (boolean f : flags) {
             if (!f) {

@@ -116,6 +116,7 @@ faces 100 blocks off, "no route" each report all night (backlog/long-routes.md).
 ## A cutter at a cave with no blocks to floor it (field462)
 Its level's main tunnel waiting "for blocks" - a cave to floor - with none carried (Alice, stone 0, dirt 0),
 and its partner waiting on that main tunnel. Built: a cutter keeps a stack of cobblestone when it stores
-(`SoldierErrands.MINE_CARRIED`). Left: one already without draws a load from the mine's stash or the
-stockpile, or takes the stone from its own tunnel's wall, rather than waiting the night.
+(`SoldierErrands.MINE_CARRIED`). Built too: idle a minute with none, the tunnels waiting are given up. Left: one without draws a load from
+the mine's stash or the stockpile, or takes the stone from its own tunnel's wall, so the cave is floored
+rather than the tunnel lost.
 

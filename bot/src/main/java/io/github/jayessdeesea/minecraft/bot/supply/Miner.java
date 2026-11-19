@@ -217,6 +217,9 @@ public final class Miner {
     private String blockedFor = "";
     /** Tunnels over a cave left until the miner carries blocks to floor it. */
     private final Set<Integer> waiting = new HashSet<>();
+    /** Ticks its tunnels have waited for blocks with none carried; past {@link #BLOCKLESS_TICKS} they're given up. */
+    private int blocklessTicks;
+    static final int BLOCKLESS_TICKS = 1200;
 
     /** Blocks a miner keeps back from flooring a cave: what it climbs or bridges its way out with. */
     static final int FLOOR_RESERVE = 4;
@@ -286,6 +289,7 @@ public final class Miner {
         Optional<ItemClassRegistry.ItemClass> flooring = floorBlock();
         if (flooring.isPresent()) {
             waiting.clear(); // blocks again: the tunnels that waited on them are cut on
+            blocklessTicks = 0;
         }
         while (true) {
             Set<Integer> skipped = new HashSet<>(blocked);
@@ -327,6 +331,15 @@ public final class Miner {
                 if (!why.equals(waitSaid)) {
                     waitSaid = why;
                     LOG.info("{} waits at {}: {}", name, wait, why);
+                }
+                // Idle a minute on tunnels waiting for blocks, with none carried: they're given up, as a blocked one
+                // is - a main tunnel's, and the level reads done. Live (field462-465), Alice's main tunnel waited for
+                // blocks three nights with none carried, and Bob on it.
+                if (!waiting.isEmpty() && flooring.isEmpty() && ++blocklessTicks >= BLOCKLESS_TICKS) {
+                    LOG.warn("{} gives up {} of the mine: a cave to floor and no blocks to floor it with", name, waiting);
+                    blocked.addAll(waiting);
+                    waiting.clear();
+                    blocklessTicks = 0;
                 }
                 return new Progress.Working(0, cuts.size());
             }
