@@ -146,6 +146,15 @@ public final class DeterministicSoldier implements Soldier {
         return true;
     }
 
+    /** Whether a squadmate stands in the line from its eyes to {@code target} (Ballistics.inTheLine): the arrow waits. */
+    private boolean squadmateInTheLine(WorldView world, Position target) {
+        double reach = Math.hypot(target.x() - position.x(), target.z() - position.z()) + 2;
+        int self = entityId;
+        List<Position> others = (self >= 0 ? world.playersNear(position, reach, self) : world.playersNear(position, reach)).stream()
+                .filter(p -> Math.hypot(p.x() - position.x(), p.z() - position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - position.y()) > 1).toList();
+        return inTheLine(position, target, others);
+    }
+
     /** Ticks left with the shield up; 0 when it's down. */
     private int shieldTicks;
 
@@ -157,15 +166,6 @@ public final class DeterministicSoldier implements Soldier {
     private static final double BODY_HEIGHT = 1.8;
     private static final double HALF_WIDTH = 0.3; // a player's box is 0.6 x 1.8 x 0.6
 
-    /**
-     * The cell a route starts from: the one {@code at} is in, unless that has no floor and the body,
-     * 0.6 wide, stands on the edge of a block beside it - then that block's cell, the nearest such.
-     * Live, a farmer stood on a block's edge over the crop beside it, every plan started from the
-     * crop's cell, with no floor, and it reported no route for good.
-     */
-    static BlockPos standingCell(WorldView world, Position at) {
-        return Pathfinder.standingCell(world, at.x(), at.y(), at.z());
-    }
     private static final double EPSILON = 1e-9;
     /** Feet this far up a solid cell are on its top: farmland and paths are 15/16 high. */
     static final double PARTIAL_BLOCK_TOP = Pathfinder.PARTIAL_BLOCK_TOP;
@@ -269,10 +269,6 @@ public final class DeterministicSoldier implements Soldier {
     public static final double EYE_HEIGHT = 1.62;
     public static final double TARGET_HEIGHT = 1.2;
 
-    /** Yaw toward a horizontal direction, in Minecraft's convention. */
-    static float yawToward(double dx, double dz) {
-        return (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90);
-    }
 
     /** Whether the last tick ended standing on something - reported to the server with each move. */
     public boolean onGround() {
@@ -480,7 +476,7 @@ public final class DeterministicSoldier implements Soldier {
                 // Out of a sword's reach, or with no sword, or pinned under an archer it can't close
                 // on: stand and shoot back, the bow's arc aimed at it.
                 shieldTicks = 0;
-                shot = shoot(threat);
+                shot = !squadmateInTheLine(world, threat) && shoot(threat);
             }
             if (shot) {
                 holdCoverTicks = 0;

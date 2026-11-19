@@ -54,9 +54,9 @@ class DeterministicSoldierTest {
             }
         };
 
-        assertEquals(new BlockPos(9, 65, 0), DeterministicSoldier.standingCell(world, new Position(10.2, 65, 0.5)),
+        assertEquals(new BlockPos(9, 65, 0), Ballistics.standingCell(world, new Position(10.2, 65, 0.5)),
                 "the block's cell, not the open one its body overhangs");
-        assertEquals(new BlockPos(5, 64, 0), DeterministicSoldier.standingCell(world, new Position(5.5, 64, 0.5)), "on the ground, its own");
+        assertEquals(new BlockPos(5, 64, 0), Ballistics.standingCell(world, new Position(5.5, 64, 0.5)), "on the ground, its own");
     }
 
     /**
@@ -83,7 +83,7 @@ class DeterministicSoldierTest {
             }
         };
 
-        assertEquals(new BlockPos(5, 63, 0), DeterministicSoldier.standingCell(world, new Position(5.5, 62.9375, 0.5)));
+        assertEquals(new BlockPos(5, 63, 0), Ballistics.standingCell(world, new Position(5.5, 62.9375, 0.5)));
     }
 
     /**

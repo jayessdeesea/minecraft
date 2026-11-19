@@ -559,6 +559,8 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   as no resupply walk goes that far; a respawn far from its squad goes down its squad's mine (operator,
   2026-11-17; live, two were shot on their way to a workshop for kit, and a miner set off 24 times in a
   night for two iron ingots in a depot 80 blocks off).
+- **Never through a squadmate.** An arrow waits while another player stands within 1.2 of its line to
+  the mark (`Ballistics.inTheLine`): live (field463), Ned was killed by Alice's arrow at a mob beyond him.
 - **A soldier with a bow shoots far-away enemies** (operator, 2026-11-18) - a creeper too, from outside its
   blast (past `DeterministicSoldier.CREEPER_CLEAR`); one at arm's length is still got away from. Live, six
   soldiers were killed by creepers in melee in a few nights.

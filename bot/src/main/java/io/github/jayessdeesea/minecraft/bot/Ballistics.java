@@ -1,8 +1,12 @@
 package io.github.jayessdeesea.minecraft.bot;
 
+import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
+import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
+import io.github.jayessdeesea.minecraft.bot.world.WorldView;
+import io.github.jayessdeesea.minecraft.command.Position;
 import java.util.OptionalDouble;
 
-/** An arrow's flight, as the server flies it: how to aim a bow at a mark. Pure. */
+/** A soldier's aim and footing, pure: an arrow's flight as the server flies it, its line of fire, the cell it stands in. */
 final class Ballistics {
 
     private Ballistics() {
@@ -48,5 +52,50 @@ final class Ballistics {
             }
         }
         return best;
+    }
+
+    /**
+     * Whether any of {@code others} stands within {@link #LINE_OF_FIRE_CLEAR} of the line from the eyes of a
+     * soldier at {@code from} to {@code target}'s middle, between the two. Live (field463), Ned was killed by
+     * Alice's arrow at a mob beyond him.
+     */
+    static boolean inTheLine(io.github.jayessdeesea.minecraft.command.Position from, io.github.jayessdeesea.minecraft.command.Position target,
+                             java.util.List<io.github.jayessdeesea.minecraft.command.Position> others) {
+        double ex = from.x(), ey = from.y() + DeterministicSoldier.EYE_HEIGHT, ez = from.z();
+        double tx = target.x() - ex, ty = target.y() + DeterministicSoldier.TARGET_HEIGHT - ey, tz = target.z() - ez;
+        double length2 = tx * tx + ty * ty + tz * tz;
+        if (length2 == 0) {
+            return false;
+        }
+        for (io.github.jayessdeesea.minecraft.command.Position p : others) {
+            double px = p.x() - ex, py = p.y() + DeterministicSoldier.PLAYER_HEIGHT / 2 - ey, pz = p.z() - ez;
+            double along = (px * tx + py * ty + pz * tz) / length2;
+            if (along <= 0 || along >= 1) {
+                continue;
+            }
+            double dx = px - along * tx, dy = py - along * ty, dz = pz - along * tz;
+            if (Math.sqrt(dx * dx + dy * dy + dz * dz) <= LINE_OF_FIRE_CLEAR) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** How far off an arrow's line a squadmate must stand for it to be loosed: a body's width and the arc's give. */
+    static final double LINE_OF_FIRE_CLEAR = 1.2;
+
+    /** Yaw toward a horizontal direction, in Minecraft's convention. */
+    static float yawToward(double dx, double dz) {
+        return (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90);
+    }
+
+    /**
+     * The cell a route starts from: the one {@code at} is in, unless that has no floor and the body,
+     * 0.6 wide, stands on the edge of a block beside it - then that block's cell, the nearest such.
+     * Live, a farmer stood on a block's edge over the crop beside it, every plan started from the
+     * crop's cell, with no floor, and it reported no route for good.
+     */
+    static BlockPos standingCell(WorldView world, Position at) {
+        return Pathfinder.standingCell(world, at.x(), at.y(), at.z());
     }
 }
