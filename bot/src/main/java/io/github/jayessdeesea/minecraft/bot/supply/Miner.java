@@ -107,22 +107,37 @@ public final class Miner {
                 && Math.hypot(stand.x() - soldier.x(), stand.z() - soldier.z()) <= 2 * STAIRS_LEG) {
             return stand;
         }
-        int on = -1;
-        double nearest = Double.MAX_VALUE;
-        for (int k = 0; k < stairs.steps(); k++) {
-            BlockPos step = stairs.step(k);
-            double d = Math.hypot(step.x() + 0.5 - soldier.x(), step.z() + 0.5 - soldier.z()) + Math.abs(step.y() - soldier.y());
-            if (d < nearest) {
-                nearest = d;
-                on = k;
-            }
-        }
-        if (on < 0 || nearest > ON_THE_STAIRS) {
+        int on = nearestStep(stairs, soldier);
+        if (on < 0 || stepDistance(stairs.step(on), soldier) > ON_THE_STAIRS) {
             return stand;
         }
-        int k = stand.y() < soldier.y() ? Math.min(stairs.steps() - 1, on + STAIRS_LEG) : Math.max(0, on - STAIRS_LEG);
+        // Toward the stand's own place on the stairs, by step - not by height: a long stair runs flat along its
+        // level, and live (field466), its cutters were sent a leg down, then back up, each tick, all night.
+        int to = nearestStep(stairs, stand);
+        if (Math.abs(to - on) <= STAIRS_LEG) {
+            return stand;
+        }
+        int k = to > on ? on + STAIRS_LEG : on - STAIRS_LEG;
         BlockPos leg = stairs.step(k);
         return new Position(leg.x() + 0.5, leg.y(), leg.z() + 0.5);
+    }
+
+    /** The index of {@code stairs}' step nearest {@code at}; -1 for none. */
+    private static int nearestStep(Staircase stairs, Position at) {
+        int nearest = -1;
+        double best = Double.MAX_VALUE;
+        for (int k = 0; k < stairs.steps(); k++) {
+            double d = stepDistance(stairs.step(k), at);
+            if (d < best) {
+                best = d;
+                nearest = k;
+            }
+        }
+        return nearest;
+    }
+
+    private static double stepDistance(BlockPos step, Position at) {
+        return Math.hypot(step.x() + 0.5 - at.x(), step.z() + 0.5 - at.z()) + Math.abs(step.y() - at.y());
     }
 
     /** Steps a leg down or up the stairs, and how far from them a cutter is still on them. */

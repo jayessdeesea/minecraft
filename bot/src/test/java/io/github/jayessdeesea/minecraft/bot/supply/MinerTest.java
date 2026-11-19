@@ -681,6 +681,11 @@ class MinerTest {
         assertEquals(new Position(twelve.x() + 0.5, twelve.y(), twelve.z() + 0.5), leg, "the step a leg down");
         assertEquals(stand, Miner.byTheStairs(stairs, new Position(bottom.x() + 0.5, bottom.y() + 1, bottom.z() + 0.5), stand),
                 "beside it: the stand itself");
+        // Its next leg from the step it reached goes on the same way, not back: live (field466), cutters were sent
+        // a leg down and back up each tick, all night.
+        Position next = Miner.byTheStairs(stairs, leg, stand);
+        BlockPos twentyFour = stairs.step(2 * Miner.STAIRS_LEG);
+        assertEquals(new Position(twentyFour.x() + 0.5, twentyFour.y(), twentyFour.z() + 0.5), next, "the next leg on, not back");
     }
 
     /**
