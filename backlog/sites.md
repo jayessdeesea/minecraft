@@ -52,6 +52,14 @@ smelts.
   is smelted at the landing, and what doesn't fit in the inventories goes into the site's chests.
 - The dawn review reports each site's capabilities, standing and missing.
 
+- **More than one base** (from backlog/readiness.md, merged here; each squad's readiness at the camp is built,
+  docs/military-doctrine.md section 17). The home base stays the camp the operator names (`minecraft.camp`), within 100
+  blocks of x=0 z=0 so the operator can find it, and the biggest. Others each have a kind - a mine level (y=32, y=0
+  and so on), another dimension's foothold - and are measured through the lodgment's phases on their own standards
+  (a mine level has no farm; the Nether can't be lit safe). A squad's readiness is the phase of the base it stands
+  at. The platoon leader is shown readiness once a live miss shows it needs to: it already keeps an exposed squad
+  near shelter (`exposed-far-out`).
+
 ## Notes
 - **Naming:** `command.Foothold` today is the camp's phased standards. Once a site has a type, it
   becomes a site of the type "camp", and the mine base one of the type "mine".

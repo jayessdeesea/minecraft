@@ -23,7 +23,7 @@ platoon leader can't send it further than its supply reaches.
 
 It also brings the six ladders measured today into one: the lodgment's phases (§ 17), the
 roadmap's days, the site standards, the mine base's phases (sites.md), the keep's DEPOT/DIG/SLAB
-(keep-campaign.md) and readiness away from the camp (readiness.md).
+(keep-campaign.md) and readiness away from the camp (sites.md, More than one base).
 
 ## Levels
 The lodgment's, for every site. A level says what a site can do; whether it may go further is
@@ -222,7 +222,7 @@ today's `<foothold>`.
   the cheap first step comes early without making food an AIRHEAD target, which cost the morning
   (docs/prompting.md).
 - **Decided (operator, 2026-11-14): a farm at the mine base.** sites.md stands: wheat round the
-  water at the mine base's phase 3. readiness.md's "a mine level has no farm" is corrected on
+  water at the mine base's phase 3. sites.md's "a mine level has no farm" is corrected on
   landing.
 - **Naming:** § 17's phase 4 is "Armour", Readiness's ESTABLISHED, the roadmap's "Lodgment
   established". One name: ESTABLISHED, armour one of its standards.

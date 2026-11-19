@@ -93,7 +93,7 @@ In the order the timetable meets them:
 - **Gate and wall light** (day 3, backlog/durable-shelter.md).
 - **Barracks and beds** (days 4–5, backlog/rest-plan.md): a bigger room inside the walls.
 - **Branch tunnels and mine levels** (day 8+, backlog/mining.md). **Bases beyond the camp** (day
-  8+, backlog/readiness.md).
+  8+, backlog/sites.md).
 
 ## Notes
 - **Decided (operator):** no `spawnpoint`. Soldiers get down from where they respawn by building
