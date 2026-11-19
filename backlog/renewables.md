@@ -120,6 +120,14 @@ the force can build them:
   its chest its dump (`FarmDuties.Tended`), its wheat and seed past its pack's into the chest. Left: seed capped at
   512 a farm chest (the force's cap is 1024 - backlog/questions-overnight.md); holed ground mended; the baker drawing
   from farm chests (it draws from the nearest chest known to hold wheat).
+- **The operator's prototype (2026-11-19):** fence on x = -81 and -65, z = 96 and 112 (x a block off the chunk lines -
+  backlog/questions-overnight.md); eight gates, one on each line beside each corner; torches on the corner and middle
+  posts; a grass block and a torch over each water hole; and nothing high beside the fence - zombies came in off a tree
+  there. Tried and not landed (kept as a patch outside the tree): the eight gates; torches on the posts (a torch's cell is
+  over a post's 1.5-high collision - `solidHere`, not `isSolid` - and a torch builder takes a torch as placed); the
+  ground and trees beside the fence dug as earthwork; a chunk farm's fence kept off the camp's walled ground (a line
+  through it was dug as fast as it went up); a failed fixture's cells passed over. In the squad simulation the farmer
+  stopped working once its eight gates were up and the chest never went up - to dig into before it lands.
 The first food report (field490, a game day): the force burnt 176 hunger - jumping 87, healing 45, sprinting 37,
 fighting 7 - about 16 loaves at 11 hunger and saturation a loaf, against 15 made from 38 harvests and 10 eaten.
 Jumping is half of it: some 7,000 jumps among fourteen soldiers, about one every two seconds walking. Halving
