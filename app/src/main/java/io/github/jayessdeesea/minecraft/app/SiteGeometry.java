@@ -219,4 +219,15 @@ final class SiteGeometry {
         double z = Math.max(box.minZ() + 0.5, Math.min(box.maxZ() + 0.5, soldier.z()));
         return new Position(x, (box.minY() + box.maxY()) / 2.0, z);
     }
+
+    /** Whether a player's body - 0.6 across, 1.8 high, feet at {@code feet} - is in {@code cell}. */
+    static boolean overlaps(Position feet, BlockPos cell) {
+        double half = 0.3;
+        return feet.x() + half > cell.x() && feet.x() - half < cell.x() + 1
+                && feet.z() + half > cell.z() && feet.z() - half < cell.z() + 1
+                && feet.y() + 1.8 > cell.y() && feet.y() < cell.y() + 1;
+    }
+    static boolean overlaps(Box a, Box b) {
+        return a.minX() <= b.maxX() && b.minX() <= a.maxX() && a.minZ() <= b.maxZ() && b.minZ() <= a.maxZ();
+    }
 }

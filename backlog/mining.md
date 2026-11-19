@@ -124,6 +124,6 @@ rather than the tunnel lost.
 The mine at (57, 96, -10) was declared a danger area at 16:03 (762's rule, three killed by its stairs) - the
 keep's mine moved on - and through the next two nights Mia, Ned and Olga of Delta still worked their levels
 off its shaft: Mia and Ned on one cell, (57.5, -36, -9.5), steps 941 and 983, unchanged all night, 0 ore.
-Wanted: a dead well's levels given up by every squad on it, not only the keep's; and two cutters never sent
-to stand on one stair cell (their waits stand a step apart, `Miner` place - their cuts don't).
+Built: a dead well's staircase let go by every squad (`SoldierRunner`, the kept stairs). Left: two cutters
+never sent to stand on one stair cell (their waits stand a step apart, `Miner` place - their cuts don't).
 

@@ -512,13 +512,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return in.isPresent();
     }
 
-    /** Whether a player's body - 0.6 across, 1.8 high, feet at {@code feet} - is in {@code cell}. */
-    static boolean overlaps(Position feet, BlockPos cell) {
-        double half = 0.3;
-        return feet.x() + half > cell.x() && feet.x() - half < cell.x() + 1
-                && feet.z() + half > cell.z() && feet.z() - half < cell.z() + 1
-                && feet.y() + 1.8 > cell.y() && feet.y() < cell.y() + 1;
-    }
 
     /** Whose body each soldier's step last waited on, by name. */
     private final Map<String, String> bodyInTheWay = new ConcurrentHashMap<>();
@@ -3981,9 +3974,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
 
 
-    private static boolean overlaps(Box a, Box b) {
-        return a.minX() <= b.maxX() && b.minX() <= a.maxX() && a.minZ() <= b.maxZ() && b.minZ() <= a.maxZ();
-    }
 
     /** How long the keep's grove waits after a planting fails - no sapling, no leaves, no way to the cell. */
     static final long PLANTER_RETRY_MILLIS = 5 * 60_000;
@@ -5855,6 +5845,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // another - and is let go, every squad's level off it too. Read over the head itself: a
             // shaft is open over its head, a buried head has the rock over it. Live (field338), the
             // keep's mine moved near the camp and was kept as the camp's, its head at y=-23.
+            // A dead well - worked out, blocked, a danger area - is let go by every squad, not the keep's mine alone:
+            // live (field465), Delta worked its levels off Charlie's danger-area shaft two nights after.
+            if (kept.filter(k -> deadWells.contains(k.head())).isPresent()) {
+                LOG.warn("[{}] MINE: the staircase at {} is a dead well - let go, sited again", squadName, kept.get().head());
+                BlockPos dead = kept.get().head();
+                squadStairs.entrySet().removeIf(e -> e.getValue().head().equals(dead));
+                kept = Optional.empty();
+            }
             if (kept.isPresent()) {
                 BlockPos head = kept.get().head();
                 Optional<BlockPos> over = TerrainSurveyor.surface(world, head.x(), head.z(), Keep.SKY_TOP);
