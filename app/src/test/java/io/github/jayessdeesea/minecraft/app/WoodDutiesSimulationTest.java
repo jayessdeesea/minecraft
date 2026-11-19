@@ -112,4 +112,40 @@ class WoodDutiesSimulationTest {
         squad.subList(0, 3).forEach(w -> assertTrue(felled.getOrDefault(w, 0) > 0, w + " felled nothing: " + felled));
         assertEquals(0, felled.getOrDefault("Dana", 0), "the planter fells none: " + felled);
     }
+
+    /** As {@link #wood}, with no tree east of x=8: the third woodcutter's strip (x 8..24) cut out before it starts. */
+    static int woodCutOutEast(int x, int y, int z) {
+        return x > 8 ? SquadSimulationTest.flat(x, y, z) : wood(x, y, z);
+    }
+
+    /**
+     * A woodcutter whose strip has nothing to fell makes nothing: its squad leader alarms that it's behind its share,
+     * and the ones felling aren't (operator, 2026-11-18: the squad leader alarms if the soldiers aren't completing
+     * their task in a timely way).
+     */
+    @Test
+    void aWoodcutterWithNothingToFellIsAlarmedBehindItsShare() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, WoodDutiesSimulationTest::woodCutOutEast, 24_000);
+        List<String> squad = List.of("Alice", "Bob", "Carl", "Dana");
+        Roster roster = new Roster("Alpha:" + String.join(",", squad));
+        Position camp = new Position(0.5, GROUND + 1, 0.5);
+        Objective forWood = new Objective("Cut wood", camp, "Logs for the depot", new Objective.Task.Gather(Resource.WOOD));
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> forWood), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.SHOVEL), 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(4 * 60_000); // Carl's due, the others' strips still standing
+
+        List<String> alarms = java.nio.file.Files.readAllLines(Path.of("target", "sim", "aWoodcutterWithNothingToFellIsAlarmedBehindItsShare.log"))
+                .stream().filter(l -> l.contains("[Alarm]")).toList();
+        assertTrue(alarms.stream().anyMatch(l -> l.contains("[Alarm] [Alpha] Carl behind its share: woodcutter over x 8..24")), "Carl: " + alarms);
+        assertTrue(alarms.stream().noneMatch(l -> l.contains("Alice behind") || l.contains("Bob behind")), "the ones felling: " + alarms);
+    }
 }

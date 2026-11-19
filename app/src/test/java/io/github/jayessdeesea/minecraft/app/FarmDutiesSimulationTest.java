@@ -107,9 +107,9 @@ class FarmDutiesSimulationTest {
         squad.subList(0, 3).forEach(h -> assertTrue(harvested.getOrDefault(h, 0) > 0, h + " harvested nothing: " + harvested));
         // Each one's work order from its squad leader, said in its log: its columns of the plot, or the baking.
         List<String> work = java.nio.file.Files.readAllLines(Path.of("target", "sim", "harvestersWorkTheirOwnSharesAndTheBakerNone.log"))
-                .stream().filter(l -> l.contains("WORK:")).toList();
-        squad.subList(0, 3).forEach(h -> assertTrue(work.stream().anyMatch(l -> l.contains("[Alpha -> " + h + "] WORK: harvester over x")), h + ": " + work));
-        assertTrue(work.stream().anyMatch(l -> l.contains("[Alpha -> Dana] WORK: baker")), "Dana: " + work);
+                .stream().filter(l -> l.contains("DUTY:")).toList();
+        squad.subList(0, 3).forEach(h -> assertTrue(work.stream().anyMatch(l -> l.contains("[Alpha -> " + h + "] DUTY: harvester over x")), h + ": " + work));
+        assertTrue(work.stream().anyMatch(l -> l.contains("[Alpha -> Dana] DUTY: baker")), "Dana: " + work);
         assertEquals(0, harvested.getOrDefault("Dana", 0), "the baker harvests none: " + harvested);
     }
 }

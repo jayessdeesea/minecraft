@@ -50,7 +50,7 @@ class FarmDutiesTest {
             }
         }
         Optional<Position> dump = Optional.of(new Position(3, 64, 2));
-        Map<String, WorkOrder> orders = FarmDuties.orders(List.of("Alice", "Bob", "Carl", "Dana"), plot, dump);
+        Map<String, DutyOrder> orders = FarmDuties.orders(List.of("Alice", "Bob", "Carl", "Dana"), plot, dump);
 
         assertEquals("harvester over x 6..8, z -4..4, the dump at (3, 64, 2)", orders.get("Alice").line());
         assertEquals("harvester over x 9..11, z -4..4, the dump at (3, 64, 2)", orders.get("Bob").line());

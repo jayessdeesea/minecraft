@@ -32,15 +32,16 @@ handle's log off a woodcutter's strip, `WoodDutiesSimulationTest`).
   load; short, it reports what it lacks ("short: hoe, 32 seeds"), and its squad leader answers with
   a draw from the supply point or a craft from what's there - or passes it up as CANTCO. Mid-work,
   running low is a LOGSTAT the same way. It never gathers its own makings.
-- **The work order carries the rest of the OPORD.** A producer's duty, ground and dump are one value
-  (`command.WorkOrder`), and the farm's and the wood's duty maps are gone from `SoldierRunner`. What's
+- **The duty order carries the rest of the OPORD.** A producer's duty, ground and dump are one value
+  (`command.DutyOrder`), and the farm's and the wood's duty maps are gone from `SoldierRunner`. What's
   left: the soldier's tick reads its ground from the order for the wood too (the woodcutter's
   `Order.Gather` box and the planter's grove are still worked out apart), and deposits to the order's
   dump rather than `stockpileFor`.
-- **Timeliness alarms at two echelons.** The squad leader knows each share's expected rate, and
-  alarms on a soldier whose share falls behind it, or who holds without a share. That is the
-  micromanagement. The platoon leader alarms on a squad whose area's output falls behind its order.
-  The "without work" alert (`IdleWatch`) is the first, crude form.
+- **Timeliness by expected rate.** The alarms (`command.ShareWatch`) read a share behind when nothing
+  it makes or spends changes in three minutes, whatever the share holds: a harvester waiting on wheat
+  to ripen and a planter with no opened ground read as behind. Left: each share's rate expected from
+  what its ground holds (ripe cells, standing trees), so a share with nothing to do is told apart from
+  one falling behind, and the squad leader closing the gap (another share, or the squad given back).
 - **Flat at sea level, the airhead too.** The flatten trends the camp and its work areas to sea
   level, for routes and fields; the phase rules for who flattens stand
   ([military-doctrine.md § 17](../docs/military-doctrine.md#17-the-lodgment)).

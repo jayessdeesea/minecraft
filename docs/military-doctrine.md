@@ -995,11 +995,21 @@ With three or more on the farm, the last on the roster is its baker: it draws th
 stack at a time and bakes it, and the bread past its own load goes in. A harvester below its basic
 load still bakes for itself - that's its own upkeep. With two, both harvest and bake as they go.
 
-Each producer's duty reaches it as one value, its work order (`command.WorkOrder`, `FarmDuties.orders`,
+Each producer's duty reaches it as one value, its duty order (`command.DutyOrder`, `FarmDuties.orders`,
 `WoodDuties.orders`): the duty (harvester, baker, woodcutter, planter), the ground it works and the dump
 its yield goes to - the squad's work area's dump (docs/echelons/platoon-leader/decisions.md). The squad
-leader writes it each cycle, and says it when it changes: `[Alpha -> Alice] WORK: harvester over x
-6..8, z -4..4, the dump at (3, 64, 2)` (`app.WorkOrderBook`).
+leader writes it each cycle, and says it when it changes: `[Alpha -> Alice] DUTY: harvester over x
+6..8, z -4..4, the dump at (3, 64, 2)` (`app.DutyBook`).
+
+**Timeliness** (operator, 2026-11-18; `command.ShareWatch`). The squad leader watches each share by
+what its duty makes or spends - a harvester's wheat and seed, a baker's wheat and bread, a woodcutter's
+logs, a planter's saplings. A share with no change in it for three minutes is behind, and alarmed once
+a spell: `[Alarm] [Alpha] Carl behind its share: woodcutter over x 8..24, ...`. It's said again when the
+share moves (`back at its share`). A soldier in contact is doing what it should, its clock started again.
+A soldier of a squad on FARM, TREE_FARM or WOOD with no share for three minutes is alarmed as holding
+without one. The platoon leader's part is the squad's: with half or more of its producers behind,
+`[Alarm] [PL] Alpha's gathering wood is behind its order`, and the squad's progress - what the platoon
+leader is shown - says how many are behind.
 
 Each job is an expect script: stand on the cell - landed, not still coming down onto it - item in hand, use it on the cell, and done when
 the server's block update shows farmland or a sprout. A soldier without a hoe makes a wooden one,
