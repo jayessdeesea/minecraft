@@ -31,6 +31,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
+import static io.github.jayessdeesea.minecraft.bot.Body.*;
+
 /**
  * The {@code bot} module's implementation of {@link Soldier}: a deterministic, non-LLM per-tick
  * decision core (docs/architecture.md's \"Behavior modeling\" section). {@code app}'s {@code SoldierRunner} is
@@ -163,10 +165,10 @@ public final class DeterministicSoldier implements Soldier {
     private static final double GRAVITY = 0.08;
     private static final double DRAG = 0.98;
     private static final double JUMP_VELOCITY = 0.42;
-    private static final double BODY_HEIGHT = 1.8;
-    private static final double HALF_WIDTH = 0.3; // a player's box is 0.6 x 1.8 x 0.6
+    static final double BODY_HEIGHT = 1.8;
+    static final double HALF_WIDTH = 0.3; // a player's box is 0.6 x 1.8 x 0.6
 
-    private static final double EPSILON = 1e-9;
+    static final double EPSILON = 1e-9;
     /** Feet this far up a solid cell are on its top: farmland and paths are 15/16 high. */
     static final double PARTIAL_BLOCK_TOP = Pathfinder.PARTIAL_BLOCK_TOP;
     /** Swimming at the surface, blocks per tick: about vanilla's 2 blocks/s, half a walk. */
@@ -697,22 +699,6 @@ public final class DeterministicSoldier implements Soldier {
     /** Sampling step along a sight line: fine enough not to step over the corner of a block. */
     static final double SIGHT_STEP = 0.2;
 
-    /** Whether no solid block lies on the straight line from {@code from} to {@code to}. */
-    public static boolean lineOfSight(WorldView world, Position from, Position to) {
-        double dx = to.x() - from.x();
-        double dy = to.y() - from.y();
-        double dz = to.z() - from.z();
-        double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        int steps = (int) Math.ceil(length / SIGHT_STEP);
-        for (int i = 1; i < steps; i++) {
-            double t = (double) i / steps;
-            if (world.isSolid((int) Math.floor(from.x() + dx * t), (int) Math.floor(from.y() + dy * t),
-                    (int) Math.floor(from.z() + dz * t))) {
-                return false;
-            }
-        }
-        return true;
-    }
 
     private void look(Position target) {
         double dx = target.x() - position.x();
@@ -762,6 +748,11 @@ public final class DeterministicSoldier implements Soldier {
     /** How many times it has been stuck short of each cell - a cell is routed round for a while between tries. */
     private final Map<BlockPos, Integer> snagTries = new HashMap<>();
     private BlockPos snag;
+
+    /** Whether {@code to} can be seen from {@code from} (Body#lineOfSight). */
+    public static boolean lineOfSight(WorldView world, Position from, Position to) {
+        return Body.lineOfSight(world, from, to);
+    }
 
     /**
      * The cell it has been stuck short of {@link #SNAG_TRIES} times, if any - taken, so it's
@@ -1084,18 +1075,6 @@ public final class DeterministicSoldier implements Soldier {
         return carried != null && carried.pickaxe();
     }
 
-    /** What's still in the way of a step up from {@code here} onto {@code next}: the cells {@link Pathfinder#stepCut} plans to dig. */
-    private static List<BlockPos> toCut(WorldView world, BlockPos here, BlockPos next, boolean pickaxe) {
-        if (next.y() != here.y() + 1 || Math.abs(next.x() - here.x()) + Math.abs(next.z() - here.z()) != 1) {
-            return List.of();
-        }
-        List<BlockPos> solid = Stream.of(next, next.offset(0, 1, 0), here.offset(0, 2, 0))
-                .filter(c -> world.isSolid(c.x(), c.y(), c.z())).toList();
-        // Only soil, and stone with a pickaxe, is ever dug: anything else put there since the plan - a
-        // wall, say - is left be, and the soldier re-plans round it once it's stuck.
-        return solid.stream().allMatch(c -> world.isSoil(c.x(), c.y(), c.z()) || pickaxe && world.isStone(c.x(), c.y(), c.z()))
-                ? solid : List.of();
-    }
 
     /** The cell a pillar step rises from, while one is under way. */
     private BlockPos pillarFrom;
@@ -1211,12 +1190,6 @@ public final class DeterministicSoldier implements Soldier {
         return !onTheSurface(world, start) || onTheSurface(world, end);
     }
 
-    /** Whether {@code cell} is on its column's surface, not under the ground. */
-    private static boolean onTheSurface(WorldView world, BlockPos cell) {
-        return io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor.surface(world, cell.x(), cell.z(),
-                        io.github.jayessdeesea.minecraft.command.Keep.SKY_TOP)
-                .map(top -> top.y() <= cell.y() + UNDER_THE_SURFACE).orElse(true);
-    }
 
     private void assessPlan(WorldView world, Pathfinder.Result plan, boolean stuck) {
         if (stuck) {
@@ -1366,52 +1339,7 @@ public final class DeterministicSoldier implements Soldier {
         onGround = false;
     }
 
-    /** Room for the whole body, and no hazard but water (lava, fire) to step into - including when retreating. */
-    private static boolean bodyFits(WorldView world, double x, double y, double z) {
-        int minY = (int) Math.floor(y);
-        int maxY = (int) Math.floor(y + BODY_HEIGHT - EPSILON);
-        return !anySolid(world, x, z, minY, maxY) && !anyHazard(world, x, z, minY, maxY, false);
-    }
 
-    private static boolean anyHazard(WorldView world, double x, double z, int minY, int maxY) {
-        return anyHazard(world, x, z, minY, maxY, true);
-    }
-
-    /** Whether any block in rows {@code minY..maxY} under the body's footprint is a hazard - water only if {@code water}. */
-    private static boolean anyHazard(WorldView world, double x, double z, int minY, int maxY, boolean water) {
-        int minX = (int) Math.floor(x - HALF_WIDTH);
-        int maxX = (int) Math.floor(x + HALF_WIDTH - EPSILON);
-        int minZ = (int) Math.floor(z - HALF_WIDTH);
-        int maxZ = (int) Math.floor(z + HALF_WIDTH - EPSILON);
-        for (int bx = minX; bx <= maxX; bx++) {
-            for (int bz = minZ; bz <= maxZ; bz++) {
-                for (int by = minY; by <= maxY; by++) {
-                    if (world.isHazard(bx, by, bz) && (water || !world.isWater(bx, by, bz))) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    /** Whether any block in rows {@code minY..maxY} under the body's 0.6-wide footprint at (x, z) is solid. */
-    private static boolean anySolid(WorldView world, double x, double z, int minY, int maxY) {
-        int minX = (int) Math.floor(x - HALF_WIDTH);
-        int maxX = (int) Math.floor(x + HALF_WIDTH - EPSILON);
-        int minZ = (int) Math.floor(z - HALF_WIDTH);
-        int maxZ = (int) Math.floor(z + HALF_WIDTH - EPSILON);
-        for (int bx = minX; bx <= maxX; bx++) {
-            for (int bz = minZ; bz <= maxZ; bz++) {
-                for (int by = minY; by <= maxY; by++) {
-                    if (world.isSolid(bx, by, bz)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
 
     private void stepToward(WorldView world, double targetX, double targetZ) {
         stepToward(world, targetX, targetZ, STEP);
@@ -1442,16 +1370,6 @@ public final class DeterministicSoldier implements Soldier {
         }
     }
 
-    /** Whether nothing - no ground, no water - lies under {@code at} within {@link #FIGHT_DROP} blocks of its feet. */
-    private static boolean overDrop(WorldView world, Position at) {
-        int feet = (int) Math.floor(at.y() + EPSILON);
-        for (int y = feet - 1; y >= feet - 1 - FIGHT_DROP; y--) {
-            if (anySolid(world, at.x(), at.z(), y, y) || world.isWater((int) Math.floor(at.x()), y, (int) Math.floor(at.z()))) {
-                return false;
-            }
-        }
-        return true;
-    }
 
     /** Headings tried to get away from a threat, in degrees off straight away from it: nearest first. */
     private static final int[] EVASION_HEADINGS = {0, 45, -45, 90, -90, 135, -135};

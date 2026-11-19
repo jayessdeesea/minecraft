@@ -22,7 +22,9 @@ lists the files over it, each capped at its length then, to shrink to under.
   and a bed's string from the stockpile, what its pack keeps) - each to become the squad leader's
   order, the class to empty. `app.SiteGeometry` holds the pure geometry of the flatten and its ground
   orders' names.
-- **`bot.DeterministicSoldier`**: its fight, its moves and its survival as separate pure parts.
+- **`bot.DeterministicSoldier`**: its fight, its moves and its survival as separate pure parts. Begun: its body
+  against the world - whether it fits, hazards and solids under its footprint, a drop, the cells cut to step
+  up, what it can see - is `bot.Body`. Left: the fight out of `tick`, the moves out of `navigate`.
 - **`app.ChainOfCommand`**: the platoon leader's guardrails apart from the wiring of the echelons. Begun: the
   Done: the day's guardrails are `DayGuardrails` and the night's `NightRules`, each over the day or night the
   chain hands it; the keep's mine sites `MineSites`. It's under the limit; the operator's orders are what's
