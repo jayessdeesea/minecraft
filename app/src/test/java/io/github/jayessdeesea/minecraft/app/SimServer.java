@@ -124,7 +124,7 @@ final class SimServer {
         return changed != null ? changed : ground.at(x, y, z);
     }
 
-    private void set(int x, int y, int z, int state) {
+    void set(int x, int y, int z, int state) {
         placed.put(key(x, y, z), state);
         players.values().forEach(p -> p.listeners.onBlockChanges().accept(List.of(new BlockChange(x, y, z, state))));
     }
@@ -749,7 +749,10 @@ final class SimServer {
 
         @Override
         public void useItem(float yaw, float pitch) {
-            throw new UnsupportedOperationException("simulated: using " + heldItem());
+            int bucket = SimBuckets.use(SimServer.this, position, yaw, pitch, heldItem().orElse(-1), e -> log.add(name + " " + e))
+                    .orElseThrow(() -> new UnsupportedOperationException("simulated: using " + heldItem()));
+            slots[36 + held] = new int[]{bucket, 1};
+            sendSlot(36 + held);
         }
 
         @Override

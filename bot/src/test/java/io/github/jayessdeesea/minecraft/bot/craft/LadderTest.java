@@ -121,6 +121,20 @@ class LadderTest {
         assertEquals(Optional.of(Recipe.DIAMOND_SWORD), Ladder.next(inventory, Map.of(), NONE, LOGS_ONLY));
     }
 
+    /** A bucket after the iron axe, from 3 ingots: once one's carried, full or empty, the rung is held. */
+    @Test
+    void aBucketComesAfterTheIronAxe() {
+        carrying("iron_sword", 1).carrying("bow", 1).carrying("iron_pickaxe", 1).carrying("stone_pickaxe", 1).carrying("iron_axe", 1).carrying("shield", 1)
+                .carrying("iron_ingot", 3);
+        wearing("iron_helmet", 5).wearing("iron_chestplate", 6).wearing("iron_leggings", 7).wearing("iron_boots", 8);
+
+        assertEquals(Optional.of(Recipe.BUCKET), Ladder.next(inventory, Map.of(), Set.of(Workstation.CRAFTING_TABLE), LOGS_ONLY));
+        carrying("water_bucket", 1);
+        assertEquals(Optional.empty(), Ladder.next(inventory, Map.of(), Set.of(Workstation.CRAFTING_TABLE), LOGS_ONLY), "a full one holds it");
+        assertFalse(Ladder.authorised(Recipe.BUCKET, Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.SHELTER)), "not at SHELTER");
+        assertTrue(Ladder.authorised(Recipe.BUCKET, Optional.of(io.github.jayessdeesea.minecraft.command.Site.Level.BUILDUP)), "the buildup's");
+    }
+
     @Test
     void withNoIronToBeHadButCopperInReachItArmoursInCopper() {
         carrying("stone_sword", 1).carrying("stone_sword", 1).carrying("stone_pickaxe", 1).carrying("stone_pickaxe", 1).carrying("oak_log", 4).carrying("cobblestone", 16);

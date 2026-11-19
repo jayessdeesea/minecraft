@@ -37,6 +37,7 @@ import java.util.function.Predicate;
  *       hostiles it rarely saves a blow: 20 health still takes 4.
  *   <li><b>An iron pickaxe</b> - 3 ingots, for durability.
  *   <li><b>An iron axe</b> - 3 ingots, and a log chops in a sixth of the bare-handed time.
+ *   <li><b>A bucket</b> - 3 ingots: water carried to a farm's holes (see {@code WaterCarrier}).
  * </ol>
  * A rung is held once something as good is - an iron sword holds the stone-sword rung too. A rung
  * whose materials can't be had is passed over for the next, not waited on. Materials set aside for
@@ -83,6 +84,8 @@ public final class Ladder {
             new Rung("an iron helmet", i -> armour(i, Recipe.IRON_HELMET), List.of(Recipe.IRON_HELMET)),
             new Rung("an iron sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("iron_sword"), List.of(Recipe.IRON_SWORD)),
             new Rung("an iron axe", i -> bestAxeSpeed(i) >= 6, List.of(Recipe.IRON_AXE)),
+            // A bucket, 3 ingots: water carried to a farm's holes where no pond is (operator, 2026-11-19).
+            new Rung("a bucket", i -> i.count(ItemClass.BUCKET) + i.count(ItemClass.WATER_BUCKET) > 0, List.of(Recipe.BUCKET)),
             // Diamond only after the iron armour, and only with the diamonds carried: they're ore
             // the miner takes beside its stairs, not something a soldier goes and fetches.
             new Rung("a diamond sword", i -> bestMelee(i) >= ItemClassRegistry.meleeRank("diamond_sword"), List.of(Recipe.DIAMOND_SWORD)),
@@ -156,7 +159,7 @@ public final class Ladder {
      * enabler, three iron, and what breaks the keep's emerald and opens diamonds (operator,
      * 2026-11-15) - live, the camp fell to SHELTER when eight soldiers joined unarmed, and twelve
      * raw iron sat in a pack with no pickaxe made. SHELTER: nothing else that costs iron.
-     * BUILDUP: a shield, armour, and iron tools for producers - an iron axe - as well. ESTABLISHED and
+     * BUILDUP: a shield, armour, and iron tools for producers - an iron axe, a bucket - as well. ESTABLISHED and
      * above: iron for all, diamond for weapons and armour. Below SHELTER, as SHELTER.
      */
     public static boolean authorised(Recipe recipe, Optional<io.github.jayessdeesea.minecraft.command.Site.Level> level) {
@@ -177,7 +180,8 @@ public final class Ladder {
         if (recipe == Recipe.IRON_PICKAXE) {
             return true;
         }
-        return at >= buildup && (recipe == Recipe.SHIELD || recipe == Recipe.IRON_AXE || recipe.makes() == ItemClass.ARMOUR);
+        return at >= buildup && (recipe == Recipe.SHIELD || recipe == Recipe.IRON_AXE || recipe == Recipe.BUCKET
+                || recipe.makes() == ItemClass.ARMOUR);
     }
 
     /** As {@link #upTo(Inventory, Map, Set, Predicate, int)}, past no rung its site's {@code level} doesn't authorise ({@link #authorised}); empty: every rung. */

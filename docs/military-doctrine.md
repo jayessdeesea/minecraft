@@ -731,9 +731,13 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 9. Iron armour: chestplate, leggings, boots, helmet.
 10. An iron sword.
 11. An iron axe, which chops a log in a sixth of the bare-handed time.
-12. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
+12. A bucket, 3 ingots, for water carried to a farm's holes (`bot.supply.WaterCarrier`): filled at
+    a pond's source with two sources beside it, which fills again - never a lone one, which a bucket
+    empties for good - and poured from the ground beside the cell, looking down into it, the server
+    casting its ray along the look.
+13. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
     the miner takes beside its stairs (§16) with an iron pickaxe, not something a soldier fetches.
-13. The tool load (`CrossLevel.TOOL_LOAD`): two each of melee weapons, pickaxes and shovels, of
+14. The tool load (`CrossLevel.TOOL_LOAD`): two each of melee weapons, pickaxes and shovels, of
     stone - a main and a spare: they wear out, and the next is in the pack (operator, 2026-11-15,
     the fighting load; four before it). What's past a soldier's load for its work goes to the
     depot (`bot.craft.LoadPlan`, below). Last, after the
@@ -765,7 +769,7 @@ for. Live, builders climbed through copper armour while the dig's tools wore out
 No rung past what the camp's level authorises is made (backlog/sites.md, basis of issue;
 `Ladder.authorised`): the iron pickaxe, the enabler, at any level (operator, 2026-11-15: it breaks the
 keep's emerald - live, the camp fell to SHELTER when eight soldiers joined unarmed, with twelve raw
-iron in a pack); at SHELTER nothing else that costs iron; at BUILDUP a shield, armour and an iron axe too; diamond, and an iron sword, only once
+iron in a pack); at SHELTER nothing else that costs iron; at BUILDUP a shield, armour, an iron axe and a bucket too; diamond, and an iron sword, only once
 it's ESTABLISHED (§ 17). Copper costs no iron, so copper armour comes at any level.
 
 The rungs are ranked by survival gained per resource spent, as `CombatScenarioTest` measures it.
