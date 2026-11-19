@@ -91,8 +91,46 @@ public final class Miner {
 
     /** Where the soldier should stand: on the step above the one it cuts. */
     public synchronized Optional<Position> standAt() {
-        return Optional.ofNullable(standAt);
+        Staircase stairs = lastStairs;
+        Position soldier = lastSoldier;
+        return Optional.ofNullable(standAt).map(stand -> stairs == null || soldier == null ? stand : byTheStairs(stairs, soldier, stand));
     }
+
+    /**
+     * Where to walk for {@code stand}: itself, or - the cutter on its mine's stairs, the stand far along them -
+     * the step {@link #STAIRS_LEG} on toward it, one leg at a time. Live (field458-463), Eli at the mine's head
+     * stood all night with "no route" to his level 118 blocks down a thousand-step stair: one search can't
+     * plan that, a dozen steps it can.
+     */
+    static Position byTheStairs(Staircase stairs, Position soldier, Position stand) {
+        if (Math.abs(stand.y() - soldier.y()) <= STAIRS_LEG
+                && Math.hypot(stand.x() - soldier.x(), stand.z() - soldier.z()) <= 2 * STAIRS_LEG) {
+            return stand;
+        }
+        int on = -1;
+        double nearest = Double.MAX_VALUE;
+        for (int k = 0; k < stairs.steps(); k++) {
+            BlockPos step = stairs.step(k);
+            double d = Math.hypot(step.x() + 0.5 - soldier.x(), step.z() + 0.5 - soldier.z()) + Math.abs(step.y() - soldier.y());
+            if (d < nearest) {
+                nearest = d;
+                on = k;
+            }
+        }
+        if (on < 0 || nearest > ON_THE_STAIRS) {
+            return stand;
+        }
+        int k = stand.y() < soldier.y() ? Math.min(stairs.steps() - 1, on + STAIRS_LEG) : Math.max(0, on - STAIRS_LEG);
+        BlockPos leg = stairs.step(k);
+        return new Position(leg.x() + 0.5, leg.y(), leg.z() + 0.5);
+    }
+
+    /** Steps a leg down or up the stairs, and how far from them a cutter is still on them. */
+    static final int STAIRS_LEG = 12;
+    static final double ON_THE_STAIRS = 6;
+    /** The stairs and where it stood at its last tick - for {@link #standAt}'s legs. */
+    private Staircase lastStairs;
+    private Position lastSoldier;
 
     /** The first step of {@code stairs} not yet cut, or empty when all are. */
     public static OptionalInt firstUncut(WorldView world, Staircase stairs) {
@@ -238,6 +276,8 @@ public final class Miner {
             blocked = new HashSet<>();
         }
         blockedFor = level;
+        lastStairs = stairs;
+        lastSoldier = soldier;
         this.share = share;
         List<Staircase.Cut> cuts = stairs.cuts();
         OptionalInt next;

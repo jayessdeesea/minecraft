@@ -110,7 +110,7 @@ and raises no `[Alert]`.
 
 ## Faces 100 blocks off, and a level straight below
 Built: a cut's stand with no route has its tunnel given up (docs/military-doctrine.md, the rules of a mine).
-Left, seen (field458): Eli at the surface for his level 118 blocks straight below, and Hal and Carol for
+Built too: a cutter far up its own stairs walks them down in legs. Left, seen (field458): Hal and Carol for
 faces 100 blocks off, "no route" each report all night (backlog/long-routes.md).
 
 ## A cutter at a cave with no blocks to floor it (field462)

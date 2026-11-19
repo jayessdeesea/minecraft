@@ -1554,7 +1554,9 @@ that breaks one is a step back):**
    (field458-459), six cutters stood a night two blocks from stands walled off from them. The tunnels
    given up are the level's, one set for its crew, kept for that level only: a main tunnel given up, the
    strips whose roots it never reached are no work to wait for, and the level reads done as far as it goes
-   (live, field460-461, Dana gave hers up and Fran waited all night on it).
+   (live, field460-461, Dana gave hers up and Fran waited all night on it). A cutter on its mine's
+   stairs whose stand is far along them walks there a leg of 12 steps at a time (`Miner.byTheStairs`):
+   live, Eli at the head stood a night "no route" to his level 118 blocks down a thousand-step stair.
 2. **A grid that sees every block, with the least digging.** A level is at a height a multiple of
    4 (y % 4 == 0): a spine out from the shaft's landing, and strips off it both ways at every third
    block of the world's grid along it - x % 3 == 0 for a spine along x, z % 3 == 0 for one along z.

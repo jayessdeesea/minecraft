@@ -662,6 +662,27 @@ class MinerTest {
         assertInstanceOf(Miner.Progress.Done.class, progress, "not waiting all night on a main tunnel given up");
     }
 
+    /**
+     * A cutter at the head of a deep mine, its stand at the bottom: walked down the stairs a leg at a time, not
+     * sent the whole way in one search. Live (field458-463), Eli at the head stood a night "no route" to his
+     * level 118 blocks down.
+     */
+    @Test
+    void aCutterFarUpItsStairsIsWalkedDownThemALegAtATime() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 40);
+        BlockPos top = stairs.step(0);
+        BlockPos bottom = stairs.step(stairs.steps() - 1);
+        Position soldier = new Position(top.x() + 0.5, top.y(), top.z() + 0.5);
+        Position stand = new Position(bottom.x() + 0.5, bottom.y(), bottom.z() + 0.5);
+
+        Position leg = Miner.byTheStairs(stairs, soldier, stand);
+
+        BlockPos twelve = stairs.step(Miner.STAIRS_LEG);
+        assertEquals(new Position(twelve.x() + 0.5, twelve.y(), twelve.z() + 0.5), leg, "the step a leg down");
+        assertEquals(stand, Miner.byTheStairs(stairs, new Position(bottom.x() + 0.5, bottom.y() + 1, bottom.z() + 0.5), stand),
+                "beside it: the stand itself");
+    }
+
     private static boolean allTrue(boolean[] flags) {
         for (boolean f : flags) {
             if (!f) {
