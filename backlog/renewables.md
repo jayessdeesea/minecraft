@@ -68,7 +68,7 @@ What the ground supports:
 | Animal pen | Two of a kind plus their breeding food, and a fenced pen | Wherever no passive mobs spawn: deserts, much of the Nether |
 
 The survey (§ 12) reports what's nearby. The general picks the farm the ground supports, the squad
-builds it beside the patrol base (backlog/patrol-base.md), and the base's light already meets the
+builds it beside the patrol base (docs/military-doctrine.md section 14), and the base's light already meets the
 light requirement.
 
 ## Done when

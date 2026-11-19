@@ -28,6 +28,13 @@ after that a squad should come back to a shelter that stands.
 - **Beds**, from backlog/rest-plan.md, go in the deliberate shelter: they set the respawn point,
   end the phantom draw and let the night be skipped.
 
+- **The camp's wall, finished** (from backlog/patrol-base.md, merged here; the hasty hut, the PATROL_BASE task, SECURE
+  and FORTIFY are live - docs/military-doctrine.md sections 14 and 15): a gate in the wall's doorway the squads close
+  behind them, and the wall's own top lit so nothing spawns on it.
+- **An old hut sealed shut** (from backlog/patrol-base.md): a hut left with a doorway is taken back after a restart;
+  one sealed with nobody inside has no floor the squad can walk to, so a new one goes up beside it. Taken back too.
+
 ## Done when
 - From the second night, a squad goes into a standing shelter by its gate, and out by it at dawn,
   with nothing dug or rebuilt.
+- The camp's wall has a gate the squads close behind them, and nothing spawns on its top.

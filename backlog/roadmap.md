@@ -90,7 +90,7 @@ In the order the timetable meets them:
   and farming have to keep the squads above it, and rations have to be carried and eaten by day.
 - **Stone runs out near the camp** (day 2). The mine (§ 16) is the camp's quarry. Cut it on day 2,
   not after the buildup phase.
-- **Gate and wall light** (day 3, backlog/patrol-base.md).
+- **Gate and wall light** (day 3, backlog/durable-shelter.md).
 - **Barracks and beds** (days 4–5, backlog/rest-plan.md): a bigger room inside the walls.
 - **Branch tunnels and mine levels** (day 8+, backlog/mining.md). **Bases beyond the camp** (day
   8+, backlog/readiness.md).

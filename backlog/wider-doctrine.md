@@ -15,7 +15,7 @@ its own backlog item when it's picked up.
 - **Consolidation and reorganisation after contact.** Re-establish security, report LACE, re-form
   the chain of command. Redistribution is backlog/cross-leveling.md.
 - **Security halts.** After a long move, the squad stops in a perimeter with sectors of fire rather
-  than in a line. The overnight version is backlog/patrol-base.md.
+  than in a line. The overnight version is the patrol base (docs/military-doctrine.md section 14).
 - **Rules of engagement.** When soldiers may attack: hostiles only, never players, and passive
   mobs only when hunting for food (docs/military-doctrine.md § 4). This is an explicit, testable policy
   rather than whatever `HostileMobRegistry` happens to contain.
