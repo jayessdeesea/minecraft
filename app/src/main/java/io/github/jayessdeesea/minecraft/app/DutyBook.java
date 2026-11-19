@@ -167,7 +167,7 @@ final class DutyBook {
         // Every strip cut out - the whole wood shared again - is the wood spent: said once an order, up the chain. Live
         // (field478), said three times over as more strips were found.
         objective.filter(o -> !found.isEmpty() && !spentSquads.contains(squad)
-                && WoodDuties.worked(WoodDuties.whole(o.location()), found).equals(WoodDuties.whole(o.location()))).ifPresent(o -> {
+                && WoodDuties.worked(WoodDuties.whole(o.location()), found).equals(List.of(WoodDuties.whole(o.location())))).ifPresent(o -> {
             spentSquads.add(squad);
             spent.accept(o.location());
         });
@@ -190,6 +190,14 @@ final class DutyBook {
      */
     Optional<Position> dump(String soldier, io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
         return of(soldier).flatMap(DutyOrder::dump).filter(d -> world.isChest((int) Math.floor(d.x()), (int) Math.floor(d.y()), (int) Math.floor(d.z())));
+    }
+
+    /**
+     * Whether {@code soldier} is a planter with nothing to plant: no ground in its wood opened by the felling ({@code grove}
+     * none), or all of it planted - its share isn't behind, as a harvester's isn't while its plot grows.
+     */
+    boolean plantsNothing(String soldier, io.github.jayessdeesea.minecraft.bot.farm.TreeFarm grove, io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
+        return is(soldier, DutyOrder.Duty.PLANTER) && (grove == null || io.github.jayessdeesea.minecraft.bot.supply.Forester.planted(world, grove));
     }
 
     /** Whether {@code soldier}'s order is {@code duty}. */

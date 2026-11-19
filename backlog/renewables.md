@@ -133,10 +133,7 @@ may grow slower than rows); and where the food goes (`[Food]`, `app.FoodLedger`)
 falls and fights save more than more farms.
 
 ## The wild forest near the camp is cut out (field470)
-A full day on wood duty felled 12 trees: the woodcutters' strips held no trees ("no LOG within 144 blocks of
-the objective", Fran, again and again), Dana alone filled a load of 16, and the stockpile stayed at 0 logs.
-A wood whose every strip its woodcutters found cut out is now dropped from the sightings for a day
-(`WoodSightings.spent`), so the next squad goes to the nearest other seen. Left: the survey looking farther
-once every wood it sees is spent - it shows six stands within 64 blocks (the nearest, then the biggest), and
-with all of them cut there's nowhere to send anyone. Saplings are 0, so the grove (the lasting answer) waits on the planter's drops.
-
+A full day on wood duty felled 12 trees: the woodcutters' strips held no trees, and the stockpile stayed at 0
+logs. Built since: a wood cut out is dropped from the sightings and its trees from the survey, which looks out
+to 112 blocks once every wood within 64 is spent (docs/military-doctrine.md, wood by duty). Left: saplings are
+0, so the grove (the lasting answer) waits on the planter's drops.

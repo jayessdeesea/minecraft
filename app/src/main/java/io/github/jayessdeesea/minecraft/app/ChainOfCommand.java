@@ -704,6 +704,11 @@ public class ChainOfCommand implements DisposableBean {
         }
     }
 
+    /** Whether {@code at} lies in a wood its squad leader found cut out lately: its trees aren't the force's to send for. */
+    public boolean nearSpentWood(Position at) {
+        return woodSightings.nearSpent(at);
+    }
+
     /** What every surface chest held when last looked in, summed, if any has been. */
     public Optional<Stockpile> stores() {
         return Optional.ofNullable(stores);

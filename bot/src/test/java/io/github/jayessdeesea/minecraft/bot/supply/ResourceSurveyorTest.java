@@ -70,6 +70,20 @@ class ResourceSurveyorTest {
                 new ResourceSite(Resource.WOOD, new Position(-40, 66, 0), 4)), stands);
     }
 
+    /** A wood found cut out isn't offered; with every wood within 64 spent, trees out to 112 are. */
+    @Test
+    void theWoodsSpentArentOfferedAndTheSurveyLooksFartherForTheRest() {
+        Set<BlockPos> logs = new HashSet<>();
+        trunk(logs, 20, 0);   // a wood 20 east, found cut out
+        trunk(logs, 90, 0);   // a wood 90 east, past the survey's first reach
+        java.util.function.Predicate<Position> spent = at -> Math.hypot(at.x() - 20, at.z()) <= 24;
+
+        assertEquals(List.of(new ResourceSite(Resource.WOOD, new Position(20, 66, 0), 4)),
+                ResourceSurveyor.survey(logsAt(logs), new Position(0.5, 64, 0.5)), "unspent: the near wood, and not the far");
+        assertEquals(List.of(new ResourceSite(Resource.WOOD, new Position(90, 66, 0), 4)),
+                ResourceSurveyor.survey(logsAt(logs), new Position(0.5, 64, 0.5), spent), "the near wood spent: the far one");
+    }
+
     /** A structure's logs - an ancient city's dark oak, no leaves near - aren't wood to gather. */
     @Test
     void logsWithNoLeavesNearArentAStand() {

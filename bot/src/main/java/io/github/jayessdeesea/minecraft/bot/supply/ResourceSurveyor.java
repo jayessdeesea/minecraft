@@ -67,22 +67,26 @@ public final class ResourceSurveyor {
         return false;
     }
 
+    /** How far trees are looked for once every wood within {@link #SURVEY_RADIUS} is spent: seven chunks, still loaded. */
+    static final int FAR_RADIUS = 112;
+
     /** Trees then stone, each nearest first. */
     public static List<ResourceSite> survey(WorldView world, Position around) {
+        return survey(world, around, at -> false);
+    }
+
+    /**
+     * As {@link #survey(WorldView, Position)}, leaving out the trees of the woods {@code spent} says were found cut out -
+     * and, with none left within {@link #SURVEY_RADIUS}, looking for trees out to {@link #FAR_RADIUS}: live (field478),
+     * the woods in reach cut out, the force short of wood had nowhere to send anyone.
+     */
+    public static List<ResourceSite> survey(WorldView world, Position around, java.util.function.Predicate<Position> spent) {
         BlockPos centre = BlockPos.containing(around.x(), around.y(), around.z());
         List<BlockPos> logs = new ArrayList<>();
         List<BlockPos> stone = new ArrayList<>();
-        for (int dx = -SURVEY_RADIUS; dx <= SURVEY_RADIUS; dx++) {
-            for (int dz = -SURVEY_RADIUS; dz <= SURVEY_RADIUS; dz++) {
-                for (int dy = -SURVEY_HEIGHT; dy <= SURVEY_HEIGHT; dy++) {
-                    BlockPos cell = centre.offset(dx, dy, dz);
-                    if (world.isLog(cell.x(), cell.y(), cell.z()) && leafy(world, cell)) {
-                        logs.add(cell);
-                    } else if (world.isStone(cell.x(), cell.y(), cell.z()) && exposed(world, cell)) {
-                        stone.add(cell);
-                    }
-                }
-            }
+        scan(world, centre, SURVEY_RADIUS, 0, logs, stone, spent);
+        if (logs.isEmpty()) {
+            scan(world, centre, FAR_RADIUS, SURVEY_RADIUS, logs, null, spent);
         }
         List<ResourceSite> sites = new ArrayList<>(cluster(logs, centre, Resource.WOOD, MIN_STAND));
         sites.addAll(cluster(stone, centre, Resource.STONE, MIN_OUTCROP));
@@ -95,6 +99,29 @@ public final class ResourceSurveyor {
             sites.add(new ResourceSite(Resource.FARMLAND, new Position(land.x(), land.y() + 1, land.z()), farm.plot().size()));
         });
         return List.copyOf(sites);
+    }
+
+    /**
+     * The leafy logs - not in a wood {@code spent} - and, given a list, the exposed stone within {@code radius} of
+     * {@code centre}, past {@code inner} (a ring: what's inside it was looked at already).
+     */
+    private static void scan(WorldView world, BlockPos centre, int radius, int inner, List<BlockPos> logs, List<BlockPos> stone,
+                             java.util.function.Predicate<Position> spent) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                if (Math.max(Math.abs(dx), Math.abs(dz)) <= inner && inner > 0) {
+                    continue;
+                }
+                for (int dy = -SURVEY_HEIGHT; dy <= SURVEY_HEIGHT; dy++) {
+                    BlockPos cell = centre.offset(dx, dy, dz);
+                    if (world.isLog(cell.x(), cell.y(), cell.z()) && leafy(world, cell) && !spent.test(new Position(cell.x(), cell.y(), cell.z()))) {
+                        logs.add(cell);
+                    } else if (stone != null && world.isStone(cell.x(), cell.y(), cell.z()) && exposed(world, cell)) {
+                        stone.add(cell);
+                    }
+                }
+            }
+        }
     }
 
     private static boolean exposed(WorldView world, BlockPos cell) {

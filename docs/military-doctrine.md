@@ -953,16 +953,18 @@ under the miners, aren't wood: `ResourceSurveyor.leafy`; nor is a log a gatherer
 itself - no two on one tree - stands only inside it (`Gatherer`'s box), takes a load of 16 logs to the
 stockpile at a time, replants each stump it fells, and is exhausted once its strip is cut out, as an
 `Order.Gather` from a box is. A strip its woodcutter finds cut out - its gather finding nothing, after it
-was given the strip - is taken off the forest's end, and the rest shared again among the woodcutters
-along the same way (`WoodDuties.worked`, `DutyBook.cutOut`): no woodcutter kept on ground with nothing
-left. One in the middle stays, its woodcutter behind its share for the squad leader to see; all of it
-cut out, the whole is shared again, to grow back, and the squad leader says the wood is spent: the
-platoon leader's wood sightings drop it for a day, across restarts (`ChainOfCommand.onWoodSpent`,
-`WoodSightings.spent`, `WoodsBook`),
+was given the strip - is taken off the forest, at its end or in its middle, and the rest shared again among the
+woodcutters along the same way (`WoodDuties.worked`, `DutyBook.cutOut`): a strip cut out in the middle leaves
+the wood in two runs, the woodcutters shared over both by their widths (`WoodDuties.shares`) - no woodcutter
+kept on ground with nothing left. All of it cut out, the whole is shared again, to grow back, and the squad
+leader says the wood is spent: the platoon leader's wood sightings drop it for a day, across restarts
+(`ChainOfCommand.onWoodSpent`, `WoodSightings.spent`, `WoodsBook`), and the survey leaves its trees out -
+looking for trees out to 112 blocks once every wood within its 64 is spent (`ResourceSurveyor.survey`) -
 so the next squad sent for wood goes to the nearest other - and the squad's task reads DONE ("every strip
 of the wood is cut out"), so the platoon leader gives it its next. With two or more, the last on the roster is the planter: it plants
 the grid cells across the whole forest that the felling has opened to the sky (`TreeFarm.site`),
-taking a sapling from leaves when it has none, while the scavenger picks up what dropped. The wild
+taking a sapling from leaves when it has none, while the scavenger picks up what dropped; with no opened
+ground to plant, or all of it planted, its share isn't behind (`DutyBook.plantsNothing`). The wild
 forest first; a grove once there is one (backlog/renewables.md).
 
 The supply point's chest is also the stockpile; with no supply point set up, the stockpile is the

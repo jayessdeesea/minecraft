@@ -102,6 +102,20 @@ class DutyBookTest {
         assertEquals(Optional.empty(), book.dump("Alice", world), "no order, no dump of its own");
     }
 
+    /** A planter with no opened ground in its wood, or all of it planted, plants nothing: its share isn't behind. */
+    @Test
+    void aPlanterWithNoGroundOpenedPlantsNothing() {
+        DutyBook book = new DutyBook();
+        book.assign("Bravo", List.of("Hal", "Ivy"), Map.of("Hal", new DutyOrder("Hal", DutyOrder.Duty.PLANTER, Optional.empty(), Optional.empty()),
+                "Ivy", new DutyOrder("Ivy", DutyOrder.Duty.WOODCUTTER, Optional.empty(), Optional.empty())), Optional.of("WOOD"), 0);
+        io.github.jayessdeesea.minecraft.bot.farm.TreeFarm grove = new io.github.jayessdeesea.minecraft.bot.farm.TreeFarm(
+                new BlockPos(0, 63, 0), List.of(new BlockPos(0, 63, 0)));
+
+        assertTrue(book.plantsNothing("Hal", null, flat()), "no ground opened");
+        assertTrue(!book.plantsNothing("Hal", grove, flat()), "a cell to plant");
+        assertTrue(!book.plantsNothing("Ivy", null, flat()), "a woodcutter isn't a planter");
+    }
+
     /** Grass at y 63 everywhere. */
     static io.github.jayessdeesea.minecraft.bot.world.WorldView flat() {
         return new io.github.jayessdeesea.minecraft.bot.world.WorldView() {

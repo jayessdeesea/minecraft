@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -63,17 +64,37 @@ class WoodDutiesTest {
         assertEquals(Optional.of(new Position(3, 64, 2)), orders.get("Carl").dump());
     }
 
-    /** A strip found cut out at the forest's end is taken off it, the next too as it comes to the end; one in the middle isn't. */
+    /** A strip found cut out is taken off the forest: at its end, and in its middle, leaving it in two. */
     @Test
-    void stripsCutOutAtTheEndsAreTakenOffTheForest() {
+    void stripsCutOutAreTakenOffTheForestEndsAndMiddle() {
         Box whole = new Box(-24, 56, -24, 24, 88, 24);
         Box east = new Box(8, 56, -24, 24, 88, 24);
         Box middle = new Box(-8, 56, -24, 7, 88, 24);
-        assertEquals(new Box(-24, 56, -24, 7, 88, 24), WoodDuties.worked(whole, List.of(east)));
-        assertEquals(new Box(-24, 56, -24, -9, 88, 24), WoodDuties.worked(whole, List.of(middle, east)), "the middle, once the east is off, is the end");
-        assertEquals(whole, WoodDuties.worked(whole, List.of(middle)), "a strip in the middle stays");
-        assertEquals(whole, WoodDuties.worked(whole, List.of(whole)), "all of it cut out: the whole again, to grow");
+        assertEquals(List.of(new Box(-24, 56, -24, 7, 88, 24)), WoodDuties.worked(whole, List.of(east)));
+        assertEquals(List.of(new Box(-24, 56, -24, -9, 88, 24)), WoodDuties.worked(whole, List.of(middle, east)));
+        assertEquals(List.of(new Box(-24, 56, -24, -9, 88, 24), new Box(8, 56, -24, 24, 88, 24)), WoodDuties.worked(whole, List.of(middle)),
+                "the middle cut out: the wood in two");
+        assertEquals(List.of(whole), WoodDuties.worked(whole, List.of(whole)), "all of it cut out: the whole again, to grow");
         Map<String, WoodDuties.Duty> shared = WoodDuties.assign(List.of("Alice", "Bob", "Carl", "Dana"), new Position(0, 64, 0), List.of(east));
         assertTrue(shared.get("Carl").area().maxX() <= 7, "Carl's strip off the cut-out east: " + shared.get("Carl").area());
+    }
+
+    /** With the middle cut out, the woodcutters are shared over both parts left: none sent back to the middle. */
+    @Test
+    void aWoodCutOutInTheMiddleIsSharedOverBothParts() {
+        Box middle = new Box(-8, 56, -24, 7, 88, 24);
+        Map<String, WoodDuties.Duty> shared = WoodDuties.assign(List.of("Alice", "Bob", "Carl", "Dana"), new Position(0, 64, 0), List.of(middle));
+
+        List<Box> strips = shared.values().stream().filter(d -> d.kind() == WoodDuties.Kind.WOODCUTTER).map(WoodDuties.Duty::area).toList();
+        assertEquals(3, strips.size());
+        assertTrue(strips.stream().allMatch(b -> b.maxX() < -8 || b.minX() > 7), "none in the cut-out middle: " + strips);
+        assertTrue(strips.stream().anyMatch(b -> b.maxX() < -8) && strips.stream().anyMatch(b -> b.minX() > 7), "both sides worked: " + strips);
+    }
+
+    /** One cutter to each of the widest parts while they outnumber it; else each one, the rest by width. */
+    @Test
+    void cuttersAreSharedOverThePartsByWidth() {
+        assertArrayEquals(new int[]{0, 1}, WoodDuties.shares(new int[]{5, 9}, 1));
+        assertArrayEquals(new int[]{1, 2}, WoodDuties.shares(new int[]{10, 20}, 3));
     }
 }

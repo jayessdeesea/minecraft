@@ -1506,7 +1506,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean holdingBase = state.allInside && state.breaches != null && state.breaches.isEmpty();
             return new ChainOfCommand.Sitrep(p.squad(), shown, () -> TerrainSurveyor.survey(world, pointMan, climbBlocks, stoneSteps,
                     chainOfCommand.objective(p.squad()).map(Objective::location)), p.principalAt(),
-                    () -> ResourceSurveyor.survey(world, pointMan), holdingBase,
+                    () -> ResourceSurveyor.survey(world, pointMan, chainOfCommand::nearSpentWood), holdingBase,
                     holdingBase ? OptionalInt.of(0) : state.baseBlocksLeft, progress(p.squad(), state, p.statuses()),
                     Optional.of(classOne(p.squad(), state, p.statuses())), classFour(p.squad(), state, p.statuses()));
         }).toList());
@@ -7186,7 +7186,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             FarmPlan field = dutyBook.field(name, farming.get(name));
             boolean bakes = dutyBook.is(name, DutyOrder.Duty.BAKER);
             dutyBook.sample(definition.squad(), name, inventory::count, threatened || field != null && !Farmer.hasWork(world, field, Set.of())
-                    || bakes && chainOfCommand.stores().filter(st -> st.wheat() > 0).isEmpty(), clockwork.millis());
+                    || bakes && chainOfCommand.stores().filter(st -> st.wheat() > 0).isEmpty() || dutyBook.plantsNothing(name, planting.get(name), world), clockwork.millis());
             // Its hoe, a bucket for its farm's water holes, its chunk farm's fixtures (Farmer.wants).
             if (field != null) {
                 tools.addAll(Farmer.wants(world, field, inventory));
@@ -7227,7 +7227,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 tools.retainAll(Set.of(Recipe.BREAD));
             }
             Fortify fort = fortifying.get(name);
-            Opening exit = opening.get(name);
+            Opening exit = clearingTunnel.contains(name) ? null : opening.get(name); // a stair up laid is its way out (field494: Olga afloat held hers for a stand out of reach)
             torchesCarried.put(name, inventory.count(ItemClassRegistry.ItemClass.TORCH));
             // A run under way has spent what canMake looks for - its furnace is in the world now.
             canMakeTorches.put(name, torchmaker.active() || Torchmaker.canMake(inventory));

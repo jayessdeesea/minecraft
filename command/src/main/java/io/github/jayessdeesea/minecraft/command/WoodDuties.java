@@ -78,7 +78,15 @@ public final class WoodDuties {
         Box whole = whole(forest);
         int cutters = roster.size() >= 2 ? roster.size() - 1 : 1;
         // Across the whole forest's way, whatever's left of it: strips cut the other way would lie across the cut-out ones.
-        List<Box> strips = worked(whole, cutOut).strips(cutters, whole.maxX() - whole.minX() >= whole.maxZ() - whole.minZ());
+        boolean alongX = whole.maxX() - whole.minX() >= whole.maxZ() - whole.minZ();
+        List<Box> parts = worked(whole, cutOut);
+        List<Box> strips = new java.util.ArrayList<>();
+        int[] shares = shares(parts.stream().mapToInt(p -> alongX ? p.maxX() - p.minX() + 1 : p.maxZ() - p.minZ() + 1).toArray(), cutters);
+        for (int i = 0; i < parts.size(); i++) {
+            if (shares[i] > 0) {
+                strips.addAll(parts.get(i).strips(shares[i], alongX));
+            }
+        }
         Map<String, Duty> duties = new LinkedHashMap<>();
         for (int i = 0; i < strips.size(); i++) {
             duties.put(roster.get(i), new Duty(roster.get(i), Kind.WOODCUTTER, strips.get(i)));
@@ -107,33 +115,57 @@ public final class WoodDuties {
     }
 
     /**
-     * {@code whole} with each of {@code cutOut} lying on one of its ends taken off - over and again, as the next comes
-     * to the end: the strips ({@link Box#strips}) run along its longer side, and a strip found cut out at either end is
-     * ground no woodcutter is sent back to. One in the middle is left in - a box has no hole - and its woodcutter stays
-     * behind its share for the squad leader to see. All of it cut out, it's {@code whole} again: the trees replanted
-     * there grow.
+     * {@code whole} less {@code cutOut}: the runs of it along its longer side - the way its strips ({@link Box#strips})
+     * are cut - that no strip found cut out covers, each a box, in order: ground no woodcutter is sent back to taken
+     * off, at an end or in the middle - a strip cut out in the middle leaves the wood in two. All of it cut out, it's
+     * {@code whole} again: the trees replanted there grow.
      */
-    public static Box worked(Box whole, List<Box> cutOut) {
+    public static List<Box> worked(Box whole, List<Box> cutOut) {
         boolean alongX = whole.maxX() - whole.minX() >= whole.maxZ() - whole.minZ();
         int from = alongX ? whole.minX() : whole.minZ(), to = alongX ? whole.maxX() : whole.maxZ();
-        boolean shrunk = true;
-        while (shrunk && from <= to) {
-            shrunk = false;
-            for (Box c : cutOut) {
-                int a = alongX ? c.minX() : c.minZ(), b = alongX ? c.maxX() : c.maxZ();
-                if (a <= from && b >= from) {
-                    from = b + 1;
-                    shrunk = true;
-                } else if (b >= to && a <= to) {
-                    to = a - 1;
-                    shrunk = true;
-                }
+        boolean[] cut = new boolean[to - from + 1];
+        for (Box c : cutOut) {
+            int a = Math.max(from, alongX ? c.minX() : c.minZ()), b = Math.min(to, alongX ? c.maxX() : c.maxZ());
+            for (int i = a; i <= b; i++) {
+                cut[i - from] = true;
             }
         }
-        if (from > to) {
-            return whole;
+        List<Box> parts = new java.util.ArrayList<>();
+        for (int i = 0; i < cut.length; i++) {
+            if (cut[i] || i > 0 && !cut[i - 1]) {
+                continue;
+            }
+            int j = i;
+            while (j + 1 < cut.length && !cut[j + 1]) {
+                j++;
+            }
+            int a = from + i, b = from + j;
+            parts.add(alongX ? new Box(a, whole.minY(), whole.minZ(), b, whole.maxY(), whole.maxZ())
+                    : new Box(whole.minX(), whole.minY(), a, whole.maxX(), whole.maxY(), b));
         }
-        return alongX ? new Box(from, whole.minY(), whole.minZ(), to, whole.maxY(), whole.maxZ())
-                : new Box(whole.minX(), whole.minY(), from, whole.maxX(), whole.maxY(), to);
+        return parts.isEmpty() ? List.of(whole) : List.copyOf(parts);
+    }
+
+    /**
+     * {@code cutters} shared over parts {@code widths} wide: one to each of the widest while there are fewer cutters than
+     * parts; else one to each and the rest to whichever has the most width a cutter.
+     */
+    static int[] shares(int[] widths, int cutters) {
+        int[] shares = new int[widths.length];
+        Integer[] widest = java.util.stream.IntStream.range(0, widths.length).boxed()
+                .sorted(java.util.Comparator.comparingInt((Integer i) -> -widths[i])).toArray(Integer[]::new);
+        for (int k = 0; k < Math.min(cutters, widths.length); k++) {
+            shares[widest[k]] = 1;
+        }
+        for (int left = cutters - widths.length; left > 0; left--) {
+            int most = 0;
+            for (int i = 1; i < widths.length; i++) {
+                if ((double) widths[i] / (shares[i] + 1) > (double) widths[most] / (shares[most] + 1)) {
+                    most = i;
+                }
+            }
+            shares[most]++;
+        }
+        return shares;
     }
 }

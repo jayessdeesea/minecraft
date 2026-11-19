@@ -54,7 +54,8 @@ final class WoodSightings {
         return List.copyOf(with);
     }
 
-    private boolean nearSpent(Position site) {
+    /** Whether {@code site} is within a wood's reach of one found cut out. */
+    synchronized boolean nearSpent(Position site) {
         return spent.keySet().stream().anyMatch(at -> Math.hypot(at.x() - site.x(), at.z() - site.z()) <= WoodDuties.REACH);
     }
 }
