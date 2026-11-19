@@ -3,6 +3,7 @@ package io.github.jayessdeesea.minecraft.command;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * The squad leader's farm duties (operator, 2026-11-18; docs/echelons/tenets.md, the squad leader owns
@@ -44,5 +45,31 @@ public final class FarmDuties {
         int from = plot.size() * duty.share() / duty.shares();
         int to = plot.size() * (duty.share() + 1) / duty.shares();
         return plot.subList(from, to);
+    }
+
+    /**
+     * {@code farmers}' work orders on {@code plot}, their yield to {@code dump}: each harvester a run of the plot's whole
+     * columns of x, as near an equal share as they come - no cell in two harvesters' ground - and the baker none, at the
+     * dump. A harvester with no column left (more harvesters than columns) has no ground.
+     */
+    public static Map<String, WorkOrder> orders(List<String> farmers, List<Position> plot, Optional<Position> dump) {
+        Map<String, Duty> duties = of(farmers);
+        List<Integer> columns = plot.stream().map(p -> (int) Math.floor(p.x())).distinct().sorted().toList();
+        Map<String, WorkOrder> orders = new LinkedHashMap<>();
+        for (String farmer : farmers) {
+            Duty duty = duties.get(farmer);
+            if (duty.kind() == Kind.BAKER) {
+                orders.put(farmer, new WorkOrder(farmer, WorkOrder.Duty.BAKER, Optional.empty(), dump));
+                continue;
+            }
+            List<Integer> own = share(columns, duty);
+            Optional<Box> ground = own.isEmpty() ? Optional.empty() : Optional.of(new Box(own.getFirst(),
+                    plot.stream().mapToInt(p -> (int) Math.floor(p.y())).min().orElseThrow() - 1,
+                    plot.stream().mapToInt(p -> (int) Math.floor(p.z())).min().orElseThrow(), own.getLast(),
+                    plot.stream().mapToInt(p -> (int) Math.floor(p.y())).max().orElseThrow() + 1,
+                    plot.stream().mapToInt(p -> (int) Math.floor(p.z())).max().orElseThrow()));
+            orders.put(farmer, new WorkOrder(farmer, WorkOrder.Duty.HARVESTER, ground, dump));
+        }
+        return Map.copyOf(orders);
     }
 }

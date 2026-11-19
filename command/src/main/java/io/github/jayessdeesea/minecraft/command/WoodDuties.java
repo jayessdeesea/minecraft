@@ -73,4 +73,12 @@ public final class WoodDuties {
         }
         return Map.copyOf(duties);
     }
+
+    /** {@code duties} as work orders, their yield to {@code dump}: a woodcutter its strip, the planter the whole wood. */
+    public static Map<String, WorkOrder> orders(Map<String, Duty> duties, Optional<Position> dump) {
+        Map<String, WorkOrder> orders = new LinkedHashMap<>();
+        duties.forEach((soldier, d) -> orders.put(soldier, new WorkOrder(soldier,
+                d.kind() == Kind.PLANTER ? WorkOrder.Duty.PLANTER : WorkOrder.Duty.WOODCUTTER, Optional.of(d.area()), dump)));
+        return Map.copyOf(orders);
+    }
 }

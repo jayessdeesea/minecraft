@@ -50,4 +50,16 @@ class WoodDutiesTest {
         assertEquals(Map.of(), WoodDuties.of(Optional.of(farm), List.of("Alice", "Bob")));
         assertEquals(Map.of(), WoodDuties.of(Optional.empty(), List.of("Alice", "Bob")));
     }
+
+    /** A woodcutter's order is its strip, the planter's the whole wood, both to the dump. */
+    @Test
+    void woodDutiesAreOrdersToTheirGroundAndTheDump() {
+        Map<String, WoodDuties.Duty> duties = WoodDuties.assign(List.of("Alice", "Bob", "Carl"), new Position(0, 64, 0));
+        Map<String, WorkOrder> orders = WoodDuties.orders(duties, Optional.of(new Position(3, 64, 2)));
+
+        assertEquals(WorkOrder.Duty.WOODCUTTER, orders.get("Alice").duty());
+        assertEquals(Optional.of(duties.get("Alice").area()), orders.get("Alice").ground());
+        assertEquals(WorkOrder.Duty.PLANTER, orders.get("Carl").duty());
+        assertEquals(Optional.of(new Position(3, 64, 2)), orders.get("Carl").dump());
+    }
 }

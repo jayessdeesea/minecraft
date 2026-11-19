@@ -109,6 +109,7 @@ import io.github.jayessdeesea.minecraft.command.Tasking;
 import io.github.jayessdeesea.minecraft.command.DangerAreas;
 import io.github.jayessdeesea.minecraft.command.FarmDuties;
 import io.github.jayessdeesea.minecraft.command.WoodDuties;
+import io.github.jayessdeesea.minecraft.command.WorkOrder;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.WorkOrders;
 import io.github.jayessdeesea.minecraft.protocol.ChatMessage;
@@ -4201,8 +4202,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Soldiers whose fill is in dirt alone: a soil site's top (Flatten.soil) - squad loop writes, tick reads. */
     private final Set<String> soilFilling = ConcurrentHashMap.newKeySet();
 
-    /** Each farmer's duty on its farm (command.FarmDuties), from who was on it last cycle - squad loop writes, tick reads. */
-    private final Map<String, FarmDuties.Duty> farmDuties = new ConcurrentHashMap<>();
+    /** Each producer's work order from its squad leader (command.WorkOrder) - squad loop writes, tick reads. */
+    private final WorkOrderBook workOrders = new WorkOrderBook();
     /** Soldiers whose gather is a woodcutter's, kept to its strip (command.WoodDuties) - squad loop writes, tick reads. */
     private final Set<String> woodcutters = ConcurrentHashMap.newKeySet();
     /** Whether {@code name} gathers wood - a producer, whose 16 logs are a load (SoldierErrands.LOGS_KEPT_DRAWN). */
@@ -4210,8 +4211,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return woodcutters.contains(name) || Optional.ofNullable(groundGather.get(name)).filter(g -> g.resource() == Resource.WOOD).isPresent()
                 || Optional.ofNullable(gathering.get(name)).filter(o -> o.task().equals(new Objective.Task.Gather(Resource.WOOD))).isPresent();
     }
-    /** Soldiers with a wood duty, woodcutter or planter - squad loop writes, tick reads. */
-    private final Set<String> woodDutied = ConcurrentHashMap.newKeySet();
     /** Each soldier's {@code Order.Gather} from the ground work's drill - squad loop writes, tick reads. */
     private final Map<String, Order.Gather> groundGather = new ConcurrentHashMap<>();
 
@@ -5692,10 +5691,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList());
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         statuses.forEach(s -> woodcutters.remove(s.name()));
-        statuses.forEach(s -> woodDutied.remove(s.name()));
-        woodDutied.addAll(woodDuties.keySet());
-        statuses.forEach(s -> farmDuties.remove(s.name()));
-        farmDuties.putAll(FarmDuties.of(statuses.stream().map(SoldierStatus::name).filter(farming::containsKey).sorted().toList()));
+        // Each producer's work order (command.WorkOrder): the wood's duties, the farm's shares of its plot, the dump.
+        List<String> onTheFarm = statuses.stream().map(SoldierStatus::name).filter(farming::containsKey).sorted().toList();
+        Map<String, WorkOrder> workGiven = new HashMap<>(WoodDuties.orders(woodDuties, chainOfCommand.foothold().flatMap(Foothold::dump)));
+        onTheFarm.stream().findFirst().map(farming::get).ifPresent(f -> workGiven.putAll(FarmDuties.orders(onTheFarm, f.plot().stream()
+                .map(c -> new Position(c.x(), c.y(), c.z())).toList(), chainOfCommand.foothold().flatMap(Foothold::dump))));
+        workOrders.assign(squadName, statuses.stream().map(SoldierStatus::name).toList(), workGiven);
         woodDuties.values().stream().filter(d -> d.order().equals(Optional.ofNullable(ground.get(d.soldier())))).forEach(d -> woodcutters.add(d.soldier()));
         // The fight first: a soldier in contact answers its squad leader until it's over, and takes
         // its ground work up again then.
@@ -7414,13 +7415,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Optional<Unstash> unstash = unstashFor(status.position(), inventory, darkNow)
                     .or(() -> salvageFor(name, status.position(), inventory, darkNow));
             armourer.digsItsMakings(inventory.meleeWeapons() == 0 // bare-handed, its weapon is its own upkeep (docs/echelons/tenets.md)
-                    || !(cutting.containsKey(name) || woodDutied.contains(name) || farmDuties.containsKey(name) || keepHands.contains(name)));
+                    || !(cutting.containsKey(name) || workOrders.of(name).isPresent() || keepHands.contains(name)));
             // A farmer's hoe, and its wheat baked into bread three at a time - by its baker, on a farm that has one.
-            FarmDuties.Duty farmDuty = farmDuties.get(name);
-            FarmPlan field = farmDuty == null || farming.get(name) == null ? farming.get(name) : farmDuty.kind() == FarmDuties.Kind.BAKER ? null
-                    : new FarmPlan(farming.get(name).water(), FarmDuties.share(farming.get(name).plot().stream()
-                            .sorted(Comparator.comparingInt(BlockPos::x).thenComparingInt(BlockPos::z)).toList(), farmDuty));
-            boolean bakes = farmDuty != null && farmDuty.kind() == FarmDuties.Kind.BAKER;
+            FarmPlan field = workOrders.field(name, farming.get(name));
+            boolean bakes = workOrders.is(name, WorkOrder.Duty.BAKER);
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
                 tools.add(Recipe.WOODEN_HOE);
             }
@@ -7436,7 +7434,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // And still wanted while a loaf is under way: its wheat in the table's grid isn't carried.
             // Live, a soldier with 4 wheat put 3 in the grid, wanted no bread with the 1 left, and
             // started and dropped the loaf 518 times.
-            if (inventory.count(ItemClass.WHEAT) >= BREAD_WHEAT && ((farmDuty == null ? field != null : bakes) || carriedRations < Subsistence.BASIC_LOAD)
+            if (inventory.count(ItemClass.WHEAT) >= BREAD_WHEAT && ((workOrders.of(name).filter(WorkOrder::farm).isEmpty() ? field != null : bakes) || carriedRations < Subsistence.BASIC_LOAD)
                     || armourer.making(Recipe.BREAD)) {
                 tools.add(Recipe.BREAD);
             }
@@ -7850,7 +7848,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // The depot's kinds past what the pack keeps go in with it while the depot's under its
                     // most (StockLevels) - not into a mine's stash - and a reserve run short is a trip of its own.
                     Map<ItemClass, Integer> packKept = keepHands.contains(name) ? KEEP_PACK : cutting.containsKey(name) ? MINE_CARRIED
-                            : Optional.ofNullable(farmDuties.get(name)).filter(d -> d.kind() == FarmDuties.Kind.HARVESTER).isPresent() ? HARVESTER_CARRIED : CARRIED;
+                            : workOrders.is(name, WorkOrder.Duty.HARVESTER) ? HARVESTER_CARRIED : CARRIED;
                     boolean toDepot = deposit.flatMap(this::mineOfChest).isEmpty();
                     boolean stockTrip = toDepot && StockLevels.reserveShort(inventory, packKept, this::stocked);
                     // A flatten builder's load into the nearest depot standing a chest (keepOutposts).

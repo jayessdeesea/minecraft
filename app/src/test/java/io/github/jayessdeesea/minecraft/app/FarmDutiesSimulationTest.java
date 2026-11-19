@@ -67,7 +67,7 @@ class FarmDutiesSimulationTest {
      * baker, harvests none (operator, 2026-11-18: farmers harvesting, a baker turning the wheat into bread).
      */
     @Test
-    void harvestersWorkTheirOwnSharesAndTheBakerNone() {
+    void harvestersWorkTheirOwnSharesAndTheBakerNone() throws java.io.IOException {
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, FarmDutiesSimulationTest::pond, 24_000);
         List<String> squad = List.of("Alice", "Bob", "Carl", "Dana");
@@ -105,6 +105,11 @@ class FarmDutiesSimulationTest {
         assertTrue(List.copyOf(server.log).stream().anyMatch(l -> l.contains("OPORD: Farm at") && l.contains("in 9 boxes over x -6..26, z -14..18")),
                 "the farm's OPORD names its boxes: " + List.copyOf(server.log).stream().filter(l -> l.contains("OPORD")).findFirst().orElse("none"));
         squad.subList(0, 3).forEach(h -> assertTrue(harvested.getOrDefault(h, 0) > 0, h + " harvested nothing: " + harvested));
+        // Each one's work order from its squad leader, said in its log: its columns of the plot, or the baking.
+        List<String> work = java.nio.file.Files.readAllLines(Path.of("target", "sim", "harvestersWorkTheirOwnSharesAndTheBakerNone.log"))
+                .stream().filter(l -> l.contains("WORK:")).toList();
+        squad.subList(0, 3).forEach(h -> assertTrue(work.stream().anyMatch(l -> l.contains("[Alpha -> " + h + "] WORK: harvester over x")), h + ": " + work));
+        assertTrue(work.stream().anyMatch(l -> l.contains("[Alpha -> Dana] WORK: baker")), "Dana: " + work);
         assertEquals(0, harvested.getOrDefault("Dana", 0), "the baker harvests none: " + harvested);
     }
 }

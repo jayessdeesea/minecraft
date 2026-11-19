@@ -32,11 +32,11 @@ handle's log off a woodcutter's strip, `WoodDutiesSimulationTest`).
   load; short, it reports what it lacks ("short: hoe, 32 seeds"), and its squad leader answers with
   a draw from the supply point or a craft from what's there - or passes it up as CANTCO. Mid-work,
   running low is a LOGSTAT the same way. It never gathers its own makings.
-- **The squad leader shares out the work area** (operator, 2026-11-18: "alpha go do farming in
-  these x,z 1-16 areas and dump the supplies in this supply dump"). The objective already carries its
-  boxes and dump (`command.WorkArea`). Its squad leader shares the boxes among its soldiers
-  (`WoodDuties`/`FarmDuties`: the felling separate from the planting, the harvest and replanting
-  separate from the baking) and writes each soldier's order from its share.
+- **The work order carries the rest of the OPORD.** A producer's duty, ground and dump are one value
+  (`command.WorkOrder`), and the farm's and the wood's duty maps are gone from `SoldierRunner`. What's
+  left: the soldier's tick reads its ground from the order for the wood too (the woodcutter's
+  `Order.Gather` box and the planter's grove are still worked out apart), and deposits to the order's
+  dump rather than `stockpileFor`.
 - **Timeliness alarms at two echelons.** The squad leader knows each share's expected rate, and
   alarms on a soldier whose share falls behind it, or who holds without a share. That is the
   micromanagement. The platoon leader alarms on a squad whose area's output falls behind its order.
