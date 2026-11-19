@@ -515,7 +515,7 @@ public class ChainOfCommand implements DisposableBean {
     /** The work that makes good {@code shortfall} for a squad released from the flatten, if there's somewhere to do it. */
     private Optional<Objective> toShortfall(PlatoonSergeant.Shortfall shortfall, SquadStatus squad, List<ResourceSite> woods, int wanted) {
         return DayWorkRules.toShortfall(shortfall, squad, woods, "Released from the flatten (" + buildersWanted(wanted) + "): the force is short of ",
-                Optional.ofNullable(foothold), keepMine, flatten);
+                Optional.ofNullable(foothold), mines.keepMine(), flatten);
     }
 
     /** The wood at {@code at} cut out at {@code millis}, its squad leader says: its sightings dropped a while, no squad sent back. */
@@ -551,86 +551,43 @@ public class ChainOfCommand implements DisposableBean {
      * (operator, 2026-11-16: move to other sites or go deeper). Kept on disk by the soldier runner,
      * and set back from it at start-up ({@link #setKeepMine}).
      */
-    private volatile Position keepMine = KEEP_MINE;
+    private final MineSites mines = new MineSites();
     /** How far apart the sites a mine may move to are: two chunks. */
     static final int MINE_SITE_STEP = 32;
     /** How many sites out every way from the keep's first mine one may be. */
     static final int MINE_SITE_RINGS = 6;
-    /** The sites the keep's mine has been at and left - kept on disk by the soldier runner. */
-    private final Set<Position> minesTried = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** How far round a mine's head is kept clear of the flatten site and its bench: the stairs' well. */
+    static final int MINE_SITE_CLEAR = 8;
 
     /** The sites the keep's mine has been at and left. */
     Set<Position> minesTried() {
-        return Set.copyOf(minesTried);
+        return mines.tried();
     }
 
     /** The sites tried, read back from disk at start-up. */
     void setMinesTried(java.util.Collection<Position> tried) {
-        minesTried.addAll(tried);
+        mines.setTried(tried);
     }
-    /** How far round a mine's head is kept clear of the flatten site and its bench: the stairs' well. */
-    static final int MINE_SITE_CLEAR = 8;
 
     /** The keep's mine as it stands. */
     Position keepMine() {
-        return keepMine;
+        return mines.keepMine();
     }
 
     /** The keep's mine as it was left, read back from disk at start-up. */
     void setKeepMine(Position site) {
-        LOG.info("[PL] the keep's mine, kept on disk: {}", site);
-        keepMine = site;
-        if (!site.equals(KEEP_MINE)) {
-            minesTried.add(KEEP_MINE); // moved off it: it was worked out
-        }
+        mines.setKeepMine(site);
     }
 
-    /**
-     * The mine ordered at ({@code x}, {@code z}) is dried up - every level cut and ore still wanted:
-     * if it's the keep's mine as it stands, the keep's mine moves on to a fresh site. Returns the site
-     * it moved to, or empty for another mine's.
-     */
+    /** The mine at ({@code x}, {@code z}) dried up: the keep's mine moved on if it's that one (MineSites#onDriedUp). */
     Optional<Position> onMineDriedUp(int x, int z) {
-        Position was = keepMine;
-        if ((int) Math.floor(was.x()) != x || (int) Math.floor(was.z()) != z) {
-            return Optional.empty();
-        }
-        minesTried.add(was);
-        Position next = nextMineSite().orElse(null);
-        if (next == null) {
-            LOG.warn("[PL] the keep's mine at {} is dried up, and every site within {} blocks has been tried", was, MINE_SITE_RINGS * MINE_SITE_STEP);
-            return Optional.empty();
-        }
-        keepMine = next;
-        LOG.warn("[PL] the keep's mine at {} is dried up - the night shift's mine moves to {}", was, next);
-        return Optional.of(next);
+        return mines.onDriedUp(x, z, flatten);
     }
 
-    /**
-     * Where the keep's mine goes when it's spent: the nearest untried site on a grid round its first
-     * mine, every way, but the one it's at - live (field355), stepping only west put the night shift's
-     * mine 160 blocks off, past a lake, a blocked well and a hill. Cut by day ahead of time by a squad
-     * the flatten doesn't want (operator, 2026-11-17: dig deeper, but also cut the next mine).
-     */
+    /** Where the keep's mine goes when it's spent (MineSites#next). */
     Optional<Position> nextMineSite() {
-        Flatten site = flatten;
-        Position centre = site.centre();
-        Position at = keepMine;
-        Position next = null;
-        double best = Double.MAX_VALUE;
-        for (int i = -MINE_SITE_RINGS; i <= MINE_SITE_RINGS; i++) {
-            for (int j = -MINE_SITE_RINGS; j <= MINE_SITE_RINGS; j++) {
-                Position p = new Position(KEEP_MINE.x() + i * MINE_SITE_STEP, KEEP_MINE.y(), KEEP_MINE.z() + j * MINE_SITE_STEP);
-                double d = Math.hypot(p.x() - centre.x(), p.z() - centre.z());
-                if (d < best && !p.equals(at) && !minesTried.contains(p) && !cutsInto(site, (int) Math.floor(p.x()), (int) Math.floor(p.z()))) {
-                    best = d;
-                    next = p;
-                }
-            }
-        }
-        return Optional.ofNullable(next);
+        return mines.next(flatten);
     }
-
 
     /** How deep the night shift cuts: the iron, commonest round y=16. */
     static final int MINE_DEPTH = 16;
@@ -650,7 +607,7 @@ public class ChainOfCommand implements DisposableBean {
         // 65 blocks off and 48 down, the climb out and the walk to the keep were two-fifths of the
         // day (field151; operator, 2026-11-13: cutting a second mine is fine).
         if (keepByDay) {
-            return Optional.of(new Objective("Cut the keep's mine down to the iron through the night", keepMine,
+            return Optional.of(new Objective("Cut the keep's mine down to the iron through the night", mines.keepMine(),
                     "Stone for the keep's slab, and the night spent working underground beside it", new Objective.Task.Mine()));
         }
         Position c = camp.camp();
