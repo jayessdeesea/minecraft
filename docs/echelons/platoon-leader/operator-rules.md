@@ -35,7 +35,7 @@ By day the platoon leader assigns the day's work (operator, 2026-11-17): its `FA
 `MINE` and `KEEP` orders stand, request or not; any other order by day is put on the keep (task `KEEP`,
 [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)), or, past the squads the keep's level
 wants, sent to what the force is short of. Over all of it, guardrails that act loudly ("[Guardrail]",
-`ChainOfCommand.guarded`): no squad on the flatten, one is put on it - one not on a shortfall, its standing
+`DayGuardrails.guarded`): no squad on the flatten, one is put on it - one not on a shortfall, its standing
 flattener first - by the phase: none in the SEIZURE, one in the CONSOLIDATION so long as the food and the wood
 each have a squad on them, and from the BUILDUP the level's sizing over the shortfalls (operator, 2026-11-18;
 `PlatoonSergeant.unarmed` raises WOOD for swords and IRON for armour, iron left for the buildup); a squad whose standing work is production - FARM, WOOD - kept on it while the stockpile is under its product's most (bread, logs:

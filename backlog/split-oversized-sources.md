@@ -23,7 +23,9 @@ lists the files over it, each capped at its length then, to shrink to under.
   order, the class to empty. `app.SiteGeometry` holds the pure geometry of the flatten and its ground
   orders' names.
 - **`bot.DeterministicSoldier`**: its fight, its moves and its survival as separate pure parts.
-- **`app.ChainOfCommand`**: the platoon leader's guardrails apart from the wiring of the echelons.
+- **`app.ChainOfCommand`**: the platoon leader's guardrails apart from the wiring of the echelons. Begun: the
+  day's guardrails are `DayGuardrails`, over the day the chain hands them; the keep's mine sites `MineSites`.
+  Left: the night's rules (`sheltered`, `nightShift`, `grounded`) and the operator's orders.
 - The tests are all under: `SquadSimulationTest` split into a class a scenario family beside it
   (docs/architecture.md, the squad simulation), `DeterministicSoldierTest`'s fight into
   `DeterministicSoldierCombatTest`, the sim server's items into `SimItems`.
