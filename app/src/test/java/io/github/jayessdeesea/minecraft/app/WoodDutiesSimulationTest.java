@@ -147,5 +147,8 @@ class WoodDutiesSimulationTest {
                 .stream().filter(l -> l.contains("[Alarm]")).toList();
         assertTrue(alarms.stream().anyMatch(l -> l.contains("[Alarm] [Alpha] Carl behind its share: woodcutter over x 8..24")), "Carl: " + alarms);
         assertTrue(alarms.stream().noneMatch(l -> l.contains("Alice behind") || l.contains("Bob behind")), "the ones felling: " + alarms);
+        // And its squad leader, told the strip found nothing, shares the wood again without it (command.WoodDuties.worked).
+        assertTrue(java.nio.file.Files.readAllLines(Path.of("target", "sim", "aWoodcutterWithNothingToFellIsAlarmedBehindItsShare.log")).stream()
+                .anyMatch(l -> l.contains("[Alpha] the strip over x 8..24, z -24..24 is cut out - the wood shared again without it")), "the east re-shared");
     }
 }

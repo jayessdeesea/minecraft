@@ -933,7 +933,11 @@ under the miners, aren't wood: `ResourceSurveyor.leafy`; nor is a log a gatherer
 48 blocks across round its objective by duty, not as one body: each woodcutter has a strip of it to
 itself - no two on one tree - stands only inside it (`Gatherer`'s box), takes a load of 16 logs to the
 stockpile at a time, replants each stump it fells, and is exhausted once its strip is cut out, as an
-`Order.Gather` from a box is. With two or more, the last on the roster is the planter: it plants
+`Order.Gather` from a box is. A strip its woodcutter finds cut out - its gather finding nothing, after it
+was given the strip - is taken off the forest's end, and the rest shared again among the woodcutters
+along the same way (`WoodDuties.worked`, `DutyBook.cutOut`): no woodcutter kept on ground with nothing
+left. One in the middle stays, its woodcutter behind its share for the squad leader to see; all of it
+cut out, the whole is shared again, to grow back. With two or more, the last on the roster is the planter: it plants
 the grid cells across the whole forest that the felling has opened to the sky (`TreeFarm.site`),
 taking a sapling from leaves when it has none, while the scavenger picks up what dropped. The wild
 forest first; a grove once there is one (backlog/renewables.md).

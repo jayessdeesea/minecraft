@@ -48,12 +48,30 @@ public final class WoodDuties {
      * point; none unless the objective is for wood.
      */
     public static Map<String, Duty> of(Optional<Objective> objective, List<String> roster) {
+        return of(objective, roster, List.of());
+    }
+
+    /**
+     * As {@link #of(Optional, List)}, with the strips its woodcutters have found cut out - {@code cutOut} - taken off the
+     * forest's edges before it's cut into strips again, so a woodcutter isn't kept on ground with nothing left to fell
+     * (operator, 2026-11-18: the squad leader closes the gap). Live (field474, field475), a squad's woodcutters were all
+     * behind their shares in a forest cut out across most of its width.
+     */
+    public static Map<String, Duty> of(Optional<Objective> objective, List<String> roster, List<Box> cutOut) {
         return objective.filter(o -> o.task().equals(new Objective.Task.Gather(Resource.WOOD)))
-                .map(o -> assign(roster, o.location())).orElse(Map.of());
+                .map(o -> assign(roster, o.location(), cutOut)).orElse(Map.of());
     }
 
     /** {@code roster}'s duties in the forest round {@code forest}: woodcutters on strips, the last its planter. */
     static Map<String, Duty> assign(List<String> roster, Position forest) {
+        return assign(roster, forest, List.of());
+    }
+
+    /**
+     * {@code roster}'s duties in the forest round {@code forest}: woodcutters on strips of what's left of it once
+     * {@code cutOut} is taken off its edges ({@link #worked}), the last its planter, over the whole.
+     */
+    static Map<String, Duty> assign(List<String> roster, Position forest, List<Box> cutOut) {
         if (roster.isEmpty()) {
             return Map.of();
         }
@@ -62,7 +80,8 @@ public final class WoodDuties {
         int z = (int) Math.floor(forest.z());
         Box whole = new Box(x - REACH, y - BELOW, z - REACH, x + REACH, y + ABOVE, z + REACH);
         int cutters = roster.size() >= 2 ? roster.size() - 1 : 1;
-        List<Box> strips = whole.strips(cutters);
+        // Across the whole forest's way, whatever's left of it: strips cut the other way would lie across the cut-out ones.
+        List<Box> strips = worked(whole, cutOut).strips(cutters, whole.maxX() - whole.minX() >= whole.maxZ() - whole.minZ());
         Map<String, Duty> duties = new LinkedHashMap<>();
         for (int i = 0; i < strips.size(); i++) {
             duties.put(roster.get(i), new Duty(roster.get(i), Kind.WOODCUTTER, strips.get(i)));
@@ -80,5 +99,36 @@ public final class WoodDuties {
         duties.forEach((soldier, d) -> orders.put(soldier, new DutyOrder(soldier,
                 d.kind() == Kind.PLANTER ? DutyOrder.Duty.PLANTER : DutyOrder.Duty.WOODCUTTER, Optional.of(d.area()), dump)));
         return Map.copyOf(orders);
+    }
+
+    /**
+     * {@code whole} with each of {@code cutOut} lying on one of its ends taken off - over and again, as the next comes
+     * to the end: the strips ({@link Box#strips}) run along its longer side, and a strip found cut out at either end is
+     * ground no woodcutter is sent back to. One in the middle is left in - a box has no hole - and its woodcutter stays
+     * behind its share for the squad leader to see. All of it cut out, it's {@code whole} again: the trees replanted
+     * there grow.
+     */
+    static Box worked(Box whole, List<Box> cutOut) {
+        boolean alongX = whole.maxX() - whole.minX() >= whole.maxZ() - whole.minZ();
+        int from = alongX ? whole.minX() : whole.minZ(), to = alongX ? whole.maxX() : whole.maxZ();
+        boolean shrunk = true;
+        while (shrunk && from <= to) {
+            shrunk = false;
+            for (Box c : cutOut) {
+                int a = alongX ? c.minX() : c.minZ(), b = alongX ? c.maxX() : c.maxZ();
+                if (a <= from && b >= from) {
+                    from = b + 1;
+                    shrunk = true;
+                } else if (b >= to && a <= to) {
+                    to = a - 1;
+                    shrunk = true;
+                }
+            }
+        }
+        if (from > to) {
+            return whole;
+        }
+        return alongX ? new Box(from, whole.minY(), whole.minZ(), to, whole.maxY(), whole.maxZ())
+                : new Box(whole.minX(), whole.minY(), from, whole.maxX(), whole.maxY(), to);
     }
 }

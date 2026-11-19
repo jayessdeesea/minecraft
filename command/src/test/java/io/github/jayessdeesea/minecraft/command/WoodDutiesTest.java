@@ -62,4 +62,18 @@ class WoodDutiesTest {
         assertEquals(DutyOrder.Duty.PLANTER, orders.get("Carl").duty());
         assertEquals(Optional.of(new Position(3, 64, 2)), orders.get("Carl").dump());
     }
+
+    /** A strip found cut out at the forest's end is taken off it, the next too as it comes to the end; one in the middle isn't. */
+    @Test
+    void stripsCutOutAtTheEndsAreTakenOffTheForest() {
+        Box whole = new Box(-24, 56, -24, 24, 88, 24);
+        Box east = new Box(8, 56, -24, 24, 88, 24);
+        Box middle = new Box(-8, 56, -24, 7, 88, 24);
+        assertEquals(new Box(-24, 56, -24, 7, 88, 24), WoodDuties.worked(whole, List.of(east)));
+        assertEquals(new Box(-24, 56, -24, -9, 88, 24), WoodDuties.worked(whole, List.of(middle, east)), "the middle, once the east is off, is the end");
+        assertEquals(whole, WoodDuties.worked(whole, List.of(middle)), "a strip in the middle stays");
+        assertEquals(whole, WoodDuties.worked(whole, List.of(whole)), "all of it cut out: the whole again, to grow");
+        Map<String, WoodDuties.Duty> shared = WoodDuties.assign(List.of("Alice", "Bob", "Carl", "Dana"), new Position(0, 64, 0), List.of(east));
+        assertTrue(shared.get("Carl").area().maxX() <= 7, "Carl's strip off the cut-out east: " + shared.get("Carl").area());
+    }
 }

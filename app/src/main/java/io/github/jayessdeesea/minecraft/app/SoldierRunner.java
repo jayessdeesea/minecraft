@@ -513,7 +513,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return in.isPresent();
     }
 
-
     /** Whose body each soldier's step last waited on, by name. */
     private final Map<String, String> bodyInTheWay = new ConcurrentHashMap<>();
 
@@ -1027,7 +1026,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return OptionalInt.empty();
     }
 
-
     /**
      * Ticks to dig column ({@code x}, {@code z}) from {@code from} up to {@code to}: each block's break time
      * with the crew's usual kit - a stone pickaxe, stone shovel and axe, on the ground ({@link BreakTime}) -
@@ -1122,11 +1120,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Where each soldier looks for game: round its squad's objective, so a run of hunts doesn't carry it off. */
     private final Map<String, Position> huntGrounds = new ConcurrentHashMap<>();
 
-
-
-
-
-
     /** Each connected soldier's tree planting, by name. */
     private final Map<String, Forester> foresters = new ConcurrentHashMap<>();
 
@@ -1148,7 +1141,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final int PATROL_RADIUS = WALL_RADIUS - 2;
     /** Where a soldier walks to fit its workshop's chest, while it does - tick writes, squad loop reads. */
     private final Map<String, Optional<Position>> storeWalks = new ConcurrentHashMap<>();
-
 
     /** Masons out of blocks sent to draw cobblestone from the stockpile - squad loop writes, tick reads. */
     private final Set<String> drawingStone = ConcurrentHashMap.newKeySet();
@@ -1182,8 +1174,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * simulation a builder with two slots free ran out of pack halfway through a sword.
      */
     static final int KEEP_FULL_AT = 4;
-
-
 
     /** What of the depot's kinds each surface chest held when it was last open, as {@link #chestsSeen}. */
     private final Map<BlockPos, Map<ItemClassRegistry.ItemClass, Integer>> chestStock = new ConcurrentHashMap<>();
@@ -1303,8 +1293,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         return kinds;
     }
-
-
 
     /** The nearest stockpile chest, not to be salvaged, last seen holding {@code kind} - to {@code from}. */
     private Optional<Position> chestHolding(ItemClass kind, Position from) {
@@ -2273,7 +2261,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return stockpileOf(own != null && mineOfChest(chestCentre(own)).isPresent() ? Optional.empty() : chestOf(own), chestOf(campWorkshop));
     }
 
-
     /** Where {@code w}'s chest stands, if it has one standing. */
     private Optional<Position> chestOf(Workshop w) {
         return w == null || !w.chestStands(world) ? Optional.empty()
@@ -2845,7 +2832,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         keepRoadCutter = cutter;
     }
 
-
     /** Each squad's hands on the keep and where they stand, as its last keep cycle saw them - the squad loop's. */
     private final Map<String, Map<String, Position>> keepHandsAt = new ConcurrentHashMap<>();
 
@@ -3337,8 +3323,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The time a builder is given to get to its rectangles at all. */
     static final long DUE_SLACK_MILLIS = 60_000;
 
-
-
     /**
      * Time a rectangle's due is given for each block its builder climbs to it, on steps it puts up -
      * a step a few seconds. Live (field310), a hilltop's last cells 13 over the builders timed out on
@@ -3347,9 +3331,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final long DUE_MILLIS_A_CLIMB = 5_000;
 
     /** Whether {@code box} has ground, a step or a tree left at or over {@code level}. */
-
-
-
 
     /** The foreman's word to {@code builder} on the net: its rectangles at {@code level}, or to wait. */
     private void sayAssignment(String chief, String builder, int level, List<Box> boxes) {
@@ -3737,7 +3718,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return Optional.of(new Order.Dig(box, keep));
     }
 
-
     /** The log nearest {@code at}, within {@link #TREE_LOOK} across and up or down. */
     private Optional<BlockPos> nearestLog(Position at, Set<BlockPos> held) {
         int ax = (int) Math.floor(at.x()), ay = (int) Math.floor(at.y()), az = (int) Math.floor(at.z());
@@ -3948,9 +3928,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return Optional.ofNullable(best);
     }
 
-
-
-
     /** How long the keep's grove waits after a planting fails - no sapling, no leaves, no way to the cell. */
     static final long PLANTER_RETRY_MILLIS = 5 * 60_000;
     /** How far out from the depot the keep's grove is first looked for, and the steps out from there. */
@@ -4130,14 +4107,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return except;
     }
 
-
     /** Whether {@code cell} is a structure's - a wall line's, or the keep's slab - where a step goes in as cobblestone. */
     private boolean builtCell(BlockPos cell) {
         return chainOfCommand.flatten().slab().contains(cell.x(), cell.y(), cell.z()) || walls.values().stream().anyMatch(w -> w.contains(cell));
     }
-
-
-
 
     /**
      * {@code soldier}'s ground-work command to the routine that does it: a dig's cells to its
@@ -4323,7 +4296,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Setbacks<String> chestFits =
             new Setbacks<>(60_000, 20 * 60_000);
 
-
     /** The routine holding each soldier's hands, after its last tick - tick writes, squad loop reads. */
     private final Map<String, Hands.Routine> handsHeld = new ConcurrentHashMap<>();
 
@@ -4392,14 +4364,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return campStairs;
     }
 
-
-
     /** The mine kept on disk by {@code base}: a well's first, else a spiral cut before the standard. */
     private Optional<Staircase> keptMine(String base) {
         return mineStore.load(mineKey(base, true)).filter(k -> k.size() == 2 || k.size() == 3).map(k -> keptStairs(k, true))
                 .or(() -> mineStore.load(base).filter(k -> k.size() == 2 || k.size() == 3).map(k -> keptStairs(k, false)));
     }
-
 
     /** The iron an iron pickaxe takes. */
     private static final int IRON_A_PICKAXE = 3;
@@ -4594,7 +4563,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         squadStairs.put(key, level);
         return level;
     }
-
 
     /**
      * The squad's own level off {@code base}'s stairs (the rules of a mine: a squad to a level): the
@@ -4806,7 +4774,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         BlockPos cell = BlockPos.containing(chest.x(), chest.y(), chest.z());
         return squadStairs.values().stream().filter(s -> s.store().getFirst().equals(cell)).findFirst();
     }
-
 
     /**
      * {@code soldier}'s step on {@code stairs} for the night, holding no cut: a step of its own in a
@@ -5681,7 +5648,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .flatMap(d -> levelWork(s, (Directive.Level) d))
                 .ifPresent(work -> ground.put(s.name(), work)));
         // Sent for wood, the squad works it by duty (command.WoodDuties): each woodcutter its own strip's logs.
-        Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList());
+        // Its woodcutters' strips found cut out taken off the forest's ends, and the rest shared again (command.WoodDuties).
+        Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList(),
+                dutyBook.cutOut(squadName, objectiveOf(squadName), n -> gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE)));
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         statuses.forEach(s -> woodcutters.remove(s.name()));
         // Each producer's duty order (command.DutyOrder): its duty, its ground, and the dump its squad stockpiles at, else the camp's.
@@ -6712,7 +6681,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How much further than the nearest a place a resource was seen may be, and still be shared out to. */
     private static final double SPREAD_BEYOND_NEAREST = 24;
 
-
     private void logSquadSitrep() {
         for (Roster.Squad squadDefinition : roster.squads()) {
             List<DeterministicSoldier> squad = presentSoldiers(squadDefinition.name());
@@ -6756,7 +6724,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private final Map<String, Set<Long>> baseFootprints = new ConcurrentHashMap<>();
 
-
     /** How near a waypoint counts as there, for a patrol's next leg. */
     private static final double PATROL_REACHED = 2.5;
 
@@ -6799,7 +6766,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return cell -> !wallColumns.contains(column(cell.x(), cell.z())) && (camp == null
                 || Math.max(Math.abs(cell.x() - camp[0]), Math.abs(cell.z() - camp[1])) != WALL_RADIUS);
     }
-
 
     /**
      * The nearest point to {@code asked}, within {@value #SITE_SEARCH} blocks across and
@@ -7083,7 +7049,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Where failed joins are tried again from; set by {@link #run}. */
     private volatile ScheduledExecutorService reconnects;
-
 
     private void onJoined(SoldierDefinition definition, PlaySession session, PlayerPosition spawn,
                            AtomicReference<ScheduledExecutorService> activeScheduler,
@@ -8447,8 +8412,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** How far out a flight recorder notes the nearest hostile. */
     private static final double RECORDED_HOSTILE_RADIUS = 24;
-
-
 
     /**
      * Fires from {@code protocol}'s watchdog (or any other unexpected close - see {@code

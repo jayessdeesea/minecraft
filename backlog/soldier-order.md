@@ -37,10 +37,10 @@ handle's log off a woodcutter's strip, `WoodDutiesSimulationTest`).
   left: the soldier's tick reads its ground from the order for the wood too (the woodcutter's
   `Order.Gather` box and the planter's grove are still worked out apart), and deposits to the order's
   dump rather than `stockpileFor`.
-- **Timeliness by expected rate, for the wood.** A harvester with its plot growing and a baker with no
-  wheat in the stores aren't read as behind. Left: a woodcutter with a strip cut out, and a planter with no
-  opened ground, read as behind - the squad leader should tell a share with nothing left from one falling
-  behind, and close the gap (another strip, or the squad given back).
+- **Timeliness for the wood's middle and its planter.** A strip found cut out at the forest's end is taken off
+  and the rest shared again (`WoodDuties.worked`). Left: one cut out in the middle - the wood shared as two
+  boxes - and a planter with no opened ground, both still read as behind; and a forest cut out altogether
+  sending the squad on to the next (backlog: the wild forest near the camp is cut out).
 - **Sea level past the farm and grove.** Once a site is flat, the next is the nearest farm or grove box off
   its level (`Flatten.next`). The camp inside its wall is left at its own height (its floor is paved, not
   cut: the operator's earlier rule), and the wood's ground isn't flattened while it stands. Left: the

@@ -2,14 +2,17 @@ package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.command.Box;
 import io.github.jayessdeesea.minecraft.command.DutyOrder;
 import io.github.jayessdeesea.minecraft.command.FarmDuties;
+import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Position;
 import io.github.jayessdeesea.minecraft.command.ShareWatch;
 import io.github.jayessdeesea.minecraft.command.WoodDuties;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +20,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.ToIntFunction;
+import java.util.function.ToLongFunction;
 
 /**
  * Each producer's duty order from its squad leader (command.DutyOrder): one value a soldier has been told, in
@@ -35,6 +39,11 @@ final class DutyBook {
 
     private final Map<String, DutyOrder> orders = new ConcurrentHashMap<>();
     private final ShareWatch watch = new ShareWatch();
+    /** Each squad's strips found cut out, and the objective they were found on. */
+    private final Map<String, List<Box>> cutOut = new HashMap<>();
+    private final Map<String, Optional<Objective>> cutOutFor = new HashMap<>();
+    /** When each producer was given the ground it works. */
+    private final Map<String, Long> givenAt = new ConcurrentHashMap<>();
 
     /**
      * {@code squad}'s {@code soldiers}' orders this cycle at {@code now}: {@code given}'s for its producers, none for the
@@ -46,6 +55,9 @@ final class DutyBook {
             DutyOrder was = order == null ? orders.remove(soldier) : orders.put(soldier, order);
             if (order != null && !order.equals(was)) {
                 LOG.info("[{} -> {}] DUTY: {}", squad, soldier, order.line());
+            }
+            if (order != null && (was == null || !order.ground().equals(was.ground()))) {
+                givenAt.put(soldier, now);
             }
             if (order != null) {
                 watch.shared(soldier);
@@ -102,6 +114,28 @@ final class DutyBook {
             given.putAll(FarmDuties.orders(onTheFarm, f.plot().stream().map(c -> new Position(c.x(), c.y(), c.z())).toList(), dump));
         });
         return given;
+    }
+
+    /**
+     * The strips {@code squad}'s woodcutters have found cut out on its {@code objective}: each woodcutter's ground added
+     * once its gather found nothing in it - {@code foundNothingAt} - after it was given that ground, said once;
+     * forgotten when the objective moves. Live in the squad simulation, a gather that found nothing in the old strip
+     * marked the new one cut out the moment it was given.
+     */
+    synchronized List<Box> cutOut(String squad, Optional<Objective> objective, ToLongFunction<String> foundNothingAt) {
+        if (!objective.equals(cutOutFor.get(squad))) {
+            cutOutFor.put(squad, objective);
+            cutOut.put(squad, new ArrayList<>());
+        }
+        List<Box> found = cutOut.get(squad);
+        orders.values().stream().filter(o -> o.duty() == DutyOrder.Duty.WOODCUTTER
+                        && foundNothingAt.applyAsLong(o.soldier()) > givenAt.getOrDefault(o.soldier(), Long.MAX_VALUE))
+                .flatMap(o -> o.ground().stream()).filter(g -> !found.contains(g)).toList().forEach(g -> {
+                    found.add(g);
+                    LOG.info("[{}] the strip over x {}..{}, z {}..{} is cut out - the wood shared again without it", squad, g.minX(), g.maxX(),
+                            g.minZ(), g.maxZ());
+                });
+        return List.copyOf(found);
     }
 
     /** {@code soldier}'s duty order, if it's a producer. */

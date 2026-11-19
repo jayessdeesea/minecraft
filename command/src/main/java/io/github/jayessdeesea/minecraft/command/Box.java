@@ -35,10 +35,14 @@ public record Box(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
      * narrower than {@code parts}.
      */
     public List<Box> strips(int parts) {
+        return strips(parts, maxX - minX >= maxZ - minZ);
+    }
+
+    /** As {@link #strips(int)}, cut across x if {@code alongX}, else across z, whatever its shape. */
+    public List<Box> strips(int parts, boolean alongX) {
         if (parts < 1) {
             throw new IllegalArgumentException("parts: " + parts);
         }
-        boolean alongX = maxX - minX >= maxZ - minZ;
         int from = alongX ? minX : minZ, to = alongX ? maxX : maxZ;
         int width = to - from + 1;
         int n = Math.min(parts, width);
