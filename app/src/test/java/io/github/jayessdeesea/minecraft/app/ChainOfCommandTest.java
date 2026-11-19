@@ -429,7 +429,8 @@ class ChainOfCommandTest {
         two.restorePhase(Phase.CONSOLIDATION, 0);
 
         Objective night = two.sheltered(WALL, squad("Alpha", "Alice"));
-        assertEquals(new Position(-48, 64, 44), night.location(), "in the camp: " + night);
+        assertTrue(Cohesion.distance(new Position(-48, 64, 44), night.location()) <= ChainOfCommand.SPREAD * Math.sqrt(2) + 1e-9,
+                "in the camp, at its own point round its centre: " + night);
         assertTrue(night.task() instanceof Objective.Task.None, "sheltered in place, not mining: " + night);
     }
 
@@ -462,5 +463,30 @@ class ChainOfCommandTest {
                 List.of(), List.of()).getFirst(), "under way: kept on the wood");
         assertEquals(WALL, two.guarded(List.of(WALL, keep), List.of(alpha.apply(io.github.jayessdeesea.minecraft.command.Progress.State.DONE), bravo),
                 List.of(), List.of()).getFirst(), "the wood cut out: given its next task");
+    }
+
+    /**
+     * Before the buildup each squad shelters in place in the camp at a point of its own round the camp's: live (field482),
+     * all four on the camp's centre crowded each other 69 times a night.
+     */
+    @Test
+    void beforeTheBuildupEachSquadSheltersInTheCampAtItsOwnPoint() {
+        ChainOfCommand two = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
+        two.onFoothold(new io.github.jayessdeesea.minecraft.command.Foothold(new Position(-49, 75, 44), List.of()));
+        two.onTime(TimeOfDay.of(18000, true));
+        java.util.function.Function<String, SquadStatus> squad = name -> new SquadStatus(name, new Report.InPosition(),
+                List.of(new SoldierStatus(name.equals("Alpha") ? "Alice" : "Bob", new Position(-40, 64, 40), new Order.Idle(), new Report.InPosition(),
+                        Optional.empty())), List.of(), Optional.empty(), false);
+
+        Objective alpha = two.sheltered(WALL, squad.apply("Alpha"));
+        Objective bravo = two.sheltered(WALL, squad.apply("Bravo"));
+
+        assertEquals("Shelter in place in the camp through the night", alpha.mission());
+        assertTrue(Cohesion.distance(alpha.location(), bravo.location()) >= ChainOfCommand.SPREAD, alpha.location() + " and " + bravo.location());
     }
 }

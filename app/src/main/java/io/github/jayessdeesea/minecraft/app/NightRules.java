@@ -30,11 +30,12 @@ final class NightRules {
 
     /**
      * The night as the chain of command has it: whether the shelter rule is on, the time, the camp, the phase, whether
-     * the keep is built by day, the keep's mine, whether there are no squads, each squad's standing patrol base, and how
-     * the ground is read.
+     * the keep is built by day, the keep's mine, whether there are no squads, each squad's standing patrol base, how
+     * the ground is read, and each squad's own point round a shared one.
      */
     record Night(boolean shelterAtNight, TimeOfDay time, Optional<Foothold> foothold, Phase phase, boolean keepByDay, Position keepMine,
-                 boolean noSquads, Function<String, Optional<Objective>> standingBase, Ground ground) {
+                 boolean noSquads, Function<String, Optional<Objective>> standingBase, Ground ground,
+                 java.util.function.BiFunction<Position, String, Position> spread) {
     }
 
     private NightRules() {
@@ -73,7 +74,10 @@ final class NightRules {
         // Before the buildup, shelter in place in the camp, not a patrol base wherever it stands (operator, 2026-11-18).
         Foothold base = n.foothold().orElse(null);
         if (n.phase().beforeBuildup() && base != null) {
-            Objective inCamp = new Objective("Shelter in place in the camp through the night", base.camp(), "Safe until dawn", new Objective.Task.None());
+            // Each squad its own point round the camp's: live (field482), all four on the camp's centre crowded each
+            // other 69 times a night, soldiers of three squads digging the one cell.
+            Objective inCamp = new Objective("Shelter in place in the camp through the night", n.spread().apply(base.camp(), squad.squadName()),
+                    "Safe until dawn", new Objective.Task.None());
             if (!objective.equals(inCamp)) {
                 LOG.warn("[PL -> {}] at or near night, in {}, ordered '{}' - shelters in place in the camp", squad.squadName(), n.phase(), objective.mission());
             }

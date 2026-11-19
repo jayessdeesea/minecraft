@@ -10,8 +10,8 @@ monsters spawn and walk in, so the day is worked to its end. The platoon leader 
 before dark, to plan the night:
 - **Before the buildup, nobody mines at night** (operator, 2026-11-18: not safe; we don't want to lose the
   few resources we have): in the SEIZURE and the CONSOLIDATION (`command.Phase`, docs/military-doctrine.md
-  section 17) every squad shelters in place in the camp - not a patrol base wherever it stands - and by day iron
-  isn't a shortfall.
+  section 17) every squad shelters in place in the camp, each at a point of its own round its centre - not a
+  patrol base wherever it stands - and by day iron isn't a shortfall.
 - **From the buildup, every squad is on the night shift** (operator, 2026-11-13): whatever the platoon leader
   orders, a patrol base included, it's sent down the mine, every squad by the one stairway. Under the keep
   rule it's the keep's own mine, off its north-west corner (`ChainOfCommand.KEEP_MINE`): from the

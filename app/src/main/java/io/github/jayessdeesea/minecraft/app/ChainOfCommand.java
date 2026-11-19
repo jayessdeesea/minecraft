@@ -392,7 +392,7 @@ public class ChainOfCommand implements DisposableBean {
     /** The night as its rules read it, now. */
     private NightRules.Night night() {
         return new NightRules.Night(shelterAtNight, time, Optional.ofNullable(foothold), phaseNow, keepByDay, mines.keepMine(), squads.isEmpty(),
-                name -> squads.get(name).objective().filter(Objective::patrolBase), ground);
+                name -> squads.get(name).objective().filter(Objective::patrolBase), ground, this::spread);
     }
 
     /**
