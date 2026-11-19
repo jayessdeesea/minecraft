@@ -51,6 +51,11 @@ public interface WorldView {
         return false;
     }
 
+    /** Whether the block at (x, y, z) is a fence gate - solid shut, open to walk through open. */
+    default boolean isGate(int x, int y, int z) {
+        return false;
+    }
+
     /** Whether the block at (x, y, z) is a chest (it's also {@link #isSolid}). */
     default boolean isChest(int x, int y, int z) {
         return false;

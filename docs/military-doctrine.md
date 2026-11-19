@@ -200,7 +200,10 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    farmland, at least 160 of its 220; laid out on the chunk's lines - a fence on x%16==0 and z%16==0, a
    gate beside each corner, four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) in the
    farmland's own layer, a chest at local (13, 13). Its farmers dig the holes and fill them from a
-   pond with the bucket; a farmer on a farm with holes still dry asks for one (`app.CampFarm`). Sized
+   pond with the bucket, and put up its fence, gates and chest from what they carry - each gate
+   opened once it stands, and left open: the farm's way in, since a soldier doesn't yet work a gate
+   on its route. A farmer asks for what its farm still wants: a hoe, a bucket while a hole is dry, a
+   batch of fence posts, gates or a chest while any is still to stand (`Farmer.wants`; `app.CampFarm`). Sized
    to build the basic load, not only to feed: live, 97 cells made about 20 loaves an hour, as many
    as eight soldiers ate, and none carried more than a few rations; and 192, eight soldiers' worth,
    left sixteen with twelve at no bread (field369).
@@ -1006,7 +1009,9 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    (`Pathfinder.TRAMPLE_COST`), never a wall: with the farm tilled to its rim, every soldier at the
    camp stood with "no route" to the keep - and never builds a step on it, so a farm in a hollow
    was reached only where the ground happened to be level, and steps built out of it buried a
-   third of the camp's farm.
+   third of the camp's farm. Then its chunk farms' fence, gates and chest, with
+   what it carries (`Farmer.fixtures`) - a post the builder can't place left, the rest put up - and
+   any of their gates shut, opened.
 3. Harvests ripe wheat, for wheat and seeds to plant again.
 4. Plants seeds on bare farmland.
 5. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills

@@ -7200,14 +7200,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean bakes = dutyBook.is(name, DutyOrder.Duty.BAKER);
             dutyBook.sample(definition.squad(), name, inventory::count, threatened || field != null && !Farmer.hasWork(world, field, Set.of())
                     || bakes && chainOfCommand.stores().filter(st -> st.wheat() > 0).isEmpty(), clockwork.millis());
-            if (field != null && inventory.count(ItemClass.HOE) == 0) {
-                tools.add(Recipe.WOODEN_HOE);
-            }
-            // Its bucket, for a farm with water holes to fill (bot.farm.ChunkFarm).
-            boolean bucket = inventory.count(ItemClass.BUCKET) + inventory.count(ItemClass.WATER_BUCKET) > 0;
-            bucketOnFarm |= field != null && bucket;
-            if (field != null && !bucket && field.holes().stream().anyMatch(h -> !world.isWaterSource(h.x(), h.y(), h.z()))) {
-                tools.add(Recipe.BUCKET);
+            // Its hoe, a bucket for its farm's water holes, its chunk farm's fixtures (Farmer.wants).
+            if (field != null) {
+                tools.addAll(Farmer.wants(world, field, inventory));
+                bucketOnFarm |= inventory.count(ItemClass.BUCKET) + inventory.count(ItemClass.WATER_BUCKET) > 0;
             }
             // A shovel for ground work - a dig of the camp's or the keep's ground, or dirt for a wall:
             // stone if it carries the cobblestone, wooden if not.

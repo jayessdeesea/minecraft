@@ -83,13 +83,17 @@ final class SimItems {
     }
 
     /** The block an item places, if it's one the simulation knows. */
+    /** An oak fence, and an oak fence gate shut and open, facing north: as the server numbers their states. */
+    static final int FENCE = 8666, GATE = 10387, GATE_OPEN = 10385;
+
     static Optional<Integer> placesAs(int item) {
         return switch (item) {
             case ITEM_COBBLESTONE -> Optional.of(COBBLESTONE);
             case ITEM_DIRT -> Optional.of(DIRT);
             case ITEM_OAK_LOG -> Optional.of(OAK_LOG);
             case ITEM_TORCH -> Optional.of(TORCH);
-            default -> item == itemNamed("spruce_sapling") ? Optional.of(SPRUCE_SAPLING) : Optional.empty();
+            default -> item == itemNamed("spruce_sapling") ? Optional.of(SPRUCE_SAPLING) : item == itemNamed("oak_fence") ? Optional.of(FENCE)
+                    : item == itemNamed("oak_fence_gate") ? Optional.of(GATE) : Optional.empty();
         };
     }
 

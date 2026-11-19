@@ -7,7 +7,8 @@ import java.util.OptionalInt;
 import java.util.function.Consumer;
 
 /**
- * A bucket used in the squad simulation, as the server uses one: a ray cast along the player's look from its eyes,
+ * Water in the squad simulation: flowing into a cell dug beside it ({@link #flow}), and a bucket used as the server
+ * uses one: a ray cast along the player's look from its eyes,
  * out to its reach. An empty bucket takes the first water source the ray meets - a pond's source with two more
  * beside it stays, as it fills again; a lone one is gone - and a full one pours a source into the open cell before
  * the first block the ray meets, water and all passed through.
@@ -57,5 +58,25 @@ final class SimBuckets {
             last = c;
         }
         return OptionalInt.of(held);
+    }
+
+    /**
+     * Water flowing into a cell dug beside it, and on over ground along what's open level with it, a level weaker each
+     * block out to 7 from its source - the server's flow on the flat; none down a drop, which no scenario needs.
+     */
+    static void flow(SimServer world, int x, int y, int z) {
+        int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        int level = 8;
+        for (int[] d : sides) {
+            int b = world.block(x + d[0], y, z + d[1]);
+            level = b >= SimServer.WATER && b < SimServer.WATER + 7 ? Math.min(level, b - SimServer.WATER + 1) : level;
+        }
+        if (level > 7 || world.block(x, y, z) != SimServer.AIR || world.block(x, y - 1, z) == SimServer.AIR) {
+            return;
+        }
+        world.set(x, y, z, SimServer.WATER + level);
+        for (int[] d : sides) {
+            flow(world, x + d[0], y, z + d[1]);
+        }
     }
 }

@@ -100,11 +100,11 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
 
     /**
      * It as a farm to tend: its plot the ground that makes farmland now, standing on cells {@code walkable} allows; its
-     * water its first hole; its holes to dig and fill.
+     * water its first hole; itself, for its holes to dig and fill and its fence, gates and chest to put up.
      */
     public FarmPlan plan(WorldView world, Predicate<BlockPos> walkable) {
         List<BlockPos> plot = ground().stream().filter(c -> farmable(world, c) && walkable.test(c.offset(0, 1, 0))).toList();
-        return new FarmPlan(holes().getFirst(), plot, List.of(), holes());
+        return new FarmPlan(holes().getFirst(), plot, List.of(), List.of(this));
     }
 
     /**

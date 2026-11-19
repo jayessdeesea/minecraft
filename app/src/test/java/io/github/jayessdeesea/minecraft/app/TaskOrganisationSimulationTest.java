@@ -284,6 +284,29 @@ class TaskOrganisationSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
     }
 
+    /**
+     * The chunk farm's fixtures put up by its farmer from what it carries: the fence on the chunk's lines, the gates
+     * beside its corners - opened, the farm's way in - and its chest.
+     */
+    @Test
+    void aChunkFarmIsFencedItsGatesOpenedAndItsChestStood() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::pondOfThreeByTheCamp, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.BUCKET), 1},
+                        new int[]{9, SimServer.itemNamedOrMinus("oak_fence"), 64}, new int[]{10, SimServer.itemNamedOrMinus("oak_fence_gate"), 4},
+                        new int[]{11, SimServer.itemOf(ItemClass.CHEST), 1}), "0,0");
+        clock.advance(14 * 60_000);
+
+        ChunkFarm farm = new ChunkFarm(-1, 0, GROUND);
+        long posts = farm.fence().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimItems.FENCE).count();
+        long open = farm.gates().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimItems.GATE_OPEN).count();
+        String events = "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
+        assertTrue(posts >= 40, "the fence up: " + posts + " of " + farm.fence().size() + events);
+        assertTrue(open >= 2, "gates open: " + open + events);
+        assertEquals(SimServer.CHEST, server.block(farm.chest().x(), farm.chest().y(), farm.chest().z()), "its chest" + events);
+    }
+
     /** Flat, with a pool of water at the ground eight blocks south and one east of (8, 8). */
     private static int poolSouth(int x, int y, int z) {
         return x == 9 && z == 16 && y == GROUND ? SimServer.WATER : SquadSimulationTest.flat(x, y, z);

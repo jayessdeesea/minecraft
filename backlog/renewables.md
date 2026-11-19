@@ -45,8 +45,7 @@ keep's grove, cleared for if the ground near the depot is wooded.
 Built so far: the keep's grove sited round its depot, any depth under it, and its ground cleared by
 the wood party when none qualifies; trees felled whole and replanted (docs/military-doctrine.md § 4); a
 farm's, a grove's and a wood's ground whole chunks on the server's grid (`command.WorkArea`).
-Left: siting and levelling production chunks; fences and gates round them (fences are classed and
-dug today - `ClearingTest.aFenceAndTheGroundUnderItAreDug` - but never built); gates walked through.
+Left: levelling production chunks; gates worked on a route (see More farmland below).
 
 ## The keep's grove (operator, 2026-11-17)
 No site near the depot holds 16 cells: several groves, each what the ground holds, and the search
@@ -109,8 +108,9 @@ the force can build them:
   stream dammed to a block deep with dirt and farmed along its banks; trenches for a squad's FARM order's plot,
   which is sited round its water alone.
 - **With a bucket (three iron, the buildup):** built - the bucket, its carrying (`bot.supply.WaterCarrier`), and the camp's
-  first chunk farm sited, its holes dug and filled, its ground tilled (docs/military-doctrine.md, the camp's farm). Left:
-  its fence, gates and chest made and placed; its chunk flattened to one level - sea level in time; the next chunk farm
+  first chunk farm sited, its holes dug and filled, its fence, gates and chest put up, its ground tilled
+  (docs/military-doctrine.md, the camp's farm). Left: a gate worked on a route - opened, walked through, shut - so the
+  gates can stand shut against mobs; its chunk flattened to one level - sea level in time; the next chunk farm
   once one is tended; the design as the operator gave it: chunk farms, built one at a time. Each a chunk, flat at sea level,
   fenced on its x%16==0 and z%16==0 lines (shared with the next farm), gates beside the corners; tilled but for
   four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) - each hydrates the 9x9 round it - in the farmland's

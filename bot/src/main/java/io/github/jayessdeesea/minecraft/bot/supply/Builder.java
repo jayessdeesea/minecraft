@@ -264,6 +264,11 @@ public final class Builder {
         return held.isPresent() && materials.contains(held.get());
     }
 
+    /** The cells it's given up on. */
+    public synchronized Set<BlockPos> skipped() {
+        return Set.copyOf(skipped);
+    }
+
     /** Tries again every cell given up on - the ground changed (a breach found), so a cell that wouldn't take a block may now. */
     public synchronized void retrySkipped() {
         skipped.clear();

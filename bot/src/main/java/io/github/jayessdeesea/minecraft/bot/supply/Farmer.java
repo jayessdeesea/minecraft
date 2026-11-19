@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
+import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
@@ -17,8 +18,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
@@ -31,6 +34,8 @@ import java.util.function.BooleanSupplier;
  *   <li>its trenches cut ({@link #trenchToCut}), out from the pond, for its water to flow along;</li>
  *   <li>its earthwork ({@link #earthwork}): a block put down on the plot dug off, and the ground round
  *   it cut down to the plot's level, so every cell is walked onto on the flat;</li>
+ *   <li>its chunk farms' fixtures ({@link #fixtures}), with what it carries: the fence, the gates - opened, the
+ *   farm's way in - and the chest;</li>
  *   <li>harvest ripe wheat - wheat, and seeds to plant again;</li>
  *   <li>plant seeds on farmland with nothing growing;</li>
  *   <li>till the plot's ground into farmland, with a hoe;</li>
@@ -65,6 +70,12 @@ public final class Farmer {
     private final WaterCarrier carrier;
     /** The hole it's filling. */
     private BlockPos watering;
+    /** What a chunk farm's put up with, in the order it's put up: its fence, its gates, its chest. */
+    static final List<ItemClass> FIXTURES = List.of(ItemClass.FENCE, ItemClass.FENCE_GATE, ItemClass.CHEST);
+    /** Puts up each kind of fixture. */
+    private final Map<ItemClass, Builder> builders = new EnumMap<>(ItemClass.class);
+    /** The kind of fixture it's putting up. */
+    private ItemClass placing;
     /** Does the farm's {@link #earthwork}: a {@link Clearer} over it. */
     private final Clearer unburier;
     private BlockPos claimed;
@@ -100,6 +111,7 @@ public final class Farmer {
         this.shared = shared;
         this.steps = steps;
         this.carrier = new WaterCarrier(name, session, inventory);
+        FIXTURES.forEach(item -> builders.put(item, new Builder(name, session, inventory, List.of(item))));
         // Cut from off the farmland: in the squad simulation, stands on the plot in its hollow had the
         // farmers walking in and out over it, trampling it, to dig the ground round it.
         this.unburier = new Clearer(name, session, inventory, claims, (world, stand) -> !world.isFarmland(stand.x(), stand.y() - 1, stand.z()));
@@ -164,6 +176,75 @@ public final class Farmer {
     /** The cells any farmer working this farm couldn't work, for a while. */
     private final Setbacks<BlockPos> shared;
 
+    /**
+     * The cells of {@code farm}'s chunk farms still to put {@code item} in - its fence posts, its gates or its chest -
+     * open, with ground under them, less those {@code skipped}: none for any other item.
+     */
+    static List<BlockPos> fixtures(WorldView world, FarmPlan farm, ItemClass item, Set<BlockPos> skipped) {
+        return farm.chunks().stream().flatMap(c -> (item == ItemClass.FENCE ? c.fence() : item == ItemClass.FENCE_GATE ? c.gates()
+                        : item == ItemClass.CHEST ? List.of(c.chest()) : List.<BlockPos>of()).stream())
+                .filter(f -> !world.isSolid(f.x(), f.y(), f.z()) && !world.isGate(f.x(), f.y(), f.z()) && !world.isWater(f.x(), f.y(), f.z())
+                        && world.isSolid(f.x(), f.y() - 1, f.z()) && !skipped.contains(f)).toList();
+    }
+
+    /**
+     * What a farmer keeping {@code farm} needs made, carrying what {@code inventory} holds: a hoe; a bucket while its
+     * holes are dry; and the fixtures its chunk farms still want - fence posts, gates, a chest - one batch at a time.
+     */
+    public static Set<Recipe> wants(WorldView world, FarmPlan farm, Inventory inventory) {
+        Set<Recipe> wants = new LinkedHashSet<>();
+        if (inventory.count(ItemClass.HOE) == 0) {
+            wants.add(Recipe.WOODEN_HOE);
+        }
+        if (inventory.count(ItemClass.BUCKET) + inventory.count(ItemClass.WATER_BUCKET) == 0
+                && farm.holes().stream().anyMatch(h -> !world.isWaterSource(h.x(), h.y(), h.z()))) {
+            wants.add(Recipe.BUCKET);
+        }
+        Map<ItemClass, Recipe> makes = Map.of(ItemClass.FENCE, Recipe.FENCE, ItemClass.FENCE_GATE, Recipe.FENCE_GATE, ItemClass.CHEST, Recipe.CHEST);
+        for (ItemClass item : FIXTURES) {
+            if (inventory.count(item) == 0 && !fixtures(world, farm, item, Set.of()).isEmpty()) {
+                wants.add(makes.get(item));
+            }
+        }
+        return wants;
+    }
+
+    /** A tick of putting up the farm's fixtures of the kind under way: over when none is left, or none is carried. */
+    private void place(WorldView world, FarmPlan farm) {
+        Builder builder = builders.get(placing);
+        List<BlockPos> left = fixtures(world, farm, placing, builder.skipped());
+        if (left.isEmpty() || inventory.count(placing) == 0) {
+            builder.stop();
+            placing = null;
+            return;
+        }
+        if (builder.tick(soldier, world, left) instanceof Builder.Progress.Failed(String why)) {
+            // A cell that won't take one is the builder's to leave out: the rest are put up, and the farm's other work goes on.
+            LOG.info("{} leaves the farm's {} for now - {}", name, placing, why);
+            placing = null;
+        }
+    }
+
+    /** Opens the shut gate at {@code gate}, from the ground beside it: the farm's way in, left open. */
+    private void open(WorldView world, BlockPos gate) {
+        Optional<BlockPos> stand = WaterCarrier.beside(world, gate.offset(0, -1, 0));
+        if (stand.isEmpty()) {
+            passedOver.failed(gate, ticks, "no ground beside the farm's gate at " + gate);
+            return;
+        }
+        claimed = gate;
+        claims.add(gate);
+        BlockPos s = stand.get();
+        standAt = new Position(s.x() + 0.5, s.y(), s.z() + 0.5);
+        fieldWork = new Script(name, List.of(
+                new Step("walk to " + s, () -> {
+                }, new Expect("standing at " + s, () -> Math.hypot(soldier.x() - standAt.x(), soldier.z() - standAt.z()) < 0.6
+                        && Math.abs(soldier.y() - standAt.y()) < 0.6), Math.max(WALK_TICKS, Digger.walkTicks(soldier, s))),
+                new Step("open the gate at " + gate, () -> !world.isSolid(gate.x(), gate.y(), gate.z()), () -> session.useBlock(gate.x(), gate.y(), gate.z()),
+                        new Expect("the gate at " + gate + " open", () -> !world.isSolid(gate.x(), gate.y(), gate.z())), ANSWER_TICKS)));
+        LOG.info("{} opens the farm's gate at {}", name, gate);
+    }
+
     /** A tick of filling the hole it's watering: done when its water's there; a run that fails passes the hole over. */
     private void fill(WorldView world) {
         switch (carrier.tick(soldier, world, watering)) {
@@ -191,13 +272,13 @@ public final class Farmer {
     }
 
     public synchronized boolean active() {
-        return digger != null || fieldWork != null || unburier.active() || carrier.active();
+        return digger != null || fieldWork != null || unburier.active() || carrier.active() || placing != null;
     }
 
     /** Where the soldier should be standing for the job under way. */
     public synchronized Optional<Position> standAt() {
         return digger != null ? Optional.of(digger.standAt()) : unburier.active() ? unburier.standAt()
-                : carrier.active() ? carrier.standAt() : Optional.ofNullable(standAt);
+                : carrier.active() ? carrier.standAt() : placing != null ? builders.get(placing).standAt() : Optional.ofNullable(standAt);
     }
 
     /** Why the last job failed, while the soldier waits before the next. */
@@ -281,6 +362,10 @@ public final class Farmer {
             fill(world);
             return;
         }
+        if (placing != null) {
+            place(world, farm.get());
+            return;
+        }
         if (cooldown > 0) {
             return;
         }
@@ -348,6 +433,20 @@ public final class Farmer {
             if (unburier.active()) {
                 return;
             }
+        }
+        // Its chunk farms' fixtures, with what it carries: the fence, the gates - opened, the farm's way in - and the chest.
+        for (ItemClass item : FIXTURES) {
+            if (inventory.count(item) > 0 && !fixtures(world, farm, item, builders.get(item).skipped()).isEmpty()) {
+                placing = item;
+                place(world, farm);
+                return;
+            }
+        }
+        Optional<BlockPos> shut = farm.chunks().stream().flatMap(c -> c.gates().stream()).filter(g -> world.isGate(g.x(), g.y(), g.z())
+                && world.isSolid(g.x(), g.y(), g.z()) && !claims.contains(g) && !passedOver.barred(g, ticks)).findFirst();
+        if (shut.isPresent()) {
+            open(world, shut.get());
+            return;
         }
         Optional<BlockPos> ripe = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).findFirst();
         if (ripe.isPresent()) {
@@ -499,6 +598,10 @@ public final class Farmer {
         unburier.stop();
         carrier.stop();
         watering = null;
+        if (placing != null) {
+            builders.get(placing).stop();
+            placing = null;
+        }
         endFieldWork();
     }
 }

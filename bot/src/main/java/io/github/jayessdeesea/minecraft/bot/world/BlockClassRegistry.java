@@ -61,6 +61,7 @@ final class BlockClassRegistry {
     private static final BitSet TORCHES = new BitSet();
     /** Block states that are chests, dry or waterlogged - a stockpile is opened at one. Filled while loading. */
     private static final BitSet CHESTS = new BitSet();
+    private static final BitSet GATES = new BitSet();
     /** Water source blocks (level 0): what a farm is tilled beside. Filled while loading. */
     private static final BitSet WATER_SOURCES = new BitSet();
     /**
@@ -112,6 +113,11 @@ final class BlockClassRegistry {
     /** Whether {@code stateId} is a chest. */
     static boolean isChest(int stateId) {
         return stateId >= 0 && CHESTS.get(stateId);
+    }
+
+    /** Whether {@code stateId} is a fence gate, open or shut. */
+    static boolean isGate(int stateId) {
+        return stateId >= 0 && GATES.get(stateId);
     }
 
     static boolean isWaterSource(int stateId) {
@@ -237,6 +243,9 @@ final class BlockClassRegistry {
                     }
                     if (fields.length > 2 && fields[2].equals("chest")) {
                         CHESTS.set(stateId);
+                    }
+                    if (fields.length > 2 && fields[2].endsWith("_fence_gate")) {
+                        GATES.set(stateId);
                     }
                     if (fields.length > 2 && fields[2].endsWith("_sapling")) {
                         SAPLINGS.set(stateId);

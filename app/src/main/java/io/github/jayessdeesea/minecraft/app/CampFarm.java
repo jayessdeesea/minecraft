@@ -77,10 +77,11 @@ final class CampFarm {
         if (kept == null) {
             // As it was before a restart, while its water is there.
             kept = store.load(key).filter(cells -> cells.size() > 1).map(cells -> new FarmPlan(cells.getFirst(), cells.subList(1, cells.size()),
-                    store.load(key + ",trench").orElse(List.of()), store.load(key + ",holes").orElse(List.of()))).orElse(null);
+                    store.load(key + ",trench").orElse(List.of()), store.load(key + ",chunks").orElse(List.of()).stream()
+                    .map(c -> new ChunkFarm(c.x(), c.z(), c.y())).toList())).orElse(null);
         }
         boolean resite = kept == null || !world.isWater(kept.water().x(), kept.water().y(), kept.water().z());
-        boolean chunk = bucket && !chunked && kept != null && kept.holes().isEmpty();
+        boolean chunk = bucket && !chunked && kept != null && kept.chunks().isEmpty();
         if (resite || !grown || chunk) {
             Set<BlockPos> walkable = Pathfinder.reachable(world, at, RADIUS + 4, reachBudget);
             FarmPlan before = resite ? null : kept;
@@ -91,7 +92,7 @@ final class CampFarm {
                 kept = FarmPlan.grown(world, kept, cells(soldiers), VERTICAL, walkable::contains, GROWN_RADIUS);
                 grown = true;
             }
-            if (kept != null && bucket && kept.holes().isEmpty()) {
+            if (kept != null && bucket && kept.chunks().isEmpty()) {
                 chunked = true;
                 FarmPlan watered = kept;
                 Optional<ChunkFarm> site = ChunkFarm.site(world, at, CHUNK_RINGS, walkable::contains, Set.of());
@@ -100,11 +101,12 @@ final class CampFarm {
                 kept = site.map(c -> watered.with(c.plan(world, walkable::contains))).orElse(kept);
             }
             if (kept != null && !kept.equals(before)) {
-                LOG.info("[Foothold] the camp's farm: by the water at {}, {} cells, {} trench cells, {} water holes", kept.water(),
-                        kept.plot().size(), kept.trenches().size(), kept.holes().size());
+                LOG.info("[Foothold] the camp's farm: by the water at {}, {} cells, {} trench cells, {} chunk farms", kept.water(),
+                        kept.plot().size(), kept.trenches().size(), kept.chunks().size());
                 store.save(key, Stream.concat(Stream.of(kept.water()), kept.plot().stream()).toList());
                 store.save(key + ",trench", kept.trenches());
-                store.save(key + ",holes", kept.holes());
+                // Each chunk farm as its chunk and level: (chunk x, level, chunk z).
+                store.save(key + ",chunks", kept.chunks().stream().map(c -> new BlockPos(c.chunkX(), c.level(), c.chunkZ())).toList());
             }
         }
         // Kept however it was found - sited now, or as it was before a restart: live, a farm loaded from disk was

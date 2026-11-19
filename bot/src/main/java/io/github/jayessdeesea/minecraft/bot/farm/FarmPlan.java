@@ -18,11 +18,12 @@ import java.util.function.Predicate;
  * tills (or farmland already) level with the water, with open air over it for the crop. Before the force has a
  * bucket the farm grows along {@link #trenches}: a block wide, cut at the farmland's level off a pond, the pond's
  * water flowing down each to {@link #FLOW} blocks, and hydrating the ground beside it as a source does. With one, it
- * takes in a {@link ChunkFarm}: its {@link #holes} dug in the farmland's layer and filled by bucket.
+ * takes in {@link #chunks}: their holes dug in the farmland's layer and filled by bucket, their fences, gates and chests
+ * put up.
  *
  * <p>Pure: worked out from a {@link WorldView}, so it's tested without a server.
  */
-public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenches, List<BlockPos> holes) {
+public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenches, List<ChunkFarm> chunks) {
 
     /** How far from water farmland stays hydrated, in each direction. */
     public static final int HYDRATION = 4;
@@ -37,10 +38,15 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenc
     public FarmPlan {
         plot = List.copyOf(plot);
         trenches = List.copyOf(trenches);
-        holes = List.copyOf(holes);
+        chunks = List.copyOf(chunks);
     }
 
-    /** A farm round its water and along its trenches, no hole to fill. */
+    /** Its chunk farms' water holes. */
+    public List<BlockPos> holes() {
+        return chunks.stream().flatMap(c -> c.holes().stream()).toList();
+    }
+
+    /** A farm round its water and along its trenches, no chunk farm. */
     public FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenches) {
         this(water, plot, trenches, List.of());
     }
@@ -50,14 +56,14 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenc
         this(water, plot, List.of());
     }
 
-    /** This farm with {@code other}'s ground, trenches and holes taken in, kept by its own water: one farm, tended as one. */
+    /** This farm with {@code other}'s ground, trenches and chunk farms taken in, kept by its own water: one farm, tended as one. */
     public FarmPlan with(FarmPlan other) {
         LinkedHashSet<BlockPos> cells = new LinkedHashSet<>(plot);
         cells.addAll(other.plot());
         LinkedHashSet<BlockPos> cut = new LinkedHashSet<>(trenches);
         cut.addAll(other.trenches());
-        LinkedHashSet<BlockPos> dug = new LinkedHashSet<>(holes);
-        dug.addAll(other.holes());
+        LinkedHashSet<ChunkFarm> dug = new LinkedHashSet<>(chunks);
+        dug.addAll(other.chunks());
         return new FarmPlan(water, List.copyOf(cells), List.copyOf(cut), List.copyOf(dug));
     }
 
@@ -142,7 +148,7 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenc
             plot.addAll(watered(world, cut.get(), plot, trenches, walkable));
         }
         return plot.size() == farm.plot().size() && trenches.size() == farm.trenches().size() ? farm
-                : new FarmPlan(farm.water(), List.copyOf(plot), trenches, farm.holes());
+                : new FarmPlan(farm.water(), List.copyOf(plot), trenches, farm.chunks());
     }
 
     /**
