@@ -102,8 +102,8 @@ leaves for (§ 12, TREE_FARM). What's left:
 ## The wild forest near the camp is cut out (field470)
 A full day on wood duty felled 12 trees: the woodcutters' strips held no trees ("no LOG within 144 blocks of
 the objective", Fran, again and again), Dana alone filled a load of 16, and the stockpile stayed at 0 logs.
-The site was the trees last seen - `WoodSightings` keeps them a day, including ones since cut. Wanted: a wood
-squad sent to the nearest forest not yet cut - the survey looking farther once the near one's spent - and a
-remembered site dropped once a gather there finds nothing. Saplings are 0, so the grove (the lasting answer)
-waits on the planter's drops.
+A wood whose every strip its woodcutters found cut out is now dropped from the sightings for a day
+(`WoodSightings.spent`), so the next squad goes to the nearest other seen. Left: the survey looking farther
+once every wood it sees is spent - it shows three stands within 64 blocks, and with all of them cut there's
+nowhere to send anyone. Saplings are 0, so the grove (the lasting answer) waits on the planter's drops.
 

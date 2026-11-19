@@ -514,18 +514,14 @@ public class ChainOfCommand implements DisposableBean {
 
     /** The work that makes good {@code shortfall} for a squad released from the flatten, if there's somewhere to do it. */
     private Optional<Objective> toShortfall(PlatoonSergeant.Shortfall shortfall, SquadStatus squad, List<ResourceSite> woods, int wanted) {
-        String why = "Released from the flatten (" + buildersWanted(wanted) + "): the force is short of ";
-        Foothold base = foothold;
-        return switch (shortfall) {
-            case FOOD -> Optional.ofNullable(base).map(b -> new Objective("Work the camp's farm", b.camp(), why + "food", new Objective.Task.Farm()));
-            case IRON -> Optional.of(new Objective("Mine the keep's mine for iron", keepMine, why + "iron", new Objective.Task.Mine()));
-            case WOOD -> {
-                Position from = squad.soldiers().isEmpty() ? flatten.centre() : squad.soldiers().getFirst().position();
-                yield woods.stream().filter(w -> w.resource() == Resource.WOOD)
-                        .min(java.util.Comparator.comparingDouble(w -> Math.hypot(w.location().x() - from.x(), w.location().z() - from.z())))
-                        .map(w -> new Objective("Gather wood", w.location(), why + "logs", new Objective.Task.Gather(Resource.WOOD)));
-            }
-        };
+        return DayWorkRules.toShortfall(shortfall, squad, woods, "Released from the flatten (" + buildersWanted(wanted) + "): the force is short of ",
+                Optional.ofNullable(foothold), keepMine, flatten);
+    }
+
+    /** The wood at {@code at} cut out, its squad leader says: its sightings dropped a while, so no squad is sent back to it. */
+    public void onWoodSpent(Position at) {
+        woodSightings.spent(at, clockwork.millis());
+        LOG.info("[PL] the wood at {} is cut out - not sent to again for a day", at(at));
     }
 
     /**

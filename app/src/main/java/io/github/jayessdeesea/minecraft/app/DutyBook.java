@@ -42,6 +42,8 @@ final class DutyBook {
     /** Each squad's strips found cut out, and the objective they were found on. */
     private final Map<String, List<Box>> cutOut = new HashMap<>();
     private final Map<String, Optional<Objective>> cutOutFor = new HashMap<>();
+    /** Each squad's cut-outs said spent, by count: the wood's spent said once a count. */
+    private final Set<String> spentSaid = new java.util.HashSet<>();
     /** When each producer was given the ground it works. */
     private final Map<String, Long> givenAt = new ConcurrentHashMap<>();
 
@@ -123,7 +125,8 @@ final class DutyBook {
      * old strip marked the new one cut out the moment it was given; and live (field476), every squad marked Charlie's
      * strips as its own.
      */
-    synchronized List<Box> cutOut(String squad, List<String> soldiers, Optional<Objective> objective, ToLongFunction<String> foundNothingAt) {
+    synchronized List<Box> cutOut(String squad, List<String> soldiers, Optional<Objective> objective, ToLongFunction<String> foundNothingAt,
+                                  java.util.function.Consumer<Position> spent) {
         if (!objective.equals(cutOutFor.get(squad))) {
             cutOutFor.put(squad, objective);
             cutOut.put(squad, new ArrayList<>());
@@ -136,6 +139,9 @@ final class DutyBook {
                     LOG.info("[{}] the strip over x {}..{}, z {}..{} is cut out - the wood shared again without it", squad, g.minX(), g.maxX(),
                             g.minZ(), g.maxZ());
                 });
+        // Every strip cut out - the whole wood shared again - is the wood spent: said once, up the chain.
+        objective.filter(o -> !found.isEmpty() && spentSaid.add(squad + found.size())
+                && WoodDuties.worked(WoodDuties.whole(o.location()), found).equals(WoodDuties.whole(o.location()))).ifPresent(o -> spent.accept(o.location()));
         return List.copyOf(found);
     }
 

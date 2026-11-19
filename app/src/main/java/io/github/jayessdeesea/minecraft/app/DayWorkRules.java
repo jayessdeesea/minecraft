@@ -17,6 +17,8 @@ import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.PlatoonSergeant;
 import io.github.jayessdeesea.minecraft.command.Resource;
+import io.github.jayessdeesea.minecraft.command.ResourceSite;
+import io.github.jayessdeesea.minecraft.command.Foothold;
 import java.util.List;
 import java.util.Optional;
 
@@ -155,6 +157,24 @@ final class DayWorkRules {
             case "model" -> name -> new SpringAiSquadLeader(name, client, prompts);
             default -> throw new IllegalArgumentException("minecraft.squad-leader.decides-with is \"" + decidesWith
                     + "\": \"drills\" or \"model\"");
+        };
+    }
+
+    /**
+     * Where a squad goes for {@code shortfall}, {@code why} it's sent: food to the camp's farm, iron to the keep's mine,
+     * wood to the nearest of {@code woods} to it - the squad's first soldier, or the flatten's middle.
+     */
+    static Optional<Objective> toShortfall(PlatoonSergeant.Shortfall shortfall, SquadStatus squad, List<ResourceSite> woods, String why,
+                                           Optional<Foothold> base, Position keepMine, Flatten flatten) {
+        return switch (shortfall) {
+            case FOOD -> base.map(b -> new Objective("Work the camp's farm", b.camp(), why + "food", new Objective.Task.Farm()));
+            case IRON -> Optional.of(new Objective("Mine the keep's mine for iron", keepMine, why + "iron", new Objective.Task.Mine()));
+            case WOOD -> {
+                Position from = squad.soldiers().isEmpty() ? flatten.centre() : squad.soldiers().getFirst().position();
+                yield woods.stream().filter(w -> w.resource() == Resource.WOOD)
+                        .min(java.util.Comparator.comparingDouble(w -> Math.hypot(w.location().x() - from.x(), w.location().z() - from.z())))
+                        .map(w -> new Objective("Gather wood", w.location(), why + "logs", new Objective.Task.Gather(Resource.WOOD)));
+            }
         };
     }
 }

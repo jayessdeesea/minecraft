@@ -5650,7 +5650,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Sent for wood, the squad works it by duty (command.WoodDuties): each woodcutter its own strip's logs.
         Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList(),
                 dutyBook.cutOut(squadName, statuses.stream().map(SoldierStatus::name).toList(), objectiveOf(squadName),
-                        n -> gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE)));
+                        n -> gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE), chainOfCommand::onWoodSpent));
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         statuses.forEach(s -> woodcutters.remove(s.name()));
         // Each producer's duty order (command.DutyOrder): its duty, its ground, and the dump its squad stockpiles at, else the camp's.

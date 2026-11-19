@@ -52,8 +52,26 @@ class DutyBookTest {
                 "Wood", new io.github.jayessdeesea.minecraft.command.Position(0, 64, 0), "logs",
                 new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.WOOD)));
 
-        assertEquals(List.of(), book.cutOut("Charlie", List.of("Ivy"), wood, n -> 50), "found nothing before it was given the strip");
-        assertEquals(List.of(), book.cutOut("Alpha", List.of("Alice"), wood, n -> 200), "Charlie's woodcutter isn't Alpha's");
-        assertEquals(List.of(strip), book.cutOut("Charlie", List.of("Ivy"), wood, n -> 200));
+        assertEquals(List.of(), book.cutOut("Charlie", List.of("Ivy"), wood, n -> 50, at -> { }), "found nothing before it was given the strip");
+        assertEquals(List.of(), book.cutOut("Alpha", List.of("Alice"), wood, n -> 200, at -> { }), "Charlie's woodcutter isn't Alpha's");
+        assertEquals(List.of(strip), book.cutOut("Charlie", List.of("Ivy"), wood, n -> 200, at -> { }));
+    }
+
+    /** Every strip of a wood found cut out, its squad leader says the wood is spent - once. */
+    @Test
+    void aWoodWithEveryStripCutOutIsSaidSpentOnce() {
+        DutyBook book = new DutyBook();
+        io.github.jayessdeesea.minecraft.command.Position forest = new io.github.jayessdeesea.minecraft.command.Position(0, 64, 0);
+        io.github.jayessdeesea.minecraft.command.Box whole = io.github.jayessdeesea.minecraft.command.WoodDuties.whole(forest);
+        book.assign("Charlie", List.of("Ivy"), Map.of("Ivy", new DutyOrder("Ivy", DutyOrder.Duty.WOODCUTTER, Optional.of(whole), Optional.empty())),
+                Optional.of("WOOD"), 100);
+        Optional<io.github.jayessdeesea.minecraft.command.Objective> wood = Optional.of(new io.github.jayessdeesea.minecraft.command.Objective(
+                "Wood", forest, "logs", new io.github.jayessdeesea.minecraft.command.Objective.Task.Gather(io.github.jayessdeesea.minecraft.command.Resource.WOOD)));
+        List<io.github.jayessdeesea.minecraft.command.Position> spent = new ArrayList<>();
+
+        book.cutOut("Charlie", List.of("Ivy"), wood, n -> 200, spent::add);
+        book.cutOut("Charlie", List.of("Ivy"), wood, n -> 200, spent::add);
+
+        assertEquals(List.of(forest), spent);
     }
 }

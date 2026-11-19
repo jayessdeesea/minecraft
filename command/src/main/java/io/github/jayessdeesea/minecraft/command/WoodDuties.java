@@ -75,10 +75,7 @@ public final class WoodDuties {
         if (roster.isEmpty()) {
             return Map.of();
         }
-        int x = (int) Math.floor(forest.x());
-        int y = (int) Math.floor(forest.y());
-        int z = (int) Math.floor(forest.z());
-        Box whole = new Box(x - REACH, y - BELOW, z - REACH, x + REACH, y + ABOVE, z + REACH);
+        Box whole = whole(forest);
         int cutters = roster.size() >= 2 ? roster.size() - 1 : 1;
         // Across the whole forest's way, whatever's left of it: strips cut the other way would lie across the cut-out ones.
         List<Box> strips = worked(whole, cutOut).strips(cutters, whole.maxX() - whole.minX() >= whole.maxZ() - whole.minZ());
@@ -101,6 +98,14 @@ public final class WoodDuties {
         return Map.copyOf(orders);
     }
 
+    /** The forest worked round {@code forest}: {@link #REACH} each way, from under it to over it. */
+    public static Box whole(Position forest) {
+        int x = (int) Math.floor(forest.x());
+        int y = (int) Math.floor(forest.y());
+        int z = (int) Math.floor(forest.z());
+        return new Box(x - REACH, y - BELOW, z - REACH, x + REACH, y + ABOVE, z + REACH);
+    }
+
     /**
      * {@code whole} with each of {@code cutOut} lying on one of its ends taken off - over and again, as the next comes
      * to the end: the strips ({@link Box#strips}) run along its longer side, and a strip found cut out at either end is
@@ -108,7 +113,7 @@ public final class WoodDuties {
      * behind its share for the squad leader to see. All of it cut out, it's {@code whole} again: the trees replanted
      * there grow.
      */
-    static Box worked(Box whole, List<Box> cutOut) {
+    public static Box worked(Box whole, List<Box> cutOut) {
         boolean alongX = whole.maxX() - whole.minX() >= whole.maxZ() - whole.minZ();
         int from = alongX ? whole.minX() : whole.minZ(), to = alongX ? whole.maxX() : whole.maxZ();
         boolean shrunk = true;
