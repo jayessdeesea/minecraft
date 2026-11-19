@@ -24,9 +24,9 @@ lists the files over it, each capped at its length then, to shrink to under.
   orders' names.
 - **`bot.DeterministicSoldier`**: its fight, its moves and its survival as separate pure parts.
 - **`app.ChainOfCommand`**: the platoon leader's guardrails apart from the wiring of the echelons.
-- **The tests** (`DeterministicSoldierTest`, `SimServer`): split by the scenario family they test,
-  and the sim server's world, entities and chests apart - as `SquadSimulationTest` was, into a class a
-  family beside it (docs/architecture.md, the squad simulation).
+- **`DeterministicSoldierTest`**: split by the behaviour family it tests, as `SquadSimulationTest` was,
+  into a class a family beside it (docs/architecture.md, the squad simulation). The sim server's items
+  are `SimItems`.
 
 ## Done when
 `OVER_THE_LIMIT` is empty.
