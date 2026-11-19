@@ -65,6 +65,9 @@ so the next consumer finds some.
 ## The stores read swings with which chests were last looked in (field480-484)
 The `[Stores]` line read seeds 702, 64, 0, 88, 0 across five runs in an hour, and wheat and bread 0 throughout.
 In field480 the camp's next chest at (-50, 76, 47) was logged full and then forgotten, though it was never placed
-(Dana couldn't take a block in hand to put it up). Wanted: the stores counted from every standing chest, with a
-chest that never stood never counted - so a shortfall read is the force's, not the reading's.
+(Dana couldn't take a block in hand to put it up). One cause found and fixed: the camp's upkeep dug out its workshop's
+full chests - only the chest in use was kept from the dig - and the stores they held were forgotten (field486: a
+chest at (-53, 76, 44) dug by Charlie's soldiers minutes after it filled). Every full chest is now kept from the
+camp's dig. Left: a chest that never stood counted full and then forgotten, and the stores counted from every
+standing chest - so a shortfall read is the force's, not the reading's.
 

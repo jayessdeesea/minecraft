@@ -4720,13 +4720,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (campWorkshop != null) {
             shops.add(campWorkshop);
         }
-        for (Workshop w : shops) {
-            Stream.concat(Stream.of(w.stand(), w.table(), w.furnace()), w.chest().stream())
-                    .forEach(c -> {
-                        keep.add(c);
-                        keep.add(c.offset(0, -1, 0));
-                    });
-        }
+        // Each workshop's stand, table, furnace and chest - and every chest found full, its row's earlier ones: live
+        // (field480, field486), the camp's upkeep dug its full chests out, and the stores they held were forgotten.
+        Stream.concat(shops.stream().flatMap(w -> Stream.concat(Stream.of(w.stand(), w.table(), w.furnace()), w.chest().stream())), fullChests.stream())
+                .forEach(c -> keep.addAll(List.of(c, c.offset(0, -1, 0))));
         return keep;
     }
 
