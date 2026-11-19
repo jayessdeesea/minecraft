@@ -120,3 +120,10 @@ and its partner waiting on that main tunnel. Built: a cutter keeps a stack of co
 the mine's stash or the stockpile, or takes the stone from its own tunnel's wall, so the cave is floored
 rather than the tunnel lost.
 
+## A dead well's levels still worked, and two cutters on one stair cell (field465)
+The mine at (57, 96, -10) was declared a danger area at 16:03 (762's rule, three killed by its stairs) - the
+keep's mine moved on - and through the next two nights Mia, Ned and Olga of Delta still worked their levels
+off its shaft: Mia and Ned on one cell, (57.5, -36, -9.5), steps 941 and 983, unchanged all night, 0 ore.
+Wanted: a dead well's levels given up by every squad on it, not only the keep's; and two cutters never sent
+to stand on one stair cell (their waits stand a step apart, `Miner` place - their cuts don't).
+
