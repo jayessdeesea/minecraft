@@ -21,7 +21,8 @@ lists the files over it, each capped at its length then, to shrink to under.
 - Begun: `app.SoldierErrands` holds the errands the soldier still decides for itself (its food, logs
   and a bed's string from the stockpile, what its pack keeps) - each to become the squad leader's
   order, the class to empty. `app.SiteGeometry` holds the pure geometry of the flatten and its ground
-  orders' names.
+  orders' names. Each squad's state is `app.SquadState`. What's left is two methods: `orderSquad` (1299
+  lines, the squad loop) and `onJoined` (1187, each soldier's tick) - to be cut along the tenets above.
 - **`bot.DeterministicSoldier`**: its fight, its moves and its survival as separate pure parts. Begun: its body
   against the world - whether it fits, hazards and solids under its footprint, a drop, the cells cut to step
   up, what it can see - is `bot.Body`. Left: the fight out of `tick`, the moves out of `navigate`.
