@@ -1785,9 +1785,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (!unit.equals(was == null ? squad : was)) {
                 LOG.info("[{} -> {}] now in {}", names.get(i), squad, unit);
                 // Off camp upkeep's ground work: its new unit gives it its work.
-                if (upkeeping.remove(names.get(i))) {
-                    route(names.get(i), null);
-                }
+                stopUpkeep(names.get(i));
             }
         }
         // By name, not by place: link-up puts a respawned soldier at the back of the statuses, not of
@@ -2163,6 +2161,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Health a soldier keeps the camp by night with, besides a weapon: half its hearts. */
     static final double NIGHT_UPKEEP_HEALTH = 10;
 
+    /** {@code soldier} off the camp's upkeep, if it was on it, and its route dropped. */
+    private void stopUpkeep(String soldier) {
+        Optional.of(soldier).filter(upkeeping::remove).ifPresent(n -> route(n, null));
+    }
+
     private void campUpkeep(String squad, List<SoldierStatus> statuses) {
         boolean daylight = !chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
         boolean contact = statuses.stream().anyMatch(s -> s.report() instanceof Report.InContact);
@@ -2174,9 +2177,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         boolean sheltering = !daylight && taskOf(squad, Objective.Task.PatrolBase.class).isPresent();
         if (campGround == null || !daylight && !litCamp || contact || sheltering) {
             statuses.forEach(s -> {
-                if (upkeeping.remove(s.name())) {
-                    route(s.name(), null);
-                }
+                stopUpkeep(s.name());
             });
             return;
         }
@@ -2208,9 +2209,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean fit = daylight || s.condition().filter(c -> c.health() >= NIGHT_UPKEEP_HEALTH
                     && c.kit().flatMap(Kit::weapon).isPresent()).isPresent();
             if (otherWork || !near || !fit) {
-                if (upkeeping.remove(n)) {
-                    route(n, null);
-                }
+                stopUpkeep(n);
             } else {
                 idle.add(s);
             }
@@ -2218,14 +2217,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (idle.isEmpty()) {
             return;
         }
-        SquadState state = squadStates.get(squad);
-        Map<String, Order> work = groundwork(squad, state, campGround, idle);
+        // Shared with every squad's soldiers keeping the camp, in name order: live (field487), four squads' dug one box.
+        List<SoldierStatus> crew = Stream.concat(idle.stream(), upkeeping.stream().filter(n -> idle.stream().noneMatch(s -> s.name().equals(n)))
+                .map(activeSoldiers::get).filter(java.util.Objects::nonNull).map(DeterministicSoldier::status)).sorted(Comparator.comparing(SoldierStatus::name)).toList();
+        Map<String, Order> work = groundwork(squad, squadStates.get(squad), campGround, crew);
         for (SoldierStatus s : idle) {
             Order order = work.get(s.name());
             if (order == null) {
-                if (upkeeping.remove(s.name())) {
-                    route(s.name(), null);
-                }
+                stopUpkeep(s.name());
                 continue;
             }
             if (upkeeping.add(s.name())) {
