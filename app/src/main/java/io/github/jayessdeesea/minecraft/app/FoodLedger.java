@@ -37,6 +37,8 @@ final class FoodLedger {
         boolean onGround = true, sprinting;
         /** Jumps by the column taken off from: many in one column is a soldier jumping in place, not over ground. */
         final Map<String, Integer> jumpsAt = new java.util.HashMap<>();
+        /** Health lost by what the soldier was doing when it was lost - "a fall" when it came off the ground: falls from fights. */
+        final Map<String, Double> hurtWhile = new java.util.HashMap<>();
     }
 
     private final Map<String, Tally> tallies = new TreeMap<>();
@@ -63,6 +65,7 @@ final class FoodLedger {
             } else if (t.health != null && c.health() < t.health) {
                 t.hurt += t.health - c.health();
                 t.hits++;
+                t.hurtWhile.merge((!t.onGround && onGround ? "a fall " : "") + (doing.isEmpty() ? "?" : doing), t.health - c.health(), Double::sum);
             }
             t.food = c.food();
             t.health = c.health();
@@ -93,7 +96,7 @@ final class FoodLedger {
 
     /** One soldier's day, in hunger points: what it ate, and what it burnt on what. */
     record Day(String soldier, double eaten, double hurt, double healing, double jumping, double sprinting, double fighting,
-               List<String> jumpedMost) {
+               List<String> jumpedMost, List<String> hurtMost) {
 
         double burnt() {
             return healing + jumping + sprinting + fighting;
@@ -104,7 +107,8 @@ final class FoodLedger {
             return String.format(Locale.ROOT, "%s ate %.1f loaves (%.0f hunger with saturation), lost %.0f health; burnt %.0f on healing %.0f, "
                     + "jumping %.0f, sprinting %.0f, fighting %.0f; %.0f unexplained%s", soldier, eaten / (LOAF_FOOD + LOAF_SATURATION), eaten, hurt,
                     burnt(), healing, jumping, sprinting, fighting, Math.max(0, eaten - burnt()),
-                    jumpedMost.isEmpty() ? "" : "; jumped most at " + String.join(", ", jumpedMost));
+                    jumpedMost.isEmpty() ? "" : "; jumped most at " + String.join(", ", jumpedMost))
+                    + (hurtMost.isEmpty() ? "" : "; hurt most " + String.join(", ", hurtMost));
         }
     }
 
@@ -115,12 +119,15 @@ final class FoodLedger {
                 t.healed * HEALING / EXHAUSTION_A_POINT, (t.jumps * JUMP + t.sprintJumps * SPRINT_JUMP) / EXHAUSTION_A_POINT,
                 t.sprinted * SPRINT_A_METRE / EXHAUSTION_A_POINT, (t.attacks * ATTACK + t.hits * HIT) / EXHAUSTION_A_POINT,
                 t.jumpsAt.entrySet().stream().sorted(Map.Entry.<String, Integer>comparingByValue().reversed()).limit(3)
-                        .map(e -> e.getKey() + " x" + e.getValue()).toList())));
+                        .map(e -> e.getKey() + " x" + e.getValue()).toList(),
+                t.hurtWhile.entrySet().stream().sorted(Map.Entry.<String, Double>comparingByValue().reversed()).limit(3)
+                        .map(e -> e.getKey() + " " + Math.round(e.getValue())).toList())));
         tallies.values().forEach(t -> {
             t.eaten = 0;
             t.healed = t.hurt = t.sprinted = 0;
             t.hits = t.jumps = t.sprintJumps = t.attacks = 0;
             t.jumpsAt.clear();
+            t.hurtWhile.clear();
         });
         return days;
     }

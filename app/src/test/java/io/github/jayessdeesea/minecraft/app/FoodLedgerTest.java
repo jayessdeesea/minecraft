@@ -84,4 +84,16 @@ class FoodLedgerTest {
         assertEquals(List.of("(3,64,4) x5", "(9,64,9) Clear/Working x2", "(9,64,9) x1"), ledger.days().getFirst().jumpedMost(),
                 "with what it was doing when it's known");
     }
+
+    /** The health lost, by what the soldier was doing: a fight's blows apart from a fall's landing. */
+    @Test
+    void theHealthLostIsSaidByWhatItWasDoing() {
+        FoodLedger ledger = new FoodLedger();
+        ledger.sample("Dana", at(20, 20), new Position(0, 64, 0), false, true, "MoveTo/InContact");
+        ledger.sample("Dana", at(14, 20), new Position(0, 64, 0), false, true, "MoveTo/InContact");
+        ledger.sample("Dana", at(14, 20), new Position(0, 70, 0), false, false, "MoveTo/Moving");
+        ledger.sample("Dana", at(10, 20), new Position(0, 64, 0), false, true, "MoveTo/Moving");
+
+        assertEquals(List.of("MoveTo/InContact 6", "a fall MoveTo/Moving 4"), ledger.days().getFirst().hurtMost());
+    }
 }

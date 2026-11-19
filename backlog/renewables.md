@@ -141,7 +141,9 @@ before any slide along it, and is now slid along. Left: the step-ups real rough 
 day, with that fix in: 122 of 281 burnt jumping - more, not less. Its top cell, (-12, 65, 71), jumped from 123 times by
 Ivy while she reported she couldn't keep the farm: a one-block step with open head room, climbed and come back down
 again and again, a crop at (-12, 63, 87) started on three times and never done. A soldier walking back and forth over
-a step - a routine that sends it out and back, not the step - is what to find next.
+a step - a routine that sends it out and back, not the step - is what to find next. Later that day healing took the lead:
+173 of 362, health lost and healed again and again for small net losses (Pete healed 18 to be 3 down); the report now says
+by what each soldier was doing its health was lost - fights apart from falls - for the next to read.
 Measure first: a farm's ripe cells an hour before deciding how many the force needs (a solid block of one crop
 may grow slower than rows); and where the food goes (`[Food]`, `app.FoodLedger`) - if healing dominates, fewer
 falls and fights save more than more farms.

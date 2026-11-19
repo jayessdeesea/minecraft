@@ -1801,7 +1801,8 @@ server's rules burn for what it did: 6 exhaustion a health point healed, 0.05 a 
 sprinted, 0.1 a blow struck or taken, 4 to a point of hunger; walking burns nothing. What's left unexplained is a
 cause not counted. Each soldier's line ends with the cells it jumped from most, each with its order and report as it
 took off ("(-53,74,46) Clear/Working x51") - one jumped from over and over is a soldier jumping in place, not crossing
-ground, and the order says at what. Scored at the dawn's one look, the lit ground and the wall, going in and out of
+ground, and the order says at what - then the health it lost by what it was doing as it was hurt ("hurt most
+MoveTo/InContact 12, a fall MoveTo/Moving 4"): a fight's blows told from a fall's landing, as healing is what costs. Scored at the dawn's one look, the lit ground and the wall, going in and out of
 met 36 times a run, decided the day by when the look fell.
 
 The same dawn scores the day on the garrison's scoreboard (`app.Scoreboard`, `scoreboard.jsonl` in
