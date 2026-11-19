@@ -518,9 +518,9 @@ public class ChainOfCommand implements DisposableBean {
                 Optional.ofNullable(foothold), keepMine, flatten);
     }
 
-    /** The wood at {@code at} cut out, its squad leader says: its sightings dropped a while, so no squad is sent back to it. */
-    public void onWoodSpent(Position at) {
-        woodSightings.spent(at, clockwork.millis());
+    /** The wood at {@code at} cut out at {@code millis}, its squad leader says: its sightings dropped a while, no squad sent back. */
+    public void onWoodSpent(Position at, long millis) {
+        woodSightings.spent(at, millis);
         LOG.info("[PL] the wood at {} is cut out - not sent to again for a day", at(at));
     }
 

@@ -938,7 +938,8 @@ was given the strip - is taken off the forest's end, and the rest shared again a
 along the same way (`WoodDuties.worked`, `DutyBook.cutOut`): no woodcutter kept on ground with nothing
 left. One in the middle stays, its woodcutter behind its share for the squad leader to see; all of it
 cut out, the whole is shared again, to grow back, and the squad leader says the wood is spent: the
-platoon leader's wood sightings drop it for a day (`ChainOfCommand.onWoodSpent`, `WoodSightings.spent`),
+platoon leader's wood sightings drop it for a day, across restarts (`ChainOfCommand.onWoodSpent`,
+`WoodSightings.spent`, `WoodsBook`),
 so the next squad sent for wood goes to the nearest other - and the squad's task reads DONE ("every strip
 of the wood is cut out"), so the platoon leader gives it its next. With two or more, the last on the roster is the planter: it plants
 the grid cells across the whole forest that the felling has opened to the sky (`TreeFarm.site`),

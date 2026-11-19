@@ -1498,7 +1498,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.dangerAreas = new DangerAreaBook(chestStore);
         this.storesBook = new StoresBook(chestStore);
         storesBook.kept().ifPresent(chainOfCommand::onStores); // as last seen, till a chest is opened
-        (this.phaseBook = new PhaseBook(chestStore)).restoreInto(chainOfCommand); // the lodgment's phase as it stood
+        (this.phaseBook = new PhaseBook(chestStore)).restoreInto(chainOfCommand); (this.woodsBook = new WoodsBook(chestStore)).restoreInto(chainOfCommand);
         this.stepStore = new WallStore(Path.of(stateDir), "steps");
         stepStore.load(STEPS).ifPresent(scaffolding::addAll);
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
@@ -4425,7 +4425,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Set<Integer>> levelsBlocked = new ConcurrentHashMap<>();
     /** Where soldiers were killed lately (command.DangerAreas) - death handlers write, squad loops read, under its lock. */
     private final DangerAreaBook dangerAreas;
-    private final StoresBook storesBook; private final PhaseBook phaseBook; // the stores and the lodgment's phase, kept across restarts
+    private final StoresBook storesBook; private final PhaseBook phaseBook; private final WoodsBook woodsBook; // the stores, the phase, the woods cut out
     /** Mine heads worked out or blocked, never sited again - kept on disk. Squad loop, read at siting. */
     private final Set<BlockPos> deadWells = ConcurrentHashMap.newKeySet();
     /** The key the dead wells are kept under. */
@@ -5650,7 +5650,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Sent for wood, the squad works it by duty (command.WoodDuties): each woodcutter its own strip's logs.
         Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList(),
                 dutyBook.cutOut(squadName, statuses.stream().map(SoldierStatus::name).toList(), objectiveOf(squadName),
-                        n -> gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE), chainOfCommand::onWoodSpent));
+                        n -> gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE), at -> woodsBook.spent(chainOfCommand, at, clockwork.millis())));
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
         statuses.forEach(s -> woodcutters.remove(s.name()));
         // Each producer's duty order (command.DutyOrder): its duty, its ground, and the dump its squad stockpiles at, else the camp's.
