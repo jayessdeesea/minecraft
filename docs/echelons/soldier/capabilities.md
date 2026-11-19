@@ -7,8 +7,9 @@ It never calls a model. Everything here it does without being told, as reflexes 
 ## Moving
 To the goal its order names, by A* over block cells (`bot.nav.Pathfinder`), re-planned every 2
 seconds or when stuck:
-- **Walks** level ground, round anything solid, and diagonally only where both sides are clear.
-- **Steps up one block.** A fence, at 1.5 blocks, is a wall, not a step.
+- **Walks** level ground, round anything solid, and diagonally only where both sides are clear. A
+  corner it clips walking a level stretch is slid along, never jumped onto: a jump costs hunger.
+- **Steps up one block** - a jump, only where its route rises. A fence, at 1.5 blocks, is a wall, not a step.
 - **Drops three blocks** unhurt. Further only within the fall allowance its order's risk gives it,
   and only when no route without a fall exists ([military-doctrine.md § 7](../../military-doctrine.md#7-risk-acceptance)).
 - **Swims** across water at the surface. It never enters lava or fire.

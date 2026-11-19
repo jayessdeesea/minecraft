@@ -130,6 +130,21 @@ public final class Pathfinder {
         return !world.isSolid(x, y, z) && !world.isHazard(x, y, z);
     }
 
+    /** The cells within {@code radius} across, and 2 up and down, of each of {@code centres}: a berth a route goes round. */
+    public static Set<BlockPos> berth(List<BlockPos> centres, int radius) {
+        Set<BlockPos> berth = new HashSet<>();
+        for (BlockPos at : centres) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    for (int dy = -2; dy <= 2 && dx * dx + dz * dz <= radius * radius; dy++) {
+                        berth.add(at.offset(dx, dy, dz));
+                    }
+                }
+            }
+        }
+        return berth;
+    }
+
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded) {
         return find(world, start, goal, maxExpanded, FallAllowance.NONE);
     }

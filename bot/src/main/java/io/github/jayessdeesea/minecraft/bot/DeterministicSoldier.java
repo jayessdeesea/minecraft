@@ -920,18 +920,7 @@ public final class DeterministicSoldier implements Soldier {
             }
             avoid.addAll(legAvoid);
             // A berth round each creeper in the watch: the route goes round, not past it at arm's length.
-            for (TrackedEntity creeper : creepers) {
-                BlockPos at = BlockPos.containing(creeper.position().x(), creeper.position().y(), creeper.position().z());
-                for (int dx = -CREEPER_BERTH; dx <= CREEPER_BERTH; dx++) {
-                    for (int dz = -CREEPER_BERTH; dz <= CREEPER_BERTH; dz++) {
-                        if (dx * dx + dz * dz <= CREEPER_BERTH * CREEPER_BERTH) {
-                            for (int dy = -2; dy <= 2; dy++) {
-                                avoid.add(at.offset(dx, dy, dz));
-                            }
-                        }
-                    }
-                }
-            }
+            avoid.addAll(Pathfinder.berth(creepers.stream().map(c -> BlockPos.containing(c.position().x(), c.position().y(), c.position().z())).toList(), CREEPER_BERTH));
             creepersRoutedRound = creeperIds;
             // A fall is the exception, never the plan: first a route with none - walked, then with
             // steps built from what it carries - and only with no such route one the order's risk allows.
@@ -1057,7 +1046,9 @@ public final class DeterministicSoldier implements Soldier {
         // whole harvest (operator, 2026-11-13).
         boolean urgent = order instanceof Order.MoveTo move && move.urgent() || underFireTicks > 0;
         sprinting = far && canSprint() && urgent;
+        levelStep = waypoint.y() <= Math.floor(position.y() + EPSILON);
         stepToward(world, centreX, centreZ, sprinting ? SPRINT_STEP : STEP);
+        levelStep = false;
     }
 
     /**
@@ -1412,6 +1403,9 @@ public final class DeterministicSoldier implements Soldier {
         return true;
     }
 
+    /** Whether the step under way is to a waypoint on the soldier's own level: a snag is slid along before any jump. */
+    private boolean levelStep;
+
     private void stepToward(WorldView world, double targetX, double targetZ, double pace) {
         double step = (shieldRaised() ? pace * SHIELD_SLOWDOWN : pace) * (afloat ? SWIM_STEP / STEP : 1);
         double dx = targetX - position.x();
@@ -1434,6 +1428,12 @@ public final class DeterministicSoldier implements Soldier {
             // A bank one block above the water: rise out of it, then step on once clear of the edge.
             position = new Position(position.x(), Math.min(y + SWIM_RISE, Math.floor(y) + 1), position.z());
             climbingOut = true;
+        } else if (levelStep && Math.abs(stepX) > 1e-9 && bodyFits(world, nextX, y, position.z())) {
+            // On the level, a corner snagged is slid along, not jumped onto: a jump costs hunger, and the route goes round
+            // it. Live (field490-494), jumping was the force's biggest burn, most of it walking routes.
+            position = new Position(nextX, y, position.z());
+        } else if (levelStep && Math.abs(stepZ) > 1e-9 && bodyFits(world, position.x(), y, nextZ)) {
+            position = new Position(position.x(), y, nextZ);
         } else if (onGround && !anyHazard(world, nextX, nextZ, (int) Math.floor(y), (int) Math.floor(y))
                 && bodyFits(world, nextX, Math.floor(y) + 1, nextZ)
                 && bodyFits(world, position.x(), Math.floor(y) + 1, position.z())) {

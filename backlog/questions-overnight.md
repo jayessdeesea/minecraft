@@ -17,6 +17,26 @@ priority: P1
 
 - **Seed in a farm chest: 512 a chest, or the force's 1024?** (backlog/renewables.md, More farmland) You said a chunk farm's chest holds its excess seed, max 512. The force already caps seed at 1024 stocked across every chest (`ProductionLevels`), and a tender's seed past its pack goes into its farm's chest under that cap. Taken by default: the force-wide cap, one fact in one place. A per-chest 512 would add a second cap counted chest by chest; say if you want it.
 
+- **Ground-work shares narrower than the crew** (camp and keep: `Tasking.allocate`, `Tasking.keep`; docs/military-doctrine.md
+  § 17, the rules of a clearing). When fewer strips are left than hands, the hands wrap onto the same strips. Live (field494),
+  the camp's last block, one cell 12 over its ground, was all three of Bravo's share, and they stood crowded a block from it.
+  A hand to a strip, the rest free, was tried and backed out: in the squad simulation the spare hands flipped between the dig
+  and the wall eight times, each task taken off unfinished, and the camp on a slope left its last block undug. It needs the
+  drill to keep a spare hand on its next work, not to bounce it back as the strips change. Taken by default: the wrap stays.
+  Should spare hands go free (and to what), or stay doubled up?
+
+- **The chunk grid's coordinates** (backlog/renewables.md, More farmland). Your prototype's fence is on x = -81 and -65 and
+  z = 96 and 112: z is on the chunk lines (z%16 == 0) and x one block off them (x%16 == 15). A block's coordinate is the
+  floor of a position - what F3 shows - and the chunk grid is the server's own, chunk = floor(x / 16): chunk -1 is x
+  -16..-1, chunk 0 is 0..15, and the lines x%16 == 0 (taken as floor mod) are ..., -16, 0, 16, ... - uniform through 0,
+  no double-width fence there. (A double width at 0 comes only from truncating division, where -1/16 is 0.) The code lays
+  the fence on x%16 == 0 and z%16 == 0 by floor mod (`ChunkFarm`). Taken by default: as built. Say if you'd rather the
+  line be x%16 == 15, as your prototype's x - one block in, so a farm's fence is all in its own chunk.
+
+- **A cover over a water hole** (the prototype). Each hole has a grass block over it at the farmland's level + 1, a torch
+  on it: nothing falls in, the field is lit. A soldier can't place a block over water - there's no face to place against;
+  the ray passes through water. How did you put them there? Taken by default: the holes left open, torches on the posts.
+
 Answered 2026-11-19, each now with its item:
 - **Food:** more farmland - trench farms off ponds before the bucket, chunk farms with four water holes after;
   and a food report first, to see why the soldiers eat so much (backlog/renewables.md, More farmland).

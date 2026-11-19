@@ -466,6 +466,26 @@ class DeterministicSoldierTest {
         assertTrue(alice.status().position().x() > 7, "should slide east along the wall: " + alice.status().position());
     }
 
+    /**
+     * Along a wall one block high, hugging it off-centre, a route on the level is walked on the level: the snagged corner
+     * slid along, never jumped onto - a jump costs hunger (live, field490-494: the force's biggest burn).
+     */
+    @Test
+    void aRouteOnTheLevelSlidesAlongALowWallAndNeverJumpsOntoIt() {
+        WorldView wall = blocks((x, y, z) -> y < GROUND || (z >= 1 && y < GROUND + 1));
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.69));
+        alice.receiveOrder(new Order.MoveTo(8.5, GROUND, 0.5, 1, 1, Risk.LOW));
+
+        int airborne = 0;
+        for (int i = 0; i < 100; i++) {
+            alice.tick(wall);
+            airborne += alice.onGround() ? 0 : 1;
+        }
+
+        assertTrue(alice.status().position().x() > 7, "along the wall: " + alice.status().position());
+        assertEquals(0, airborne, "never off the ground");
+    }
+
     @Test
     void countsDeathsFromAliveButNotADeathCarriedOverFromAnEarlierRun() {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));

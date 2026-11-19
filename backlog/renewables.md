@@ -127,7 +127,9 @@ it would put the farm in surplus as it is. Left: where those jumps are - real st
 soldiers jumping in place - from the report's jumped-most cells, and the fix for whichever it is. field491's day: 85 of
 235 burnt jumping, the hotspots on the keep's rough ground (x -44..-57, z 38..50, y 72-77), one soldier 51 times
 from one cell while cutting logs there; each cell now says the order and report it was jumped from at, to tell a
-route's step-ups from a routine's jumps in place.
+route's step-ups from a routine's jumps in place. field493's day: 100 of 261 burnt jumping, its hotspots mostly on routes
+(Moving 143 of 330 counted, Working 83 round the camp's dig); a corner clipped walking a level stretch was jumped onto
+before any slide along it, and is now slid along. Left: the step-ups real rough ground costs - the flatten's to answer.
 Measure first: a farm's ripe cells an hour before deciding how many the force needs (a solid block of one crop
 may grow slower than rows); and where the food goes (`[Food]`, `app.FoodLedger`) - if healing dominates, fewer
 falls and fights save more than more farms.
