@@ -10,7 +10,7 @@ doctrine: ADP 5-0 (planning; course-of-action screening: feasible, acceptable, s
 ## Why
 The force takes on its big objectives - the keep, an expedition, an outpost - with nothing worked
 out first: what it will draw, how long it takes, which site supplies it, and whether that site can
-spare it. The keep showed the result (keep-campaign.md): the dig started with no wood at the depot
+spare it. The keep showed the result (flatten-campaign.md): the dig started with no wood at the depot
 and no chests for the spoil, and stopped when the tools ran out. A staff would have refused that
 plan at its first screening, because it isn't *feasible* - the force can't do it with what it has
 in the time allowed (ADP 5-0).
@@ -28,7 +28,7 @@ from an existing base - decides whether the plan needs a new base on the way.
   the supplying site by name, travel, and the shortfall's time to make good; estimates for other
   missions (an outpost, an expedition); and the screening, phases and `<missions>` below.
 - **A mission estimate** (`command`, pure), worked out for any mission the platoon leader may take on, before
-  it's given. The keep's campaign record (keep-campaign.md) is its first instance:
+  it's given. The keep's campaign record (flatten-campaign.md) is its first instance:
   - **The objective:** where, what end state, and the site that supplies it.
   - **The force:** squads and roles, and the work loads they carry (sites.md, kit by role).
   - **The bill of materials, by class of supply:** what the work consumes - blocks dug over tool uses

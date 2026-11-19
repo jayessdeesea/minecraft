@@ -125,7 +125,7 @@ platoon leader can't send it further than its supply reaches.
 
 It also brings the six ladders measured today into one: the lodgment's phases (§ 17), the
 roadmap's days, the site standards, the mine base's phases (sites.md), the keep's DEPOT/DIG/SLAB
-(keep-campaign.md) and readiness away from the camp (sites.md, More than one base).
+(flatten-campaign.md) and readiness away from the camp (sites.md, More than one base).
 
 ### Levels
 The lodgment's, for every site. A level says what a site can do; whether it may go further is

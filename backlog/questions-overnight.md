@@ -13,6 +13,8 @@ priority: P1
 
 - **Merged: how a base grows** (backlog/sites.md). site-standards, maturity-model and roadmap are sections of sites now, each kept verbatim - sites kept as the home, being the one in progress and holding readiness. Confirm the home, or name another; the sections are to be reconciled into one design once you have.
 
+- **Merged: the flatten** (backlog/flatten-campaign.md). keep-campaign and keep-pace are sections of flatten-campaign now, each kept verbatim - the flatten kept as the home, being the campaign the keep is one site of. Confirm, or name another.
+
 Answered 2026-11-19, each now with its item:
 - **Food:** more farmland - trench farms off ponds before the bucket, chunk farms with four water holes after;
   and a food report first, to see why the soldiers eat so much (backlog/renewables.md, More farmland).
