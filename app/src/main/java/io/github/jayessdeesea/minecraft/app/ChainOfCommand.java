@@ -871,35 +871,22 @@ public class ChainOfCommand implements DisposableBean {
     public Optional<Foothold> foothold() {
         return Optional.ofNullable(foothold);
     }
-    /** Each squad's readiness as last logged, so only a change of it is. */
-    private final Map<String, Readiness> readiness = new ConcurrentHashMap<>();
-    /** A squad's readiness seen since the last logged, and in how many SITREPs running: a change is logged once it holds. */
-    private final Map<String, Readiness> readinessSeen = new ConcurrentHashMap<>();
-    private final Map<String, Integer> readinessHeld = new ConcurrentHashMap<>();
-    /** SITREPs a new readiness holds before it's logged: soldiers ranging in and out of the camp flip it back and forth. */
-    static final int READINESS_HOLDS = 3;
+    /** Each squad's readiness, logged where it changed and the change held. */
+    private final ReadinessLog readinessLog = new ReadinessLog();
 
-    /** Logs each squad's readiness where it changed: safety where it stands, and its C-rating. */
-    private void logReadiness(List<Sitrep> sitreps) {
-        for (Sitrep sitrep : sitreps) {
-            Readiness now = Readiness.of(
-                    new SquadStatus(sitrep.squad(), squads.get(sitrep.squad()).report(), sitrep.soldiers(), List.of(), Optional.empty(),
-                            sitrep.holdingBase()), Optional.ofNullable(foothold));
-            Readiness was = readiness.get(sitrep.squad());
-            // A change of state, not of the counts behind it: hunger and health move every few seconds.
-            boolean changed = was == null || now.safety() != was.safety() || now.rating() != was.rating();
-            Readiness seen = readinessSeen.put(sitrep.squad(), now);
-            boolean same = seen != null && seen.safety() == now.safety() && seen.rating() == now.rating();
-            int held = same ? readinessHeld.merge(sitrep.squad(), 1, Integer::sum) : 1;
-            if (!same) {
-                readinessHeld.put(sitrep.squad(), 1);
-            }
-            if (changed && (was == null || held >= READINESS_HOLDS)) {
-                readiness.put(sitrep.squad(), now);
-                LOG.info("[Readiness] {}: {}, C-{}{}", sitrep.squad(), now.safety(), now.rating(),
-                        now.shortfall().isEmpty() ? "" : " - " + now.shortfall());
-            }
-        }
+    /**
+     * The ground to flatten, flat: in its place the next of the squads' farm and grove areas whose ground is off its
+     * level, if any ({@link Flatten#next}), {@code topOf} reading each box's - the lodgment trended to sea level
+     * (operator, 2026-11-18: flat is efficient to walk and to grow).
+     */
+    public void onFlattened(java.util.function.Function<io.github.jayessdeesea.minecraft.command.Box, java.util.OptionalInt> topOf) {
+        Flatten was = flatten;
+        was.next(squads.values().stream().flatMap(s -> s.objective().stream()).filter(o -> o.farm() || o.treeFarm())
+                .flatMap(o -> o.area().stream()).flatMap(a -> a.boxes().stream()).toList(), topOf).ifPresent(next -> {
+            flatten = next;
+            LOG.info("[PL] the ground at {} is flat - next to its level: {}", was.describe(), next.describe());
+            wake("the next ground to flatten", true);
+        });
     }
 
     /** Every request going up the chain, timed from raised to answered (docs/military-doctrine.md § 4). */
@@ -1131,7 +1118,8 @@ public class ChainOfCommand implements DisposableBean {
         if (sitreps.isEmpty()) {
             return;
         }
-        logReadiness(sitreps);
+        sitreps.forEach(sitrep -> readinessLog.log(sitrep.squad(), Readiness.of(new SquadStatus(sitrep.squad(), squads.get(sitrep.squad()).report(),
+                sitrep.soldiers(), List.of(), Optional.empty(), sitrep.holdingBase()), Optional.ofNullable(foothold))));
         trackRequests(sitreps, clockwork.millis());
         long traceNow = clockwork.millis();
         for (OrderTrace trace : traces) {

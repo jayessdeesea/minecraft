@@ -1776,7 +1776,12 @@ restart (`SoldierRunner.SALVAGED`). Dug, a chest spills what it holds. A site wh
 top is soil (`Flatten.soil`, ground for groves and the farm) has its top layer in the dig too: its soil kept,
 its rock dug, and once the dig's done the gaps filled with dirt alone (`Order.Fill.Material.SOIL`), a builder
 short of dirt sent for a load of it from the ground east of the site past its bench, which the keep's site
-there has to have dug anyway (`Tasking.soil`). Its crew is sized to its level (backlog/flatten-campaign.md):
+there has to have dug anyway (`Tasking.soil`). Once the site is flat - nothing left to dig, and its ground
+reading level - the next ground to flatten is the nearest box of the squads' farm and grove areas whose
+ground reads more than a block off the site's level, at that level, soil (`Flatten.next`,
+`ChainOfCommand.onFlattened`; operator, 2026-11-18: trend to sea level, even in the airhead - flat is
+efficient to walk and to grow): the lodgment works its way to one level, a site at a time, in every phase
+that flattens. Its crew is sized to its level (backlog/flatten-campaign.md):
 at each new level the foreman says the builders its blocks want, one to 24 blocks
 (`SoldierRunner.BLOCKS_A_BUILDER`) of the widest of it and the three levels under it
 (`SoldierRunner.CREW_LOOK_AHEAD`), never fewer than one squad's (`SoldierRunner.MIN_KEEP_BUILDERS`; operator,

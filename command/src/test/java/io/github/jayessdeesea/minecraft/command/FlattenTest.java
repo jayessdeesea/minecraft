@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.command;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -85,5 +86,22 @@ class FlattenTest {
         assertEquals(62, farm.dig().minY());
         assertEquals(63, Flatten.parse("-48 -16 -16 16 62 north").orElseThrow().dig().minY());
         assertEquals("x=-48..-16 z=-16..16 to y=62, depots north, topped with soil", farm.describe());
+    }
+
+    /** Flat, the next ground to its level is the nearest box off it; level boxes, and boxes inside it, aren't. */
+    @Test
+    void theNextGroundToFlattenIsTheNearestOffItsLevel() {
+        Flatten site = new Flatten(-48, -16, -16, 16, 62, Flatten.Side.NORTH, true);
+        Box inside = new Box(-40, 54, -8, -30, 86, 8);
+        Box level = new Box(-10, 54, -16, 5, 86, 0);
+        Box near = new Box(-10, 54, 0, 5, 86, 16);
+        Box far = new Box(30, 54, 0, 45, 86, 16);
+        java.util.Map<Box, Integer> tops = java.util.Map.of(inside, 70, level, 63, near, 66, far, 70);
+        java.util.function.Function<Box, java.util.OptionalInt> topOf = b -> tops.containsKey(b) ? java.util.OptionalInt.of(tops.get(b))
+                : java.util.OptionalInt.of(62);
+
+        assertEquals(Optional.of(new Flatten(-10, 0, 5, 16, 62, Flatten.Side.NORTH, true)), site.next(List.of(far, inside, level, near), topOf));
+        assertEquals(Optional.empty(), site.next(List.of(inside, level), topOf), "nothing off its level outside it");
+        assertEquals(Optional.empty(), site.next(List.of(near), b -> java.util.OptionalInt.of(66)), "the site itself not yet reading level");
     }
 }

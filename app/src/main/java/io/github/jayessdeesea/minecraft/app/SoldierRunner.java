@@ -780,6 +780,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean chest = depot != null && depot.chestStands(world);
             int logs = keepLogsCarried.values().stream().mapToInt(Integer::intValue).sum()
                     + chainOfCommand.stockpile().map(Stockpile::logs).orElse(0);
+            // Flat: the next of the squads' farm and grove ground off its level is the next to flatten (Flatten.next).
+            if (digLeft == 0 && keepOreAside() == 0) {
+                chainOfCommand.onFlattened(b -> groundNear((b.minX() + b.maxX()) / 2, (b.minZ() + b.maxZ()) / 2));
+            }
             sites.add(new Site(Site.Kind.KEEP, "the keep", List.of(
                     new Site.Standard(Site.Level.AIRHEAD, "the depot stocked", chest && logs >= Keep.LOGS_WANTED,
                             (chest ? "its chest stands" : "no chest standing") + ", " + logs + " of " + Keep.LOGS_WANTED + " logs"),
@@ -1167,16 +1171,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** The flatten's depot nearest {@code at}: the main one or an outpost. */
     private Workshop nearestDepot(Position at) {
-        Workshop best = keepWorkshop;
-        double bestDistance = best == null ? Double.MAX_VALUE : Math.hypot(best.stand().x() + 0.5 - at.x(), best.stand().z() + 0.5 - at.z());
-        for (Workshop w : keepOutposts) {
-            double d = Math.hypot(w.stand().x() + 0.5 - at.x(), w.stand().z() + 0.5 - at.z());
-            if (d < bestDistance) {
-                best = w;
-                bestDistance = d;
-            }
-        }
-        return best;
+        return nearestOf(keepWorkshop, keepOutposts, at);
     }
     /** The depot ground last said to have nowhere for the workshop, so it's said once - squad loops. */
     private volatile BlockPos keepWorkshopNowhere;

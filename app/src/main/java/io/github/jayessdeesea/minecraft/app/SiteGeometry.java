@@ -271,4 +271,18 @@ final class SiteGeometry {
                 : workshop == null ? "the makings carried, but no workshop sited to make them at"
                 : "the makings carried, but not yet made at the workshop at " + workshop.stand();
     }
+
+    /** Of {@code main} - none if null - and {@code outposts}, the depot nearest {@code at}: the main one if none is nearer. */
+    static Workshop nearestOf(Workshop main, List<Workshop> outposts, Position at) {
+        Workshop best = main;
+        double bestDistance = best == null ? Double.MAX_VALUE : Math.hypot(best.stand().x() + 0.5 - at.x(), best.stand().z() + 0.5 - at.z());
+        for (Workshop w : outposts) {
+            double d = Math.hypot(w.stand().x() + 0.5 - at.x(), w.stand().z() + 0.5 - at.z());
+            if (d < bestDistance) {
+                best = w;
+                bestDistance = d;
+            }
+        }
+        return best;
+    }
 }

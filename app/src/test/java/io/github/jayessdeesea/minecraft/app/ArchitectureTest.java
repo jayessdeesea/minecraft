@@ -85,10 +85,10 @@ class ArchitectureTest {
      * and come off this list once under (backlog/split-oversized-sources.md).
      */
     static final Map<String, Integer> OVER_THE_LIMIT = Map.of(
-            "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 8485,
+            "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 8480,
             "app/src/test/java/io/github/jayessdeesea/minecraft/app/SquadSimulationTest.java", 3711,
             "bot/src/main/java/io/github/jayessdeesea/minecraft/bot/DeterministicSoldier.java", 1535,
-            "app/src/main/java/io/github/jayessdeesea/minecraft/app/ChainOfCommand.java", 1278,
+            "app/src/main/java/io/github/jayessdeesea/minecraft/app/ChainOfCommand.java", 1266,
             "bot/src/test/java/io/github/jayessdeesea/minecraft/bot/DeterministicSoldierTest.java", 1324,
             "app/src/test/java/io/github/jayessdeesea/minecraft/app/SimServer.java", 1071);
 

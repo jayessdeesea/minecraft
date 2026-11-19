@@ -1,7 +1,11 @@
 package io.github.jayessdeesea.minecraft.command;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.function.Function;
 
 /**
  * A site to flatten: an x and z rectangle taken down to a level - everything above {@code top} dug
@@ -190,5 +194,24 @@ public record Flatten(int minX, int minZ, int maxX, int maxZ, int top, Side side
     public String describe() {
         return String.format(Locale.ROOT, "x=%d..%d z=%d..%d to y=%d", minX, maxX, minZ, maxZ, top)
                 + (side == Side.NORTH ? ", depots north" : "") + (soil ? ", topped with soil" : "");
+    }
+
+    /**
+     * The next ground to bring to this site's level once this one is flat (operator, 2026-11-18: trend to sea level,
+     * even in the airhead - flat is efficient to walk and to grow): of {@code ground}, the nearest box not inside this
+     * site whose top {@code topOf} reads more than a block off this one's, as a site its size at this one's top, soil,
+     * its depots off this one's side. Empty when all of it is level, or unread - and while this site itself doesn't
+     * read level: a count of nothing left to dig, measured before its ground's last change, isn't flat.
+     */
+    public Optional<Flatten> next(List<Box> ground, Function<Box, OptionalInt> topOf) {
+        if (topOf.apply(new Box(minX, top, minZ, maxX, top, maxZ)).stream().noneMatch(t -> Math.abs(t - top) <= 1)) {
+            return Optional.empty();
+        }
+        double cx = (minX + maxX) / 2.0, cz = (minZ + maxZ) / 2.0;
+        return ground.stream()
+                .filter(b -> b.minX() < minX || b.maxX() > maxX || b.minZ() < minZ || b.maxZ() > maxZ)
+                .filter(b -> topOf.apply(b).stream().anyMatch(t -> Math.abs(t - top) > 1))
+                .min(Comparator.comparingDouble(b -> Math.hypot((b.minX() + b.maxX()) / 2.0 - cx, (b.minZ() + b.maxZ()) / 2.0 - cz)))
+                .map(b -> new Flatten(b.minX(), b.minZ(), b.maxX(), b.maxZ(), top, side, true));
     }
 }

@@ -42,9 +42,11 @@ handle's log off a woodcutter's strip, `WoodDutiesSimulationTest`).
   to ripen and a planter with no opened ground read as behind. Left: each share's rate expected from
   what its ground holds (ripe cells, standing trees), so a share with nothing to do is told apart from
   one falling behind, and the squad leader closing the gap (another share, or the squad given back).
-- **Flat at sea level, the airhead too.** The flatten trends the camp and its work areas to sea
-  level, for routes and fields; the phase rules for who flattens stand
-  ([military-doctrine.md § 17](../docs/military-doctrine.md#17-the-lodgment)).
+- **Sea level past the farm and grove.** Once a site is flat, the next is the nearest farm or grove box off
+  its level (`Flatten.next`). The camp inside its wall is left at its own height (its floor is paved, not
+  cut: the operator's earlier rule), and the wood's ground isn't flattened while it stands. Left: the
+  camp's routes between the work areas, and a squad-simulation scenario of one site handing on to the
+  next (a flatten takes a simulated day).
 - **Migrated one assignment map at a time**, the farm first: each map moved into the order is a
   slice out of `SoldierRunner` (backlog/split-oversized-sources.md).
 

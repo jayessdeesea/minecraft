@@ -5,7 +5,13 @@ priority: P1
 
 # Questions for the operator
 
-No open questions. Answered 2026-11-18, each now with its item:
+- **Sea level: which ground after the farm-and-grove site?** (backlog/soldier-order.md) Taken by default:
+  once a site is flat, the next is the nearest box of the squads' farm and grove areas off its level, at
+  the same level (y=62), soil. The camp inside its wall stays at its own height (the earlier rule: its
+  floor paved, not cut), and wood ground isn't flattened. Should the camp itself be cut to sea level too,
+  and the routes between the work areas? That changes whether the wall and its floor get rebuilt.
+
+Answered 2026-11-18, each now with its item:
 - **The depot** off the farm-and-grove ground's north edge (built, docs/military-doctrine.md § 17).
 - **Arms before the flatten:** yes - food and arming come before flattening; all soldiers should have swords and
   armour (built: docs/echelons/platoon-leader/operator-rules.md).
