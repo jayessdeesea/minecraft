@@ -68,6 +68,8 @@ In field480 the camp's next chest at (-50, 76, 47) was logged full and then forg
 (Dana couldn't take a block in hand to put it up). One cause found and fixed: the camp's upkeep dug out its workshop's
 full chests - only the chest in use was kept from the dig - and the stores they held were forgotten (field486: a
 chest at (-53, 76, 44) dug by Charlie's soldiers minutes after it filled). Every full chest is now kept from the
-camp's dig. Left: a chest that never stood counted full and then forgotten, and the stores counted from every
-standing chest - so a shortfall read is the force's, not the reading's.
+camp's dig. Each chest's last contents are now kept across a restart and the stores summed from all of them; a chest
+the world no longer shows is forgotten before the sum, and a depot chest is never marked full where none stands
+(`StoresBook`). Left: the per-chest kinds a draw looks for (`chestStock`) are still this run's only, so after a
+restart a draw finds a chest holding its kind only once a load has gone into it.
 

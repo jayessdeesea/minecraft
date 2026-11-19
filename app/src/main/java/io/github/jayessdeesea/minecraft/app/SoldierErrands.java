@@ -153,4 +153,22 @@ final class SoldierErrands {
         int wanted = Recipe.BED.ingredients().get(ItemClass.WOOL) - inventory.count(ItemClass.WOOL);
         return Math.max(0, wanted * perWool - inventory.count(ItemClass.STRING));
     }
+
+    /**
+     * What a flatten builder's load leaves at a dump: cobblestone or dirt past its most ({@link StockLevels})
+     * across the surface chests, or either once every chest it could go to is full.
+     */
+    static java.util.Set<ItemClassRegistry.ItemClass> surplusKinds(java.util.Collection<io.github.jayessdeesea.minecraft.command.Stockpile> seen,
+                                                                   Optional<io.github.jayessdeesea.minecraft.command.Position> deposit) {
+        int stone = seen.stream().mapToInt(io.github.jayessdeesea.minecraft.command.Stockpile::stone).sum();
+        int dirt = seen.stream().mapToInt(io.github.jayessdeesea.minecraft.command.Stockpile::dirt).sum();
+        java.util.Set<ItemClassRegistry.ItemClass> kinds = java.util.EnumSet.noneOf(ItemClassRegistry.ItemClass.class);
+        if (deposit.isEmpty() || stone >= io.github.jayessdeesea.minecraft.bot.supply.StockLevels.DEPOT.get(ItemClassRegistry.ItemClass.COBBLESTONE).most()) {
+            kinds.add(ItemClassRegistry.ItemClass.COBBLESTONE);
+        }
+        if (deposit.isEmpty() || dirt >= io.github.jayessdeesea.minecraft.bot.supply.StockLevels.DEPOT.get(ItemClassRegistry.ItemClass.DIRT).most()) {
+            kinds.add(ItemClassRegistry.ItemClass.DIRT);
+        }
+        return kinds;
+    }
 }

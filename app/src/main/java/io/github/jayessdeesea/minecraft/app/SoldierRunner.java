@@ -1106,23 +1106,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How far off a depot's stand its dump is: clear of its chests, which are within reach of it. */
     static final int DUMP_OFF = Workshop.CHEST_REACH + 2;
 
-    /**
-     * What a flatten builder's load leaves at a dump: cobblestone or dirt past its most ({@link StockLevels})
-     * across the surface chests, or either once every chest it could go to is full.
-     */
-    private Set<ItemClass> surplusKinds(Optional<Position> deposit) {
-        int stone = chestsSeen.values().stream().mapToInt(Stockpile::stone).sum();
-        int dirt = chestsSeen.values().stream().mapToInt(Stockpile::dirt).sum();
-        Set<ItemClass> kinds = EnumSet.noneOf(ItemClass.class);
-        if (deposit.isEmpty() || stone >= StockLevels.DEPOT.get(ItemClass.COBBLESTONE).most()) {
-            kinds.add(ItemClass.COBBLESTONE);
-        }
-        if (deposit.isEmpty() || dirt >= StockLevels.DEPOT.get(ItemClass.DIRT).most()) {
-            kinds.add(ItemClass.DIRT);
-        }
-        return kinds;
-    }
-
     /** The nearest stockpile chest, not to be salvaged, last seen holding {@code kind} - to {@code from}. */
     private Optional<Position> chestHolding(ItemClass kind, Position from) {
         return chestStock.entrySet().stream()
@@ -1192,8 +1175,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     private void depotChestFull(Position full) {
-        // Known full, whatever comes next: no load is taken to it again (the depositor's notFull).
-        if (fullChests.add(BlockPos.containing(full.x(), full.y(), full.z()))) {
+        // Known full, whatever comes next: no load is taken to it again (the depositor's notFull). A chest that never
+        // stood isn't (live, field480: one Dana couldn't put up was logged full and then forgotten).
+        BlockPos cell = BlockPos.containing(full.x(), full.y(), full.z());
+        if ((!world.isLoaded(cell.x(), cell.z()) || world.isChest(cell.x(), cell.y(), cell.z())) && fullChests.add(cell)) {
             saveFullChests();
         }
         synchronized (keepPlanLock) {
@@ -1326,6 +1311,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.chestStore = new WallStore(Path.of(stateDir), "chests");
         this.dangerAreas = new DangerAreaBook(chestStore);
         this.storesBook = new StoresBook(chestStore);
+        chestsSeen.putAll(storesBook.chests()); // every chest as last seen, not only those opened since
         storesBook.kept().ifPresent(chainOfCommand::onStores); // as last seen, till a chest is opened
         (this.phaseBook = new PhaseBook(chestStore)).restoreInto(chainOfCommand); (this.woodsBook = new WoodsBook(chestStore)).restoreInto(chainOfCommand);
         this.stepStore = new WallStore(Path.of(stateDir), "steps");
@@ -6946,7 +6932,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Optional.ofNullable(stashing.get()).filter(d -> d.full().isEmpty()).flatMap(Depositor::chestAt)
                         .map(chest -> BlockPos.containing(chest.x(), chest.y(), chest.z()))
                         .filter(fullChests::remove).ifPresent(chest -> saveFullChests());
-                chainOfCommand.onStores(storesBook.keep(Stockpile.sum(chestsSeen.values())));
+                forgetChestsGone(chestsSeen, world); // a chest dug, or never put up, holds nothing of the stores
+                chainOfCommand.onStores(storesBook.keep(chestsSeen));
             }
             if (mine.isEmpty() && Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).equals(stockpileFor(name))) {
                 // Only the stockpile draws come from: an outpost depot's chest, or another the load went
@@ -7571,7 +7558,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 java.util.function.Predicate<Position> notFull = c -> !fullChests.contains(BlockPos.containing(c.x(), c.y(), c.z()));
                 Optional<Position> deposit = (keepHands.contains(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile)
                         : dutyBook.dump(name, world).or(() -> stockpile)).filter(notFull);
-                Set<ItemClass> surplus = keepHands.contains(name) && !depositor.active() || depositor.dumping() ? surplusKinds(deposit) : Set.of();
+                Set<ItemClass> surplus = keepHands.contains(name) && !depositor.active() || depositor.dumping() ? surplusKinds(chestsSeen.values(), deposit) : Set.of();
                 boolean dumpNow = fullLoad && surplus.stream().anyMatch(c -> inventory.count(c) > Depositor.KEEP);
                 if (depositor.dumping() || dumpNow && !depositor.active()) {
                     depositor.tickDump(status.position(), shop.or(() -> Optional.ofNullable(mainDepot)).flatMap(d -> dumpOf(d, world)), surplus,
