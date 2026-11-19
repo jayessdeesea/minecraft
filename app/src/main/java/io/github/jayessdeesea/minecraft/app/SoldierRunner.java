@@ -1144,11 +1144,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Where a soldier walks to fit its workshop's chest, while it does - tick writes, squad loop reads. */
     private final Map<String, Optional<Position>> storeWalks = new ConcurrentHashMap<>();
 
-    /** Whether {@code at} is at {@code workshop}'s stand: within reach of its fixtures. */
-    private static boolean atStand(Position at, Workshop workshop) {
-        return Math.hypot(at.x() - workshop.stand().x() - 0.5, at.z() - workshop.stand().z() - 0.5) <= Armourer.WORKSHOP_TOLERANCE
-                && Math.abs(at.y() - workshop.stand().y()) <= 1;
-    }
 
     /** Masons out of blocks sent to draw cobblestone from the stockpile - squad loop writes, tick reads. */
     private final Set<String> drawingStone = ConcurrentHashMap.newKeySet();
@@ -1313,12 +1308,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return kinds;
     }
 
-    /** A depot's dump: ground {@link #DUMP_OFF} west of its stand, off the walks to its chests. */
-    private static Optional<Position> dumpOf(Workshop depot, io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
-        BlockPos stand = depot.stand();
-        return TerrainSurveyor.surface(world, stand.x() - DUMP_OFF, stand.z(), stand.y() + CEILING_SLACK)
-                .map(cell -> new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5));
-    }
 
 
     /** The nearest stockpile chest, not to be salvaged, last seen holding {@code kind} - to {@code from}. */
@@ -1504,7 +1493,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Cobblestone for the furnace that makes the charcoal. */
     private static final int TORCH_STONE = 8;
     /** Torches a soldier makes at a time for lighting ground: two logs' charcoal. */
-    private static final int LIGHTING_TORCHES = 8;
+    static final int LIGHTING_TORCHES = 8;
     /** A soldier being handed logs goes for dropped items this close - where a throw lands. */
     private static final double PICKUP_RADIUS = 4;
 
@@ -1523,6 +1512,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.mineStore = new WallStore(Path.of(stateDir), "stairs");
         this.chestStore = new WallStore(Path.of(stateDir), "chests");
         this.dangerAreas = new DangerAreaBook(chestStore);
+        this.storesBook = new StoresBook(chestStore);
+        storesBook.kept().ifPresent(chainOfCommand::onStores); // as last seen, till a chest is opened
         this.stepStore = new WallStore(Path.of(stateDir), "steps");
         stepStore.load(STEPS).ifPresent(scaffolding::addAll);
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
@@ -2287,16 +2278,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return stockpileOf(own != null && mineOfChest(chestCentre(own)).isPresent() ? Optional.empty() : chestOf(own), chestOf(campWorkshop));
     }
 
-    /**
-     * The stockpile a soldier draws from and stocks: its own workshop's chest, or with none standing
-     * there, the camp's - the force's stores are common, whichever squad put them there (the
-     * operator's, docs/echelons/tenets.md). Live, the keep's builders had no chest at the keep's
-     * workshop - fitting one takes logs - and with only their own to go to drew nothing all day:
-     * not the logs for the chest, nor for a pickaxe or a torch.
-     */
-    static Optional<Position> stockpileOf(Optional<Position> own, Optional<Position> camp) {
-        return own.or(() -> camp);
-    }
 
     /** Where {@code w}'s chest stands, if it has one standing. */
     private Optional<Position> chestOf(Workshop w) {
@@ -4349,16 +4330,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Setbacks<String> chestFits =
             new Setbacks<>(60_000, 20 * 60_000);
 
-    /**
-     * Why a soldier can't make torches, for its CANTCO: what it's short of, or with the makings
-     * carried, that it has no workshop to make them at - live, a CANTCO read "short of {}".
-     */
-    private static String torchShortfall(Inventory inventory, Workshop workshop) {
-        Map<ItemClass, Integer> short_ = Torchmaker.shortOf(inventory, LIGHTING_TORCHES);
-        return !short_.isEmpty() ? "short of " + short_ + " to make them"
-                : workshop == null ? "the makings carried, but no workshop sited to make them at"
-                : "the makings carried, but not yet made at the workshop at " + workshop.stand();
-    }
 
     /** The routine holding each soldier's hands, after its last tick - tick writes, squad loop reads. */
     private final Map<String, Hands.Routine> handsHeld = new ConcurrentHashMap<>();
@@ -4492,6 +4463,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Set<Integer>> levelsBlocked = new ConcurrentHashMap<>();
     /** Where soldiers were killed lately (command.DangerAreas) - death handlers write, squad loops read, under its lock. */
     private final DangerAreaBook dangerAreas;
+    private final StoresBook storesBook;
     /** Mine heads worked out or blocked, never sited again - kept on disk. Squad loop, read at siting. */
     private final Set<BlockPos> deadWells = ConcurrentHashMap.newKeySet();
     /** The key the dead wells are kept under. */
@@ -7196,7 +7168,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Optional.ofNullable(stashing.get()).filter(d -> d.full().isEmpty()).flatMap(Depositor::chestAt)
                         .map(chest -> BlockPos.containing(chest.x(), chest.y(), chest.z()))
                         .filter(fullChests::remove).ifPresent(chest -> saveFullChests());
-                chainOfCommand.onStores(Stockpile.sum(chestsSeen.values()));
+                chainOfCommand.onStores(storesBook.keep(Stockpile.sum(chestsSeen.values())));
             }
             if (mine.isEmpty() && Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).equals(stockpileFor(name))) {
                 // Only the stockpile draws come from: an outpost depot's chest, or another the load went

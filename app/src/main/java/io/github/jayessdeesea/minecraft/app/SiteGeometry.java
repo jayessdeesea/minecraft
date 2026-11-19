@@ -20,6 +20,12 @@ import io.github.jayessdeesea.minecraft.bot.engineer.AccessRoute;
 import io.github.jayessdeesea.minecraft.bot.farm.TreeFarm;
 import io.github.jayessdeesea.minecraft.bot.supply.Staircase;
 import io.github.jayessdeesea.minecraft.command.Cell;
+import io.github.jayessdeesea.minecraft.bot.nav.TerrainSurveyor;
+import io.github.jayessdeesea.minecraft.bot.supply.Armourer;
+import io.github.jayessdeesea.minecraft.bot.supply.Torchmaker;
+import io.github.jayessdeesea.minecraft.bot.world.Inventory;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import java.util.Map;
 
 import static io.github.jayessdeesea.minecraft.app.SoldierRunner.*;
 
@@ -229,5 +235,40 @@ final class SiteGeometry {
     }
     static boolean overlaps(Box a, Box b) {
         return a.minX() <= b.maxX() && b.minX() <= a.maxX() && a.minZ() <= b.maxZ() && b.minZ() <= a.maxZ();
+    }
+
+    /** Whether {@code at} is at {@code workshop}'s stand: within reach of its fixtures. */
+    static boolean atStand(Position at, Workshop workshop) {
+        return Math.hypot(at.x() - workshop.stand().x() - 0.5, at.z() - workshop.stand().z() - 0.5) <= Armourer.WORKSHOP_TOLERANCE
+                && Math.abs(at.y() - workshop.stand().y()) <= 1;
+    }
+
+    /** A depot's dump: ground {@link #DUMP_OFF} west of its stand, off the walks to its chests. */
+    static Optional<Position> dumpOf(Workshop depot, io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
+        BlockPos stand = depot.stand();
+        return TerrainSurveyor.surface(world, stand.x() - DUMP_OFF, stand.z(), stand.y() + CEILING_SLACK)
+                .map(cell -> new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5));
+    }
+
+    /**
+     * The stockpile a soldier draws from and stocks: its own workshop's chest, or with none standing
+     * there, the camp's - the force's stores are common, whichever squad put them there (the
+     * operator's, docs/echelons/tenets.md). Live, the keep's builders had no chest at the keep's
+     * workshop - fitting one takes logs - and with only their own to go to drew nothing all day:
+     * not the logs for the chest, nor for a pickaxe or a torch.
+     */
+    static Optional<Position> stockpileOf(Optional<Position> own, Optional<Position> camp) {
+        return own.or(() -> camp);
+    }
+
+    /**
+     * Why a soldier can't make torches, for its CANTCO: what it's short of, or with the makings
+     * carried, that it has no workshop to make them at - live, a CANTCO read "short of {}".
+     */
+    static String torchShortfall(Inventory inventory, Workshop workshop) {
+        Map<ItemClass, Integer> short_ = Torchmaker.shortOf(inventory, LIGHTING_TORCHES);
+        return !short_.isEmpty() ? "short of " + short_ + " to make them"
+                : workshop == null ? "the makings carried, but no workshop sited to make them at"
+                : "the makings carried, but not yet made at the workshop at " + workshop.stand();
     }
 }

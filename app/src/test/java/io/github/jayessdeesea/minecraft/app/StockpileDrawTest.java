@@ -38,7 +38,7 @@ class StockpileDrawTest {
     @Test
     void aSoldierWithNoChestOfItsOwnDrawsFromTheCamps() {
         Optional<Position> camp = Optional.of(new Position(-47.5, 70, 44.5));
-        assertEquals(camp, SoldierRunner.stockpileOf(Optional.empty(), camp));
-        assertEquals(CHEST, SoldierRunner.stockpileOf(CHEST, camp), "its own first, nearer its work");
+        assertEquals(camp, SiteGeometry.stockpileOf(Optional.empty(), camp));
+        assertEquals(CHEST, SiteGeometry.stockpileOf(CHEST, camp), "its own first, nearer its work");
     }
 }

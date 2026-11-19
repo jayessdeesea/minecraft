@@ -40,7 +40,7 @@ raises WOOD for swords and IRON for armour); a squad whose standing work is prod
 squad doubling up elsewhere is moved to it - wood counted covered only by a squad felling (WOOD), not one
 planting a grove (TREE_FARM): a grove is logs in a day or two, not today (`DayWorkRules.covers`). The trees it can send
 a squad to are the ones the squads see, or with none seen - up from a night underground - those seen within a
-day (`WoodSightings`). The farm squad keeps the camp's farm. The night rule still comes first,
+day (`WoodSightings`). The stores it measures shortfalls by are the last seen, kept across restarts (`StoresBook`). The farm squad keeps the camp's farm. The night rule still comes first,
 but for the night shift's last 30 seconds, when the squads climb out to it. A squad's miner, with no
 order of its own, builds the keep with it by day: the whole squad mines by night.
 
