@@ -79,3 +79,11 @@ objective, which is where the squad last saw some.
   109 times in a night toward his mine's tunnel at (-161, -56, -17); the "plans the same leg again" guard
   didn't take, and the cutters waiting on his cut waited all night (backlog/mining.md).
 
+## From one mine to another: by the stairs, over the top (field458-463)
+The night's biggest loss since the strips were made parallel: soldiers down one mine sent to a level of
+another, "no route" all night - Alice at (153, -24, -8) for (57, -23, -10), 97 across with no tunnel between;
+Eli, Hal and Carol the same. The planner searches underground for a way that doesn't exist. Wanted: a
+soldier underground whose goal is far across (say 48 or more) goes first to the head of the mine it's in -
+up its own stairs - and from there over the top to the goal's mine and down its stairs; the legs are the
+runner's waypoints (the known mine heads, `squadStairs` / the kept stairs), the planner each leg's walk.
+
