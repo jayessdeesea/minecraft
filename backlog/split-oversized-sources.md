@@ -26,7 +26,7 @@ lists the files over it, each capped at its length then, to shrink to under.
 - **`app.ChainOfCommand`**: the platoon leader's guardrails apart from the wiring of the echelons.
 - **The tests** (`SquadSimulationTest`, `DeterministicSoldierTest`, `SimServer`): split by the
   scenario family they test, and the sim server's world, entities and chests apart. Begun: the wall's
-  scenarios are `WallSimulationTest`, the mine's `MineSimulationTest` (its kept staircase `KeptStairs`); the farm's, the wood's and
+  scenarios are `WallSimulationTest`, the mine's `MineSimulationTest` (its kept staircase `KeptStairs`), the keep's `KeepSimulationTest` and its builders' `BuilderSimulationTest`; the farm's, the wood's and
   routing are their own classes too.
 
 ## Done when
