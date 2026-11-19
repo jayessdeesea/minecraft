@@ -17,19 +17,8 @@ report CANTCO. A player in the same spot would dig a staircase into the hillside
 down and jump onto it.
 
 ## Done when
-Live:
-- **Pillaring.** A soldier carrying cobblestone jumps and places a block under itself, one block up
-  per step. Routes are never planned on more blocks than it carries, and the squad leader's survey
-  marks ground reached only by climbing, with what the climb costs (`Pathfinder`,
-  `DeterministicSoldier`, `bot.supply.Footing`, `TerrainSurveyor`).
-- **Cutting steps.** Any soldier, facing a soil bank too high to jump, digs a step into its face
-  by hand and jumps onto it; one carrying a pickaxe does the same into plain stone
-  (`Pathfinder.stepCut`, `bot.supply.Breacher`). Measured by `SoldierScenarioTest`'s digging runs,
-  and seen live climbing a 3-high terrace of each (`climb-soil-terrace`, `climb-stone-terrace`).
-- **Built steps** with cobblestone or dirt carried, down a sheer drop or up to ground above
-  (docs/military-doctrine.md § 7), planned when they reach the objective.
-
-What's left:
+Pillaring, cutting steps (soil by hand, stone with a pickaxe) and building steps down a drop or up to
+ground above are live (docs/echelons/soldier/capabilities.md, docs/military-doctrine.md section 7). Left:
 - **A staircase into a face taller than three blocks, with nothing carried.** A step is cut only
   where it comes out under open air, so the planner never tunnels and the survey's flood fill
   stays bounded.
