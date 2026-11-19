@@ -17,11 +17,12 @@ import java.util.function.Predicate;
  * wheat on hydrated farmland grows about twice as fast as on dry. A plot cell is ground a hoe
  * tills (or farmland already) level with the water, with open air over it for the crop. Before the force has a
  * bucket the farm grows along {@link #trenches}: a block wide, cut at the farmland's level off a pond, the pond's
- * water flowing down each to {@link #FLOW} blocks, and hydrating the ground beside it as a source does.
+ * water flowing down each to {@link #FLOW} blocks, and hydrating the ground beside it as a source does. With one, it
+ * takes in a {@link ChunkFarm}: its {@link #holes} dug in the farmland's layer and filled by bucket.
  *
  * <p>Pure: worked out from a {@link WorldView}, so it's tested without a server.
  */
-public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenches) {
+public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenches, List<BlockPos> holes) {
 
     /** How far from water farmland stays hydrated, in each direction. */
     public static final int HYDRATION = 4;
@@ -36,11 +37,28 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenc
     public FarmPlan {
         plot = List.copyOf(plot);
         trenches = List.copyOf(trenches);
+        holes = List.copyOf(holes);
+    }
+
+    /** A farm round its water and along its trenches, no hole to fill. */
+    public FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenches) {
+        this(water, plot, trenches, List.of());
     }
 
     /** A farm round its water alone, no trench cut. */
     public FarmPlan(BlockPos water, List<BlockPos> plot) {
         this(water, plot, List.of());
+    }
+
+    /** This farm with {@code other}'s ground, trenches and holes taken in, kept by its own water: one farm, tended as one. */
+    public FarmPlan with(FarmPlan other) {
+        LinkedHashSet<BlockPos> cells = new LinkedHashSet<>(plot);
+        cells.addAll(other.plot());
+        LinkedHashSet<BlockPos> cut = new LinkedHashSet<>(trenches);
+        cut.addAll(other.trenches());
+        LinkedHashSet<BlockPos> dug = new LinkedHashSet<>(holes);
+        dug.addAll(other.holes());
+        return new FarmPlan(water, List.copyOf(cells), List.copyOf(cut), List.copyOf(dug));
     }
 
     /**
@@ -124,7 +142,7 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenc
             plot.addAll(watered(world, cut.get(), plot, trenches, walkable));
         }
         return plot.size() == farm.plot().size() && trenches.size() == farm.trenches().size() ? farm
-                : new FarmPlan(farm.water(), List.copyOf(plot), trenches);
+                : new FarmPlan(farm.water(), List.copyOf(plot), trenches, farm.holes());
     }
 
     /**

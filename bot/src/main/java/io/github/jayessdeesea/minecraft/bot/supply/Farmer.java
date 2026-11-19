@@ -27,6 +27,7 @@ import java.util.function.BooleanSupplier;
  * One soldier keeping its squad's wheat farm ({@link FarmPlan}): each tick it does the most
  * pressing job left, one cell at a time, in this order -
  * <ol>
+ *   <li>with a bucket, its water holes ({@link FarmPlan#holes}): each dug, then filled at a pond ({@link WaterCarrier});</li>
  *   <li>its trenches cut ({@link #trenchToCut}), out from the pond, for its water to flow along;</li>
  *   <li>its earthwork ({@link #earthwork}): a block put down on the plot dug off, and the ground round
  *   it cut down to the plot's level, so every cell is walked onto on the flat;</li>
@@ -60,6 +61,10 @@ public final class Farmer {
 
     private Digger digger;
     private Script fieldWork;
+    /** Fills the farm's holes with water, by bucket. */
+    private final WaterCarrier carrier;
+    /** The hole it's filling. */
+    private BlockPos watering;
     /** Does the farm's {@link #earthwork}: a {@link Clearer} over it. */
     private final Clearer unburier;
     private BlockPos claimed;
@@ -94,6 +99,7 @@ public final class Farmer {
         this.claims = claims;
         this.shared = shared;
         this.steps = steps;
+        this.carrier = new WaterCarrier(name, session, inventory);
         // Cut from off the farmland: in the squad simulation, stands on the plot in its hollow had the
         // farmers walking in and out over it, trampling it, to dig the ground round it.
         this.unburier = new Clearer(name, session, inventory, claims, (world, stand) -> !world.isFarmland(stand.x(), stand.y() - 1, stand.z()));
@@ -158,6 +164,20 @@ public final class Farmer {
     /** The cells any farmer working this farm couldn't work, for a while. */
     private final Setbacks<BlockPos> shared;
 
+    /** A tick of filling the hole it's watering: done when its water's there; a run that fails passes the hole over. */
+    private void fill(WorldView world) {
+        switch (carrier.tick(soldier, world, watering)) {
+            case WaterCarrier.Progress.Working _ -> {
+            }
+            case WaterCarrier.Progress.Done _ -> watering = null;
+            case WaterCarrier.Progress.Failed(String why) -> {
+                passedOver.failed(watering, ticks, why);
+                watering = null;
+                fail(why);
+            }
+        }
+    }
+
     /**
      * Whether {@code farm} has work in it: wheat ripe, farmland bare, or ground to till. A planted
      * plot growing has none - its farmers are free for other work until it ripens: live, a squad's
@@ -171,12 +191,13 @@ public final class Farmer {
     }
 
     public synchronized boolean active() {
-        return digger != null || fieldWork != null || unburier.active();
+        return digger != null || fieldWork != null || unburier.active() || carrier.active();
     }
 
     /** Where the soldier should be standing for the job under way. */
     public synchronized Optional<Position> standAt() {
-        return digger != null ? Optional.of(digger.standAt()) : unburier.active() ? unburier.standAt() : Optional.ofNullable(standAt);
+        return digger != null ? Optional.of(digger.standAt()) : unburier.active() ? unburier.standAt()
+                : carrier.active() ? carrier.standAt() : Optional.ofNullable(standAt);
     }
 
     /** Why the last job failed, while the soldier waits before the next. */
@@ -256,6 +277,10 @@ public final class Farmer {
             unburier.tick(soldier, world, unburying(world, farm.get()), true);
             return;
         }
+        if (watering != null) {
+            fill(world);
+            return;
+        }
         if (cooldown > 0) {
             return;
         }
@@ -284,6 +309,27 @@ public final class Farmer {
         List<BlockPos> plot = farm.plot().stream().filter(c -> !claims.contains(c) && !claims.contains(c.offset(0, 1, 0))
                         && !passedOver.barred(c, ticks) && !shared.barred(c, ticks) && !world.isSolid(c.x(), c.y() + 2, c.z()))
                 .sorted(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()))).toList();
+        // Its water holes first, with a bucket: the ground round each grows dry till its water's there.
+        if (inventory.count(ItemClass.BUCKET) + inventory.count(ItemClass.WATER_BUCKET) > 0) {
+            for (BlockPos h : farm.holes()) {
+                if (world.isWaterSource(h.x(), h.y(), h.z()) || claims.contains(h) || passedOver.barred(h, ticks)) {
+                    continue;
+                }
+                if (world.isSolid(h.x(), h.y(), h.z())) {
+                    Optional<BlockPos> stand = WaterCarrier.beside(world, h);
+                    if (stand.isPresent()) {
+                        Digger.Target ground = Digger.Target.SOIL.at(world, h) ? Digger.Target.SOIL : Digger.Target.OTHER;
+                        digger = new Digger(name, session, inventory, claims, new Digger.Spot(ground, stand.get(), h), Digger.walkTicks(soldier, stand.get()));
+                        LOG.info("{} digs the farm's water hole at {}", name, h);
+                        return;
+                    }
+                } else if (world.isSolid(h.x(), h.y() - 1, h.z())) {
+                    watering = h;
+                    fill(world);
+                    return;
+                }
+            }
+        }
         // Its trenches first: the ground beside each grows dry till its water's there.
         for (BlockPos c : trenchToCut(world, farm)) {
             Optional<BlockPos> stand = claims.contains(c) ? Optional.empty() : trenchStand(world, c);
@@ -451,6 +497,8 @@ public final class Farmer {
     public synchronized void stop() {
         stopDigging();
         unburier.stop();
+        carrier.stop();
+        watering = null;
         endFieldWork();
     }
 }

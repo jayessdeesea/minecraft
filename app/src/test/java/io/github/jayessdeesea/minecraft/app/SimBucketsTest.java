@@ -35,8 +35,10 @@ class SimBucketsTest {
         assertEquals(OptionalInt.of(SimBuckets.WATER_BUCKET), filled, log.toString());
         assertEquals(SimServer.WATER, server.block(11, GROUND, 0), "a pond's source fills again");
 
-        float[] intoHole = look(0.5, 1.5, new Position(0.5, GROUND - 0.1, 0.5));
-        OptionalInt poured = SimBuckets.use(server, new PlayerPosition(0.5, GROUND + 1, 1.5), intoHole[0], intoHole[1], SimBuckets.WATER_BUCKET, log::add);
+        // From well off the hole's centre, as a walk ends: 1.6 blocks.
+        Position off = new Position(0.9, GROUND + 1, 2.0);
+        float[] intoHole = WaterCarrier.look(off, WaterCarrier.pourAt(off, new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(0, GROUND, 0)));
+        OptionalInt poured = SimBuckets.use(server, new PlayerPosition(off.x(), off.y(), off.z()), intoHole[0], intoHole[1], SimBuckets.WATER_BUCKET, log::add);
         assertEquals(OptionalInt.of(SimBuckets.BUCKET), poured, log.toString());
         assertEquals(SimServer.WATER, server.block(0, GROUND, 0), "the hole a source: " + log);
     }

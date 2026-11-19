@@ -194,7 +194,13 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    ponds (`FarmPlan.bestTrench`): a block wide, cut at the farmland's level, up to 7 long (as far as
    water flows on the flat), with ground under and beside each cell and ending against ground so the
    water stays in, the trench adding the most ground first and one adding under 12 cells not cut;
-   the ground within 4 of its water is the plot's (operator, 2026-11-19). Sized
+   the ground within 4 of its water is the plot's (operator, 2026-11-19). Once a farmer keeping a farm
+   carries a bucket, or the camp's at BUILDUP, it takes in a chunk farm (`bot.farm.ChunkFarm`): the
+   chunk within two of the camp's - never the camp's own - with the most ground at one level that makes
+   farmland, at least 160 of its 220; laid out on the chunk's lines - a fence on x%16==0 and z%16==0, a
+   gate beside each corner, four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) in the
+   farmland's own layer, a chest at local (13, 13). Its farmers dig the holes and fill them from a
+   pond with the bucket; a farmer on a farm with holes still dry asks for one (`app.CampFarm`). Sized
    to build the basic load, not only to feed: live, 97 cells made about 20 loaves an hour, as many
    as eight soldiers ate, and none carried more than a few rations; and 192, eight soldiers' worth,
    left sixteen with twelve at no bread (field369).
@@ -733,8 +739,9 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 11. An iron axe, which chops a log in a sixth of the bare-handed time.
 12. A bucket, 3 ingots, for water carried to a farm's holes (`bot.supply.WaterCarrier`): filled at
     a pond's source with two sources beside it, which fills again - never a lone one, which a bucket
-    empties for good - and poured from the ground beside the cell, looking down into it, the server
-    casting its ray along the look.
+    empties for good - and poured from the ground beside the cell, looking at the far side of it half way
+    up: the server casts its ray along the look, stops on the ground beyond, and the water goes in the
+    cell before it.
 13. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
     the miner takes beside its stairs (§16) with an iron pickaxe, not something a soldier fetches.
 14. The tool load (`CrossLevel.TOOL_LOAD`): two each of melee weapons, pickaxes and shovels, of
@@ -983,7 +990,9 @@ tillable ground, dirt or grass, with nothing solid above, at one height within 4
 An objective's task can be `FARM`. The squad keeps the plot round the water nearest the objective,
 the same plot while the objective stays put. Each soldier does the most pressing job left on it,
 one cell at a time (`bot.supply.Farmer`), in this order:
-1. Its trenches (`Farmer.trenchToCut`), out from the pond a cell beside water at a time, so each
+1. With a bucket, its water holes (`FarmPlan.holes`): each dug from the ground beside it, then
+   filled from a pond (`bot.supply.WaterCarrier`); a fill that fails passes the hole over a while.
+   Then its trenches (`Farmer.trenchToCut`), out from the pond a cell beside water at a time, so each
    fills as it's cut - a cell cut ahead of the water is a hole, and a route fills it in again -
    from the ground across the trench. The farmer cuts them itself: its earthwork, a clearing, never
    makes a cut that lets water in (`Clearing.letsInWater`), and a trench is that cut.

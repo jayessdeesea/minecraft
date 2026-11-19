@@ -137,10 +137,8 @@ public final class WaterCarrier {
         List<Step> steps = new java.util.ArrayList<>(List.of(fillSteps));
         steps.add(walk(pour, () -> world.isWaterSource(cell.x(), cell.y(), cell.z())));
         steps.add(inHand(ItemClass.WATER_BUCKET, () -> world.isWaterSource(cell.x(), cell.y(), cell.z())));
-        // At the top of the ground under the cell, a little into it: the server's ray stops on that face, and the
-        // water goes in the cell over it.
         steps.add(new Step("pour water at " + cell, () -> world.isWaterSource(cell.x(), cell.y(), cell.z()),
-                () -> use(new Position(cell.x() + 0.5, cell.y() - 0.1, cell.z() + 0.5)),
+                () -> use(pourAt(soldier, cell)),
                 new Expect("water at " + cell, () -> world.isWaterSource(cell.x(), cell.y(), cell.z())), ANSWER_TICKS));
         script = new Script(name, steps);
         LOG.info("{} waters {}{}", name, cell, fill.map(f -> ", the bucket filled at " + f[0]).orElse(""));
@@ -163,6 +161,16 @@ public final class WaterCarrier {
     private void use(Position point) {
         float[] look = look(soldier, point);
         session.useItem(look[0], look[1]);
+    }
+
+    /**
+     * Where to look to pour into {@code cell} from {@code feet}: the far side of it, half way up - the server's ray
+     * stops on the face of the ground beyond and the water goes in the cell before it. Not the ground under the
+     * cell: from more than 1.3 blocks off, the ray to it meets the rim of the ground the soldier stands on first.
+     */
+    public static Position pourAt(Position feet, BlockPos cell) {
+        double dx = cell.x() + 0.5 - feet.x(), dz = cell.z() + 0.5 - feet.z(), across = Math.max(1e-6, Math.hypot(dx, dz));
+        return new Position(cell.x() + 0.5 + 0.45 * dx / across, cell.y() + 0.5, cell.z() + 0.5 + 0.45 * dz / across);
     }
 
     /** The yaw and pitch, in the server's degrees, that a soldier standing at {@code feet} looks at {@code point} with. */

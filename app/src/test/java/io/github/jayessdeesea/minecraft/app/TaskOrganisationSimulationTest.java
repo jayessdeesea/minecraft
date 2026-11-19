@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
@@ -253,6 +254,34 @@ class TaskOrganisationSimulationTest {
         }
         assertTrue(water.size() >= 3, "a trench cut and the pond's water down it: " + water);
         assertTrue(!tilled.isEmpty(), "ground past the pond's own reach tilled beside it, along " + water);
+    }
+
+    /** Flat, with a pond of three sources in a row six blocks east of the camp. */
+    private static int pondOfThreeByTheCamp(int x, int y, int z) {
+        return x >= 6 && x <= 8 && z == 0 && y == GROUND ? SimServer.WATER : SquadSimulationTest.flat(x, y, z);
+    }
+
+    /**
+     * With a bucket, the camp's farm takes in a chunk farm beside the camp: its farmer digs the water holes in the
+     * farmland's layer and fills them from the pond, a bucket at a time.
+     */
+    @Test
+    void aFarmerWithABucketWatersTheChunkFarmsHoles() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::pondOfThreeByTheCamp, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.SEEDS), 32},
+                        new int[]{41, SimServer.itemOf(ItemClass.BUCKET), 1}), "0,0");
+        clock.advance(8 * 60_000);
+
+        List<BlockPos> watered = new ArrayList<>();
+        for (int cx = -2; cx <= 2; cx++) {
+            for (int cz = -2; cz <= 2; cz++) {
+                new ChunkFarm(cx, cz, GROUND).holes().stream().filter(h -> server.block(h.x(), h.y(), h.z()) == SimServer.WATER).forEach(watered::add);
+            }
+        }
+        assertTrue(watered.size() >= 2, "the chunk farm's holes filled: " + watered + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
     }
 
     /** Flat, with a pool of water at the ground eight blocks south and one east of (8, 8). */

@@ -519,7 +519,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Each wall's layout on disk: laid out again after a restart, it would go up on top of itself. */
     private final WallStore wallStore;
     /** The camp's farm, kept on disk like the wall: sited again after a restart, it moved to another pond. */
-    private final WallStore farmStore;
     /** The chests found full, kept on disk: live, after every restart the crew found each again by a failed trip. */
     private final WallStore chestStore;
     /**
@@ -752,38 +751,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + (wallSoft > 0 ? ", and " + wallSoft + " of dirt to replace with stone" : "")
                         : wallSoft + " of its blocks dirt, to replace with stone", "FORTIFY"));
         long hungry =everyone.stream().filter(s -> s.condition().map(SoldierErrands::wantsFood).orElse(false)).count();
-        // The camp's farm, sited once and kept while its water is there: a farm is tended for days,
-        // and live a farm sited again each check moved between ponds, and its crop was left to new ground.
-        FarmPlan keptFarm = campFarm;
-        if (keptFarm == null) {
-            // As it was before a restart, while its water is there.
-            keptFarm = farmStore.load(camp[0] + "," + camp[1]).filter(cells -> cells.size() > 1).map(cells -> new FarmPlan(cells.getFirst(),
-                    cells.subList(1, cells.size()), farmStore.load(camp[0] + "," + camp[1] + ",trench").orElse(List.of()))).orElse(null);
-        }
-        boolean resite = keptFarm == null || !world.isWater(keptFarm.water().x(), keptFarm.water().y(), keptFarm.water().z());
-        if (resite || !campFarmGrown) {
-            Set<BlockPos> walkable =
-                    Pathfinder.reachable(world, at, CAMP_FARM_RADIUS + 4, FARM_REACH_BUDGET);
-            FarmPlan before = resite ? null : keptFarm;
-            if (resite) {
-                keptFarm = FarmPlan.site(world, at, CAMP_FARM_RADIUS, CAMP_FARM_VERTICAL,
-                        walkable::contains).orElse(null);
-            }
-            // Grown once a run to feed the camp: the plots round the waters beside its own.
-            if (keptFarm != null) {
-                // Out to the waters within 32 of its own, not 16: live (field371), the ground within 16 held 165
-                // cells, the target 384, and the farm didn't grow.
-                keptFarm = FarmPlan.grown(world, keptFarm, campFarmCells(), CAMP_FARM_VERTICAL, walkable::contains, CAMP_FARM_GROWN_RADIUS);
-                campFarmGrown = true;
-            }
-            if (keptFarm != null && !keptFarm.equals(before)) {
-                LOG.info("[Foothold] the camp's farm: by the water at {}, {} cells, {} trench cells", keptFarm.water(), keptFarm.plot().size(), keptFarm.trenches().size());
-                farmStore.save(camp[0] + "," + camp[1], Stream.concat(Stream.of(keptFarm.water()), keptFarm.plot().stream()).toList());
-                farmStore.save(camp[0] + "," + camp[1] + ",trench", keptFarm.trenches());
-            }
-        }
-        // Kept however it was found - sited now, or as it was before a restart: live, a farm loaded
-        // from disk was never kept, and both squads starved under SECURE with a farm by the camp.
+        // The camp's farm (CampFarm), with its chunk farm once a farmer has a bucket or the camp's at the buildup.
+        FarmPlan keptFarm = campFarms.kept(world, at, camp[0] + "," + camp[1], roster.squads().stream().mapToInt(sq -> sq.soldiers().size()).sum(),
+                bucketOnFarm || campLevel.filter(l -> l.compareTo(Site.Level.BUILDUP) >= 0).isPresent());
         campFarm = keptFarm;
         Optional<FarmPlan> farm = Optional.ofNullable(keptFarm);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
@@ -935,30 +905,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** How far round the camp its tree farm is looked for. */
     private static final int CAMP_RADIUS = 24;
-    /** How far round the camp its farm is looked for: the water it needs can be a way off. */
-    private static final int CAMP_FARM_RADIUS = 48;
-    /**
-     * The cells the camp's farm is grown to for each soldier on the roster: enough to feed the force
-     * and build its basic load, not only its meals. Hydrated wheat ripens in half an hour or so,
-     * three wheat a loaf: live, 97 cells made about 20 loaves an hour, as many as eight soldiers ate,
-     * and hunting added next to nothing - none of them carried more than a few rations. Live
-     * (field369), 192 cells - eight soldiers' worth - left a force of sixteen with 12 at no bread:
-     * the farm is the force's size, not a fixed one (operator, 2026-11-17: an emergency is a signal
-     * to change).
-     */
-    static final int CAMP_FARM_CELLS_A_SOLDIER = 24;
 
-    /** How far round its own water the camp's farm takes in more waters' plots as it grows. */
-    static final int CAMP_FARM_GROWN_RADIUS = 32;
-    /** The least the camp's farm is grown to, whatever the force: eight soldiers' worth, a pond or two. */
-    static final int CAMP_FARM_CELLS = 192;
-
-    /** The cells the camp's farm is grown to: {@link #CAMP_FARM_CELLS_A_SOLDIER} for every soldier, and never under {@link #CAMP_FARM_CELLS}. */
-    private int campFarmCells() {
-        return Math.max(CAMP_FARM_CELLS, CAMP_FARM_CELLS_A_SOLDIER * roster.squads().stream().mapToInt(s -> s.soldiers().size()).sum());
-    }
-    /** And how far up or down: a camp on a hill farms by the water below it. */
-    private static final int CAMP_FARM_VERTICAL = 32;
     /** Farm cells a farmer couldn't work, passed over by every farmer for a while. */
     private final Setbacks<BlockPos> farmCellsFailed =
             new Setbacks<>(Farmer.PASS_OVER_TICKS,
@@ -967,8 +914,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private static final int FARM_REACH_BUDGET = 40_000;
     /** The camp's farm ground by water, as the foothold last measured it: kept by squads short of food. */
     private volatile FarmPlan campFarm;
-    /** Whether the camp's farm has been grown to {@link #campFarmCells} this run, as far as the ground allows. */
-    private boolean campFarmGrown;
+    /** The camp's farm, sited, grown and kept. */
+    private final CampFarm campFarms;
+    /** Whether a farmer keeping a farm carries a bucket: the camp's chunk farm is taken in then. */
+    private volatile boolean bucketOnFarm;
     /** The camp's ground, found once. */
     private BlockPos campGround;
     /** Farm cells growing wheat for the camp's food to count as met. */
@@ -1372,7 +1321,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                          @Value("${minecraft.state-dir}") String stateDir) {
         this.roster = roster;
         this.wallStore = new WallStore(Path.of(stateDir));
-        this.farmStore = new WallStore(Path.of(stateDir), "farm");
+        this.campFarms = new CampFarm(new WallStore(Path.of(stateDir), "farm"), FARM_REACH_BUDGET);
         this.mineStore = new WallStore(Path.of(stateDir), "stairs");
         this.chestStore = new WallStore(Path.of(stateDir), "chests");
         this.dangerAreas = new DangerAreaBook(chestStore);
@@ -7253,6 +7202,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     || bakes && chainOfCommand.stores().filter(st -> st.wheat() > 0).isEmpty(), clockwork.millis());
             if (field != null && inventory.count(ItemClass.HOE) == 0) {
                 tools.add(Recipe.WOODEN_HOE);
+            }
+            // Its bucket, for a farm with water holes to fill (bot.farm.ChunkFarm).
+            boolean bucket = inventory.count(ItemClass.BUCKET) + inventory.count(ItemClass.WATER_BUCKET) > 0;
+            bucketOnFarm |= field != null && bucket;
+            if (field != null && !bucket && field.holes().stream().anyMatch(h -> !world.isWaterSource(h.x(), h.y(), h.z()))) {
+                tools.add(Recipe.BUCKET);
             }
             // A shovel for ground work - a dig of the camp's or the keep's ground, or dirt for a wall:
             // stone if it carries the cobblestone, wooden if not.
