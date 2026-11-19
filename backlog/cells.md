@@ -71,6 +71,27 @@ adding cells outward.
   allocate. The soldiers never know there's a cell.
 - **Checked from the world**, like the patrol base, and reported cell by cell in the dawn AAR.
 
+## The first cells (operator, 2026-11-19)
+- **The farm cell is the first** - a chunk at sea level, fenced on its x%16==0 and z%16==0 lines, gated beside the
+  corners, four water holes and a chest, one tender: its design is in backlog/renewables.md (More farmland), built one
+  at a time in the buildup once there's a bucket. Each farm cell is a step toward the grid this item is.
+- **The mine-head cell's stairwell, at its chunk's centre** (from backlog/chunk-stairwells.md, merged here). Today's
+  way down is a 3x3 spiral round one pillar sited within 12 blocks of the order, moved off water and caves
+  (`bot.supply.Staircase.site`) - somewhere new each time, so the operator can't find it and a soldier can't know
+  where it would be. Instead:
+  - **One shape:** a 2x2 shaft centred in its chunk - cells 7-8 in x and z - with stairs round it going straight up
+    or down, never a straight dig (a soldier never digs the block it stands on, nor the one over its head). Whether
+    the stairs are a one-cell spiral outside the core (a 4x4 footprint) or the core itself, and whether the core is
+    open or a pillar, is the design's first question.
+  - **Sited by chunk, not by search:** the mine at an objective uses its chunk's stairwell; the camp's mine is its
+    chunk's. backlog/mining.md's levels hang off it.
+  - **An obstacle doesn't move it:** a cave, a drop or lava in the column - the diggers find another way down and
+    cut or build the missing stretch in its own column, so the shape stays whole. Lava is never dug into; it's
+    walled off or the stretch left, and reported.
+  - **A kept structure** every dig, fill and pave skips, every height of its column, kept on disk wherever it is.
+  - Done when: a squad-simulation scenario for each of a clear column, a cave across it, lava beside it, and a
+    stairwell already part-cut.
+
 ## What it costs
 - **Wood** is the bottleneck. 64 fence posts round a chunk, at 3 fences per 4 planks and 2 sticks,
   is about 30 logs a cell. The tree farm (§ 12) has to supply it.
