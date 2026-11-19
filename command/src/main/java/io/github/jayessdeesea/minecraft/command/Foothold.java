@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.command;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
 
 /**
@@ -11,8 +12,14 @@ import java.util.OptionalInt;
  *
  * @param camp      the camp's ground
  * @param standards each phase's standards, in phase order
+ * @param dump      the camp's supply point, where producers take their yield, once one stands
  */
-public record Foothold(Position camp, List<Standard> standards) {
+public record Foothold(Position camp, List<Standard> standards, Optional<Position> dump) {
+
+    /** A camp with no supply dump standing. */
+    public Foothold(Position camp, List<Standard> standards) {
+        this(camp, standards, Optional.empty());
+    }
 
     /**
      * One standard of a phase: whether it's met, how far along it is, and the task that advances it.

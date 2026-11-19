@@ -101,6 +101,9 @@ class FarmDutiesSimulationTest {
             String before = byCell.putIfAbsent(cell, who);
             assertTrue(before == null || before.equals(who), who + " harvested " + cell + ", " + before + "'s share");
         }
+        // The platoon leader's order names the ground, computed for it: nine boxes round the farm's point.
+        assertTrue(List.copyOf(server.log).stream().anyMatch(l -> l.contains("OPORD: Farm at") && l.contains("in 9 boxes over x -6..26, z -14..18")),
+                "the farm's OPORD names its boxes: " + List.copyOf(server.log).stream().filter(l -> l.contains("OPORD")).findFirst().orElse("none"));
         squad.subList(0, 3).forEach(h -> assertTrue(harvested.getOrDefault(h, 0) > 0, h + " harvested nothing: " + harvested));
         assertEquals(0, harvested.getOrDefault("Dana", 0), "the baker harvests none: " + harvested);
     }

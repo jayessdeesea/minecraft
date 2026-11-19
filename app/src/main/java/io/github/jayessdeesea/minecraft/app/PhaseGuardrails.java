@@ -39,19 +39,19 @@ final class PhaseGuardrails {
     }
 
     /**
+     * Production work done anywhere on its ground - a farm, a grove, a stand of trees - where a new spot each
+     * decision is churn. Not a wall, a mine or the keep, whose point the squad leader moves on with the work.
+     */
+    static boolean production(Objective.Task task) {
+        return io.github.jayessdeesea.minecraft.command.WorkArea.reach(task).isPresent();
+    }
+
+    /**
      * {@code given}, or the squad's standing objective when that's the same task within {@link #STEADY_BLOCKS} and
      * its work hasn't stalled, for {@link #production} work: it stays and works rather than walking to a new spot
      * for the same job each decision.
      * Live (field472), Charlie was sent to farm at (-114, 64) and 20 s later at (-87, 58), Delta 40 blocks the same.
      */
-    /**
-     * Production work done anywhere on its ground - a farm, a grove, a stand of trees - where a new spot each
-     * decision is churn. Not a wall, a mine or the keep, whose point the squad leader moves on with the work.
-     */
-    static boolean production(Objective.Task task) {
-        return task instanceof Objective.Task.Farm || task instanceof Objective.Task.TreeFarm || task instanceof Objective.Task.Gather;
-    }
-
     static Objective steady(Objective given, SquadStatus squad) {
         Optional<Objective> standing = squad.standing();
         if (standing.isEmpty() || standing.get().equals(given) || !standing.get().task().equals(given.task()) || !production(given.task())

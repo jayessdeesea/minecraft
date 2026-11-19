@@ -291,6 +291,8 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
                 .append("\"; its ground ").append(squad.soldiers().isEmpty() ? SpringAiSquadLeader.describe(standing.location())
                         : relative(standing.location(), squad.soldiers().getFirst().position()))
                 .append(". Intent: ").append(standing.intent());
+        // Its ground and its dump, as the chain of command worked them out: the squad leader shares them out.
+        standing.area().ifPresent(a -> line.append(" Worked ").append(a.line()).append('.'));
         if (standing.patrolBase()) {
             int left = squad.baseBlocksLeft().orElse(-1);
             line.append(squad.holdingBase() ? " Status: the patrol base is built and sealed, the squad inside it."

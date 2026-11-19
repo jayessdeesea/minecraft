@@ -60,6 +60,13 @@ It keeps nothing between calls but each squad's current objective (backlog/opera
 | `PATROL` | Walk the round inside the wall line, on watch ([military-doctrine.md § 15](../../military-doctrine.md#15-securing-the-camp)). |
 | `KEEP` | Flatten the ground set to flatten, a level at a time to its floor, wherever the objective points ([military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)). |
 
+- **The work area**, not the platoon leader's to decide: for `FARM`, `TREE_FARM` and `WOOD` the chain of
+  command attaches the ground and the dump to the order it gives (`command.WorkArea`, `WorkArea.attach`).
+  The ground is boxes of at most 16 a side tiling the square round the objective: 16 each way for a farm
+  or a grove, 24 for a wood. The dump is the camp's supply point (`Foothold.dump`). The OPORD line and the
+  standing order in the platoon leader's prompt both say it ("in 9 boxes over x -6..26, z -14..18, the
+  dump at (3, 64, 2)").
+
 ## When it decides
 When woken, never on a clock (backlog/fleet-command.md): at once on an operator's mission or
 remark, dawn, dusk and dusk near, a squad with no objective, and an escort attached or ended; and,

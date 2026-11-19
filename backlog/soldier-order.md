@@ -32,9 +32,9 @@ handle's log off a woodcutter's strip, `WoodDutiesSimulationTest`).
   load; short, it reports what it lacks ("short: hoe, 32 seeds"), and its squad leader answers with
   a draw from the supply point or a craft from what's there - or passes it up as CANTCO. Mid-work,
   running low is a LOGSTAT the same way. It never gathers its own makings.
-- **The platoon leader's order is an area and a dump** (operator, 2026-11-18: "alpha go do farming
-  in these x,z 1-16 areas and dump the supplies in this supply dump"). The squad's objective carries
-  its work boxes and its supply point. Its squad leader shares the boxes among its soldiers
+- **The squad leader shares out the work area** (operator, 2026-11-18: "alpha go do farming in
+  these x,z 1-16 areas and dump the supplies in this supply dump"). The objective already carries its
+  boxes and dump (`command.WorkArea`). Its squad leader shares the boxes among its soldiers
   (`WoodDuties`/`FarmDuties`: the felling separate from the planting, the harvest and replanting
   separate from the baking) and writes each soldier's order from its share.
 - **Timeliness alarms at two echelons.** The squad leader knows each share's expected rate, and

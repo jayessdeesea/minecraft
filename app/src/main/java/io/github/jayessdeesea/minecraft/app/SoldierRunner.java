@@ -967,7 +967,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 "MINE"));
         measureRoutes(at);
         sweepWanted(wall, farm.orElse(null));
-        return Optional.of(new Foothold(new Position(at.x(), at.y(), at.z()), List.copyOf(standards)));
+        return Optional.of(new Foothold(new Position(at.x(), at.y(), at.z()), List.copyOf(standards), supplyPoint.or(() -> chestOf(campWorkshop))));
     }
 
     /**

@@ -9,8 +9,11 @@ import java.util.Optional;
  * §1). The intent is what lets the squad leader adapt - pick a different spot near the location,
  * report CANTCO with a useful reason - without another round trip to the platoon leader. The
  * {@link Task} is the one thing the squad does there, besides being there.
+ *
+ * <p>The {@link WorkArea}, for production worked over ground, is the ground and the dump: computed for the platoon
+ * leader by its chain of command and attached to the order it gives ({@link WorkArea#attach}), never asked of it.
  */
-public record Objective(String mission, Position location, String intent, Task task) {
+public record Objective(String mission, Position location, String intent, Task task, Optional<WorkArea> area) {
 
     /** What the squad does at the objective - one task at a time. */
     public sealed interface Task {
@@ -65,6 +68,17 @@ public record Objective(String mission, Position location, String intent, Task t
 
     public Objective {
         Objects.requireNonNull(task, "task");
+        Objects.requireNonNull(area, "area");
+    }
+
+    /** An objective with no work area attached. */
+    public Objective(String mission, Position location, String intent, Task task) {
+        this(mission, location, intent, task, Optional.empty());
+    }
+
+    /** This objective with {@code area} as its work area. */
+    public Objective withArea(Optional<WorkArea> area) {
+        return new Objective(mission, location, intent, task, area);
     }
 
     /** An objective with nothing to gather or build. */

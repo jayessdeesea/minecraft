@@ -10,6 +10,7 @@ import io.github.jayessdeesea.minecraft.command.Resource;
 import io.github.jayessdeesea.minecraft.command.ResourceSite;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.SquadStatus;
+import io.github.jayessdeesea.minecraft.command.WorkArea;
 import io.github.jayessdeesea.minecraft.command.Stockpile;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import org.junit.jupiter.api.Test;
@@ -181,6 +182,16 @@ class SpringAiPlatoonLeaderTest {
                 OptionalInt.empty(), Optional.of(new Progress(
                         Progress.State.STALLED, "nobody has worked at it for 4 min")));
         assertTrue(SpringAiPlatoonLeader.describeStanding(stalled).contains("Status: STALLED - nobody has worked at it for 4 min."));
+    }
+
+    /** A farm's standing order says the ground and the dump the chain of command worked out for it. */
+    @Test
+    void aStandingFarmSaysItsGroundAndItsDump() {
+        Objective farm = WorkArea.attach(new Objective("Farm the plots", new Position(0, 64, 0), "bread", new Objective.Task.Farm()),
+                Optional.of(new Position(3, 64, 2)));
+        SquadStatus farming = new SquadStatus("Bravo", new Report.InPosition(), BRAVO.soldiers(), List.of(), Optional.of(farm), false);
+        assertTrue(SpringAiPlatoonLeader.describeStanding(farming).contains("Worked in 9 boxes over x -16..16, z -16..16, the dump at (3, 64, 2)."),
+                SpringAiPlatoonLeader.describeStanding(farming));
     }
 
     @Test

@@ -393,7 +393,7 @@ armour and holds the weapon. Nothing restocks the chest but the operator.
 | **FRAGO** (fragmentary order) | Changes to an existing order - only what's different. | FM 6-0 |
 
 *How we use it:* the platoon leader's objective to a squad is OPORD-shaped but small - situation, mission
-(who / what / where / why), intent. The squad leader's frequent re-tasking is FRAGO-shaped: a new
+(who / what / where / why), intent. For production worked over ground, its execution and sustainment paragraphs are the work area and the supply dump, computed by the chain of command, not the model (docs/echelons/platoon-leader/decisions.md). The squad leader's frequent re-tasking is FRAGO-shaped: a new
 objective, formation, or interval against the standing mission. The platoon leader orders every squad in
 one decision, so it divides the mission between them; its prompt says one squad can hold or
 observe while another moves, and that a squad beside one in contact or weak brings it help.

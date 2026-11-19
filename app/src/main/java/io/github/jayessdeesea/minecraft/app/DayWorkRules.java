@@ -114,8 +114,9 @@ final class DayWorkRules {
 
     /** The objective's task, as the OPORD says it - nothing when there's none. */
     static String task(Objective objective) {
-        return objective.patrolBase() ? ", patrol base"
-                : objective.gather().map(r -> ", gather " + r.name().toLowerCase(Locale.ROOT)).orElse("");
+        return (objective.patrolBase() ? ", patrol base"
+                : objective.gather().map(r -> ", gather " + r.name().toLowerCase(Locale.ROOT)).orElse(""))
+                + objective.area().map(a -> ", " + a.line()).orElse("");
     }
 
     /**

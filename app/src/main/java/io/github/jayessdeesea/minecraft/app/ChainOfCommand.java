@@ -27,6 +27,7 @@ import io.github.jayessdeesea.minecraft.command.Stockpile;
 import io.github.jayessdeesea.minecraft.command.Subsistence;
 import io.github.jayessdeesea.minecraft.command.TerrainSurvey;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
+import io.github.jayessdeesea.minecraft.command.WorkArea;
 import io.github.jayessdeesea.minecraft.command.ai.SpringAiSquadLeader;
 import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import org.apache.logging.log4j.LogManager;
@@ -903,8 +904,8 @@ public class ChainOfCommand implements DisposableBean {
 
     /** Every request going up the chain, timed from raised to answered (docs/military-doctrine.md § 4). */
     private final RequestLedger requests = new RequestLedger();
-    /** The order each soldier held when its CANTCO went up: a different one is the squad leader's answer. */
-    private final Map<String, Order> cantcoOrders = new ConcurrentHashMap<>();
+    /** Each soldier's CANTCO to its squad leader. */
+    private final SoldierRequests soldierRequests = new SoldierRequests();
 
     /**
      * Requests raised and settled from this cycle's SITREPs: each soldier's CANTCO to its squad
@@ -912,24 +913,7 @@ public class ChainOfCommand implements DisposableBean {
      */
     private void trackRequests(List<Sitrep> sitreps, long now) {
         for (Sitrep sitrep : sitreps) {
-            for (SoldierStatus soldier : sitrep.soldiers()) {
-                String key = "soldier:" + soldier.name();
-                if (soldier.report() instanceof Report.Cantco(String reason)) {
-                    Order held = cantcoOrders.putIfAbsent(soldier.name(), soldier.order());
-                    if (held != null && answers(held, soldier.order())) {
-                        requests.answer(key, now).ifPresent(LOG::info);
-                        cantcoOrders.put(soldier.name(), soldier.order());
-                    }
-                    requests.raise(key, RequestLedger.Echelon.SQUAD_LEADER, soldier.name() + " of " + sitrep.squad(), "CANTCO: " + reason, now)
-                            .ifPresent(LOG::info);
-                } else if (cantcoOrders.remove(soldier.name()) instanceof Order held) {
-                    if (!answers(held, soldier.order())) {
-                        requests.settle(key);
-                    } else {
-                        requests.answer(key, now).ifPresent(LOG::info);
-                    }
-                }
-            }
+            soldierRequests.track(sitrep, requests, now);
             String task = sitrep.squad() + ":task";
             Optional<Progress> finished = sitrep.progress()
                     .filter(p -> p.state() != Progress.State.UNDER_WAY);
@@ -1243,7 +1227,8 @@ public class ChainOfCommand implements DisposableBean {
                 List<Objective> dayWork = guarded(byDay, statuses, shortfall, woods);
                 for (int i = 0; i < statuses.size(); i++) {
                     String name = statuses.get(i).squadName();
-                    Objective given = sheltered(grounded(dayWork.get(i), statuses.get(i).soldiers()), statuses.get(i));
+                    Objective given = WorkArea.attach(sheltered(grounded(dayWork.get(i), statuses.get(i).soldiers()), statuses.get(i)),
+                            Optional.ofNullable(foothold).flatMap(Foothold::dump));
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
                         LOG.info("[PL -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
                         // The feedback not taken: the squad said its task is finished or stuck, and it was kept.
