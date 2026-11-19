@@ -90,10 +90,9 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
         if (work.unarmed() > 0) {
             out.append(work.unarmed()).append(" soldier(s) short of a sword or a full set of armour.\n");
         }
-        if (work.foothold()) {
-            out.append("In foothold - short of the bread or logs to sustain the force: food and wood first, one squad at most on KEEP,"
-                    + " no MINE until out of it.\n");
-        } else if (work.shortfalls().isEmpty()) {
+        out.append("Phase: ").append(work.phase()).append(" - ").append(work.phase().meaning())
+                .append(work.toNextPhase().isEmpty() ? "" : "; " + work.toNextPhase()).append(".\n");
+        if (work.shortfalls().isEmpty() && !work.phase().beforeBuildup()) {
             out.append("The force is short of nothing: every squad but the farm squad can flatten (KEEP).\n");
         }
         for (io.github.jayessdeesea.minecraft.command.PlatoonSergeant.Shortfall s : work.shortfalls()) {

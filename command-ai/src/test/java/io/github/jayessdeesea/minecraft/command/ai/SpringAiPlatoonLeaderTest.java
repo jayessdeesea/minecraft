@@ -223,13 +223,15 @@ class SpringAiPlatoonLeaderTest {
         assertEquals("2 objective(s), exactly one for each of Alpha, Bravo, in that order", roster.substring(0, roster.indexOf(". ")));
     }
 
-    /** The day's work says the force is in foothold - no stores seen - and how many are short of arms. */
+    /** The day's work says the lodgment's phase, what it means, and what stands between it and the next. */
     @Test
-    void theDaysWorkSaysTheForceIsInFoothold() {
+    void theDaysWorkSaysThePhaseAndWhatTheNextWants() {
         String said = SpringAiPlatoonLeader.describe(new io.github.jayessdeesea.minecraft.command.DayWork(List.of(),
-                Optional.empty(), new io.github.jayessdeesea.minecraft.command.Flatten(0, 0, 9, 9, 63), OptionalInt.empty(), 0, 3));
+                Optional.empty(), new io.github.jayessdeesea.minecraft.command.Flatten(0, 0, 9, 9, 63), OptionalInt.empty(), 0, 3,
+                io.github.jayessdeesea.minecraft.command.Phase.CONSOLIDATION, "to BUILDUP: Class I 0.4 and Class IV 0.0 days of supply, of 3 each, held a day"));
         assertTrue(said.contains("3 soldier(s) short of a sword or a full set of armour"), said);
-        assertTrue(said.contains("In foothold - short of the bread or logs to sustain the force"), said);
+        assertTrue(said.contains("Phase: CONSOLIDATION - consolidating"), said);
+        assertTrue(said.contains("to BUILDUP: Class I 0.4 and Class IV 0.0 days of supply"), said);
     }
 
     /** The day's work shows each renewable in the stockpile against its least and most, a short one marked. */

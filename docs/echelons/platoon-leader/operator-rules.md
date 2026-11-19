@@ -8,10 +8,11 @@ ordered.
 From nightfall until dawn - a hut goes up in a minute or two, faster than the night's first
 monsters spawn and walk in, so the day is worked to its end. The platoon leader is still asked 90 seconds
 before dark, to plan the night:
-- **In foothold, nobody mines at night** (operator, 2026-11-18: not safe; we don't want to lose the few
-  resources we have): while the stores are short of bread or logs - under their least, or not yet seen
-  (`command.DayWork.foothold`) - every squad shelters in a patrol base, and by day iron isn't a shortfall.
-- **Out of foothold, every squad is on the night shift** (operator, 2026-11-13): whatever the platoon leader
+- **Before the buildup, nobody mines at night** (operator, 2026-11-18: not safe; we don't want to lose the
+  few resources we have): in the SEIZURE and the CONSOLIDATION (`command.Phase`, docs/military-doctrine.md
+  section 17) every squad shelters in place in the camp - not a patrol base wherever it stands - and by day iron
+  isn't a shortfall.
+- **From the buildup, every squad is on the night shift** (operator, 2026-11-13): whatever the platoon leader
   orders, a patrol base included, it's sent down the mine, every squad by the one stairway. Under the keep
   rule it's the keep's own mine, off its north-west corner (`ChainOfCommand.KEEP_MINE`): from the
   camp's, the climb out and the walk were two-fifths of the day. Otherwise the camp's: 4 blocks
@@ -35,9 +36,9 @@ By day the platoon leader assigns the day's work (operator, 2026-11-17): its `FA
 [military-doctrine.md § 17](../../military-doctrine.md#17-the-lodgment)), or, past the squads the keep's level
 wants, sent to what the force is short of. Over all of it, guardrails that act loudly ("[Guardrail]",
 `ChainOfCommand.guarded`): no squad on the flatten, one is put on it - one not on a shortfall, its standing
-flattener first - in foothold too, one squad, so long as the food and the wood each have a squad on them (operator,
-2026-11-18; `PlatoonSergeant.unarmed` raises WOOD for swords and IRON for armour, iron left for the buildup in
-foothold); a squad whose standing work is production - FARM, WOOD - kept on it while the stockpile is under its product's most (bread, logs:
+flattener first - by the phase: none in the SEIZURE, one in the CONSOLIDATION so long as the food and the wood
+each have a squad on them, and from the BUILDUP the level's sizing over the shortfalls (operator, 2026-11-18;
+`PlatoonSergeant.unarmed` raises WOOD for swords and IRON for armour, iron left for the buildup); a squad whose standing work is production - FARM, WOOD - kept on it while the stockpile is under its product's most (bread, logs:
 `command.ProductionLevels`), unless it's moved to something short or is the one squad on the flatten
 (`DayWorkRules.producing`, operator 2026-11-18); something short with nobody on it, a
 squad doubling up elsewhere is moved to it - wood counted covered only by a squad felling (WOOD), not one

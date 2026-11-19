@@ -1629,8 +1629,25 @@ another.
 | **Means of egress** | A trench 4 feet deep or more has a stairway, ladder, ramp or other safe way out within 25 feet of lateral travel of every worker in it. | 29 CFR 1926.651(c)(2) (OSHA) |
 | **Spoil and loads at the edge** | What's dug out, and equipment, is kept back from the edge - at least 2 feet - so it can't fall or roll in. | 29 CFR 1926.651(j)(2) (OSHA) |
 
-*How we use it:* a garrison's camp (`minecraft.camp`, as `x,z`) is built up the way an airborne
-force builds a lodgment after the drop. Its phases:
+*How we use it:* the force's lodgment runs in the phases of a forcible entry (JP 3-18; `command.Phase`),
+the platoon leader's to track and set the direction by (operator, 2026-11-18) - squad leaders and soldiers
+carry out its orders, they don't decide by it. `command.PhaseTracker` moves the phase on the camp's measured
+readiness (`app.PhaseBook`: the camp's standards below, Class I and Class IV in days of supply), kept across
+restarts:
+
+| Phase | By night | By day | Up when, held a day | Down when, after a day in it |
+|---|---|---|---|---|
+| SEIZURE (the airhead) | shelter in place in the camp | secure the camp, arm every soldier; no KEEP, no MINE | the camp lit and walled, every soldier armed | - |
+| CONSOLIDATION | shelter in place in the camp | food and wood first, at most one squad on KEEP; no MINE | Class I and Class IV at 3 days of supply or more | the camp no longer secured |
+| BUILDUP | the night shift mines | the shortfalls covered, the rest on the mission | 7 days of supply, every soldier armoured | under 1 day of supply |
+| BREAKOUT | the night shift mines | the mission leads | - | under 3 days of supply, or armour lost |
+
+A breach - three killed in the camp in three hours (`command.DangerAreas`) - throws it back to the SEIZURE at
+once. Days of supply count a day's burn as measured, and never less than 2 rations and 1 log a soldier: a burn
+not yet measured isn't none. The gap between the way up and the way down, and the day's dwell, keep it from
+flapping. The platoon leader is told the phase, what it means and what stands between it and the next.
+
+The camp is built up the way an airborne force builds a lodgment after the drop, measured in these standards:
 1. Shelter: a patrol base each night (§14).
 2. The airhead - safety first, the operator's: the camp's ground lit (§15, SECURE) and walled
    (§15, FORTIFY), and every soldier armed with a stone sword or better (§11, STONE). Food that

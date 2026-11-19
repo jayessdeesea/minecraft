@@ -44,6 +44,10 @@ review). Most of the time nothing changes; the point is to look.
 - **Measures, doesn't guess.** It decides on the camp's standards and the squads' reports, never
   on raw world data.
 - **Never names a soldier.** Who does the work is its squad leader's.
+- **Owns the lodgment's phase and sets the direction by it** (operator, 2026-11-18): seizure, consolidation,
+  buildup, breakout - measured, with a gap and a day's dwell between the way up and down
+  ([military-doctrine.md section 17](../military-doctrine.md#17-the-lodgment)); the squad leaders and soldiers
+  carry out its orders, they don't decide by it.
 - **Owns what the force produces, against its stock levels** (operator, 2026-11-18): which squads
   farm, cut and bake, put on a kind below its minimum and taken off it at its most - food before
   wood, both at once when squads allow.

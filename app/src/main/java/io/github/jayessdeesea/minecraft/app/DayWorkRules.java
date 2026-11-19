@@ -1,5 +1,14 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import org.springframework.ai.chat.client.ChatClient;
+import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
+import io.github.jayessdeesea.minecraft.command.ai.SpringAiSquadLeader;
+import io.github.jayessdeesea.minecraft.command.SquadLeader;
+import io.github.jayessdeesea.minecraft.command.DrillSquadLeader;
+import java.util.Locale;
+import io.github.jayessdeesea.minecraft.command.SquadStatus;
+import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.ProductionLevels;
 import io.github.jayessdeesea.minecraft.command.Renewable;
 import io.github.jayessdeesea.minecraft.command.Stockpile;
@@ -90,5 +99,61 @@ final class DayWorkRules {
     /** The builders the ground's level wants, said: "not planned yet" before its foreman's first plan. */
     static String buildersWanted(int wanted) {
         return wanted == Integer.MAX_VALUE ? "its level not planned yet" : "its level wants " + wanted + " builder(s)";
+    }
+
+    /**
+     * Whether {@code now} answers a CANTCO raised under {@code held}: another kind of order, or a
+     * place more than {@link #ANSWER_MOVE} away - not the cycle-to-cycle shuffle of a formation.
+     */
+    static boolean answers(Order held, Order now) {
+        if (held instanceof Order.MoveTo a && now instanceof Order.MoveTo b) {
+            return Math.hypot(a.x() - b.x(), a.z() - b.z()) > ANSWER_MOVE || Math.abs(a.y() - b.y()) > ANSWER_MOVE;
+        }
+        return held.getClass() != now.getClass();
+    }
+
+    /** The objective's task, as the OPORD says it - nothing when there's none. */
+    static String task(Objective objective) {
+        return objective.patrolBase() ? ", patrol base"
+                : objective.gather().map(r -> ", gather " + r.name().toLowerCase(Locale.ROOT)).orElse("");
+    }
+
+    /**
+     * The squads as the platoon leader is shown them: at dusk or dawn with no standing order to keep - the
+     * night's or the day's work lapses with it, and each squad is given the next. Live (field423-425), at
+     * every dawn the platoon leader kept 'Cut the keep's mine down to the iron through the night' for every
+     * squad, and the guardrails made the day's work.
+     */
+    static List<SquadStatus> forThePlatoonLeader(List<SquadStatus> statuses, boolean edge) {
+        return edge ? statuses.stream().map(s -> new SquadStatus(s.squadName(), s.report(), s.soldiers(), s.resources(), Optional.empty(),
+                s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList() : statuses;
+    }
+
+    /**
+     * A radio line as a chat command: {@code /me} (any player may use it, and it reads as the radio
+     * operator speaking), stripped of characters the server kicks for and cut to chat length.
+     * Model-written intents can contain anything.
+     */
+    static String chatLine(String line) {
+        StringBuilder clean = new StringBuilder("me ");
+        for (int i = 0; i < line.length() && clean.length() < CHAT_LINE_LIMIT; i++) {
+            char c = line.charAt(i);
+            clean.append(c == '§' || c < ' ' || c == 127 ? ' ' : c);
+        }
+        return clean.toString();
+    }
+
+    static String at(Position p) {
+        return "(" + Math.round(p.x()) + ", " + Math.round(p.y()) + ", " + Math.round(p.z()) + ")";
+    }
+
+    /** What each squad leader is made as, by {@code decidesWith}: "drills" or "model". */
+    static java.util.function.Function<String, SquadLeader> squadLeaders(String decidesWith, ChatClient client, SquadLeaderPrompts prompts) {
+        return switch (decidesWith) {
+            case "drills" -> DrillSquadLeader::new;
+            case "model" -> name -> new SpringAiSquadLeader(name, client, prompts);
+            default -> throw new IllegalArgumentException("minecraft.squad-leader.decides-with is \"" + decidesWith
+                    + "\": \"drills\" or \"model\"");
+        };
     }
 }

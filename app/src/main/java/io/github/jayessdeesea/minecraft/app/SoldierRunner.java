@@ -1514,6 +1514,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.dangerAreas = new DangerAreaBook(chestStore);
         this.storesBook = new StoresBook(chestStore);
         storesBook.kept().ifPresent(chainOfCommand::onStores); // as last seen, till a chest is opened
+        (this.phaseBook = new PhaseBook(chestStore)).restoreInto(chainOfCommand); // the lodgment's phase as it stood
         this.stepStore = new WallStore(Path.of(stateDir), "steps");
         stepStore.load(STEPS).ifPresent(scaffolding::addAll);
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
@@ -1619,6 +1620,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 List<Site> sites = measureSites(f);
                 afterActionReview.sites(sites);
                 List<Supply> supplies = measureSupply();
+                phaseBook.measure(chainOfCommand, f, supplies, activeSoldiers.size(), dangerAreas.near(f.camp().x(), f.camp().z(), clockwork.millis()), clockwork.millis());
                 afterActionReview.supplies(supplies);
                 afterActionReview.estimates(Optional.ofNullable(keepEstimate).stream().toList());
                 supplies.forEach(supply -> {
@@ -4463,7 +4465,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Set<Integer>> levelsBlocked = new ConcurrentHashMap<>();
     /** Where soldiers were killed lately (command.DangerAreas) - death handlers write, squad loops read, under its lock. */
     private final DangerAreaBook dangerAreas;
-    private final StoresBook storesBook;
+    private final StoresBook storesBook; private final PhaseBook phaseBook; // the stores and the lodgment's phase, kept across restarts
     /** Mine heads worked out or blocked, never sited again - kept on disk. Squad loop, read at siting. */
     private final Set<BlockPos> deadWells = ConcurrentHashMap.newKeySet();
     /** The key the dead wells are kept under. */
@@ -5738,7 +5740,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Optional<String> blockedBy = crew.stream().map(stairsProgress::get)
                         .filter(p -> p instanceof Miner.Progress.Stopped s && s.why().contains("water or lava beside step"))
                         .map(p -> ((Miner.Progress.Stopped) p).why()).findFirst();
-                // A danger area too (command.DangerAreas): soldiers killed again and again by its stairs, it's bypassed.
                 long killed = dangerAreas.near(state.stairs.head().x() + 0.5, state.stairs.head().z() + 0.5, now);
                 if (killed >= DangerAreas.DEATHS && blockedBy.isEmpty()) {
                     blockedBy = Optional.of(killed + " killed within " + (int) DangerAreas.RADIUS + " blocks of its stairs in a day - a danger area");
@@ -5817,11 +5818,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // another - and is let go, every squad's level off it too. Read over the head itself: a
             // shaft is open over its head, a buried head has the rock over it. Live (field338), the
             // keep's mine moved near the camp and was kept as the camp's, its head at y=-23.
-            // A dead well - worked out, blocked, a danger area - is let go by every squad, not the keep's mine alone:
-            // live (field465), Delta worked its levels off Charlie's danger-area shaft two nights after.
+            // A dead well - worked out, blocked, a danger area - let go by every squad (live, field465, Delta's levels).
             if (kept.filter(k -> deadWells.contains(k.head())).isPresent()) {
-                LOG.warn("[{}] MINE: the staircase at {} is a dead well - let go, sited again", squadName, kept.get().head());
                 BlockPos dead = kept.get().head();
+                LOG.warn("[{}] MINE: the staircase at {} is a dead well - let go, sited again", squadName, dead);
                 squadStairs.entrySet().removeIf(e -> e.getValue().head().equals(dead));
                 kept = Optional.empty();
             }

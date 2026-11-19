@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Cohesion;
 import io.github.jayessdeesea.minecraft.command.Objective;
+import io.github.jayessdeesea.minecraft.command.Phase;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.PlatoonSergeant;
 import io.github.jayessdeesea.minecraft.command.Progress;
@@ -72,6 +73,7 @@ class ChainOfCommandTest {
     @Test
     void underTheKeepRuleEverySquadBuildsTheKeepByDayAndShelterAtNight() {
         chain.setKeepByDay(true);
+        chain.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         chain.setGround((x, z, nearY) -> OptionalInt.of(64));
         SquadStatus alpha = new SquadStatus("Alpha", new Report.InPosition(),
                 List.of(new SoldierStatus("Alice", new Position(0.5, 64, 0.5), new Order.Idle(), new Report.InPosition(), Optional.empty())),
@@ -109,6 +111,7 @@ class ChainOfCommandTest {
                 }), new SquadLeaderPrompts("", ""),
                 new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
         two.setKeepByDay(true);
+        two.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
         two.onTime(TimeOfDay.of(1000, true));
         two.onFlattenCrew(1);
@@ -138,6 +141,7 @@ class ChainOfCommandTest {
     @Test
     void underTheKeepRuleTheFarmSquadKeepsTheFarm() {
         chain.setKeepByDay(true);
+        chain.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         chain.setFarmSquad("Delta");
         chain.setGround((x, z, nearY) -> OptionalInt.of(64));
         chain.onTime(TimeOfDay.of(1000, true));
@@ -158,6 +162,7 @@ class ChainOfCommandTest {
     @Test
     void underTheKeepRuleTheGeneralsAnswerToARequestStands() {
         chain.setKeepByDay(true);
+        chain.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         chain.setGround((x, z, nearY) -> OptionalInt.of(64));
         chain.onTime(TimeOfDay.of(1000, true));
         Objective wood = new Objective("Logs for the keep", new Position(40, 64, 40), "The keep's chest and pickaxes",
@@ -185,6 +190,7 @@ class ChainOfCommandTest {
                 }), new SquadLeaderPrompts("", ""),
                 new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
         three.setKeepByDay(true);
+        three.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
         three.onTime(TimeOfDay.of(1000, true));
         three.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
@@ -221,6 +227,7 @@ class ChainOfCommandTest {
                 }), new SquadLeaderPrompts("", ""),
                 new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
         three.setKeepByDay(true);
+        three.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
         three.onTime(TimeOfDay.of(1000, true));
         three.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
@@ -270,7 +277,7 @@ class ChainOfCommandTest {
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
         two.onTime(TimeOfDay.of(18000, true));
         two.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
-        two.onStores(new Stockpile(64, 0, 64)); // out of foothold: the night shift mines
+        two.restorePhase(Phase.BUILDUP, 0); // the buildup: the night shift mines
 
         Objective alpha = two.sheltered(WALL, squad("Alpha", "Alice"));
         Objective bravo = two.sheltered(WALL, squad("Bravo", "Bob"));
@@ -283,6 +290,8 @@ class ChainOfCommandTest {
         assertEquals(bravo, two.sheltered(hut, squad("Bravo", "Bob")), "the platoon leader's patrol base doesn't take it off the night shift");
 
         two.setKeepByDay(true);
+
+        two.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         assertEquals(ChainOfCommand.KEEP_MINE, two.sheltered(WALL, squad("Bravo", "Bob")).location(),
                 "building the keep, the night's mine is the keep's own, beside it");
         two.onTime(TimeOfDay.of(TimeOfDay.DAWN - ChainOfCommand.SURFACE_LEAD_TICKS + 1, true));
@@ -333,8 +342,8 @@ class ChainOfCommandTest {
                 new Objective.Task.Mine());
         SquadStatus alpha = new SquadStatus("Alpha", new Report.InPosition(), List.of(), List.of(), Optional.of(night), false,
                 java.util.OptionalInt.empty(), Optional.empty(), Optional.empty(), Optional.empty());
-        assertEquals(Optional.empty(), ChainOfCommand.forThePlatoonLeader(List.of(alpha), true).getFirst().standing());
-        assertEquals(Optional.of(night), ChainOfCommand.forThePlatoonLeader(List.of(alpha), false).getFirst().standing());
+        assertEquals(Optional.empty(), DayWorkRules.forThePlatoonLeader(List.of(alpha), true).getFirst().standing());
+        assertEquals(Optional.of(night), DayWorkRules.forThePlatoonLeader(List.of(alpha), false).getFirst().standing());
     }
 
     @Test
@@ -353,6 +362,7 @@ class ChainOfCommandTest {
                 }), new SquadLeaderPrompts("", ""),
                 new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
         two.setKeepByDay(true);
+        two.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
         two.onTime(TimeOfDay.of(1000, true));
         Objective keep = new Objective("Flatten", new Position(0, 64, 0), "The ground", new Objective.Task.Keep());
@@ -385,6 +395,7 @@ class ChainOfCommandTest {
                 }), new SquadLeaderPrompts("", ""),
                 new Roster("Alpha:Alice;Bravo:Bob"), true, "model");
         two.setKeepByDay(true);
+        two.restorePhase(Phase.BUILDUP, 0); // the buildup: the mission and the night shift
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
         two.onTime(TimeOfDay.of(1000, true));
         Objective farm = new Objective("Farm", new Position(-48, 64, 44), "Food", new Objective.Task.Farm());
@@ -403,9 +414,9 @@ class ChainOfCommandTest {
                 List.of(), Optional.of(objective), false, OptionalInt.empty(), Optional.empty(), Optional.empty(), Optional.empty());
     }
 
-    /** In foothold - the stores short of bread or logs - nobody goes down the mine by night: the squad shelters. */
+    /** In the consolidation nobody goes down the mine by night: the squad shelters in place in the camp. */
     @Test
-    void inFootholdNobodyMinesAtNight() {
+    void inTheConsolidationNobodyMinesAtNight() {
         ChainOfCommand two = new ChainOfCommand(
                 (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
                 ChatClient.create((ChatModel) prompt -> {
@@ -415,8 +426,10 @@ class ChainOfCommandTest {
         two.setGround((x, z, nearY) -> OptionalInt.of(64));
         two.onTime(TimeOfDay.of(18000, true));
         two.onFoothold(new Foothold(new Position(-48, 64, 44), List.of()));
-        two.onStores(new Stockpile(0, 300, 0));
+        two.restorePhase(Phase.CONSOLIDATION, 0);
 
-        assertTrue(two.sheltered(WALL, squad("Alpha", "Alice")).task() instanceof Objective.Task.PatrolBase, "sheltered, not mining");
+        Objective night = two.sheltered(WALL, squad("Alpha", "Alice"));
+        assertEquals(new Position(-48, 64, 44), night.location(), "in the camp: " + night);
+        assertTrue(night.task() instanceof Objective.Task.None, "sheltered in place, not mining: " + night);
     }
 }

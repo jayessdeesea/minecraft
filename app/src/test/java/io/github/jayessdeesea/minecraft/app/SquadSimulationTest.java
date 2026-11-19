@@ -240,7 +240,7 @@ class SquadSimulationTest {
      */
     @Test
     void atNightTheSecondSquadWorksTheCampsMineBelowGround() {
-        new StoresBook(new WallStore(state, "chests")).keep(new Stockpile(64, 0, 64)); // out of foothold: the night shift mines
+        new PhaseBook(new WallStore(state, "chests")).keep(io.github.jayessdeesea.minecraft.command.Phase.BUILDUP, 0); // the night shift mines
         SimClock clock = new SimClock();
         SimServer server = new SimServer(clock, SquadSimulationTest::flat, 11_000); // an hour before dusk
         Roster roster = new Roster("Alpha:Alice,Bob;Bravo:Carol,Dana");

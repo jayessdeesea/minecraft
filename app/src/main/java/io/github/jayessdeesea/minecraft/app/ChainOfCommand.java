@@ -7,6 +7,8 @@ import io.github.jayessdeesea.minecraft.command.SquadLeader;
 import io.github.jayessdeesea.minecraft.command.Keep;
 import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.DayWork;
+import io.github.jayessdeesea.minecraft.command.Phase;
+import io.github.jayessdeesea.minecraft.command.PhaseTracker;
 import io.github.jayessdeesea.minecraft.command.PlatoonLeader;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -228,15 +230,6 @@ public class ChainOfCommand implements DisposableBean {
         }
     }
 
-    /** What each squad leader is made as, by {@code decidesWith}: "drills" or "model". */
-    static java.util.function.Function<String, SquadLeader> squadLeaders(String decidesWith, ChatClient client, SquadLeaderPrompts prompts) {
-        return switch (decidesWith) {
-            case "drills" -> DrillSquadLeader::new;
-            case "model" -> name -> new SpringAiSquadLeader(name, client, prompts);
-            default -> throw new IllegalArgumentException("minecraft.squad-leader.decides-with is \"" + decidesWith
-                    + "\": \"drills\" or \"model\"");
-        };
-    }
 
     /** The time, in milliseconds, on the clock everything here runs on. */
     long millis() {
@@ -282,6 +275,15 @@ public class ChainOfCommand implements DisposableBean {
         // With no camp to go down the mine of, a squad already sealed in is the one most to keep there,
         // and a base the platoon leader orders is the night's.
         Position at = squad.soldiers().getFirst().position();
+        // Before the buildup, shelter in place in the camp, not a patrol base wherever it stands (operator, 2026-11-18).
+        Foothold base = foothold;
+        if (phaseNow.beforeBuildup() && base != null) {
+            Objective inCamp = new Objective("Shelter in place in the camp through the night", base.camp(), "Safe until dawn", new Objective.Task.None());
+            if (!objective.equals(inCamp)) {
+                LOG.warn("[PL -> {}] at or near night, in {}, ordered '{}' - shelters in place in the camp", squad.squadName(), phaseNow, objective.mission());
+            }
+            return inCamp;
+        }
         if (nightShift.isEmpty() && objective.patrolBase()) {
             return objective;
         }
@@ -373,8 +375,11 @@ public class ChainOfCommand implements DisposableBean {
         // Short of anything, one squad on the ground and the rest to what's short (operator, 2026-11-17: one
         // squad on it during the day, two or three collecting resources if necessary). Live (field416), a level
         // wanting 40 builders kept every squad on it with food and wood both short.
-        if (!alarms.isEmpty()) {
+        if (!alarms.isEmpty() || phaseNow == Phase.CONSOLIDATION) {
             squadsWanted = Math.min(squadsWanted, 1);
+        }
+        if (phaseNow == Phase.SEIZURE) {
+            squadsWanted = 0; // the camp secured and every soldier armed before the mission (Phase)
         }
         if (builders.indexOf(squad.squadName()) >= squadsWanted) {
             int released = builders.indexOf(squad.squadName()) - squadsWanted;
@@ -451,7 +456,7 @@ public class ChainOfCommand implements DisposableBean {
                 movable.add(i);
             }
         }
-        if (!movable.isEmpty() && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
+        if (phaseNow != Phase.SEIZURE && !movable.isEmpty() && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Keep)) {
             // The squad already flattening, if one is, so the flatten keeps its crew: live (field418), the platoon
             // leader put nobody on it twice running and the guardrail moved Charlie, then Alpha, two minutes apart.
             // But not one the platoon leader has just put on a shortfall: live (field431-439), it sent Charlie for wood,
@@ -639,9 +644,9 @@ public class ChainOfCommand implements DisposableBean {
      */
     Optional<Objective> nightShift(String squad) {
         Foothold camp = foothold;
-        // In foothold, nobody down the mine by night (operator, 2026-11-18: not safe; we don't want to lose the few
-        // resources we have): every squad shelters. Live (field463-470), most deaths were underground at night.
-        if (camp == null || squads.isEmpty() || DayWork.foothold(Optional.ofNullable(stores))) {
+        // Before the buildup, nobody down the mine by night (operator, 2026-11-18: not safe; we don't want to lose the
+        // few resources we have). Live (field463-470), most deaths were underground at night.
+        if (camp == null || squads.isEmpty() || phaseNow.beforeBuildup()) {
             return Optional.empty();
         }
         // Building the keep by day, the night's mine is the keep's own, beside it: from the camp's,
@@ -955,16 +960,6 @@ public class ChainOfCommand implements DisposableBean {
     /** How far a soldier's ordered place has to move to be a new order: a formation's places shift a block or two every cycle. */
     static final double ANSWER_MOVE = 4;
 
-    /**
-     * Whether {@code now} answers a CANTCO raised under {@code held}: another kind of order, or a
-     * place more than {@link #ANSWER_MOVE} away - not the cycle-to-cycle shuffle of a formation.
-     */
-    static boolean answers(Order held, Order now) {
-        if (held instanceof Order.MoveTo a && now instanceof Order.MoveTo b) {
-            return Math.hypot(a.x() - b.x(), a.z() - b.z()) > ANSWER_MOVE || Math.abs(a.y() - b.y()) > ANSWER_MOVE;
-        }
-        return held.getClass() != now.getClass();
-    }
 
     /** The requests' part of the dawn review: each echelon's answers and how fast, and what's still open. */
     public List<String> requestReview() {
@@ -987,6 +982,42 @@ public class ChainOfCommand implements DisposableBean {
     private volatile Stockpile stores;
     private volatile String storesSaid = "";
     private final WoodSightings woodSightings = new WoodSightings();
+
+    /** The lodgment's phase - the platoon leader's to track (Phase); moved on the camp's measured readiness. */
+    private final PhaseTracker phases = new PhaseTracker();
+    private volatile Phase phaseNow = Phase.SEIZURE;
+    private volatile String phaseToNext = "";
+
+    /** The camp's readiness measured at {@code now}: the phase moved on it, and a change said. */
+    public void onReadiness(PhaseTracker.Readiness readiness, long now) {
+        synchronized (phases) {
+            Phase was = phases.phase();
+            phaseNow = phases.update(readiness, now);
+            phaseToNext = PhaseTracker.toNext(phaseNow, readiness);
+            if (phaseNow != was) {
+                LOG.warn("[Phase] {} -> {}: {} ({})", was, phaseNow, phaseNow.meaning(), phaseToNext);
+            }
+        }
+    }
+
+    /** The lodgment's phase as it stands, and when it was entered - to keep across a restart. */
+    public Phase currentPhase() {
+        return phaseNow;
+    }
+
+    public long phaseSince() {
+        synchronized (phases) {
+            return phases.since();
+        }
+    }
+
+    /** The phase kept from before a restart. */
+    public void restorePhase(Phase phase, long since) {
+        synchronized (phases) {
+            phases.restore(phase, since);
+            phaseNow = phase;
+        }
+    }
 
     /** The surface chests' contents, summed, as a soldier last saw them change. */
     public void onStores(Stockpile stores) {
@@ -1047,11 +1078,6 @@ public class ChainOfCommand implements DisposableBean {
         return squads.get(squad).escort();
     }
 
-    /** The objective's task, as the OPORD says it - nothing when there's none. */
-    private static String task(Objective objective) {
-        return objective.patrolBase() ? ", patrol base"
-                : objective.gather().map(r -> ", gather " + r.name().toLowerCase(Locale.ROOT)).orElse("");
-    }
 
     /** The platoon leader's objective for {@code squad}, once it has one. */
     public Optional<Objective> objective(String squad) {
@@ -1160,16 +1186,6 @@ public class ChainOfCommand implements DisposableBean {
         }
     }
 
-    /**
-     * The squads as the platoon leader is shown them: at dusk or dawn with no standing order to keep - the
-     * night's or the day's work lapses with it, and each squad is given the next. Live (field423-425), at
-     * every dawn the platoon leader kept 'Cut the keep's mine down to the iron through the night' for every
-     * squad, and the guardrails made the day's work.
-     */
-    static List<SquadStatus> forThePlatoonLeader(List<SquadStatus> statuses, boolean edge) {
-        return edge ? statuses.stream().map(s -> new SquadStatus(s.squadName(), s.report(), s.soldiers(), s.resources(), Optional.empty(),
-                s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList() : statuses;
-    }
 
 
 
@@ -1195,11 +1211,11 @@ public class ChainOfCommand implements DisposableBean {
                         squads.get(s.squad()).report(), s.soldiers(), s.resources().get(), squads.get(s.squad()).objective(),
                         s.holdingBase(), s.baseBlocksLeft(), s.progress(), s.classOne(), s.classFour())).toList();
                 statuses.forEach(s -> resourcesSeen.put(s.squadName(), s.resources()));
-                // In foothold, no mining: iron waits for the buildup (operator, 2026-11-18).
+                // Before the buildup, no mining: iron waits for it (operator, 2026-11-18).
                 List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores)).stream()
-                        .filter(s -> s != PlatoonSergeant.Shortfall.IRON || !DayWork.foothold(Optional.ofNullable(stores))).toList();
+                        .filter(s -> s != PlatoonSergeant.Shortfall.IRON || !phaseNow.beforeBuildup()).toList();
                 platoonLeader.receiveDayWork(new DayWork(shortfall, Optional.ofNullable(stores), flatten, keepLevel, keepBlocksLeft,
-                        PlatoonSergeant.unarmed(statuses)));
+                        PlatoonSergeant.unarmed(statuses), phaseNow, phaseToNext));
                 List<Objective> objectives;
                 try {
                     objectives = platoonLeader.decide(forThePlatoonLeader(statuses, edge));
@@ -1273,21 +1289,5 @@ public class ChainOfCommand implements DisposableBean {
         }
     }
 
-    /**
-     * A radio line as a chat command: {@code /me} (any player may use it, and it reads as the radio
-     * operator speaking), stripped of characters the server kicks for and cut to chat length.
-     * Model-written intents can contain anything.
-     */
-    static String chatLine(String line) {
-        StringBuilder clean = new StringBuilder("me ");
-        for (int i = 0; i < line.length() && clean.length() < CHAT_LINE_LIMIT; i++) {
-            char c = line.charAt(i);
-            clean.append(c == '§' || c < ' ' || c == 127 ? ' ' : c);
-        }
-        return clean.toString();
-    }
 
-    static String at(Position p) {
-        return "(" + Math.round(p.x()) + ", " + Math.round(p.y()) + ", " + Math.round(p.z()) + ")";
-    }
 }

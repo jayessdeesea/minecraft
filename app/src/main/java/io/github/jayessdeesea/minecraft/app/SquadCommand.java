@@ -306,7 +306,7 @@ final class SquadCommand {
                 && Cohesion.distance(current.location(), at) < ESCORT_RETASK_DISTANCE) {
             return;
         }
-        LOG.info("[{}] escort objective follows {} to {}", name, principal, ChainOfCommand.at(at));
+        LOG.info("[{}] escort objective follows {} to {}", name, principal, DayWorkRules.at(at));
         receiveObjective(new Objective(escortMission(principal), at,
                 "Keep " + principal + " safe: stay close around them and intercept hostiles that come near them."));
     }
@@ -333,7 +333,7 @@ final class SquadCommand {
                             name, clockwork.millis() - started, ChainOfCommand.phase(time), reachable, survey.samples().size(),
                             Math.round(decided.objective().x()), Math.round(decided.objective().y()), Math.round(decided.objective().z()),
                             decided.formation(), decided.interval(), decided.risk(), soldierRisk(decided), decided.intent());
-                    radio.accept("[" + name + " -> squad] FRAGO: " + decided.formation() + " to " + ChainOfCommand.at(decided.objective())
+                    radio.accept("[" + name + " -> squad] FRAGO: " + decided.formation() + " to " + DayWorkRules.at(decided.objective())
                             + ", " + decided.risk() + " risk" + soldierRisk(decided) + ". Intent: " + decided.intent());
                     if (squadLeader.report() instanceof Report.Cantco cantco) {
                         LOG.warn("[{} -> PL] CANTCO: {}", name, cantco.reason());
