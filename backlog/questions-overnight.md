@@ -11,6 +11,8 @@ priority: P1
   floor paved, not cut), and wood ground isn't flattened. Should the camp itself be cut to sea level too,
   and the routes between the work areas? That changes whether the wall and its floor get rebuilt.
 
+- **Merged: how a base grows** (backlog/sites.md). site-standards, maturity-model and roadmap are sections of sites now, each kept verbatim - sites kept as the home, being the one in progress and holding readiness. Confirm the home, or name another; the sections are to be reconciled into one design once you have.
+
 Answered 2026-11-19, each now with its item:
 - **Food:** more farmland - trench farms off ponds before the bucket, chunk farms with four water holes after;
   and a food report first, to see why the soldiers eat so much (backlog/renewables.md, More farmland).

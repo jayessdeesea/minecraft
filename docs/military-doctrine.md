@@ -757,7 +757,7 @@ trip of its own once it's three slots: room in the pack for what the work digs, 
 in the depot for whoever's short. Only from what it carries, cobblestone and wood, never quarried or chopped
 for. Live, builders climbed through copper armour while the dig's tools wore out with no spare.
 
-No rung past what the camp's level authorises is made (backlog/maturity-model.md, basis of issue;
+No rung past what the camp's level authorises is made (backlog/sites.md, basis of issue;
 `Ladder.authorised`): the iron pickaxe, the enabler, at any level (operator, 2026-11-15: it breaks the
 keep's emerald - live, the camp fell to SHELTER when eight soldiers joined unarmed, with twelve raw
 iron in a pack); at SHELTER nothing else that costs iron; at BUILDUP a shield, armour and an iron axe too; diamond, and an iron sword, only once
@@ -1700,7 +1700,7 @@ The camp is built up the way an airborne force builds a lodgment after the drop,
 4. Armour: every soldier armoured (§11).
 
 Every site is measured the same way, in the lodgment's levels - SHELTER, AIRHEAD, BUILDUP,
-ESTABLISHED, SEMI-PERMANENT (`command.Site`; backlog/maturity-model.md) - each kind filling in what
+ESTABLISHED, SEMI-PERMANENT (`command.Site`; backlog/sites.md) - each kind filling in what
 a level means there. A site is at the highest level whose standards, and every lower level's, are
 met, up to the highest level it's measured for; a level with no standards of its kind is met as it
 stands. The camp's are its phases above, phase 4 being ESTABLISHED. The keep's: AIRHEAD, the depot

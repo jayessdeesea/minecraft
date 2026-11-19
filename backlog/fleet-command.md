@@ -62,7 +62,7 @@ level: right at this size, and said so here rather than claimed as a platoon's o
 
 **The sustainment section is a pool, not four trades.** Its four soldiers are reassigned among the
 classes of supply by the PSG, each to the class projected furthest below its reorder point
-(maturity-model.md): all four mining when only ore is short, as the camp matures and the keep's
+(sites.md): all four mining when only ore is short, as the camp matures and the keep's
 4,096 cobblestone and iron for the work loads lead; a forester taken off for a grove's harvest pass
 and back (renewables.md, the harvest cycle); a farmer between harvests on something else.
 - **When:** at the dawn decision point, and at once on a PAUSE.
@@ -77,7 +77,7 @@ at a lit, walled camp is a reserve, not a guard: on a PAUSE, the PSG takes the s
 first, never the engineers mid-campaign. Security as a task stays where self-defence isn't enough:
 - **Outside the walls and at night,** where contact is likely: a soldier that drops its work to
   fight isn't producing, and one fighting at low health dies and drops its kit, which is the worst
-  drain on supply there is (backlog/roadmap.md: about 50 deaths in the first twelve hours, every
+  drain on supply there is (backlog/sites.md: about 50 deaths in the first twelve hours, every
   kit lost). There a rifle squad covers the work - two work, two watch - as doctrine keeps security
   continuous rather than leaving it to each soldier's reflex.
 - **On an expedition or at an outpost** before its AIRHEAD.
@@ -98,7 +98,7 @@ the plan, issue the order, supervise and refine. Here:
 requirements - what it must be told - and the deterministic tier escalates only those:
 - An operator order.
 - The dawn decision point: the AAR, each site's level and supply state, the day's timetable
-  (the only time a site advances; maturity-model.md).
+  (the only time a site advances; sites.md).
 - A site entering PAUSE or RECONSTITUTE.
 - A mission found infeasible or out of reach, or finished.
 - A level behind its due day at dusk.
@@ -119,11 +119,11 @@ and its decision (`[PL]`), so every model decision is accounted for.
   `platoon-sergeant` echelon; `PlatoonLeaderScenarioIT` passed 120 of 135 before the rename and 122
   after.
 - The PSG owns sustainment as one component: the supply gate and reorder points
-  (maturity-model.md), producers detached within the PL's priorities, kit by role, cross-leveling,
+  (sites.md), producers detached within the PL's priorities, kit by role, cross-leveling,
   replacements - pulled together from where they live now. Built: `command.PlatoonSergeant`
   rates Class I and the keep's Class IV, cross-levels, and decides the keep's wood party The equipment
   ladder and the ore pool read a soldier's inventory (`bot`), and move with kit by role
-  (maturity-model.md); replacements after deaths aren't built. (docs/echelons/platoon-sergeant/decisions.md, which lists what's
+  (sites.md); replacements after deaths aren't built. (docs/echelons/platoon-sergeant/decisions.md, which lists what's
   still elsewhere).
 - **The squad leader's allocator is built** (`command.DrillSquadLeader`, the default; docs/echelons/
   squad-leader/decisions.md): `DrillSquadLeaderTest` passes every situation of the eval but the two
@@ -140,7 +140,7 @@ and its decision (`[PL]`), so every model decision is accounted for.
 - **The PL's wakes are built** (docs/echelons/platoon-leader/decisions.md, "When it decides";
   `SquadSimulationTest.aQuietDaysWorkWakesThePlatoonLeaderOnlyForWhatNeedsIt`): no clock, `[PL] wakes:
   <cause>`. Still to come with the sites they need: a site entering PAUSE or RECONSTITUTE
-  (maturity-model.md), a level behind its due day at dusk, deaths over a threshold in a day, the CCIR
+  (sites.md), a level behind its due day at dusk, deaths over a threshold in a day, the CCIR
   the PL sets itself, and a CANTCO carrying what the drills tried.
 - **The roster is sixteen** (`minecraft.roster`: Alpha, Bravo, Charlie, Delta). What's left: the
   four elements above, from four like squads; the sustainment section reassigned at dawn by

@@ -30,7 +30,7 @@ from an existing base - decides whether the plan needs a new base on the way.
 - **A mission estimate** (`command`, pure), worked out for any mission the platoon leader may take on, before
   it's given. The keep's campaign record (keep-campaign.md) is its first instance:
   - **The objective:** where, what end state, and the site that supplies it.
-  - **The force:** squads and roles, and the work loads they carry (maturity-model.md, kit by role).
+  - **The force:** squads and roles, and the work loads they carry (sites.md, kit by role).
   - **The bill of materials, by class of supply:** what the work consumes - blocks dug over tool uses
     for Class II, chests and logs for IV, bread for I for the days it lasts - and its starting stock
     at the objective.
@@ -40,7 +40,7 @@ from an existing base - decides whether the plan needs a new base on the way.
     point, and the time its producers take to make the difference good.
 - **Screening, computed** (ADP 5-0's tests that can be measured):
   - **Feasible:** the supplying site's projected stock stays at or above its reorder point through
-    the mission (maturity-model.md, the gate). If not, the estimate says what to make first and how
+    the mission (sites.md, the gate). If not, the estimate says what to make first and how
     long it takes, so a mission starts with a preparation phase - the keep's DEPOT - rather than not
     at all.
   - **In reach:** the objective is within the operational reach of its supplying site (below). If
@@ -70,7 +70,7 @@ How far a squad can work from a site, measured rather than fixed:
 - **When to build an outpost.** When the travel the mission would spend over its duration costs more
   than an outpost does - the outpost's own estimate in materials and soldier-hours - or when the
   carried reach is shorter than the work. An outpost is laid out to its site standard (~80 cells,
-  ~256 bread, one chunk fenced, gated and lit; site-standards.md) and supplied from the site behind
+  ~256 bread, one chunk fenced, gated and lit; sites.md) and supplied from the site behind
   it until it reaches its BUILDUP.
 
 ## Notes
@@ -88,5 +88,5 @@ How far a squad can work from a site, measured rather than fixed:
 
   The platoon leader makes up no missions of its own: what it chooses among is the operator's
   current mission and what its estimate adds - a preparation, an outpost where the reach runs out.
-  Each mission starts only when it's prepared for (maturity-model.md, the gate).
+  Each mission starts only when it's prepared for (sites.md, the gate).
 - First figures - walking speed, work rates - are to be measured in the scoreboard and refined.
