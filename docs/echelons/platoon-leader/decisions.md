@@ -62,10 +62,10 @@ It keeps nothing between calls but each squad's current objective (backlog/opera
 
 - **The work area**, not the platoon leader's to decide: for `FARM`, `TREE_FARM` and `WOOD` the chain of
   command attaches the ground and the dump to the order it gives (`command.WorkArea`, `WorkArea.attach`).
-  The ground is boxes of at most 16 a side tiling the square round the objective: 16 each way for a farm
-  or a grove, 24 for a wood. The dump is the camp's supply point (`Foothold.dump`): the configured one, else the camp
+  The ground is whole chunks on the server's grid: for a farm or a grove the chunk its point is in, for a
+  wood every chunk the woodcutters' reach (24 each way) touches. The dump is the camp's supply point (`Foothold.dump`): the configured one, else the camp
   workshop's chest, else the depot's. The OPORD line and the
-  standing order in the platoon leader's prompt both say it ("in 9 boxes over x -6..26, z -14..18, the
+  standing order in the platoon leader's prompt both say it ("in 1 box over x 0..15, z 0..15, the
   dump at (3, 64, 2)").
 
 ## When it decides

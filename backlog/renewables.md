@@ -43,7 +43,8 @@ fitted round whatever ground is near the camp. Until then: the camp's farm by it
 keep's grove, cleared for if the ground near the depot is wooded.
 
 Built so far: the keep's grove sited round its depot, any depth under it, and its ground cleared by
-the wood party when none qualifies; trees felled whole and replanted (docs/military-doctrine.md § 4).
+the wood party when none qualifies; trees felled whole and replanted (docs/military-doctrine.md § 4); a
+farm's, a grove's and a wood's ground whole chunks on the server's grid (`command.WorkArea`).
 Left: siting and levelling production chunks; fences and gates round them (fences are classed and
 dug today - `ClearingTest.aFenceAndTheGroundUnderItAreDug` - but never built); gates walked through.
 

@@ -190,7 +190,7 @@ class SpringAiPlatoonLeaderTest {
         Objective farm = WorkArea.attach(new Objective("Farm the plots", new Position(0, 64, 0), "bread", new Objective.Task.Farm()),
                 Optional.of(new Position(3, 64, 2)));
         SquadStatus farming = new SquadStatus("Bravo", new Report.InPosition(), BRAVO.soldiers(), List.of(), Optional.of(farm), false);
-        assertTrue(SpringAiPlatoonLeader.describeStanding(farming).contains("Worked in 9 boxes over x -16..16, z -16..16, the dump at (3, 64, 2)."),
+        assertTrue(SpringAiPlatoonLeader.describeStanding(farming).contains("Worked in 1 box over x 0..15, z 0..15, the dump at (3, 64, 2)."),
                 SpringAiPlatoonLeader.describeStanding(farming));
     }
 
