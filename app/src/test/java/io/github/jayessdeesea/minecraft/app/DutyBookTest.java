@@ -12,6 +12,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DutyBookTest {
 
@@ -73,5 +74,28 @@ class DutyBookTest {
         book.cutOut("Charlie", List.of("Ivy"), wood, n -> 200, spent::add);
 
         assertEquals(List.of(forest), spent);
+    }
+
+    /** Two plots round two waters that overlap are one farm: one set of shares over both, no cell in two. */
+    @Test
+    void overlappingPlotsRoundTwoWatersAreOneFarm() {
+        List<BlockPos> west = new ArrayList<>(), east = new ArrayList<>();
+        for (int z = 0; z < 4; z++) {
+            for (int x = 0; x < 9; x++) {
+                west.add(new BlockPos(x, 63, z));
+            }
+            for (int x = 6; x < 15; x++) {
+                east.add(new BlockPos(x, 63, z));
+            }
+        }
+        Map<String, FarmPlan> farming = Map.of("Alice", new FarmPlan(new BlockPos(4, 62, 2), west), "Ivy", new FarmPlan(new BlockPos(10, 62, 2), east));
+
+        Map<String, DutyOrder> alpha = DutyBook.given(List.of("Alice"), Map.of(), farming, Optional.empty());
+        Map<String, DutyOrder> charlie = DutyBook.given(List.of("Ivy"), Map.of(), farming, Optional.empty());
+
+        assertEquals(alpha, charlie, "one set of shares, whichever squad reckons it");
+        assertEquals(List.of("Alice", "Ivy"), DutyBook.onOneFarm("Ivy", farming));
+        assertNotEquals(alpha.get("Alice").ground(), alpha.get("Ivy").ground());
+        assertTrue(alpha.get("Alice").ground().orElseThrow().maxX() < alpha.get("Ivy").ground().orElseThrow().minX(), "no column in both");
     }
 }

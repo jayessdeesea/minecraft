@@ -61,3 +61,10 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
 Built: what's drawn is kept for the kit, up to a stack (docs/military-doctrine.md § 11). Left: drawing only
 what's wanted - a stack larger than the need picked up and the rest put back (a right-click takes half) -
 so the next consumer finds some.
+
+## The stores read swings with which chests were last looked in (field480-484)
+The `[Stores]` line read seeds 702, 64, 0, 88, 0 across five runs in an hour, and wheat and bread 0 throughout.
+In field480 the camp's next chest at (-50, 76, 47) was logged full and then forgotten, though it was never placed
+(Dana couldn't take a block in hand to put it up). Wanted: the stores counted from every standing chest, with a
+chest that never stood never counted - so a shortfall read is the force's, not the reading's.
+

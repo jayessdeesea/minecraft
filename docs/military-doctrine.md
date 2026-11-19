@@ -998,8 +998,9 @@ it - a hut's wall over the farm's edge - isn't tried at all: no one can stand on
 
 **The farm by duty** (operator, 2026-11-18; `command.FarmDuties`). The soldiers on a farm are its
 harvesters, each on a share of the plot of its own - a run of the plot's whole columns of x, so no
-cell is in two shares and its walk stays short; shared among everyone farming the plot, whatever
-their squad, so two squads on one farm have one set of shares and one baker - which it harvests and replants in one pass, keeping its seed and taking its wheat to the stockpile.
+cell is in two shares and its walk stays short; shared among everyone farming the plot or one
+overlapping it, whatever their squad or the water it's round, so two squads on one stretch of farm
+have one set of shares and one baker (`DutyBook.onOneFarm`) - which it harvests and replants in one pass, keeping its seed and taking its wheat to the stockpile.
 With three or more on the farm, the last on the roster is its baker: it draws the stockpile's wheat a
 stack at a time and bakes it, and the bread past its own load goes in. A harvester below its basic
 load still bakes for itself - that's its own upkeep. With two, both harvest and bake as they go.

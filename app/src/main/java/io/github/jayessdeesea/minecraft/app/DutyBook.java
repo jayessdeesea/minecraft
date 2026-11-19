@@ -110,12 +110,34 @@ final class DutyBook {
     static Map<String, DutyOrder> given(List<String> soldiers, Map<String, WoodDuties.Duty> woodDuties, Map<String, FarmPlan> farming,
                                         Optional<Position> dump) {
         Map<String, DutyOrder> given = new HashMap<>(WoodDuties.orders(woodDuties, dump));
-        soldiers.stream().filter(farming::containsKey).findFirst().map(farming::get).ifPresent(f -> {
-            List<String> onTheFarm = farming.entrySet().stream().filter(e -> e.getValue().water().equals(f.water()))
-                    .map(Map.Entry::getKey).sorted().toList();
-            given.putAll(FarmDuties.orders(onTheFarm, f.plot().stream().map(c -> new Position(c.x(), c.y(), c.z())).toList(), dump));
+        soldiers.stream().filter(farming::containsKey).findFirst().ifPresent(first -> {
+            List<String> onTheFarm = onOneFarm(first, farming);
+            given.putAll(FarmDuties.orders(onTheFarm, onTheFarm.stream().flatMap(n -> farming.get(n).plot().stream()).distinct()
+                    .map(c -> new Position(c.x(), c.y(), c.z())).toList(), dump));
         });
         return given;
+    }
+
+    /**
+     * Everyone farming the one stretch of ground {@code first} farms: the farmers whose plots share a cell with it, and
+     * theirs, and so on - whatever water each plot is round. Live (field484), Alpha's and Charlie's plots round two
+     * waters overlapped, and Alice and Ivy were both given x -31..-29.
+     */
+    static List<String> onOneFarm(String first, Map<String, FarmPlan> farming) {
+        java.util.Set<String> on = new java.util.TreeSet<>(List.of(first));
+        java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> ground = new java.util.HashSet<>(farming.get(first).plot());
+        boolean grew = true;
+        while (grew) {
+            grew = false;
+            for (Map.Entry<String, FarmPlan> e : farming.entrySet()) {
+                if (!on.contains(e.getKey()) && (e.getValue().water().equals(farming.get(first).water()) || e.getValue().plot().stream().anyMatch(ground::contains))) {
+                    on.add(e.getKey());
+                    ground.addAll(e.getValue().plot());
+                    grew = true;
+                }
+            }
+        }
+        return List.copyOf(on);
     }
 
     /**
