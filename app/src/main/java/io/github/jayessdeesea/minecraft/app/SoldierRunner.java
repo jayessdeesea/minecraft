@@ -1014,6 +1014,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Miner> miners = new ConcurrentHashMap<>();
     /** The day's deaths and idlers, reviewed at each dawn. */
     private final AfterActionReview afterActionReview = new AfterActionReview();
+    /** Where each soldier's food goes: sampled each tick, reviewed at dawn. */
+    private final FoodLedger foodLedger = new FoodLedger();
     /** Cutters wanting a tool, sent to their mine's landing to make it - tick writes, squad loop reads. */
     /** Soldiers walking a PATROL, and the leg of its round each is on - squad loop writes, tick reads. */
     private final Map<String, Integer> patrolLegs = new ConcurrentHashMap<>();
@@ -1517,8 +1519,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 })
                 .ifPresent(dawn -> {
                     nightsMining();
-                    LOG.info("[AAR] {}\n  {}\n  {}\n  {}", dawn.review(), String.join("\n  ", chainOfCommand.requestReview()),
-                            String.join("\n  ", registerReview()), String.join("\n  ", faults.review()));
+                    LOG.info("[AAR] {}\n  {}\n  {}\n  {}\n  {}", dawn.review(), String.join("\n  ", chainOfCommand.requestReview()),
+                            String.join("\n  ", registerReview()), String.join("\n  ", faults.review()), String.join("\n  ", foodLedger.review()));
                     LOG.info("[Scoreboard] {}", scoreboard.add(dawn.score()));
                 });
         List<Present> present = new ArrayList<>();
@@ -3978,12 +3980,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** What no ground work digs or fills: the camp's kept structures, its mine, and every squad's stairs. */
     private Set<Cell> groundExcept() {
         Set<Cell> except = new HashSet<>();
-        campKeep().forEach(c -> except.add(new Cell(c.x(), c.y(), c.z())));
-        campMine().forEach(c -> except.add(new Cell(c.x(), c.y(), c.z())));
-        squadStates.values().stream().filter(s -> s.stairs != null).forEach(s -> {
-            s.stairs.walkway().forEach(c -> except.add(new Cell(c.x(), c.y(), c.z())));
-            s.stairs.landing().forEach(c -> except.add(new Cell(c.x(), c.y(), c.z())));
-        });
+        Stream.concat(Stream.concat(campKeep().stream(), campMine().stream()), squadStates.values().stream().filter(s -> s.stairs != null)
+                .flatMap(s -> Stream.concat(s.stairs.walkway().stream(), s.stairs.landing().stream()))).forEach(c -> except.add(new Cell(c.x(), c.y(), c.z())));
         return except;
     }
 
@@ -7090,6 +7088,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             soldier.tick(world).ifPresent(target -> {
                 LOG.info("{} attacks entity {}", name, target);
                 session.attack(target);
+                foodLedger.attack(name);
             });
             // A cell it's been stuck short of three times is a block the server has and the
             // model doesn't: taken as stone until the server says otherwise - a dig timed for stone
@@ -7118,6 +7117,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             });
             SoldierStatus status = soldier.status();
+            foodLedger.sample(name, status.condition(), status.position(), soldier.sprinting(), soldier.onGround());
             boolean bareHanded = status.condition().flatMap(c -> c.kit()).map(k -> k.weapon().isEmpty()).orElse(false);
             boolean inContact = status.report() instanceof Report.InContact;
             // Under threat, routines pause - they pick up where they left off once it's gone.

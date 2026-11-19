@@ -11,14 +11,9 @@ priority: P1
   floor paved, not cut), and wood ground isn't flattened. Should the camp itself be cut to sea level too,
   and the routes between the work areas? That changes whether the wall and its floor get rebuilt.
 
-- **Food: the farm is a third of what the force eats** (backlog/renewables.md). Measured overnight (field480-486): about
-  60 harvests a game day (145, 104, 55, 58, 65, 31 per 20-minute run, falling), so about 20 loaves at three wheat a
-  loaf, against 50-64 loaves for sixteen soldiers if each eats 3-4 a day (my guess, not measured). Stores read 0 bread
-  and 0 wheat all night, and by morning soldiers were at food 1-15 with no rations (Jack at health 5). The farm is the
-  hydrated ground round each pond near the camp (9x9 round a water block); more farm means more water - a bucket, or
-  channels cut through the soil flatten at y=62 (x -48..-16, z -16..16). Which do you want: buckets placed (the soldier
-  learns to carry and pour water), channels dug in the flattened ground, or fewer mouths on the farm's output (fewer
-  soldiers, or hunting)? No default taken: it changes what gets built next.
+Answered 2026-11-19, each now with its item:
+- **Food:** more farmland - trench farms off ponds before the bucket, chunk farms with four water holes after;
+  and a food report first, to see why the soldiers eat so much (backlog/renewables.md, More farmland).
 
 Answered 2026-11-18, each now with its item:
 - **The depot** off the farm-and-grove ground's north edge (built, docs/military-doctrine.md § 17).

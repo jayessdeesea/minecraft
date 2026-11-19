@@ -1756,8 +1756,12 @@ with the foothold in view it already keeps an exposed squad near shelter (Platoo
 Each dawn the log carries an after-action review (TC 25-20) of the day and night before (`[AAR]`,
 `app.AfterActionReview`): the camp's standards, met and open, each scored over the day - met if it
 held at 90% or more of the day's foothold checks (`AfterActionReview.STEADY`), with the share it held
-and, if open now, how far along; the deaths, by the server's cause, with who; and who raised an idle
-alarm by day (§ 3). Scored at the dawn's one look, the lit ground and the wall, going in and out of
+and, if open now, how far along; the deaths, by the server's cause, with who; who raised an idle
+alarm by day (§ 3); and where the food went (`[Food]`, `app.FoodLedger`; operator, 2026-11-19: see why the
+soldiers need to eat so much) - each soldier's loaves eaten, taken with their saturation, against the hunger the
+server's rules burn for what it did: 6 exhaustion a health point healed, 0.05 a jump (0.2 sprinting), 0.1 a metre
+sprinted, 0.1 a blow struck or taken, 4 to a point of hunger; walking burns nothing. What's left unexplained is a
+cause not counted. Scored at the dawn's one look, the lit ground and the wall, going in and out of
 met 36 times a run, decided the day by when the look fell.
 
 The same dawn scores the day on the garrison's scoreboard (`app.Scoreboard`, `scoreboard.jsonl` in

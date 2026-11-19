@@ -99,6 +99,24 @@ leaves for (§ 12, TREE_FARM). What's left:
 - Growth is slow and random (random ticks), so live verification needs patience, or a test
   server with a higher `randomTickSpeed`.
 
+## More farmland: the farm by phase (operator, 2026-11-19)
+Overnight (field480-489) the farm fed about a third of the force: some 85 harvests a game day, about 28 loaves,
+stores at 0 bread and wheat. The answer is more farmland, gradually flattened to sea level, and denser farms as
+the force can build them:
+- **Airhead:** ad hoc farms round the ponds by the camp, as now.
+- **Before the bucket:** trenches a block wide cut at farmland level off a pond - flowing water hydrates too, 4
+  blocks either side - for long sea-level strips easy to walk along and harvest. (Or a stream dammed to a block
+  deep with dirt, farmed along its banks.)
+- **With a bucket (three iron, the buildup):** chunk farms, built one at a time. Each a chunk, flat at sea level,
+  fenced on its x%16==0 and z%16==0 lines (shared with the next farm), gates beside the corners; tilled but for
+  four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) - each hydrates the 9x9 round it - in the farmland's
+  own layer (water a block below hydrates nothing); and a chest at local (13, 13) for its seed (to 512) and wheat.
+  In steady state one soldier tends one farm - harvesting, replanting and mending holed ground as it goes - so the
+  farm stays within a player's simulation distance and grows.
+Measure first: a farm's ripe cells an hour before deciding how many the force needs (a solid block of one crop
+may grow slower than rows); and where the food goes (`[Food]`, `app.FoodLedger`) - if healing dominates, fewer
+falls and fights save more than more farms.
+
 ## The wild forest near the camp is cut out (field470)
 A full day on wood duty felled 12 trees: the woodcutters' strips held no trees ("no LOG within 144 blocks of
 the objective", Fran, again and again), Dana alone filled a load of 16, and the stockpile stayed at 0 logs.
