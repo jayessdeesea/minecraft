@@ -403,4 +403,7 @@ final class SiteGeometry {
     static final long FLOOD_KEPT_MILLIS = 10_000;
     /** How long a FARM objective no ground to farm was found for waits before it's looked at again. */
     static final long FARM_RETRY_MILLIS = 60_000;
+
+    /** How long a soldier whose pack had no room to salvage into is passed over as salvager. */
+    static final long SALVAGE_PASSED_MILLIS = 10 * 60_000;
 }

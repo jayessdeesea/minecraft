@@ -260,6 +260,39 @@ class KeepSimulationTest {
         assertTrue(atCamp >= 32, "its cobblestone in the new camp's chest: " + atCamp + "; " + events);
     }
 
+    /** The nearest soldier's pack full, another salvages the old camp's chest: live (field503-504), a full pack held it all day. */
+    @Test
+    void aSalvagerWithAFullPackHandsItOn() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> flat(x, y, z), 1000);
+        server.stockedChest(70, GROUND + 1, 2, SimServer.ITEM_COBBLESTONE, 64);
+        new WallStore(state, "chests").save(SiteGeometry.CAMPS, List.of(new BlockPos(70, 0, 0)));
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(40.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        List<int[]> full = new ArrayList<>(List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                new int[]{38, SimServer.ITEM_OAK_LOG, 16}));
+        for (int slot = 9; slot <= 35; slot++) {
+            full.add(new int[]{slot, SimServer.ITEM_DIRT, 64});
+        }
+        for (int slot = 39; slot <= 44; slot++) {
+            full.add(new int[]{slot, SimServer.ITEM_DIRT, 64});
+        }
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "40,0", state.toString())
+                .simulated(clock, server.connector(name -> new PlayerPosition(name.equals("Alice") ? 60.5 : 40.5, GROUND + 1, 0.5),
+                        name -> name.equals("Alice") ? full : List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                                new int[]{37, SimServer.ITEM_BREAD, 64}, new int[]{38, SimServer.ITEM_OAK_LOG, 16})))
+                .run();
+
+        clock.advance(10 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        assertEquals(0, held(server, 70, GROUND + 1, 2), "the old camp's chest emptied, by Bob; " + events);
+    }
+
     private static int held(SimServer server, int x, int y, int z) {
         return Arrays.stream(server.chests.get(SimServer.key(x, y, z))).filter(java.util.Objects::nonNull).mapToInt(st -> st[1]).sum();
     }

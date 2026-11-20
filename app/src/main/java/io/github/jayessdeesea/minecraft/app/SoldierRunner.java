@@ -1575,8 +1575,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * {@code objective}. {@code directed} is the directive a detachment of one is on.
      */
     private record Unit(String name, List<DeterministicSoldier> soldiers, List<SoldierStatus> statuses,
-                        Optional<Objective> objective,
-                        Optional<Directive> directed, boolean roled) {
+                        Optional<Objective> objective, Optional<Directive> directed, boolean roled) {
 
         /** How far above or below a point a soldier with a role sent there may end up: the map's height. */
         static final double ANY_HEIGHT = 384;
@@ -1768,8 +1767,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * every hole under it filled - dirt fetched first by one carrying no blocks. Empty once the
      * world shows it level. Never the cells of a hut, a workshop, the wall or the mine.
      */
-    private Optional<Order> levelWork(SoldierStatus soldier,
-                                                                              Directive.Level level) {
+    private Optional<Order> levelWork(SoldierStatus soldier, Directive.Level level) {
         Set<Cell> except = groundExcept();
         Box dig = new Box(level.minX(), level.y(), level.minZ(),
                 level.maxX(), level.y() + LEVEL_ABOVE, level.maxZ());
@@ -4431,6 +4429,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private volatile Set<BlockPos> condemned = Set.of();
     /** The keep hand salvaging them; null with none - keep squad loops write, ticks read. */
     private volatile String salvager;
+    /** When each soldier was passed over as salvager, its pack with no room - ticks write, squad loops read. */
+    private final Map<String, Long> salvagePassed = new ConcurrentHashMap<>();
     /** When the ground to flatten was last looked over for chests, and the site it was. */
     private volatile long condemnedAt = Long.MIN_VALUE;
     private volatile Flatten condemnedFor;
@@ -4476,6 +4476,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Nor one under the site's floor, wherever the drill stands with it: a restart forgets who it had, and
         // live (field433) the same salvager was chosen again in the pocket at y=56, 7 under the floor.
         on.values().removeIf(p -> p.y() < ground.bottom() - SALVAGER_BELOW);
+        on.keySet().removeIf(n -> clockwork.millis() - salvagePassed.getOrDefault(n, Long.MIN_VALUE / 2) < SALVAGE_PASSED_MILLIS); // nor one whose pack had no room
         String was = salvager;
         // Kept while it's connected and the drill hasn't it, on the keep's rolls this cycle or not: live (field437),
         // the salvager went Jack, Liam, Jack in four minutes as each came off and on the dig, each trip begun lost.
@@ -4524,7 +4525,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 free++;
             }
         }
-        if (free < UNSTASH_FREE) {
+        if (free < UNSTASH_FREE) { // its pack full, another salvages: live (field503-504), Carol held it all day, five spare swords in it
+            if (salvagePassed.put(name, clockwork.millis()) == null || salvager != null) {
+                LOG.info("[Keep] salvage: {}'s pack has no room - another salvages", name);
+            }
+            salvager = null;
             return Optional.empty();
         }
         Optional<BlockPos> chest = condemned.stream().filter(c -> !emptied(c))
@@ -5292,8 +5297,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (state.trees != null && state.trees.centre().x() == at.x() && state.trees.centre().z() == at.z()) {
                 return state.trees;
             }
-            TreeFarm sited = TreeFarm.site(world, at,
-                    TREE_FARM_RADIUS).orElse(null);
+            TreeFarm sited = TreeFarm.site(world, at, TREE_FARM_RADIUS).orElse(null);
             if (sited == null) {
                 LOG.warn("[{}] TREE_FARM: no open dirt or grass to plant round {}", squadName, o.location());
             } else {
@@ -5945,8 +5949,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     gathering.put(soldierName, new Objective("Dig dirt for the wall",
                             new Position(state.wallCentre.x() + side[0] * (WALL_RADIUS + SOIL_OFFSET), state.wallCentre.y(),
                                     state.wallCentre.z() + side[1] * (WALL_RADIUS + SOIL_OFFSET)),
-                            "Blocks to wall the camp in",
-                            new Objective.Task.Gather(Resource.SOIL)));
+                            "Blocks to wall the camp in", new Objective.Task.Gather(Resource.SOIL)));
                 }
             } else {
                 walling.remove(soldierName);
@@ -6552,8 +6555,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private Optional<Position> levelSite(Position asked, int soldiers, String squadName, Position from) {
         // Only footing the squad can walk to: a level roof of an old hut two blocks up is no site.
-        Set<BlockPos> reachable = Pathfinder.reachable(
-                world, TerrainSurveyor.groundAt(world,
+        Set<BlockPos> reachable = Pathfinder.reachable(world, TerrainSurveyor.groundAt(world,
                         BlockPos.containing(from.x(), from.y(), from.z())),
                 (int) Math.ceil(Math.hypot(asked.x() - from.x(), asked.z() - from.z())) + SITE_SEARCH + 2, SITE_REACH_BUDGET);
         // Shut in a hut, the squad reaches next to nothing: it'll cut its way out, so any site will do.
@@ -6675,8 +6677,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
         CompletableFuture<PlaySession> joined = connector.join(name, new PlaySessionListeners(
                 update -> logDivergence(name, chunkCache.load(update.chunkX(), update.chunkZ(), update.sectionBlockStates(), name)),
-                unload -> chunkCache.unload(unload.chunkX(), unload.chunkZ(), name),
-                position -> {
+                unload -> chunkCache.unload(unload.chunkX(), unload.chunkZ(), name), position -> {
                     if (!firstPosition.complete(position)) {
                         DeterministicSoldier soldier = activeSoldier.get();
                         if (soldier != null) {
@@ -6788,8 +6789,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     afterActionReview.commands.casualty(squadTask(unitOf(name, definition.squad())), Optional.ofNullable(activeSoldiers.get(name))
                             .map(s -> s.status().order().getClass().getSimpleName()).orElse("none"));
                     LOG.warn("[Casualty] since the app started: {}", casualties);
-                },
-                cause -> onDisconnected(definition, activeScheduler, cause)));
+                }, cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
         joined.thenAcceptBoth(firstPosition, (session, spawn) -> {
                     joinAttempts.remove(name);
