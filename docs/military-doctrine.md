@@ -488,7 +488,8 @@ risk and its own condition into a fall allowance:
 
 So a safe route always wins when one exists, and a fall is planned only when there's none, on
 foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier with no such
-route - its own planner having tried building its way with whatever it carries - is stranded: cut off in
+route - its own planner having tried building its way with whatever it carries - is stranded (but for one sent
+along its own level with a pickaxe and no block: it waits on the block it cuts for its gap, `Recovery.waitingOnABlock`): cut off in
 a pocket, below where it's sent with no way up, or under the ground - more than 8 blocks of rock or
 soil over it, a tree's leaves and logs not counted, and none of the ground it can walk to out from
 under it, all of that ground searched - and sent to the surface, however big its cave (operator, 2026-11-17: a soldier digs itself

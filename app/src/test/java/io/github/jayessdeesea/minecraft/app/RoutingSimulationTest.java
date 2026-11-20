@@ -121,11 +121,12 @@ class RoutingSimulationTest {
         assertEquals(List.of(), List.copyOf(server.log).stream().filter(l -> l.startsWith("Alice placed")).toList(), "no block placed on the way");
     }
 
-    /** Stone all round but a gallery two high along x at z=0, from x=-2 to 14; a hole in its floor at x=6, over a cave. */
+    /** Stone all round, the surface 12 up, but a gallery two high along x at z=0, from x=-2 to 14; a hole in its floor at x=6, over a cave. */
     static int galleryWithAGap(int x, int y, int z) {
         boolean gallery = z == 0 && x >= -2 && x <= 14 && (y == GROUND + 1 || y == GROUND + 2);
         boolean hole = z == 0 && x == 6 && y <= GROUND && y > GROUND - 10;
-        return y <= -64 ? SimServer.BEDROCK : gallery || hole ? SimServer.AIR : SimServer.STONE;
+        // The surface 12 over it, as a mine's: with sky above, the recovery drill can lay a stair up (field533).
+        return y <= -64 ? SimServer.BEDROCK : gallery || hole || y > GROUND + 12 ? SimServer.AIR : SimServer.STONE;
     }
 
     /**

@@ -35,6 +35,9 @@ world wrong is proven wrong.
    test's thread; the clock reads left on the wall are chat's de-duplication and arrows' flight. Seen once:
    `aChunkFarmsTenderWithLogsAndNoIronStillFencesIt` failed under load, a builder's stand not got to in its walk's
    allowance and its cell skipped for good - the skip now lapses, but what made the walk slower under load is open.
+   Seen: RoutingSimulationTest's gallery with a gap, the surface 12 up, passes with or without
+   `Recovery.waitingOnABlock` - in it the block for the way comes due before the recovery drill lays a stair up;
+   live (field533), the stair came first and held the miner's hands. What sets that order live is a lead.
 5. **Recorded worlds.** A live failure's ground - the chunks round it, as the client decoded them -
    saved so the same situation is replayed in the simulation, not rebuilt by hand.
 
