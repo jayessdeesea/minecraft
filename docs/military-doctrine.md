@@ -1837,7 +1837,10 @@ world, one of the keep's hands draws by day the depot kind each holds most of, i
 the depot as any builder's, and till a chest is seen empty it stands on a 3x3 pillar of the ground under
 it, in reach (`SoldierRunner.condemned`, `salvageFor`); its salvager is a keep hand on the ground, never one
 the recovery drill has nor one more than 2 under the floor; a chest seen empty is kept so on disk across a
-restart (`SoldierRunner.SALVAGED`). Dug, a chest spills what it holds. A site whose
+restart (`SoldierRunner.SALVAGED`). So is every chest of an old camp - one the garrison was configured with
+before (`SiteGeometry.oldCamps`, kept on disk) - within 12 across of it, in every phase and by any squad's
+soldier, not only the flatten's hands: the camp moved, its stores follow it into the camp's chest
+(backlog/camp-to-sea-level.md). Dug, a chest spills what it holds. A site whose
 top is soil (`Flatten.soil`, ground for groves and the farm) has its top layer in the dig too: its soil kept,
 its rock dug, and once the dig's done the gaps filled with dirt alone (`Order.Fill.Material.SOIL`), a builder
 short of dirt sent for a load of it from the ground east of the site past its bench, which the keep's site

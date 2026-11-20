@@ -540,6 +540,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Optional<Staircase> campStairs;
     /** The camp the squads build up, x and z - null for none. */
     private final int[] camp;
+    /** The camps moved from, kept on disk (SiteGeometry.oldCamps): their chests salvaged into the camp's (backlog/camp-to-sea-level.md). */
+    private final List<BlockPos> oldCamps;
     /** Squad-loop cycles between measures of the foothold: about ten seconds. */
     private static final int FOOTHOLD_EVERY = 10;
     private int footholdTicks;
@@ -1339,6 +1341,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (this.camp != null && this.camp.length != 2) {
             throw new IllegalArgumentException("minecraft.camp is x,z - not " + camp);
         }
+        this.oldCamps = oldCamps(chestStore, this.camp);
         this.yieldToExperiments = yieldToExperiments;
         this.soldierDefinitions = roster.squads().stream()
                 .flatMap(squad -> squad.soldiers().stream().map(name -> new SoldierDefinition(name, squad.name())))
@@ -4435,20 +4438,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         long now = clockwork.millis();
         if (!ground.equals(condemnedFor) || now - condemnedAt >= CONDEMNED_LOOK_MILLIS) {
             Set<BlockPos> stashes = squadStairs.values().stream().flatMap(s -> s.store().stream()).collect(Collectors.toSet());
-            Set<BlockPos> found = new HashSet<>();
-            for (int x = ground.minX(); x <= ground.maxX(); x++) {
-                for (int z = ground.minZ(); z <= ground.maxZ(); z++) {
-                    if (!world.isLoaded(x, z)) {
-                        continue;
-                    }
-                    for (int y = ground.bottom(); y <= ground.bottom() + CONDEMNED_ABOVE; y++) {
-                        BlockPos cell = new BlockPos(x, y, z);
-                        if (world.isChest(x, y, z) && !stashes.contains(cell)) {
-                            found.add(cell);
-                        }
-                    }
-                }
-            }
+            // The flatten's only while a squad is on it - a camp's chest on ground idle to flatten is the camp's own - and an old camp's always.
+            boolean flattening = squadStates.keySet().stream().anyMatch(s -> taskOf(s, Objective.Task.Keep.class).isPresent());
+            Set<BlockPos> found = new HashSet<>(flattening ? chestsOn(world, ground, CONDEMNED_ABOVE) : Set.of());
+            found.addAll(chestsAround(world, oldCamps, OLD_CAMP_REACH));
+            found.removeAll(stashes);
             Set<BlockPos> was = condemned;
             if (!found.equals(was)) {
                 LOG.info("[Keep] salvage: {} chest(s) on the ground to flatten, {} still to empty - {}", found.size(),
@@ -5053,6 +5047,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .forEach(n -> state.recovery.release(n)
                             .forEach(freed -> LOG.info("[{}] RECOVERY: the stair up for {} is dug - {} walks out", squadName, freed, freed)));
             List<SoldierStatus> reported = cutOff(statuses.stream().map(s -> ownReports.getOrDefault(s.name(), s)).toList());
+            condemned(chainOfCommand.flatten(), statuses); // its salvager any squad's soldier: an old camp's chests are emptied in every phase
             orders = ReactToContact.orders(statuses, state.recovery.orders(reported,
                     Resupply.orders(statuses, Cohesion.orders(statuses, state.linkUp.orders(statuses, formation(order, statuses), state.recovery::recovering,
                                     chainOfCommand.time().map(TimeOfDay::dark).orElse(false),
@@ -6730,8 +6725,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         chunkCache.removeOwner(name);
                         sessionReady.thenAccept(PlaySession::respawn);
                     }
-                },
-                update -> {
+                }, update -> {
                     Kit kit = switch (update) {
                         case InventoryUpdate.Contents(var slots, var complete) -> {
                             for (int slot = 0; slot < slots.size(); slot++) {
@@ -6770,8 +6764,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             }
                         });
                     }
-                },
-                container -> {
+                }, container -> {
                     SupplyRun run = supplyRun.get();
                     if (run != null) {
                         run.onContainer(container);
@@ -6808,8 +6801,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     if (definition == soldierDefinitions.getFirst()) {
                         overworldClock.update(time, clockNames.get()).ifPresent(chainOfCommand::onTime);
                     }
-                },
-                death -> {
+                }, death -> {
                     LOG.warn("[Casualty] {}", recorders.computeIfAbsent(name, n -> new FlightRecorder()).casualty(name, death));
                     String cause = death.contains("[") ? death.substring(0, death.indexOf('[')) : death;
                     casualties.merge(cause, 1, Integer::sum);
@@ -6824,8 +6816,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         joined.thenAcceptBoth(firstPosition, (session, spawn) -> {
                     joinAttempts.remove(name);
                     onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, armourerRef, depositorRef, torchmakerRef);
-                })
-                .exceptionally(cause -> {
+                }).exceptionally(cause -> {
                     if (stopping) {
                         return null;
                     }
@@ -7033,8 +7024,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .filter(e -> {
                             Position p = e.getValue().status().position();
                             return Math.hypot(p.x() - cell.x() - 0.5, p.z() - cell.z() - 0.5) < 1 && Math.abs(p.y() - cell.y()) <= 1;
-                        })
-                        .map(Map.Entry::getKey).findFirst();
+                        }).map(Map.Entry::getKey).findFirst();
                 if (standingThere.isPresent()) {
                     LOG.warn("[World] {} stuck short of {} {} times - {} stands there", name, cell, DeterministicSoldier.SNAG_TRIES, standingThere.get());
                 } else if (!world.isSolid(cell.x(), cell.y(), cell.z())

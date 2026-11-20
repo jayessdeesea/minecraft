@@ -230,6 +230,41 @@ class KeepSimulationTest {
     }
 
     /**
+     * The camp moved (backlog/camp-to-sea-level.md): its old camp's chest, a stack of cobblestone in it, is emptied
+     * into the new camp's stockpile - by a squad on no flatten at all - what its salvager doesn't keep for itself.
+     */
+    @Test
+    void anOldCampsChestIsEmptiedIntoTheNewCampsStockpile() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> flat(x, y, z), 1000);
+        server.stockedChest(70, GROUND + 1, 2, SimServer.ITEM_COBBLESTONE, 64);
+        new WallStore(state, "chests").save(SiteGeometry.CAMPS, List.of(new BlockPos(70, 0, 0)));
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(40.5, GROUND + 1, 0.5); // both off the keep, the default ground to flatten
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "40,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(40.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.ITEM_OAK_LOG, 16})))
+                .run();
+
+        clock.advance(8 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        assertEquals(0, held(server, 70, GROUND + 1, 2), "the old camp's chest emptied; " + events);
+        int atCamp = server.chests.entrySet().stream().filter(e -> e.getKey() != SimServer.key(70, GROUND + 1, 2))
+                .mapToInt(e -> Arrays.stream(e.getValue()).filter(st -> st != null && st[0] == SimServer.ITEM_COBBLESTONE).mapToInt(st -> st[1]).sum()).sum();
+        assertTrue(atCamp >= 32, "its cobblestone in the new camp's chest: " + atCamp + "; " + events);
+    }
+
+    private static int held(SimServer server, int x, int y, int z) {
+        return Arrays.stream(server.chests.get(SimServer.key(x, y, z))).filter(java.util.Objects::nonNull).mapToInt(st -> st[1]).sum();
+    }
+
+    /**
      * Emerald ore standing two blocks over the keep, its builder carrying a stone pickaxe: the ore is
      * set aside, with the dirt it stands on, and the site still comes down past it - the mound a level
      * lower elsewhere is dug. Left in the dig, the ore would be its strip's top for good, and in lock

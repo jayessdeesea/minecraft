@@ -5,13 +5,11 @@ priority: P1
 
 # Questions for the operator
 
-- **Sea level: which ground after the farm-and-grove site?** (backlog/soldier-order.md) Taken by default:
-  once a site is flat, the next is the nearest box of the squads' farm and grove areas off its level, at
-  the same level (y=62), soil. The camp inside its wall stays at its own height (the earlier rule: its
-  floor paved, not cut), and wood ground isn't flattened. Should the camp itself be cut to sea level too,
-  and the routes between the work areas? That changes whether the wall and its floor get rebuilt.
+None open.
 
 Answered 2026-11-20, each now with its item:
+- **Sea level:** the camp too, gradually - a new camp at sea level first, the stores moved into it, then the
+  old hill cut down (backlog/camp-to-sea-level.md).
 - **The triage merges:** as merged (backlog/sites.md, backlog/flatten-campaign.md).
 - **Seed:** 256 a farm chest, 256 in the general stockpile (backlog/renewables.md, More farmland).
 - **Spare hands on a dig narrower than the crew:** reallocated to other tasks (backlog/flatten-campaign.md).

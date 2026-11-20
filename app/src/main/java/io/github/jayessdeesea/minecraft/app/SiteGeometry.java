@@ -332,4 +332,66 @@ final class SiteGeometry {
         crew.stream().filter(h -> digLeft > 0 && !orders.containsKey(h.name())).forEach(h -> state.digSpare.add(h.name()));
         return orders;
     }
+
+    /** The camps the garrison has been configured with, by chest-store key: the current one first recorded, the rest moved from. */
+    static final String CAMPS = "camps";
+    /** How far round an old camp, across, its chests are looked for: its lit ground's reach. */
+    static final int OLD_CAMP_REACH = SECURE_RADIUS;
+
+    /**
+     * The camps moved from: every camp {@code store} has seen configured - {@code camp} recorded there as it comes -
+     * but those within a wall's breadth of it (operator, 2026-11-20: the camp to sea level, its chests moved).
+     */
+    static List<BlockPos> oldCamps(WallStore store, int[] camp) {
+        if (camp == null) {
+            return List.of();
+        }
+        java.util.List<BlockPos> camps = new java.util.ArrayList<>(store.load(CAMPS).orElse(List.of()));
+        BlockPos here = new BlockPos(camp[0], 0, camp[1]);
+        if (!camps.contains(here)) {
+            camps.add(here);
+            store.save(CAMPS, camps);
+        }
+        return camps.stream().filter(c -> Math.hypot(c.x() - camp[0], c.z() - camp[1]) > 2 * WALL_RADIUS).toList();
+    }
+
+    /** Every chest standing on {@code ground}'s dig - in its columns, from its floor to {@code above} over it - in a loaded column. */
+    static Set<BlockPos> chestsOn(io.github.jayessdeesea.minecraft.bot.world.WorldView world, Flatten ground, int above) {
+        Set<BlockPos> found = new java.util.HashSet<>();
+        for (int x = ground.minX(); x <= ground.maxX(); x++) {
+            for (int z = ground.minZ(); z <= ground.maxZ(); z++) {
+                for (int y = ground.bottom(); world.isLoaded(x, z) && y <= ground.bottom() + above; y++) {
+                    if (world.isChest(x, y, z)) {
+                        found.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    /** Every chest standing within {@code reach} across of each of {@code camps}, at any height of a loaded column. */
+    static Set<BlockPos> chestsAround(io.github.jayessdeesea.minecraft.bot.world.WorldView world, List<BlockPos> camps, int reach) {
+        Set<BlockPos> found = new java.util.HashSet<>();
+        for (BlockPos c : camps) {
+            for (int x = c.x() - reach; x <= c.x() + reach; x++) {
+                for (int z = c.z() - reach; z <= c.z() + reach; z++) {
+                    if (!world.isLoaded(x, z)) {
+                        continue;
+                    }
+                    for (int y = OLD_CAMP_LOW; y <= OLD_CAMP_HIGH; y++) {
+                        if (world.isChest(x, y, z)) {
+                            found.add(new BlockPos(x, y, z));
+                        }
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    /** The lowest an old camp's chest is looked for: a cellar's, not a mine's stash far under it. */
+    static final int OLD_CAMP_LOW = 40;
+    /** The highest: a hilltop camp's tallest hut. */
+    static final int OLD_CAMP_HIGH = 160;
 }
