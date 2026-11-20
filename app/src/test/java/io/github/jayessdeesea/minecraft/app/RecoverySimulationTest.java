@@ -359,6 +359,40 @@ void assertPlugsItsWayOut(int blocks, int count) {
     }
 
     /**
+     * As live (field497-498): Dana on a ledge of dirt 5 over the ground, too hurt for its drop, no blocks for a stair
+     * and nobody to fetch her - a pickaxe only. She digs down the ledge's edge a block at a time to the ground's level
+     * and walks off, unhurt.
+     */
+    @Test
+    void aSoldierTooHurtForALedgesDropDigsDownItsEdge() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> y > GROUND && y <= GROUND + 5 && x >= 5 && x <= 10 && z >= -3 && z <= 3
+                ? SimServer.DIRT : flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice,Dana");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(
+                        n -> n.equals("Dana") ? new PlayerPosition(7.5, GROUND + 6, 0.5) : new PlayerPosition(0.5, GROUND + 1, 0.5),
+                        n -> n.equals("Dana") ? List.<int[]>of(new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1})
+                                : List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1})));
+        runner.run();
+        clock.advance(2_000);
+        server.starve("Dana", 2);
+
+        clock.advance(5 * 60_000);
+
+        PlayerPosition dana = server.position("Dana");
+        assertTrue(dana.y() < GROUND + 3, "Dana still up at " + dana + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+        assertTrue(server.health("Dana") == 2 && server.deaths.isEmpty(), "Dana came down hurt: health "
+                + server.health("Dana") + ", deaths " + server.deaths);
+    }
+
+    /**
      * As at the live respawn point: Dana on a platform 17 blocks over the ground with nothing to
      * build with, her only way down a fall costing most of her health. A squadmate carrying dirt
      * builds steps up to her, and she walks down them.

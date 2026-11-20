@@ -4929,8 +4929,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         squadName, n, at, sky.get().y() - (int) Math.floor(at.y()), sky.get().y());
                 return Optional.empty();
             }
-            Optional<List<Cell>> stair = Stairway.down(world,
-                            BlockPos.containing(at.x(), at.y(), at.z()))
+            Optional<List<Cell>> stair = Stairway.down(world, BlockPos.containing(at.x(), at.y(), at.z()))
                     .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList());
             if (stair.isPresent()) {
                 LOG.info("[{}] RECOVERY: {} is stranded at {} - a stair down laid out, {} blocks", squadName, n, at, stair.get().size());
@@ -4945,9 +4944,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Function<SoldierStatus, Optional<List<Cell>>> pillarDown(String squadName) {
         return stuck -> {
             Position at = stuck.position();
-            Optional<List<Cell>> pillar = Stairway.pillarUnder(world, BlockPos.containing(at.x(), at.y(), at.z()))
+            // Or on the surface at a ledge's edge, sent no higher, the ground below seen down its side: dug down to (Stairway.edgeShaft).
+            boolean down = !buried(at) && !(stuck.order() instanceof Order.MoveTo m && m.y() > at.y());
+            Optional<List<Cell>> pillar = Stairway.pillarUnder(world, BlockPos.containing(at.x(), at.y(), at.z())).or(() -> down ? Stairway.edgeShaftNear(world, BlockPos.containing(at.x(), at.y(), at.z())) : Optional.empty())
                     .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList());
-            pillar.ifPresent(p -> LOG.info("[{}] RECOVERY: {} is stranded on a pillar at {} - digs it down, {} blocks", squadName, stuck.name(), at, p.size()));
+            pillar.ifPresent(p -> LOG.info("[{}] RECOVERY: {} is stranded up at {} - digs down from {}, {} blocks", squadName, stuck.name(), at, p.getFirst(), p.size()));
             return pillar;
         };
     }
@@ -4972,8 +4973,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // (field433), Pete, inside the camp at dusk, was read as in a pocket and given a stair up 15 blocks long
             // out through it.
             Set<Cell> kept = groundExcept();
-            Optional<List<Cell>> stair = Stairway.up(world,
-                            BlockPos.containing(at.x(), at.y(), at.z()), whyNot)
+            Optional<List<Cell>> stair = Stairway.up(world, BlockPos.containing(at.x(), at.y(), at.z()), whyNot)
                     .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList())
                     .filter(cells -> {
                         boolean through = cells.stream().anyMatch(kept::contains);

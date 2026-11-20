@@ -2004,7 +2004,11 @@ its fetchers find nothing left, the squad's next pit is off another side, round 
 (never west, the depot's side, where a pit takes the ground from under the workshop): live, one with a single block stood all day 15 under its
 strip's top, the hilltop it dug being stone. And one stranded up a pillar of its own - called off
 it, say, to feed itself - digs it down from on top (`Recovery`, `Stairway.pillarUnder`), its
-episode held until it's at the pillar's foot. The register follows the keep's dig and fill by
+episode held until it's at the pillar's foot. So does one stranded on a ledge on the surface and sent no higher -
+too hurt for its drop, with no blocks for a stair: at the nearest edge of its ground, the ground below seen down
+the open side, the column is dug down to that ground's level and it walks off (`Stairway.edgeShaft`; live,
+field497-498, four soldiers stood ten minutes on a ledge 5 over the farm). The block under a soldier's feet is cut
+first, from where it stands (`Clearing.nextInTunnel`). The register follows the keep's dig and fill by
 their own names (`dig the keep`, `fill the keep`), each builder measured by its squad's share, not
 its own strip: the dirt steps it climbs on are in its strip too. Food first: a builder hungry with
 nothing to eat (`Subsistence.mustFeed`) gets no keep work, and feeds itself first; one short of

@@ -313,4 +313,35 @@ class StairwayTest {
         assertTrue(Stairway.down(step, new BlockPos(7, 65, 0)).isEmpty());
         assertTrue(Stairway.down(lake, ON_THE_PLATFORM).isEmpty());
     }
+
+    /** Dirt ground at y=63, and a ledge of dirt to y=67 over x <= 0 - its edge at x=0, the drop at x=1 to the ground. */
+    private static boolean ledge(BlockPos c) {
+        return c.y() <= 63 || c.y() <= 67 && c.x() <= 0;
+    }
+
+    /**
+     * On a ledge's edge, too hurt for its drop: the column under it dug a block at a time down to the ground's level
+     * below, and it walks off onto it. Live (field497-498), four soldiers stood ten minutes on a ledge 5 over the farm.
+     */
+    @Test
+    void onALedgesEdgeTheColumnUnderItIsDugDownToTheGroundBelow() {
+        WorldView world = soil(StairwayTest::ledge, c -> false);
+        BlockPos edge = new BlockPos(0, 68, 0);
+
+        List<BlockPos> dig = Stairway.edgeShaft(world, edge).orElseThrow();
+
+        assertEquals(List.of(new BlockPos(0, 67, 0), new BlockPos(0, 66, 0), new BlockPos(0, 65, 0), new BlockPos(0, 64, 0)), dig,
+                "top first, down to the ground's level");
+        Set<BlockPos> dug = new HashSet<>(dig);
+        WorldView after = world(c -> ledge(c) && !dug.contains(c), c -> false);
+        assertTrue(Pathfinder.standable(after, new BlockPos(0, 64, 0)) && Pathfinder.standable(after, new BlockPos(1, 64, 0)),
+                "it stands at the ground's level, beside the ground");
+        assertTrue(Stairway.edgeShaft(world, new BlockPos(-3, 68, 0)).isEmpty(), "back from the edge, no side is open");
+        assertEquals(dig.size(), Stairway.edgeShaftNear(world, new BlockPos(-3, 68, 0)).orElseThrow().size(), "but the edge it walks to is");
+        assertEquals(0, Stairway.edgeShaftNear(world, new BlockPos(-3, 68, 0)).orElseThrow().getFirst().x(), "the nearest edge");
+        assertTrue(Stairway.edgeShaft(soil(c -> ledge(c) && !(c.x() == 0 && c.y() == 65), c -> false), edge).isEmpty(),
+                "a hollow under the ledge is a fall");
+        assertTrue(Stairway.edgeShaft(soil(c -> c.y() <= 63 || c.y() <= 66 && c.x() <= 0, c -> false), new BlockPos(0, 67, 0)).isEmpty(),
+                "a drop of three is walked, for no harm");
+    }
 }

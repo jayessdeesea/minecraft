@@ -142,6 +142,13 @@ public final class Clearing {
         BlockPos here = BlockPos.containing(soldier.x(), soldier.y(), soldier.z());
         boolean afloat = world.isWater(here.x(), here.y(), here.z()) && !world.isSolid(here.x(), here.y() + 1, here.z())
                 && !excluded.contains(here);
+        // What's under its feet first, from where it stands: a pillar or a ledge's edge is dug down from on top, a block's
+        // drop at a time - in the squad simulation, a soldier digging a ledge's edge down built a step back over the
+        // shaft to stand on for a lower block's cut.
+        BlockPos under = here.offset(0, -1, 0);
+        if (cover.contains(under) && !excluded.contains(under) && diggable(world, under.x(), under.y(), under.z())) {
+            return Optional.of(new Cut(under, here, world.isLog(under.x(), under.y(), under.z())));
+        }
         for (BlockPos block : cover) {
             if (excluded.contains(block) || !diggable(world, block.x(), block.y(), block.z())) {
                 continue;

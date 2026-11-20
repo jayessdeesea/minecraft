@@ -33,6 +33,57 @@ public final class Stairway {
     }
 
     /**
+     * A shaft down at a ledge's edge, top first: the column under {@code feet} dug a block at a time - each a drop of
+     * one, no fall - to the level of the ground below the ledge, seen down its open side, so the soldier walks off onto
+     * it. Known ground below is safe to dig down to (operator, 2026-11-13); live (field497-498), four soldiers too hurt
+     * to take the ledge's 5-block drop, with no blocks for a stair, stood on it ten minutes. Empty when no side of the
+     * column is open down to standable ground within {@link #MAX_STEPS}, its drop is walked ({@link Pathfinder#MAX_DROP}), or a
+     * block won't dig.
+     */
+    public static Optional<List<BlockPos>> edgeShaft(WorldView world, BlockPos feet) {
+        return Arrays.stream(HEADINGS).map(h -> shaft(world, feet, h[0], h[1])).flatMap(Optional::stream).min(Comparator.comparingInt(List::size));
+    }
+
+    /** How far across a stranded soldier's ground is looked over for a ledge's edge to dig down at. */
+    static final int SHAFT_SEARCH = 8;
+
+    /** As {@link #edgeShaft}, at the nearest edge of the ground {@code feet} walks to: where it stands first. */
+    public static Optional<List<BlockPos>> edgeShaftNear(WorldView world, BlockPos feet) {
+        return Pathfinder.reachable(world, feet, SHAFT_SEARCH, 4 * SHAFT_SEARCH * SHAFT_SEARCH).stream()
+                .sorted(Comparator.comparingDouble((BlockPos c) -> Math.hypot(c.x() - feet.x(), c.z() - feet.z())).thenComparingInt(c -> Math.abs(c.y() - feet.y())))
+                .map(c -> edgeShaft(world, c)).flatMap(Optional::stream).findFirst();
+    }
+
+    private static Optional<List<BlockPos>> shaft(WorldView world, BlockPos feet, int dx, int dz) {
+        // The open side: air from the feet's level (and the head's) down to standable ground.
+        if (!open(world, new BlockPos(feet.x() + dx, feet.y() + 1, feet.z() + dz))) {
+            return Optional.empty();
+        }
+        int floor = feet.y() - 1;
+        while (open(world, new BlockPos(feet.x() + dx, floor, feet.z() + dz))) {
+            if (feet.y() - floor > MAX_STEPS) {
+                return Optional.empty();
+            }
+            floor--;
+        }
+        if (world.isHazard(feet.x() + dx, floor, feet.z() + dz) || !world.isSolid(feet.x() + dx, floor, feet.z() + dz) || feet.y() - floor - 1 <= Pathfinder.MAX_DROP) {
+            return Optional.empty();
+        }
+        // The column dug to that ground's level, onto a block of its own at it.
+        if (!world.isSolid(feet.x(), floor, feet.z()) || world.isHazard(feet.x(), floor, feet.z())) {
+            return Optional.empty();
+        }
+        List<BlockPos> dig = new ArrayList<>();
+        for (int y = feet.y() - 1; y > floor; y--) { // solid all the way: a hollow under the ledge is a fall
+            if (!world.isSolid(feet.x(), y, feet.z()) || world.isHazard(feet.x(), y, feet.z()) || !Clearing.diggable(world, feet.x(), y, feet.z())) {
+                return Optional.empty();
+            }
+            dig.add(new BlockPos(feet.x(), y, feet.z()));
+        }
+        return dig.size() >= 2 ? Optional.of(List.copyOf(dig)) : Optional.empty();
+    }
+
+    /**
      * The cells of the shortest stair from {@code feet} - where a soldier stands on the ledge - down
      * to the ground, in the order they're built: the bottom first. Empty if it needs none (the drop
      * is a step), or if none can be laid: no edge near, a wall in the way, water below, or ground
