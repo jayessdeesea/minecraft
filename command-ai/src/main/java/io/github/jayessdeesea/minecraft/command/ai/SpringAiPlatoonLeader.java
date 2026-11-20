@@ -428,9 +428,9 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
     }
 
     /**
-     * One objective per listed squad, in the same order - anything else is a violated contract. A squad named twice
-     * fails alone, loud: it keeps its standing order, the other squads' objectives stand. Live (field495-504), one squad
-     * named twice in about one reply a run threw out every squad's decision with it.
+     * One objective per listed squad, in the same order - anything else is a violated contract. A squad named twice, or
+     * left out, fails alone, loud: it keeps its standing order, the other squads' objectives stand. Live (field495-510),
+     * one squad named twice or left out in about one reply a run threw out every squad's decision with it.
      */
     static List<Objective> toObjectives(PlatoonLeaderReply reply, List<SquadStatus> squadStatuses) {
         if (reply == null || reply.objectives() == null) {
@@ -452,7 +452,9 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
             }
             PlatoonLeaderReply.ObjectiveReply objective = bySquad.get(squad.squadName());
             if (objective == null) {
-                throw new IllegalStateException("no objective for squad " + squad.squadName() + ": " + reply);
+                objectives.add(squad.standing().orElseThrow(() -> new IllegalStateException("no objective for squad " + squad.squadName() + ": " + reply)));
+                LOG.error("[PL] no objective for squad {} - it keeps its standing order: {}", squad.squadName(), reply);
+                continue;
             }
             if (objective.keep()) {
                 objectives.add(squad.standing().orElseThrow(() -> new IllegalStateException(
@@ -492,7 +494,7 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
                         case KEEP -> new Objective.Task.Keep();
                     }));
         }
-        if (bySquad.size() != squadStatuses.size()) {
+        if (bySquad.keySet().stream().anyMatch(n -> squadStatuses.stream().noneMatch(q -> q.squadName().equals(n)))) {
             throw new IllegalStateException("objectives for squads that weren't listed: " + reply);
         }
         return objectives;

@@ -212,6 +212,16 @@ class SpringAiPlatoonLeaderTest {
                         Optional.of(Resource.WOOD))), objectives);
     }
 
+    /** A squad left out keeps its standing order, alone: the other squad's new objective stands. */
+    @Test
+    void aSquadLeftOutKeepsItsStandingOrderAndTheOthersStand() {
+        List<Objective> objectives = SpringAiPlatoonLeader.toObjectives(new PlatoonLeaderReply(List.of(objective("Alpha"))),
+                List.of(ALPHA, BRAVO_IN_BASE));
+
+        assertEquals(BASE, objectives.get(1), "Bravo's standing order");
+        assertEquals("scout", objectives.get(0).mission(), "Alpha's new one");
+    }
+
     /** A squad named twice keeps its standing order, alone: the other squad's new objective stands. */
     @Test
     void aSquadNamedTwiceKeepsItsStandingOrderAndTheOthersStand() {
