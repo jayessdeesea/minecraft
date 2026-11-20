@@ -23,9 +23,8 @@ lists the files over it, each capped at its length then, to shrink to under.
   order, the class to empty. `app.SiteGeometry` holds the pure geometry of the flatten and its ground
   orders' names. Each squad's state is `app.SquadState`. What's left is two methods: `orderSquad` (1299
   lines, the squad loop) and `onJoined` (1187, each soldier's tick) - to be cut along the tenets above.
-- **`bot.DeterministicSoldier`**: its fight, its moves and its survival as separate pure parts. Begun: its body
-  against the world - whether it fits, hazards and solids under its footprint, a drop, the cells cut to step
-  up, what it can see - is `bot.Body`. Left: the fight out of `tick`, the moves out of `navigate`.
+- **`bot.DeterministicSoldier`** is under the limit: its body against the world is `bot.Body`, the walk's physics
+  `bot.Gait`, the route `bot.Mover` (its base class). Its fight and survival apart are left, in the plan below.
 - **`app.ChainOfCommand`**: the platoon leader's guardrails apart from the wiring of the echelons. Begun: the
   Done: the day's guardrails are `DayGuardrails` and the night's `NightRules`, each over the day or night the
   chain hands it; the keep's mine sites `MineSites`. It's under the limit; the operator's orders are what's
@@ -35,17 +34,15 @@ lists the files over it, each capped at its length then, to shrink to under.
   `DeterministicSoldierCombatTest`, the sim server's items into `SimItems`.
 
 ## The plan (agreed by the operator, 2026-11-20)
-Cut along the tenets, each step a commit of its own with the ratchet lowered behind it. Begun: the walk's physics
-- where the body is, how it falls, swims and steps - is `bot.Gait` (DeterministicSoldier 1453 -> 1338).
+Cut along the tenets, each step a commit of its own with the ratchet lowered behind it.
 
-**`bot.DeterministicSoldier` (1453 lines)** - the soldier's body and mind in one tick. Three parts out, the class left
-a façade whose `tick` asks each in turn and says the report:
-1. `bot.Moves` - the route: `navigate` (202 lines), `pillar`, `assessPlan`, `priceOfARiskierRoute`, and their state
-   (the route, its legs, `PlanMemo`, the snags) over `Gait`, which has the walk's physics.
-2. `bot.Fight` - the threat chosen, closed with, struck, evaded, covered from (`tick`'s fight half, `evade`,
+**`bot.DeterministicSoldier` (739 lines, off the list)** - done: the walk's physics is `bot.Gait`, the route
+(`navigate`, `pillar`, `assessPlan`, legs, snags, `PlanMemo`) `bot.Mover`. Two parts left, for legibility now, not
+the limit - after `SoldierRunner`:
+1. `bot.Fight` - the threat chosen, closed with, struck, evaded, covered from (`tick`'s fight half, `evade`,
    `coverFrom`, `sweepHitsSquadmate`, the shield), and its state (the target, under fire). It hands `Moves` a goal; it
    never walks itself.
-3. `bot.Survival` - wet and afloat, the fall, stuck in a block, a bed, what it does about each before its order.
+2. `bot.Survival` - wet and afloat, the fall, stuck in a block, a bed, what it does about each before its order.
 
 **`app.SoldierRunner` (8254 lines)** - what's left is two methods.
 - `onJoined` (1193 lines, each soldier's tick): the routines and their hands (`Hands.Routine`) into a class per
@@ -62,7 +59,7 @@ a façade whose `tick` asks each in turn and says the report:
 - Then the decisions the tenets give the squad leader - which chest, what to craft, hunt or store - move up into
   `command.DrillSquadLeader` as orders, as `SoldierErrands` already plans.
 
-**Order of work**: `Moves`, `Fight`, `Survival`; then `TickPlan` and the routine families; then `orderSquad`'s steps.
+**Order of work**: `TickPlan` and the routine families; then `orderSquad`'s steps; then `Fight` and `Survival`.
 Each step keeps every test and squad-simulation scenario passing unchanged - a split, no behaviour change - and lowers
 its file's cap in `ArchitectureTest.OVER_THE_LIMIT`.
 

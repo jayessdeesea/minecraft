@@ -85,8 +85,7 @@ class ArchitectureTest {
      * and come off this list once under (backlog/split-oversized-sources.md).
      */
     static final Map<String, Integer> OVER_THE_LIMIT = Map.of(
-            "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 8251,
-            "bot/src/main/java/io/github/jayessdeesea/minecraft/bot/DeterministicSoldier.java", 1338);
+            "app/src/main/java/io/github/jayessdeesea/minecraft/app/SoldierRunner.java", 8251);
 
     @Test
     void sourceFilesStayUnder1000Lines() throws IOException {
