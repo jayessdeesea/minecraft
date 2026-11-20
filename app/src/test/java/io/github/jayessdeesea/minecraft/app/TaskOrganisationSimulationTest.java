@@ -327,6 +327,31 @@ class TaskOrganisationSimulationTest {
         assertEquals(SimServer.CHEST, server.block(farm.chest().x(), farm.chest().y(), farm.chest().z()), "its chest" + events);
     }
 
+    /** As {@link #pondOfThreeByTheCamp}, a cave under the chunk farm's first water hole: open under its cell. */
+    private static int caveUnderAHole(int x, int y, int z) {
+        BlockPos hole = new ChunkFarm(-1, 0, GROUND).holes().getFirst();
+        return x == hole.x() && z == hole.z() && y < hole.y() && y >= hole.y() - 3 ? SimServer.AIR : pondOfThreeByTheCamp(x, y, z);
+    }
+
+    /**
+     * A water hole over a cave has a block put under it before it's filled - the operator (2026-11-20): something under the
+     * farm's water - and the water stands in it, not run down into the cave.
+     */
+    @Test
+    void aWaterHoleOverACaveIsFlooredThenFilled() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::caveUnderAHole, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.BUCKET), 1},
+                        new int[]{9, SimServer.ITEM_COBBLESTONE, 16}), "0,0");
+        clock.advance(14 * 60_000);
+
+        BlockPos hole = new ChunkFarm(-1, 0, GROUND).holes().getFirst();
+        String events = "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
+        assertTrue(server.block(hole.x(), hole.y() - 1, hole.z()) != SimServer.AIR, "a floor under the hole" + events);
+        assertEquals(SimServer.WATER, server.block(hole.x(), hole.y(), hole.z()), "its water in it" + events);
+    }
+
     /** As {@link #pondOfThreeByTheCamp}, the chunk farm west of the camp's chest stood at its local (13, 13). */
     private static int pondAndAFarmChest(int x, int y, int z) {
         return x == -3 && y == GROUND + 1 && z == 13 ? SimServer.CHEST : pondOfThreeByTheCamp(x, y, z);

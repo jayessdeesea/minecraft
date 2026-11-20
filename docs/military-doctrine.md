@@ -1012,8 +1012,10 @@ tillable ground, dirt or grass, with nothing solid above, at one height within 4
 An objective's task can be `FARM`. The squad keeps the plot round the water nearest the objective,
 the same plot while the objective stays put. Each soldier does the most pressing job left on it,
 one cell at a time (`bot.supply.Farmer`), in this order:
-1. With a bucket, its water holes (`FarmPlan.holes`): each dug from the ground beside it, then
-   filled from a pond (`bot.supply.WaterCarrier`); a fill that fails passes the hole over a while.
+1. With a bucket, its water holes (`FarmPlan.holes`): each dug from the ground beside it, a block of the
+   cobblestone or dirt it carries put under one with open ground below - a cave - so its water stands (operator,
+   2026-11-20: something under the farm's water), then filled from a pond (`bot.supply.WaterCarrier`); a fill
+   or a floor that fails passes the hole over a while.
    Then its trenches (`Farmer.trenchToCut`), out from the pond a cell beside water at a time, so each
    fills as it's cut - a cell cut ahead of the water is a hole, and a route fills it in again -
    from the ground across the trench. The farmer cuts them itself: its earthwork, a clearing, never

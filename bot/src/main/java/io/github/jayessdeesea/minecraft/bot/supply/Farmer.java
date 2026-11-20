@@ -74,6 +74,8 @@ public final class Farmer {
     static final List<ItemClass> FIXTURES = List.of(ItemClass.FENCE, ItemClass.FENCE_GATE, ItemClass.CHEST);
     /** Puts up each kind of fixture. */
     private final Map<ItemClass, Builder> builders = new EnumMap<>(ItemClass.class);
+    /** What lays a water hole's floor, of the cobblestone or dirt it carries. */
+    private final Builder holeFloor;
     /** The kind of fixture it's putting up. */
     private ItemClass placing;
     /** Does the farm's {@link #earthwork}: a {@link Clearer} over it. */
@@ -112,6 +114,7 @@ public final class Farmer {
         this.steps = steps;
         this.carrier = new WaterCarrier(name, session, inventory);
         FIXTURES.forEach(item -> builders.put(item, new Builder(name, session, inventory, List.of(item))));
+        this.holeFloor = new Builder(name, session, inventory, List.of(ItemClass.COBBLESTONE, ItemClass.DIRT));
         // Cut from off the farmland: in the squad simulation, stands on the plot in its hollow had the
         // farmers walking in and out over it, trampling it, to dig the ground round it.
         this.unburier = new Clearer(name, session, inventory, claims, (world, stand) -> !world.isFarmland(stand.x(), stand.y() - 1, stand.z()));
@@ -415,6 +418,13 @@ public final class Farmer {
                 } else if (world.isSolid(h.x(), h.y() - 1, h.z())) {
                     watering = h;
                     fill(world);
+                    return;
+                } else if (inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT) > 0) {
+                    // Its floor first: water poured over an open cell runs down into it - the operator (2026-11-20): something
+                    // under the farm's water. A block of what it carries put under the hole, from the ground beside it.
+                    if (holeFloor.tick(soldier, world, List.of(h.offset(0, -1, 0))) instanceof Builder.Progress.Failed(String why)) {
+                        passedOver.failed(h, ticks, "no floor put under the farm's water hole at " + h + ": " + why);
+                    }
                     return;
                 }
             }
