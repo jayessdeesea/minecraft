@@ -29,7 +29,7 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
     /** The chest, by local x and z. */
     static final int CHEST = 13;
     /**
-     * The least of its ground to farm at one level for a chunk to be sited - over half its 220: the rest is flattened to it
+     * The least of its ground to farm at one level for a chunk to be sited - over half its 216: the rest is flattened to it
      * in time. Live (field502), the best chunk by the camp at sea level made 138 of 160, and the farm waited on a flatten
      * the camp's phase holds off (operator, 2026-11-20: the high-density farms as soon as can be).
      */
@@ -66,6 +66,21 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
         return posts;
     }
 
+    /** Each field torch's cell, by local x and z: a step in from each hole, on the diagonal toward the middle. */
+    private static final int[][] FIELD_TORCHES = {{5, 5}, {5, 11}, {11, 5}, {11, 11}};
+
+    /**
+     * Its torches, so nothing spawns in it by night (operator, 2026-11-20): four in the field, a step in on the diagonal from
+     * each hole, on ground left untilled - no torch stands on farmland. (On its fence posts too is backlog/renewables.md's.)
+     */
+    public List<BlockPos> torches() {
+        List<BlockPos> torches = new ArrayList<>();
+        for (int[] t : FIELD_TORCHES) {
+            torches.add(new BlockPos(x0() + t[0], level + 1, z0() + t[1]));
+        }
+        return torches;
+    }
+
     /** The water holes, in the farmland's own layer: water a block below hydrates nothing. */
     public List<BlockPos> holes() {
         List<BlockPos> holes = new ArrayList<>();
@@ -91,9 +106,12 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
         return new io.github.jayessdeesea.minecraft.command.Position(c.x(), c.y(), c.z());
     }
 
-    /** The ground inside its fence at its level, less its holes and the cell under its chest: 220 cells. */
+    /** The ground inside its fence at its level, less its holes, the cell under its chest and its field torches': 216 cells. */
     public List<BlockPos> ground() {
-        List<BlockPos> holes = holes();
+        List<BlockPos> holes = new ArrayList<>(holes());
+        for (int[] t : FIELD_TORCHES) {
+            holes.add(new BlockPos(x0() + t[0], level, z0() + t[1]));
+        }
         BlockPos underChest = chest().offset(0, -1, 0);
         List<BlockPos> cells = new ArrayList<>();
         for (int dx = 1; dx < SIDE; dx++) {

@@ -41,7 +41,7 @@ class ChunkFarmTest {
         };
     }
 
-    /** Fenced on the chunk's lines and the next ones, a gate beside each corner; holes, chest and 220 cells inside. */
+    /** Fenced on the chunk's lines and the next ones, a gate beside each corner; holes, chest, field torches and 216 cells inside. */
     @Test
     void aChunkFarmIsLaidOutOnItsChunksLines() {
         ChunkFarm farm = new ChunkFarm(-1, 2, GROUND);
@@ -54,7 +54,7 @@ class ChunkFarmTest {
         assertEquals(List.of(new BlockPos(-12, GROUND, 36), new BlockPos(-12, GROUND, 44), new BlockPos(-4, GROUND, 36), new BlockPos(-4, GROUND, 44)),
                 farm.holes(), "in the farmland's own layer");
         assertEquals(new BlockPos(-3, GROUND + 1, 45), farm.chest());
-        assertEquals(15 * 15 - 4 - 1, farm.ground().size());
+        assertEquals(15 * 15 - 4 - 1 - 4, farm.ground().size());
         assertTrue(farm.ground().stream().allMatch(c -> farm.holes().stream()
                         .anyMatch(h -> Math.abs(h.x() - c.x()) <= FarmPlan.HYDRATION && Math.abs(h.z() - c.z()) <= FarmPlan.HYDRATION)),
                 "every cell within a hole's hydration");
@@ -68,7 +68,7 @@ class ChunkFarmTest {
 
         assertEquals(new ChunkFarm(0, 1, GROUND), farm, "the one open side, the nearest");
         FarmPlan plan = farm.plan(world, c -> true);
-        assertEquals(220, plan.plot().size());
+        assertEquals(216, plan.plot().size(), "the 225 inside its fence but its four holes, its chest's cell and its four field torches'");
         assertEquals(farm.holes(), plan.holes());
         assertEquals(new ChunkFarm(-1, -1, GROUND), ChunkFarm.site(world, new BlockPos(5, GROUND + 1, 5), 1, c -> true,
                 Set.of(ChunkFarm.key(0, 1))).orElseThrow(), "that taken, a corner");
@@ -83,5 +83,17 @@ class ChunkFarmTest {
         assertTrue(ChunkFarm.site(world, new BlockPos(5, GROUND + 1, 5), 1, half, Set.of()).isEmpty(), "none of 160 cells walkable to");
         ChunkFarm best = ChunkFarm.best(world, new BlockPos(5, GROUND + 1, 5), 1, half, Set.of()).orElseThrow();
         assertTrue(best.plan(world, half).plot().size() < ChunkFarm.MIN_CELLS, "the best, under a farm's: " + best.plan(world, half).plot().size());
+    }
+
+    /** Its torches: four in the field a step in on the diagonal from each hole, its cells untilled. */
+    @Test
+    void itsTorchesStandInTheFieldOnTheDiagonals() {
+        ChunkFarm farm = new ChunkFarm(0, 0, GROUND);
+        List<BlockPos> torches = farm.torches();
+
+        assertTrue(torches.containsAll(List.of(new BlockPos(5, GROUND + 1, 5), new BlockPos(5, GROUND + 1, 11),
+                new BlockPos(11, GROUND + 1, 5), new BlockPos(11, GROUND + 1, 11))), "the field's four: " + torches);
+        assertTrue(farm.ground().stream().noneMatch(c -> c.equals(new BlockPos(5, GROUND, 5))), "under a field torch: untilled");
+        assertEquals(4, torches.size());
     }
 }

@@ -62,15 +62,16 @@ class FarmerFixturesTest {
         assertTrue(!Farmer.fixtures(world, farm, ItemClass.FENCE, Set.of(skipped)).contains(skipped), "a post given up on");
     }
 
-    /** A hoe, a bucket for the dry holes, and each fixture it carries none of. */
+    /** A hoe, a bucket for the dry holes, and each fixture it carries none of - its torches too. */
     @Test
     void itWantsWhatItsFarmNeedsAndItDoesntCarry() {
         Inventory inventory = new Inventory();
-        assertEquals(Set.of(Recipe.WOODEN_HOE, Recipe.BUCKET, Recipe.FENCE, Recipe.FENCE_GATE, Recipe.CHEST), Farmer.wants(world, farm, inventory));
+        assertEquals(Set.of(Recipe.WOODEN_HOE, Recipe.BUCKET, Recipe.FENCE, Recipe.FENCE_GATE, Recipe.CHEST), Farmer.wants(world, farm, inventory), "no torches with no coal");
         inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.FENCE), 3});
         inventory.setSlot(Inventory.MAIN_FIRST + 1, new int[]{item(ItemClass.BUCKET), 1});
         inventory.setSlot(Inventory.MAIN_FIRST + 2, new int[]{item(ItemClass.HOE), 1});
-        assertEquals(Set.of(Recipe.FENCE_GATE, Recipe.CHEST), Farmer.wants(world, farm, inventory));
+        inventory.setSlot(Inventory.MAIN_FIRST + 3, new int[]{item(ItemClass.COAL), 2});
+        assertEquals(Set.of(Recipe.FENCE_GATE, Recipe.CHEST, Recipe.TORCHES), Farmer.wants(world, farm, inventory), "torches from its coal");
         assertEquals(Set.of(), Farmer.wants(world, new FarmPlan(chunk.holes().getFirst(), chunk.ground()), inventory), "a farm with no chunk farm");
     }
 }

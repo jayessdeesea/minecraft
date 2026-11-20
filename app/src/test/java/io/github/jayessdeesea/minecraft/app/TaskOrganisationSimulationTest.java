@@ -327,6 +327,27 @@ class TaskOrganisationSimulationTest {
         assertEquals(SimServer.CHEST, server.block(farm.chest().x(), farm.chest().y(), farm.chest().z()), "its chest" + events);
     }
 
+    /** Its torches put up - four in the field on the diagonals in from its holes - so nothing spawns in it by night (operator, 2026-11-20). */
+    @Test
+    void aChunkFarmHasItsTorchesInTheField() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::pondOfThreeByTheCamp, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.BUCKET), 1},
+                        new int[]{9, SimServer.itemNamedOrMinus("oak_fence"), 64}, new int[]{10, SimServer.itemNamedOrMinus("oak_fence_gate"), 4},
+                        new int[]{11, SimServer.itemOf(ItemClass.CHEST), 1}, new int[]{12, SimServer.ITEM_TORCH, 32}), "0,0");
+        clock.advance(30 * 60_000);
+
+        ChunkFarm farm = new ChunkFarm(-1, 0, GROUND);
+        long field = farm.torches().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.TORCH).count();
+        String events = "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
+        // Three at least: a cell whose stand the builder once failed to reach it skips for good (backlog/renewables.md).
+        assertTrue(field >= 3, "the field's torches: " + farm.torches().stream().map(c -> c + "=" + server.block(c.x(), c.y(), c.z())
+                + "/" + server.block(c.x(), c.y() - 1, c.z())).toList() + events);
+        BlockPos under = farm.torches().getFirst().offset(0, -1, 0);
+        assertTrue(server.block(under.x(), under.y(), under.z()) != SimServer.FARMLAND, "under it, untilled" + events);
+    }
+
     /** As {@link #pondOfThreeByTheCamp}, a cave under the chunk farm's first water hole: open under its cell. */
     private static int caveUnderAHole(int x, int y, int z) {
         BlockPos hole = new ChunkFarm(-1, 0, GROUND).holes().getFirst();

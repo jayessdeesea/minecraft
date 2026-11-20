@@ -104,6 +104,13 @@ Overnight (field480-489) the farm fed about a third of the force: some 85 harves
 stores at 0 bread and wheat. The answer is more farmland, gradually flattened to sea level, and denser farms as
 the force can build them:
 - **Airhead:** ad hoc farms round the ponds by the camp, as now.
+- **Torches on the chunk farm's fence posts** (operator, 2026-11-20): the field's four are built (`ChunkFarm.torches`).
+  Left: a torch on every fourth post's top. The world model reads the cell over a fence as solid - a fence's collision
+  is 1.5 high (`ChunkCache.isSolid`) - so the cell is never offered; wanted, a query for a cell open but for the fence
+  below, and the builder placing on a post's top face.
+- **A fixture skipped once stays skipped:** the farm's builder that fails to reach a fixture's stand once skips that
+  cell for good (`Builder.skipped`) - a fence post, a gate, a field torch. In the squad simulation one of four field
+  torches was skipped this way and never put up. Wanted: a skip that lapses, as `Setbacks` does.
 - **A stand two under the farm (field506):** Ned, Olga and Carol reported "no route from (-6, 63, 98) to within 0 of
   (-6, 61, 98)" 25 times in ten minutes at the camp's farm by its pond at (-4, 62, 93) - a farmer's stand in a cell
   two under its farmland, likely the trench cutter's (`Farmer.trenchStand`); to probe with `TerrainProbeIT` at

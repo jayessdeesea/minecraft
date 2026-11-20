@@ -71,7 +71,7 @@ public final class Farmer {
     /** The hole it's filling. */
     private BlockPos watering;
     /** What a chunk farm's put up with, in the order it's put up: its fence, its gates, its chest. */
-    static final List<ItemClass> FIXTURES = List.of(ItemClass.FENCE, ItemClass.FENCE_GATE, ItemClass.CHEST);
+    static final List<ItemClass> FIXTURES = List.of(ItemClass.FENCE, ItemClass.FENCE_GATE, ItemClass.CHEST, ItemClass.TORCH);
     /** Puts up each kind of fixture. */
     private final Map<ItemClass, Builder> builders = new EnumMap<>(ItemClass.class);
     /** What lays a water hole's floor, of the cobblestone or dirt it carries. */
@@ -185,9 +185,9 @@ public final class Farmer {
      */
     static List<BlockPos> fixtures(WorldView world, FarmPlan farm, ItemClass item, Set<BlockPos> skipped) {
         return farm.chunks().stream().flatMap(c -> (item == ItemClass.FENCE ? c.fence() : item == ItemClass.FENCE_GATE ? c.gates()
-                        : item == ItemClass.CHEST ? List.of(c.chest()) : List.<BlockPos>of()).stream())
+                        : item == ItemClass.CHEST ? List.of(c.chest()) : item == ItemClass.TORCH ? c.torches() : List.<BlockPos>of()).stream())
                 .filter(f -> !world.isSolid(f.x(), f.y(), f.z()) && !world.isGate(f.x(), f.y(), f.z()) && !world.isWater(f.x(), f.y(), f.z())
-                        && world.isSolid(f.x(), f.y() - 1, f.z()) && !skipped.contains(f)).toList();
+                        && !world.isTorch(f.x(), f.y(), f.z()) && world.isSolid(f.x(), f.y() - 1, f.z()) && !skipped.contains(f)).toList();
     }
 
     /**
@@ -203,9 +203,13 @@ public final class Farmer {
                 && farm.holes().stream().anyMatch(h -> !world.isWaterSource(h.x(), h.y(), h.z()))) {
             wants.add(Recipe.BUCKET);
         }
-        Map<ItemClass, Recipe> makes = Map.of(ItemClass.FENCE, Recipe.FENCE, ItemClass.FENCE_GATE, Recipe.FENCE_GATE, ItemClass.CHEST, Recipe.CHEST);
+        Map<ItemClass, Recipe> makes = Map.of(ItemClass.FENCE, Recipe.FENCE, ItemClass.FENCE_GATE, Recipe.FENCE_GATE, ItemClass.CHEST, Recipe.CHEST,
+                ItemClass.TORCH, Recipe.TORCHES);
         for (ItemClass item : FIXTURES) {
-            if (inventory.count(item) == 0 && !fixtures(world, farm, item, Set.of()).isEmpty()) {
+            // Torches only from coal it carries: a farmer sets up no smelter for charcoal - in the squad simulation, the
+            // furnace that wanted held up its fence and chest.
+            boolean makings = item != ItemClass.TORCH || inventory.count(ItemClass.COAL) > 0;
+            if (inventory.count(item) == 0 && makings && !fixtures(world, farm, item, Set.of()).isEmpty()) {
                 wants.add(makes.get(item));
             }
         }
