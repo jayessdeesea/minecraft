@@ -7,13 +7,6 @@ doctrine: FM 2-0 (intelligence: confirm what's reported)
 
 # The world model holds blocks the server no longer has
 
-
-Seen (field534-535): Eli at (-19.6, 20, 91.5) in his gallery at y=20, sent 2 blocks to a stand at (-18, 20, 90),
-failed the walk three times ("expected standing beside the STONE within 400 ticks; it didn't come"). His ground,
-kept from his world model (app/src/test/resources/worlds/eli-gallery-field535.json), replayed in the squad
-simulation (`RoutingSimulationTest.eliOnHisOwnGroundGetsToHisBranch`): there he walks it. The model and the server
-part at that spot - the lead for this item.
-
 ## Why
 Three times in one day the shared `ChunkCache` showed a block the server didn't (console probes,
 `execute if block`), each in a chunk some soldier had loaded the whole time:
