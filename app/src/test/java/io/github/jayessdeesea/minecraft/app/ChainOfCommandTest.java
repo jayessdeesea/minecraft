@@ -236,6 +236,7 @@ class ChainOfCommandTest {
      */
     @Test
     void inTheSeizureAnUnwalledCampTakesNoSquadOffItsFood() {
+        // The camp lit: only its wall open, and the wall no standard.
         ChainOfCommand three = new ChainOfCommand(
                 (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
                 ChatClient.create((ChatModel) prompt -> {
@@ -251,6 +252,35 @@ class ChainOfCommandTest {
         List<SquadStatus> squads = List.of(hungry("Alpha", "Alice"), hungry("Bravo", "Bob"), hungry("Charlie", "Carol"));
 
         assertEquals(List.of(farm, farm, farm), three.guarded(List.of(farm, farm, farm), squads, List.of(PlatoonSergeant.Shortfall.FOOD), List.of()));
+    }
+
+    /**
+     * In the seizure, the camp unlit and every squad on the food: one doubled up on the farm is put on SECURE - the
+     * standard the seizure ends on. Live (field517), every squad farmed all day and 52 dark cells stood.
+     */
+    @Test
+    void inTheSeizureAnUnlitCampHasASpareSquadPutOnItsLights() {
+        ChainOfCommand three = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+        three.setKeepByDay(true);
+        three.restorePhase(Phase.SEIZURE, 0);
+        three.setGround((x, z, nearY) -> OptionalInt.of(64));
+        three.onTime(TimeOfDay.of(1000, true));
+        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(2, "the camp's ground lit", false, "52 cells dark", "SECURE"))));
+        Objective farm = new Objective("Farm", new Position(-4, 64, 93), "Food", new Objective.Task.Farm());
+        List<PlatoonSergeant.Shortfall> alarms = List.of(PlatoonSergeant.Shortfall.FOOD);
+        List<SquadStatus> squads = List.of(hungry("Alpha", "Alice"), hungry("Bravo", "Bob"), hungry("Charlie", "Carol"));
+
+        List<Objective> guarded = three.guarded(List.of(farm, farm, farm), squads, alarms, List.of());
+
+        assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Secure).count(), "one lights the camp: " + guarded);
+        assertEquals(new Position(24, 64, 89), guarded.stream().filter(o -> o.task() instanceof Objective.Task.Secure).findFirst().orElseThrow().location());
+        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"))));
+        assertEquals(List.of(farm, farm, farm), three.guarded(List.of(farm, farm, farm), squads, alarms, List.of()), "lit: the farms stand");
     }
 
     /**

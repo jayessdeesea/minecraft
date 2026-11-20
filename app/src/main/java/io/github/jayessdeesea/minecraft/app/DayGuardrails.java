@@ -221,6 +221,15 @@ final class DayGuardrails {
                 out.set(i, was.get());
             }
         }
+        // The airhead's lights, safety first (docs/military-doctrine.md § 17): in the SEIZURE a camp unlit with nobody on
+        // SECURE has a squad spare of the shortfalls put on it - the standard the SEIZURE ends on. Live (field517), with
+        // the wall no standard, every squad farmed all day and the camp's 52 dark cells stood.
+        d.foothold().filter(f -> d.phase() == Phase.SEIZURE && f.standards().stream().anyMatch(s -> !s.met() && "SECURE".equals(s.task()))
+                        && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Secure))
+                .ifPresent(f -> spare(out, movable, alarms).ifPresent(k -> {
+                    LOG.warn("[Guardrail] the camp unlit with nobody on it - {} to SECURE, not '{}'", statuses.get(k).squadName(), out.get(k).mission());
+                    out.set(k, new Objective("Light the camp", f.camp(), "The airhead lit: safety first", new Objective.Task.Secure()));
+                }));
         return out;
     }
 
