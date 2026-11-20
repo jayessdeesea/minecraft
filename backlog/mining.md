@@ -116,9 +116,10 @@ faces 100 blocks off, "no route" each report all night (backlog/long-routes.md).
 ## A cutter at a cave with no blocks to floor it (field462)
 Its level's main tunnel waiting "for blocks" - a cave to floor - with none carried (Alice, stone 0, dirt 0),
 and its partner waiting on that main tunnel. Built: a cutter keeps a stack of cobblestone when it stores
-(`SoldierErrands.MINE_CARRIED`). Built too: idle a minute with none, the tunnels waiting are given up. Left: one without draws a load from
-the mine's stash or the stockpile, or takes the stone from its own tunnel's wall, so the cave is floored
-rather than the tunnel lost.
+(`SoldierErrands.MINE_CARRIED`). Built too: idle a minute with none, the tunnels waiting are given up. Built too: a miner in a closed cave none of
+it by the mine's stairs digs its way out by the recovery drill's stair up (operator, 2026-11-20). Left: one in a
+cave its galleries still reach draws a load from the mine's stash or the stockpile, or takes the stone from its own
+tunnel's wall, so the cave is floored rather than the tunnel lost.
 
 ## A dead well's levels still worked, and two cutters on one stair cell (field465)
 The mine at (57, 96, -10) was declared a danger area at 16:03 (762's rule, three killed by its stairs) - the

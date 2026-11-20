@@ -285,4 +285,17 @@ final class SiteGeometry {
         }
         return best;
     }
+
+    /** How near its mine's head, across, a miner's ground reaches the mine's stairs. */
+    static final int MINE_STAIR_REACH = 4;
+
+    /**
+     * Whether the cells {@code walkable} from {@code from} are a closed pocket: the flood ran out of ground well inside
+     * its span ({@code SoldierRunner.CUT_OFF_SPAN}) and its budget, so nothing past them is reached - not a gallery the
+     * flood was cut short in.
+     */
+    static boolean closedPocket(Position from, java.util.Set<BlockPos> walkable) {
+        return walkable.size() < SoldierRunner.CUT_OFF_BUDGET && walkable.stream().allMatch(c -> Math.max(Math.abs(c.x() - Math.floor(from.x())),
+                Math.abs(c.z() - Math.floor(from.z()))) < SoldierRunner.CUT_OFF_SPAN - 1);
+    }
 }

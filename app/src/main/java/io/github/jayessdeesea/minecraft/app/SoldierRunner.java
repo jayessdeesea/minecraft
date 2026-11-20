@@ -4857,11 +4857,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // way up, past the flood's span: only a pocket of its own strands it there. Live (field408-409),
             // Hal at his face 90 blocks out at y=-12 was read as buried 16 times a night, Olga 12, given stairs
             // up through 84 blocks of rock, and with them off the work three crews stood empty.
-            boolean inAMine = squadStates.values().stream().flatMap(st -> Stream.of(st.stairs, st.second, st.lastStairs))
-                    .filter(Objects::nonNull)
-                    .anyMatch(st -> from.y() < st.head().y() - MINE_BELOW
-                            && Math.hypot(from.x() - st.head().x(), from.z() - st.head().z()) <= MINE_GALLERY_REACH);
-            if (cells <= CUT_OFF_CELLS || !inAMine && (below || buried)) {
+            Optional<Staircase> mine = squadStates.values().stream().flatMap(st -> Stream.of(st.stairs, st.second, st.lastStairs)).filter(Objects::nonNull)
+                    .filter(st -> from.y() < st.head().y() - MINE_BELOW && Math.hypot(from.x() - st.head().x(), from.z() - st.head().z()) <= MINE_GALLERY_REACH).findFirst();
+            // But in a closed cave none of it by the mine's stairs, a miner digs its way out (operator, 2026-11-20; field496, Eli at y=20).
+            boolean offItsStairs = mine.isPresent() && closedPocket(from, walkable) && walkable.stream().noneMatch(c -> Math.hypot(c.x() - mine.get().head().x(), c.z() - mine.get().head().z()) <= MINE_STAIR_REACH);
+            if (cells <= CUT_OFF_CELLS || mine.isEmpty() && (below || buried) || offItsStairs) {
                 walksSaid.remove(s.name());
                 return Recovery.stranded(s) ? s : new SoldierStatus(s.name(), s.position(), s.order(), new Report.Cantco(String.format(Locale.ROOT,
                         "no route from (%.0f, %.0f, %.0f): cut off in a pocket of %d cells", from.x(), from.y(), from.z(), cells)), s.condition());
