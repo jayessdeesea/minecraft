@@ -667,8 +667,9 @@ times in 100. With the drill it loses nobody.
 
 A squad closing on one hostile stands round it, and a sword's sweep hits every body within a block
 of what it strikes, squadmates included. So a soldier holding a sword doesn't swing while another
-player stands within 1.6 blocks of its target across, its body meeting the target's box grown a
-quarter block up or down (`DeterministicSoldier.SWEEP_REACH`, `SWEEP_RISE`): a flier two blocks over
+player stands within 2 blocks of its target along each axis - a box, as vanilla's, not a circle: a block
+and half a player's and the widest mob's widths (live, field498-507, five soldiers were cut down by squadmates)
+- its body meeting the target's box grown a quarter block up or down (`DeterministicSoldier.SWEEP_REACH`, `SWEEP_RISE`): a flier two blocks over
 a squadmate's feet still sweeps it. It waits until one of them moves. It knows itself among
 those players by its entity, not by where it stands: players don't collide, and live a squadmate a
 tenth of a block from the swordsman was taken for it, and killed by the sweep at a third of a heart.

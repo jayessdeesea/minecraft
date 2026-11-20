@@ -201,6 +201,38 @@ class DeterministicSoldierCombatTest {
         assertEquals(OptionalInt.of(1), alice.tick(withHostileAt(zombie, false)), "with nobody beside it, she swings");
     }
 
+    /** A squadmate a block and a half off the target on each axis is in its sweep's box, though 2.1 across: the swing waits. */
+    @Test
+    void aSquadmateDiagonallyBesideTheTargetIsInItsSweep() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
+        Position zombie = new Position(3, 64, 0);
+        java.util.function.Function<Position, WorldView> bobAt = bob -> new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, 154, zombie));
+            }
+
+            @Override
+            public List<Position> playersNear(Position center, double radius) {
+                return List.of(new Position(0, 64, 0), bob).stream().filter(p -> Math.hypot(p.x() - center.x(), p.z() - center.z()) <= radius).toList();
+            }
+        };
+
+        assertEquals(OptionalInt.empty(), alice.tick(bobAt.apply(new Position(4.5, 64, 1.5))), "Bob diagonal to the zombie, in its box");
+        assertEquals(OptionalInt.of(1), alice.tick(bobAt.apply(new Position(5.5, 64, 2.5))), "Bob past it, she swings");
+    }
+
     /**
      * A flier's sweep reaches down a squadmate's whole height: live, Dana swung at a phantom two
      * blocks over Fran's feet, and the sweep killed Fran at a heart.

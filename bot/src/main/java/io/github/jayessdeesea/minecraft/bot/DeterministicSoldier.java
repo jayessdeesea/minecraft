@@ -318,11 +318,12 @@ public final class DeterministicSoldier extends Mover implements Soldier {
      *     free of I/O like the rest of the tick
      */
     /**
-     * How far round its target a sword's sweep reaches a body: vanilla sweeps every living entity
-     * whose box meets the target's grown by a block across - a block, plus half a player's width
-     * and half a mob's.
+     * How far round its target a sword's sweep reaches a body, along each axis: vanilla sweeps every living entity whose
+     * box meets the target's grown by a block on each side - a block, plus half a player's width and half the widest
+     * mob's, a spider's. Boxes, not circles: live (field498-507), five soldiers were cut down by squadmates, one stood
+     * a block and a half out on each axis from a zombie - 2.1 across from it, read clear, and swept.
      */
-    static final double SWEEP_REACH = 1.0 + 0.3 + 0.3;
+    static final double SWEEP_REACH = 1.0 + 0.3 + 0.7;
 
     /**
      * Whether a swing now would sweep a squadmate: a sword in hand, and another player within
@@ -339,13 +340,13 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         // spot is taken for it: live, one stood a tenth of a block from the soldier swinging, at a
         // third of a heart, and the sweep killed it.
         int self = entityId;
-        Stream<Position> others = self >= 0 ? world.playersNear(target, SWEEP_REACH + 1, self).stream()
-                : world.playersNear(target, SWEEP_REACH + 1).stream()
+        Stream<Position> others = self >= 0 ? world.playersNear(target, SWEEP_REACH * Math.sqrt(2) + 1, self).stream()
+                : world.playersNear(target, SWEEP_REACH * Math.sqrt(2) + 1).stream()
                 .filter(p -> Math.hypot(p.x() - gait.position.x(), p.z() - gait.position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - gait.position.y()) > 1);
         // Up and down, the boxes: the target's grown a quarter block, against a player's height. Not
         // feet to feet - live, a phantom two blocks over a squadmate's feet was swung at, and the
         // sweep killed the squadmate at a heart.
-        return others.anyMatch(p -> Math.hypot(p.x() - target.x(), p.z() - target.z()) <= SWEEP_REACH
+        return others.anyMatch(p -> Math.abs(p.x() - target.x()) <= SWEEP_REACH && Math.abs(p.z() - target.z()) <= SWEEP_REACH
                 && target.y() - SWEEP_RISE <= p.y() + PLAYER_HEIGHT && p.y() <= target.y() + TALLEST_MOB + SWEEP_RISE);
     }
 
