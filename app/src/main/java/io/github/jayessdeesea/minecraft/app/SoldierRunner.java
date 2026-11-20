@@ -799,6 +799,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int stoneSword = ItemClassRegistry.meleeRank("stone_sword");
         everyone.forEach(s -> cutOff.update(s, clockwork.millis())); // the cut off reported, not counted on (CutOff)
         List<String> away = everyone.stream().map(SoldierStatus::name).filter(n -> cutOff.cutOff(n, clockwork.millis())).toList();
+        everyone.stream().filter(s -> away.contains(s.name())).forEach(s -> worldRecords.record(chunkCache::stateIdAt, s.name(), s.position(), clockwork.millis()));
         long armed = everyone.stream().filter(s -> !away.contains(s.name())).filter(s -> cutOff.armed(s.name(), s.condition().flatMap(c -> c.kit())
                 .flatMap(k -> k.weapon()).filter(w -> !w.equals("bow")).map(w -> {
                     try {
@@ -7121,8 +7122,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean poolOre = metal.stocking(inventory) >= POOL_TRIP;
             // Down the mine with a load of ore: into the stash at the landing, and back to the cutting.
             Workshop working = workshops.get(name);
-            // By night only: by day the stash's ore comes up the stairs to the depot (unstashFor), and
-            // stashed again on the way it would never leave.
+            // By night only: by day the stash's ore comes up the stairs to the depot (unstashFor), and stashed again on the way it would never leave.
             boolean darkNow = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
             boolean stashOre = darkNow && working != null && mineOfChest(chestCentre(working)).isPresent()
                     && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;

@@ -1,0 +1,26 @@
+---
+status: ready
+priority: P1
+---
+
+# Huts stacked on huts at the camp's night points
+
+## Why
+The operator (2026-11-20): weird raised structures make the camp hard to get about. Live (field539) Olga and Pete
+stood stranded at y=72 in the camp (its ground y=64) with "no route" to points at y=77-78; console probes of the
+column at (23, 89) read solid at y=64-68, air 69-70, solid 71, air 72-75, solid 76, air 77, solid 78-79 - huts on
+huts, a night's patrol base sited on the last one's roof. The camp's ground itself is now read at y=69
+(`SoldierRunner.campGround`: the median surface round the camp, the roofs among it).
+
+A squad-simulation scenario of an intact old hut, its squad on the roof, didn't reproduce it: the site search
+reuses the hut's floor there. What makes it stack live - a doorway cut, a roof broken, two squads at one point - is
+what's left to find.
+
+## What
+1. The ground of a soldier cut off is kept (`app.WorldRecords`, from `CutOff`): replay it in a scenario that stacks.
+2. Fix the site search so a hut never goes on a hut, as the scenario shows.
+3. The stacks there now taken down: the camp's flatten digs over its level, once the phase opens it; or a police
+   call that takes a hut no squad holds.
+
+## Done when
+- A recorded camp point with a stack, replayed, gets its hut on the ground; live, a week of nights adds no storey.
