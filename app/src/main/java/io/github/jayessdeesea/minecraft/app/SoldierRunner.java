@@ -4856,8 +4856,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // up through 84 blocks of rock, and with them off the work three crews stood empty.
             Optional<Staircase> mine = squadStates.values().stream().flatMap(st -> Stream.of(st.stairs, st.second, st.lastStairs)).filter(Objects::nonNull)
                     .filter(st -> from.y() < st.head().y() - MINE_BELOW && Math.hypot(from.x() - st.head().x(), from.z() - st.head().z()) <= MINE_GALLERY_REACH).findFirst();
-            // But in a closed cave none of it by the mine's stairs, a miner digs its way out (operator, 2026-11-20; field496, Eli at y=20).
-            boolean offItsStairs = mine.isPresent() && closedPocket(from, walkable) && walkable.stream().noneMatch(c -> Math.hypot(c.x() - mine.get().head().x(), c.z() - mine.get().head().z()) <= MINE_STAIR_REACH);
+            // But a sealed cave - closed, all under the ground, none of it by a mine's stairs - is dug out of (operator, 2026-11-20; field497, Eli at y=20).
+            boolean offItsStairs = closedPocket(from, walkable) && walkable.stream().allMatch(c -> buried(new Position(c.x() + 0.5, c.y(), c.z() + 0.5))) && mine.map(m -> walkable.stream().noneMatch(c -> Math.hypot(c.x() - m.head().x(), c.z() - m.head().z()) <= MINE_STAIR_REACH)).orElse(true);
             if (cells <= CUT_OFF_CELLS || mine.isEmpty() && (below || buried) || offItsStairs) {
                 walksSaid.remove(s.name());
                 return Recovery.stranded(s) ? s : new SoldierStatus(s.name(), s.position(), s.order(), new Report.Cantco(String.format(Locale.ROOT,

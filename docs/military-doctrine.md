@@ -528,9 +528,9 @@ size under it, by a flood that ran out of ground and not of budget (one on a min
 flood filled the tunnels first was read as cut off): live, two soldiers stood a night shift in one of 866 cells at y=44, sent up to y=64,
 and no stair up was laid. In a mine's galleries - under a squad's mine head, within 200 across of it - only the pocket
 counts: the mine's stairs are its way up, past the flood's span (live, miners at their faces 90 blocks out were read as
-buried a dozen times a night, given stairs up through the rock, and three crews stood empty) - and a closed cave
-there, its flood out of ground well inside its span and none of it within 4 of the mine's head, is cut off too: the
-miner digs its way out by the drill's stair up (operator, 2026-11-20; live, field492-496, Eli in a cave of 313 cells
+buried a dozen times a night, given stairs up through the rock, and three crews stood empty) - and a sealed cave,
+there or anywhere under the ground - its flood out of ground well inside its span, all of it under the ground, and
+in a mine none of it within 4 of the mine's head - is cut off too: the soldier digs its way out by the drill's stair up (operator, 2026-11-20; live, field492-496, Eli in a cave of 313 cells
 at y=20 a day and more, hurt where he stood; `SiteGeometry.closedPocket`). One with the ground to
 walk - its order's goal out of reach, a squadmate in a pocket, a plot across water - isn't
 stranded, and nothing is cross-levelled to or from one the drill has: live, the keep's foreman
