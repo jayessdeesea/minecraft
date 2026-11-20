@@ -39,7 +39,8 @@ priority: P1
 
 - **The split plan** (backlog/split-oversized-sources.md, "A plan for the operator to agree"). DeterministicSoldier into Moves, Fight and Survival behind a façade, Moves first; SoldierRunner's onJoined into a per-soldier tick with one pure TickPlan and four routine families; orderSquad into its six steps over SquadState and a SquadView. Each step a split with no behaviour change, the cap lowered behind it. Agree, or cut it otherwise?
 
-- **A miner in a cave with no blocks** (docs/military-doctrine.md § 16, the rules of a mine). Live (field492-495), Eli, Bravo's miner at y=20, has stood at (-20, 20, 91) for hours: each tunnel's stand has no route across the cave, the mine leaves a branch "until it carries blocks to floor the cave", and he carries none, having taken no ore and no stone since. A soldier stuck in water already cuts a block from the bank. Should a miner cut its flooring from the cave's rock it stands beside, or climb out to draw cobblestone? Taken by default: neither, as the rules are yours.
+- **A miner in a cave with no blocks** (docs/military-doctrine.md § 16, the rules of a mine). Live (field492-495), Eli, Bravo's miner at y=20, has stood at (-20, 20, 91) for hours: each tunnel's stand has no route across the cave, the mine leaves a branch "until it carries blocks to floor the cave", and he carries none, having taken no ore and no stone since. A soldier stuck in water already cuts a block from the bank. Should a miner cut its flooring from the cave's rock it stands beside, or climb out to draw cobblestone? Taken by default: neither, as the rules are yours. In field496 he lost 31 health in a day where he stood, the most of anyone,
+  most of the force's health lost while reporting CANTCO (23 of 79) - the food report's hurt tally.
 
 Answered 2026-11-19, each now with its item:
 - **Food:** more farmland - trench farms off ponds before the bucket, chunk farms with four water holes after;
