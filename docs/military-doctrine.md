@@ -220,7 +220,10 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    soldier of the squad under its basic load but one on a farm's duty gets its rations off the land: the
    ripe wheat nearest it no squadmate's plot holds, harvested, its seeds sown back and its wheat baked
    (`bot.supply.Forage`), its other work giving up its hands as to a meal; the farms are what there is to
-   forage, so a squad is kept on them.
+   forage, so a squad is kept on them. The answer is said with each RED request in the platoon leader's
+   prompt: FORAGE at the camp with the ripe wheat counted, one squad kept on FARM - FARM alone with none
+   ripe (PlatoonLeaderScenarioIT's `starving-with-ripe-wheat`: 0 of 5 told FARM there, 5 of 5 told this).
+   A FORAGE order is food work to the guardrails, not put back on the farm (`DayWorkRules`).
 
 Class IV, construction materials, goes up the same way (`PlatoonSergeant.classFour`, operator 2026-11-13:
 with no resources, the workers ask for supplies). The keep's builders need logs - two for the
@@ -855,7 +858,9 @@ and it went back in a minute later, the stockpile bare for the next.
 A soldier on its order's work - cutting a mine, a wood or farm duty, building the keep - never digs
 its kit's makings itself (operator, 2026-11-18: a farmer doesn't start chopping trees because it has
 no hoe; `Armourer.digsItsMakings`): it says what it's short of, and draws it from the stockpile as
-above, which the force's producers fill. Live (field449), a night's mining took no ore while its
+above, which the force's producers fill; what it can make of a batch meanwhile it makes - a farm's fence and chest
+from its logs, its bucket set aside for the iron (`Armourer.makeable`; live, field508-512, the chunk farm's tender
+gave up all three together, short of 3 raw iron). Live (field449), a night's mining took no ore while its
 cutters went off to dig a log and iron ore for iron pickaxes, one killed out there. A bare-handed soldier still gets its
 weapon's makings itself: staying armed is its own upkeep (docs/echelons/tenets.md). Any other soldier
 digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can

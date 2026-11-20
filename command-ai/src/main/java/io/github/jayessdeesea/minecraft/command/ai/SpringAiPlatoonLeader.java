@@ -236,7 +236,12 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
                     "standing", describeStanding(squad),
                     // A request first, where a small model reads it: in the LOGSTAT's middle it went unanswered.
                     "request", squad.classOne().filter(c -> c.rating() == Subsistence.Rating.RED)
-                            .map(c -> c.line() + " Answer it with \"task\": \"FARM\" at ground to farm by water.")
+                            // FORAGE with wheat ripe round the camp - computed, said with the request it answers: live (field505-511),
+                            // told FARM here, the platoon leader never once chose FORAGE with 500 ripe wheat in the day's work.
+                            .map(c -> c.line() + dayWork.filter(w -> w.ripeWheat() > 0).map(w -> " Answer it with \"task\": \"FORAGE\" at the camp: "
+                                    + w.ripeWheat() + " ripe wheat stand within 100 blocks of it - its soldiers get rations off the land today; but keep one squad"
+                                    + " on \"FARM\" at the camp's farm, the farms being what there is to forage.")
+                                    .orElse(" Answer it with \"task\": \"FARM\" at ground to farm by water."))
                             // Class IV, the keep's logs, after food: a squad eats before it builds.
                             .or(squad::classFour).<Object>map(r -> r).orElse(false),
                     // Said where the squad is listed, not left to be put together from <time> and its state.

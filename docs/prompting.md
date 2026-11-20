@@ -19,6 +19,10 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   hold-or-leave call the local platoon leader made traced to a line that misled it (a built base reported
   as a shortage, a soldier's failed sword reported as the squad's CANTCO), and with those fixed it
   passed every `PlatoonLeaderScenarioIT` situation. Turn each live miss into a situation there first.
+- **An answer written beside a request is the answer given.** The platoon leader takes the task named in a
+  squad's request line over any advice elsewhere in the prompt: told "Answer it with FARM" there, it chose FARM
+  every time with FORAGE recommended in the day's work (0 of 5); with the request naming FORAGE and the farm
+  squad, 5 of 5. Compute which answer fits, and put that one in the request.
 - **A coordinate written out is a coordinate the model copies.** Give positions it shouldn't reuse
   (an old order's, a resource's) relative to the squad, not as their own y - but as all three numbers an
   objective takes, the squad's own height for the y: given only "x=15 z=-68", the model slid the z into the

@@ -61,6 +61,9 @@ class PlatoonLeaderScenarioIT {
 
     /** The day's work, computed, for the situations that assign it. */
     private static final Map<String, DayWork> DAY_WORK = Map.of(
+            "starving-with-ripe-wheat", new DayWork(List.of(PlatoonSergeant.Shortfall.FOOD), Optional.of(new Stockpile(120, 300, 0, 0, 0, 0)),
+                    new Flatten(2984, 2984, 3016, 3016, 150), OptionalInt.empty(), 0, 0, io.github.jayessdeesea.minecraft.command.Phase.SEIZURE,
+                    "", 520),
             "short-of-food-and-wood", new DayWork(List.of(PlatoonSergeant.Shortfall.FOOD, PlatoonSergeant.Shortfall.WOOD),
                     Optional.of(new Stockpile(3, 40, 2, 0, 0, 0)), new Flatten(2984, 2984, 3016, 3016, 150), OptionalInt.of(152), 640));
 
@@ -93,6 +96,12 @@ class PlatoonLeaderScenarioIT {
                             "57 of 170 wall blocks still to place", "FORTIFY"),
                     new Foothold.Standard(3, "food", true, "", "FARM"),
                     new Foothold.Standard(3, "stone and iron", true, "", "MINE"))),
+            "starving-with-ripe-wheat", new Foothold(new Position(3000, 151, 3000), List.of(
+                    new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
+                    new Foothold.Standard(2, "the camp walled in", true, "", "FORTIFY"),
+                    new Foothold.Standard(2, "food", false,
+                            "150 of 527 cells of the camp's farm ground, by the water at x=3010 z=2990, growing wheat; "
+                                    + "12 of 12 soldiers hungry with nothing to eat", "FARM"))),
             "starving-airhead", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
                     new Foothold.Standard(2, "the camp walled in", false,
@@ -204,6 +213,17 @@ class PlatoonLeaderScenarioIT {
                     (squads, given) -> given.stream().anyMatch(o -> o.farm() && Math.hypot(o.location().x() - 3010, o.location().z() - 2990) <= 12)
                             ? List.of() : List.of("nobody set to farm the camp's farm ground with every soldier hungry: "
                                     + given.stream().map(o -> o.task() + " at " + o.location()).toList())),
+            // The live miss (field505-511): every squad Class I RED, 500 ripe wheat round the camp, and the platoon leader
+            // sent every squad to FARM, the farm's wheat days off, and never FORAGE.
+            new Situation("starving-with-ripe-wheat", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
+                    TimeOfDay.of(2000, true),
+                    List.of(starving("Alpha", 2996), starving("Bravo", 3000), starving("Charlie", 3004)),
+                    (squads, given) -> {
+                        long forage = given.stream().filter(o -> o.task() instanceof Objective.Task.Forage).count();
+                        boolean farmKept = given.stream().anyMatch(Objective::farm);
+                        return forage >= 1 && farmKept ? List.of() : List.of("with 520 ripe wheat round the camp and every squad RED, "
+                                + "wanted FORAGE for the hungry and one keeping the farm: " + given.stream().map(Objective::task).toList());
+                    }),
             new Situation("secure-the-camp", "The camp is on the stone platform around x=3000 z=3000. Both squads light "
                     + "its ground with torches today.", TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
@@ -416,6 +436,15 @@ class PlatoonLeaderScenarioIT {
                 new Report.Gathering(Resource.STONE), 0),
                 List.of(new ResourceSite(Resource.STONE,
                         new Position(3030, 140, 2990), 40)), Optional.of(SECURE_CAMP), false);
+    }
+
+    /** A squad whose every soldier is short of food with nothing to eat: its Class I RED, the request said. */
+    private static SquadStatus starving(String name, int x) {
+        List<SoldierStatus> soldiers = soldiers(name, x, new Report.Moving(), 16);
+        List<String> names = soldiers.stream().map(SoldierStatus::name).toList();
+        return new SquadStatus(name, new Report.Moving(), soldiers, List.of(), Optional.empty(), false, OptionalInt.empty(), Optional.empty(),
+                Optional.of(new io.github.jayessdeesea.minecraft.command.Subsistence.Status(
+                        io.github.jayessdeesea.minecraft.command.Subsistence.Rating.RED, names, names)));
     }
 
     private static SquadStatus fresh(String name, int x, Optional<Objective> standing) {

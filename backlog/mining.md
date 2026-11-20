@@ -7,6 +7,15 @@ doctrine: ATP 3-34.81 (engineer reconnaissance); FM 4-0 (Class IV)
 
 # Mining: ore at depth, and bases on the way down
 
+
+## A gap in the gallery's own floor (field512)
+Eli, walking his gallery at y=20 to the next branch's start at (-22, 20, 94), stood at (-22, 20, 91) "no route"
+for good: a hole in the gallery's floor at (-21, 19, 93) opened into a cave below, and he carried 1,207
+cobblestone. The miner floors a cave under a cell it cuts (`Miner.bridge`), but the route planner has no move that
+puts a block into a gap at its own level - only steps up toward a goal or down off a drop (`Pathfinder.stepBuild`).
+Wanted: a bridge move - with blocks carried, the next cell's missing floor placed and walked over, at a cost - so
+a soldier with blocks is never stopped by a one-block hole on its level.
+
 ## Why
 A MINE squad cuts a staircase down (docs/military-doctrine.md § 16) and mines the ore beside it,
 but that's only the ore that happens to lie against the shaft. Iron is commonest around y=16 and diamonds near

@@ -44,7 +44,7 @@ final class DayWorkRules {
     static boolean covers(Objective objective, PlatoonSergeant.Shortfall shortfall) {
         Objective.Task t = objective.task();
         return switch (shortfall) {
-            case FOOD -> t instanceof Objective.Task.Farm;
+            case FOOD -> t instanceof Objective.Task.Farm || t instanceof Objective.Task.Forage; // forage is food today
             // Only felling: a grove planted is wood in a day or two, not logs today - live (field449-450), the
             // stockpile at 0 logs all day, its WOOD shortfall read as covered by Charlie's TREE_FARM.
             case WOOD -> t instanceof Objective.Task.Gather g && g.resource() == Resource.WOOD;
@@ -86,7 +86,9 @@ final class DayWorkRules {
     /** The shortfall {@code objective}'s work makes good, if it's production: the farm's food, the wood's logs. */
     static Optional<PlatoonSergeant.Shortfall> producing(Objective objective) {
         return switch (objective.task()) {
+            // Forage too: a platoon leader's FORAGE isn't put back on the farm as "kept on its food work".
             case Objective.Task.Farm f -> Optional.of(PlatoonSergeant.Shortfall.FOOD);
+            case Objective.Task.Forage f -> Optional.of(PlatoonSergeant.Shortfall.FOOD);
             case Objective.Task.Gather(var r) when r == Resource.WOOD -> Optional.of(PlatoonSergeant.Shortfall.WOOD);
             default -> Optional.empty();
         };
