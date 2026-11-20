@@ -40,7 +40,10 @@ import java.util.stream.Collectors;
  * furnace already standing within reach is used, whoever put it there; one is placed only when
  * none is.
  *
- * <p>It runs under three guards. <b>Still wanted</b>: what it was asked for hasn't changed. <b>Stations
+ * <p>It runs under three guards. <b>Still wanted</b>: what it's asked for now is all in what it's making - asked
+ * for less, it keeps on; asked for something new, or more, it stops and plans again. In the squad simulation a farmer
+ * asked for fences and a chest, then for the chest alone once the fences were made, dropped the chest's run each time
+ * and went round again a log at a time. <b>Stations
  * still in reach</b>: a table or furnace the plan found standing, and so doesn't make, hasn't gone
  * out of reach. <b>No
  * threat</b>: a hostile near interrupts it - the windows close and the soldier is free to fight
@@ -245,7 +248,7 @@ public final class Crafter {
             LOG.info("{} crafts {} - {}{} - {}", name, describe(wanted), collecting.isEmpty() ? "" : "collecting " + collecting + " first, then ",
                     next.feasible() ? describe(next) : "short of " + next.short_(), inventory.summary());
             script = new Script(name, steps, List.of(
-                    new Guard("no longer wanted", () -> this.asked.equals(this.wanted)),
+                    new Guard("no longer wanted", () -> within(this.asked, this.wanted)),
                     // The plan didn't make what it found standing: gone out of reach, it's planned again.
                     new Guard("a station it planned on still in reach", () -> plannedOn.stream()
                             .allMatch(s -> usable(this.world, this.soldier, s).isPresent())),
@@ -715,6 +718,11 @@ public final class Crafter {
 
     private static String label(Workstation station) {
         return station == Workstation.CRAFTING_TABLE ? "crafting table" : "furnace";
+    }
+
+    /** Whether everything {@code asked} - something, at least - is in {@code making}, as many or more. */
+    static boolean within(Map<Recipe, Integer> asked, Map<Recipe, Integer> making) {
+        return !asked.isEmpty() && asked.entrySet().stream().allMatch(e -> making.getOrDefault(e.getKey(), 0) >= e.getValue());
     }
 
     static String describe(Map<Recipe, Integer> wanted) {

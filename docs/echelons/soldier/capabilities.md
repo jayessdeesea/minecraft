@@ -31,7 +31,7 @@ seconds or when stuck - a wide search asked again from the same cell to the same
   slope is a builder's stride, and blocks placed to reach a goal higher - a mason onto its wall's
   top - are the work.
 - **Takes back the steps routes left** (police call; operator, 2026-11-20: a block is placed with intent): one
-  without work a minute, or stood a minute on a CANTCO, digs the nearest step within 16 blocks that a route put
+  without work a minute, or stood a minute on a CANTCO, digs the nearest step within 16 blocks, and 4 up or down, that a route put
   down 5 minutes ago or more (`SoldierRunner.scaffolding`) and that stands proud - open over it and on three of its
   sides, so not one that filled a hole - top of a stack first, none a soldier stands by nor the camp's wall's, by
   hand, no shovel wanted (`app.PoliceCall`). It keeps the step till it's gone or other work comes; one not gone in

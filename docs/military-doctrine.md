@@ -1208,7 +1208,8 @@ the walls (`Resource.SOIL`), and one that runs out with the hut still open goes 
 squad with nothing to build with still shelters by night; the
 platoon leader's LOGSTAT counts dirt, and tells it so. Each block is placed against a
 solid neighbour's face and checked against the server's block updates; a cell that won't take a
-block after three tries is skipped; after the first miss the soldier digs the cell, since a flower
+block after three tries, or whose stand it can't get to, is skipped - for a minute, twice as long each time again,
+up to ten (`Builder.SKIP_TICKS`), never for good; after the first miss the soldier digs the cell, since a flower
 or sapling there blocks a placement until it is broken. A soldier at it reports `Fortifying`, or CANTCO when it runs
 out of blocks. The platoon leader's LOGSTAT says whether the squad carries enough for the base it still
 has to build - a whole one, what's left of one under way, or nothing once it's built - so the model

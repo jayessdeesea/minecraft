@@ -30,8 +30,10 @@ world wrong is proven wrong.
    produces (a refusal, a block that came back), is logged loud (`[Fidelity]`) with its examples, and
    the dawn's after-action review lists the worst. Each is a lead for item 1.
 4. **Deterministic.** A scenario passes or fails the same alone as under the full suite's load: the
-   simulated clock, not the machine's speed, sets what happens. Seen: `aChunkFarmsTenderWithLogsAndNoIronStillFencesIt`
-   passed alone and failed in a full verify, its chest not yet stood.
+   simulated clock, not the machine's speed, sets what happens. Every executor is the simulated clock's, on its
+   test's thread; the clock reads left on the wall are chat's de-duplication and arrows' flight. Seen once:
+   `aChunkFarmsTenderWithLogsAndNoIronStillFencesIt` failed under load, a builder's stand not got to in its walk's
+   allowance and its cell skipped for good - the skip now lapses, but what made the walk slower under load is open.
 5. **Recorded worlds.** A live failure's ground - the chunks round it, as the client decoded them -
    saved so the same situation is replayed in the simulation, not rebuilt by hand.
 

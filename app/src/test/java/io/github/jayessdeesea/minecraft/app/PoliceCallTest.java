@@ -73,6 +73,14 @@ class PoliceCallTest {
         assertEquals(Optional.empty(), PoliceCall.litter(w, steps, AT, List.of(), false, Set.of(under)));
     }
 
+    /** Not one far over its head: a soldier down a mine isn't given the surface's litter (field519). */
+    @Test
+    void notOneFarOverItsHead() {
+        BlockPos up = new BlockPos(4, GROUND + 1, 0);
+
+        assertEquals(Optional.empty(), PoliceCall.litter(world(Set.of(up)), Set.of(up), new Position(0.5, 20, 0.5), List.of(), false, Set.of()));
+    }
+
     /** A step in hand is kept till it's gone, given up on after a minute and passed over, and dropped for other work. */
     @Test
     void aStepInHandIsKeptTillGoneOrGivenUp() {

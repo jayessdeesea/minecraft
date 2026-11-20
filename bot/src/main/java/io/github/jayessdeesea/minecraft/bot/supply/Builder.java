@@ -14,7 +14,6 @@ import io.github.jayessdeesea.minecraft.protocol.PlaySession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -73,7 +72,15 @@ public final class Builder {
     private final PlaySession session;
     private final Inventory inventory;
 
-    private final Set<BlockPos> skipped = new HashSet<>();
+    /**
+     * How long a cell skipped is passed over, the first time - longer each time again, up to {@link #SKIP_MOST_TICKS}.
+     * Skipped for good, a fixture whose stand a builder once couldn't get to was never put up: in the squad simulation a
+     * chunk farm's chest, and one of its field torches (backlog/renewables.md).
+     */
+    static final long SKIP_TICKS = 1200, SKIP_MOST_TICKS = 12_000;
+
+    private Setbacks<BlockPos> skipped = new Setbacks<>(SKIP_TICKS, SKIP_MOST_TICKS);
+    private long ticks;
     private BlockPos target;
     private int attempts;
     private Script script;
@@ -133,6 +140,7 @@ public final class Builder {
 
     private Progress tick(Position soldier, WorldView world, List<BlockPos> plan, boolean inPlace) {
         this.world = world;
+        ticks++;
         lookAt = null;
         done = false;
         if (script != null) {
@@ -158,15 +166,16 @@ public final class Builder {
         }
         if (target != null && attempts >= ATTEMPTS) {
             LOG.warn("{} couldn't place a block at {} - skipping it", name, target);
-            skipped.add(target);
+            skipped.failed(target, ticks);
             target = null;
             attempts = 0;
         }
-        List<BlockPos> remaining = plan.stream().filter(cell -> !solid(world, cell) && !skipped.contains(cell)).toList();
+        Set<BlockPos> passed = skipped.barredNow(ticks);
+        List<BlockPos> remaining = plan.stream().filter(cell -> !solid(world, cell) && !passed.contains(cell)).toList();
         if (remaining.isEmpty()) {
             stop();
-            done = skipped.isEmpty();
-            return done ? new Progress.Done() : new Progress.Failed(skipped.size() + " cell(s) wouldn't take a block");
+            done = passed.isEmpty();
+            return done ? new Progress.Done() : new Progress.Failed(passed.size() + " cell(s) wouldn't take a block");
         }
         if (target == null) {
             target = remaining.stream().filter(cell -> support(world, cell).isPresent()).findFirst().orElse(null);
@@ -189,7 +198,7 @@ public final class Builder {
                 standAt = null;
             }
             if (standAt == null) {
-                skipped.add(target);
+                skipped.failed(target, ticks);
                 target = null;
                 walking = 0;
             }
@@ -264,14 +273,14 @@ public final class Builder {
         return held.isPresent() && materials.contains(held.get());
     }
 
-    /** The cells it's given up on. */
+    /** The cells it's given up on, for now. */
     public synchronized Set<BlockPos> skipped() {
-        return Set.copyOf(skipped);
+        return skipped.barredNow(ticks);
     }
 
     /** Tries again every cell given up on - the ground changed (a breach found), so a cell that wouldn't take a block may now. */
     public synchronized void retrySkipped() {
-        skipped.clear();
+        skipped = new Setbacks<>(SKIP_TICKS, SKIP_MOST_TICKS);
     }
 
     /** Stops building: the weapon or tool held before goes back in hand. */

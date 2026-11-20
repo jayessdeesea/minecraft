@@ -46,6 +46,11 @@ final class PoliceCall {
     static final long LITTER_MILLIS = 5 * 60_000;
     /** How far a soldier goes for litter: its own neighbourhood, not the map. */
     static final double REACH = 16;
+    /**
+     * How far above or below it a soldier goes for litter: its own level. Live (field519), Eli at the bottom of his
+     * mine, y=20, was given the steps 43 blocks over him on the surface.
+     */
+    static final int REACH_UP_DOWN = 4;
     /** How near a body a step is left: it may be standing on it. */
     static final double BODY_CLEAR = 1.5;
 
@@ -111,7 +116,7 @@ final class PoliceCall {
     static Optional<BlockPos> litter(WorldView world, Set<BlockPos> steps, Position at, Collection<Position> bodies, boolean pickaxe,
                                      Set<BlockPos> kept) {
         return steps.stream()
-                .filter(c -> Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z()) <= REACH)
+                .filter(c -> Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z()) <= REACH && Math.abs(c.y() - at.y()) <= REACH_UP_DOWN)
                 .filter(c -> !kept.contains(c))
                 .filter(c -> world.isSolid(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z()))
                 .filter(c -> pickaxe || world.isSoil(c.x(), c.y(), c.z()))

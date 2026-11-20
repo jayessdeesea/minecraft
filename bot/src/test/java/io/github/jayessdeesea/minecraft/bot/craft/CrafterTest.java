@@ -205,6 +205,26 @@ class CrafterTest {
         assertEquals(1, server.count(ItemClass.WEAPON));
     }
 
+    /** Asked for less partway - the fences made, the chest still wanted - it keeps on: the chest made in the same run. */
+    @Test
+    void askedForLessPartwayItKeepsOn() {
+        workshop();
+        server.give(9, ItemClass.LOG, 8);
+        Map<Recipe, Integer> both = Map.of(Recipe.FENCE, 1, Recipe.CHEST, 1);
+        Map<Recipe, Integer> chest = Map.of(Recipe.CHEST, 1);
+        Outcome last = Outcome.IDLE;
+        int interrupted = 0;
+        for (tick = 0; tick < 1500 && last != Outcome.MADE; tick++) {
+            server.tick();
+            last = crafter.tick(SOLDIER, server.world, server.count(ItemClass.FENCE) > 0 ? chest : both, false);
+            interrupted += last == Outcome.INTERRUPTED ? 1 : 0;
+        }
+
+        assertEquals(Outcome.MADE, last, crafter.failure().orElse(""));
+        assertEquals(1, server.count(ItemClass.CHEST));
+        assertEquals(0, interrupted, "not dropped for being asked for less");
+    }
+
     @Test
     void anArmedSoldierLeavesTheTableToFight() {
         workshop();
