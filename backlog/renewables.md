@@ -104,6 +104,10 @@ Overnight (field480-489) the farm fed about a third of the force: some 85 harves
 stores at 0 bread and wheat. The answer is more farmland, gradually flattened to sea level, and denser farms as
 the force can build them:
 - **Airhead:** ad hoc farms round the ponds by the camp, as now.
+- **A stand two under the farm (field506):** Ned, Olga and Carol reported "no route from (-6, 63, 98) to within 0 of
+  (-6, 61, 98)" 25 times in ten minutes at the camp's farm by its pond at (-4, 62, 93) - a farmer's stand in a cell
+  two under its farmland, likely the trench cutter's (`Farmer.trenchStand`); to probe with `TerrainProbeIT` at
+  (-6, 61, 98) with the garrison stopped.
 - **Before the bucket:** trenches off a pond, built (docs/military-doctrine.md, the camp's farm). Left: the
   stream dammed to a block deep with dirt and farmed along its banks; trenches for a squad's FARM order's plot,
   which is sited round its water alone.
