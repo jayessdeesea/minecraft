@@ -178,6 +178,36 @@ class ChainOfCommandTest {
     }
 
     /**
+     * In the airhead, the camp unwalled and every squad on the food the platoon leader sent it to: one doubled up on the
+     * farm is put on FORTIFY - safety first. Live (field506), the wall "not begun" all day at the camp moved to sea level.
+     */
+    @Test
+    void inTheAirheadAnUnwalledCampHasASpareSquadPutOnItsWall() {
+        ChainOfCommand three = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+        three.setKeepByDay(true);
+        three.restorePhase(Phase.SEIZURE, 0);
+        three.setGround((x, z, nearY) -> OptionalInt.of(64));
+        three.onTime(TimeOfDay.of(1000, true));
+        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))));
+        Objective farm = new Objective("Farm", new Position(-4, 64, 93), "Food", new Objective.Task.Farm());
+        List<PlatoonSergeant.Shortfall> alarms = List.of(PlatoonSergeant.Shortfall.FOOD);
+        List<SquadStatus> squads = List.of(hungry("Alpha", "Alice"), hungry("Bravo", "Bob"), hungry("Charlie", "Carol"));
+
+        List<Objective> guarded = three.guarded(List.of(farm, farm, farm), squads, alarms, List.of());
+
+        assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Fortify).count(), "one walls the camp: " + guarded);
+        assertEquals(new Position(24, 64, 89), guarded.stream().filter(o -> o.task() instanceof Objective.Task.Fortify).findFirst().orElseThrow().location());
+        assertEquals(2, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Farm).count(), "two still farm: " + guarded);
+        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(2, "the camp walled in", true, "", "FORTIFY"))));
+        assertEquals(List.of(farm, farm, farm), three.guarded(List.of(farm, farm, farm), squads, alarms, List.of()), "walled: the farms stand");
+    }
+
+    /**
      * Food and wood both short, the squads asking for food are dealt across both, food first: of three,
      * two farm and one cuts (operator, 2026-11-17). Live, every squad farmed and nobody cut at 0 logs.
      */
