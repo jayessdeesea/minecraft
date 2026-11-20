@@ -125,9 +125,15 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
      */
     public static Optional<ChunkFarm> site(WorldView world, BlockPos camp, int rings, Predicate<BlockPos> walkable,
                                            java.util.Set<Long> taken) {
+        return best(world, camp, rings, walkable, taken).filter(f -> f.plan(world, walkable).plot().size() >= MIN_CELLS);
+    }
+
+    /** As {@link #site}, at any size: the chunk nearest the most ground at one level, for the log to say how near a farm it came. */
+    public static Optional<ChunkFarm> best(WorldView world, BlockPos camp, int rings, Predicate<BlockPos> walkable,
+                                           java.util.Set<Long> taken) {
         int cx = Math.floorDiv(camp.x(), SIDE), cz = Math.floorDiv(camp.z(), SIDE);
         ChunkFarm best = null;
-        int bestCells = MIN_CELLS - 1;
+        int bestCells = 0;
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -rings; dx <= rings; dx++) {
             for (int dz = -rings; dz <= rings; dz++) {

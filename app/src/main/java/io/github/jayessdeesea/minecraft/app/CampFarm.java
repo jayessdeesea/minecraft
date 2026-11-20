@@ -103,6 +103,12 @@ final class CampFarm {
                 Optional<ChunkFarm> site = ChunkFarm.site(world, at, CHUNK_RINGS, walkable::contains, Set.of());
                 site.ifPresent(c -> LOG.info("[Foothold] the camp's chunk farm: chunk {}, {} at y={}, {} cells", c.chunkX(), c.chunkZ(), c.level(),
                         c.plan(world, walkable::contains).plot().size()));
+                // None, it says how near the best came - the ground to level for one (backlog/renewables.md).
+                if (site.isEmpty()) {
+                    ChunkFarm.best(world, at, CHUNK_RINGS, walkable::contains, Set.of()).ifPresentOrElse(c -> LOG.warn(
+                            "[Foothold] no chunk farm by the camp: the best, chunk {}, {} at y={}, makes {} cells of the {} one wants", c.chunkX(), c.chunkZ(),
+                            c.level(), c.plan(world, walkable::contains).plot().size(), ChunkFarm.MIN_CELLS), () -> LOG.warn("[Foothold] no chunk farm by the camp: no ground"));
+                }
                 kept = site.map(c -> watered.with(c.plan(world, walkable::contains))).orElse(kept);
             }
             if (kept != null && !kept.equals(before)) {

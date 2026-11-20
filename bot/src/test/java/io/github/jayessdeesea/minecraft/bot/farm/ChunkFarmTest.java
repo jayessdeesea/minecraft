@@ -73,4 +73,15 @@ class ChunkFarmTest {
         assertEquals(new ChunkFarm(-1, -1, GROUND), ChunkFarm.site(world, new BlockPos(5, GROUND + 1, 5), 1, c -> true,
                 Set.of(ChunkFarm.key(0, 1))).orElseThrow(), "that taken, a corner");
     }
+
+    /** Ground too broken for a farm - a walk to only some of it - none sited, but the best is said, with what it makes. */
+    @Test
+    void groundTooBrokenForAFarmHasNoneSitedButTheBestSaid() {
+        WorldView world = flat(Set.of());
+        java.util.function.Predicate<BlockPos> half = c -> Math.floorMod(c.x(), 16) < 8;
+
+        assertTrue(ChunkFarm.site(world, new BlockPos(5, GROUND + 1, 5), 1, half, Set.of()).isEmpty(), "none of 160 cells walkable to");
+        ChunkFarm best = ChunkFarm.best(world, new BlockPos(5, GROUND + 1, 5), 1, half, Set.of()).orElseThrow();
+        assertTrue(best.plan(world, half).plot().size() < ChunkFarm.MIN_CELLS, "the best, under a farm's: " + best.plan(world, half).plot().size());
+    }
 }
