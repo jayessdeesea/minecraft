@@ -178,9 +178,11 @@ class RoutingSimulationTest {
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
         new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
                 .simulated(clock, server.connector(new PlayerPosition(-19.6, 20, 91.5), List.of(
+                        // His kit live (field536): logs to make a stone sword with, and no cobblestone for its blade.
                         new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
                         new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
+                        new int[]{38, SimServer.ITEM_BREAD, 16},
+                        new int[]{9, SimServer.ITEM_OAK_LOG, 62})))
                 .run();
 
         clock.advance(15 * 60_000);

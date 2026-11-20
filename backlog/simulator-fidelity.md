@@ -42,6 +42,9 @@ world wrong is proven wrong.
    walk to a stand two blocks off, and the server's blocks there, probed, are the model's; replayed, he walks it. Off
    the probed cells, the two part in what the soldier does, not in the ground - a lead. And replayed he reaches his
    branch by quarrying 6 stone, a pillar 6 high and a stair up - not by bridging his gap; the cleaner way is left.
+   And live (field536) with 62 logs he gave up his stone sword "short of COBBLESTONE=2", and his quarry order got
+   no hands; replayed with the same kit, he digs the cobblestone and makes the sword. His squad's orders - a
+   miner's duty, its mine - aren't in the replay: a recorded world wants the soldier's orders kept with it.
 5. **Recorded worlds.** Built: a soldier stuck a minute has the ground round it - 49 across, 33 high, each cell's
    state as the client decoded it - kept under `garrison-state/worlds/` (`app.WorldRecords`, `[World]`), and a
    scenario replays one as its terrain (`SimWorlds.replay`). Left: a scenario per live failure kept that way.
