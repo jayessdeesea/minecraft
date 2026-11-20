@@ -69,4 +69,16 @@ class TaskingTest {
         assertEquals(Order.Fill.Material.SOIL, ((Order.Fill) orders.get("Alice")).material());
         assertEquals(borrow, ((Order.Gather) orders.get("Bob")).box());
     }
+
+    /** A dig narrower than the crew: a hand to each strip, the nearest - the rest no share, free for other work. */
+    @Test
+    void aDigNarrowerThanTheCrewHasAHandToAStripAndNoMore() {
+        List<Tasking.Hand> hands = List.of(new Tasking.Hand("Dana", 0), new Tasking.Hand("Fran", 0), new Tasking.Hand("Hal", 0));
+        Box oneBlock = new Box(-50, 85, 46, -50, 85, 46);
+
+        assertEquals(Map.of("Dana", new Order.Dig(oneBlock, Set.of())),
+                Tasking.allocate(hands, FEET, 7, Optional.of(oneBlock), Optional.empty(), Set.of(), Set.of()), "one block, one hand");
+        assertEquals(Map.of("Hal", new Order.Dig(oneBlock, Set.of())), Tasking.allocate(hands, FEET, 7, Optional.of(oneBlock), Optional.empty(),
+                Set.of(), Set.of(), (hand, box) -> hand.equals("Hal") ? 1 : 10), "the hand nearest it");
+    }
 }

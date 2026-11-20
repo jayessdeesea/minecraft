@@ -298,4 +298,38 @@ final class SiteGeometry {
         return walkable.size() < SoldierRunner.CUT_OFF_BUDGET && walkable.stream().allMatch(c -> Math.max(Math.abs(c.x() - Math.floor(from.x())),
                 Math.abs(c.z() - Math.floor(from.z()))) < SoldierRunner.CUT_OFF_SPAN - 1);
     }
+
+    /**
+     * How far {@code hand} is from {@code strip} of a dig, for the hands it's shared to (command.Tasking): one already
+     * digging over it nearest of all - a share stays with whoever holds it - then the nearest across.
+     */
+    static double digReach(io.github.jayessdeesea.minecraft.command.SoldierStatus hand, Box strip) {
+        if (hand.order() instanceof Order.Dig dig && dig.box().minX() <= strip.maxX() && dig.box().maxX() >= strip.minX()
+                && dig.box().minZ() <= strip.maxZ() && dig.box().maxZ() >= strip.minZ() && dig.box().minY() <= strip.maxY() && dig.box().maxY() >= strip.minY()) {
+            return -1;
+        }
+        return Math.hypot(hand.position().x() - (strip.minX() + strip.maxX()) / 2.0, hand.position().z() - (strip.minZ() + strip.maxZ()) / 2.0);
+    }
+
+    /**
+     * The ground work's {@code dig} and {@code fill} shared out to {@code hands}: a hand to a strip, the nearest - its
+     * holder first ({@link #digReach}) - and the hands spare of a dig narrower than the crew kept off it till it's done,
+     * on their other work (operator, 2026-11-20: spare hands reallocated; back on as the dig's width changed and off again,
+     * they were taken off the wall and the dig in turn eight times in the squad simulation) - unless it's stalled
+     * ({@link SquadState#spareDigTill}), every hand on it then.
+     */
+    static java.util.Map<String, Order> shareGround(SquadState state, java.util.List<io.github.jayessdeesea.minecraft.command.SoldierStatus> hands,
+                                                     io.github.jayessdeesea.minecraft.command.Cell at, int radius, Optional<Box> dig, Optional<Box> fill,
+                                                     java.util.Set<io.github.jayessdeesea.minecraft.command.Cell> except, int digLeft, long now) {
+        boolean stalled = state.spareDigTill(digLeft, now, hands.stream().map(io.github.jayessdeesea.minecraft.command.SoldierStatus::name).toList());
+        java.util.List<io.github.jayessdeesea.minecraft.command.Tasking.Hand> crew = hands.stream().filter(h -> !state.digSpare.contains(h.name()))
+                .map(h -> new io.github.jayessdeesea.minecraft.command.Tasking.Hand(h.name(),
+                        h.condition().flatMap(c -> c.kit()).map(k -> k.stone() + k.dirt()).orElse(0))).toList();
+        java.util.Map<String, Order> orders = stalled
+                ? io.github.jayessdeesea.minecraft.command.Tasking.allocate(crew, at, radius, dig, fill, except, state.fetchingDirt, true)
+                : io.github.jayessdeesea.minecraft.command.Tasking.allocate(crew, at, radius, dig, fill, except, state.fetchingDirt,
+                (n, b) -> hands.stream().filter(h -> h.name().equals(n)).findFirst().map(h -> digReach(h, b)).orElse(1e9));
+        crew.stream().filter(h -> digLeft > 0 && !orders.containsKey(h.name())).forEach(h -> state.digSpare.add(h.name()));
+        return orders;
+    }
 }

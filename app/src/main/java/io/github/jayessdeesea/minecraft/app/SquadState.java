@@ -99,6 +99,35 @@ final class SquadState {
     String groundSaid;
     /** Soldiers sent off base for dirt by the ground work's drill, until they carry a load. */
     final Set<String> fetchingDirt = new HashSet<>();
+    /** The hands spare of the ground work's dig - more of them than its strips - kept off it till it's done. */
+    final Set<String> digSpare = new HashSet<>();
+    private int digLeftSeen = -1;
+    private long digFellAt;
+    /** How long the dig may go without a block dug before its spare hands are put back on it. */
+    static final long DIG_STALL_MILLIS = 60_000;
+
+    /**
+     * The spare hands, kept to those of {@code hands} while the dig has {@code digLeft} blocks: all put back on it once
+     * it's done, or while it's gone {@link #DIG_STALL_MILLIS} with none dug - true then, every hand on it, as many to a
+     * strip as it takes: its holders can't reach what's left (in the squad simulation's camp on a slope, its last two
+     * blocks stood undug with the spares kept off).
+     */
+    boolean spareDigTill(int digLeft, long now, java.util.List<String> hands) {
+        // Fallen only to a new least: a step put down to reach a block and dug again isn't the dig going anywhere.
+        if (digLeftSeen < 0 || digLeft < digLeftSeen) {
+            digLeftSeen = digLeft;
+            digFellAt = now;
+        }
+        if (digLeft <= 0) {
+            digLeftSeen = -1;
+        }
+        boolean stalled = digLeft > 0 && now - digFellAt > DIG_STALL_MILLIS;
+        if (digLeft <= 0 || stalled) {
+            digSpare.clear();
+        }
+        digSpare.retainAll(hands);
+        return stalled;
+    }
     /** When the torches still to put down last changed: a plan stuck at a cell or two is done. */
     long torchesChangedAt;
     /** When a staircase nobody could site at {@code stairsFor} is looked for again. */

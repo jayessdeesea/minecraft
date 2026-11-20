@@ -331,3 +331,10 @@ crew's ticks:
 
 ### Done when
 - The dig so far (`[Keep] pace: the dig so far`) holds within 90% across a day's levels.
+
+## Spare hands on a level narrower than the crew (operator, 2026-11-20)
+Spare hands are reallocated to other tasks. Built for the camp's ground work (docs/military-doctrine.md, keeping the
+camp; `SiteGeometry.shareGround`). Left: the keep's own shares (`Tasking.keep`), which still put two builders on a
+strip once a level's remainder is narrower than the crew - under the rules of a clearing (§ 17), every builder on
+the level, so the spares' other work there is the next level's or the keep's other jobs.
+

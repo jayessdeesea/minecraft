@@ -2239,12 +2239,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         state.digLeft = digLeft;
         state.fillLeft = fillLeft;
-        List<Tasking.Hand> crew = hands.stream().map(h -> new Tasking.Hand(h.name(),
-                h.condition().flatMap(c -> c.kit()).map(k -> k.stone() + k.dirt()).orElse(0))).toList();
-        // Split where the work is, not the whole site: live in the squad simulation, a pit in one
-        // half of the camp left the soldier given the other half nothing to fill.
-        Map<String, Order> orders = Tasking.allocate(crew, at, WALL_RADIUS,
-                bounds(toDig), bounds(toFill), except, state.fetchingDirt);
+        // Split where the work is, not the whole site (live in the squad simulation, a pit in one half of the camp left the soldier
+        // given the other half nothing to fill), a hand to a strip and the spares to other work (SiteGeometry.shareGround).
+        Map<String, Order> orders = shareGround(state, hands, at, WALL_RADIUS, bounds(toDig), bounds(toFill), except, digLeft, clockwork.millis());
         state.fetchingDirt.clear();
         orders.forEach((n, o) -> {
             if (o instanceof Order.Gather) {

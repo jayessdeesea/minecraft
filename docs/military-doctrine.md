@@ -1456,7 +1456,11 @@ to within 8 dark cells, since nothing spawns on lit ground, if it's armed and at
 more and its squad isn't sent to its patrol base: phantoms come down out of the sky on anyone
 under it, and live one killed an unarmed soldier at 4 health digging the camp - with no other work handed to it, it is
 handed the same drill's commands round the camp (`SoldierRunner.campUpkeep`), so an idle squad flattens the
-camp rather than stand in it. Live, three soldiers stood a day in a lit camp with their task all
+camp rather than stand in it. Its dig is shared a hand to a strip (`SiteGeometry.shareGround`): with fewer strips
+left than hands, each goes to the hand nearest it - the hand already on it first - and the spares are reallocated to
+other work, kept off the dig till it's done (operator, 2026-11-20; live, field494, the camp's last block was all
+three of Bravo's share, and they stood crowded by it). A dig gone a minute without a new least - its holders unable
+to reach what's left - has every hand back on it, as many to a strip as it takes (`SquadState.spareDigTill`). Live, three soldiers stood a day in a lit camp with their task all
 but done. A gather that found nothing within reach isn't work for 5 minutes - a squad sent for
 torch makings with no tree in reach keeps the camp meanwhile, while one carrying torches or their
 makings lights the camp first - and a soldier on a ground-work
