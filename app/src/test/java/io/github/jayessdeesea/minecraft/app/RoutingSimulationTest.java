@@ -158,4 +158,36 @@ class RoutingSimulationTest {
         assertTrue(alice.x() > 7 && alice.y() >= GROUND + 1, "Alice across the gap: at " + alice + "; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
     }
+
+    /**
+     * Eli's own ground, kept live (field535; WorldRecords): his gallery at y=20 run into a granite cave, his branch's start
+     * at (-19, 20, 97) over open air, a pickaxe in hand and no block. Sent there, he gets there - cutting the blocks he
+     * floors it with.
+     */
+    @Test
+    void eliOnHisOwnGroundGetsToHisBranch() throws Exception {
+        WorldRecords.Snapshot ground = WorldRecords.load(java.nio.file.Path.of(
+                RoutingSimulationTest.class.getResource("/worlds/eli-gallery-field535.json").toURI()));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SimWorlds.replay(ground), 1000);
+        Roster roster = new Roster("Alpha:Eli");
+        Position branch = new Position(-18.5, 20, 96.5);
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("To the branch", branch, "There",
+                new Objective.Task.None())), squadLeader(branch),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(-19.6, 20, 91.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(15 * 60_000);
+
+        server.dumpLog("eliOnHisOwnGroundGetsToHisBranch");
+        PlayerPosition eli = server.position("Eli");
+        assertTrue(Math.hypot(eli.x() - branch.x(), eli.z() - branch.z()) <= 2.5, "Eli at his branch: at " + eli + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
 }

@@ -5,6 +5,7 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Box;
 import io.github.jayessdeesea.minecraft.command.Condition;
 import io.github.jayessdeesea.minecraft.command.Kit;
+import io.github.jayessdeesea.minecraft.command.Recovery;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.Order;
@@ -42,6 +43,8 @@ final class PoliceCall {
 
     private final Map<String, Job> jobs = new ConcurrentHashMap<>();
     private final Map<BlockPos, Long> passed = new ConcurrentHashMap<>();
+    /** The soldiers quarrying stone for their way. */
+    private final Set<String> waying = ConcurrentHashMap.newKeySet();
     /**
      * Since when each soldier has reported a "no route" CANTCO with no block to make one with, by the reason: a minute
      * of it, it cuts a stone whatever its idle watch says - live (field526), Eli's squad read as resting, and his own
@@ -68,7 +71,7 @@ final class PoliceCall {
 
     /** Whether {@code soldier} has a step in hand to take back. */
     boolean on(String soldier) {
-        return jobs.containsKey(soldier);
+        return jobs.containsKey(soldier) || waying.contains(soldier);
     }
 
     /**
@@ -82,10 +85,12 @@ final class PoliceCall {
         Position at = status.position();
         Optional<Kit> kit = status.condition().flatMap(Condition::kit);
         boolean pickaxe = kit.map(Kit::pickaxe).orElse(false);
-        // With no route and no block to make one with, but a pickaxe: a stone off the wall by its head (wayBlock).
-        // Timed from its first "no route", where it stood, till it moves off that spot or carries a block: live
-        // (field530), Eli's "no route" broke for a moment's "Mining" between, and a timer kept by the report never ran.
-        boolean blockless = pickaxe && kit.map(k -> k.stone() + k.dirt() == 0).orElse(false);
+        // With no route and too few blocks to make one with, but a pickaxe: stone quarried near it, by the gatherer's own
+        // stands - ones its routes reach - to Recovery.WAY_BLOCKS. Live (field512-535), Eli's gap in his gallery at y=20
+        // was five cells over a cave, and a single stone picked by distance stood behind granite he couldn't stand by.
+        // Timed from its first "no route", where it stood, till it moves off that spot: live (field530), Eli's "no route"
+        // broke for a moment's "Mining" between, and a timer kept by the report never ran.
+        boolean blockless = pickaxe && kit.map(k -> k.stone() + k.dirt() < Recovery.WAY_BLOCKS).orElse(false);
         boolean noWay = status.report() instanceof Report.Cantco(String why) && why.startsWith("no route");
         Map.Entry<Position, Long> since = noRoute.get(soldier);
         if (!blockless || since != null && Math.hypot(since.getKey().x() - at.x(), since.getKey().z() - at.z()) > MOVED_OFF) {
@@ -96,15 +101,21 @@ final class PoliceCall {
             since = Map.entry(at, now);
             noRoute.put(soldier, since);
         }
-        boolean wayDue = since != null && now - since.getValue() >= GIVE_UP_MILLIS;
-        Optional<BlockPos> had = Optional.ofNullable(jobs.get(soldier)).map(Job::step);
         // Its stone first, over its own work and any litter: the work waits on the route, and litter elsewhere is no
         // nearer than its goal. Live (field528), Eli was handed litter he had no route to, again and again.
-        boolean due = wayDue;
-        if (due) {
-            jobs.computeIfPresent(soldier, (k, j) -> steps.contains(j.step()) ? null : j); // litter in hand dropped for it
+        if (since != null && now - since.getValue() >= GIVE_UP_MILLIS) {
+            jobs.remove(soldier);
+            if (waying.add(soldier)) {
+                LOG.info("[Police] {} quarries stone for its way - no route, and {} blocks to make one with", soldier,
+                        kit.map(k -> k.stone() + k.dirt()).orElse(0));
+            }
+            int x = (int) Math.floor(at.x()), y = (int) Math.floor(at.y()), z = (int) Math.floor(at.z());
+            return Optional.of(new Order.Gather(io.github.jayessdeesea.minecraft.command.Resource.STONE,
+                    new Box(x - WAY_REACH, y - WAY_REACH, z - WAY_REACH, x + WAY_REACH, y + WAY_REACH, z + WAY_REACH), Recovery.WAY_BLOCKS));
         }
-        Optional<BlockPos> step = step(soldier, busy && !due, withoutWork || due, world, now, skip -> {
+        waying.remove(soldier);
+        Optional<BlockPos> had = Optional.ofNullable(jobs.get(soldier)).map(Job::step);
+        Optional<BlockPos> step = step(soldier, busy, withoutWork, world, now, skip -> {
             Set<BlockPos> not = new java.util.HashSet<>(kept);
             not.addAll(skip);
             placedAt.forEach((c, t) -> {
@@ -112,14 +123,10 @@ final class PoliceCall {
                     not.add(c);
                 }
             });
-            return due ? wayBlock(world, at) : litter(world, steps, at, bodies, pickaxe, not);
+            return litter(world, steps, at, bodies, pickaxe, not);
         });
-        step.filter(c -> !step.equals(had)).ifPresent(c -> LOG.info(steps.contains(c) ? "[Police] {} takes back a step left at {} {} {}"
-                : "[Police] {} cuts a stone for its way at {} {} {} - no route, and no block to make one with", soldier, c.x(), c.y(), c.z()));
-        // A step left stands open to the sky, a ground dig's; a block for the way is in a wall, under rock - a tunnel's:
-        // live (field532), Eli's stone as a ground dig read "0 left" and done at once.
-        return step.map(c -> steps.contains(c) ? new Order.Dig(new Box(c.x(), c.y(), c.z(), c.x(), c.y(), c.z()), Set.of())
-                : Order.Dig.of(Set.of(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z()))));
+        step.filter(c -> !step.equals(had)).ifPresent(c -> LOG.info("[Police] {} takes back a step left at {} {} {}", soldier, c.x(), c.y(), c.z()));
+        return step.map(c -> new Order.Dig(new Box(c.x(), c.y(), c.z(), c.x(), c.y(), c.z()), Set.of()));
     }
 
     /**
@@ -168,48 +175,8 @@ final class PoliceCall {
                         .thenComparing(Comparator.comparingInt(BlockPos::y).reversed()));
     }
 
-    /** How far from its head a soldier looks for a block to cut for its way: its arm's reach. */
-    static final int WAY_REACH = 4;
-
-    /**
-     * The block for a soldier at {@code at} to cut for one to bridge or step with: the nearest plain stone or soil within
-     * its reach with a face open to dig at - it drops cobblestone or dirt, the blocks a route builds with - its own
-     * height first, never the floor under its feet. Live (field512-531), Eli stood for good at a gap in his gallery's
-     * floor at y=20, a pickaxe in hand and no block; the stone beside his head, andesite or tuff, wouldn't have served.
-     */
-    static Optional<BlockPos> wayBlock(WorldView world, Position at) {
-        BlockPos head = BlockPos.containing(at.x(), at.y(), at.z()).offset(0, 1, 0);
-        BlockPos floor = head.offset(0, -2, 0);
-        BlockPos best = null;
-        double bestScore = Double.MAX_VALUE;
-        for (int dx = -WAY_REACH; dx <= WAY_REACH; dx++) {
-            for (int dy = -WAY_REACH; dy <= WAY_REACH; dy++) {
-                for (int dz = -WAY_REACH; dz <= WAY_REACH; dz++) {
-                    BlockPos c = head.offset(dx, dy, dz);
-                    double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                    if (d > WAY_REACH || c.equals(floor) || !(world.isStone(c.x(), c.y(), c.z()) || world.isSoil(c.x(), c.y(), c.z())) || !exposed(world, c)) {
-                        continue;
-                    }
-                    double score = d + 0.1 * Math.abs(dy);
-                    if (score < bestScore) {
-                        best = c;
-                        bestScore = score;
-                    }
-                }
-            }
-        }
-        return Optional.ofNullable(best);
-    }
-
-    /** Whether {@code c} has a face open to dig at. */
-    private static boolean exposed(WorldView world, BlockPos c) {
-        for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
-            if (!world.isSolid(c.x() + d[0], c.y() + d[1], c.z() + d[2])) {
-                return true;
-            }
-        }
-        return false;
-    }
+    /** How far round it a soldier quarries stone for its way. */
+    static final int WAY_REACH = 6;
 
     /** Whether {@code c} stands proud: open on three or four of its sides. */
     static boolean proud(WorldView world, BlockPos c) {

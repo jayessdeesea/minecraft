@@ -88,15 +88,18 @@ public final class Recovery {
     }
 
     /**
-     * Whether {@code soldier}, with no route, waits on a block rather than a way out: sent along its own level, a
-     * pickaxe in hand and no cobblestone or dirt - its gap is bridged with a block it cuts (app.PoliceCall), not climbed
-     * out of. Live (field533), Eli at a gap in his gallery at y=20 was given a stair up to the surface, and its routine
+     * Whether {@code soldier}, with no route, waits on blocks rather than a way out: sent along its own level, a
+     * pickaxe in hand and fewer than {@link #WAY_BLOCKS} of cobblestone and dirt - its gap is bridged with stone it
+     * quarries (app.PoliceCall), not climbed out of. Live (field533), Eli at a gap in his gallery at y=20 was given a stair up to the surface, and its routine
      * held his hands off the stone he'd been sent to cut.
      */
     static boolean waitingOnABlock(SoldierStatus soldier) {
         return soldier.order() instanceof Order.MoveTo m && Math.abs(m.y() - soldier.position().y()) <= 1.5
-                && soldier.condition().flatMap(Condition::kit).filter(k -> k.pickaxe() && k.stone() + k.dirt() == 0).isPresent();
+                && soldier.condition().flatMap(Condition::kit).filter(k -> k.pickaxe() && k.stone() + k.dirt() < WAY_BLOCKS).isPresent();
     }
+
+    /** The blocks a soldier with no route along its own level quarries before it's taken for stranded: a gap of several cells. */
+    public static final int WAY_BLOCKS = 8;
 
     /**
      * {@code orders} with, for each soldier being recovered, its fetcher - the nearest squadmate

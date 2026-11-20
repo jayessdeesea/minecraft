@@ -55,6 +55,12 @@ final class SimItems {
         return item == ITEM_WOODEN_PICKAXE ? 59 : item == ITEM_STONE_PICKAXE ? 131 : Integer.MAX_VALUE;
     }
 
+    /**
+     * The item a block drops whose own item the client's tables don't list - granite, andesite, tuff: as live, the soldier
+     * carries it and counts it as nothing it builds or makes with.
+     */
+    static final int UNLISTED_ITEM = 4000;
+
     /** What a block drops broken with what's in hand: stone and ore only to a pickaxe. */
     static Optional<Integer> drop(int state, Optional<Integer> held) {
         boolean pickaxe = held.filter(i -> i == ITEM_WOODEN_PICKAXE || i == ITEM_STONE_PICKAXE).isPresent();
@@ -78,7 +84,15 @@ final class SimItems {
             case WHEAT_RIPE -> Optional.of(itemOf(ItemClass.WHEAT));
             case WHEAT_SPROUT, WHEAT_SPROUT + 1, WHEAT_SPROUT + 2, WHEAT_SPROUT + 3, WHEAT_SPROUT + 4, WHEAT_SPROUT + 5, WHEAT_SPROUT + 6
                     -> Optional.of(itemOf(ItemClass.SEEDS));
-            default -> throw new UnsupportedOperationException("simulated: breaking block state " + state);
+            // Any other block as the server has it: its own item - deepslate's cobbled - and rock only to a pickaxe. A recorded
+            // world (WorldRecords) brings in granite, andesite, tuff and the rest; live, they drop as they're named.
+            default -> {
+                String name = io.github.jayessdeesea.minecraft.bot.world.ChunkCache.blockName(state)
+                        .orElseThrow(() -> new UnsupportedOperationException("simulated: breaking block state " + state));
+                boolean rock = io.github.jayessdeesea.minecraft.bot.world.ChunkCache.isRock(state);
+                int item = SimServer.itemNamedOrMinus(name.equals("deepslate") ? "cobbled_deepslate" : name);
+                yield rock && !pickaxe ? Optional.empty() : Optional.of(item >= 0 ? item : UNLISTED_ITEM);
+            }
         };
     }
 

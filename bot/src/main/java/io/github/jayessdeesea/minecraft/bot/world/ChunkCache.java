@@ -442,6 +442,16 @@ public final class ChunkCache {
                 + BlockClassRegistry.classOf(stateId);
     }
 
+    /** The block's name for a state - "granite", "deepslate" - if the table lists it. */
+    public static java.util.Optional<String> blockName(int stateId) {
+        return BlockClassRegistry.nameOf(stateId);
+    }
+
+    /** Whether a state is rock - mined with a pickaxe, dropping nothing to a hand. */
+    public static boolean isRock(int stateId) {
+        return BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.ROCK;
+    }
+
     public OptionalInt stateIdAt(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
         return stateId == UNKNOWN ? OptionalInt.empty() : OptionalInt.of(stateId);
