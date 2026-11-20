@@ -111,8 +111,28 @@ and farmers to one at it; a farm counts toward food only from Producing:
    torch knocked off drops it back a stage, to be put right. Farmers.
 4. **Fenced** - its fence and gates, when wood isn't short; brought forward when it loses cells to trampling.
    Constructors with logs.
+
+**Both ground and water, the platoon leader's to choose** (operator, 2026-11-20): on land the ground is flattened and
+its four holes dug, their water by bucket - iron; over shallow water the ground is built up round the water, the hole
+cells left as the water already there - no bucket, no ore. Most sites will be land.
+
+**A state machine, its route planned** (operator, 2026-11-20): each site has a start - its ground as it stands - and
+the finish, Producing then Fenced; the moves are the digs, fills, floors, pours, tills, sowings and placements. The
+soldier owns how: its order carries the **template** (the layout at its level), and it compares the template with
+the world, knows its stage, and plans the cheapest sequence there from what it carries - a pure planner over the
+world model, as the route planner is. The same planner run from a site's surveyed ground is the cost the platoon
+leader is shown; what the work spends is measured against it, a site under 90% of its plan flagged (as the flatten's
+`LevelPace` is against its best).
+
+**Sites by bids** (operator, 2026-11-20): the platoon leader asks for a farming evaluation - bids on farm sites
+within some chunks of the camp; each squad leader hands it to its soldiers, each costing the chunks nearest it with
+the planner (blocks to dig and fill, iron, logs, steps, the walk from the camp) - from the world model, which holds
+every chunk in view, a walk only for one beyond it; the bids go up, the platoon leader takes the cheapest - as many as
+the food wants - and the winning squad gets the build order with the template, its bid the plan it's measured by.
+
 Built toward it: the layout, the holes' floors, the field torches, the tender (docs/military-doctrine.md § 4).
-Left: the stages as a site, several farms sited at once, the platoon leader's view of them and its orders by stage.
+Left, in order: the template and its planner (pure, `command`), with a site's stage from the world; the bids and the
+platoon leader's choice; the build order carrying the template; several farms at once; the 90% measure.
 
 ## More farmland: the farm by phase (operator, 2026-11-19)
 Overnight (field480-489) the farm fed about a third of the force: some 85 harvests a game day, about 28 loaves,

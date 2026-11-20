@@ -5,8 +5,6 @@ priority: P1
 
 # Questions for the operator
 
-- **A chunk farm built up over water** (backlog/renewables.md, Chunk farms as sites): should constructors fill shallow
-  water - a few blocks deep - to make a farm's ground, or should farm sites stay on land and leave the water be?
 - **Rations handed only to a squadmate within 8 blocks** (docs/military-doctrine.md § 4): taken by default - live
   (field511) soldiers all short walked single rations across the farm to each other 75 times in six minutes, each
   dropping its work. One at a time and the keep stand as the operator set them; buddy aid has no reach.
@@ -20,6 +18,8 @@ priority: P1
   the flatten's site once the camp's walled?
 
 Answered 2026-11-20, each now with its item:
+- **A chunk farm over water:** both - built up over shallow water (no bucket) or flattened on land, the platoon
+  leader choosing among bids, the soldier planning the route from its template (backlog/renewables.md).
 - **Sea level:** the camp too, gradually - a new camp at sea level first, the stores moved into it, then the
   old hill cut down (backlog/camp-to-sea-level.md).
 - **The triage merges:** as merged (backlog/sites.md, backlog/flatten-campaign.md).
