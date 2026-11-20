@@ -100,6 +100,9 @@ final class SquadState {
     /** Soldiers sent off base for dirt by the ground work's drill, until they carry a load. */
     final Set<String> fetchingDirt = new HashSet<>();
     /** The hands spare of the ground work's dig - more of them than its strips - kept off it till it's done. */
+    /** The FARM objective's point no ground to farm was found for, and when - looked at again a minute on. */
+    BlockPos farmMissed;
+    long farmMissedAt;
     final Set<String> digSpare = new HashSet<>();
     private int digLeftSeen = -1;
     private long digFellAt;

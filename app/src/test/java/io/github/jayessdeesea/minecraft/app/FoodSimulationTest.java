@@ -157,6 +157,31 @@ class FoodSimulationTest {
         }
     }
 
+    /**
+     * A FARM objective with no water near is looked at again a minute on, not each squad cycle: its flood was a twelfth
+     * of the garrison's time (p864), the squads on FARM at the old hilltop sites.
+     */
+    @Test
+    void aFarmObjectiveWithNoWaterIsLookedAtAgainAMinuteOn() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SquadSimulationTest::flat, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Farm", camp, "Food that grows",
+                new Objective.Task.Farm())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1})));
+        runner.run();
+
+        clock.advance(3 * 60_000);
+
+        long looks = readLog("target/sim/aFarmObjectiveWithNoWaterIsLookedAtAgainAMinuteOn.log").stream()
+                .filter(l -> l.contains("[Alpha] no ground to farm by water within")).count();
+        assertTrue(looks >= 1 && looks <= 4, "looked at once a minute: " + looks);
+    }
+
     /** The pond by the camp, its ground round it farmland with wheat sprouting: the camp's farm growing, its bread days off. */
     static int farmGrowingByCamp(int x, int y, int z) {
         boolean ground = x >= 3 && x <= 11 && z >= 3 && z <= 11 && !(x >= 6 && x <= 8 && z >= 6 && z <= 8);

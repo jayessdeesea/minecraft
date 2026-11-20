@@ -394,4 +394,13 @@ final class SiteGeometry {
     static final int OLD_CAMP_LOW = 40;
     /** The highest: a hilltop camp's tallest hut. */
     static final int OLD_CAMP_HIGH = 160;
+
+    /** A pocket flood from {@code from} at {@code at}: the cells walkable from it. */
+    record Flood(BlockPos from, long at, Set<BlockPos> cells) {
+    }
+
+    /** How long a soldier's pocket flood is kept while it stands on the same cell. */
+    static final long FLOOD_KEPT_MILLIS = 10_000;
+    /** How long a FARM objective no ground to farm was found for waits before it's looked at again. */
+    static final long FARM_RETRY_MILLIS = 60_000;
 }

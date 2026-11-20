@@ -775,8 +775,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + " cells of the camp's farm ground, by the water at x=" + farm.get().water().x() + " z=" + farm.get().water().z()
                         + ", growing wheat")
                         + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM"));
-        Optional<TreeFarm> grove = TreeFarm.site(world, at,
-                CAMP_RADIUS);
+        Optional<TreeFarm> grove = TreeFarm.site(world, at, CAMP_RADIUS);
         // Right after food (operator, 2026-11-14: tree farms just after the wheat farms - a camp goes
         // through a lot of wood): the camp's grove and the keep's together.
         TreeFarm keepTrees = keepGrove;
@@ -4807,6 +4806,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     static final int SURFACE_ABOVE = 128;
     /** The flood fill for whether a soldier reporting no route is in a pocket: how far and how many steps. */
     static final int CUT_OFF_SPAN = 48, CUT_OFF_BUDGET = 20_000;
+    /** Each soldier's last pocket flood (cutOff), kept {@link #FLOOD_KEPT_MILLIS} while it stands on the cell - squad loops. */
+    private final Map<String, Flood> cutOffFloods = new ConcurrentHashMap<>();
     /** How far across from its head a mine's galleries run: its branches, to 192, and a margin. */
     static final double MINE_GALLERY_REACH = 200;
     /** A soldier that can walk no more cells than this is in a pocket - WayOut's measure of one. */
@@ -4839,7 +4840,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 return s;
             }
             Position from = s.position();
-            Set<BlockPos> walkable = Pathfinder.reachable(world, BlockPos.containing(from.x(), from.y(), from.z()), CUT_OFF_SPAN, CUT_OFF_BUDGET);
+            // Its flood kept a while on the same cell: flooded afresh each cycle for each soldier, it was a tenth of the garrison's time (p864).
+            Set<BlockPos> walkable = cutOffFloods.compute(s.name(), (n, f) -> f != null && f.from().equals(BlockPos.containing(from.x(), from.y(), from.z())) && now - f.at() < FLOOD_KEPT_MILLIS ? f
+                    : new Flood(BlockPos.containing(from.x(), from.y(), from.z()), now, Pathfinder.reachable(world, BlockPos.containing(from.x(), from.y(), from.z()), CUT_OFF_SPAN, CUT_OFF_BUDGET))).cells();
             int cells = walkable.size();
             // Or a cave of any size under where it's sent, with no way up to that height: live, two
             // soldiers down the mine's stairs at night stood in a cave of 866 cells at y=44, sent up to
@@ -5011,8 +5014,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             orders = ReactToContact.orders(statuses, Escort.intercept(statuses,
                     // No link-up: a replacement's place is its slot in the ring, not beside the point man.
                     Resupply.orders(statuses, Escort.slots(statuses, order, principal),
-                            principal, supplyPoint),
-                    principal, threats));
+                            principal, supplyPoint), principal, threats));
         } else {
             // Each soldier's own report, in the statuses' order and only for those led here: the main
             // body's reports also hold its detached soldiers', and a replacement's place differs. Live,
@@ -5256,8 +5258,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // The farm: the plot round the water nearest the platoon leader's objective, kept while the
         // objective stays put - a farm is tended for days, not re-sited each cycle.
         FarmPlan farm = taskOf(squadName, Objective.Task.Farm.class).map(o -> {
-            BlockPos at = BlockPos.containing(
-                    o.location().x(), o.location().y(), o.location().z());
+            BlockPos at = BlockPos.containing(o.location().x(), o.location().y(), o.location().z());
             // Kept for the point it was sited for, as a wall is: live, its water lay just over the
             // radius from the site, and it was sited afresh every cycle, found or not by where a
             // soldier stood.
@@ -5265,14 +5266,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     || Math.hypot(state.farm.water().x() - at.x(), state.farm.water().z() - at.z()) <= FARM_SITE_RADIUS)) {
                 return state.farm;
             }
+            // Nor a point none was found for looked at again for a minute: its flood was a twelfth of the garrison's time (p864).
+            if (at.equals(state.farmMissed) && clockwork.millis() - state.farmMissedAt < FARM_RETRY_MILLIS) {
+                return null;
+            }
             Position from = statuses.get(0).position();
-            Set<BlockPos> walkable = Pathfinder.reachable(
-                    world, BlockPos.containing(from.x(), from.y(), from.z()),
+            Set<BlockPos> walkable = Pathfinder.reachable(world, BlockPos.containing(from.x(), from.y(), from.z()),
                     (int) Math.hypot(at.x() - from.x(), at.z() - from.z()) + FARM_SITE_RADIUS + 4, FARM_REACH_BUDGET);
-            FarmPlan sited = FarmPlan.site(world, at,
-                    FARM_SITE_RADIUS, FARM_SITE_RADIUS, walkable::contains).orElse(null);
+            FarmPlan sited = FarmPlan.site(world, at, FARM_SITE_RADIUS, FARM_SITE_RADIUS, walkable::contains).orElse(null);
             if (sited == null) {
                 LOG.warn("[{}] no ground to farm by water within {} blocks of {}", squadName, FARM_SITE_RADIUS, o.location());
+                state.farmMissed = at;
+                state.farmMissedAt = clockwork.millis();
             } else {
                 LOG.info("[{}] FARM by the water at {}: {} cells to plant", squadName, sited.water(), sited.plot().size());
                 state.farmFor = at;
@@ -6682,8 +6687,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 },
                 entity -> entityTracker.spawn(entity.entityId(), entity.uuid(), entity.typeId(), entity.x(), entity.y(), entity.z(), name),
                 move -> entityTracker.move(move.entityId(), move.x(), move.y(), move.z()),
-                ids -> entityTracker.remove(ids, name),
-                health -> {
+                ids -> entityTracker.remove(ids, name), health -> {
                     lastHealth.set(health);
                     DeterministicSoldier soldier = activeSoldier.get();
                     if (soldier != null) {
@@ -6907,8 +6911,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         });
         stashing.set(depositor);
-        Fitter storeFitter = new Fitter(name, session,
-                inventory, furnaces);
+        Fitter storeFitter = new Fitter(name, session, inventory, furnaces);
         storeFitters.put(name, storeFitter);
         depositors.put(name, depositor);
         depositorRef.set(depositor);
@@ -6951,11 +6954,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         lamplighters.put(name, lamplighter);
         Hunter hunter = new Hunter(name, huntClaims);
         hunters.put(name, hunter);
-        Mason mason = new Mason(name, inventory, footing,
-                wallClaims);
+        Mason mason = new Mason(name, inventory, footing, wallClaims);
         masons.put(name, mason);
-        Clearer clearer = new Clearer(name, session, inventory,
-                clearClaims);
+        Clearer clearer = new Clearer(name, session, inventory, clearClaims);
         clearers.put(name, clearer);
         Filler plainFiller = new Filler(name, session, inventory);
         // The keep's slab is cobblestone only: a filler of its own, the plain one's dirt never in it.
@@ -7439,8 +7440,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     || !rations.active() && !threatened && inventory.slotOf(ItemClass.FOOD) >= 0
                     && Rations.wantsMeal(food, status.condition().map(c -> c.health() < Condition.MAX_HEALTH).orElse(false));
             turns.put(Hands.Routine.HUNTER, turn(hunter::active, free -> hunter.tick(status.position(), huntGround,
-                    Hunter.radius(food), quarry, world,
-                    free && huntWanted,
+                    Hunter.radius(food), quarry, world, free && huntWanted,
                     WeaponStats.melee(eating == null ? Optional.empty() : eating.weapon()).ticksToCharge())
                     .ifPresent(target -> {
                         LOG.info("{} strikes the animal it hunts, entity {}", name, target);
