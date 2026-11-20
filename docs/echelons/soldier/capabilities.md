@@ -42,10 +42,10 @@ seconds or when stuck - a wide search asked again from the same cell to the same
   sides, so not one that filled a hole - top of a stack first, none a soldier stands by nor the camp's wall's, by
   hand, no shovel wanted (`app.PoliceCall`). It keeps the step till it's gone or other work comes; one not gone in
   a minute is passed over for ten, by everyone. Ahead of a CANTCO'd stone wall or floor.
-  And one a minute on the same "no route", where it stood, with a pickaxe and no block to bridge or step with, cuts
-  one first, over its own work: the nearest plain stone or soil within 4 blocks with a face open - it drops
-  cobblestone or dirt - its own height first, never its floor (`PoliceCall.wayBlock`). Live (field512-531), a miner
-  stood for good at a gap in his gallery's floor, a pickaxe in hand.
+  And one a minute on the same "no route", where it stood, with a pickaxe and fewer than 8 blocks to bridge or step
+  with, quarries stone round it first, over its own work - 6 blocks each way, to 8 (`Recovery.WAY_BLOCKS`), by the
+  gatherer's own stands, ones its routes reach - and isn't taken for stranded meanwhile (`Recovery.waitingOnABlock`).
+  Live (field512-535), a miner stood for good at a gap of five cells in his gallery's floor over a cave.
 - **Doesn't try the same thing forever.** Stuck short of a waypoint - jumping at a block that
   won't take it, a squadmate on the same step - it routes round that cell for 10 seconds, at a
   cost that leaves the cell usable if there's no other way, and comes back to it only after.

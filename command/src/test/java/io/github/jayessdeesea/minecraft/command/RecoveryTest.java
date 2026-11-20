@@ -328,13 +328,13 @@ class RecoveryTest {
         assertEquals(true, Recovery.offTheCut(new Position(5.7, -53, -130.5), stair), "8 off and 2 down (field343)");
     }
 
-    /** Sent along its own level with a pickaxe and no block, a "no route" waits on a block; with a block, it's stranded. */
+    /** Sent along its own level with a pickaxe and too few blocks, a "no route" waits on its stone; with enough, it's stranded. */
     @Test
     void aSoldierSentAlongItsLevelWithNoBlockWaitsOnOne() {
         Order.MoveTo along = new Order.MoveTo(-18.5, 20, 96.5, 0.3, 0.5, Risk.LOW);
         Report noRoute = new Report.Cantco("no route from (-20, 20, 91) to within 0 of (-19, 20, 97)");
         Kit noBlocks = new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, 0, 16, false, true, 0, false, 0, 1, 0);
-        Kit aBlock = new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, 1, 16, false, true, 0, false, 0, 1, 0);
+        Kit aBlock = new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, Recovery.WAY_BLOCKS, 16, false, true, 0, false, 0, 1, 0);
 
         assertFalse(Recovery.stranded(new SoldierStatus("Eli", new Position(-19.6, 20, 91.5), along, noRoute,
                 Optional.of(new Condition(20, 20, 0, Optional.of(noBlocks))))));

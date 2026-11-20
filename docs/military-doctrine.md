@@ -489,7 +489,7 @@ risk and its own condition into a fall allowance:
 So a safe route always wins when one exists, and a fall is planned only when there's none, on
 foot or by the steps it can build (docs/echelons/soldier/capabilities.md). A soldier with no such
 route - its own planner having tried building its way with whatever it carries - is stranded (but for one sent
-along its own level with a pickaxe and no block: it waits on the block it cuts for its gap, `Recovery.waitingOnABlock`): cut off in
+along its own level with a pickaxe and fewer than 8 blocks: it waits on the stone it quarries for its gap, `Recovery.waitingOnABlock`): cut off in
 a pocket, below where it's sent with no way up, or under the ground - more than 8 blocks of rock or
 soil over it, a tree's leaves and logs not counted, and none of the ground it can walk to out from
 under it, all of that ground searched - and sent to the surface, however big its cave (operator, 2026-11-17: a soldier digs itself
@@ -2055,7 +2055,7 @@ episode held until it's at the pillar's foot. So does one stranded on a ledge on
 too hurt for its drop, with no blocks for a stair: at the nearest edge of its ground, the ground below seen down
 the open side, the column is dug down to that ground's level and it walks off (`Stairway.edgeShaft`; live,
 field497-498, four soldiers stood ten minutes on a ledge 5 over the farm). Not one sent along its own level: a gap
-in its way is bridged (`PoliceCall.wayBlock` for the block), not dug down into. The block under a soldier's feet is cut
+in its way is bridged with stone it quarries (app.PoliceCall), not dug down into. The block under a soldier's feet is cut
 first, from where it stands (`Clearing.nextInTunnel`). The register follows the keep's dig and fill by
 their own names (`dig the keep`, `fill the keep`), each builder measured by its squad's share, not
 its own strip: the dirt steps it climbs on are in its strip too. Food first: a builder hungry with

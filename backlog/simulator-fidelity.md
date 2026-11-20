@@ -38,6 +38,10 @@ world wrong is proven wrong.
    Seen: RoutingSimulationTest's gallery with a gap, the surface 12 up, passes with or without
    `Recovery.waitingOnABlock` - in it the block for the way comes due before the recovery drill lays a stair up;
    live (field533), the stair came first and held the miner's hands. What sets that order live is a lead.
+   Seen on Eli's own ground (`RoutingSimulationTest.eliOnHisOwnGroundGetsToHisBranch`, field535): live he couldn't
+   walk to a stand two blocks off, and the server's blocks there, probed, are the model's; replayed, he walks it. Off
+   the probed cells, the two part in what the soldier does, not in the ground - a lead. And replayed he reaches his
+   branch by quarrying 6 stone, a pillar 6 high and a stair up - not by bridging his gap; the cleaner way is left.
 5. **Recorded worlds.** Built: a soldier stuck a minute has the ground round it - 49 across, 33 high, each cell's
    state as the client decoded it - kept under `garrison-state/worlds/` (`app.WorldRecords`, `[World]`), and a
    scenario replays one as its terrain (`SimWorlds.replay`). Left: a scenario per live failure kept that way.
