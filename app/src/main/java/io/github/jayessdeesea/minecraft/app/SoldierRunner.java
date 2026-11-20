@@ -797,7 +797,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         standards.add(new Foothold.Standard(3, "the camp's floor paved", unpaved == 0,
                 unpaved + " cells of the floor inside the wall still soil, to pave with stone", "FORTIFY"));
         int stoneSword = ItemClassRegistry.meleeRank("stone_sword");
-        long armed = everyone.stream().filter(s -> s.condition().flatMap(c -> c.kit()).flatMap(k -> k.weapon())
+        everyone.forEach(s -> cutOff.update(s, clockwork.millis())); // the cut off reported, not counted on (CutOff)
+        List<String> away = everyone.stream().map(SoldierStatus::name).filter(n -> cutOff.cutOff(n, clockwork.millis())).toList();
+        long armed = everyone.stream().filter(s -> !away.contains(s.name())).filter(s -> s.condition().flatMap(c -> c.kit()).flatMap(k -> k.weapon())
                 .filter(w -> !w.equals("bow")).map(w -> {
                     try {
                         return ItemClassRegistry.meleeRank(w) >= stoneSword;
@@ -806,8 +808,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                 }).orElse(false)).count();
         // A weapon each is shelter's other half: even a wooden sword wins most fights a fist loses.
-        standards.add(new Foothold.Standard(2, "every soldier armed", armed == everyone.size(),
-                armed + " of " + everyone.size() + " carry a stone sword or better", "STONE"));
+        standards.add(new Foothold.Standard(2, "every soldier armed", armed == everyone.size() - away.size(), armed + " of "
+                + (everyone.size() - away.size()) + " carry a stone sword or better" + (away.isEmpty() ? "" : ", " + away + " cut off"), "STONE"));
         int armour = everyone.stream().mapToInt(s -> s.condition().flatMap(c -> c.kit()).map(k -> k.armour()).orElse(0)).sum();
         standards.add(new Foothold.Standard(4, "every soldier armoured",
                 armour == everyone.size() * Kit.ARMOUR_SLOTS, armour + " of " + everyone.size() * Kit.ARMOUR_SLOTS + " armour slots filled (copper or iron, from ore)",
@@ -1236,6 +1238,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final PoliceCall policeCall = new PoliceCall(); // one without work, or stood a minute on a CANTCO, takes back a step left
     private volatile List<BlockPos> campCut = List.of(); // the camp's ground over its level, as last measured: dirt from it first (CutFirst)
     private final Ledger ledger = new Ledger(); // what each act was planned to take against what it took, logged as [Ledger]
+    private final CutOff cutOff = new CutOff(); // soldiers stuck at one spot with no route: reported, not counted on
     private WorldRecords worldRecords; // the ground round a soldier stuck a minute, kept for the simulation
     /** Soldiers whose last position wasn't sent for a value that isn't finite: said once a spell - ticks write. */
     private final Set<String> badPositionLogged = ConcurrentHashMap.newKeySet();
@@ -5181,8 +5184,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Sealed and dark: the first soldier inside with a torch puts one down where it stands.
         String lighter = plan == null || lit || breaches == null || !breaches.isEmpty() || !allInside ? null
                 : statuses.stream().map(SoldierStatus::name).filter(n -> torchesCarried.getOrDefault(n, 0) > 0).findFirst().orElse(null);
-        // Moving on from a base: cut a doorway toward the next objective. Not while only paused for
-        // contact - the base is still the squad's.
+        // Moving on from a base: cut a doorway toward the next objective. Not while only paused for contact - the base is still the squad's.
         String opener = null;
         // A soldier shut in a room the squad has no record of - a base built before a restart, say -
         // leaves it the same way as one it remembers: the room is read from the world.
@@ -5298,8 +5300,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return sited;
         }).orElse(null);
         state.trees = trees;
-        // The wall: laid out once round the objective's ground, then filled in - laid out again
-        // after a row, the ground would be the wall's top.
+        // The wall: laid out once round the objective's ground, then filled in - laid out again after a row, the ground would be the wall's top.
         Optional<Objective> fortify = taskOf(squadName, Objective.Task.Fortify.class);
         if (fortify.isEmpty()) {
             state.wall = null;
@@ -5719,8 +5720,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         String wallHand = state.wallHand;
         for (int i = 0; i < statuses.size(); i++) {
             String soldierName = statuses.get(i).name();
-            // Stranded with nobody to fetch it: the recovery drill sends it down to its squad, over
-            // the stand its own routine wants and can't reach.
+            // Stranded with nobody to fetch it: the recovery drill sends it down to its squad, over the stand its own routine wants and can't reach.
             Optional<Order.MoveTo> escape = squadInContact ? Optional.empty() : state.recovery.escape(soldierName);
             if (escape.isPresent()) {
                 if (state.escaping.add(soldierName)) {

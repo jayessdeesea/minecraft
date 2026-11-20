@@ -1753,7 +1753,10 @@ means and what stands between it and the next.
 The camp is built up the way an airborne force builds a lodgment after the drop, measured in these standards:
 1. Shelter: a patrol base each night (§14).
 2. The airhead - safety first, the operator's: the camp's ground lit (§15, SECURE), and every
-   soldier armed with a stone sword or better (§11, STONE). Not walled (operator, 2026-11-20): the
+   soldier armed with a stone sword or better (§11, STONE). A soldier cut off - stood 10 minutes at one spot with no route
+   reported there - is named in the standard and not counted on, as a unit reports its strength present (AR 220-1;
+   `app.CutOff`; live, field533-537, one miner stuck a day in his mine with a wooden sword held the whole force in the
+   seizure). Not walled (operator, 2026-11-20): the
    huts keep the night out and the lights keep spawns out; a wall kept off none of what killed
    soldiers (phantoms, friendly fire, drowning) and littered the camp with its masons' pits. Food that
    grows (§12, FARM) is buildup, unless survival is at stake - more than half the soldiers hungry
