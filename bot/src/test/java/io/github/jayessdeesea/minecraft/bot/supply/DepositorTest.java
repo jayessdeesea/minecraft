@@ -106,9 +106,10 @@ class DepositorTest {
         run(10, BESIDE, true);
 
         assertFalse(depositor.active());
-        assertEquals(0, server.inventory.count(ItemClass.COBBLESTONE));
+        int kept = server.inventory.count(ItemClass.COBBLESTONE);
+        assertTrue(kept >= Depositor.ROUTE_BLOCKS && kept < Gatherer.CARRY_STONE, "a stack kept back to bridge and pillar with: " + kept);
         assertEquals(3, server.inventory.count(ItemClass.LOG));
-        assertEquals(List.of(new Stockpile(10, Gatherer.CARRY_STONE, 0)), seen);
+        assertEquals(List.of(new Stockpile(10, Gatherer.CARRY_STONE - kept, 0)), seen);
     }
 
     @Test

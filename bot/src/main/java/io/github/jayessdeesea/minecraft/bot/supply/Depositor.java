@@ -422,7 +422,7 @@ public final class Depositor {
                     chest.open(at);
                 }, new Expect("the chest's contents", chest::isOpen), ChestWindow.ANSWER_TICKS),
                 new Step(PUT_IN, this::deposit,
-                        new Expect("the load in the chest", () -> load.stream().allMatch(c -> inventory.count(c) == 0)
+                        new Expect("the load in the chest", () -> load.stream().allMatch(c -> inventory.count(c) <= (c == ItemClass.COBBLESTONE ? stoneLeft : 0))
                                 && inventory.count(ItemClass.FOOD) <= foodLeft && surplus.apply(inventory).isEmpty()),
                         ChestWindow.ANSWER_TICKS)),
                 List.of(new Guard("the trip is no longer wanted", () -> wanted || !walking)));
@@ -460,6 +460,17 @@ public final class Depositor {
     /** What it carries past its load, put in on this trip too. */
     private java.util.function.Function<Inventory, List<Integer>> surplus = i -> List.of();
 
+    /**
+     * Cobblestone a soldier keeps back from the stockpile, carrying two stacks or more: its smallest stack of this many
+     * or more stays in its pack - blocks to bridge, pillar and build steps with. Live (field512-522), Eli put all 1,207
+     * of his in, and stood for good at a one-block gap in his gallery's floor he could have floored with one. One stack
+     * alone goes in whole: a stack moves at once, and a gatherer's single load is the stockpile's.
+     */
+    public static final int ROUTE_BLOCKS = 16;
+
+    /** The cobblestone this trip leaves in its pack: the stack kept back ({@link #ROUTE_BLOCKS}), or none. */
+    private int stoneLeft;
+
     /** Shift-clicks across every stack of the material there's a full load of, and the pooled ore. */
     private void deposit() {
         load = EnumSet.noneOf(ItemClass.class);
@@ -471,12 +482,25 @@ public final class Depositor {
             load.add(ItemClass.COBBLESTONE);
         }
         foodLeft = storesFood ? inventory.count(ItemClass.FOOD) : Integer.MAX_VALUE;
+        List<Integer> stone = new java.util.ArrayList<>();
+        for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
+            if (ItemClassRegistry.classOf(inventory.itemAt(slot)).equals(Optional.of(ItemClass.COBBLESTONE))) {
+                stone.add(slot);
+            }
+        }
+        int keptBack = stone.size() < 2 ? -1 : stone.stream().filter(slot -> inventory.countAt(slot) >= ROUTE_BLOCKS)
+                .min(java.util.Comparator.comparingInt(inventory::countAt)).orElse(-1);
+        stoneLeft = keptBack < 0 ? 0 : inventory.countAt(keptBack);
         for (int slot : surplus.apply(inventory)) {
             chest.quickMove(chest.windowSlotOf(slot));
         }
         for (int slot = Inventory.MAIN_FIRST; slot <= Inventory.HOTBAR_LAST; slot++) {
             Optional<ItemClass> itemClass = ItemClassRegistry.classOf(inventory.itemAt(slot));
-            if (itemClass.isPresent() && load.contains(itemClass.get())) {
+            if (itemClass.equals(Optional.of(ItemClass.COBBLESTONE)) && load.contains(ItemClass.COBBLESTONE)) {
+                if (slot != keptBack) {
+                    chest.quickMove(chest.windowSlotOf(slot));
+                }
+            } else if (itemClass.isPresent() && load.contains(itemClass.get())) {
                 chest.quickMove(chest.windowSlotOf(slot));
             } else if (storesFood && itemClass.equals(Optional.of(ItemClass.FOOD)) && foodLeft - inventory.countAt(slot) >= Subsistence.CARRY_MOST) {
                 foodLeft -= inventory.countAt(slot);

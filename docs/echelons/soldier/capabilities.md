@@ -22,6 +22,9 @@ seconds or when stuck - a wide search asked again from the same cell to the same
   only way that reaches its goal (`Pathfinder.stepBuild`): one block a step against ground beside
   it, two in open air. Never on farmland or a crop, which a block put down on spoils; nor does it
   pillar off farmland, or cut a step through it.
+- **Keeps blocks to get about with:** at the stockpile, carrying two stacks of cobblestone or more, it keeps its
+  smallest of 16 or more back (`Depositor.ROUTE_BLOCKS`) - live (field512-522), a miner banked all 1,207 of his
+  and stood for good at a gap he could have floored with one. A single stack goes in whole.
 - **Bridges a hole in the floor** at its own level with a block it carries - over a cave or a shaft, a hole that's
   no walkable drop, with ground on its far side (a gap, never a ledge into the air) - floored from the ground beside it and walked over (`Pathfinder.stepBuild`, level). Live
   (field512-520), a miner stood for good at a one-block gap in his gallery's floor, planning wide every few seconds.
