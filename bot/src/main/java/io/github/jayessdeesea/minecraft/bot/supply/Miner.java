@@ -109,7 +109,11 @@ public final class Miner {
         }
         int on = nearestStep(stairs, soldier);
         if (on < 0 || stepDistance(stairs.step(on), soldier) > ON_THE_STAIRS) {
-            return stand;
+            // Off them and far over its stand - on the surface, the mine under it - to the stairs' head first, the
+            // way down: live (field511), Eli, up from a restart at the farm, was sent straight for a branch 42 under his
+            // feet at its far end, the stairs 135 blocks off, and walked in circles over it, "no route" all morning.
+            BlockPos head = stairs.step(0);
+            return soldier.y() - stand.y() > STAIRS_LEG ? new Position(head.x() + 0.5, head.y(), head.z() + 0.5) : stand;
         }
         // Toward the stand's own place on the stairs, by step - not by height: a long stair runs flat along its
         // level, and live (field466), its cutters were sent a leg down, then back up, each tick, all night.

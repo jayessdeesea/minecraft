@@ -24,7 +24,7 @@ routes are planned, not what a cell costs.
 ## Done when
 - A soldier that hasn't moved, with the world round it unchanged, doesn't plan the same route again:
   a route replanned only when its goal, its cell or the blocks on it change (`cutOff`'s flood is kept, 865).
-- The next profile shows the route planner's share halved, both sample counts in the commit.
+- The next profile shows the route planner's share halved, both sample counts in the commit (met at 880: 53% to 27%).
 
 ## Measured again at 784
 4,384 samples in three minutes, against 768's 11,662 - the garrison's whole load down 62% - and the block
@@ -50,3 +50,8 @@ legs and wide search), `cutOff`'s flood 563, a FARM objective with no water site
 soldier stands on its cell (`SiteGeometry.Flood`), and a FARM point none was found for left a minute. Left: the next
 profile (880) against these counts; `navigate`'s share, by which leg and goal.
 
+## Measured at 880
+field510, three minutes, 2,971 samples against 864's 5,472 - the garrison's load down 46% - the route planner 27%
+(804, from 2,888): `navigate` 499, `cutOff`'s kept flood 97, the camp's lighting plan 145. The tick's own frame is
+20%, spread over its lines - the soldier's tick, the food ledger's sample, the snag check - none above 4%. Left:
+`navigate`'s share, by which leg and goal; `nearbyHostiles` by chunk (`EntityTracker.distanceSquared` 4.6%).

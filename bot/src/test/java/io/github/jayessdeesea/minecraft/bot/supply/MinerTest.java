@@ -688,6 +688,20 @@ class MinerTest {
         assertEquals(new Position(twentyFour.x() + 0.5, twentyFour.y(), twentyFour.z() + 0.5), next, "the next leg on, not back");
     }
 
+    /** A cutter on the surface far from its mine, its stand down in the mine: to the stairs' head first, not straight down. */
+    @Test
+    void aCutterOffItsStairsAndFarOverItsStandGoesToTheStairsHeadFirst() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 40);
+        BlockPos top = stairs.step(0);
+        BlockPos bottom = stairs.step(stairs.steps() - 1);
+        Position stand = new Position(bottom.x() + 0.5, bottom.y(), bottom.z() + 130.5); // the gallery's far end
+        Position overIt = new Position(bottom.x() + 0.5, top.y() + 1, bottom.z() + 130.5); // on the surface above it
+
+        assertEquals(new Position(top.x() + 0.5, top.y(), top.z() + 0.5), Miner.byTheStairs(stairs, overIt, stand), "the head, the way down");
+        Position inTheGallery = new Position(bottom.x() + 0.5, bottom.y(), bottom.z() + 60.5);
+        assertEquals(stand, Miner.byTheStairs(stairs, inTheGallery, stand), "down in the gallery: the stand itself");
+    }
+
     /**
      * A cave across a strip and no blocks ever to floor it: given up after a minute idle on it, not waited on
      * all night. Live (field462-465), Alice's main tunnel waited three nights for blocks she never had.
