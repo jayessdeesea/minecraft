@@ -17,11 +17,10 @@ world wrong is proven wrong.
 
 ## What
 1. **Known gaps, fixed in both the simulation and the soldier's world model** where the model is wrong too:
-   - A torch on a fence post: the server takes it; the world model reads the cell over a fence as solid
-     (a fence's 1.5-high collision), so none is ever planned there (backlog/renewables.md).
-   - The gaps in backlog/physics-fidelity.md, each when it costs something.
-2. **A prediction ledger.** Each routine that plans states what it expects, and the shell logs what it
-   got, under one key per kind of act: a route's ticks per block and the blocks it places, a dig's time,
+   the gaps in backlog/physics-fidelity.md, each when it costs something.
+2. **A prediction ledger.** Built for routes (`app.Ledger`, `[Ledger]` every ten minutes: a route's ticks a step
+   planned, from its first route to the goal to standing there). Left, the other kinds: the blocks a route places, a
+   dig's time,
    a placement accepted or refused, a chest's open and what it held, a harvest's yield, a task's yield
    for the time spent (docs/conventions.md, Check the outcome). The same ledger runs in the squad
    simulation. Its rows are the comparison.
@@ -38,7 +37,6 @@ world wrong is proven wrong.
    saved so the same situation is replayed in the simulation, not rebuilt by hand.
 
 ## Done when
-- A torch is put on a fence post in the simulation and live, and the chunk farm plans them.
 - The ledger runs live and in the simulation, and a `[Fidelity]` line names each act whose live rate is
   off the simulation's - shown first on a gap planted in the simulation on purpose.
 - A live failure's chunks replay in the squad simulation.

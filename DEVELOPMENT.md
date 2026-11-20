@@ -209,7 +209,9 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 
 The log lines to read first: `[Casualty]`, each death with the soldier's last seconds (§ 6);
 `[Alert]`, a soldier stuck in place for a minute other than while its squad hides or sleeps (§ 3); `[AAR]`, each dawn's review of the
-day before (§ 17); and `[Scoreboard]`, that day's score beside the day before's. The scoreboard's
+day before (§ 17); `[Scoreboard]`, that day's score beside the day before's; and `[Ledger]`, every ten minutes
+what each kind of act was planned to take against what it took - a route's ticks a step planned - the same line the
+squad simulation logs, so the two can be set side by side (`app.Ledger`; backlog/simulator-fidelity.md). The scoreboard's
 history, a line a day across restarts, is `garrison-state/scoreboard.jsonl`.
 
 A soldier rejoins where it last logged out, so a squad that last ran a scenario starts on the

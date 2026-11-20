@@ -1236,6 +1236,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final IdleWatch idleWatch = new IdleWatch(), withoutWork = new IdleWatch("without work");
     private final PoliceCall policeCall = new PoliceCall(); // one without work, or stood a minute on a CANTCO, takes back a step left
     private volatile List<BlockPos> campCut = List.of(); // the camp's ground over its level, as last measured: dirt from it first (CutFirst)
+    private final Ledger ledger = new Ledger(); // what each act was planned to take against what it took, logged as [Ledger]
     /** Soldiers whose last position wasn't sent for a value that isn't finite: said once a spell - ticks write. */
     private final Set<String> badPositionLogged = ConcurrentHashMap.newKeySet();
 
@@ -7969,9 +7970,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     quiver.stow();
                 }
             }
-            // A pillar step's block goes in after the server has the soldier's new height - it won't
-            // place a block where a body is - and into the world model at once, so the soldier lands
-            // on it before the server's block update arrives.
+            // A pillar step's block goes in after the server has the soldier's new height - it won't place a block where
+            // a body is - and into the world model at once, so the soldier lands on it before the server's update.
             List<BlockPos> cut = soldier.cutting();
             if (!cut.isEmpty()) {
                 stepCutter.tick(world, cut);
@@ -7979,17 +7979,17 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 stepCutter.stop();
             }
-            // Cobblestone stands in for whatever went in, dirt included, until the server's update says which.
-            // A torch in the cell is broken first - it goes at a touch, and the server won't put a block
-            // where one is: live, a soldier pillaring out of a pocket from a torch's cell jumped in place for good.
+            // Cobblestone stands in for whatever went in, dirt included, until the server's update says which. A torch in
+            // the cell is broken first - it goes at a touch, and the server won't put a block where one is: live, a
+            // soldier pillaring out of a pocket from a torch's cell jumped in place for good.
+            soldier.takeTrip().ifPresent(t -> ledger.route(t.planned(), t.ticks(), clockwork.millis()));
             soldier.takePlacement().filter(cell -> !bodyIn(name, cell)).filter(cell -> !refusedStep(name, cell)).ifPresent(cell -> {
                 if (world.isTorch(cell.x(), cell.y(), cell.z())) {
                     session.startDigging(cell.x(), cell.y(), cell.z());
                     session.finishDigging(cell.x(), cell.y(), cell.z());
                 }
-                // A solid block in the model until the server's update says what landed, a tick on:
-                // stood on before the server confirms it - over an open cell only, and taken back if
-                // the server never does (ChunkCache.standIn).
+                // A solid block in the model until the server's update says what landed, a tick on: stood on before the
+                // server confirms it - over an open cell only, and taken back if the server never does (ChunkCache.standIn).
                 Builder.support(world, cell).flatMap(face -> footing.placeStep(cell, face, builtCell(cell)))
                         .ifPresent(block -> {
                             chunkCache.standIn(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE, clockwork.millis());

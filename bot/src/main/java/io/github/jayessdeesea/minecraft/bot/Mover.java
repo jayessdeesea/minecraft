@@ -245,6 +245,10 @@ abstract class Mover {
                 return;
             }
             report = new Report.InPosition();
+            if (goal.equals(tripGoal)) {
+                tripDone = new Trip(tripSteps, navTicks - tripFrom);
+                tripGoal = null;
+            }
             return;
         }
 
@@ -360,6 +364,11 @@ abstract class Mover {
             if (onLeg) {
                 failedPlans = 0; // a leg walked is headway, not a plan that failed
                 report = new Report.Moving();
+            }
+            if (plan.reachesGoal() && !goal.equals(tripGoal) && !route.isEmpty()) {
+                tripGoal = goal;
+                tripFrom = navTicks;
+                tripSteps = route.size();
             }
             lastPlan = (plan.reachesGoal() ? "to goal" : "partial") + ", " + route.size() + " steps"
                     + (route.isEmpty() ? "" : " ending " + route.getLast());
@@ -510,6 +519,18 @@ abstract class Mover {
 
     /** Whether its feet were in water at its last tick. */
     volatile boolean wet;
+
+    /** The trip under way: its goal, the tick it was planned at, its planned steps. */
+    private Goal tripGoal;
+    private int tripFrom, tripSteps;
+    private volatile Trip tripDone;
+
+    /** The trip just finished, if one has - taken, so it's counted once (backlog/simulator-fidelity.md, the ledger). */
+    public Optional<Trip> takeTrip() {
+        Trip taken = tripDone;
+        tripDone = null;
+        return Optional.ofNullable(taken);
+    }
 
     /**
      * The block to place this tick, if a pillar or built step wants one - taken, so it's asked for
