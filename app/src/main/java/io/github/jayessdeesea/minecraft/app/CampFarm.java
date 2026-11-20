@@ -16,8 +16,8 @@ import java.util.stream.Stream;
 /**
  * The camp's farm (docs/military-doctrine.md, Class I): sited once on ground by water near the camp and kept while
  * its water is there - on disk too, since sited again after a restart it moved to another pond - grown once a run to
- * the force's size, round the waters beside its own and along trenches off them; and once the force has a bucket, a
- * chunk farm beside the camp taken in (operator, 2026-11-19).
+ * the force's size, round the waters beside its own and along trenches off them; and a chunk farm beside the camp
+ * taken in (operator, 2026-11-19), from the first (operator, 2026-11-20).
  */
 final class CampFarm {
 
@@ -75,8 +75,7 @@ final class CampFarm {
 
     /**
      * The camp's farm for the camp at {@code at}, kept under {@code key}: as it was, sited afresh if its water's gone,
-     * grown once a run toward {@link #cells} for {@code soldiers}, and with {@code bucket} - the force has one, or the
-     * camp's at the buildup - its chunk farm taken in.
+     * grown once a run toward {@link #cells} for {@code soldiers}, and with {@code bucket} its chunk farm taken in.
      */
     synchronized FarmPlan kept(WorldView world, BlockPos at, String key, int soldiers, boolean bucket) {
         FarmPlan kept = farm;

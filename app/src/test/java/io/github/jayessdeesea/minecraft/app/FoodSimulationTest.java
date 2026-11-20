@@ -110,6 +110,47 @@ class FoodSimulationTest {
         return x >= 29 && x <= 31 && z >= -1 && z <= 1 && y == GROUND ? SimServer.WATER : flat(x, y, z);
     }
 
+    /** Flat, with a field of ripe wheat 20 to 27 east of the camp, three rows wide: wheat standing off the camp's own farm. */
+    static int ripeFieldOffCamp(int x, int y, int z) {
+        boolean field = x >= 20 && x <= 27 && z >= 0 && z <= 2;
+        return field && y == GROUND ? SimServer.FARMLAND : field && y == GROUND + 1 ? SimServer.WHEAT_RIPE : flat(x, y, z);
+    }
+
+    /**
+     * As live (field497-499): the stores at 0, a squad with no food put on FORAGE - the platoon leader's answer to its
+     * Class I RED - harvests the ripe wheat standing off the camp and plants the seeds back in it (operator, 2026-11-20:
+     * starving soldiers get their rations within 100 blocks), not stood waiting.
+     */
+    @Test
+    void aSquadOnForageHarvestsRipeWheatOffTheCampAndReplantsIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FoodSimulationTest::ripeFieldOffCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Forage", camp, "Rations off the land",
+                new Objective.Task.Forage())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1})));
+        runner.run();
+
+        clock.advance(6 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
+        long harvested = server.log.stream().filter(l -> l.startsWith("Alice dug " + SimServer.WHEAT_RIPE + " at ")).count();
+        int replanted = 0;
+        for (int x = 20; x <= 27; x++) {
+            for (int z = 0; z <= 2; z++) {
+                int b = server.block(x, GROUND + 1, z);
+                replanted += b >= SimServer.WHEAT_SPROUT && b <= SimServer.WHEAT_RIPE ? 1 : 0; // harvested, any wheat there is sown again
+            }
+        }
+        assertTrue(harvested >= 6, "ripe wheat harvested: " + harvested + "; " + events);
+        assertTrue(replanted >= 3, "and planted back: " + replanted + "; " + events);
+    }
+
     /**
      * As live: a soldier with 4 wheat - a loaf's and one over - started a loaf 518 times and made
      * none, the loaf asked for counted again from the wheat left as each run went.

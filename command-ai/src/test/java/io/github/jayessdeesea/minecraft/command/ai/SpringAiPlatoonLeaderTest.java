@@ -239,7 +239,7 @@ class SpringAiPlatoonLeaderTest {
     void theDaysWorkSaysThePhaseAndWhatTheNextWants() {
         String said = SpringAiPlatoonLeader.describe(new io.github.jayessdeesea.minecraft.command.DayWork(List.of(),
                 Optional.empty(), new io.github.jayessdeesea.minecraft.command.Flatten(0, 0, 9, 9, 63), OptionalInt.empty(), 0, 3,
-                io.github.jayessdeesea.minecraft.command.Phase.CONSOLIDATION, "to BUILDUP: Class I 0.4 and Class IV 0.0 days of supply, of 3 each, held a day"));
+                io.github.jayessdeesea.minecraft.command.Phase.CONSOLIDATION, "to BUILDUP: Class I 0.4 and Class IV 0.0 days of supply, of 3 each, held a day", 0));
         assertTrue(said.contains("3 soldier(s) short of a sword or a full set of armour"), said);
         assertTrue(said.contains("Phase: CONSOLIDATION - consolidating"), said);
         assertTrue(said.contains("to BUILDUP: Class I 0.4 and Class IV 0.0 days of supply"), said);
@@ -252,5 +252,16 @@ class SpringAiPlatoonLeaderTest {
                 Optional.of(new io.github.jayessdeesea.minecraft.command.Stockpile(70, 0, 12, 5, 0, 0, 0, 0, 30, 200, 9)),
                 new io.github.jayessdeesea.minecraft.command.Flatten(0, 0, 9, 9, 63), OptionalInt.empty(), 0));
         assertTrue(said.contains("bread 12 (64-1024) SHORT, wheat 30 (64-1024) SHORT, seeds 200 (64-256), logs 70 (64-1024), saplings 9 (4-64), raw iron 5."), said);
+    }
+
+    /** Short of food with wheat ripe round the camp: the day's work says how much, and that a RED squad forages it. */
+    @Test
+    void shortOfFoodWithRipeWheatRoundTheCampTheDaysWorkSaysForage() {
+        String said = SpringAiPlatoonLeader.describe(new io.github.jayessdeesea.minecraft.command.DayWork(
+                List.of(io.github.jayessdeesea.minecraft.command.PlatoonSergeant.Shortfall.FOOD), Optional.empty(),
+                new io.github.jayessdeesea.minecraft.command.Flatten(0, 0, 9, 9, 63), OptionalInt.empty(), 0, 0,
+                io.github.jayessdeesea.minecraft.command.Phase.SEIZURE, "", 140));
+        assertTrue(said.contains("Short of FOOD: a squad on FARM at a \"ground to farm\" site; and with 140 ripe wheat standing within 100 blocks"
+                + " of the camp, each squad whose Class I is RED on FORAGE."), said);
     }
 }

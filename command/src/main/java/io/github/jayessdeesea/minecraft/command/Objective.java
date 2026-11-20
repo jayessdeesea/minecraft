@@ -38,6 +38,14 @@ public record Objective(String mission, Position location, String intent, Task t
         record Farm() implements Task {
         }
 
+        /**
+         * Get rations off the land (§4): every soldier of the squad but those on a farm's duty harvests the ripe wheat
+         * within 100 blocks of the camp, plants its seeds back and bakes the wheat, till it carries its basic load - the
+         * platoon leader's answer to a squad's Class I RED with wheat standing ripe round the camp (operator, 2026-11-20).
+         */
+        record Forage() implements Task {
+        }
+
         /** Plant saplings round the location, spruce first, so the camp has trees to cut (§12). */
         record TreeFarm() implements Task {
         }

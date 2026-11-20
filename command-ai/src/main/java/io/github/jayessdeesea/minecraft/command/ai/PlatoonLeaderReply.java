@@ -19,7 +19,8 @@ record PlatoonLeaderReply(@JsonPropertyDescription("Exactly one objective per sq
             @JsonPropertyDescription("The squad's task at the objective - this field, not the mission's wording, sets it: "
                     + "NONE; WOOD to chop logs around the objective; STONE to quarry it; PATROL_BASE to build a small "
                     + "roofed shelter at the objective and spend the night in it; FARM to till, plant and keep a wheat farm "
-                    + "by the water at the objective; TREE_FARM to plant saplings round the objective; SECURE to light the ground round the objective with torches so no "
+                    + "by the water at the objective; FORAGE for every soldier of the squad but its farmers to get rations off the land, "
+                    + "the ripe wheat within 100 blocks of the camp harvested and replanted; TREE_FARM to plant saplings round the objective; SECURE to light the ground round the objective with torches so no "
                     + "monster spawns on it; FORTIFY to wall the ground round the objective in; MINE to cut a staircase down at the objective's x and z to its y; "
                     + "PATROL to walk the ground round the objective, on watch; KEEP to build the main base's keep, a slab of "
                     + "cobblestone 32 by 32 at the origin - wherever the objective points, the keep is there - with cobblestone "
@@ -37,5 +38,5 @@ record PlatoonLeaderReply(@JsonPropertyDescription("Exactly one objective per sq
      * One field rather than a gather and a separate patrol-base flag: a model sets one choice reliably
      * and can't ask for both.
      */
-    enum Task { NONE, WOOD, STONE, PATROL_BASE, FARM, TREE_FARM, SECURE, FORTIFY, MINE, PATROL, KEEP }
+    enum Task { NONE, WOOD, STONE, PATROL_BASE, FARM, FORAGE, TREE_FARM, SECURE, FORTIFY, MINE, PATROL, KEEP }
 }

@@ -53,6 +53,7 @@ It keeps nothing between calls but each squad's current objective (backlog/opera
 | `WOOD`, `STONE` | Gather it near the objective. |
 | `PATROL_BASE` | Build a sealed, lit hut round the squad and stay in it. |
 | `FARM` | Till, plant and harvest round the water there. |
+| `FORAGE` | Each soldier but the farms' gets its rations off the land: the ripe wheat within 100 blocks of the camp, harvested and replanted ([§ 4](../../military-doctrine.md#4-reports-upward)). |
 | `TREE_FARM` | Plant saplings there. |
 | `SECURE` | Light the ground within 12 blocks. |
 | `FORTIFY` | Wall in the ground 8 blocks out each way. |

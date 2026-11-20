@@ -107,11 +107,11 @@ the force can build them:
 - **Before the bucket:** trenches off a pond, built (docs/military-doctrine.md, the camp's farm). Left: the
   stream dammed to a block deep with dirt and farmed along its banks; trenches for a squad's FARM order's plot,
   which is sited round its water alone.
-- **With a bucket (three iron, the buildup):** built - the bucket, its carrying (`bot.supply.WaterCarrier`), and the camp's
+- **With a bucket (three iron), from the first (operator, 2026-11-20: as soon as can be):** built - the bucket, its carrying (`bot.supply.WaterCarrier`), and the camp's
   first chunk farm sited, its holes dug and filled, its fence, gates and chest put up, its ground tilled
   (docs/military-doctrine.md, the camp's farm). Left: a gate worked on a route - opened, walked through, shut - so the
   gates can stand shut against mobs; its chunk flattened to one level - sea level in time; the next chunk farm
-  once one is tended; the design as the operator gave it: chunk farms, built one at a time. Each a chunk, flat at sea level,
+  once one is tended, as soon as can be (operator, 2026-11-20: farms are what there is to forage); the design as the operator gave it: chunk farms, built one at a time. Each a chunk, flat at sea level,
   fenced on its x%16==0 and z%16==0 lines (shared with the next farm), gates beside the corners; tilled but for
   four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) - each hydrates the 9x9 round it - in the farmland's
   own layer (water a block below hydrates nothing); and a chest at local (13, 13) for its seed (to 256) and wheat.

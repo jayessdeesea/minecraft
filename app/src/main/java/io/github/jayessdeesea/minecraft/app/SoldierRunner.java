@@ -712,6 +712,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             LOG.info("[Foothold] the camp's ground is {}", campGround);
         }
         BlockPos at = campGround;
+        foragers.lookOver(world, campGround, clockwork.millis(), chainOfCommand::onRipeWheat);
         List<Foothold.Standard> standards = new ArrayList<>();
         // The cells SECURE lights, no others: one measure for the standard and the task that meets it.
         int dark = offTheWall(Lighting.darkCells(world, at, SECURE_RADIUS)).size();
@@ -753,9 +754,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + (wallSoft > 0 ? ", and " + wallSoft + " of dirt to replace with stone" : "")
                         : wallSoft + " of its blocks dirt, to replace with stone", "FORTIFY"));
         long hungry =everyone.stream().filter(s -> s.condition().map(SoldierErrands::wantsFood).orElse(false)).count();
-        // The camp's farm (CampFarm), with its chunk farm once a farmer has a bucket or the camp's at the buildup.
+        // The camp's farm (CampFarm), with its chunk farm.
         FarmPlan keptFarm = campFarms.kept(world, at, camp[0] + "," + camp[1], roster.squads().stream().mapToInt(sq -> sq.soldiers().size()).sum(),
-                bucketOnFarm || campLevel.filter(l -> l.compareTo(Site.Level.BUILDUP) >= 0).isPresent());
+                true); // now, its bucket made as its farmer's tool (operator, 2026-11-20: the high-density farms as soon as can be)
         campFarm = keptFarm;
         Optional<FarmPlan> farm = Optional.ofNullable(keptFarm);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
@@ -978,6 +979,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Fitter> storeFitters = new ConcurrentHashMap<>();
     /** Soldiers short of food with no means of their own to get any: wheat, game in sight. Tick writes, squad loop reads. */
     private final Set<String> foodless = ConcurrentHashMap.newKeySet();
+    /** The foragers, and the camp's ripe wheat they forage (app.Foragers). */
+    private final Foragers foragers = new Foragers();
     /** The workshop each soldier crafts at (backlog/sites.md): its squad's, or the mine base below ground. */
     private final Map<String, Workshop> workshops = new ConcurrentHashMap<>();
     /** The camp's own workshop, at its ground: every squad near the camp crafts there. */
@@ -1451,8 +1454,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     return afterActionReview.time(t.dark(), chainOfCommand.foothold(), hungry, all.size(), clockwork.millis(),
                             routes.stream().map(RouteEffort::line).toList(),
                             squadStates.values().stream().mapToInt(st -> st.register.takeChurned()).sum());
-                })
-                .ifPresent(dawn -> {
+                }).ifPresent(dawn -> {
                     nightsMining();
                     LOG.info("[AAR] {}\n  {}\n  {}\n  {}\n  {}", dawn.review(), String.join("\n  ", chainOfCommand.requestReview()),
                             String.join("\n  ", registerReview()), String.join("\n  ", faults.review()), String.join("\n  ", foodLedger.review()));
@@ -2814,8 +2816,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // The columns that raised it - at the new level - not the level's first few, which may be its steps.
                 int risen = level;
                 LOG.info("[Keep] the level rose from y={} to y={}: {}", plan.level(), level, columns.stream()
-                        .filter(c -> calm.applyAsInt(c.x(), c.z()) == risen).limit(4)
-                        .map(c -> {
+                        .filter(c -> calm.applyAsInt(c.x(), c.z()) == risen).limit(4).map(c -> {
                             long key = ((long) c.x() << 32) ^ (c.z() & 0xffffffffL);
                             Integer was = last.get(key);
                             // And whether the blocks that came into the scan are steps on the record: the step
@@ -3715,8 +3716,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         toClearCells = could;
                     }
                 }
-                Optional<TreeFarm> grove = sited
-                        .filter(g -> g.plot().size() >= GROVE_MIN_CELLS)
+                Optional<TreeFarm> grove = sited.filter(g -> g.plot().size() >= GROVE_MIN_CELLS)
                         .filter(g -> walkable.contains(g.centre().offset(0, 1, 0)) || walkable.contains(g.centre()))
                         // And not over the depot: one on a hill is walked to from the depot, but
                         // climbed to from the dig - live, the planter pillared the bench's outer row
@@ -5347,8 +5347,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // One layout a wall, whichever squad comes to it first: a squad that lays out a wall
                 // another has half built lays it out on top of what's there.
                 state.wall = walls.computeIfAbsent(wallKey, key -> wallStore.load(key).orElseGet(() -> {
-                    List<BlockPos> layout = Perimeter
-                            .layout(world, at, WALL_RADIUS);
+                    List<BlockPos> layout = Perimeter.layout(world, at, WALL_RADIUS);
                     wallStore.save(key, layout);
                     return layout;
                 }));
@@ -5441,8 +5440,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             });
         }
         // A soldier told to level ground: its dig or fill, as the world shows what's left.
-        statuses.forEach(s -> planBook.of(s.name()).current()
-                .filter(d -> d instanceof Directive.Level)
+        statuses.forEach(s -> planBook.of(s.name()).current().filter(d -> d instanceof Directive.Level)
                 .flatMap(d -> levelWork(s, (Directive.Level) d))
                 .ifPresent(work -> ground.put(s.name(), work)));
         // Sent for wood, the squad works it by duty (command.WoodDuties): each woodcutter its own strip's logs.
@@ -6460,8 +6458,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Position seenFor(String squad, int soldier, Resource resource, Position from) {
         ToDoubleFunction<Position> away = at -> Math.hypot(at.x() - from.x(), at.z() - from.z());
         List<Position> seen = chainOfCommand.resourcesSeen(Plan.squadOf(squad)).stream().filter(site -> site.resource() == resource)
-                .map(ResourceSite::location)
-                .sorted(Comparator.comparingDouble(away)).toList();
+                .map(ResourceSite::location).sorted(Comparator.comparingDouble(away)).toList();
         if (seen.isEmpty()) {
             return from;
         }
@@ -7020,8 +7017,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // A squadmate standing in the cell is what stopped it, not a block: live, two soldiers
                 // held each other in a one-wide passage of the camp's mine for a quarter of an hour.
                 Optional<String> standingThere = activeSoldiers.entrySet().stream()
-                        .filter(e -> !e.getKey().equals(name))
-                        .filter(e -> {
+                        .filter(e -> !e.getKey().equals(name)).filter(e -> {
                             Position p = e.getValue().status().position();
                             return Math.hypot(p.x() - cell.x() - 0.5, p.z() - cell.z() - 0.5) < 1 && Math.abs(p.y() - cell.y()) <= 1;
                         }).map(Map.Entry::getKey).findFirst();
@@ -7449,7 +7445,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // Short with no means of its own - no wheat to bake, no game in sight - it's the squad's
             // to solve: a squadmate shares, or the squad asks for food (Class I RED).
             boolean stockpiledFood = chainOfCommand.stockpile().map(st -> st.rations() > 0).orElse(false) && stockpileFor(name).isPresent();
-            if (shortOfFood && inventory.count(ItemClass.WHEAT) < 3 && !gameNear && !stockpiledFood) {
+            // On its squad's FORAGE, it gets its rations off the land (app.Foragers) - but one keeping a farm - and isn't foodless.
+            boolean foodlessNow = shortOfFood && inventory.count(ItemClass.WHEAT) < 3 && !gameNear && !stockpiledFood;
+            FarmPlan forage = foragers.plotFor(name, world, status.position(), taskOf(definition.squad(), Objective.Task.Forage.class).isPresent()
+                    && dutyBook.of(name).filter(DutyOrder::farm).isEmpty() && eating != null && eating.rations() < Subsistence.BASIC_LOAD).orElse(null);
+            if (foodlessNow && forage == null) {
                 foodless.add(name);
             } else {
                 foodless.remove(name);
@@ -7703,7 +7703,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // it's on its way to fit the depot's chest, a walk as handless: there, one with a full
                     // pack and the logs for the next chest dug on beside a full one.
                     clearing.getOrDefault(name, List.of()), free && !(keepHands.contains(name) ? inContact
-                            : clearingTunnel.contains(name) ? stairThreat : threatened) && !foodCalls
+                            : clearingTunnel.contains(name) ? stairThreat : threatened) && !(foodCalls || forage != null)
                             && (clearingTunnel.contains(name) // its way out comes before any errand
                             || armourer.standAt().isEmpty() && storeWalks.getOrDefault(name, Optional.empty()).isEmpty()),
                     // Its stands in its rectangle or a column beside it: the last block of a rectangle one
@@ -7715,7 +7715,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Stream.of(plainFiller, paver, soiler).filter(f -> f != filler).forEach(Filler::stop);
             fillers.put(name, filler);
             turns.put(Hands.Routine.FILLER, turn(filler::active, free -> {
-                filler.tick(status.position(), world, filling.getOrDefault(name, List.of()), free && !threatened && !foodCalls);
+                filler.tick(status.position(), world, filling.getOrDefault(name, List.of()), free && !threatened && !(foodCalls || forage != null));
                 filler.lookAt().ifPresent(soldier::lookAt);
             }));
             BlockPos wallCentre = wallCentres.getOrDefault(name,
@@ -7726,16 +7726,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // could reach held a whole wall's stone back.
                 if (!repoint.isEmpty() && inventory.count(ItemClass.COBBLESTONE) > 0
                         && (wall.isEmpty() || mason.nothingToBuild() || mason.active() && mason.repointing())) {
-                    mason.repoint(status.position(), world, wallCentre, WALL_RADIUS, repoint, free && !threatened && !foodCalls);
+                    mason.repoint(status.position(), world, wallCentre, WALL_RADIUS, repoint, free && !threatened && !(foodCalls || forage != null));
                 } else {
-                    mason.tick(status.position(), world, wallCentre, WALL_RADIUS, wall, free && !threatened && !foodCalls);
+                    mason.tick(status.position(), world, wallCentre, WALL_RADIUS, wall, free && !threatened && !(foodCalls || forage != null));
                 }
             }));
             turns.put(Hands.Routine.LAMPLIGHTER, turn(lamplighter::active,
-                    free -> lamplighter.tick(status.position(), world, lights, free && !threatened && !foodCalls)));
+                    free -> lamplighter.tick(status.position(), world, lights, free && !threatened && !(foodCalls || forage != null))));
             TreeFarm grove = planting.get(name);
             turns.put(Hands.Routine.FORESTER, turn(forester::active,
-                    free -> forester.tick(status.position(), world, Optional.ofNullable(grove), free && !threatened && !foodCalls)));
+                    free -> forester.tick(status.position(), world, Optional.ofNullable(grove), free && !threatened && !(foodCalls || forage != null))));
             turns.put(Hands.Routine.FARMER, turn(farmer::active, free -> {
                 // Its stand has no route: the farmer is told, and takes the next cell (Farmer.unreachable).
                 if (status.report() instanceof Report.Cantco(String why) && why.startsWith("no route")
@@ -7743,7 +7743,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .filter(stand -> Math.hypot(stand.x() - to.x(), stand.z() - to.z()) < 0.5 && Math.abs(stand.y() - to.y()) < 1).isPresent()) {
                     farmer.unreachable(why);
                 }
-                farmer.tick(status.position(), world, Optional.ofNullable(field), free && !threatened && !foodCalls);
+                farmer.tick(status.position(), world, Optional.ofNullable(forage != null ? forage : field), free && !threatened && !foodCalls);
             }));
             // A supply run from the ground work's drill first: so much of a resource, from that box.
             Order.Gather groundRun = groundGather.get(name);
@@ -7753,15 +7753,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // Not while it's on its way to make kit, as for a clear: a lumberjack sent for an axe
                     // chopped by hand on the way, and had its logs before it reached the table.
                     gatherer.tick(status.position(), world, Optional.of(groundRun.resource()), nearestIn(b, status.position()),
-                            free && !inContact && !foodCalls && armourer.standAt().isEmpty(), OptionalInt.of(groundRun.amount()),
+                            free && !inContact && !(foodCalls || forage != null) && armourer.standAt().isEmpty(), OptionalInt.of(groundRun.amount()),
                             Optional.of(b).filter(x -> woodcutters.contains(name)));
                 } else {
                     gatherer.tick(status.position(), world, gather == null ? Optional.empty() : gather.gather(),
-                            gather == null ? status.position() : gather.location(), free && !inContact && !foodCalls);
+                            gather == null ? status.position() : gather.location(), free && !inContact && !(foodCalls || forage != null));
                 }
             }));
             turns.put(Hands.Routine.SCAVENGER, turn(() -> scavenger.active() && !cuttingOut,
-                    free -> scavenger.tick(status.position(), world, free && !cuttingOut && !threatened && fort == null && !foodCalls,
+                    free -> scavenger.tick(status.position(), world, free && !cuttingOut && !threatened && fort == null && !(foodCalls || forage != null),
                             item -> atADump(item) || thrownNear(item))));
             Optional<Hands.Routine> hands = Hands.tick(turns);
             if (keepHands.contains(name)) {

@@ -18,8 +18,10 @@ You command the way the U.S. Army's mission command doctrine describes:
 - The LOGSTAT's Class I line is the squad's food. Soldiers feed themselves - eat, bake the wheat
   they carry, hunt game in sight, share within the squad - and only "Class I RED - request" means
   the squad can't. Feeding the force is yours to plan: answer a RED squad by day with "task":
-  "FARM" at a "ground to farm" site (it harvests what's ripe and bakes bread), or an objective
-  where game is. A starving squad fights and works badly, so a RED request comes before building.
+  "FORAGE" while ripe wheat stands round the camp (the day's work says how much) - its soldiers
+  get their rations off the land - and keep a squad on "FARM" at a "ground to farm" site, since
+  the farms are what there is to forage; or an objective where game is. A starving squad fights
+  and works badly, so a RED request comes before building.
 - "Class IV RED - request" is a squad short of logs for its task - the keep's chest, pickaxes and
   torches - with none in the stockpile. Soldiers get their own logs where trees are within reach;
   this request means there are none. Answer it with "task": "WOOD" for a squad, at trees it has
@@ -33,7 +35,7 @@ You command the way the U.S. Army's mission command doctrine describes:
   reach within 16 blocks of the objective.
 - Each objective's "task" field says what the squad does at the objective, and only that field
   does it - the "mission" field is plain words for the squad leader and orders nothing. "task" is
-  one of NONE, WOOD, STONE, PATROL_BASE, FARM, TREE_FARM, SECURE, FORTIFY, MINE, PATROL, KEEP:
+  one of NONE, WOOD, STONE, PATROL_BASE, FARM, FORAGE, TREE_FARM, SECURE, FORTIFY, MINE, PATROL, KEEP:
   - NONE: no task - move, hold, observe, support.
   - WOOD or STONE: gather it. WOOD (soldiers chop logs, up to 16 each), STONE (soldiers make
     themselves wooden pickaxes first - about a minute, and it needs trees nearby - then quarry
@@ -55,6 +57,9 @@ You command the way the U.S. Army's mission command doctrine describes:
   wheat takes one to three days to ripen. It needs seeds, which the soldiers find by breaking
   grass, and a hoe they make from wood. Keep a farm going while there's daylight to spare; at dusk
   the squad still needs a patrol base.
+- "task": "FORAGE": every soldier of the squad but those keeping a farm gets its rations off the
+  land: it harvests the ripe wheat nearest it within 100 blocks of the camp, plants the seeds back,
+  and bakes the wheat, until it carries a full ration load. Put the objective at the camp.
 - "task": "TREE_FARM": the squad plants saplings round the objective, every third block of open
   dirt or grass within 8 blocks - spruce first, the camp's tree - breaking leaves for saplings when
   it has none (one leaf block in twenty drops one). Use it when the camp needs wood and "Resources

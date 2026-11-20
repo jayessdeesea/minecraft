@@ -97,7 +97,8 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
         }
         for (io.github.jayessdeesea.minecraft.command.PlatoonSergeant.Shortfall s : work.shortfalls()) {
             out.append(switch (s) {
-                case FOOD -> "Short of FOOD: a squad on FARM at a \"ground to farm\" site.";
+                case FOOD -> "Short of FOOD: a squad on FARM at a \"ground to farm\" site" + (work.ripeWheat() > 0 ? "; and with "
+                        + work.ripeWheat() + " ripe wheat standing within 100 blocks of the camp, each squad whose Class I is RED on FORAGE" : "") + ".";
                 case WOOD -> "Short of WOOD: a squad on WOOD at trees it has seen, or on TREE_FARM to plant a grove.";
                 case IRON -> "Short of IRON: a squad on MINE.";
             }).append('\n');
@@ -278,6 +279,7 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
             case Objective.Task.Gather(var resource) -> resource.name();
             case Objective.Task.PatrolBase() -> "PATROL_BASE";
             case Objective.Task.Farm() -> "FARM";
+            case Objective.Task.Forage() -> "FORAGE";
             case Objective.Task.TreeFarm() -> "TREE_FARM";
             case Objective.Task.Secure() -> "SECURE";
             case Objective.Task.Fortify() -> "FORTIFY";
@@ -471,6 +473,7 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
                         case STONE -> new Objective.Task.Gather(Resource.STONE);
                         case PATROL_BASE -> new Objective.Task.PatrolBase();
                         case FARM -> new Objective.Task.Farm();
+                        case FORAGE -> new Objective.Task.Forage();
                         case TREE_FARM -> new Objective.Task.TreeFarm();
                         case SECURE -> new Objective.Task.Secure();
                         case FORTIFY -> new Objective.Task.Fortify();

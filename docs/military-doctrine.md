@@ -194,8 +194,9 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    ponds (`FarmPlan.bestTrench`): a block wide, cut at the farmland's level, up to 7 long (as far as
    water flows on the flat), with ground under and beside each cell and ending against ground so the
    water stays in, the trench adding the most ground first and one adding under 12 cells not cut;
-   the ground within 4 of its water is the plot's (operator, 2026-11-19). Once a farmer keeping a farm
-   carries a bucket, or the camp's at BUILDUP, it takes in a chunk farm (`bot.farm.ChunkFarm`): the
+   the ground within 4 of its water is the plot's (operator, 2026-11-19). From the first, it takes in a chunk
+   farm, its farmer making the bucket for its holes as any tool (operator, 2026-11-20: the high-density farms
+   as soon as can be) (`bot.farm.ChunkFarm`): the
    chunk within two of the camp's - never the camp's own - with the most ground at one level that makes
    farmland, at least 160 of its 220; laid out on the chunk's lines - a fence on x%16==0 and z%16==0, a
    gate beside each corner, four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) in the
@@ -212,8 +213,13 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
    I RED - request: ... The squad can't feed itself."
 4. **The platoon leader answers.** Feeding a force is planned above the squad, as field feeding is above
-   the company. Its answer to RED is a `FARM` task at ground by water, which harvests what's ripe
-   and bakes it, or an objective where game is.
+   the company. Its answer to RED is `FORAGE` while wheat stands ripe round the camp - the day's work
+   counts it, within 100 blocks (`app.Foragers`) - a `FARM` task at ground by water, which harvests
+   what's ripe and bakes it, or an objective where game is (operator, 2026-11-20). On `FORAGE` every
+   soldier of the squad under its basic load but one on a farm's duty gets its rations off the land: the
+   ripe wheat nearest it no squadmate's plot holds, harvested, its seeds sown back and its wheat baked
+   (`bot.supply.Forage`), its other work giving up its hands as to a meal; the farms are what there is to
+   forage, so a squad is kept on them.
 
 Class IV, construction materials, goes up the same way (`PlatoonSergeant.classFour`, operator 2026-11-13:
 with no resources, the workers ask for supplies). The keep's builders need logs - two for the

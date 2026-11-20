@@ -153,7 +153,7 @@ final class OrderTrace {
             case Objective.Task.None() -> report instanceof Report.Moving || report instanceof Report.InPosition;
             case Objective.Task.Gather(var resource) -> report instanceof Report.Gathering;
             case Objective.Task.PatrolBase() -> report instanceof Report.Fortifying || report instanceof Report.InPosition;
-            case Objective.Task.Farm() -> report instanceof Report.Farming;
+            case Objective.Task.Farm(), Objective.Task.Forage() -> report instanceof Report.Farming;
             case Objective.Task.TreeFarm() -> report instanceof Report.Planting;
             case Objective.Task.Secure() -> report instanceof Report.Securing;
             case Objective.Task.Fortify() -> report instanceof Report.Fortifying || report instanceof Report.Working;
@@ -169,6 +169,7 @@ final class OrderTrace {
             case Objective.Task.Gather(var resource) -> "gathering " + resource.name().toLowerCase(Locale.ROOT);
             case Objective.Task.PatrolBase() -> "PATROL_BASE";
             case Objective.Task.Farm() -> "FARM";
+            case Objective.Task.Forage() -> "FORAGE";
             case Objective.Task.TreeFarm() -> "TREE_FARM";
             case Objective.Task.Secure() -> "SECURE";
             case Objective.Task.Fortify() -> "FORTIFY";

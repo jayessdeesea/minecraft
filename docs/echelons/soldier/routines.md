@@ -29,7 +29,7 @@ squad's state, recomputed every squad cycle.
 | 14 | `FILLER` (`Filler`, `Builder`) | Fills the open cells of its box, lowest first. | `Order.Fill`. Out of blocks, an `Order.Gather` of SOIL instead. |
 | 15 | `MASON` (`Mason`) | Builds the wall round a camp. | `FORTIFY` ([§ 15](../../military-doctrine.md#15-securing-the-camp)). Out of blocks, it digs dirt first (`GATHERER`). |
 | 16 | `LAMPLIGHTER` (`Lamplighter`) | Puts torches on the dark ground. | `SECURE`. |
-| 17 | `FARMER` (`Farmer`) | Tills, plants and harvests the farm. | `FARM`. |
+| 17 | `FARMER` (`Farmer`) | Tills, plants and harvests the farm. | `FARM`; on `FORAGE`, its plot of the ripe wheat round the camp (`Forage`). |
 | 18 | `FORESTER` (`Forester`) | Plants saplings. | `TREE_FARM`. |
 | 19 | `GATHERER` (`Gatherer`, `Digger`) | Chops logs, quarries stone, digs dirt. | `WOOD`/`STONE` (Gather), an `Order.Gather`, or a routine short of material ([§ 12](../../military-doctrine.md#12-gathering-materials)). |
 | 20 | `SCAVENGER` (`Scavenger`) | Picks up dropped items nearby. | Nothing threatening. |

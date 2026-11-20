@@ -656,6 +656,12 @@ public class ChainOfCommand implements DisposableBean {
      * for wood one decision and iron the next, as soldiers looked in different chests.
      */
     private volatile Stockpile stores;
+    /** The wheat standing ripe round the camp, as the foragers last looked (app.Foragers). */
+    private volatile int ripeWheat;
+
+    public void onRipeWheat(int ripe) {
+        this.ripeWheat = ripe;
+    }
     private volatile String storesSaid = "";
     private final WoodSightings woodSightings = new WoodSightings();
     /** The lodgment's phase - the platoon leader's to track (Phase); moved on the camp's measured readiness. */
@@ -896,7 +902,7 @@ public class ChainOfCommand implements DisposableBean {
                 List<PlatoonSergeant.Shortfall> shortfall = PlatoonSergeant.shortfalls(statuses, Optional.ofNullable(stores)).stream()
                         .filter(s -> s != PlatoonSergeant.Shortfall.IRON || !phaseNow.beforeBuildup()).toList();
                 platoonLeader.receiveDayWork(new DayWork(shortfall, Optional.ofNullable(stores), flatten, keepLevel, keepBlocksLeft,
-                        PlatoonSergeant.unarmed(statuses), phaseNow, phaseToNext));
+                        PlatoonSergeant.unarmed(statuses), phaseNow, phaseToNext, ripeWheat));
                 List<Objective> objectives;
                 try {
                     objectives = platoonLeader.decide(forThePlatoonLeader(statuses, edge));
