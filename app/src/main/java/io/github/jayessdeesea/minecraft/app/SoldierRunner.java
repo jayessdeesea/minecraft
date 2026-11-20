@@ -1191,10 +1191,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
     }
-    /**
-     * Whether no wall is going up round the camp - none laid out, or closed and all stone - as last
-     * measured: foothold check writes, squad loop reads.
-     */
+    /** Whether no wall is going up round the camp - none laid out, or closed and all stone: foothold check writes, squad loop reads. */
     private volatile boolean campWalled = true;
     /**
      * The steps the soldiers have built and not yet taken down - dirt or cobblestone, wherever a
@@ -1237,6 +1234,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, Integer> standTo = new ConcurrentHashMap<>();
     /** Soldiers stood still by day: an alarm each spell. */
     private final IdleWatch idleWatch = new IdleWatch(), withoutWork = new IdleWatch("without work");
+    private final PoliceCall policeCall = new PoliceCall(); // one without work, or stood a minute on a CANTCO, takes back a step left
     /** Soldiers whose last position wasn't sent for a value that isn't finite: said once a spell - ticks write. */
     private final Set<String> badPositionLogged = ConcurrentHashMap.newKeySet();
 
@@ -5425,6 +5423,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 dutyBook.cutOut(squadName, statuses.stream().map(SoldierStatus::name).toList(), objectiveOf(squadName),
                         n -> gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE), at -> woodsBook.spent(chainOfCommand, at, clockwork.millis())));
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
+        statuses.forEach(s -> policeCall.order(s.name(), ground.containsKey(s.name()), withoutWork.alarmed(s.name())
+                || idleWatch.alarmed(s.name()) && s.report() instanceof Report.Cantco, world, scaffolding, stepPlacedAt, s.position(),
+                activeSoldiers.values().stream().map(d -> d.status().position()).toList(), s.condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false),
+                Optional.ofNullable(campWallKey).map(walls::get).map(Set::copyOf).orElse(Set.of()), clockwork.millis()).ifPresent(o -> ground.put(s.name(), o)));
         statuses.forEach(s -> woodcutters.remove(s.name()));
         // Each producer's duty order (command.DutyOrder): its duty, its ground, and the dump its squad stockpiles at, else the camp's.
         dutyBook.assign(squadName, statuses.stream().map(SoldierStatus::name).toList(), DutyBook.given(statuses.stream().map(SoldierStatus::name).toList(),
@@ -5881,7 +5883,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else if (!upkeeping.contains(soldierName)) {
                 route(soldierName, null); // camp upkeep's, if it's on that, is the upkeep's to drop
             }
-            if (!soft.isEmpty() && !squadInContact && !state.relieved(soldierName, "wall the camp in stone", now)) {
+            if (!soft.isEmpty() && !squadInContact && !state.relieved(soldierName, "wall the camp in stone", now) && !policeCall.on(soldierName)) {
                 repointing.put(soldierName, soft);
                 wallCentres.put(soldierName, state.wallCentre);
                 // No cobblestone to repoint with: from the stockpile, when it was last seen holding
@@ -7140,9 +7142,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 tools.addAll(Farmer.wants(world, field, inventory));
                 bucketOnFarm |= inventory.count(ItemClass.BUCKET) + inventory.count(ItemClass.WATER_BUCKET) > 0;
             }
-            // A shovel for ground work - a dig of the camp's or the keep's ground, or dirt for a wall:
-            // stone if it carries the cobblestone, wooden if not.
-            boolean groundDigging = clearing.containsKey(name) || groundGather.containsKey(name) || diggingForWall.contains(name);
+            // A shovel for ground work - a dig of the camp's or the keep's ground, or dirt for a wall, not a step taken
+            // back: stone if it carries the cobblestone, wooden if not.
+            boolean groundDigging = clearing.containsKey(name) && !policeCall.on(name) || groundGather.containsKey(name) || diggingForWall.contains(name);
             if (groundDigging && inventory.count(ItemClass.SHOVEL) == 0) {
                 tools.add(inventory.count(ItemClass.COBBLESTONE) > 0 ? Recipe.STONE_SHOVEL : Recipe.WOODEN_SHOVEL);
             }
