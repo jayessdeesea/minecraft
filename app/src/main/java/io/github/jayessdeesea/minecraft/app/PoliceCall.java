@@ -42,6 +42,12 @@ final class PoliceCall {
 
     private final Map<String, Job> jobs = new ConcurrentHashMap<>();
     private final Map<BlockPos, Long> passed = new ConcurrentHashMap<>();
+    /**
+     * Since when each soldier has reported a "no route" CANTCO with no block to make one with, by the reason: a minute
+     * of it, it cuts a stone whatever its idle watch says - live (field526), Eli's squad read as resting, and his own
+     * minute stood still was never alarmed.
+     */
+    private final Map<String, Map.Entry<String, Long>> noRoute = new ConcurrentHashMap<>();
 
     /**
      * How long a step stands before it's litter: one put down lately may be a route's still - in the squad
@@ -77,6 +83,13 @@ final class PoliceCall {
         // With no route and no block to make one with, but a pickaxe: a stone off the wall by its head (wayBlock).
         boolean wantsABlock = pickaxe && kit.map(k -> k.stone() + k.dirt() == 0).orElse(false)
                 && status.report() instanceof Report.Cantco(String why) && why.startsWith("no route");
+        if (wantsABlock) {
+            String why = ((Report.Cantco) status.report()).reason();
+            Map.Entry<String, Long> since = noRoute.compute(soldier, (k, was) -> was != null && was.getKey().equals(why) ? was : Map.entry(why, now));
+            withoutWork |= now - since.getValue() >= GIVE_UP_MILLIS;
+        } else {
+            noRoute.remove(soldier);
+        }
         Optional<BlockPos> had = Optional.ofNullable(jobs.get(soldier)).map(Job::step);
         Optional<BlockPos> step = step(soldier, busy, withoutWork, world, now, skip -> {
             Set<BlockPos> not = new java.util.HashSet<>(kept);

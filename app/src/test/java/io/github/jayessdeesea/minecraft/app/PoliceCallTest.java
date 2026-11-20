@@ -132,8 +132,11 @@ class PoliceCallTest {
                 new io.github.jayessdeesea.minecraft.command.Order.Idle(), new io.github.jayessdeesea.minecraft.command.Report.Cantco("no route from (0, 64, 0) to within 0 of (6, 64, 0)"),
                 Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 0, Optional.of(noBlocks))));
 
-        Optional<io.github.jayessdeesea.minecraft.command.Order> cut = new PoliceCall().order(eli, false, true, gallery, Set.of(), java.util.Map.of(),
-                List.of(), Set.of(), 0);
+        PoliceCall call = new PoliceCall();
+        assertEquals(Optional.empty(), call.order(eli, false, false, gallery, Set.of(), java.util.Map.of(), List.of(), Set.of(), 0),
+                "not at once: its route may come");
+        Optional<io.github.jayessdeesea.minecraft.command.Order> cut = call.order(eli, false, false, gallery, Set.of(), java.util.Map.of(),
+                List.of(), Set.of(), PoliceCall.GIVE_UP_MILLIS);
 
         assertEquals(Optional.of(new BlockPos(0, GROUND + 2, 1)), PoliceCall.wayBlock(gallery, AT));
         assertEquals(true, cut.isPresent() && cut.get() instanceof io.github.jayessdeesea.minecraft.command.Order.Dig d && d.box().minY() == GROUND + 2,
