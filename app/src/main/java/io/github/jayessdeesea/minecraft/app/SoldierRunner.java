@@ -1007,9 +1007,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<BlockPos, Map<ItemClassRegistry.ItemClass, Integer>> chestStock = new ConcurrentHashMap<>();
 
     /** How many of {@code kind} the stockpile's surface chests hold, by their last look. */
-    private int stocked(ItemClassRegistry.ItemClass kind) {
-        return chestStock.entrySet().stream().filter(e -> chestsSeen.containsKey(e.getKey()))
-                .mapToInt(e -> e.getValue().getOrDefault(kind, 0)).sum();
+    /** What the chests seen hold of {@code kind}, for a load going to {@code deposit} - a farm's chest has its own seed (SoldierErrands.stocked). */
+    private int stockedAt(ItemClassRegistry.ItemClass kind, Optional<Position> deposit) {
+        return SoldierErrands.stocked(chestStock, chestsSeen.keySet(), kind, campFarms.chests(), deposit.map(d -> BlockPos.containing(d.x(), d.y(), d.z())));
     }
     /** Chests a depot is laid out for: the dig's stone for the slab, its ore, wood and spare tools. */
     static final int DEPOT_CHESTS = 24;
@@ -7431,14 +7431,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (keepHands.contains(name) && !cutsAMine) {
                     // A keep builder sheds before its load trip's mark, so a trip carries what's worth the walk.
                     long before = pack.thrown();
-                    pack.tick(packFree, KEEP_FULL_AT + 1, StockLevels.throwPast(KEEP_PACK, this::stocked));
+                    pack.tick(packFree, KEEP_FULL_AT + 1, StockLevels.throwPast(KEEP_PACK, k -> stockedAt(k, Optional.empty())));
                     if (pack.thrown() != before) {
                         thrownAt.put(status.position(), clockwork.millis());
                     }
                 } else {
                     pack.tick(packFree, cutsAMine ? Pack.MINER_DIRT_KEPT : Pack.DIRT_KEPT,
                             cutsAMine ? Pack.MINER_COBBLESTONE_KEPT : Pack.COBBLESTONE_KEPT,
-                            StockLevels.atMost(ItemClass.RAW_COPPER, this::stocked));
+                            StockLevels.atMost(ItemClass.RAW_COPPER, k -> stockedAt(k, Optional.empty())));
                 }
             }));
             Kit eating = status.condition().flatMap(c -> c.kit()).orElse(null);
@@ -7606,7 +7606,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             free && !threatened && fort == null && metalDraw.isPresent());
                 } else {
                     Set<ItemClass> pooled = new HashSet<>(metal.stock());
-                    pooled.removeIf(kind -> StockLevels.atMost(kind, this::stocked)); // copper past 256 (StockLevels)
+                    pooled.removeIf(kind -> StockLevels.atMost(kind, k -> stockedAt(k, Optional.empty()))); // copper past 256 (StockLevels)
                     if (stashOre) {
                         pooled.addAll(STASHED);
                     }
@@ -7620,7 +7620,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     Map<ItemClass, Integer> packKept = keepHands.contains(name) ? KEEP_PACK : cutting.containsKey(name) ? MINE_CARRIED
                             : dutyBook.is(name, DutyOrder.Duty.HARVESTER) ? HARVESTER_CARRIED : CARRIED;
                     boolean toDepot = deposit.flatMap(this::mineOfChest).isEmpty();
-                    boolean stockTrip = toDepot && StockLevels.reserveShort(inventory, packKept, this::stocked);
+                    boolean stockTrip = toDepot && StockLevels.reserveShort(inventory, packKept, k -> stockedAt(k, deposit));
                     // A flatten builder's load into the nearest depot standing a chest (keepOutposts).
                     // Not to a chest known full: a trip there fails, and is made again. Live (field285), with
                     // the depots' rows filled with cobblestone, the crew's ticks were 38% depositor - trip
@@ -7631,7 +7631,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // and up the stairs, into the dark.
                     Integer nightFloor = nightBelow.get(unitOf(name, definition.squad()));
                     boolean downForTheNight = nightFloor != null && status.position().y() < nightFloor - MINE_BELOW && !stashOre;
-                    boolean breadWanted = toDepot && !StockLevels.atMost(ItemClass.FOOD, this::stocked);
+                    boolean breadWanted = toDepot && !StockLevels.atMost(ItemClass.FOOD, k -> stockedAt(k, Optional.empty()));
                     depositor.storesFood(breadWanted);
                     // Not while the recovery drill has it: its way out is its work, as for the supply run. Live
                     // (field424), Eli on his stair up from y=-43 set off for the depot 49 times in ten minutes, each
@@ -7641,7 +7641,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             inv -> {
                                 List<Integer> slots = new ArrayList<>(plan.map(p -> p.surplus(inv)).orElse(List.of()));
                                 if (toDepot) {
-                                    StockLevels.toStore(inv, packKept, this::stocked).stream().filter(s -> !slots.contains(s)).forEach(slots::add);
+                                    StockLevels.toStore(inv, packKept, k -> stockedAt(k, deposit)).stream().filter(s -> !slots.contains(s)).forEach(slots::add);
                                 }
                                 return slots;
                             });

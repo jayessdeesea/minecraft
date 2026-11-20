@@ -171,4 +171,19 @@ final class SoldierErrands {
         }
         return kinds;
     }
+
+    /**
+     * How many of {@code kind} the chests seen ({@code seen}) hold, by {@code chestStock}: seed counted apart - the
+     * general stockpile's apart from each farm's own chest ({@code farmChests}), each kept to its own 256 (operator,
+     * 2026-11-20) - so a load bound for a farm's chest ({@code at}) counts that chest's seed, any other the rest's.
+     */
+    static int stocked(java.util.Map<io.github.jayessdeesea.minecraft.bot.nav.BlockPos, java.util.Map<ItemClass, Integer>> chestStock,
+                       java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> seen, ItemClass kind,
+                       java.util.Set<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> farmChests,
+                       Optional<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> at) {
+        boolean toFarm = kind == ItemClass.SEEDS && at.filter(farmChests::contains).isPresent();
+        return chestStock.entrySet().stream().filter(e -> seen.contains(e.getKey()))
+                .filter(e -> kind != ItemClass.SEEDS || (toFarm ? e.getKey().equals(at.get()) : !farmChests.contains(e.getKey())))
+                .mapToInt(e -> e.getValue().getOrDefault(kind, 0)).sum();
+    }
 }

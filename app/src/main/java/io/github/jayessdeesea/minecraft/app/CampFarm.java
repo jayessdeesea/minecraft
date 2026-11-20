@@ -57,6 +57,12 @@ final class CampFarm {
         this.reachBudget = reachBudget;
     }
 
+    /** Its chunk farms' chests: each a farm's own, its seed apart from the general stockpile's. */
+    Set<BlockPos> chests() {
+        FarmPlan kept = farm;
+        return kept == null ? Set.of() : kept.chunks().stream().map(ChunkFarm::chest).collect(java.util.stream.Collectors.toSet());
+    }
+
     /** The farm as last kept, if any. */
     FarmPlan farm() {
         return farm;

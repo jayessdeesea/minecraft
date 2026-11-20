@@ -114,13 +114,13 @@ the force can build them:
   once one is tended; the design as the operator gave it: chunk farms, built one at a time. Each a chunk, flat at sea level,
   fenced on its x%16==0 and z%16==0 lines (shared with the next farm), gates beside the corners; tilled but for
   four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) - each hydrates the 9x9 round it - in the farmland's
-  own layer (water a block below hydrates nothing); and a chest at local (13, 13) for its seed (to 512) and wheat.
+  own layer (water a block below hydrates nothing); and a chest at local (13, 13) for its seed (to 256) and wheat.
   In steady state one soldier tends one farm - harvesting, replanting and mending holed ground as it goes - so the
   farm stays within a player's simulation distance and grows. Built: the tender's duty order, its chunk its ground and
-  its chest its dump (`FarmDuties.Tended`), its wheat and seed past its pack's into the chest. Left: seed capped at
-  512 a farm chest (the force's cap is 1024 - backlog/questions-overnight.md); holed ground mended; the baker drawing
+  its chest its dump (`FarmDuties.Tended`), its wheat and seed past its pack's into the chest, the seed to 256 a farm chest and 256 in the general stockpile
+  (operator, 2026-11-20). Left: holed ground mended; the baker drawing
   from farm chests (it draws from the nearest chest known to hold wheat).
-- **The operator's prototype (2026-11-19):** fence on x = -81 and -65, z = 96 and 112 (x a block off the chunk lines -
+- **The operator's prototype (2026-11-19; the cover over each hole keeps the farm lit - skipped for now, 2026-11-20):** fence on x = -81 and -65, z = 96 and 112 (x a block off the chunk lines -
   backlog/questions-overnight.md); eight gates, one on each line beside each corner; torches on the corner and middle
   posts; a grass block and a torch over each water hole; and nothing high beside the fence - zombies came in off a tree
   there. Tried and not landed (kept as a patch outside the tree): the eight gates; torches on the posts (a torch's cell is

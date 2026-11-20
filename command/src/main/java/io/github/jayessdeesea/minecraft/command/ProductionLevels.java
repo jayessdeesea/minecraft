@@ -37,7 +37,8 @@ public record ProductionLevels(Map<Renewable, StockLevel> levels) {
 
     private static ProductionLevels standing() {
         Map<Renewable, StockLevel> levels = new EnumMap<>(Renewable.class);
-        levels.put(Renewable.SEEDS, new StockLevel(64, 1024));
+        // 256 in the general stockpile, and 256 in each farm's own chest (operator, 2026-11-20).
+        levels.put(Renewable.SEEDS, new StockLevel(64, 256));
         levels.put(Renewable.WHEAT, new StockLevel(64, 1024));
         levels.put(Renewable.BREAD, new StockLevel(64, 1024));
         levels.put(Renewable.SAPLINGS, new StockLevel(4, 64));

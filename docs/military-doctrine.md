@@ -254,7 +254,7 @@ counts are read each time a load goes in, or a chest is opened and found full.
 | Logs | its least | its most | never shed; the keep's wood party works to these, and under the least a released squad is sent for wood; to the most, one with nothing else to do, before bread |
 | Bread | its least | its most | under the least a released squad farms; to the most, one with nothing else to do; past it, it stays in the packs - each soldier carries up to 128, half of it to share |
 | Wheat | its least | its most | past a farmer's 64 goes in |
-| Saplings, seeds | their least | their most | thrown by a full pack |
+| Saplings, seeds | their least | their most | thrown by a full pack; seed counted apart - the general stockpile's to its most, 256, and each farm's own chest to 256 of its own (operator, 2026-11-20; `SoldierErrands.stocked`) |
 | Raw copper, copper ingots | 64 | 256 | raw copper left out of the metal pool, thrown last by a full pack |
 | String, flint | 64 | 256 | thrown by a full pack |
 
