@@ -75,9 +75,11 @@ final class NightRules {
         Foothold base = n.foothold().orElse(null);
         if (n.phase().beforeBuildup() && base != null) {
             // Each squad its own point round the camp's: live (field482), all four on the camp's centre crowded each
-            // other 69 times a night, soldiers of three squads digging the one cell.
+            // other 69 times a night, soldiers of three squads digging the one cell. Under a roof - its patrol base's hut
+            // there: a wall keeps walkers out, not fliers, and phantoms come only to a soldier that sees the sky. Live
+            // (field498-507), eight soldiers were killed by phantoms sheltering in the open camp.
             Objective inCamp = new Objective("Shelter in place in the camp through the night", n.spread().apply(base.camp(), squad.squadName()),
-                    "Safe until dawn", new Objective.Task.None());
+                    "Safe until dawn", new Objective.Task.PatrolBase());
             if (!objective.equals(inCamp)) {
                 LOG.warn("[PL -> {}] at or near night, in {}, ordered '{}' - shelters in place in the camp", squad.squadName(), n.phase(), objective.mission());
             }

@@ -5,6 +5,10 @@ priority: P1
 
 # Questions for the operator
 
+- **The night in the camp under a roof** (docs/echelons/platoon-leader/operator-rules.md): taken by default, before
+  the buildup each squad shelters in the camp in its patrol base's hut at its own point, not on the open ground -
+  live (field498-507) eight soldiers were killed by phantoms in the open camp. Beds (backlog/rest-plan.md) end
+  the phantoms outright; is a hut each a fair stopgap, or should the squads share one roofed shelter?
 - **A chunk farm on broken ground** (backlog/renewables.md): taken by default, a chunk is sited with 128 of its 220
   cells farmable at one level, not 160 - live (field502) the best by the new camp made 138, and levelling one waits
   on the flatten the camp's SEIZURE phase holds off. Or should a chunk farm wait for level ground, its chunk made

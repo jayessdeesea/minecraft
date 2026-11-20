@@ -461,7 +461,7 @@ class ChainOfCommandTest {
         Objective night = two.sheltered(WALL, squad("Alpha", "Alice"));
         assertTrue(Cohesion.distance(new Position(-48, 64, 44), night.location()) <= ChainOfCommand.SPREAD * Math.sqrt(2) + 1e-9,
                 "in the camp, at its own point round its centre: " + night);
-        assertTrue(night.task() instanceof Objective.Task.None, "sheltered in place, not mining: " + night);
+        assertTrue(night.task() instanceof Objective.Task.PatrolBase, "sheltered in place under a roof, not mining: " + night);
     }
 
     /**
@@ -518,5 +518,6 @@ class ChainOfCommandTest {
 
         assertEquals("Shelter in place in the camp through the night", alpha.mission());
         assertTrue(Cohesion.distance(alpha.location(), bravo.location()) >= ChainOfCommand.SPREAD, alpha.location() + " and " + bravo.location());
+        assertTrue(alpha.task() instanceof Objective.Task.PatrolBase, "under a roof, its hut: phantoms come to the sky (field498-507)");
     }
 }
