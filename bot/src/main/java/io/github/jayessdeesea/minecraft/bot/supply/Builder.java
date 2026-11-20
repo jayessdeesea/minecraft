@@ -336,8 +336,14 @@ public final class Builder {
         return inventory.spareHotbarSlot();
     }
 
+    /**
+     * Whether {@code cell} holds what was put there: a block in the cell itself - not the cell over a fence, which a
+     * fence's collision makes read solid ({@link WorldView#solidHere}) - or a torch or a gate, neither of which is solid.
+     * Read as solid, a torch was never seen to land, and its cell was tried again and skipped.
+     */
     private static boolean solid(WorldView world, BlockPos cell) {
-        return world.isSolid(cell.x(), cell.y(), cell.z());
+        return world.solidHere(cell.x(), cell.y(), cell.z()) || world.isTorch(cell.x(), cell.y(), cell.z())
+                || world.isGate(cell.x(), cell.y(), cell.z());
     }
 
     static boolean withinReach(Position soldier, BlockPos cell) {

@@ -1032,9 +1032,12 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    (`Pathfinder.TRAMPLE_COST`), never a wall: with the farm tilled to its rim, every soldier at the
    camp stood with "no route" to the keep - and never builds a step on it, so a farm in a hollow
    was reached only where the ground happened to be level, and steps built out of it buried a
-   third of the camp's farm. Then its chunk farms' fence, gates and chest, with
-   what it carries (`Farmer.fixtures`) - a post the builder can't place left, the rest put up - and
-   any of their gates shut, opened.
+   third of the camp's farm. Then its chunk farms' fence, gates, chest and torches - four in the field a
+   step in on the diagonal from each water hole, and one on every fourth fence post's top (`ChunkFarm.torches`)
+   - with what it carries (`Farmer.fixtures`): a cell the builder can't place in passed over a while, the rest
+   put up, and any of their gates shut, opened. The cell over a post reads solid to the route planner - a fence's
+   collision is 1.5 high - so a fixture's cell is open when nothing stands in the cell itself (`solidHere`), and a
+   torch or a gate, neither solid, is seen to have landed by what it is.
 3. Harvests ripe wheat, for wheat and seeds to plant again.
 4. Plants seeds on bare farmland.
 5. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills

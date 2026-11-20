@@ -327,7 +327,11 @@ class TaskOrganisationSimulationTest {
         assertEquals(SimServer.CHEST, server.block(farm.chest().x(), farm.chest().y(), farm.chest().z()), "its chest" + events);
     }
 
-    /** Its torches put up - four in the field on the diagonals in from its holes - so nothing spawns in it by night (operator, 2026-11-20). */
+    /**
+     * Its torches put up - four in the field on the diagonals in from its holes, and one on every fourth post's top - so
+     * nothing spawns in it or by it by night (operator, 2026-11-20). The server takes a torch on a fence's top; the world
+     * model read the cell over a fence as solid, and none was ever offered there.
+     */
     @Test
     void aChunkFarmHasItsTorchesInTheField() {
         SimClock clock = new SimClock();
@@ -339,11 +343,13 @@ class TaskOrganisationSimulationTest {
         clock.advance(30 * 60_000);
 
         ChunkFarm farm = new ChunkFarm(-1, 0, GROUND);
-        long field = farm.torches().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.TORCH).count();
+        long field = farm.torches().subList(0, 4).stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.TORCH).count();
+        long onPosts = farm.torches().subList(4, farm.torches().size()).stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimServer.TORCH).count();
         String events = "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
         // Three at least: a cell whose stand the builder once failed to reach it skips for good (backlog/renewables.md).
         assertTrue(field >= 3, "the field's torches: " + farm.torches().stream().map(c -> c + "=" + server.block(c.x(), c.y(), c.z())
                 + "/" + server.block(c.x(), c.y() - 1, c.z())).toList() + events);
+        assertTrue(onPosts >= 10, "on its posts' tops: " + onPosts + " of " + (farm.torches().size() - 4) + events);
         BlockPos under = farm.torches().getFirst().offset(0, -1, 0);
         assertTrue(server.block(under.x(), under.y(), under.z()) != SimServer.FARMLAND, "under it, untilled" + events);
     }

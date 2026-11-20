@@ -90,9 +90,16 @@ public final class FarmSite {
             }
             pours++;
         }
+        // A torch on a post's top is the fence's work, not the field's: it goes up with the post it stands on.
+        java.util.Set<BlockPos> postTops = new java.util.HashSet<>();
+        farm.fence().forEach(p -> postTops.add(p.offset(0, 1, 0)));
         for (BlockPos t : farm.torches()) {
             if (!world.isTorch(t.x(), t.y(), t.z())) {
-                torches++;
+                if (postTops.contains(t)) {
+                    posts++;
+                } else {
+                    torches++;
+                }
             }
         }
         for (BlockPos p : farm.fence()) {

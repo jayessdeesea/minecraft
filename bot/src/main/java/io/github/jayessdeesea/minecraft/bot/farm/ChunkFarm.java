@@ -69,14 +69,22 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
     /** Each field torch's cell, by local x and z: a step in from each hole, on the diagonal toward the middle. */
     private static final int[][] FIELD_TORCHES = {{5, 5}, {5, 11}, {11, 5}, {11, 11}};
 
+    /** Every how many of its fence posts carries a torch on its top. */
+    static final int POSTS_A_TORCH = 4;
+
     /**
-     * Its torches, so nothing spawns in it by night (operator, 2026-11-20): four in the field, a step in on the diagonal from
-     * each hole, on ground left untilled - no torch stands on farmland. (On its fence posts too is backlog/renewables.md's.)
+     * Its torches, so nothing spawns in it or by it by night (operator, 2026-11-20): four in the field, a step in on the
+     * diagonal from each hole, on ground left untilled - no torch stands on farmland - and one on every
+     * {@value #POSTS_A_TORCH}th fence post's top.
      */
     public List<BlockPos> torches() {
         List<BlockPos> torches = new ArrayList<>();
         for (int[] t : FIELD_TORCHES) {
             torches.add(new BlockPos(x0() + t[0], level + 1, z0() + t[1]));
+        }
+        List<BlockPos> posts = fence();
+        for (int i = 0; i < posts.size(); i += POSTS_A_TORCH) {
+            torches.add(posts.get(i).offset(0, 1, 0));
         }
         return torches;
     }

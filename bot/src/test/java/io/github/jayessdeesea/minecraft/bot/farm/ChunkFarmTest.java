@@ -85,7 +85,7 @@ class ChunkFarmTest {
         assertTrue(best.plan(world, half).plot().size() < ChunkFarm.MIN_CELLS, "the best, under a farm's: " + best.plan(world, half).plot().size());
     }
 
-    /** Its torches: four in the field a step in on the diagonal from each hole, its cells untilled. */
+    /** Its torches: four in the field a step in on the diagonal from each hole, its cells untilled; and one on every fourth post's top. */
     @Test
     void itsTorchesStandInTheFieldOnTheDiagonals() {
         ChunkFarm farm = new ChunkFarm(0, 0, GROUND);
@@ -94,6 +94,8 @@ class ChunkFarmTest {
         assertTrue(torches.containsAll(List.of(new BlockPos(5, GROUND + 1, 5), new BlockPos(5, GROUND + 1, 11),
                 new BlockPos(11, GROUND + 1, 5), new BlockPos(11, GROUND + 1, 11))), "the field's four: " + torches);
         assertTrue(farm.ground().stream().noneMatch(c -> c.equals(new BlockPos(5, GROUND, 5))), "under a field torch: untilled");
-        assertEquals(4, torches.size());
+        List<BlockPos> posts = farm.fence();
+        assertEquals(4 + (posts.size() + ChunkFarm.POSTS_A_TORCH - 1) / ChunkFarm.POSTS_A_TORCH, torches.size());
+        assertTrue(torches.subList(4, torches.size()).stream().allMatch(t -> posts.contains(t.offset(0, -1, 0))), "on posts' tops: " + torches);
     }
 }
