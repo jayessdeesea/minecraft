@@ -1754,7 +1754,8 @@ The camp is built up the way an airborne force builds a lodgment after the drop,
 1. Shelter: a patrol base each night (§14).
 2. The airhead - safety first, the operator's: the camp's ground lit (§15, SECURE), and every
    soldier armed with a stone sword or better (§11, STONE). A soldier cut off - stood 10 minutes at one spot with no route
-   reported there - is named in the standard and not counted on, as a unit reports its strength present (AR 220-1;
+   reported there - is named in the standard and not counted on, as a unit reports its strength present, and one seen with its stone
+   sword within the minute counts as armed - a builder's hotbar swaps its sword out for blocks a moment at a time (AR 220-1;
    `app.CutOff`; live, field533-537, one miner stuck a day in his mine with a wooden sword held the whole force in the
    seizure). Not walled (operator, 2026-11-20): the
    huts keep the night out and the lights keep spawns out; a wall kept off none of what killed

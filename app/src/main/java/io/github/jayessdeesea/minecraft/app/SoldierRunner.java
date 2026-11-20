@@ -799,14 +799,14 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int stoneSword = ItemClassRegistry.meleeRank("stone_sword");
         everyone.forEach(s -> cutOff.update(s, clockwork.millis())); // the cut off reported, not counted on (CutOff)
         List<String> away = everyone.stream().map(SoldierStatus::name).filter(n -> cutOff.cutOff(n, clockwork.millis())).toList();
-        long armed = everyone.stream().filter(s -> !away.contains(s.name())).filter(s -> s.condition().flatMap(c -> c.kit()).flatMap(k -> k.weapon())
-                .filter(w -> !w.equals("bow")).map(w -> {
+        long armed = everyone.stream().filter(s -> !away.contains(s.name())).filter(s -> cutOff.armed(s.name(), s.condition().flatMap(c -> c.kit())
+                .flatMap(k -> k.weapon()).filter(w -> !w.equals("bow")).map(w -> {
                     try {
                         return ItemClassRegistry.meleeRank(w) >= stoneSword;
                     } catch (IllegalArgumentException notMelee) {
                         return false;
                     }
-                }).orElse(false)).count();
+                }).orElse(false), clockwork.millis())).count();
         // A weapon each is shelter's other half: even a wooden sword wins most fights a fist loses.
         standards.add(new Foothold.Standard(2, "every soldier armed", armed == everyone.size() - away.size(), armed + " of "
                 + (everyone.size() - away.size()) + " carry a stone sword or better" + (away.isEmpty() ? "" : ", " + away + " cut off"), "STONE"));

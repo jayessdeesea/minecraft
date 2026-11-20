@@ -33,6 +33,24 @@ final class CutOff {
                 ? new Spell(soldier.position(), now, noRoute) : new Spell(was.at(), was.since(), was.noRoute() || noRoute));
     }
 
+    /** How long a soldier seen armed counts as armed: a sword put away for a moment to build isn't a sword lost. */
+    static final long ARMED_MILLIS = 60_000;
+    private final Map<String, Long> armedAt = new ConcurrentHashMap<>();
+
+    /**
+     * Whether {@code soldier}, {@code armedNow} or not at {@code now}, was seen armed within {@link #ARMED_MILLIS}: a
+     * soldier's kit counts the weapon at hand - on its hotbar - and a builder's hotbar swaps its sword out for blocks a
+     * moment at a time. Live (field538), the seizure's day of dwell broke twice on one such moment of Ned's.
+     */
+    boolean armed(String soldier, boolean armedNow, long now) {
+        if (armedNow) {
+            armedAt.put(soldier, now);
+            return true;
+        }
+        Long at = armedAt.get(soldier);
+        return at != null && now - at <= ARMED_MILLIS;
+    }
+
     /** Whether {@code soldier} is cut off at {@code now}. */
     boolean cutOff(String soldier, long now) {
         Spell spell = spells.get(soldier);

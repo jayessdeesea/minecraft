@@ -39,4 +39,14 @@ class CutOffTest {
 
         assertFalse(cut.cutOff("Eli", 2 * CutOff.MILLIS));
     }
+
+    /** Seen armed, a moment without - its sword swapped out for blocks - is armed still; a minute on, not. */
+    @Test
+    void aMomentWithoutItsSwordIsArmedStill() {
+        CutOff cut = new CutOff();
+        assertTrue(cut.armed("Ned", true, 0));
+        assertTrue(cut.armed("Ned", false, 30_000));
+        assertFalse(cut.armed("Ned", false, CutOff.ARMED_MILLIS + 1));
+        assertFalse(cut.armed("Eve", false, 0), "never seen armed");
+    }
 }
