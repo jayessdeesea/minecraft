@@ -23,8 +23,13 @@ moved into it, and only then is the old hill dug down.
    and emptied into the camp's chest by any squad's soldier (docs/military-doctrine.md § 17). Left: a chest
    the salvager has no route to is stepped up to on the blocks it carries - it draws a load of dirt for its
    steps first.
-3. **The old hill flattened** to y=62, top level first, as the flatten's next site once the stores are out
-   (`!flatten` or `minecraft.flatten`), its depot toward the new camp.
+   Live (field501-506): the camp moved to x=24 z=88 (its ground y=64), the old hill's 22 chests condemned and
+   drawn from - a salvager with a full pack hands it on (870), and every soldier but a miner carries the surface
+   load (871) so packs have room.
+3. **The old hill flattened** to y=62, top level first, as the flatten's next site: `Flatten.next` taking an old
+   camp's ground (x -60..-36, z 32..56, the hill) among its candidates once the farm-and-grove site is flat, as it
+   takes the farm and grove boxes. Waits on the new camp walled - its SEIZURE phase holds every flatten off
+   (field506: "the camp walled in - not begun").
 
 ## Done when
 - Live: the new camp walled and lit at sea level; the old stockpile's contents in the new camp's chest;

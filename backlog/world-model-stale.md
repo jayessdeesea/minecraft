@@ -24,6 +24,9 @@ Three times in one day the shared `ChunkCache` showed a block the server didn't 
   tried and dropped: the farm-in-a-hollow simulation trampled its crop with it. Not yet known
   whether the soldiers' model had the stand open (stale) or solid (the walk's own fault).
 
+- field506: the chunk farm's wheat at (30, 68, 60) and (30, 68, 63), beside its chest at (29, 68, 61), "started on 3
+  times and never done" - Olga's CANTCO all morning; stale wheat, or a stand by the chest it can't use.
+
 Block Update (0x08) and Section Blocks Update (0x56) are both decoded.
 
 The other way round too (field326): the model held air at (-11, 65, 3) where the server had
