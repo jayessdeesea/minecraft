@@ -864,8 +864,10 @@ no hoe; `Armourer.digsItsMakings`): it says what it's short of, and draws it fro
 above, which the force's producers fill; what it can make of a batch meanwhile it makes - a farm's fence and chest
 from its logs, its bucket set aside for the iron (`Armourer.makeable`; live, field508-512, the chunk farm's tender
 gave up all three together, short of 3 raw iron). Live (field449), a night's mining took no ore while its
-cutters went off to dig a log and iron ore for iron pickaxes, one killed out there. A bare-handed soldier still gets its
-weapon's makings itself: staying armed is its own upkeep (docs/echelons/tenets.md). Any other soldier
+cutters went off to dig a log and iron ore for iron pickaxes, one killed out there. A soldier bare-handed - or short of a
+stone sword, the phase's arms, with its own work CANTCO'd - still gets its weapon's makings itself: staying armed is
+its own upkeep (docs/echelons/tenets.md; live, field536, a miner stuck with a wooden sword held the seizure a day). One
+at work with a wooden sword keeps at it: farmers left their fences for stone in the squad simulation. Any other soldier
 digs what it's short of and can dig itself: logs from the nearest tree within 16 blocks it can
 stand beside, with its best axe if it carries one, and cobblestone or iron ore when its pickaxe is good enough and some is in reach -
 a tree or ore looked for at any height it can walk to, up a slope or down the mine's stairs, and

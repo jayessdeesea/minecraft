@@ -200,8 +200,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     private static final Logger LOG = LogManager.getLogger(SoldierRunner.class);
 
-    // Hardcoded pending a real deployment need for external config - matches the dev server
-    // DEVELOPMENT.md's own setup instructions put on localhost.
+    // Hardcoded pending a real deployment need for external config - matches the dev server DEVELOPMENT.md's own setup instructions put on localhost.
     private static final String HOST = "localhost";
     private static final int PORT = 25565;
 
@@ -5435,8 +5434,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .flatMap(Foothold::dump))), objectiveOf(squadName).map(Objective::task)
                 .filter(PhaseGuardrails::production).map(OrderTrace::taskName), clockwork.millis());
         woodDuties.values().stream().filter(d -> d.order().equals(Optional.ofNullable(ground.get(d.soldier())))).forEach(d -> woodcutters.add(d.soldier()));
-        // The fight first: a soldier in contact answers its squad leader until it's over, and takes
-        // its ground work up again then.
+        // The fight first: a soldier in contact answers its squad leader until it's over, and takes its ground work up again then.
         fighting.forEach(ground::remove);
         // Support is for free hands (docs/military-doctrine.md § 8): a soldier with ground work of its
         // own, out of contact, keeps at it and isn't sent to a squadmate's fight. In the squad
@@ -7130,7 +7128,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;
             Optional<Unstash> unstash = unstashFor(status.position(), inventory, darkNow)
                     .or(() -> salvageFor(name, status.position(), inventory, darkNow, depositor::barred));
-            armourer.digsItsMakings(inventory.meleeWeapons() == 0 // bare-handed, its weapon is its own upkeep (docs/echelons/tenets.md)
+            // Bare-handed - or short of a stone sword, the phase's arms, with its own work CANTCO'd - its weapon is its own upkeep
+            // (docs/echelons/tenets.md): live (field536), Eli stuck in his mine with a wooden sword held the seizure a day.
+            armourer.digsItsMakings(inventory.meleeWeapons() == 0 || status.report() instanceof Report.Cantco
+                    && Ladder.bestMelee(inventory) < ItemClassRegistry.meleeRank("stone_sword")
                     || !(cutting.containsKey(name) || dutyBook.of(name).isPresent() || keepHands.contains(name)));
             // A farmer's hoe, and its wheat baked into bread three at a time - by its baker, on a farm that has one.
             FarmPlan field = dutyBook.field(name, farming.get(name));
@@ -7836,8 +7837,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         (float) (double) status.condition().map(Condition::health).orElse(-1.0),
                         status.condition().map(Condition::food).orElse(-1), hands.map(Enum::name), nearest));
             }
-            // Short of logs for tools it tried and failed to chop wood for: a squadmate may have
-            // some to spare (§13).
+            // Short of logs for tools it tried and failed to chop wood for: a squadmate may have some to spare (§13).
             int logsShort = tools.isEmpty() ? 0 : Armourer.logsShort(inventory, tools);
             if (logsShort > 0 && !armourer.active() && armourer.failure().isPresent()) {
                 logsWanted.put(name, logsShort);
