@@ -43,4 +43,15 @@ class StockpileWatchTest {
         assertTrue(watch.unreached("Hal", new Position(-40.5, 68, 57.5), CHEST, StockpileWatch.WINDOW_MILLIS + StockpileWatch.ONE_MILLIS + 1)
                 .isPresent(), "Hal three minutes on");
     }
+
+    /** A chest someone got at isn't out of reach: two reports either side of a soldier's load put in move nothing. */
+    @Test
+    void aChestSomeoneGotAtStaysTheStockpile() {
+        StockpileWatch watch = new StockpileWatch(new WallStore(state, "chests"));
+
+        watch.unreached("Pete", new Position(-33.5, 66, 54.5), CHEST, 0);
+        watch.reached(CHEST);
+        assertTrue(watch.unreached("Hal", new Position(-40.5, 68, 57.5), CHEST, 60_000).isEmpty(), "reached between: no move");
+        assertTrue(watch.givenUp().isEmpty());
+    }
 }

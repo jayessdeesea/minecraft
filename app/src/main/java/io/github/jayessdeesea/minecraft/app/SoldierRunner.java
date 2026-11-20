@@ -5793,8 +5793,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (Math.hypot(elsewhere.x() - ordered.location().x(), elsewhere.z() - ordered.location().z()) <= GATHER_ELSEWHERE) {
                     return ordered;
                 }
-                Objective there = new Objective(
-                        ordered.mission(), elsewhere, ordered.intent(), ordered.task());
+                Objective there = new Objective(ordered.mission(), elsewhere, ordered.intent(), ordered.task());
                 LOG.info("[{}] {} finds nothing left to gather at {} - goes where the squad saw some, {}", squadName, soldierName,
                         ordered.location(), elsewhere);
                 gatherSent.put(soldierName, Map.entry(ordered, there));
@@ -6886,6 +6885,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 Optional.ofNullable(stashing.get()).flatMap(Depositor::chestAt).ifPresent(chest -> {
                     chestStock.put(BlockPos.containing(chest.x(), chest.y(), chest.z()), stashing.get().stockSeen());
+                    stockpileWatch.reached(BlockPos.containing(chest.x(), chest.y(), chest.z()));
                     chestsSeen.put(BlockPos.containing(chest.x(), chest.y(), chest.z()), seen);
                 });
                 // A load went in - its trip didn't end full - so the chest has room: no longer known full.

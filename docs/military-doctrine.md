@@ -1851,7 +1851,8 @@ before (`SiteGeometry.oldCamps`, kept on disk) - within 12 across of it, in ever
 soldier, not only the flatten's hands: the camp moved, its stores follow it into the camp's chest
 (backlog/camp-to-sea-level.md). And a camp's stockpile its soldiers can't get at is sited anew, not handed to
 others to reach (operator, 2026-11-20): two soldiers out of ways of their own to reach the camp's chest within ten
-minutes, or one for three, and its workshop is sited again where they stand, the old chest given up and emptied
+minutes, or one for three - none of the force getting at it meanwhile: a chest someone opened isn't out of
+reach (field509) - and its workshop is sited again where they stand, the old chest given up and emptied
 into it as an old camp's is (`app.StockpileWatch`, kept on disk; `[Stockpile]` in the log); a new site is judged
 only after fifteen minutes. Dug, a chest spills what it holds. A site whose
 top is soil (`Flatten.soil`, ground for groves and the farm) has its top layer in the dig too: its soil kept,

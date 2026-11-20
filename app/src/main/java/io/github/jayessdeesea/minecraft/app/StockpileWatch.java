@@ -39,12 +39,25 @@ final class StockpileWatch {
     private final Map<String, Position> where = new HashMap<>();
     private final Set<BlockPos> givenUp = ConcurrentHashMap.newKeySet();
     private volatile BlockPos ground;
+    /** The chest the reports are of. */
+    private BlockPos watched;
     private long movedAt = Long.MIN_VALUE / 2;
 
     StockpileWatch(WallStore store) {
         this.store = store;
         store.load(GROUND).filter(l -> l.size() == 1).ifPresent(l -> ground = l.getFirst());
         store.load(GIVEN_UP).ifPresent(givenUp::addAll);
+    }
+
+    /**
+     * {@code chest} got at - opened, a load put in or a draw taken: what's said of it can't be got at is cleared. Live
+     * (field509), the stockpile in use at (-10, 64, 77) was given up on two soldiers' reports - two in pockets - while
+     * the rest filled it and drew from it.
+     */
+    synchronized void reached(BlockPos chest) {
+        if (chest.equals(watched)) {
+            reported.clear();
+        }
     }
 
     /** The ground the camp's stockpile is sited at, once moved: else the camp's own. */
@@ -64,6 +77,10 @@ final class StockpileWatch {
     synchronized Optional<BlockPos> unreached(String soldier, Position at, BlockPos chest, long now) {
         if (now - movedAt < SETTLE_MILLIS) {
             return Optional.empty();
+        }
+        if (!chest.equals(watched)) {
+            reported.clear();
+            watched = chest;
         }
         reported.entrySet().removeIf(e -> now - e.getValue()[1] > WINDOW_MILLIS);
         reported.computeIfAbsent(soldier, s -> new long[]{now, now})[1] = now;
