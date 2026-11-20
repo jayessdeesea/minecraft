@@ -5,6 +5,8 @@ priority: P1
 
 # Questions for the operator
 
+- **A chunk farm built up over water** (backlog/renewables.md, Chunk farms as sites): should constructors fill shallow
+  water - a few blocks deep - to make a farm's ground, or should farm sites stay on land and leave the water be?
 - **Rations handed only to a squadmate within 8 blocks** (docs/military-doctrine.md § 4): taken by default - live
   (field511) soldiers all short walked single rations across the farm to each other 75 times in six minutes, each
   dropping its work. One at a time and the keep stand as the operator set them; buddy aid has no reach.

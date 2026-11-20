@@ -99,6 +99,21 @@ leaves for (§ 12, TREE_FARM). What's left:
 - Growth is slow and random (random ticks), so live verification needs patience, or a test
   server with a higher `randomTickSpeed`.
 
+## Chunk farms as sites, each through its stages (operator, 2026-11-20)
+Not one chunk farm at a time but several, each a site of its own (`command.Site`), measured in stages from the world
+and shown to the platoon leader - its stage and what the next wants - who sends constructors to one below Producing
+and farmers to one at it; a farm counts toward food only from Producing:
+1. **Ground** - the 15x15 inside its fence lines at one level, its four hole cells open with a floor under each:
+   flattened down to it, or built up over shallow water (whether to build over water is asked in
+   backlog/questions-overnight.md). Constructors: the flatten's dig and fill.
+2. **Watered** - its four holes full. One soldier with a bucket.
+3. **Producing** - tilled, sown, its four field torches up: viable for food. Kept lit and hydrated - a dry hole or a
+   torch knocked off drops it back a stage, to be put right. Farmers.
+4. **Fenced** - its fence and gates, when wood isn't short; brought forward when it loses cells to trampling.
+   Constructors with logs.
+Built toward it: the layout, the holes' floors, the field torches, the tender (docs/military-doctrine.md § 4).
+Left: the stages as a site, several farms sited at once, the platoon leader's view of them and its orders by stage.
+
 ## More farmland: the farm by phase (operator, 2026-11-19)
 Overnight (field480-489) the farm fed about a third of the force: some 85 harvests a game day, about 28 loaves,
 stores at 0 bread and wheat. The answer is more farmland, gradually flattened to sea level, and denser farms as
