@@ -47,7 +47,9 @@ final class PoliceCall {
      * of it, it cuts a stone whatever its idle watch says - live (field526), Eli's squad read as resting, and his own
      * minute stood still was never alarmed.
      */
-    private final Map<String, Map.Entry<String, Long>> noRoute = new ConcurrentHashMap<>();
+    private final Map<String, Map.Entry<Position, Long>> noRoute = new ConcurrentHashMap<>();
+    /** How far a soldier moves off the spot its "no route" began at before that spell's over. */
+    static final double MOVED_OFF = 2;
 
     /**
      * How long a step stands before it's litter: one put down lately may be a route's still - in the squad
@@ -81,16 +83,20 @@ final class PoliceCall {
         Optional<Kit> kit = status.condition().flatMap(Condition::kit);
         boolean pickaxe = kit.map(Kit::pickaxe).orElse(false);
         // With no route and no block to make one with, but a pickaxe: a stone off the wall by its head (wayBlock).
-        boolean wayDue = false;
-        boolean wantsABlock = pickaxe && kit.map(k -> k.stone() + k.dirt() == 0).orElse(false)
-                && status.report() instanceof Report.Cantco(String why) && why.startsWith("no route");
-        if (wantsABlock) {
-            String why = ((Report.Cantco) status.report()).reason();
-            Map.Entry<String, Long> since = noRoute.compute(soldier, (k, was) -> was != null && was.getKey().equals(why) ? was : Map.entry(why, now));
-            wayDue = now - since.getValue() >= GIVE_UP_MILLIS;
-        } else {
+        // Timed from its first "no route", where it stood, till it moves off that spot or carries a block: live
+        // (field530), Eli's "no route" broke for a moment's "Mining" between, and a timer kept by the report never ran.
+        boolean blockless = pickaxe && kit.map(k -> k.stone() + k.dirt() == 0).orElse(false);
+        boolean noWay = status.report() instanceof Report.Cantco(String why) && why.startsWith("no route");
+        Map.Entry<Position, Long> since = noRoute.get(soldier);
+        if (!blockless || since != null && Math.hypot(since.getKey().x() - at.x(), since.getKey().z() - at.z()) > MOVED_OFF) {
             noRoute.remove(soldier);
+            since = null;
         }
+        if (since == null && blockless && noWay) {
+            since = Map.entry(at, now);
+            noRoute.put(soldier, since);
+        }
+        boolean wayDue = since != null && now - since.getValue() >= GIVE_UP_MILLIS;
         Optional<BlockPos> had = Optional.ofNullable(jobs.get(soldier)).map(Job::step);
         // Its stone first, over its own work and any litter: the work waits on the route, and litter elsewhere is no
         // nearer than its goal. Live (field528), Eli was handed litter he had no route to, again and again.

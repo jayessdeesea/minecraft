@@ -236,10 +236,13 @@ class SpringAiPlatoonLeaderTest {
     @Test
     void validationRequiresExactlyOneObjectivePerListedSquad() {
         List<SquadStatus> squads = List.of(ALPHA, BRAVO);
-        assertThrows(IllegalStateException.class,
-                () -> SpringAiPlatoonLeader.toObjectives(new PlatoonLeaderReply(List.of(objective("Alpha"))), squads));
-        assertThrows(IllegalStateException.class,
-                () -> SpringAiPlatoonLeader.toObjectives(new PlatoonLeaderReply(List.of(objective("Alpha"), objective("Alpha"), objective("Bravo"))), squads));
+        // Left out, or named twice, with no standing order: it holds where it is, alone (field530).
+        Objective bravoHolds = SpringAiPlatoonLeader.toObjectives(new PlatoonLeaderReply(List.of(objective("Alpha"))), squads).get(1);
+        assertEquals(new Position(3, 64, 4), bravoHolds.location());
+        assertTrue(bravoHolds.task() instanceof Objective.Task.None, "" + bravoHolds);
+        List<Objective> alphaTwice = SpringAiPlatoonLeader.toObjectives(new PlatoonLeaderReply(List.of(objective("Alpha"), objective("Alpha"), objective("Bravo"))), squads);
+        assertEquals(new Position(1, 64, 2), alphaTwice.get(0).location());
+        assertEquals("scout", alphaTwice.get(1).mission(), "Bravo's own");
         assertThrows(IllegalStateException.class,
                 () -> SpringAiPlatoonLeader.toObjectives(new PlatoonLeaderReply(List.of(objective("Alpha"), objective("Bravo"), objective("Charlie"))), squads));
         assertEquals(2, SpringAiPlatoonLeader.toObjectives(new PlatoonLeaderReply(List.of(objective("Bravo"), objective("Alpha"))), squads).size());

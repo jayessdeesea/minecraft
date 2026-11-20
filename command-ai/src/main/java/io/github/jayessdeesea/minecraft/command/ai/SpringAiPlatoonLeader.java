@@ -434,9 +434,21 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
 
     /**
      * One objective per listed squad, in the same order - anything else is a violated contract. A squad named twice, or
-     * left out, fails alone, loud: it keeps its standing order, the other squads' objectives stand. Live (field495-510),
+     * left out, fails alone, loud: it keeps its standing order, or with none holds where it is, the other squads'
+     * objectives stand. Live (field495-510),
      * one squad named twice or left out in about one reply a run threw out every squad's decision with it.
      */
+    /**
+     * A squad's objective when the reply gave it none it can read and it has no standing order: hold where its first
+     * soldier stands till the next decision - the day's guardrails give it work meanwhile. Live (field530), Alpha with no
+     * standing order named twice threw out every squad's decision.
+     */
+    static Objective holdsWhereItIs(SquadStatus squad) {
+        Position at = squad.soldiers().stream().findFirst().map(SoldierStatus::position)
+                .orElseThrow(() -> new IllegalStateException("squad " + squad.squadName() + " has no soldier to hold with"));
+        return new Objective("Hold where you are till the next decision", at, "No readable order this decision", new Objective.Task.None());
+    }
+
     static List<Objective> toObjectives(PlatoonLeaderReply reply, List<SquadStatus> squadStatuses) {
         if (reply == null || reply.objectives() == null) {
             throw new IllegalStateException("platoon leader model returned no objectives");
@@ -451,14 +463,14 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
         List<Objective> objectives = new ArrayList<>(squadStatuses.size());
         for (SquadStatus squad : squadStatuses) {
             if (twice.contains(squad.squadName())) {
-                objectives.add(squad.standing().orElseThrow(() -> new IllegalStateException("two objectives for squad " + squad.squadName() + ": " + reply)));
-                LOG.error("[PL] two objectives for squad {} - it keeps its standing order: {}", squad.squadName(), reply);
+                objectives.add(squad.standing().orElseGet(() -> holdsWhereItIs(squad)));
+                LOG.error("[PL] two objectives for squad {} - it keeps its standing order, or with none holds where it is: {}", squad.squadName(), reply);
                 continue;
             }
             PlatoonLeaderReply.ObjectiveReply objective = bySquad.get(squad.squadName());
             if (objective == null) {
-                objectives.add(squad.standing().orElseThrow(() -> new IllegalStateException("no objective for squad " + squad.squadName() + ": " + reply)));
-                LOG.error("[PL] no objective for squad {} - it keeps its standing order: {}", squad.squadName(), reply);
+                objectives.add(squad.standing().orElseGet(() -> holdsWhereItIs(squad)));
+                LOG.error("[PL] no objective for squad {} - it keeps its standing order, or with none holds where it is: {}", squad.squadName(), reply);
                 continue;
             }
             if (objective.keep()) {

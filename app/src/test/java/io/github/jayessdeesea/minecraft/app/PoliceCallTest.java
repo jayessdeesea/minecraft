@@ -135,6 +135,10 @@ class PoliceCallTest {
         PoliceCall call = new PoliceCall();
         assertEquals(Optional.empty(), call.order(eli, false, false, gallery, Set.of(), java.util.Map.of(), List.of(), Set.of(), 0),
                 "not at once: its route may come");
+        // A moment's other report between, stood where it was: the minute still runs (field530).
+        io.github.jayessdeesea.minecraft.command.SoldierStatus mining = new io.github.jayessdeesea.minecraft.command.SoldierStatus("Eli", AT,
+                new io.github.jayessdeesea.minecraft.command.Order.Idle(), new io.github.jayessdeesea.minecraft.command.Report.Moving(), eli.condition());
+        call.order(mining, false, false, gallery, Set.of(), java.util.Map.of(), List.of(), Set.of(), PoliceCall.GIVE_UP_MILLIS / 2);
         // Busy, and with litter about: the stone first all the same.
         BlockPos litter = new BlockPos(3, GROUND + 1, 0);
         Optional<io.github.jayessdeesea.minecraft.command.Order> cut = call.order(eli, true, false, gallery, Set.of(litter), java.util.Map.of(),
