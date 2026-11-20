@@ -130,6 +130,12 @@ the planner (blocks to dig and fill, iron, logs, steps, the walk from the camp) 
 every chunk in view, a walk only for one beyond it; the bids go up, the platoon leader takes the cheapest - as many as
 the food wants - and the winning squad gets the build order with the template, its bid the plan it's measured by.
 
+**As many as the supply covers** (operator, 2026-11-20): each bid says what its site wants - blocks to fill, 216 seeds
+to sow, coal for its torches, iron for a bucket on land, logs for its fence - and the supply is what the stores and
+the squads carry, counted as now. The platoon leader takes the cheapest bids in turn while the supply to Producing
+covers them and the food wants more; a farm's fence waits for its logs, so the logs don't hold a farm back from
+Producing.
+
 Built toward it: the layout, the holes' floors, the field torches, the tender (docs/military-doctrine.md § 4).
 Left, in order: the template and its planner (pure, `command`), with a site's stage from the world; the bids and the
 platoon leader's choice; the build order carrying the template; several farms at once; the 90% measure.
