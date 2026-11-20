@@ -165,20 +165,47 @@ final class PoliceCall {
                         .thenComparing(Comparator.comparingInt(BlockPos::y).reversed()));
     }
 
+    /** How far from its head a soldier looks for a block to cut for its way: its arm's reach. */
+    static final int WAY_REACH = 4;
+
     /**
-     * A stone by the head of a soldier at {@code at} - beside it, a block over its feet - to cut for a block to bridge or
-     * step with: never its floor, nor the block its head's under. Live (field512-524), Eli stood for good at a gap in
-     * his gallery's floor at y=20, a pickaxe in hand, stone all round, and no block.
+     * The block for a soldier at {@code at} to cut for one to bridge or step with: the nearest plain stone or soil within
+     * its reach with a face open to dig at - it drops cobblestone or dirt, the blocks a route builds with - its own
+     * height first, never the floor under its feet. Live (field512-531), Eli stood for good at a gap in his gallery's
+     * floor at y=20, a pickaxe in hand and no block; the stone beside his head, andesite or tuff, wouldn't have served.
      */
     static Optional<BlockPos> wayBlock(WorldView world, Position at) {
         BlockPos head = BlockPos.containing(at.x(), at.y(), at.z()).offset(0, 1, 0);
-        for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-            BlockPos c = head.offset(d[0], 0, d[1]);
-            if (world.isStone(c.x(), c.y(), c.z())) {
-                return Optional.of(c);
+        BlockPos floor = head.offset(0, -2, 0);
+        BlockPos best = null;
+        double bestScore = Double.MAX_VALUE;
+        for (int dx = -WAY_REACH; dx <= WAY_REACH; dx++) {
+            for (int dy = -WAY_REACH; dy <= WAY_REACH; dy++) {
+                for (int dz = -WAY_REACH; dz <= WAY_REACH; dz++) {
+                    BlockPos c = head.offset(dx, dy, dz);
+                    double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (d > WAY_REACH || c.equals(floor) || !(world.isStone(c.x(), c.y(), c.z()) || world.isSoil(c.x(), c.y(), c.z())) || !exposed(world, c)) {
+                        continue;
+                    }
+                    double score = d + 0.1 * Math.abs(dy);
+                    if (score < bestScore) {
+                        best = c;
+                        bestScore = score;
+                    }
+                }
             }
         }
-        return Optional.empty();
+        return Optional.ofNullable(best);
+    }
+
+    /** Whether {@code c} has a face open to dig at. */
+    private static boolean exposed(WorldView world, BlockPos c) {
+        for (int[] d : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+            if (!world.isSolid(c.x() + d[0], c.y() + d[1], c.z() + d[2])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Whether {@code c} stands proud: open on three or four of its sides. */

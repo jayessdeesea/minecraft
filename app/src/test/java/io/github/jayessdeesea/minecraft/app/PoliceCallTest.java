@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PoliceCallTest {
 
@@ -100,7 +101,7 @@ class PoliceCallTest {
     }
 
     /**
-     * Stood on a "no route" with a pickaxe and no block, in a gallery cut through stone: a stone beside its head to cut -
+     * Stood on a "no route" with a pickaxe and no block, in a gallery cut through stone: the stone by its head to cut -
      * a block to bridge with - not its floor (field512-524, Eli at the gap in his gallery's floor).
      */
     @Test
@@ -144,8 +145,38 @@ class PoliceCallTest {
         Optional<io.github.jayessdeesea.minecraft.command.Order> cut = call.order(eli, true, false, gallery, Set.of(litter), java.util.Map.of(),
                 List.of(), Set.of(), PoliceCall.GIVE_UP_MILLIS);
 
-        assertEquals(Optional.of(new BlockPos(0, GROUND + 2, 1)), PoliceCall.wayBlock(gallery, AT));
+        BlockPos way = PoliceCall.wayBlock(gallery, AT).orElseThrow();
+        assertTrue(way.y() == GROUND + 2 && Math.abs(way.z()) == 1 && way.x() == 0, "the wall by its head: " + way);
         assertEquals(true, cut.isPresent() && cut.get() instanceof io.github.jayessdeesea.minecraft.command.Order.Dig d && d.box().minY() == GROUND + 2,
                 "a stone by its head, not its floor: " + cut);
+    }
+
+    /** Its walls not plain stone - andesite, tuff - the nearest plain stone or soil within reach, open to dig at. */
+    @Test
+    void theNearestPlainStoneWithinReachIfNotByItsHead() {
+        BlockPos stone = new BlockPos(3, GROUND + 1, 1);
+        WorldView andesite = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND + 1 || z != 0 || y > GROUND + 2;
+            }
+
+            @Override
+            public boolean isStone(int x, int y, int z) {
+                return stone.equals(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+
+        assertEquals(Optional.of(stone), PoliceCall.wayBlock(andesite, AT));
     }
 }
