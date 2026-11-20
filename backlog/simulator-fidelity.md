@@ -24,7 +24,9 @@ world wrong is proven wrong.
    a placement accepted or refused, a chest's open and what it held, a harvest's yield, a task's yield
    for the time spent (docs/conventions.md, Check the outcome). The same ledger runs in the squad
    simulation. Its rows are the comparison.
-3. **A divergence check.** Per kind of act, the live ledger set against the simulation's over the same
+3. **A divergence check.** Built for routes: a spell's ticks a step planned, over all its routes, more than 1.5x off
+   the simulation's flat walk (`bot.Trip.FLAT_TICKS_A_STEP`, measured by `DeterministicSoldierTest`) is logged
+   `[Fidelity]`. Left: the same for the other kinds, against the simulation over the same kind of ground. Per kind of act, the live ledger set against the simulation's over the same
    kind of ground: a rate off by more than a set factor (say 1.5x), or an outcome the simulation never
    produces (a refusal, a block that came back), is logged loud (`[Fidelity]`) with its examples, and
    the dawn's after-action review lists the worst. Each is a lead for item 1.

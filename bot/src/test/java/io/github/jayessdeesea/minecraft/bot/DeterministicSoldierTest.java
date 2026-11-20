@@ -785,4 +785,39 @@ class DeterministicSoldierTest {
 
         assertEquals(new Position(0.1, 64, 0), alice.status().position());
     }
+
+    /**
+     * The ledger's baseline (backlog/simulator-fidelity.md): a walk of 40 blocks over flat open ground, its ticks a step
+     * planned - the simulation's own rate, which the live garrison's routes are set against ({@link Trip}).
+     */
+    @Test
+    void aFlatWalksTicksAStepIsTheLedgersBaseline() {
+        WorldView flat = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        DeterministicSoldier carl = new DeterministicSoldier("Carl", new Position(0.5, GROUND, 0.5));
+        carl.receiveOrder(new Order.MoveTo(40.5, GROUND, 0.5, 0.5, 1, Risk.LOW));
+        Optional<Trip> trip = Optional.empty();
+        for (int i = 0; i < 4000 && trip.isEmpty(); i++) {
+            carl.tick(flat);
+            trip = carl.takeTrip();
+        }
+
+        assertTrue(trip.isPresent(), "walked: " + carl.status());
+        double rate = (double) trip.get().ticks() / trip.get().planned();
+        assertTrue(Math.abs(rate - Trip.FLAT_TICKS_A_STEP) <= 0.1 * Trip.FLAT_TICKS_A_STEP, rate + " ticks a step, the baseline " + Trip.FLAT_TICKS_A_STEP);
+    }
 }

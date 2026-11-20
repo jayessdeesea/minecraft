@@ -21,6 +21,12 @@ final class Ledger {
 
     private static final Logger LOG = LogManager.getLogger(Ledger.class);
 
+    /**
+     * How far off the simulation's baseline a spell's rate may be, either way, before it's a divergence: its routes'
+     * ticks a step planned, taken over all of them, against a flat walk's in the simulation (bot.Trip.FLAT_TICKS_A_STEP).
+     */
+    static final double FIDELITY_FACTOR = 1.5;
+
     /** How long a spell is summed before its line goes out. */
     static final long SPELL_MILLIS = 10 * 60_000;
 
@@ -40,6 +46,7 @@ final class Ledger {
         }
         if (now - spellFrom >= SPELL_MILLIS) {
             summary().forEach(line -> LOG.info("[Ledger] {}", line));
+            fidelity().ifPresent(line -> LOG.warn("[Fidelity] {}", line));
             acts.clear();
             spellFrom = now;
         }
@@ -56,6 +63,25 @@ final class Ledger {
                 "%s: %d, %.2f a unit planned (median; quartiles %.2f-%.2f), %.0f planned, %.0f taken",
                 kind, list.size(), r[1], r[0], r[2], list.stream().mapToDouble(a -> a[0]).sum(), list.stream().mapToDouble(a -> a[1]).sum()))));
         return lines;
+    }
+
+    /**
+     * The spell's divergence from the simulation, if any (backlog/simulator-fidelity.md, the divergence check): its
+     * routes' ticks a step planned, taken over all of them, more than {@link #FIDELITY_FACTOR} off a flat walk's in the
+     * simulation either way - the game walking slower or faster than the simulation says it should.
+     */
+    synchronized Optional<String> fidelity() {
+        List<double[]> routes = acts.getOrDefault("route", List.of());
+        double planned = routes.stream().mapToDouble(a -> a[0]).sum();
+        if (planned == 0) {
+            return Optional.empty();
+        }
+        double rate = routes.stream().mapToDouble(a -> a[1]).sum() / planned;
+        double base = io.github.jayessdeesea.minecraft.bot.Trip.FLAT_TICKS_A_STEP;
+        return rate > base * FIDELITY_FACTOR || rate < base / FIDELITY_FACTOR
+                ? Optional.of(String.format(Locale.ROOT, "route: %.2f ticks a step planned over %d routes, the simulation's flat walk %.2f - %.1fx off",
+                rate, routes.size(), base, rate / base))
+                : Optional.empty();
     }
 
     /** The quarter, median and three-quarter marks of what each act took a unit planned, if any was planned. */

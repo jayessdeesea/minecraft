@@ -29,4 +29,16 @@ class LedgerTest {
     void nothingPlannedIsNoRate() {
         assertTrue(Ledger.rates(List.of(new double[]{0, 30})).isEmpty());
     }
+
+    /** Routes walked at the simulation's rate are no divergence; twice as slow, one - named with its figures. */
+    @Test
+    void aRateFarOffTheSimulationsIsADivergence() {
+        Ledger near = new Ledger();
+        near.route(100, 540, 0);
+        assertTrue(near.fidelity().isEmpty(), "" + near.fidelity());
+
+        Ledger slow = new Ledger();
+        slow.route(100, 1000, 0);
+        assertEquals("route: 10.00 ticks a step planned over 1 routes, the simulation's flat walk 4.90 - 2.0x off", slow.fidelity().orElseThrow());
+    }
 }
