@@ -196,12 +196,13 @@ public final class Pathfinder {
 
     /**
      * How many blocks' walk a route that places no block may cost over one that does, for each block it saves
-     * (operator, 2026-11-18: if there are several ways somewhere, walk a bit more rather than place blocks). Over
-     * {@link #PILLAR_COST}, a placed block is worth twelve blocks' walk - without the search itself pricing it so:
+     * (operator, 2026-11-18: if there are several ways somewhere, walk a bit more rather than place blocks; 2026-11-20:
+     * a block is placed with intent - the steps routes left littered the camp, 11,745 of them never taken down). Over
+     * {@link #PILLAR_COST}, a placed block is worth 44 blocks' walk - without the search itself pricing it so:
      * dearer in the search, a climb that has to build runs out of its node budget, and a soldier boxed in tunnels
      * sideways.
      */
-    static final double DETOUR_PER_BLOCK = 8;
+    static final double DETOUR_PER_BLOCK = 40;
     /**
      * The fewest blocks a route places for a way round it to be looked for: a single step up a slope is a builder's
      * stride - weighed again each step it took, a mason on a slope walked to and fro and left its wall short - and a

@@ -22,10 +22,10 @@ seconds or when stuck - a wide search asked again from the same cell to the same
   only way that reaches its goal (`Pathfinder.stepBuild`): one block a step against ground beside
   it, two in open air. Never on farmland or a crop, which a block put down on spoils; nor does it
   pillar off farmland, or cut a step through it.
-- **Walks round rather than builds** when round is close (operator, 2026-11-18): a route that places
-  blocks is searched again placing none, and that one taken if it's a plain walk - no step dug, no
-  crop trampled, no fall that hurts - costing at most 8 blocks' more for each block it saves
-  (`Pathfinder.DETOUR_PER_BLOCK`): a placed block worth 12 blocks' walk, with the search itself still
+- **Walks round rather than builds** (operator, 2026-11-18; 2026-11-20: a block is placed with intent, and
+  steps left behind littered the camp): a route that places blocks is searched again placing none, and that
+  one taken if it's a plain walk - no step dug, no crop trampled, no fall that hurts - costing at most 40
+  blocks' more for each block it saves (`Pathfinder.DETOUR_PER_BLOCK`): a placed block worth 44 blocks' walk, with the search itself still
   pricing it at 4, so a climb that must build stays inside its node budget. Only for a route of two
   blocks or more (`WALK_ROUND_FROM`), and a goal no more than a jump above it: a single step up a
   slope is a builder's stride, and blocks placed to reach a goal higher - a mason onto its wall's

@@ -86,4 +86,38 @@ class RoutingSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
         assertEquals(List.of(), List.copyOf(server.log).stream().filter(l -> l.startsWith("Alice placed")).toList(), "no block placed on the way");
     }
+
+    /** Flat, with a stone wall three high across x=6 from z=-60 to 60, a gap in it at z=30. */
+    static int wallWithAFarGap(int x, int y, int z) {
+        return x == 6 && y > GROUND && y <= GROUND + 3 && Math.abs(z) <= 60 && z != 30 ? SimServer.STONE : SquadSimulationTest.flat(x, y, z);
+    }
+
+    /**
+     * The gap 30 blocks off, the walk round some 50 blocks longer than over: still walked, no block placed (operator,
+     * 2026-11-20: a block is placed with intent - live, the steps routes put down and left littered the camp).
+     */
+    @Test
+    void aSoldierWalksFarRoundAWallRatherThanLeaveStepsOverIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, RoutingSimulationTest::wallWithAFarGap, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position beyond = new Position(10.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Beyond the wall", beyond, "There",
+                new Objective.Task.None())), squadLeader(beyond),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.ITEM_BREAD, 16},
+                        new int[]{38, SimServer.ITEM_COBBLESTONE, 32})))
+                .run();
+
+        clock.advance(3 * 60_000);
+
+        PlayerPosition alice = server.position("Alice");
+        assertTrue(alice.x() > 7, "Alice beyond the wall: at " + alice + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+        assertEquals(List.of(), List.copyOf(server.log).stream().filter(l -> l.startsWith("Alice placed")).toList(), "no block placed on the way");
+    }
 }
