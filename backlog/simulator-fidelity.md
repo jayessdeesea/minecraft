@@ -38,10 +38,11 @@ world wrong is proven wrong.
    Seen: RoutingSimulationTest's gallery with a gap, the surface 12 up, passes with or without
    `Recovery.waitingOnABlock` - in it the block for the way comes due before the recovery drill lays a stair up;
    live (field533), the stair came first and held the miner's hands. What sets that order live is a lead.
-5. **Recorded worlds.** A live failure's ground - the chunks round it, as the client decoded them -
-   saved so the same situation is replayed in the simulation, not rebuilt by hand.
+5. **Recorded worlds.** Built: a soldier stuck a minute has the ground round it - 49 across, 33 high, each cell's
+   state as the client decoded it - kept under `garrison-state/worlds/` (`app.WorldRecords`, `[World]`), and a
+   scenario replays one as its terrain (`SimWorlds.replay`). Left: a scenario per live failure kept that way.
 
 ## Done when
 - The ledger runs live and in the simulation, and a `[Fidelity]` line names each act whose live rate is
   off the simulation's - shown first on a gap planted in the simulation on purpose.
-- A live failure's chunks replay in the squad simulation.
+- A live failure's kept ground replays in a squad-simulation scenario that shows the failure.

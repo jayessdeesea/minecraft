@@ -1237,6 +1237,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final PoliceCall policeCall = new PoliceCall(); // one without work, or stood a minute on a CANTCO, takes back a step left
     private volatile List<BlockPos> campCut = List.of(); // the camp's ground over its level, as last measured: dirt from it first (CutFirst)
     private final Ledger ledger = new Ledger(); // what each act was planned to take against what it took, logged as [Ledger]
+    private WorldRecords worldRecords; // the ground round a soldier stuck a minute, kept for the simulation
     /** Soldiers whose last position wasn't sent for a value that isn't finite: said once a spell - ticks write. */
     private final Set<String> badPositionLogged = ConcurrentHashMap.newKeySet();
 
@@ -1315,6 +1316,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         storesBook.kept().ifPresent(chainOfCommand::onStores); // as last seen, till a chest is opened
         (this.phaseBook = new PhaseBook(chestStore)).restoreInto(chainOfCommand); (this.woodsBook = new WoodsBook(chestStore)).restoreInto(chainOfCommand);
         this.stepStore = new WallStore(Path.of(stateDir), "steps");
+        this.worldRecords = new WorldRecords(Path.of(stateDir));
         stepStore.load(STEPS).ifPresent(scaffolding::addAll);
         chestStore.load(FULL_CHESTS).ifPresent(fullChests::addAll);
         chestStore.load(SALVAGED).ifPresent(salvaged::addAll);
@@ -2693,8 +2695,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         keepCrews.put(squad, hands.stream().filter(h -> inCrew.contains(h.name()) && !keepFighting.contains(h.name())
                         && !farming.containsKey(h.name()))
                 .map(h -> new LevelPlan.Builder(h.name(), h.position())).toList());
-        // The squad leader's appointment: the first builder of the first squad on the keep, again
-        // whenever that one is off it.
+        // The squad leader's appointment: the first builder of the first squad on the keep, again whenever that one is off it.
         if (!onKeep.isEmpty() && squad.equals(onKeep.getFirst()) && !crew.isEmpty() && !inCrew.contains(keepForeman)) {
             keepForeman = crew.getFirst().name();
             LOG.info("[{}] {} is the keep's foreman", squad, keepForeman);
@@ -5311,8 +5312,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // are dug and the wall goes up, and a wall laid out again round it lost its progress -
             // in the squad simulation, and live, a wall that never closed.
             Position asked = fortify.get().location();
-            // At the camp, the camp's wall - the one its standard measures - not a new one round
-            // wherever the order points.
+            // At the camp, the camp's own wall, not a new one round wherever the order points.
             String measured = campWallKey;
             String wallKey = measured != null && nearCamp((int) Math.floor(asked.x()), (int) Math.floor(asked.z())) ? measured
                     : (int) Math.floor(asked.x()) + "," + (int) Math.floor(asked.z());
@@ -5925,8 +5925,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (carriedBlocks >= WALL_BLOCKS_LOAD) {
                     diggingForWall.remove(soldierName);
                 }
-                // The stockpile first, when it was last seen holding a load: one squad's quarrying is
-                // another's wall.
+                // The stockpile first, when it was last seen holding a load: one squad's quarrying is another's wall.
                 boolean stocked = chainOfCommand.stockpile().map(st -> st.stone() >= WALL_BLOCKS_LOAD).orElse(false)
                         && stockpileFor(soldierName).isPresent();
                 if (stocked && diggingForWall.contains(soldierName)) {
@@ -7813,6 +7812,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             LOG.warn("[Alert] {}", line);
                             if (line.contains("stationary")) {
                                 afterActionReview.idle(name);
+                                worldRecords.record(chunkCache::stateIdAt, name, status.position(), clockwork.millis()); // for the simulation
                             }
                         });
                 // And holding where sent by day with work to be had: without work, the squad leader's to give it.

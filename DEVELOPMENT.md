@@ -213,7 +213,8 @@ day before (§ 17); `[Scoreboard]`, that day's score beside the day before's; an
 what each kind of act was planned to take against what it took - a route's ticks a step planned - the same line the
 squad simulation logs, so the two can be set side by side (`app.Ledger`; backlog/simulator-fidelity.md); and
 `[Fidelity]`, a spell's routes walked more than 1.5 times off the simulation's flat walk (4.9 ticks a step,
-`bot.Trip.FLAT_TICKS_A_STEP`) either way - the game and the simulation parting. The scoreboard's
+`bot.Trip.FLAT_TICKS_A_STEP`) either way - the game and the simulation parting. A soldier stuck a minute has its
+ground kept for the simulation (`[World]`, `garrison-state/worlds/`): `SimWorlds.replay` makes it a scenario's terrain. The scoreboard's
 history, a line a day across restarts, is `garrison-state/scoreboard.jsonl`.
 
 A soldier rejoins where it last logged out, so a squad that last ran a scenario starts on the
