@@ -28,12 +28,17 @@ final class PhaseBook {
 
     /** The phase kept from before a restart, and when it was entered. */
     synchronized Optional<long[]> kept() {
-        return store.loadRows(KEY).filter(rows -> !rows.isEmpty() && rows.getFirst().length == 2).map(List::getFirst);
+        return store.loadRows(KEY).filter(rows -> !rows.isEmpty() && rows.getFirst().length >= 2).map(List::getFirst);
     }
 
     /** Keeps {@code phase}, entered at {@code since}, when it's changed. */
     synchronized void keep(Phase phase, long since) {
-        long[] row = {phase.ordinal(), since};
+        keep(phase, since, Long.MIN_VALUE);
+    }
+
+    /** Keeps {@code phase}, entered at {@code since}, the next one's standard held since {@code upSince}, when it's changed. */
+    synchronized void keep(Phase phase, long since, long upSince) {
+        long[] row = {phase.ordinal(), since, upSince};
         if (!java.util.Arrays.equals(row, kept)) {
             store.saveRows(KEY, List.of(row));
             kept = row;
@@ -42,13 +47,13 @@ final class PhaseBook {
 
     /** The phase kept from before a restart put back into {@code chain}'s tracker. */
     void restoreInto(ChainOfCommand chain) {
-        kept().ifPresent(row -> chain.restorePhase(Phase.values()[(int) row[0]], row[1]));
+        kept().ifPresent(row -> chain.restorePhase(Phase.values()[(int) row[0]], row[1], row.length > 2 ? row[2] : Long.MIN_VALUE));
     }
 
     /** The camp's readiness measured into {@code chain}'s phase, a breach three killed in it lately, and the phase kept. */
     void measure(ChainOfCommand chain, Foothold camp, List<Supply> supplies, int soldiers, long killedInCamp, long now) {
         chain.onReadiness(readiness(camp, supplies, soldiers, killedInCamp >= io.github.jayessdeesea.minecraft.command.DangerAreas.DEATHS), now);
-        keep(chain.currentPhase(), chain.phaseSince());
+        keep(chain.currentPhase(), chain.phaseSince(), chain.phaseUpSince());
     }
 
     /** The camp's readiness: its standards by name, its supply in days against a floor burn for {@code soldiers}. */

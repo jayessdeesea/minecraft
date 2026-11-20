@@ -1742,7 +1742,9 @@ restarts:
 A breach - three killed in the camp in three hours (`command.DangerAreas`) - throws it back to the SEIZURE at
 once. Days of supply count a day's burn as measured, and never less than 2 rations and 1 log a soldier: a burn
 not yet measured isn't none. The gap between the way up and the way down, and the day's dwell, keep it from
-flapping. The platoon leader is told the phase, what it means and what stands between it and the next.
+flapping. The phase, when it was entered and since when the next one's standard has held are kept on disk
+(`app.PhaseBook`), so a restart doesn't start the day's dwell over. The platoon leader is told the phase, what it
+means and what stands between it and the next.
 
 The camp is built up the way an airborne force builds a lodgment after the drop, measured in these standards:
 1. Shelter: a patrol base each night (§14).

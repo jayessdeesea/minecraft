@@ -43,4 +43,18 @@ class PhaseTrackerTest {
         tracker.restore(Phase.BUILDUP, 0);
         assertEquals(Phase.SEIZURE, tracker.update(new PhaseTracker.Readiness(true, true, false, 5, 5, true), 1));
     }
+
+    /** The day's dwell kept across a restart: up a phase a day after its standard first held, not a day after the restart. */
+    @Test
+    void theDwellHeldBeforeARestartCountsAfterIt() {
+        PhaseTracker.Readiness ready = new PhaseTracker.Readiness(true, true, false, 0, 0, false);
+        PhaseTracker before = new PhaseTracker();
+        before.update(ready, 0);
+        before.update(ready, 1000);
+
+        PhaseTracker after = new PhaseTracker();
+        after.restore(before.phase(), before.since(), before.upHeldSince());
+
+        assertEquals(Phase.CONSOLIDATION, after.update(ready, PhaseTracker.DWELL_MILLIS));
+    }
 }

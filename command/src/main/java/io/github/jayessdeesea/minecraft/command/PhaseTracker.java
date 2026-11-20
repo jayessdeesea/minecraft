@@ -39,11 +39,25 @@ public final class PhaseTracker {
         return since;
     }
 
+    /** Since when the next phase's standard has held, or {@link Long#MIN_VALUE} while it doesn't. */
+    public long upHeldSince() {
+        return upHeldSince;
+    }
+
     /** The phase and when it was entered, as kept before a restart. */
     public void restore(Phase restored, long enteredAt) {
+        restore(restored, enteredAt, Long.MIN_VALUE);
+    }
+
+    /**
+     * The phase, when it was entered, and since when the next one's standard has held, as kept before a restart: a
+     * restart doesn't start the day's dwell over. Live (field516-523), redeployed every quarter hour, the camp lit and
+     * every soldier armed, the force stayed in the SEIZURE - its day never held across one run.
+     */
+    public void restore(Phase restored, long enteredAt, long upSince) {
         this.phase = restored;
         this.since = enteredAt;
-        this.upHeldSince = Long.MIN_VALUE;
+        this.upHeldSince = upSince;
     }
 
     /** The phase on {@code readiness} at {@code now}. */

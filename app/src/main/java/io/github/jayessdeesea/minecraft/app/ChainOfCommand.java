@@ -692,10 +692,22 @@ public class ChainOfCommand implements DisposableBean {
         }
     }
 
+    /** Since when the next phase's standard has held ({@link PhaseTracker#upHeldSince}). */
+    public long phaseUpSince() {
+        synchronized (phases) {
+            return phases.upHeldSince();
+        }
+    }
+
     /** The phase kept from before a restart. */
     public void restorePhase(Phase phase, long since) {
+        restorePhase(phase, since, Long.MIN_VALUE);
+    }
+
+    /** The phase kept from before a restart, and since when the next one's standard had held. */
+    public void restorePhase(Phase phase, long since, long upSince) {
         synchronized (phases) {
-            phases.restore(phase, since);
+            phases.restore(phase, since, upSince);
             phaseNow = phase;
         }
     }
