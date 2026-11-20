@@ -1235,6 +1235,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Soldiers stood still by day: an alarm each spell. */
     private final IdleWatch idleWatch = new IdleWatch(), withoutWork = new IdleWatch("without work");
     private final PoliceCall policeCall = new PoliceCall(); // one without work, or stood a minute on a CANTCO, takes back a step left
+    private volatile List<BlockPos> campCut = List.of(); // the camp's ground over its level, as last measured: dirt from it first (CutFirst)
     /** Soldiers whose last position wasn't sent for a value that isn't finite: said once a spell - ticks write. */
     private final Set<String> badPositionLogged = ConcurrentHashMap.newKeySet();
 
@@ -2146,9 +2147,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // camp's dig, wall and lights all night, out of reach, each stalled or taken back in seconds.
             boolean near = Math.hypot(s.position().x() - campGround.x(), s.position().z() - campGround.z())
                     <= (daylight ? SECURE_RADIUS * 2 : WALL_RADIUS) && Math.abs(s.position().y() - campGround.y()) <= CAMP_VERTICAL;
-            // By night only the fit: lit ground spawns nothing, but phantoms come down out of the sky
-            // on anyone under it. Live, an unarmed soldier at 4 health digging the camp by night was
-            // killed by one.
+            // By night only the fit: lit ground spawns nothing, but phantoms come down out of the sky on anyone under
+            // it. Live, an unarmed soldier at 4 health digging the camp by night was killed by one.
             boolean fit = daylight || s.condition().filter(c -> c.health() >= NIGHT_UPKEEP_HEALTH
                     && c.kit().flatMap(Kit::weapon).isPresent()).isPresent();
             if (otherWork || !near || !fit) {
@@ -2236,6 +2236,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         }
         List<BlockPos> toDig = Clearing.toClear(world, dig, except);
+        campCut = toDig;
         List<BlockPos> toFill = toDig.isEmpty()
                 ? Clearing.toFill(world, fill, except) : List.of();
         int digLeft = toDig.size();
@@ -6177,8 +6178,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(), HUT_PLACE_TOLERANCE, 0.5, Risk.LOW));
                 continue;
             }
-            // Short of its share of the hut's blocks: dirt, dug beside the site, makes up the rest -
-            // a squad with nothing to build with still shelters by night.
+            // Short of its share of the hut's blocks: dirt makes up the rest - a squad with nothing to build with still
+            // shelters by night - from the camp's ground that has to go anyway, or else dug beside the site.
             Kit carried = statuses.get(i).condition().flatMap(c -> c.kit()).orElse(null);
             // And one that runs out mid-build, with the hut still open, goes out for more: an open
             // hut shelters nobody, and waiting inside it for blocks that won't come is a night lost.
@@ -6186,7 +6187,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (building != null && carried != null && !squadInContact && baseBlocks > 0
                     && (allInside ? carriedBlocks == 0 : carriedBlocks < stoneShare)) {
                 Position hutPlace = building.stands().get(i);
-                Position dirtPlace = new Position(hutPlace.x() + SOIL_OFFSET, hutPlace.y(), hutPlace.z());
+                Position dirtPlace = CutFirst.near(campCut, hutPlace).orElseGet(() -> new Position(hutPlace.x() + SOIL_OFFSET, hutPlace.y(), hutPlace.z()));
                 gathering.put(soldierName, new Objective("Dig dirt for the patrol base",
                         dirtPlace, "Blocks enough to wall the squad in",
                         new Objective.Task.Gather(Resource.SOIL)));
