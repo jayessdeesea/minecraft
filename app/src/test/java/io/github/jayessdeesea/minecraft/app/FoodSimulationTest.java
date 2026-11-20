@@ -23,6 +23,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -186,6 +187,40 @@ class FoodSimulationTest {
     static int farmGrowingByCamp(int x, int y, int z) {
         boolean ground = x >= 3 && x <= 11 && z >= 3 && z <= 11 && !(x >= 6 && x <= 8 && z >= 6 && z <= 8);
         return ground && y == GROUND ? SimServer.FARMLAND : ground && y == GROUND + 1 ? SimServer.WHEAT_SPROUT : pondByCamp(x, y, z);
+    }
+
+    /**
+     * A soldier on the camp's work carries the surface load - two shovels - and puts the rest in the camp's chest (LoadPlan).
+     * Live (field505), with no load but the keep's and the mine's, Gus carried 11 shovels and the salvage went from one
+     * full pack to the next.
+     */
+    @Test
+    void aSoldierOnTheCampsWorkPutsItsSpareShovelsInTheCampsChest() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 1 && z == 0 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE
+                : x == 0 && z == 1 && y == GROUND + 1 ? SimServer.FURNACE : flat(x, y, z), 1000);
+        server.stockedChest(2, GROUND + 1, 0, SimServer.ITEM_COBBLESTONE, 1); // the camp's workshop standing, as live
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        List<int[]> kit = new ArrayList<>(List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                new int[]{38, SimServer.ITEM_OAK_LOG, 8}));
+        for (int slot = 9; slot < 15; slot++) {
+            kit.add(new int[]{slot, SimServer.itemNamedOrMinus("stone_shovel"), 1});
+        }
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit));
+        runner.run();
+
+        clock.advance(6 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
+        int shovels = server.chests.values().stream().mapToInt(c -> java.util.Arrays.stream(c)
+                .filter(st -> st != null && st[0] == SimServer.itemNamedOrMinus("stone_shovel")).mapToInt(st -> st[1]).sum()).sum();
+        assertEquals(4, shovels, "four of six shovels in the camp's chest; " + events);
     }
 
     /** The pond by the camp, its ground round it farmland under ripe wheat: a harvest waiting. */

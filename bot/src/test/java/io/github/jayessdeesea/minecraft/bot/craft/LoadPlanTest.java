@@ -96,4 +96,20 @@ class LoadPlanTest {
         assertTrue(IntStream.range(0, 3).noneMatch(i -> surplus.contains(Inventory.MAIN_FIRST + i)), "three pickaxes kept");
         assertTrue(!surplus.contains(Inventory.MAIN_FIRST + 4), "the stack of torches kept");
     }
+
+    /** Surface work by the base keeps one sword and two shovels, no spares (operator, 2026-11-17); the rest go in. */
+    @Test
+    void surfaceWorkKeepsOneSwordAndTwoShovels() {
+        List<Integer> swords = ids(id -> ItemClassRegistry.meleeRank(id).isPresent() && ItemClassRegistry.axeSpeed(id).isEmpty());
+        List<Integer> shovels = ids(id -> ItemClassRegistry.shovelSpeed(id).isPresent());
+        Inventory inventory = new Inventory();
+        for (int i = 0; i < 3; i++) {
+            inventory.setSlot(Inventory.MAIN_FIRST + i, new int[]{swords.getFirst(), 1});
+        }
+        for (int i = 3; i < 9; i++) {
+            inventory.setSlot(Inventory.MAIN_FIRST + i, new int[]{shovels.getFirst(), 1});
+        }
+
+        assertEquals(6, LoadPlan.FLATTENING.surplus(inventory).size(), "two swords of three and four shovels of six");
+    }
 }

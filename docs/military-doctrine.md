@@ -769,8 +769,8 @@ keep's dig still to do, halved between the two, over a stone tool's 132 uses, pl
 the tool load of each at most.
 
 **The fighting load by kind of work** (operator, 2026-11-15; ATP 3-21.18: the fighting load on the
-soldier, the rest with the trains; `bot.craft.LoadPlan`, backlog/load-plans.md): the keep's hands
-flatten - one sword, two pickaxes, two shovels, two axes, a stack of torches, armour worn and none
+soldier, the rest with the trains; `bot.craft.LoadPlan`, backlog/load-plans.md): surface work by the
+base - the keep's hands, the farms, the woods, the camp's work - one sword, two pickaxes, two shovels, two axes, a stack of torches, armour worn and none
 spare: surface work by the base is the safest there is, so its load is lean for room to work in
 (operator, 2026-11-17: always have a sword, always have torches; no spares when working near the
 base) - and a mine's cutters

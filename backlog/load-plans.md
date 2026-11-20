@@ -34,7 +34,7 @@ The fighting load by kind of work, the best of each kind kept up to its figure:
 
 ## Done when
 - **Built** (docs/military-doctrine.md § 11, "The fighting load by kind of work"): `LoadPlan`'s
-  flattening and mining loads, the surplus slots, and `Depositor` putting them in on its trips -
+  flattening and mining loads - the flattening load every soldier's but a miner's, the farms and woods too (field505), the surplus slots, and `Depositor` putting them in on its trips -
   with its loads, or on a trip of its own at three slots; the tool load two of each.
 - A soldier short of a kind draws one from the depot's spares (today it only makes one, or is
   cross-levelled one by a squadmate).

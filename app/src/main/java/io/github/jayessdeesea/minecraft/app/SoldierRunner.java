@@ -7575,10 +7575,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     if (stashOre) {
                         pooled.addAll(STASHED);
                     }
-                    // What it carries past its work's load goes in too (LoadPlan; backlog/load-plans.md): the
-                    // keep's hands flatten, a mine's cutters mine. A trip of its own once it's a few slots.
-                    Optional<LoadPlan> plan = keepHands.contains(name) ? Optional.of(LoadPlan.FLATTENING)
-                            : cutting.containsKey(name) ? Optional.of(LoadPlan.MINING) : Optional.empty();
+                    // What it carries past its work's load goes in too (LoadPlan; backlog/load-plans.md): a mine's cutters mine, the
+                    // rest work the surface by the base (field505: Gus 11 shovels, Dana 5 swords). A trip of its own once it's a few slots.
+                    Optional<LoadPlan> plan = Optional.of(cutting.containsKey(name) ? LoadPlan.MINING : LoadPlan.FLATTENING);
                     boolean surplusTrip = plan.map(p -> p.surplus(inventory).size() >= SURPLUS_TRIP).orElse(false);
                     // The depot's kinds past what the pack keeps go in with it while the depot's under its
                     // most (StockLevels) - not into a mine's stash - and a reserve run short is a trip of its own.
