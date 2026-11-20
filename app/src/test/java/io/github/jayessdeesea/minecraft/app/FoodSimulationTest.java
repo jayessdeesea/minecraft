@@ -570,7 +570,7 @@ class FoodSimulationTest {
 
         Map<String, Integer> phases = new HashMap<>();
         chain.foothold().orElseThrow().standards().forEach(st -> phases.put(st.name(), st.phase()));
-        assertEquals(Map.of("the camp's ground lit", 2, "the camp walled in", 2, "food", 3, "every soldier armed", 2,
+        assertEquals(Map.of("the camp's ground lit", 2, "food", 3, "every soldier armed", 2,
                 "the camp's floor paved", 3, "wood that grows back", 3, "stone and iron", 3, "every soldier armoured", 4), phases);
     }
 

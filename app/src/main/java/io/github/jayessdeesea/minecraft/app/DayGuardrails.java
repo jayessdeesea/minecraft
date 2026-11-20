@@ -221,15 +221,6 @@ final class DayGuardrails {
                 out.set(i, was.get());
             }
         }
-        // The airhead's wall, safety first (docs/military-doctrine.md § 17): in the SEIZURE a camp unwalled with nobody on
-        // FORTIFY has a squad spare of the shortfalls put on it. Live (field506), at the camp moved to sea level, the
-        // platoon leader sent every squad to FARM or WOOD all day, "the camp walled in - not begun".
-        d.foothold().filter(f -> d.phase() == Phase.SEIZURE && f.standards().stream().anyMatch(s -> !s.met() && "FORTIFY".equals(s.task()))
-                        && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.Fortify))
-                .ifPresent(f -> spare(out, movable, alarms).ifPresent(k -> {
-                    LOG.warn("[Guardrail] the camp unwalled with nobody on it - {} to FORTIFY, not '{}'", statuses.get(k).squadName(), out.get(k).mission());
-                    out.set(k, new Objective("Wall the camp in", f.camp(), "The airhead walled: safety first", new Objective.Task.Fortify()));
-                }));
         return out;
     }
 

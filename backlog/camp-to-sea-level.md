@@ -14,10 +14,10 @@ sea level 40 blocks south-east and 12 below: 58 harvests in ten minutes and no w
 and wheat 0, harvesters and the hurt stuck on the slope between ("can't reach the stockpile", six tries).
 
 ## The plan (operator, 2026-11-20: a new camp first)
-The camp stays walled and lit throughout: the new one is laid out at sea level and walled, the stores are
+The camp stays lit throughout: the new one is laid out at sea level and lit, the stores are
 moved into it, and only then is the old hill dug down.
 1. **The new camp** at sea level by the farm: chunk (1, 5), the camp at x=24 z=88 (`minecraft.camp`) - its
-   west half at y=63 already, the east rising to 65-67 (the camp's ground dig levels it). Its wall, lights,
+   west half at y=63 already, the east rising to 65-67 (the camp's ground dig levels it). Its lights,
    workshop and farm follow from the camp as they do now.
 2. **The old camp's chests salvaged into the new stockpile.** Built: every chest of an old camp is condemned
    and emptied into the camp's chest by any squad's soldier (docs/military-doctrine.md § 17). A chest under a block
@@ -28,11 +28,11 @@ moved into it, and only then is the old hill dug down.
    load (871) so packs have room.
 3. **The old hill flattened** to y=62, top level first, as the flatten's next site: `Flatten.next` taking an old
    camp's ground (x -60..-36, z 32..56, the hill) among its candidates once the farm-and-grove site is flat, as it
-   takes the farm and grove boxes. Waits on the new camp walled - its SEIZURE phase holds every flatten off
-   (field506: "the camp walled in - not begun").
+   takes the farm and grove boxes. Waits on the SEIZURE's end - the camp lit and every soldier
+   armed, held a day - which holds every flatten off.
 
 ## Done when
-- Live: the new camp walled and lit at sea level; the old stockpile's contents in the new camp's chest;
+- Live: the new camp lit at sea level; the old stockpile's contents in the new camp's chest;
   wheat in the stores; no "can't reach the stockpile" over a day.
 - Squad simulation: a camp moved - its old chest, on a 6-high mound, emptied into the new camp's chest (on
   flat ground: built, KeepSimulationTest).

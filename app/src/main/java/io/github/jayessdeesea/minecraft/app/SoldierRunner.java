@@ -551,7 +551,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /**
      * The camp measured against the lodgment's phases (docs/military-doctrine.md §17): what's lit,
-     * walled, growing, dug and carried - empty until the camp's ground has loaded.
+     * growing, dug and carried - empty until the camp's ground has loaded.
      */
     /** An in-game day on the clock: 24,000 ticks at 50 ms. */
     static final long DAY_MILLIS = 24_000L * 50;
@@ -726,8 +726,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 dark + " walkable cells within " + SECURE_RADIUS + " blocks still dark"
                         + (noWood ? "; no logs to make torches from and no trees in sight - grow them first" : ""),
                 noWood ? "TREE_FARM" : "SECURE"));
-        // The camp's wall as kept on disk, whether or not a squad is ordered to it this run: live,
-        // after a restart with no FORTIFY order, a closed wall read "not begun".
+        // The camp's wall as kept on disk, whether or not a squad is ordered to it this run - for the masons
+        // and the ground work, not a standard: the wall is no longer one of the camp's (operator, 2026-11-20).
         wallStore.keys().stream().filter(k -> Math.hypot(Integer.parseInt(k.split(",")[0]) - camp[0],
                         Integer.parseInt(k.split(",")[1]) - camp[1]) <= WALL_RADIUS)
                 .forEach(k -> walls.computeIfAbsent(k, key -> wallStore.load(key).orElseThrow()));
@@ -749,10 +749,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Set<BlockPos> wallCells = wall == null ? Set.of() : Set.copyOf(wall);
         long wallSoft = wall == null ? 0 : wall.stream().filter(c -> softInWall(c, camp[0], camp[1], wallCells)).count();
         campWalled = wall == null || wallLeft == 0 && wallSoft == 0;
-        standards.add(new Foothold.Standard(2, "the camp walled in", wallLeft == 0 && wallSoft == 0,
-                wall == null ? "not begun" : wallLeft > 0 ? wallLeft + " of " + wall.size() + " wall blocks still to place"
-                        + (wallSoft > 0 ? ", and " + wallSoft + " of dirt to replace with stone" : "")
-                        : wallSoft + " of its blocks dirt, to replace with stone", "FORTIFY"));
         long hungry =everyone.stream().filter(s -> s.condition().map(SoldierErrands::wantsFood).orElse(false)).count();
         // The camp's farm (CampFarm), with its chunk farm.
         FarmPlan keptFarm = campFarms.kept(world, at, camp[0] + "," + camp[1], roster.squads().stream().mapToInt(sq -> sq.soldiers().size()).sum(),

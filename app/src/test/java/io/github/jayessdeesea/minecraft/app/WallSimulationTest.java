@@ -31,7 +31,7 @@ import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.flat;
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.scripted;
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.squadLeader;
 
-/** The camp's wall in the squad simulation: walled, paved, rebuilt in stone, quarried for, on a slope. */
+/** The camp's wall in the squad simulation, where FORTIFY is ordered: paved, rebuilt in stone, quarried for, on a slope. */
 class WallSimulationTest {
 
     @TempDir
@@ -83,36 +83,6 @@ class WallSimulationTest {
     }
 
     /**
-     * A camp walled in before a restart, and no squad told to FORTIFY after it: the camp's wall still
-     * stands, and the standard says so. Live, after a restart it read "not begun" - the layout is
-     * kept on disk, but the measure read only the walls a squad had been ordered to that run.
-     */
-    @Test
-    void aWallBuiltBeforeARestartStillCountsAfterIt() {
-        new WallStore(state).save("0,0", List.copyOf(CAMP_WALL));
-        // And a layout from another FORTIFY order near the camp, never built: the camp's wall is the built one.
-        new WallStore(state).save("2,2", CAMP_WALL.stream().map(c -> c.offset(2, 0, 2)).toList());
-        SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, WallSimulationTest::walledCamp, 1000);
-        Roster roster = new Roster("Alpha:Alice,Bob");
-        Position camp = new Position(0.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
-                new Objective.Task.None())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
-                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
-                .run();
-        clock.advance(2 * 60_000);
-
-        Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
-                .filter(s -> s.name().equals("the camp walled in")).findFirst().orElseThrow();
-        assertTrue(walled.met(), "the camp's wall: " + walled.status());
-    }
-
-    /**
      * The wall closed and of stone, FORTIFY paves the camp's floor inside it at its own height: its
      * grass, block by block, replaced with cobblestone (backlog/cells.md).
      */
@@ -156,8 +126,8 @@ class WallSimulationTest {
     }
 
     /**
-     * FORTIFY ordered a little off the camp's centre: the squad finishes the camp's own wall, the
-     * one its standard measures, not a new one round the platoon leader's point. Live, the masons
+     * FORTIFY ordered a little off the camp's centre: the squad finishes the camp's own wall, not a
+     * new one round the platoon leader's point. Live, the masons
      * repointed a wall with 23 dirt blocks while the camp's, with 1, stayed open for days.
      */
     @Test
@@ -180,45 +150,8 @@ class WallSimulationTest {
                 .run();
         clock.advance(5 * 60_000);
 
-        Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
-                .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
-        assertTrue(walled.met(), "the camp's wall: " + walled.status());
-    }
-
-    /** As {@link #walledCamp}, one block of the wall's lower course dirt, covered by the course over it and the ground filled in against it. */
-    static int walledCampBuriedDirt(int x, int y, int z) {
-        BlockPos at = new BlockPos(x, y, z);
-        return at.equals(BURIED_DIRT) ? SimServer.DIRT
-                : at.equals(FILLED_INSIDE) || at.equals(FILLED_INSIDE.offset(0, 1, 0)) ? SimServer.DIRT : walledCamp(x, y, z);
-    }
-
-    /**
-     * A dirt block of the wall that's buried - its top covered and the camp's ground filled in
-     * against it - isn't the wall's to make stone: taken out, it opens no way in, and nobody can
-     * stand to reach it. Live, the camp's levelling buried the wall's bottom course where it ran
-     * through a dip, and "the camp walled in" stood open on that one block for days.
-     */
-    @Test
-    void aBuriedDirtBlockOfTheWallDoesntKeepTheCampOpen() {
-        new WallStore(state).save("0,0", List.copyOf(CAMP_WALL));
-        SimClock clock = new SimClock();
-        SimServer server = new SimServer(clock, WallSimulationTest::walledCampBuriedDirt, 1000);
-        Roster roster = new Roster("Alpha:Alice,Bob");
-        Position camp = new Position(0.5, GROUND + 1, 0.5);
-        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
-                new Objective.Task.None())), squadLeader(camp),
-                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
-                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
-                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
-                        new int[]{38, SimServer.ITEM_BREAD, 16})))
-                .run();
-        clock.advance(5_000); // read before the camp's levelling digs out the fill - here, unlike live, above its floor
-
-        Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
-                .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
-        assertTrue(walled.met(), "the camp's wall: " + walled.status());
+        assertEquals(SimServer.COBBLESTONE, server.block(DIRT_IN_WALL.x(), DIRT_IN_WALL.y(), DIRT_IN_WALL.z()),
+                "the camp's own wall repointed");
     }
 
     /** Flat, ringed 8 blocks out by a dirt wall two high: closed, but an enderman's to open. */
@@ -394,10 +327,8 @@ class WallSimulationTest {
 
         clock.advance(30 * 60_000); // its dirt dug off base, a trip at a time
 
-        // Closed - of dirt, with no stone to hand, so the standard itself waits on stone.
+        // Closed - of dirt, with no stone to hand.
         server.dumpLog("aSquadWallsInTheCampOnASlope");
-        Foothold.Standard walled = chain.foothold().orElseThrow().standards().stream()
-                .filter(st -> st.name().equals("the camp walled in")).findFirst().orElseThrow();
-        assertEquals(OptionalInt.of(0), runner.wallLeft("Alpha"), walled.status());
+        assertEquals(OptionalInt.of(0), runner.wallLeft("Alpha"));
     }
 }

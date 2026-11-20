@@ -73,39 +73,29 @@ class PlatoonLeaderScenarioIT {
                     new Foothold.Standard(1, "shelter", true, "both squads have a base", "PATROL_BASE"),
                     new Foothold.Standard(2, "the camp's ground lit", false,
                             "120 walkable cells within 12 blocks still dark; no logs to make torches from and no trees in sight - grow them first",
-                            "TREE_FARM"),
-                    new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
+                            "TREE_FARM"))),
             "exposed-far-out", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(1, "shelter", true, "both squads have a base", "PATROL_BASE"),
                     new Foothold.Standard(2, "the camp's ground lit", false,
-                            "120 walkable cells within 12 blocks still dark", "SECURE"),
-                    new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
+                            "120 walkable cells within 12 blocks still dark", "SECURE"))),
             "securing-short-of-makings", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(2, "the camp's ground lit", false,
-                            "288 walkable cells within 12 blocks still dark", "SECURE"),
-                    new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))),
-            "morning-wall-open", new Foothold(new Position(3000, 151, 3000), List.of(
+                            "288 walkable cells within 12 blocks still dark", "SECURE"))),
+            "morning-after-shelter", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
-                    new Foothold.Standard(2, "the camp walled in", false,
-                            "57 of 170 wall blocks still to place", "FORTIFY"),
                     new Foothold.Standard(3, "food", true, "", "FARM"),
                     new Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))),
             "wall-open-alpha-detached", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
-                    new Foothold.Standard(2, "the camp walled in", false,
-                            "57 of 170 wall blocks still to place", "FORTIFY"),
                     new Foothold.Standard(3, "food", true, "", "FARM"),
                     new Foothold.Standard(3, "stone and iron", true, "", "MINE"))),
             "starving-with-ripe-wheat", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
-                    new Foothold.Standard(2, "the camp walled in", true, "", "FORTIFY"),
                     new Foothold.Standard(2, "food", false,
                             "150 of 527 cells of the camp's farm ground, by the water at x=3010 z=2990, growing wheat; "
                                     + "12 of 12 soldiers hungry with nothing to eat", "FARM"))),
             "starving-airhead", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"),
-                    new Foothold.Standard(2, "the camp walled in", false,
-                            "161 of 170 wall blocks still to place", "FORTIFY"),
                     new Foothold.Standard(2, "food", false,
                             "0 of 55 cells of the camp's farm ground, by the water at x=3010 z=2990, growing wheat; "
                                     + "8 of 8 soldiers hungry with nothing to eat", "FARM"),
@@ -113,13 +103,9 @@ class PlatoonLeaderScenarioIT {
             "foothold-airhead", new Foothold(new Position(3000, 151, 3000), List.of(
                     new Foothold.Standard(2, "the camp's ground lit", false,
                             "31 walkable cells within 12 blocks still dark", "SECURE"),
-                    new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"),
                     new Foothold.Standard(3, "food", false,
                             "no ground to farm by water near the camp; 0 of 8 soldiers hungry with nothing to eat", "FARM"),
                     new Foothold.Standard(3, "stone and iron", false, "no mine yet", "MINE"))));
-
-    private static final Objective WALL_CAMP = new Objective("Wall the camp in", new Position(3000, 151, 3000),
-            "Nothing walks into the camp", new Objective.Task.Fortify());
 
     private static final Objective GATHER_WOOD = new Objective("Gather logs from the trees below the platform",
             new Position(3007, 130, 2990), "Logs for tools and building", Optional.of(Resource.WOOD));
@@ -167,7 +153,7 @@ class PlatoonLeaderScenarioIT {
                     (squads, given) -> given.stream().anyMatch(o -> o.treeFarm() && distance(o.location(), new Position(3000, 151, 3000)) <= 24)
                             ? List.of() : List.of("no squad set to plant a tree farm by the camp: " + given.stream()
                                     .map(o -> o.task() + " at " + o.location()).toList())),
-            // The foothold's airhead not yet met: the platoon leader splits its two standards between the squads.
+            // The foothold's airhead not yet met: a squad lights the camp's ground.
             new Situation("foothold-airhead", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
                     TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
@@ -175,9 +161,6 @@ class PlatoonLeaderScenarioIT {
                         List<String> failures = new ArrayList<>();
                         if (given.stream().noneMatch(Objective::secure)) {
                             failures.add("nobody lighting the camp's ground");
-                        }
-                        if (given.stream().noneMatch(Objective::fortify)) {
-                            failures.add("nobody walling the camp in");
                         }
                         if (!failures.isEmpty()) {
                             failures.add("given " + given.stream().map(o -> o.task().toString()).toList());
@@ -192,21 +175,13 @@ class PlatoonLeaderScenarioIT {
                     (squads, given) -> !(given.get(1).task() instanceof Objective.Task.None) ? List.of()
                             : List.of("Bravo given work with no task: " + given.get(1).mission())),
             // The live miss: just after dawn, a squad sent into a patrol base "before dark" - a day's work lost.
-            new Situation("morning-wall-open", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment. "
+            new Situation("morning-after-shelter", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment. "
                     + "Each squad spends the night sealed inside a patrol base near there, until dawn.",
                     TimeOfDay.of(1200, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),
                     (squads, given) -> given.stream().filter(Objective::patrolBase)
                             .map(o -> "sent to shelter in the morning: " + o.mission()).toList()),
-            // The live miss: the wall given to a squad whose soldiers all had jobs of their own - nobody built it,
-            // and the squad said CANTCO.
-            new Situation("wall-open-alpha-detached", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
-                    TimeOfDay.of(2000, true),
-                    List.of(detached("Alpha", 2996, Optional.of(WALL_CAMP)), fresh("Bravo", 3004, Optional.of(SECURE_CAMP))),
-                    (squads, given) -> given.get(1).fortify() ? List.of()
-                            : List.of("the wall not given to Bravo, the squad with soldiers free: Alpha "
-                                    + given.get(0).task() + ", Bravo " + given.get(1).task())),
-            // The live miss: the wall open and every soldier hungry - both squads were sent to the wall.
+            // The live miss: every soldier hungry - both squads were sent to the wall.
             new Situation("starving-airhead", "Build the camp on the stone platform around x=3000 z=3000 into a lodgment.",
                     TimeOfDay.of(2000, true),
                     List.of(fresh("Alpha", 2996, Optional.empty()), fresh("Bravo", 3004, Optional.empty())),

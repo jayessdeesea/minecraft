@@ -1345,11 +1345,11 @@ it first, and shared, and it's kept by the objective's x and z, not by the groun
 that ground moves as the pits are dug and the wall goes up, and laid out again it would lose what's
 built. So the
 layout is kept on disk too (`app.WallStore`, under `minecraft.state-dir`), and a restarted garrison
-builds the wall it laid out before rather than a second one on top of it. The foothold's walled
-standard (§ 17) reads it from there too, whether or not a squad is ordered to FORTIFY that run -
-of the layouts kept round the camp, one for each place FORTIFY was ordered, the one the world shows
-most built, then most of stone. And FORTIFY ordered near the camp works that same layout, so the
-standard and the work are one wall. Each layout is written whole or not at all. Its
+builds the wall it laid out before rather than a second one on top of it. The camp's wall is read
+from there too, whether or not a squad is ordered to FORTIFY that run - of the layouts kept round
+the camp, one for each place FORTIFY was ordered, the one the world shows most built, then most of
+stone - and FORTIFY ordered near the camp works that same layout. A wall is the platoon leader's to
+order, not a standard of the camp's (§ 17). Each layout is written whole or not at all. Its
 cells join the ones every dig skips, so nobody quarries it, and so does the camp's ground inside
 it, solid when the wall is laid out: a dig takes the nearest dirt first, and a pit outside the wall
 would otherwise eat in under it. Where the ground under a wall cell has gone anyway, the cells
@@ -1416,8 +1416,7 @@ A wall of dirt isn't finished: an enderman picks a dirt block out of it and open
 of the wall's blocks of dirt or grass is replaced with cobblestone (`Mason.repoint`): a mason
 carrying some, with no open wall cell it can build, stands inside the wall by the block, digs it
 out by hand for the server's break time, and puts stone in its place, each step confirmed by the
-block update. "The camp walled in" isn't met, and FORTIFY isn't done, while any dirt is left in
-the wall - but for a block buried, covered over with the camp's ground filled in against it,
+block update. FORTIFY isn't done while any dirt is left in the wall - but for a block buried, covered over with the camp's ground filled in against it,
 which opens no way in if taken and which nobody can reach; its progress says how many blocks. A mason on it with no cobblestone, the wall
 otherwise closed, draws some from the stockpile when it was last seen holding stone, or quarries
 some where its squad saw stone nearest the camp - as one short of blocks for a wall going up digs
@@ -1731,7 +1730,7 @@ restarts:
 
 | Phase | By night | By day | Up when, held a day | Down when, after a day in it |
 |---|---|---|---|---|
-| SEIZURE (the airhead) | shelter in place in the camp | secure the camp, arm every soldier; no KEEP, no MINE | the camp lit and walled, every soldier armed | - |
+| SEIZURE (the airhead) | shelter in place in the camp | secure the camp, arm every soldier; no KEEP, no MINE | the camp lit, every soldier armed | - |
 | CONSOLIDATION | shelter in place in the camp | food and wood first, at most one squad on KEEP; no MINE | Class I and Class IV at 3 days of supply or more | the camp no longer secured |
 | BUILDUP | the night shift mines | the shortfalls covered, the rest on the mission | 7 days of supply, every soldier armoured | under 1 day of supply |
 | BREAKOUT | the night shift mines | the mission leads | - | under 3 days of supply, or armour lost |
@@ -1743,11 +1742,13 @@ flapping. The platoon leader is told the phase, what it means and what stands be
 
 The camp is built up the way an airborne force builds a lodgment after the drop, measured in these standards:
 1. Shelter: a patrol base each night (§14).
-2. The airhead - safety first, the operator's: the camp's ground lit (§15, SECURE) and walled
-   (§15, FORTIFY), and every soldier armed with a stone sword or better (§11, STONE). Food that
+2. The airhead - safety first, the operator's: the camp's ground lit (§15, SECURE), and every
+   soldier armed with a stone sword or better (§11, STONE). Not walled (operator, 2026-11-20): the
+   huts keep the night out and the lights keep spawns out; a wall kept off none of what killed
+   soldiers (phantoms, friendly fire, drowning) and littered the camp with its masons' pits. Food that
    grows (§12, FARM) is buildup, unless survival is at stake - more than half the soldiers hungry
    with nothing to eat, or one starving at death's door (food 0, health 6 or less, no rations) -
-   when it stands here beside the wall, and the platoon leader does what it takes to eat
+   when it stands here beside the lights, and the platoon leader does what it takes to eat
    (PlatoonLeaderScenarioIT's `starving-airhead`). Food isn't met while more than half are hungry,
    however much is planted - wheat feeds nobody for days - and the standard names where the
    camp's farm ground is, so the squad is sent there. With no logs

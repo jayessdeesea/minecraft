@@ -87,7 +87,7 @@ public final class PhaseTracker {
     /** What stands between the force and the next phase, for the platoon leader. */
     public static String toNext(Phase phase, Readiness r) {
         return switch (phase) {
-            case SEIZURE -> "to CONSOLIDATION: the camp " + (r.secure() ? "secured" : "not yet lit and walled") + ", "
+            case SEIZURE -> "to CONSOLIDATION: the camp " + (r.secure() ? "lit" : "not yet lit") + ", "
                     + (r.armed() ? "every soldier armed" : "not every soldier armed") + ", held a day";
             case CONSOLIDATION -> String.format(Locale.ROOT, "to BUILDUP: Class I %.1f and Class IV %.1f days of supply, of %.0f each, held a day",
                     r.rationsDays(), r.logsDays(), BUILDUP_UP);

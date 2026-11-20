@@ -53,7 +53,7 @@ final class PhaseBook {
 
     /** The camp's readiness: its standards by name, its supply in days against a floor burn for {@code soldiers}. */
     static PhaseTracker.Readiness readiness(Foothold camp, List<Supply> supplies, int soldiers, boolean breached) {
-        return new PhaseTracker.Readiness(met(camp, "the camp's ground lit") && met(camp, "the camp walled in"), met(camp, "every soldier armed"),
+        return new PhaseTracker.Readiness(met(camp, "the camp's ground lit"), met(camp, "every soldier armed"),
                 met(camp, "every soldier armoured"), days(supplies, "Class I", RATIONS_A_SOLDIER * soldiers),
                 days(supplies, "Class IV", LOGS_A_SOLDIER * soldiers), breached);
     }

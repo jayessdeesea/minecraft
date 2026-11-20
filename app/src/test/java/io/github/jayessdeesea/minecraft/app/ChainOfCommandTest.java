@@ -218,7 +218,7 @@ class ChainOfCommandTest {
         three.restorePhase(Phase.SEIZURE, 0);
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
         three.onTime(TimeOfDay.of(1000, true));
-        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))));
+        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(2, "the camp's ground lit", false, "31 cells dark", "SECURE"))));
         Objective farm = new Objective("Farm", new Position(-4, 64, 93), "Food", new Objective.Task.Farm());
         Objective forage = new Objective("Forage", new Position(24, 64, 89), "Rations off the land", new Objective.Task.Forage());
         Objective wall = new Objective("Wall the camp in", new Position(24, 64, 89), "Safety", new Objective.Task.Fortify());
@@ -230,11 +230,12 @@ class ChainOfCommandTest {
     }
 
     /**
-     * In the airhead, the camp unwalled and every squad on the food the platoon leader sent it to: one doubled up on the
-     * farm is put on FORTIFY - safety first. Live (field506), the wall "not begun" all day at the camp moved to sea level.
+     * In the seizure, a camp unwalled takes nobody off the food: the wall is no standard of the camp's (operator,
+     * 2026-11-20) - its masons' pits and lips littered the camp, and it kept off no killer the night's huts and the
+     * lights don't (field498-515: phantoms, friendly fire, drowning).
      */
     @Test
-    void inTheAirheadAnUnwalledCampHasASpareSquadPutOnItsWall() {
+    void inTheSeizureAnUnwalledCampTakesNoSquadOffItsFood() {
         ChainOfCommand three = new ChainOfCommand(
                 (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
                 ChatClient.create((ChatModel) prompt -> {
@@ -245,18 +246,11 @@ class ChainOfCommandTest {
         three.restorePhase(Phase.SEIZURE, 0);
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
         three.onTime(TimeOfDay.of(1000, true));
-        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))));
+        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(2, "the camp's ground lit", true, "", "SECURE"))));
         Objective farm = new Objective("Farm", new Position(-4, 64, 93), "Food", new Objective.Task.Farm());
-        List<PlatoonSergeant.Shortfall> alarms = List.of(PlatoonSergeant.Shortfall.FOOD);
         List<SquadStatus> squads = List.of(hungry("Alpha", "Alice"), hungry("Bravo", "Bob"), hungry("Charlie", "Carol"));
 
-        List<Objective> guarded = three.guarded(List.of(farm, farm, farm), squads, alarms, List.of());
-
-        assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Fortify).count(), "one walls the camp: " + guarded);
-        assertEquals(new Position(24, 64, 89), guarded.stream().filter(o -> o.task() instanceof Objective.Task.Fortify).findFirst().orElseThrow().location());
-        assertEquals(2, guarded.stream().filter(o -> o.task() instanceof Objective.Task.Farm).count(), "two still farm: " + guarded);
-        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(2, "the camp walled in", true, "", "FORTIFY"))));
-        assertEquals(List.of(farm, farm, farm), three.guarded(List.of(farm, farm, farm), squads, alarms, List.of()), "walled: the farms stand");
+        assertEquals(List.of(farm, farm, farm), three.guarded(List.of(farm, farm, farm), squads, List.of(PlatoonSergeant.Shortfall.FOOD), List.of()));
     }
 
     /**
