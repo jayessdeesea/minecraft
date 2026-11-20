@@ -81,17 +81,24 @@ final class PoliceCall {
         Optional<Kit> kit = status.condition().flatMap(Condition::kit);
         boolean pickaxe = kit.map(Kit::pickaxe).orElse(false);
         // With no route and no block to make one with, but a pickaxe: a stone off the wall by its head (wayBlock).
+        boolean wayDue = false;
         boolean wantsABlock = pickaxe && kit.map(k -> k.stone() + k.dirt() == 0).orElse(false)
                 && status.report() instanceof Report.Cantco(String why) && why.startsWith("no route");
         if (wantsABlock) {
             String why = ((Report.Cantco) status.report()).reason();
             Map.Entry<String, Long> since = noRoute.compute(soldier, (k, was) -> was != null && was.getKey().equals(why) ? was : Map.entry(why, now));
-            withoutWork |= now - since.getValue() >= GIVE_UP_MILLIS;
+            wayDue = now - since.getValue() >= GIVE_UP_MILLIS;
         } else {
             noRoute.remove(soldier);
         }
         Optional<BlockPos> had = Optional.ofNullable(jobs.get(soldier)).map(Job::step);
-        Optional<BlockPos> step = step(soldier, busy, withoutWork, world, now, skip -> {
+        // Its stone first, over its own work and any litter: the work waits on the route, and litter elsewhere is no
+        // nearer than its goal. Live (field528), Eli was handed litter he had no route to, again and again.
+        boolean due = wayDue;
+        if (due) {
+            jobs.computeIfPresent(soldier, (k, j) -> steps.contains(j.step()) ? null : j); // litter in hand dropped for it
+        }
+        Optional<BlockPos> step = step(soldier, busy && !due, withoutWork || due, world, now, skip -> {
             Set<BlockPos> not = new java.util.HashSet<>(kept);
             not.addAll(skip);
             placedAt.forEach((c, t) -> {
@@ -99,7 +106,7 @@ final class PoliceCall {
                     not.add(c);
                 }
             });
-            return litter(world, steps, at, bodies, pickaxe, not).or(() -> wantsABlock ? wayBlock(world, at) : Optional.empty());
+            return due ? wayBlock(world, at) : litter(world, steps, at, bodies, pickaxe, not);
         });
         step.filter(c -> !step.equals(had)).ifPresent(c -> LOG.info(steps.contains(c) ? "[Police] {} takes back a step left at {} {} {}"
                 : "[Police] {} cuts a stone for its way at {} {} {} - no route, and no block to make one with", soldier, c.x(), c.y(), c.z()));

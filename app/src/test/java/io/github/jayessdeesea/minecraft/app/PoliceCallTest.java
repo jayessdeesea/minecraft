@@ -135,7 +135,9 @@ class PoliceCallTest {
         PoliceCall call = new PoliceCall();
         assertEquals(Optional.empty(), call.order(eli, false, false, gallery, Set.of(), java.util.Map.of(), List.of(), Set.of(), 0),
                 "not at once: its route may come");
-        Optional<io.github.jayessdeesea.minecraft.command.Order> cut = call.order(eli, false, false, gallery, Set.of(), java.util.Map.of(),
+        // Busy, and with litter about: the stone first all the same.
+        BlockPos litter = new BlockPos(3, GROUND + 1, 0);
+        Optional<io.github.jayessdeesea.minecraft.command.Order> cut = call.order(eli, true, false, gallery, Set.of(litter), java.util.Map.of(),
                 List.of(), Set.of(), PoliceCall.GIVE_UP_MILLIS);
 
         assertEquals(Optional.of(new BlockPos(0, GROUND + 2, 1)), PoliceCall.wayBlock(gallery, AT));
