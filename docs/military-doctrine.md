@@ -1845,7 +1845,8 @@ world, one of the keep's hands draws by day the depot kind each holds most of, i
 the depot as any builder's, and till a chest is seen empty it stands on a 3x3 pillar of the ground under
 it, in reach (`SoldierRunner.condemned`, `salvageFor`); its salvager is a keep hand on the ground, never one
 the recovery drill has nor one more than 2 under the floor, nor for ten minutes one whose pack had no room for a draw; a chest under a solid block - no chest opens under one -
-has the block broken first, by any soldier at it with a load or a draw; a chest seen empty is kept so on disk across a
+has the block broken first, by any soldier at it with a load or a draw; one its salvager can't get to is passed over
+ten minutes for the next nearest - the flatten digs to it in time; a chest seen empty is kept so on disk across a
 restart (`SoldierRunner.SALVAGED`). So is every chest of an old camp - one the garrison was configured with
 before (`SiteGeometry.oldCamps`, kept on disk) - within 12 across of it, in every phase and by any squad's
 soldier, not only the flatten's hands: the camp moved, its stores follow it into the camp's chest

@@ -123,6 +123,11 @@ public final class Depositor {
      * Each tick: starts a trip to {@code stockpile} when {@code wanted} (a full load, nothing near),
      * and advances one under way.
      */
+    /** Whether a trip to {@code chest} failed lately, and is held off while its setback lasts ({@link Setbacks#barred}). */
+    public synchronized boolean barred(Position chest) {
+        return trips.barred(chest, ticks);
+    }
+
     /** Why it needs its squad leader's help, if it's out of ways of its own ({@link Setbacks#stuck}). */
     public synchronized Optional<String> stuck() {
         return trips.stuck().map(s -> "can't reach the stockpile: " + s);

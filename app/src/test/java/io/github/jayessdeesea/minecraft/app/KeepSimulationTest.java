@@ -260,6 +260,34 @@ class KeepSimulationTest {
         assertTrue(atCamp >= 32, "its cobblestone in the new camp's chest: " + atCamp + "; " + events);
     }
 
+    /** The old camp's nearest chest walled in, out of reach: passed over, the next one emptied. Live (field510), one all day. */
+    @Test
+    void aChestOutOfReachIsPassedOverForTheNext() {
+        SimClock clock = new SimClock();
+        // The near chest at (64, 1, 0) boxed in bedrock two high round it; the far one at (74, 1, 0) in the open.
+        SimServer server = new SimServer(clock, (x, y, z) -> Math.abs(x - 64) <= 1 && Math.abs(z) <= 1 && !(x == 64 && z == 0)
+                && y > GROUND && y <= GROUND + 3 ? SimServer.BEDROCK : x == 64 && z == 0 && y == GROUND + 2 ? SimServer.BEDROCK : flat(x, y, z), 1000);
+        server.stockedChest(64, GROUND + 1, 0, SimServer.ITEM_COBBLESTONE, 64);
+        server.stockedChest(74, GROUND + 1, 0, SimServer.ITEM_COBBLESTONE, 64);
+        new WallStore(state, "chests").save(SiteGeometry.CAMPS, List.of(new BlockPos(70, 0, 0)));
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(40.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "40,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(40.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.ITEM_OAK_LOG, 16})))
+                .run();
+
+        clock.advance(30 * 60_000); // its tries at the near one backed off first, and the night between - salvage is by day
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        assertEquals(0, held(server, 74, GROUND + 1, 0), "the far chest emptied, the near one passed over; " + events);
+    }
+
     /** The old camp's chest under a block of cobblestone, which no chest opens under: the block broken, the chest emptied. */
     @Test
     void aChestUnderABlockHasTheBlockBrokenAndIsEmptied() {

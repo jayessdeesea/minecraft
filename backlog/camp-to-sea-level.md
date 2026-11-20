@@ -20,9 +20,9 @@ moved into it, and only then is the old hill dug down.
    west half at y=63 already, the east rising to 65-67 (the camp's ground dig levels it). Its wall, lights,
    workshop and farm follow from the camp as they do now.
 2. **The old camp's chests salvaged into the new stockpile.** Built: every chest of an old camp is condemned
-   and emptied into the camp's chest by any squad's soldier (docs/military-doctrine.md § 17). Left: a chest
-   the salvager has no route to is stepped up to on the blocks it carries - it draws a load of dirt for its
-   steps first.
+   and emptied into the camp's chest by any squad's soldier (docs/military-doctrine.md § 17). A chest under a block
+   has it broken first (877); one its salvager has no route to is passed over for the next (879) - the old hill's
+   flatten digs to it. Left, if the flatten comes too late: stepping up to it on the blocks it carries.
    Live (field501-506): the camp moved to x=24 z=88 (its ground y=64), the old hill's 22 chests condemned and
    drawn from - a salvager with a full pack hands it on (870), and every soldier but a miner carries the surface
    load (871) so packs have room.

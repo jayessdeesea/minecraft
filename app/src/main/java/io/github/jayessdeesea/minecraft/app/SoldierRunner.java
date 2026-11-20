@@ -3273,8 +3273,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             return null;
         }
-        Optional<String> chosen = onHand.stream()
-                .filter(b -> plan == null || !plan.boxes().containsKey(b.name()))
+        Optional<String> chosen = onHand.stream().filter(b -> plan == null || !plan.boxes().containsKey(b.name()))
                 .filter(b -> !inWoodParty(b.name()) && !b.name().equals(keepRoadCutter))
                 .min(Comparator.comparingDouble(b -> Math.hypot(b.at().x() - depot.stand().x(), b.at().z() - depot.stand().z())))
                 .map(LevelPlan.Builder::name);
@@ -4513,7 +4512,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * the nearest chest still to empty was last seen holding most of - cobblestone to look in one not yet
      * opened. Its pack full, the depot gets the load as any builder's (stockpileFor).
      */
-    private Optional<Unstash> salvageFor(String name, Position at, Inventory inventory, boolean dark) {
+    private Optional<Unstash> salvageFor(String name, Position at, Inventory inventory, boolean dark, java.util.function.Predicate<Position> barred) {
         if (dark || !name.equals(salvager)) {
             return Optional.empty();
         }
@@ -4530,7 +4529,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             salvager = null;
             return Optional.empty();
         }
-        Optional<BlockPos> chest = condemned.stream().filter(c -> !emptied(c))
+        // Not one its trips couldn't get at, while their setback lasts, but the next (field510: Mia at one all day, 15 behind it).
+        Optional<BlockPos> chest = condemned.stream().filter(c -> !emptied(c) && !barred.test(new Position(c.x() + 0.5, c.y(), c.z() + 0.5)))
                 .min(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z())));
         if (chest.isEmpty()) {
             return Optional.empty();
@@ -4951,8 +4951,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // out through it.
             Set<Cell> kept = groundExcept();
             Optional<List<Cell>> stair = Stairway.up(world, BlockPos.containing(at.x(), at.y(), at.z()), whyNot)
-                    .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList())
-                    .filter(cells -> {
+                    .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList()).filter(cells -> {
                         boolean through = cells.stream().anyMatch(kept::contains);
                         if (through) {
                             whyNot.put("kept", "the way up cuts the camp's kept ground");
@@ -6082,8 +6081,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Optional<Position> errand = isCutter || dark && !staysUp ? Optional.empty()
                         : depositTo(soldierName, statuses).or(() -> Optional.ofNullable(armourers.get(soldierName)).flatMap(Armourer::standAt))
                         .or(() -> Optional.ofNullable(torchmakers.get(soldierName)).flatMap(Torchmaker::standAt))
-                        .or(() -> Optional.ofNullable(lamplighters.get(soldierName))
-                                .flatMap(Lamplighter::standAt));
+                        .or(() -> Optional.ofNullable(lamplighters.get(soldierName)).flatMap(Lamplighter::standAt));
                 if (errand.isPresent()) {
                     byName.get(soldierName).receiveOrder(new Order.MoveTo(errand.get().x(), errand.get().y(), errand.get().z(), 0.3, 0.5, Risk.LOW));
                     continue;
@@ -6164,8 +6162,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             if (given instanceof Order.Place place) {
                 // Concrete work: the soldier builds the cells, standing where the building says.
-                List<BlockPos> cells = place.cells().stream()
-                        .map(c -> new BlockPos(c.x(), c.y(), c.z())).toList();
+                List<BlockPos> cells = place.cells().stream().map(c -> new BlockPos(c.x(), c.y(), c.z())).toList();
                 if (!cells.equals(placing.get(soldierName))) {
                     placeProgress.remove(soldierName);
                     placing.put(soldierName, cells);
@@ -7134,7 +7131,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean stashOre = darkNow && working != null && mineOfChest(chestCentre(working)).isPresent()
                     && STASHED.stream().mapToInt(inventory::count).sum() >= STASH_ORE;
             Optional<Unstash> unstash = unstashFor(status.position(), inventory, darkNow)
-                    .or(() -> salvageFor(name, status.position(), inventory, darkNow));
+                    .or(() -> salvageFor(name, status.position(), inventory, darkNow, depositor::barred));
             armourer.digsItsMakings(inventory.meleeWeapons() == 0 // bare-handed, its weapon is its own upkeep (docs/echelons/tenets.md)
                     || !(cutting.containsKey(name) || dutyBook.of(name).isPresent() || keepHands.contains(name)));
             // A farmer's hoe, and its wheat baked into bread three at a time - by its baker, on a farm that has one.
@@ -7501,7 +7498,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 boolean free = handsFree && !cuttingOut;
                 // Its chest under a block - not another chest - broken first: no chest opens under one (field508: Alice's salvage, 5 tries).
                 Optional<BlockPos> lid = depositor.active() ? depositor.chestAt().filter(c -> Depositor.withinReach(status.position(), c))
-                        .map(c -> BlockPos.containing(c.x(), c.y() + 1, c.z())).filter(l -> world.isSolid(l.x(), l.y(), l.z()) && !world.isChest(l.x(), l.y(), l.z())) : Optional.empty();
+                        .map(c -> BlockPos.containing(c.x(), c.y() + 1, c.z())).filter(l -> world.isSolid(l.x(), l.y(), l.z()) && !world.isChest(l.x(), l.y(), l.z()) && Clearing.diggable(world, l.x(), l.y(), l.z())) : Optional.empty();
                 if (free && lid.isPresent()) {
                     lidCutter.tick(world, List.of(lid.get()));
                     return;
