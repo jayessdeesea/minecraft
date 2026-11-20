@@ -198,7 +198,7 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    farm, its farmer making the bucket for its holes as any tool (operator, 2026-11-20: the high-density farms
    as soon as can be) (`bot.farm.ChunkFarm`): the
    chunk within two of the camp's - never the camp's own - with the most ground at one level that makes
-   farmland, at least 160 of its 220; laid out on the chunk's lines - a fence on x%16==0 and z%16==0, a
+   farmland, at least 128 of its 220 (over half: the rest flattened to it in time); laid out on the chunk's lines - a fence on x%16==0 and z%16==0, a
    gate beside each corner, four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) in the
    farmland's own layer, a chest at local (13, 13). Its farmers dig the holes and fill them from a
    pond with the bucket, and put up its fence, gates and chest from what they carry - each gate

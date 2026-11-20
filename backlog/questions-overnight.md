@@ -5,7 +5,10 @@ priority: P1
 
 # Questions for the operator
 
-None open.
+- **A chunk farm on broken ground** (backlog/renewables.md): taken by default, a chunk is sited with 128 of its 220
+  cells farmable at one level, not 160 - live (field502) the best by the new camp made 138, and levelling one waits
+  on the flatten the camp's SEIZURE phase holds off. Or should a chunk farm wait for level ground, its chunk made
+  the flatten's site once the camp's walled?
 
 Answered 2026-11-20, each now with its item:
 - **Sea level:** the camp too, gradually - a new camp at sea level first, the stores moved into it, then the

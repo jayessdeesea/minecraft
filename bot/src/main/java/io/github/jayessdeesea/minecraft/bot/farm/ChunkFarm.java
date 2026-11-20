@@ -28,8 +28,12 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
     static final int[][] HOLES = {{4, 4}, {4, 12}, {12, 4}, {12, 12}};
     /** The chest, by local x and z. */
     static final int CHEST = 13;
-    /** The least of its ground to farm at one level for a chunk to be sited: the rest is flattened to it in time. */
-    public static final int MIN_CELLS = 160;
+    /**
+     * The least of its ground to farm at one level for a chunk to be sited - over half its 220: the rest is flattened to it
+     * in time. Live (field502), the best chunk by the camp at sea level made 138 of 160, and the farm waited on a flatten
+     * the camp's phase holds off (operator, 2026-11-20: the high-density farms as soon as can be).
+     */
+    public static final int MIN_CELLS = 128;
 
     private int x0() {
         return chunkX * SIDE;
