@@ -427,19 +427,29 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
         return reply;
     }
 
-    /** One objective per listed squad, in the same order - anything else is a violated contract. */
+    /**
+     * One objective per listed squad, in the same order - anything else is a violated contract. A squad named twice
+     * fails alone, loud: it keeps its standing order, the other squads' objectives stand. Live (field495-504), one squad
+     * named twice in about one reply a run threw out every squad's decision with it.
+     */
     static List<Objective> toObjectives(PlatoonLeaderReply reply, List<SquadStatus> squadStatuses) {
         if (reply == null || reply.objectives() == null) {
             throw new IllegalStateException("platoon leader model returned no objectives");
         }
         Map<String, PlatoonLeaderReply.ObjectiveReply> bySquad = new HashMap<>();
+        java.util.Set<String> twice = new java.util.HashSet<>();
         for (PlatoonLeaderReply.ObjectiveReply objective : reply.objectives()) {
             if (bySquad.put(objective.squad(), objective) != null) {
-                throw new IllegalStateException("two objectives for squad " + objective.squad() + ": " + reply);
+                twice.add(objective.squad());
             }
         }
         List<Objective> objectives = new ArrayList<>(squadStatuses.size());
         for (SquadStatus squad : squadStatuses) {
+            if (twice.contains(squad.squadName())) {
+                objectives.add(squad.standing().orElseThrow(() -> new IllegalStateException("two objectives for squad " + squad.squadName() + ": " + reply)));
+                LOG.error("[PL] two objectives for squad {} - it keeps its standing order: {}", squad.squadName(), reply);
+                continue;
+            }
             PlatoonLeaderReply.ObjectiveReply objective = bySquad.get(squad.squadName());
             if (objective == null) {
                 throw new IllegalStateException("no objective for squad " + squad.squadName() + ": " + reply);

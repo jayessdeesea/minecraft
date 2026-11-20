@@ -41,8 +41,13 @@ final class Foragers {
     void lookOver(WorldView world, BlockPos campGround, long now, java.util.function.IntConsumer told) {
         if (campGround != null && now - lookedAt >= LOOK_MILLIS) {
             lookedAt = now;
+            int was = ripe.size();
             ripe = List.copyOf(Forage.ripe(world, campGround, Forage.REACH, Forage.DEPTH));
             told.accept(ripe.size());
+            // Said when it moves by a tenth or more, or to or from none: what the platoon leader's FORAGE has to go on.
+            if ((was == 0) != ripe.isEmpty() || Math.abs(ripe.size() - was) * 10 >= Math.max(was, 1)) {
+                LOG.info("[Forage] {} ripe wheat within {} blocks of the camp", ripe.size(), Forage.REACH);
+            }
         }
     }
 
