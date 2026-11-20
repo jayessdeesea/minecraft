@@ -668,4 +668,37 @@ class PathfinderTest {
         assertTrue(over.reachesGoal(), "" + over.path());
         assertTrue(over.path().stream().anyMatch(c -> c.y() > GROUND), "90 blocks round is too far: over the wall: " + over.path());
     }
+
+    /**
+     * A gallery one wide, walled both sides, a hole in its floor over a cave: bridged with a block carried, not with
+     * none (backlog/mining.md; field512, Eli stood for good at such a gap at y=20).
+     */
+    @Test
+    void aHoleInAGalleryFloorIsBridgedWithABlockCarried() {
+        WorldView gallery = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return z != 0 ? y <= GROUND + 2 : y < GROUND - 12 || y < GROUND && x != 3 || y > GROUND + 2;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Goal beyond = new Goal(6.5, GROUND, 0.5, 0.5, 0.5);
+
+        Pathfinder.Result none = Pathfinder.find(gallery, START, beyond, 5000, FallAllowance.NONE, 0, false, false);
+        assertFalse(none.reachesGoal(), "no blocks, no way over: " + none.path());
+
+        Pathfinder.Result one = Pathfinder.find(gallery, START, beyond, 5000, FallAllowance.NONE, 4, false, false);
+        assertTrue(one.reachesGoal(), "" + one.path());
+        assertTrue(one.path().contains(new BlockPos(3, GROUND, 0)), "over the hole: " + one.path());
+        assertEquals(List.of(new BlockPos(3, GROUND - 1, 0)), Pathfinder.stepBuild(gallery, new BlockPos(2, GROUND, 0), new BlockPos(3, GROUND, 0)));
+    }
 }

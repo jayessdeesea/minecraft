@@ -381,6 +381,14 @@ public final class Pathfinder {
                 moves.add(new Move(level, afloat ? SWIM_COST : 1));
                 continue;
             }
+            // A bridge: a hole in the floor at its own level, no drop to walk down into, floored with a block it
+            // carries and walked over (backlog/mining.md; field512, Eli stood for good at a gap in his gallery).
+            if (blocksLeft > 0 && !afloat) {
+                List<BlockPos> floor = stepBuild(world, from, level);
+                if (floor.size() == 1) {
+                    moves.add(new Move(level, 1 + BUILD_COST, 1));
+                }
+            }
             BlockPos up = from.offset(d[0], 1, d[1]);
             if (standable(world, up) && !world.isSolid(from.x(), from.y() + 2, from.z())) {
                 moves.add(new Move(up, JUMP_COST));
@@ -500,7 +508,8 @@ public final class Pathfinder {
 
     /**
      * The blocks to place, in order, so a soldier standing at {@code from} can step onto {@code to} -
-     * one block up or down, orthogonally - where there's no ground to step onto: the block under
+     * one block up or down, or level over a hole that's no walkable drop, orthogonally - where there's no ground to
+     * step onto: the block under
      * {@code to}, and first a block under that when nothing beside it holds it up. Empty when
      * {@code to} already has ground, or a step can't be built there.
      *
@@ -512,10 +521,19 @@ public final class Pathfinder {
     public static List<BlockPos> stepBuild(WorldView world, BlockPos from, BlockPos to) {
         int dy = to.y() - from.y();
         // The ground under {@code from} may be a step built earlier on the same route, not yet in the world.
-        if (Math.abs(dy) != 1 || Math.abs(to.x() - from.x()) + Math.abs(to.z() - from.z()) != 1) {
+        if (Math.abs(dy) > 1 || Math.abs(to.x() - from.x()) + Math.abs(to.z() - from.z()) != 1) {
             return List.of();
         }
         BlockPos step = to.offset(0, -1, 0);
+        if (dy == 0) {
+            // Level, a bridge: the floor of a hole that's no walkable drop - over a cave or a shaft - held up beside it, with
+            // ground on its far side: a gap in a floor, not a ledge. Off a ledge, in the squad simulation, a soldier up its
+            // own pillar bridged out into the air rather than dig the pillar down, and left the blocks hanging.
+            BlockPos beyond = to.offset(to.x() - from.x(), 0, to.z() - from.z());
+            return standable(world, beyond) && clear(world, to) && open(world, step.x(), step.y(), step.z()) && !walkableDrop(world, to) && !swimmable(world, from)
+                    && !world.isWater(to.x(), to.y(), to.z()) && !world.isWater(step.x(), step.y(), step.z()) && !spoils(world, step)
+                    && heldUp(world, step, to) ? List.of(step) : List.of();
+        }
         // Nothing is built in water: a swimmer near the bed isn't on a stair.
         if (!clear(world, to) || !open(world, step.x(), step.y(), step.z()) || swimmable(world, from)
                 || world.isWater(to.x(), to.y(), to.z()) || world.isWater(step.x(), step.y(), step.z())) {

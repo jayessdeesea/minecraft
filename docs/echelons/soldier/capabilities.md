@@ -22,6 +22,9 @@ seconds or when stuck - a wide search asked again from the same cell to the same
   only way that reaches its goal (`Pathfinder.stepBuild`): one block a step against ground beside
   it, two in open air. Never on farmland or a crop, which a block put down on spoils; nor does it
   pillar off farmland, or cut a step through it.
+- **Bridges a hole in the floor** at its own level with a block it carries - over a cave or a shaft, a hole that's
+  no walkable drop, with ground on its far side (a gap, never a ledge into the air) - floored from the ground beside it and walked over (`Pathfinder.stepBuild`, level). Live
+  (field512-520), a miner stood for good at a one-block gap in his gallery's floor, planning wide every few seconds.
 - **Walks round rather than builds** (operator, 2026-11-18; 2026-11-20: a block is placed with intent, and
   steps left behind littered the camp): a route that places blocks is searched again placing none, and that
   one taken if it's a plain walk - no step dug, no crop trampled, no fall that hurts - costing at most 40
