@@ -764,8 +764,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // the force's survival is at stake - most of it hungry with nothing to eat, or one starving
         // one hit from death - then food stands beside the wall, and the platoon leader does what it takes.
         // Live, both squads walled the camp while all eight soldiers went hungry, health falling to 1.
-        boolean starving = hungry * 2 > everyone.size()
-                || everyone.stream().anyMatch(CrossLevel::critical);
+        boolean starving = hungry * 2 > everyone.size() || everyone.stream().anyMatch(CrossLevel::critical);
         int foodPhase = starving ? 2 : 3;
         // Met when the farm grows and the force eats: wheat planted today feeds nobody for days.
         standards.add(new Foothold.Standard(foodPhase, "food", growing >= FARM_GROWING && !starving,
@@ -3115,8 +3114,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Only ore still there: one taken, or gone with its pillar, isn't an errand. Live (field427), a cell at
         // y=87 over the level at y=62 was dealt to Alice, Gus and Bob in turn 310 times in five minutes, each
         // finding nothing to cut there, and the keep's crew stood.
-        return aside.stream().filter(c -> c.y() >= level - 1 && world.isOre(c.x(), c.y(), c.z()))
-                .filter(c -> {
+        return aside.stream().filter(c -> c.y() >= level - 1 && world.isOre(c.x(), c.y(), c.z())).filter(c -> {
                     Optional<Hardness> hardness = world.hardness(c.x(), c.y(), c.z());
                     java.util.function.Predicate<String> can = n -> hardness.map(hd -> hd.drops(pickaxeTiers.getOrDefault(n, Hardness.HAND))).orElse(false);
                     if (!can.test(hand)) {
@@ -5217,8 +5215,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .flatMap(st -> PatrolBase.enclosing(st.position(), c -> world.isSolid((int) c.x(), (int) c.y(), (int) c.z())
                                     && !world.isLog((int) c.x(), (int) c.y(), (int) c.z())
                                     && world.leaves((int) c.x(), (int) c.y(), (int) c.z()).isEmpty())
-                            .map(room -> Map.entry(st.name(), room)).stream())
-                    .findFirst().ifPresent(shutIn -> {
+                            .map(room -> Map.entry(st.name(), room)).stream()).findFirst().ifPresent(shutIn -> {
                         LOG.warn("[{}] {} is shut in at {} - cutting a way out", squadName, shutIn.getKey(), shutIn.getValue().floor());
                         state.builtBase = shutIn.getValue();
                     });
@@ -5427,8 +5424,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         // A soldier told to level ground: its dig or fill, as the world shows what's left.
         statuses.forEach(s -> planBook.of(s.name()).current().filter(d -> d instanceof Directive.Level)
-                .flatMap(d -> levelWork(s, (Directive.Level) d))
-                .ifPresent(work -> ground.put(s.name(), work)));
+                .flatMap(d -> levelWork(s, (Directive.Level) d)).ifPresent(work -> ground.put(s.name(), work)));
         // Sent for wood, the squad works it by duty (command.WoodDuties): each woodcutter its own strip's logs.
         Map<String, WoodDuties.Duty> woodDuties = WoodDuties.of(objectiveOf(squadName), statuses.stream().map(SoldierStatus::name).toList(),
                 dutyBook.cutOut(squadName, statuses.stream().map(SoldierStatus::name).toList(), objectiveOf(squadName),
@@ -6876,8 +6872,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         armourers.put(name, armourer);
         Gatherer gatherer = new Gatherer(name, session, inventory, treeClaims, scaffolding);
         gatherers.put(name, gatherer);
-        Farmer farmer = new Farmer(name, session,
-                inventory, treeClaims, farmCellsFailed, scaffolding);
+        Farmer farmer = new Farmer(name, session, inventory, treeClaims, farmCellsFailed, scaffolding);
         farmers.put(name, farmer);
         Forester forester = new Forester(name, session, inventory, treeClaims);
         foresters.put(name, forester);
@@ -6924,6 +6919,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Breacher doorway = new Breacher(name, session, inventory);
         // Cutting steps is part of moving, like a pillar step's block: no routine has the hands for it.
         Breacher stepCutter = new Breacher(name, session, inventory);
+        Breacher lidCutter = new Breacher(name, session, inventory); // a block over the chest it's at: no chest opens under one
         Footing footing = new Footing(session, inventory);
         // What the server was last told about sprinting: a new connection starts walking.
         AtomicBoolean sprintingSent = new AtomicBoolean();
@@ -7037,8 +7033,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     || inventory.slotOfNamed("bow") < 0 || inventory.count(ItemClass.ARROWS) >= ARROWS_WANTED
                     || inventory.count(ItemClass.FLINT) > 0 ? gathering.get(name)
                     : new Objective("Dig gravel for flint", huntGrounds.getOrDefault(name,
-                    status.position()), "Arrows for the bow", new Objective.Task.Gather(
-                    Resource.FLINT));
+                    status.position()), "Arrows for the bow", new Objective.Task.Gather(Resource.FLINT));
             // And a dig with stone or cobblestone in it: live, soldiers with no pickaxe handed the
             // cobblestone over the camp's floor failed at it, and nobody else's strip had it.
             boolean stoneToClear = clearing.getOrDefault(name, List.of()).stream()
@@ -7504,6 +7499,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean cuttingOut = clearingTunnel.contains(name) || placing.containsKey(name);
             turns.put(Hands.Routine.DEPOSITOR, turn(() -> (depositor.active() || chestFitter.active()) && !cuttingOut, handsFree -> {
                 boolean free = handsFree && !cuttingOut;
+                // Its chest under a block - not another chest - broken first: no chest opens under one (field508: Alice's salvage, 5 tries).
+                Optional<BlockPos> lid = depositor.active() ? depositor.chestAt().filter(c -> Depositor.withinReach(status.position(), c))
+                        .map(c -> BlockPos.containing(c.x(), c.y() + 1, c.z())).filter(l -> world.isSolid(l.x(), l.y(), l.z()) && !world.isChest(l.x(), l.y(), l.z())) : Optional.empty();
+                if (free && lid.isPresent()) {
+                    lidCutter.tick(world, List.of(lid.get()));
+                    return;
+                }
                 if (free && fitStore && atStand(status.position(), shop.get())) {
                     if (!chestFitter.tickChest(status.position(), world, shop.get(), threatened)) {
                         // Once, then later and later: live, it was said every tick with no log to make a table from.
@@ -7836,8 +7838,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                 HostileMobRegistry.nameOf(h.typeId()), distance(h.position(), status.position())));
                 recorder.record(new FlightRecorder.Sample(clockwork.millis(), status.position(), status.report().toString(),
                         (float) (double) status.condition().map(Condition::health).orElse(-1.0),
-                        status.condition().map(Condition::food).orElse(-1),
-                        hands.map(Enum::name), nearest));
+                        status.condition().map(Condition::food).orElse(-1), hands.map(Enum::name), nearest));
             }
             // Short of logs for tools it tried and failed to chop wood for: a squadmate may have
             // some to spare (§13).
@@ -7994,8 +7995,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // A solid block in the model until the server's update says what landed, a tick on:
                 // stood on before the server confirms it - over an open cell only, and taken back if
                 // the server never does (ChunkCache.standIn).
-                Builder.support(world, cell)
-                        .flatMap(face -> footing.placeStep(cell, face, builtCell(cell)))
+                Builder.support(world, cell).flatMap(face -> footing.placeStep(cell, face, builtCell(cell)))
                         .ifPresent(block -> {
                             chunkCache.standIn(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE, clockwork.millis());
                             scaffolding.add(cell);

@@ -567,6 +567,11 @@ final class SimServer {
                 return;
             }
             int state = block(x, y, z);
+            // A chest under a solid block doesn't open, as the server's: its lid can't lift.
+            if (state == CHEST && block(x, y + 1, z) != AIR && block(x, y + 1, z) != CHEST && block(x, y + 1, z) != TORCH) {
+                log.add(name + " REFUSED: the chest at " + x + "," + y + "," + z + " is under a block");
+                return;
+            }
             if (state == CHEST) {
                 open = key(x, y, z);
                 // A chest the world was made with holds nothing till something's put in: as the server's.

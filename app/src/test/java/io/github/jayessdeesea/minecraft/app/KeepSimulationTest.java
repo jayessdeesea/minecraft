@@ -260,6 +260,32 @@ class KeepSimulationTest {
         assertTrue(atCamp >= 32, "its cobblestone in the new camp's chest: " + atCamp + "; " + events);
     }
 
+    /** The old camp's chest under a block of cobblestone, which no chest opens under: the block broken, the chest emptied. */
+    @Test
+    void aChestUnderABlockHasTheBlockBrokenAndIsEmptied() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 70 && y == GROUND + 2 && z == 2 ? SimServer.COBBLESTONE : flat(x, y, z), 1000);
+        server.stockedChest(70, GROUND + 1, 2, SimServer.ITEM_COBBLESTONE, 64);
+        new WallStore(state, "chests").save(SiteGeometry.CAMPS, List.of(new BlockPos(70, 0, 0)));
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(40.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "40,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(40.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.ITEM_OAK_LOG, 16})))
+                .run();
+
+        clock.advance(10 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 15), server.log.size());
+        assertEquals(SimServer.AIR, server.block(70, GROUND + 2, 2), "the block over the chest broken; " + events);
+        assertEquals(0, held(server, 70, GROUND + 1, 2), "the chest emptied; " + events);
+    }
+
     /** The nearest soldier's pack full, another salvages the old camp's chest: live (field503-504), a full pack held it all day. */
     @Test
     void aSalvagerWithAFullPackHandsItOn() {
