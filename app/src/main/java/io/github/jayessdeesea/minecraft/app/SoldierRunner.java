@@ -981,6 +981,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Set<String> foodless = ConcurrentHashMap.newKeySet();
     /** The foragers, and the camp's ripe wheat they forage (app.Foragers). */
     private final Foragers foragers = new Foragers();
+    /** Whether the camp's stockpile can be got at, and where it's moved to if not (app.StockpileWatch). */
+    private final StockpileWatch stockpileWatch;
     /** The workshop each soldier crafts at (backlog/sites.md): its squad's, or the mine base below ground. */
     private final Map<String, Workshop> workshops = new ConcurrentHashMap<>();
     /** The camp's own workshop, at its ground: every squad near the camp crafts there. */
@@ -1345,6 +1347,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             throw new IllegalArgumentException("minecraft.camp is x,z - not " + camp);
         }
         this.oldCamps = oldCamps(chestStore, this.camp);
+        this.stockpileWatch = new StockpileWatch(chestStore);
         this.yieldToExperiments = yieldToExperiments;
         this.soldierDefinitions = roster.squads().stream()
                 .flatMap(squad -> squad.soldiers().stream().map(name -> new SoldierDefinition(name, squad.name())))
@@ -1919,7 +1922,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // stockpile a keep builder draws from until the keep's own chest stands. Live, both squads
             // on the keep left it unsited, and with it every draw.
             if (campWorkshop == null && campGround != null) {
-                Workshop camp = Workshop.hasty(world, campGround, new HashSet<>(treeClaims)).orElse(null);
+                Workshop camp = Workshop.hasty(world, stockpileWatch.ground().orElse(campGround), new HashSet<>(treeClaims)).orElse(null);
                 if (camp != null) {
                     LOG.info("[{}] the camp's workshop, for its stockpile: stand {}, chest {}", squad, camp.stand(), camp.chest());
                 }
@@ -1992,7 +1995,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (campGround != null && Math.hypot(at.x() - campGround.x(), at.z() - campGround.z()) <= CAMP_WORKSHOP_RANGE) {
             Workshop camp = campWorkshop;
             if (camp == null || !Pathfinder.standable(world, camp.stand())) {
-                camp = Workshop.hasty(world, campGround, claimed).orElse(null);
+                camp = Workshop.hasty(world, stockpileWatch.ground().orElse(campGround), claimed).orElse(null);
                 if (camp == null) {
                     LOG.warn("[{}] nowhere at the camp's ground {} to site its workshop", squad, campGround);
                 } else {
@@ -2059,6 +2062,18 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Optional<Position> stockpileFor(String soldier) {
         // Never a chest being salvaged: loads put into it would be drawn out again, and it never empties.
         return stockpileOrSalvaged(soldier).filter(p -> !condemned.contains(BlockPos.containing(p.x(), p.y(), p.z())));
+    }
+
+    /** {@code soldier}'s depositor's CANTCO, its chest the camp's noted (StockpileWatch): enough of them, the stockpile's sited anew. */
+    private String stockpileUnreached(String soldier, Position at, Depositor depositor) {
+        Optional<Position> camps = chestOf(campWorkshop);
+        depositor.chestAt().filter(c -> camps.filter(c::equals).isPresent()).map(c -> BlockPos.containing(c.x(), c.y(), c.z()))
+                .flatMap(chest -> stockpileWatch.unreached(soldier, at, chest, clockwork.millis()).map(ground -> {
+                    LOG.warn("[Stockpile] the camp's chest at {} can't be got at - a new stockpile at {}, the old one emptied into it", chest, ground);
+                    campWorkshop = null;
+                    return ground;
+                }));
+        return depositor.stuck().orElseThrow();
     }
 
     private Optional<Position> stockpileOrSalvaged(String soldier) {
@@ -4442,6 +4457,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean flattening = squadStates.keySet().stream().anyMatch(s -> taskOf(s, Objective.Task.Keep.class).isPresent());
             Set<BlockPos> found = new HashSet<>(flattening ? chestsOn(world, ground, CONDEMNED_ABOVE) : Set.of());
             found.addAll(chestsAround(world, oldCamps, OLD_CAMP_REACH));
+            found.addAll(stockpileWatch.givenUp().stream().filter(c -> world.isChest(c.x(), c.y(), c.z())).toList());
             found.removeAll(stashes);
             Set<BlockPos> was = condemned;
             if (!found.equals(was)) {
@@ -4909,44 +4925,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How far from its objective a squad goes to its supply point by night. */
     static final int NIGHT_SUPPLY_REACH = 32;
 
-    /** The engineer's stair down for a stranded soldier, from where it stands. */
-    private Function<SoldierStatus, Optional<List<Cell>>> stairDown(String squadName) {
-        return stuck -> {
-            String n = stuck.name();
-            Position at = stuck.position();
-            // Under the ground, a stair down leads only further into it: none, and the stair up is laid
-            // instead. Live (field341), Jack in a cave at y=-51 had a stair down to its floor laid out,
-            // one block he didn't carry, and stood with nobody to fetch it.
-            Optional<BlockPos> sky = TerrainSurveyor.surface(world, (int) Math.floor(at.x()), (int) Math.floor(at.z()), Keep.SKY_TOP);
-            if (sky.isPresent() && sky.get().y() > at.y() + UNDERGROUND) {
-                LOG.warn("[{}] RECOVERY: {} is stranded at {}, {} under the ground at y={} - no stair down, a stair up instead",
-                        squadName, n, at, sky.get().y() - (int) Math.floor(at.y()), sky.get().y());
-                return Optional.empty();
-            }
-            Optional<List<Cell>> stair = Stairway.down(world, BlockPos.containing(at.x(), at.y(), at.z()))
-                    .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList());
-            if (stair.isPresent()) {
-                LOG.info("[{}] RECOVERY: {} is stranded at {} - a stair down laid out, {} blocks", squadName, n, at, stair.get().size());
-            } else {
-                LOG.warn("[{}] RECOVERY: {} is stranded at {} and no stair down can be laid from there", squadName, n, at);
-            }
-            return stair;
-        };
-    }
-
-    /** A stranded soldier's own pillar under it, top first, for it to dig down from on top. */
-    private Function<SoldierStatus, Optional<List<Cell>>> pillarDown(String squadName) {
-        return stuck -> {
-            Position at = stuck.position();
-            // Or on the surface at a ledge's edge, sent no higher, the ground below seen down its side: dug down to (Stairway.edgeShaft).
-            boolean down = !buried(at) && !(stuck.order() instanceof Order.MoveTo m && m.y() > at.y());
-            Optional<List<Cell>> pillar = Stairway.pillarUnder(world, BlockPos.containing(at.x(), at.y(), at.z())).or(() -> down ? Stairway.edgeShaftNear(world, BlockPos.containing(at.x(), at.y(), at.z())) : Optional.empty())
-                    .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList());
-            pillar.ifPresent(p -> LOG.info("[{}] RECOVERY: {} is stranded up at {} - digs down from {}, {} blocks", squadName, stuck.name(), at, p.getFirst(), p.size()));
-            return pillar;
-        };
-    }
-
     /** How near a hostile holds a stranded soldier off cutting its stair up. */
     static final double STAIR_THREAT_RADIUS = 4;
     /** What last held each soldier on a stair up from cutting - tick loops only, each its own key. */
@@ -5053,7 +5031,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                     chainOfCommand.time().map(TimeOfDay::dark).orElse(false),
                                     // The squad's mine by night: where a replacement too far to link up goes, under the ground.
                                     chainOfCommand.mineObjective(Plan.squadOf(squadName)).map(Objective::location))),
-                            order.objective(), nightSupply(order.objective())), stairDown(squadName), stairUp(squadName), pillarDown(squadName)));
+                            order.objective(), nightSupply(order.objective())), Engineer.stairDown(world, squadName), stairUp(squadName), Engineer.pillarDown(world, this::buried, squadName)));
         }
         String straggler = principalAt.isPresent() ? null : Cohesion.waitingFor(statuses).map(SoldierStatus::name).orElse(null);
         if (!Objects.equals(straggler, state.haltedFor)) {
@@ -7913,7 +7891,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // Not a keep builder's: a depot chest too full to take its load is the depot's shortfall,
                     // and it digs on with what it carries. Live, the depot's first chest filled with one
                     // builder's load, and four more reported the dig CANTCO from beside it.
-                    : depositor.stuck().isPresent() && !depositor.active() && !keepHands.contains(name) ? new Report.Cantco(depositor.stuck().get())
+                    : depositor.stuck().isPresent() && !depositor.active() && !keepHands.contains(name) ? new Report.Cantco(stockpileUnreached(name, status.position(), depositor))
                     : forester.active() ? new Report.Planting()
                     : grove != null && forester.failure().isPresent() && !Forester.planted(world, grove)
                     ? new Report.Cantco("can't plant the tree farm: " + forester.failure().get())

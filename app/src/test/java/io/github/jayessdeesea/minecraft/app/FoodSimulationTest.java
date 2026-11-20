@@ -110,6 +110,45 @@ class FoodSimulationTest {
         return x >= 29 && x <= 31 && z >= -1 && z <= 1 && y == GROUND ? SimServer.WATER : flat(x, y, z);
     }
 
+    /** Flat, with the camp on a 21x21 mound of bedrock three high - no step cut in it - its workshop at the middle: stand, table, furnace. */
+    static int campOnAMound(int x, int y, int z) {
+        boolean mound = Math.abs(x) <= 10 && Math.abs(z) <= 10;
+        return mound && y > GROUND && y <= GROUND + 3 ? SimServer.BEDROCK
+                : x == 1 && z == 0 && y == GROUND + 4 ? SimServer.CRAFTING_TABLE
+                : x == 0 && z == 1 && y == GROUND + 4 ? SimServer.FURNACE : flat(x, y, z);
+    }
+
+    /**
+     * The camp's stockpile out of reach (operator, 2026-11-20: a different stockpile site, not someone else sent to it):
+     * the camp up a mound nobody climbs, as live (field497-499) on its hill, two soldiers off it with bread to put in its
+     * chest can't, and the stockpile moves to where they stand - a chest there, the bread in it.
+     */
+    @Test
+    void aStockpileTwoSoldiersCantReachMovesToWhereTheyStand() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FoodSimulationTest::campOnAMound, 1000);
+        server.stockedChest(2, GROUND + 4, 0, SimServer.ITEM_COBBLESTONE, 1);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Hold the camp", camp, "A foothold",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(name -> new PlayerPosition(name.equals("Alice") ? -14.5 : -15.5, GROUND + 1, -14.5), name -> List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64},
+                        new int[]{38, SimServer.ITEM_BREAD, 64}, new int[]{39, SimServer.ITEM_BREAD, 64},
+                        new int[]{40, SimServer.ITEM_OAK_LOG, 8})));
+        runner.run();
+
+        clock.advance(15 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
+        int bread = server.chests.entrySet().stream().filter(e -> e.getKey() != SimServer.key(2, GROUND + 4, 0))
+                .mapToInt(e -> java.util.Arrays.stream(e.getValue()).filter(st -> st != null && st[0] == SimServer.ITEM_BREAD).mapToInt(st -> st[1]).sum()).sum();
+        assertTrue(bread >= 64, "bread in a stockpile they could reach: " + bread + "; " + events);
+    }
+
     /** Flat, with a field of ripe wheat 20 to 27 east of the camp, three rows wide: wheat standing off the camp's own farm. */
     static int ripeFieldOffCamp(int x, int y, int z) {
         boolean field = x >= 20 && x <= 27 && z >= 0 && z <= 2;

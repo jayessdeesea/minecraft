@@ -1846,7 +1846,11 @@ the recovery drill has nor one more than 2 under the floor; a chest seen empty i
 restart (`SoldierRunner.SALVAGED`). So is every chest of an old camp - one the garrison was configured with
 before (`SiteGeometry.oldCamps`, kept on disk) - within 12 across of it, in every phase and by any squad's
 soldier, not only the flatten's hands: the camp moved, its stores follow it into the camp's chest
-(backlog/camp-to-sea-level.md). Dug, a chest spills what it holds. A site whose
+(backlog/camp-to-sea-level.md). And a camp's stockpile its soldiers can't get at is sited anew, not handed to
+others to reach (operator, 2026-11-20): two soldiers out of ways of their own to reach the camp's chest within ten
+minutes, or one for three, and its workshop is sited again where they stand, the old chest given up and emptied
+into it as an old camp's is (`app.StockpileWatch`, kept on disk; `[Stockpile]` in the log); a new site is judged
+only after fifteen minutes. Dug, a chest spills what it holds. A site whose
 top is soil (`Flatten.soil`, ground for groves and the farm) has its top layer in the dig too: its soil kept,
 its rock dug, and once the dig's done the gaps filled with dirt alone (`Order.Fill.Material.SOIL`), a builder
 short of dirt sent for a load of it from the ground east of the site past its bench, which the keep's site
