@@ -30,6 +30,13 @@ public final class CrossLevel {
      */
     public static final int RATIONS_GIVEN = 1;
     /**
+     * How far apart a giver and a receiver of rations are, at most: a hand-over is a second's work beside a squadmate,
+     * not a walk across the farm for one ration. Live (field511), 75 single rations walked over in six minutes between
+     * soldiers all short, Carol's harvest dropped for each - no starving one among them (buddy aid, {@link #critical},
+     * has no reach).
+     */
+    public static final double RATIONS_REACH = 8;
+    /**
      * Health at or under which a starving soldier is one hit from death: it gets a meal from any
      * squadmate carrying one, its keep or not - buddy aid, before anything else is handed across.
      */
@@ -231,7 +238,8 @@ public final class CrossLevel {
                     // be left with: two running low don't hand the same rations back and forth.
                     .filter(giver -> !wantedBy.containsKey(giver.name())
                             || item == Item.RATIONS && item.carried(giver) - wanted >= item.carried(receiver) + wanted)
-                    .filter(giver -> item == Item.RATIONS ? evens(giver, receiver) : item.carried(giver) - item.kept() >= wanted)
+                    .filter(giver -> item == Item.RATIONS ? evens(giver, receiver) && Cohesion.distance(giver.position(), receiver.position()) <= RATIONS_REACH
+                            : item.carried(giver) - item.kept() >= wanted)
                     .min(Comparator.comparingDouble(giver -> Cohesion.distance(giver.position(), receiver.position())))
                     .ifPresent(giver -> {
                         busy.add(giver.name());

@@ -154,6 +154,17 @@ class CrossLevelTest {
                 "the one carrying fewest is served first, though Alice is nearer");
     }
 
+    /** Rations go to a squadmate beside the giver, not across the farm: a ration a walk took the giver's work (field511). */
+    @Test
+    void rationsAreHandedOnlyToASquadmateNearby() {
+        Map<String, Integer> wanted = Map.of("Alice", CrossLevel.RATIONS_GIVEN);
+
+        assertEquals(List.of(), CrossLevel.pair(List.of(carrying("Alice", 0, 3), carrying("Bob", 30, 20)), Map.of(), wanted),
+                "Bob is 30 blocks off: no walk for a ration");
+        assertEquals(List.of(new CrossLevel.Transfer("Bob", "Alice", CrossLevel.Item.RATIONS, CrossLevel.RATIONS_GIVEN)),
+                CrossLevel.pair(List.of(carrying("Alice", 0, 3), carrying("Bob", 6, 20)), Map.of(), wanted), "Bob beside her gives");
+    }
+
     @Test
     void nobodyCrossLevelsInContactOrFromASoldierLinkingUp() {
         List<SoldierStatus> fighting = List.of(

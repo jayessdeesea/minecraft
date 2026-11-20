@@ -5,6 +5,9 @@ priority: P1
 
 # Questions for the operator
 
+- **Rations handed only to a squadmate within 8 blocks** (docs/military-doctrine.md § 4): taken by default - live
+  (field511) soldiers all short walked single rations across the farm to each other 75 times in six minutes, each
+  dropping its work. One at a time and the keep stand as the operator set them; buddy aid has no reach.
 - **The night in the camp under a roof** (docs/echelons/platoon-leader/operator-rules.md): taken by default, before
   the buildup each squad shelters in the camp in its patrol base's hut at its own point, not on the open ground -
   live (field498-507) eight soldiers were killed by phantoms in the open camp. Beds (backlog/rest-plan.md) end

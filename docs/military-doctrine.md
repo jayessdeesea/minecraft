@@ -157,7 +157,8 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    draws from it wherever it is, and hunts any game in sight, fed or not. Bread beyond its basic
    load - a whole stack, the basic load still in its pack - goes into the stockpile (§12).
 2. **The squad shares, and keeps the camp's farm.** A soldier below 32, hungry yet or not, is given
-   rations by the nearest squadmate carrying two more than it (cross-leveling, §13), so what there is
+   rations by the nearest squadmate within 8 blocks carrying two more than it (cross-leveling, §13; no walk across the
+   farm for a ration - live, field511, 75 in six minutes), so what there is
    evens out - one at a time, the one carrying fewest first, a second apart from one giver to one
    receiver, and from every giver near it at once,
    so a giver's spare goes round everyone short rather than to the first (the operator's). A
@@ -1638,7 +1639,9 @@ that breaks one is a step back):**
    strips whose roots it never reached are no work to wait for, and the level reads done as far as it goes
    (live, field460-461, Dana gave hers up and Fran waited all night on it). A cutter on its mine's
    stairs whose stand is far along them walks there a leg of 12 steps at a time (`Miner.byTheStairs`):
-   live, Eli at the head stood a night "no route" to his level 118 blocks down a thousand-step stair.
+   live, Eli at the head stood a night "no route" to his level 118 blocks down a thousand-step stair. One off its
+   stairs and far over its stand - on the surface, the mine under it - goes to the stairs' head first (live,
+   field511, Eli up from a restart walked in circles over a branch 42 under him, the stairs 135 blocks off).
    A tunnel waiting for blocks to floor a cave, its cutter idle a minute with none, is given up too
    (`Miner.BLOCKLESS_TICKS`): live (field462-465), Alice's main tunnel waited three nights.
 2. **A grid that sees every block, with the least digging.** A level is at a height a multiple of
