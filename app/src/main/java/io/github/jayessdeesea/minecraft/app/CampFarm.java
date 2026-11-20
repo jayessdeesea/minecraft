@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.app;
 
 import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
+import io.github.jayessdeesea.minecraft.bot.farm.FarmSite;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
@@ -123,6 +124,18 @@ final class CampFarm {
         // Kept however it was found - sited now, or as it was before a restart: live, a farm loaded from disk was
         // never kept, and both squads starved under SECURE with a farm by the camp.
         farm = kept;
+        if (kept != null) {
+            // Each chunk farm's stage as a site (bot.farm.FarmSite), said as it moves - what the platoon leader's view of it will be.
+            for (ChunkFarm c : kept.chunks()) {
+                FarmSite.Work work = FarmSite.work(world, c);
+                if (!work.stage().equals(stages.put(ChunkFarm.key(c.chunkX(), c.chunkZ()), work.stage()))) {
+                    LOG.info("[Farm] chunk {}, {}: {} - {}", c.chunkX(), c.chunkZ(), work.stage(), work);
+                }
+            }
+        }
         return kept;
     }
+
+    /** Each chunk farm's stage as last said, by its chunk's key. */
+    private final java.util.Map<Long, FarmSite.Stage> stages = new java.util.HashMap<>();
 }

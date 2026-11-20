@@ -137,7 +137,8 @@ covers them and the food wants more; a farm's fence waits for its logs, so the l
 Producing.
 
 Built toward it: the layout, the holes' floors, the field torches, the tender (docs/military-doctrine.md § 4).
-Left, in order: the template and its planner (pure, `command`), with a site's stage from the world; the bids and the
+Built: a site's stage and the work left to each from the world (`bot.farm.FarmSite`, its supply to Producing; logged
+`[Farm]` as it moves). Left, in order: the planner's sequence for the soldier, from its template; the bids and the
 platoon leader's choice; the build order carrying the template; several farms at once; the 90% measure.
 
 ## More farmland: the farm by phase (operator, 2026-11-19)
