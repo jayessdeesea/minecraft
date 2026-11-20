@@ -13,6 +13,13 @@ priority: P1
   live (field498-507) eight soldiers were killed by phantoms in the open camp. Beds (backlog/rest-plan.md) end
   the phantoms outright; is a hut each a fair stopgap, or should the squads share one roofed shelter?
 
+- **The building guide against the camp's style** (backlog/building-guide.md, backlog/cells.md): the guide of
+  2026-11-09 wants perimeter walls with a spider lip, and a trench 2 deep and 2 wide round the lit core crossed at
+  gated bridges; the style of 2026-11-20 (docs/military-doctrine.md § 17) wants the camp at ground level, no rings,
+  lips or pits. Taken by default: the style - fences and gates on the cells' chunk lines (ground level, built for
+  the chunk farms) stand, the walls, lip and moat aren't built. Should the moat go from the guide, or does it stand
+  as the one dug structure, below grade by design?
+
 Answered 2026-11-20, each now with its item:
 - **The wall:** no standard of the camp's - the SEIZURE ends on the camp lit and every soldier armed; a chunk farm's
   ground is levelled as a flatten once it does (docs/military-doctrine.md § 17).

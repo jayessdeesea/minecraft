@@ -98,4 +98,45 @@ class PoliceCallTest {
         assertEquals(Optional.of(step), call.step("Alice", false, true, w, PoliceCall.GIVE_UP_MILLIS + PoliceCall.PASSED_MILLIS, find));
         assertEquals(Optional.empty(), call.step("Alice", true, true, w, PoliceCall.GIVE_UP_MILLIS + PoliceCall.PASSED_MILLIS + 1, find), "other work first");
     }
+
+    /**
+     * Stood on a "no route" with a pickaxe and no block, in a gallery cut through stone: a stone beside its head to cut -
+     * a block to bridge with - not its floor (field512-524, Eli at the gap in his gallery's floor).
+     */
+    @Test
+    void aSoldierWithNoRouteAndNoBlockCutsAStoneBesideItsHead() {
+        WorldView gallery = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND + 1 || z != 0 || y > GROUND + 2;
+            }
+
+            @Override
+            public boolean isStone(int x, int y, int z) {
+                return isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        io.github.jayessdeesea.minecraft.command.Kit noBlocks = new io.github.jayessdeesea.minecraft.command.Kit(Optional.of("stone_sword"),
+                0, 0, 0, 0, 0, 16, false, true, 0, false, 0, 1, 0);
+        io.github.jayessdeesea.minecraft.command.SoldierStatus eli = new io.github.jayessdeesea.minecraft.command.SoldierStatus("Eli", AT,
+                new io.github.jayessdeesea.minecraft.command.Order.Idle(), new io.github.jayessdeesea.minecraft.command.Report.Cantco("no route from (0, 64, 0) to within 0 of (6, 64, 0)"),
+                Optional.of(new io.github.jayessdeesea.minecraft.command.Condition(20, 20, 0, Optional.of(noBlocks))));
+
+        Optional<io.github.jayessdeesea.minecraft.command.Order> cut = new PoliceCall().order(eli, false, true, gallery, Set.of(), java.util.Map.of(),
+                List.of(), Set.of(), 0);
+
+        assertEquals(Optional.of(new BlockPos(0, GROUND + 2, 1)), PoliceCall.wayBlock(gallery, AT));
+        assertEquals(true, cut.isPresent() && cut.get() instanceof io.github.jayessdeesea.minecraft.command.Order.Dig d && d.box().minY() == GROUND + 2,
+                "a stone by its head, not its floor: " + cut);
+    }
 }

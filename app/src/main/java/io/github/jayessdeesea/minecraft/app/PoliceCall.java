@@ -3,6 +3,10 @@ package io.github.jayessdeesea.minecraft.app;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Box;
+import io.github.jayessdeesea.minecraft.command.Condition;
+import io.github.jayessdeesea.minecraft.command.Kit;
+import io.github.jayessdeesea.minecraft.command.Report;
+import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import io.github.jayessdeesea.minecraft.command.Order;
 import io.github.jayessdeesea.minecraft.command.Position;
 import org.slf4j.Logger;
@@ -64,8 +68,15 @@ final class PoliceCall {
      * ({@code placedAt}, none for one kept from before a restart) {@link #LITTER_MILLIS} ago or more, as {@link #litter}
      * finds them for it.
      */
-    Optional<Order> order(String soldier, boolean busy, boolean withoutWork, WorldView world, Set<BlockPos> steps, Map<BlockPos, Long> placedAt, Position at,
-                          Collection<Position> bodies, boolean pickaxe, Set<BlockPos> kept, long now) {
+    Optional<Order> order(SoldierStatus status, boolean busy, boolean withoutWork, WorldView world, Set<BlockPos> steps, Map<BlockPos, Long> placedAt,
+                          Collection<Position> bodies, Set<BlockPos> kept, long now) {
+        String soldier = status.name();
+        Position at = status.position();
+        Optional<Kit> kit = status.condition().flatMap(Condition::kit);
+        boolean pickaxe = kit.map(Kit::pickaxe).orElse(false);
+        // With no route and no block to make one with, but a pickaxe: a stone off the wall by its head (wayBlock).
+        boolean wantsABlock = pickaxe && kit.map(k -> k.stone() + k.dirt() == 0).orElse(false)
+                && status.report() instanceof Report.Cantco(String why) && why.startsWith("no route");
         Optional<BlockPos> had = Optional.ofNullable(jobs.get(soldier)).map(Job::step);
         Optional<BlockPos> step = step(soldier, busy, withoutWork, world, now, skip -> {
             Set<BlockPos> not = new java.util.HashSet<>(kept);
@@ -75,9 +86,10 @@ final class PoliceCall {
                     not.add(c);
                 }
             });
-            return litter(world, steps, at, bodies, pickaxe, not);
+            return litter(world, steps, at, bodies, pickaxe, not).or(() -> wantsABlock ? wayBlock(world, at) : Optional.empty());
         });
-        step.filter(c -> !step.equals(had)).ifPresent(c -> LOG.info("[Police] {} takes back a step left at {} {} {}", soldier, c.x(), c.y(), c.z()));
+        step.filter(c -> !step.equals(had)).ifPresent(c -> LOG.info(steps.contains(c) ? "[Police] {} takes back a step left at {} {} {}"
+                : "[Police] {} cuts a stone for its way at {} {} {} - no route, and no block to make one with", soldier, c.x(), c.y(), c.z()));
         return step.map(c -> new Order.Dig(new Box(c.x(), c.y(), c.z(), c.x(), c.y(), c.z()), Set.of()));
     }
 
@@ -125,6 +137,22 @@ final class PoliceCall {
                         && b.y() >= c.y() && b.y() <= c.y() + 3))
                 .min(Comparator.comparingDouble((BlockPos c) -> Math.hypot(c.x() + 0.5 - at.x(), c.z() + 0.5 - at.z()))
                         .thenComparing(Comparator.comparingInt(BlockPos::y).reversed()));
+    }
+
+    /**
+     * A stone by the head of a soldier at {@code at} - beside it, a block over its feet - to cut for a block to bridge or
+     * step with: never its floor, nor the block its head's under. Live (field512-524), Eli stood for good at a gap in
+     * his gallery's floor at y=20, a pickaxe in hand, stone all round, and no block.
+     */
+    static Optional<BlockPos> wayBlock(WorldView world, Position at) {
+        BlockPos head = BlockPos.containing(at.x(), at.y(), at.z()).offset(0, 1, 0);
+        for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            BlockPos c = head.offset(d[0], 0, d[1]);
+            if (world.isStone(c.x(), c.y(), c.z())) {
+                return Optional.of(c);
+            }
+        }
+        return Optional.empty();
     }
 
     /** Whether {@code c} stands proud: open on three or four of its sides. */

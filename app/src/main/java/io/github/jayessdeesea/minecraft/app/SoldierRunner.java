@@ -5423,9 +5423,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 dutyBook.cutOut(squadName, statuses.stream().map(SoldierStatus::name).toList(), objectiveOf(squadName),
                         n -> gatherFoundNothing.getOrDefault(n, Long.MIN_VALUE), at -> woodsBook.spent(chainOfCommand, at, clockwork.millis())));
         woodDuties.values().forEach(d -> d.order().ifPresent(o -> ground.putIfAbsent(d.soldier(), o)));
-        statuses.forEach(s -> policeCall.order(s.name(), ground.containsKey(s.name()), withoutWork.alarmed(s.name())
-                || idleWatch.alarmed(s.name()) && s.report() instanceof Report.Cantco, world, scaffolding, stepPlacedAt, s.position(),
-                activeSoldiers.values().stream().map(d -> d.status().position()).toList(), s.condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false),
+        statuses.forEach(s -> policeCall.order(s, ground.containsKey(s.name()), withoutWork.alarmed(s.name()) || idleWatch.alarmed(s.name()) && s.report() instanceof Report.Cantco,
+                world, scaffolding, stepPlacedAt, activeSoldiers.values().stream().map(d -> d.status().position()).toList(),
                 Optional.ofNullable(campWallKey).map(walls::get).map(Set::copyOf).orElse(Set.of()), clockwork.millis()).ifPresent(o -> ground.put(s.name(), o)));
         statuses.forEach(s -> woodcutters.remove(s.name()));
         // Each producer's duty order (command.DutyOrder): its duty, its ground, and the dump its squad stockpiles at, else the camp's.

@@ -42,6 +42,9 @@ seconds or when stuck - a wide search asked again from the same cell to the same
   sides, so not one that filled a hole - top of a stack first, none a soldier stands by nor the camp's wall's, by
   hand, no shovel wanted (`app.PoliceCall`). It keeps the step till it's gone or other work comes; one not gone in
   a minute is passed over for ten, by everyone. Ahead of a CANTCO'd stone wall or floor.
+  And one stood a minute on "no route" with a pickaxe and no block to bridge or step with cuts a stone beside its
+  head - never its floor - for one (`PoliceCall.wayBlock`): live (field512-524), a miner stood for good at a gap in
+  his gallery's floor, stone all round.
 - **Doesn't try the same thing forever.** Stuck short of a waypoint - jumping at a block that
   won't take it, a squadmate on the same step - it routes round that cell for 10 seconds, at a
   cost that leaves the cell usable if there's no other way, and comes back to it only after.

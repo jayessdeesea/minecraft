@@ -1769,6 +1769,14 @@ The camp is built up the way an airborne force builds a lodgment after the drop,
    (backlog/cells.md).
 4. Armour: every soldier armoured (§11).
 
+**The camp's style** (operator, 2026-11-20): one simple design, at ground level, cheap and quick to walk -
+weird raised structures and pits all over made the camp hard to get about. Its ground flat at one height (the
+flatten, down to sea level), and on it what the force uses, each from its own template and nowhere else: the
+chests, the workshop's table and furnace, the farms, the huts, the torches. No rings, lips or pillars. A block is
+put down with intent - by a template, or to cross a gap no walk goes round within 40 blocks a block
+(`Pathfinder.DETOUR_PER_BLOCK`) - and one put down to get about is taken back by the next soldier without work
+(police call, `app.PoliceCall`). A wall is the platoon leader's to order (FORTIFY), not a standard of the camp's.
+
 Every site is measured the same way, in the lodgment's levels - SHELTER, AIRHEAD, BUILDUP,
 ESTABLISHED, SEMI-PERMANENT (`command.Site`; backlog/sites.md) - each kind filling in what
 a level means there. A site is at the highest level whose standards, and every lower level's, are
