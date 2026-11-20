@@ -161,7 +161,12 @@ final class DayGuardrails {
         List<Objective> out = new ArrayList<>(day);
         List<Integer> movable = new ArrayList<>();
         for (int i = 0; i < statuses.size(); i++) {
-            if (d.farmSquad().filter(statuses.get(i).squadName()::equals).isEmpty()) {
+            // Nor a squad on the platoon leader's FORAGE for its own Class I RED - its answer to that squad's hunger, today's
+            // food; a hungry squad on FARM is still dealt across the shortfalls (operator, 2026-11-17). Live (field513), hungry
+            // Charlie, sent to forage 573 ripe wheat, was taken by the wall's guardrail and then the wood's.
+            boolean feedingItself = statuses.get(i).classOne().filter(c -> c.rating() == io.github.jayessdeesea.minecraft.command.Subsistence.Rating.RED)
+                    .isPresent() && day.get(i).task() instanceof Objective.Task.Forage;
+            if (d.farmSquad().filter(statuses.get(i).squadName()::equals).isEmpty() && !feedingItself) {
                 movable.add(i);
             }
         }

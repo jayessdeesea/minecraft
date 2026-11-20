@@ -203,6 +203,33 @@ class ChainOfCommandTest {
     }
 
     /**
+     * A starving squad the platoon leader sent to FORAGE stays on it: not spare to the wall's or the wood's guardrails.
+     * Live (field513), hungry Charlie's FORAGE was taken for the wall, then the wood.
+     */
+    @Test
+    void aStarvingSquadOnItsForageIsNotTakenForTheWall() {
+        ChainOfCommand three = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+        three.setKeepByDay(true);
+        three.restorePhase(Phase.SEIZURE, 0);
+        three.setGround((x, z, nearY) -> OptionalInt.of(64));
+        three.onTime(TimeOfDay.of(1000, true));
+        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(2, "the camp walled in", false, "not begun", "FORTIFY"))));
+        Objective farm = new Objective("Farm", new Position(-4, 64, 93), "Food", new Objective.Task.Farm());
+        Objective forage = new Objective("Forage", new Position(24, 64, 89), "Rations off the land", new Objective.Task.Forage());
+        Objective wall = new Objective("Wall the camp in", new Position(24, 64, 89), "Safety", new Objective.Task.Fortify());
+        List<SquadStatus> squads = List.of(hungry("Alpha", "Alice"), hungry("Bravo", "Bob"), hungry("Charlie", "Carol"));
+
+        List<Objective> guarded = three.guarded(List.of(farm, forage, wall), squads, List.of(PlatoonSergeant.Shortfall.FOOD), List.of());
+
+        assertEquals(forage, guarded.get(1), "Bravo forages, its hunger its own: " + guarded);
+    }
+
+    /**
      * In the airhead, the camp unwalled and every squad on the food the platoon leader sent it to: one doubled up on the
      * farm is put on FORTIFY - safety first. Live (field506), the wall "not begun" all day at the camp moved to sea level.
      */
