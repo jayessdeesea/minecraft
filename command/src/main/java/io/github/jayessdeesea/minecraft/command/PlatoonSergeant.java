@@ -131,9 +131,10 @@ public final class PlatoonSergeant {
     /**
      * A squad's Class I ({@link Subsistence}): who is short of food, and of them who has no means
      * of getting any - {@code foodless}, with no wheat and no game in sight - and isn't being shared
-     * some by a squadmate ({@code sharedTo}). Wheat growing in the camp's farm is a means for all:
-     * its bread is on the way, and live, squads with a farm growing raised Class I RED to the platoon leader
-     * all night, which it can't answer better than the farm already does.
+     * some by a squadmate ({@code sharedTo}). Wheat growing in the camp's farm ({@code farmGrowing}, its caller's to say
+     * by night only) is a means for all: its bread is on the way, and live, squads with a farm growing raised Class I
+     * RED to the platoon leader all night, which it can't answer better than the farm already does - by day it answers
+     * with FORAGE.
      */
     public static Subsistence.Status classOne(List<SoldierStatus> statuses, Set<String> foodless, Set<String> sharedTo, boolean farmGrowing) {
         Set<String> noMeans = farmGrowing ? Set.of() : statuses.stream().map(SoldierStatus::name)

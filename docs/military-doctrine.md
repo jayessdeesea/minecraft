@@ -209,8 +209,8 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    as eight soldiers ate, and none carried more than a few rations; and 192, eight soldiers' worth,
    left sixteen with twelve at no bread (field369).
 3. **The squad asks.** A soldier still short with none of those means - no wheat, no game in sight,
-   no rations in the stockpile, nobody sharing, and no wheat growing in the camp's farm, whose bread is on the way - makes the
-   squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
+   no rations in the stockpile, nobody sharing, and by night no wheat growing in the camp's farm, whose bread is on the way
+   (by day the platoon leader has FORAGE to answer with) - makes the squad's Class I **RED**. Its LOGSTAT then carries the request: "Class
    I RED - request: ... The squad can't feed itself."
 4. **The platoon leader answers.** Feeding a force is planned above the squad, as field feeding is above
    the company. Its answer to RED is `FORAGE` while wheat stands ripe round the camp - the day's work

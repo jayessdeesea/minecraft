@@ -1824,7 +1824,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Set<String> shared = state.crossLeveling.stream().filter(t -> t.item() == CrossLevel.Item.RATIONS)
                 .map(CrossLevel.Transfer::receiver).collect(Collectors.toSet());
         FarmPlan farm = campFarm;
-        boolean farmGrowing = farm != null && farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent());
+        // By night only: by day one with no food says so, for the platoon leader's FORAGE (field500: all 16 short, every squad AMBER).
+        boolean farmGrowing = chainOfCommand.time().map(TimeOfDay::dark).orElse(false) && farm != null && farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent());
         Subsistence.Status status = PlatoonSergeant.classOne(statuses, Set.copyOf(foodless), shared, farmGrowing);
         if (state.classOne == null || state.classOne.rating() != status.rating()) {
             LOG.info("[{}] {}", squad, status.line());
@@ -1937,8 +1938,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 Workshop outpost = keepOutposts.stream()
                         .filter(w -> Math.hypot(w.stand().x() + 0.5 - p.x(), w.stand().z() + 0.5 - p.z()) <= DEPOT_MOVE
-                                && Pathfinder.standable(world, w.stand()))
-                        .findFirst().orElseGet(() -> {
+                                && Pathfinder.standable(world, w.stand())).findFirst().orElseGet(() -> {
                             BlockPos at = TerrainSurveyor.surface(world, (int) Math.floor(p.x()), (int) Math.floor(p.z()), (int) p.y() + 60)
                                     .orElseGet(() -> TerrainSurveyor.groundAt(world, BlockPos.containing(p.x() + 0.5, p.y(), p.z() + 0.5)));
                             Workshop sited = Workshop.hasty(world, at, new HashSet<>(treeClaims)).orElse(null);
