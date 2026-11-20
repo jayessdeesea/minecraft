@@ -33,14 +33,15 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import static io.github.jayessdeesea.minecraft.bot.Body.*;
+import static io.github.jayessdeesea.minecraft.bot.Gait.*;
 
 /**
  * The {@code bot} module's implementation of {@link Soldier}: a deterministic, non-LLM per-tick
  * decision core (docs/architecture.md's \"Behavior modeling\" section). {@code app}'s {@code SoldierRunner} is
- * the imperative shell: it calls {@link #tick} at 20Hz and reports the resulting position to the
+ * the imperative shell: it calls {@link #tick} at 20Hz and reports the resulting gait.position to the
  * server; tests call it directly with a fake {@code WorldView}.
  *
- * <p>{@code position}/{@code order} are {@code volatile} rather than behind a lock: {@link
+ * <p>{@code gait.position}/{@code order} are {@code volatile} rather than behind a lock: {@link
  * #receiveOrder} may be called from a different thread than {@link #tick} (a future SquadLeader's
  * own invocation thread) but never concurrently with itself, and {@link #tick} is only ever called
  * by this soldier's own single tick loop - the same "sole writer" guarantee an actor's mailbox
@@ -48,9 +49,6 @@ import static io.github.jayessdeesea.minecraft.bot.Body.*;
  */
 public final class DeterministicSoldier implements Soldier {
 
-    /** Blocks per tick - 4 blocks/s at 20Hz, just under vanilla walk speed (~4.3), not tuned.
-     * Revisit if the server starts correcting reported positions (it would send Player Position). */
-    private static final double STEP = 0.2;
     /**
      * Sprinting, vanilla's 5.6 blocks/s: only when the time is worth the food - an urgent move to a
      * goal more than {@link #SPRINT_DISTANCE} away, closing on a hostile it fights, moving under fire.
@@ -132,9 +130,9 @@ public final class DeterministicSoldier implements Soldier {
 
     /** Aims at {@code target} along the arrow's arc and draws; loosed once the draw is full. False if no arc reaches. */
     private boolean shoot(Position target) {
-        double dx = target.x() - position.x();
-        double dz = target.z() - position.z();
-        double up = target.y() + TARGET_HEIGHT - (position.y() + EYE_HEIGHT);
+        double dx = target.x() - gait.position.x();
+        double dz = target.z() - gait.position.z();
+        double up = target.y() + TARGET_HEIGHT - (gait.position.y() + EYE_HEIGHT);
         OptionalDouble aim = aimPitch(Math.hypot(dx, dz), up);
         if (aim.isEmpty()) {
             return false;
@@ -151,21 +149,16 @@ public final class DeterministicSoldier implements Soldier {
 
     /** Whether a squadmate stands in the line from its eyes to {@code target} (Ballistics.inTheLine): the arrow waits. */
     private boolean squadmateInTheLine(WorldView world, Position target) {
-        double reach = Math.hypot(target.x() - position.x(), target.z() - position.z()) + 2;
+        double reach = Math.hypot(target.x() - gait.position.x(), target.z() - gait.position.z()) + 2;
         int self = entityId;
-        List<Position> others = (self >= 0 ? world.playersNear(position, reach, self) : world.playersNear(position, reach)).stream()
-                .filter(p -> Math.hypot(p.x() - position.x(), p.z() - position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - position.y()) > 1).toList();
-        return inTheLine(position, target, others);
+        List<Position> others = (self >= 0 ? world.playersNear(gait.position, reach, self) : world.playersNear(gait.position, reach)).stream()
+                .filter(p -> Math.hypot(p.x() - gait.position.x(), p.z() - gait.position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - gait.position.y()) > 1).toList();
+        return inTheLine(gait.position, target, others);
     }
 
     /** Ticks left with the shield up; 0 when it's down. */
     private int shieldTicks;
 
-    // Vanilla player physics constants (LivingEntity): per tick, velocity -= 0.08 then *= 0.98;
-    // a jump starts at 0.42 (peaks ~1.25 blocks - enough for one block, not two).
-    private static final double GRAVITY = 0.08;
-    private static final double DRAG = 0.98;
-    private static final double JUMP_VELOCITY = 0.42;
     static final double BODY_HEIGHT = 1.8;
     static final double HALF_WIDTH = 0.3; // a player's box is 0.6 x 1.8 x 0.6
 
@@ -180,22 +173,16 @@ public final class DeterministicSoldier implements Soldier {
     static final double SWIM_RISE = 0.2;
 
     private final String name;
-    private volatile Position position;
+    /** Its body moving through the world: where it is, how it's falling or swimming (bot.Gait). Tick loop writes. */
+    private final Gait gait;
     private volatile Order order = new Order.Idle();
     private final AtomicReference<Position> pendingCorrection = new AtomicReference<>();
-    // Tick-loop-only, like position's writes - no other thread reads it.
-    private double verticalVelocity = 0;
-    private volatile boolean onGround = true;
-    /** Whether it's swimming: its feet in water. Tick loop writes. */
-    private volatile boolean afloat;
-    /** Rising out of the water onto a bank this tick: the water doesn't settle it back. Tick loop only. */
-    private boolean climbingOut;
     private volatile Report task;
     // Look direction, written by the tick loop, read by the caller reporting it.
     private volatile float yaw;
     private volatile float pitch;
     private int ticksUntilAttack = 0; // tick-loop only
-    // Written only by the connection's thread (reportHealth), as position is only by the tick loop.
+    // Written only by the connection's thread (reportHealth), as gait.position is only by the tick loop.
     private volatile Condition condition;
     /** Whether the last step was a sprint - tick thread writes, its caller reads. */
     private volatile boolean sprinting;
@@ -208,7 +195,7 @@ public final class DeterministicSoldier implements Soldier {
 
     public DeterministicSoldier(String name, Position startingPosition) {
         this.name = name;
-        this.position = startingPosition;
+        this.gait = new Gait(startingPosition);
     }
 
     @Override
@@ -219,7 +206,7 @@ public final class DeterministicSoldier implements Soldier {
     /**
      * The server says this soldier is somewhere else (a respawn, or a correction of a reported
      * move) - authoritative, so it wins. Applied at the start of the next {@link #tick} rather than
-     * written here, so the tick loop stays the sole writer of {@code position}.
+     * written here, so the tick loop stays the sole writer of {@code gait.position}.
      */
     public void correctPosition(Position serverPosition) {
         pendingCorrection.set(serverPosition);
@@ -275,7 +262,7 @@ public final class DeterministicSoldier implements Soldier {
 
     /** Whether the last tick ended standing on something - reported to the server with each move. */
     public boolean onGround() {
-        return onGround;
+        return gait.onGround;
     }
 
     @Override
@@ -288,7 +275,7 @@ public final class DeterministicSoldier implements Soldier {
         // torches it couldn't make, and one boxed in a pocket reported digging, and nobody came for either.
         boolean noRoute = report instanceof Report.Cantco(String why) && why.startsWith("no route from");
         Report now = busy != null && !(report instanceof Report.InContact) && !noRoute ? busy : report;
-        return new SoldierStatus(name, position, order, now, Optional.ofNullable(condition)
+        return new SoldierStatus(name, gait.position, order, now, Optional.ofNullable(condition)
                 .map(c -> new Condition(c.health(), c.food(), c.deaths(), Optional.ofNullable(carried))));
     }
 
@@ -371,7 +358,7 @@ public final class DeterministicSoldier implements Soldier {
         int self = entityId;
         Stream<Position> others = self >= 0 ? world.playersNear(target, SWEEP_REACH + 1, self).stream()
                 : world.playersNear(target, SWEEP_REACH + 1).stream()
-                .filter(p -> Math.hypot(p.x() - position.x(), p.z() - position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - position.y()) > 1);
+                .filter(p -> Math.hypot(p.x() - gait.position.x(), p.z() - gait.position.z()) > SELF_SEEN_WITHIN || Math.abs(p.y() - gait.position.y()) > 1);
         // Up and down, the boxes: the target's grown a quarter block, against a player's height. Not
         // feet to feet - live, a phantom two blocks over a squadmate's feet was swung at, and the
         // sweep killed the squadmate at a heart.
@@ -401,7 +388,7 @@ public final class DeterministicSoldier implements Soldier {
         if (ticksUntilAttack > 0) {
             ticksUntilAttack--;
         }
-        wet = world.isWater((int) Math.floor(position.x()), (int) Math.floor(position.y()), (int) Math.floor(position.z()));
+        wet = world.isWater((int) Math.floor(gait.position.x()), (int) Math.floor(gait.position.y()), (int) Math.floor(gait.position.z()));
 
         Position correction = pendingCorrection.getAndSet(null);
         if (correction != null) {
@@ -409,21 +396,21 @@ public final class DeterministicSoldier implements Soldier {
             // show. The waypoint it was short of is routed round for a while, as when it stalls
             // short of one, and three such at one cell are a snag (takeSnag).
             if (route != null && routeIndex < route.size() && !goal.contains(route.get(routeIndex))
-                    && Math.hypot(correction.x() - position.x(), correction.z() - position.z()) > 0.05) {
+                    && Math.hypot(correction.x() - gait.position.x(), correction.z() - gait.position.z()) > 0.05) {
                 stuckShortOf(route.get(routeIndex));
             }
-            position = correction;
-            verticalVelocity = 0;
-            onGround = false; // unknown until gravity settles it - and no route is planned mid-air
+            gait.position = correction;
+            gait.verticalVelocity = 0;
+            gait.onGround = false; // unknown until gravity settles it - and no route is planned mid-air
             route = null;
             return OptionalInt.empty();
         }
 
         OptionalInt attack = OptionalInt.empty();
         sprinting = false; // only a long move sprints; fighting and short moves walk
-        Position before = position;
+        Position before = gait.position;
         Kit worn = kit;
-        List<Position> arrows = worn != null && worn.shield() ? world.arrowsNear(position, ARROW_WATCH) : List.of();
+        List<Position> arrows = worn != null && worn.shield() ? world.arrowsNear(gait.position, ARROW_WATCH) : List.of();
         if (!arrows.isEmpty()) {
             shieldTicks = SHIELD_HOLD_TICKS;
         } else if (shieldTicks > 0) {
@@ -434,15 +421,15 @@ public final class DeterministicSoldier implements Soldier {
             underFireTicks = UNDER_FIRE_TICKS;
         }
         // A soldier with a bow reaches further than a sword: what it can see within bow range is contact.
-        List<TrackedEntity> threats = visible(world, world.nearbyHostiles(position, canShoot() ? BOW_RANGE : CONTACT_RADIUS));
+        List<TrackedEntity> threats = visible(world, world.nearbyHostiles(gait.position, canShoot() ? BOW_RANGE : CONTACT_RADIUS));
         if (threats.isEmpty() && underFireTicks > 0) {
             // Hit with nothing in reach: someone is shooting - find the shooter.
-            threats = visible(world, world.nearbyHostiles(position, UNDER_FIRE_RADIUS));
+            threats = visible(world, world.nearbyHostiles(gait.position, UNDER_FIRE_RADIUS));
         }
         // An enderman only in self-defense: just hit, and it at hand - a swing at one passing provokes it. Live
         // (field451), Eli at the mine's bottom swung at three in eight seconds, and was killed by them.
         threats = threats.stream().filter(t -> !t.fightsOnlyAtHand() || underFireTicks > 0
-                && Math.hypot(t.position().x() - position.x(), t.position().z() - position.z()) <= ATTACK_REACH + 1).toList();
+                && Math.hypot(t.position().x() - gait.position.x(), t.position().z() - gait.position.z()) <= ATTACK_REACH + 1).toList();
         if (underFireTicks > 0) {
             underFireTicks--;
         }
@@ -463,13 +450,13 @@ public final class DeterministicSoldier implements Soldier {
         // squad stood a night in a cave 5 to 8 blocks from creepers, each backing off it with nowhere to
         // back to and too far to strike, and none of them moved.
         if (!threats.isEmpty() && !threats.get(0).shoots()
-                && position.distanceTo(threats.get(0).position()) > ATTACK_REACH && noWalkTo(world, threats.get(0).position())) {
+                && gait.position.distanceTo(threats.get(0).position()) > ATTACK_REACH && noWalkTo(world, threats.get(0).position())) {
             threats = List.of();
         }
         if (!threats.isEmpty()) {
             TrackedEntity nearest = threats.get(0);
             Position threat = nearest.position();
-            double range = position.distanceTo(threat);
+            double range = gait.position.distanceTo(threat);
             boolean shot = false;
             // A creeper too, from outside its blast (operator, 2026-11-18: soldiers with bows shoot far-away
             // enemies): live (field436-443), six soldiers were killed by creepers in melee, boxed in or after the
@@ -490,7 +477,7 @@ public final class DeterministicSoldier implements Soldier {
                 // could walk to them and didn't. Closing inside this, it backs off as below.
                 navigate(world);
                 report = new Report.InContact(threats.size());
-                applyVerticalMovement(world);
+                gait.fall(world);
                 return attack;
             } else if (nearest.explodes()) {
                 // A creeper is never fought at arm's length: get clear of the blast - straight away,
@@ -514,18 +501,18 @@ public final class DeterministicSoldier implements Soldier {
             // An enderman at hand is fought only with a weapon: bare fists against its 40 health lose. Live (field441),
             // Pete, on his way to make a stone sword, punched one ten times at the depot and was killed, twice in 90 s.
             } else if (nearest.fightsOnlyAtHand() && !armedForMelee()) {
-                stepGuarded(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
+                stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z());
             // An archer well below - across a cave's drop - out-shoots a sword as surely as one it has no route to:
             // the engagement doctrine's it-can-I-can't cell, cover and carry on. Live (field410-419), Alice, Hal and
             // Gus closed on skeletons in the caves under their faces and were shot 12-28 blocks down.
-            } else if (nearest.shoots() && (!armedForMelee() || threat.y() < position.y() - ARCHER_BELOW || pinned(world, threat))) {
+            } else if (nearest.shoots() && (!armedForMelee() || threat.y() < gait.position.y() - ARCHER_BELOW || pinned(world, threat))) {
                 // An archer out-fights a bare hand from any range, and a sword it can't be closed on:
                 // get out of its sight, and stay out.
                 Optional<Position> cover = coverFrom(world, threat);
                 if (cover.isPresent()) {
                     stepGuarded(world, cover.get().x(), cover.get().z());
                 } else {
-                    stepGuarded(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
+                    stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z());
                 }
                 holdCoverTicks = UNDER_FIRE_TICKS;
             } else {
@@ -536,7 +523,7 @@ public final class DeterministicSoldier implements Soldier {
                     ticksUntilAttack = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon()).ticksToCharge();
                 }
                 if (range < KEEP_AWAY) {
-                    stepGuarded(world, 2 * position.x() - threat.x(), 2 * position.z() - threat.z());
+                    stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z());
                 } else if (range > ATTACK_REACH) {
                     // Closing on what it fights: every tick in the open is a tick under its fire.
                     sprinting = canSprint();
@@ -559,15 +546,15 @@ public final class DeterministicSoldier implements Soldier {
             holdCoverTicks--;
         } else {
             navigate(world);
-            double dx = position.x() - before.x();
-            double dz = position.z() - before.z();
+            double dx = gait.position.x() - before.x();
+            double dz = gait.position.z() - before.z();
             if (dx * dx + dz * dz > 1e-4) {
                 yaw = yawToward(dx, dz);
                 pitch = 0;
             }
         }
 
-        applyVerticalMovement(world);
+        gait.fall(world);
         return attack;
     }
 
@@ -595,10 +582,10 @@ public final class DeterministicSoldier implements Soldier {
      * swimming.
      */
     private boolean noWalkTo(WorldView world, Position threat) {
-        if (noWalkCheckIn-- <= 0 && (onGround || wet)) {
+        if (noWalkCheckIn-- <= 0 && (gait.onGround || wet)) {
             noWalkCheckIn = PINNED_CHECK_TICKS;
             Goal reach = new Goal(threat.x(), threat.y(), threat.z(), ATTACK_REACH, Pathfinder.MAX_DROP);
-            noWalk = !Pathfinder.find(world, standingCell(world, position), reach, PLAN_BUDGET,
+            noWalk = !Pathfinder.find(world, standingCell(world, gait.position), reach, PLAN_BUDGET,
                     FallAllowance.NONE, 0, false).reachesGoal();
         }
         return noWalk;
@@ -621,10 +608,10 @@ public final class DeterministicSoldier implements Soldier {
     private boolean pinned(WorldView world, Position threat) {
         // On the ground, or swimming: live, a soldier in water was never on the ground, so never found
         // the hostile out of reach, and stood "in contact" across two restarts, its drill held off.
-        if (pinnedCheckIn-- <= 0 && (onGround || wet)) {
+        if (pinnedCheckIn-- <= 0 && (gait.onGround || wet)) {
             pinnedCheckIn = PINNED_CHECK_TICKS;
             Goal reach = new Goal(threat.x(), threat.y(), threat.z(), ATTACK_REACH, Pathfinder.MAX_DROP);
-            pinned = !Pathfinder.find(world, standingCell(world, position), reach, PLAN_BUDGET,
+            pinned = !Pathfinder.find(world, standingCell(world, gait.position), reach, PLAN_BUDGET,
                     FallAllowance.NONE, pillarBlocks(), carriesPickaxe()).reachesGoal();
         }
         return pinned;
@@ -654,7 +641,7 @@ public final class DeterministicSoldier implements Soldier {
      */
     private Optional<Position> coverFrom(WorldView world, Position shooter) {
         Position shooterEye = new Position(shooter.x(), shooter.y() + EYE_HEIGHT, shooter.z());
-        BlockPos here = BlockPos.containing(position.x(), position.y() + EPSILON, position.z());
+        BlockPos here = BlockPos.containing(gait.position.x(), gait.position.y() + EPSILON, gait.position.z());
         Position best = null;
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -COVER_RADIUS; dx <= COVER_RADIUS; dx++) {
@@ -665,7 +652,7 @@ public final class DeterministicSoldier implements Soldier {
                         continue;
                     }
                     Position spot = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
-                    double distance = Math.hypot(spot.x() - position.x(), spot.z() - position.z());
+                    double distance = Math.hypot(spot.x() - gait.position.x(), spot.z() - gait.position.z());
                     if (distance < bestDistance
                             && !lineOfSight(world, shooterEye, new Position(spot.x(), spot.y() + EYE_HEIGHT, spot.z()))
                             && !lineOfSight(world, shooterEye, new Position(spot.x(), spot.y() + 0.5, spot.z()))) {
@@ -692,7 +679,7 @@ public final class DeterministicSoldier implements Soldier {
      * outside. Vanilla mobs likewise need a line of sight to target a player.
      */
     private List<TrackedEntity> visible(WorldView world, List<TrackedEntity> hostiles) {
-        Position eye = new Position(position.x(), position.y() + EYE_HEIGHT, position.z());
+        Position eye = new Position(gait.position.x(), gait.position.y() + EYE_HEIGHT, gait.position.z());
         return hostiles.stream().filter(hostile -> lineOfSight(world, eye,
                 new Position(hostile.position().x(), hostile.position().y() + TARGET_HEIGHT, hostile.position().z()))).toList();
     }
@@ -702,9 +689,9 @@ public final class DeterministicSoldier implements Soldier {
 
 
     private void look(Position target) {
-        double dx = target.x() - position.x();
-        double dz = target.z() - position.z();
-        double dy = target.y() + TARGET_HEIGHT - (position.y() + EYE_HEIGHT);
+        double dx = target.x() - gait.position.x();
+        double dz = target.z() - gait.position.z();
+        double dy = target.y() + TARGET_HEIGHT - (gait.position.y() + EYE_HEIGHT);
         yaw = yawToward(dx, dz);
         pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
     }
@@ -818,7 +805,7 @@ public final class DeterministicSoldier implements Soldier {
     static final int UNDER_THE_SURFACE = 8;
     private static final double WAYPOINT_REACHED = 0.25;
 
-    // Navigation state - tick-loop only, like verticalVelocity.
+    // Navigation state - tick-loop only, like gait.verticalVelocity.
     private Order plannedOrder;
     private Goal goal;
     private List<BlockPos> route;
@@ -874,12 +861,12 @@ public final class DeterministicSoldier implements Soldier {
             report = new Report.Idle();
             return;
         }
-        if ((onGround || afloat) && goal.contains(BlockPos.containing(position.x(), position.y(), position.z()))) {
+        if ((gait.onGround || gait.afloat) && goal.contains(BlockPos.containing(gait.position.x(), gait.position.y(), gait.position.z()))) {
             route = null;
             failedPlans = 0;
             // A goal finer than half a block wants a spot, not just a cell - inside a hut a body off
             // its cell's centre leans into the wall being built. Step onto it before standing.
-            if (goal.horizontalTolerance() < 0.5 && !goal.contains(position.x(), position.y(), position.z())) {
+            if (goal.horizontalTolerance() < 0.5 && !goal.contains(gait.position.x(), gait.position.y(), gait.position.z())) {
                 stepToward(world, goal.x(), goal.z());
                 report = new Report.Moving();
                 return;
@@ -898,15 +885,15 @@ public final class DeterministicSoldier implements Soldier {
         // more than half the garrison's CPU.
         // On dry ground only: in water each plan is the plug's next step (the squad simulation's soldier
         // stuck in water with only logs plugs its way out a plan at a time).
-        boolean noRoute = route != null && route.isEmpty() && ticksSincePlan < NO_ROUTE_RETRY_TICKS && !wet && !afloat;
-        List<TrackedEntity> creepers = world.nearbyHostiles(position, CREEPER_WATCH).stream().filter(TrackedEntity::explodes).toList();
+        boolean noRoute = route != null && route.isEmpty() && ticksSincePlan < NO_ROUTE_RETRY_TICKS && !wet && !gait.afloat;
+        List<TrackedEntity> creepers = world.nearbyHostiles(gait.position, CREEPER_WATCH).stream().filter(TrackedEntity::explodes).toList();
         Set<Integer> creeperIds = creepers.stream().map(TrackedEntity::entityId).collect(java.util.stream.Collectors.toUnmodifiableSet());
         boolean newCreeper = !creepersRoutedRound.containsAll(creeperIds);
         boolean replan = route == null || routeIndex >= route.size() && !noRoute
                 || ticksSincePlan >= REPLAN_TICKS && !onLeg || stuckTicks >= STUCK_TICKS || newCreeper;
         navTicks++;
         avoided.values().removeIf(until -> until <= navTicks);
-        if (replan && (onGround || afloat)) {
+        if (replan && (gait.onGround || gait.afloat)) {
             boolean stuck = stuckTicks >= STUCK_TICKS;
             // Stuck short of a waypoint: not tried again straight away. The next plan goes round it if
             // there's a way - a squadmate may be on the same step - and comes back to it only later.
@@ -928,7 +915,7 @@ public final class DeterministicSoldier implements Soldier {
             creepersRoutedRound = creeperIds;
             // A fall is the exception, never the plan: first a route with none - walked, then with
             // steps built from what it carries - and only with no such route one the order's risk allows.
-            BlockPos start = standingCell(world, position);
+            BlockPos start = standingCell(world, gait.position);
             onLeg = false;
             // Wide straight away for a goal a wide search was needed for: a cheap replan on the way
             // round would only lead back to the wall it's going round.
@@ -1012,9 +999,9 @@ public final class DeterministicSoldier implements Soldier {
         }
 
         BlockPos waypoint = route.get(routeIndex);
-        BlockPos here = BlockPos.containing(position.x(), position.y() + EPSILON, position.z());
+        BlockPos here = BlockPos.containing(gait.position.x(), gait.position.y() + EPSILON, gait.position.z());
         // Afloat too: the planner cuts a step out of a pool whose banks are too high to climb.
-        List<BlockPos> cut = onGround || afloat ? toCut(world, here, waypoint, carriesPickaxe()) : List.of();
+        List<BlockPos> cut = gait.onGround || gait.afloat ? toCut(world, here, waypoint, carriesPickaxe()) : List.of();
         if (!cut.isEmpty()) {
             cutting = cut;
             cuttingTicks++;
@@ -1022,7 +1009,7 @@ public final class DeterministicSoldier implements Soldier {
             return;
         }
         cuttingTicks = 0;
-        if (onGround && buildStep(world, here, waypoint)) {
+        if (gait.onGround && buildStep(world, here, waypoint)) {
             report = new Report.Moving();
             return;
         }
@@ -1033,8 +1020,8 @@ public final class DeterministicSoldier implements Soldier {
         }
         double centreX = waypoint.x() + 0.5;
         double centreZ = waypoint.z() + 0.5;
-        if (Math.hypot(centreX - position.x(), centreZ - position.z()) < WAYPOINT_REACHED
-                && Math.abs(waypoint.y() - position.y()) < 0.6) {
+        if (Math.hypot(centreX - gait.position.x(), centreZ - gait.position.z()) < WAYPOINT_REACHED
+                && Math.abs(waypoint.y() - gait.position.y()) < 0.6) {
             routeIndex++;
             if (routeIndex >= route.size()) {
                 return;
@@ -1043,16 +1030,16 @@ public final class DeterministicSoldier implements Soldier {
             centreX = waypoint.x() + 0.5;
             centreZ = waypoint.z() + 0.5;
         }
-        boolean far = Math.hypot(goal.x() - position.x(), goal.z() - position.z()) > SPRINT_DISTANCE;
+        boolean far = Math.hypot(goal.x() - gait.position.x(), goal.z() - gait.position.z()) > SPRINT_DISTANCE;
         // The server charges sprinting 0.1 exhaustion a metre and walking nothing: a routine walk is
         // walked, and only an urgent move, or one under fire, is run. Live, soldiers carrying rations
         // sprinted every walk past eight blocks and ate eleven loaves a day each - about the farm's
         // whole harvest (operator, 2026-11-13).
         boolean urgent = order instanceof Order.MoveTo move && move.urgent() || underFireTicks > 0;
         sprinting = far && canSprint() && urgent;
-        levelStep = waypoint.y() <= Math.floor(position.y() + EPSILON);
+        gait.levelStep = waypoint.y() <= Math.floor(gait.position.y() + EPSILON);
         stepToward(world, centreX, centreZ, sprinting ? SPRINT_STEP : STEP);
-        levelStep = false;
+        gait.levelStep = false;
     }
 
     /**
@@ -1061,7 +1048,7 @@ public final class DeterministicSoldier implements Soldier {
      */
     private boolean canSprint() {
         Condition known = condition;
-        return (known == null || known.food() > SPRINT_FOOD_FLOOR) && !shieldRaised() && !afloat;
+        return (known == null || known.food() > SPRINT_FOOD_FLOOR) && !shieldRaised() && !gait.afloat;
     }
 
     /** Whether it carries a pickaxe, to cut steps into stone with - unknown kit carries none. */
@@ -1084,24 +1071,24 @@ public final class DeterministicSoldier implements Soldier {
     private void pillar(WorldView world, BlockPos top) {
         BlockPos from = top.offset(0, -1, 0);
         if (pillarFrom == null) {
-            if (!onGround) {
+            if (!gait.onGround) {
                 return;
             }
             pillarFrom = from;
-            verticalVelocity = JUMP_VELOCITY;
-            onGround = false;
+            gait.verticalVelocity = JUMP_VELOCITY;
+            gait.onGround = false;
             return;
         }
         if (world.isSolid(from.x(), from.y(), from.z())) {
-            if (onGround) {
+            if (gait.onGround) {
                 pillarFrom = null; // standing on it: the step is done
                 routeIndex++;
             }
             return;
         }
-        if (position.y() >= from.y() + 1) {
+        if (gait.position.y() >= from.y() + 1) {
             placement = from;
-        } else if (onGround) {
+        } else if (gait.onGround) {
             pillarFrom = null; // landed back where it started - the block never went in; try again
         }
     }
@@ -1124,7 +1111,7 @@ public final class DeterministicSoldier implements Soldier {
         }
         double cx = here.x() + 0.5;
         double cz = here.z() + 0.5;
-        if (Math.hypot(cx - position.x(), cz - position.z()) > BUILD_CENTRED) {
+        if (Math.hypot(cx - gait.position.x(), cz - gait.position.z()) > BUILD_CENTRED) {
             stepToward(world, cx, cz);
             return true;
         }
@@ -1194,14 +1181,14 @@ public final class DeterministicSoldier implements Soldier {
             lastPartialPlanFrom = null;
         } else {
             boolean gainedGround = lastPartialPlanFrom != null
-                    && Math.hypot(position.x() - lastPartialPlanFrom.x(), position.z() - lastPartialPlanFrom.z()) > 1;
+                    && Math.hypot(gait.position.x() - lastPartialPlanFrom.x(), gait.position.z() - lastPartialPlanFrom.z()) > 1;
             failedPlans = plan.path().isEmpty() || !gainedGround ? failedPlans + 1 : 0;
-            lastPartialPlanFrom = position;
+            lastPartialPlanFrom = gait.position;
         }
         report = failedPlans >= CANTCO_AFTER_FAILED_PLANS
                 ? new Report.Cantco(String.format(Locale.ROOT,
                         "no route from (%.0f, %.0f, %.0f) to within %.0f of (%.0f, %.0f, %.0f)",
-                        position.x(), position.y(), position.z(), goal.horizontalTolerance(), goal.x(), goal.y(), goal.z())
+                        gait.position.x(), gait.position.y(), gait.position.z(), goal.horizontalTolerance(), goal.x(), goal.y(), goal.z())
                         + priceOfARiskierRoute(world, plan))
                 : new Report.Moving();
     }
@@ -1219,7 +1206,7 @@ public final class DeterministicSoldier implements Soldier {
         if (known == null || known.health() < 2) {
             return "";
         }
-        BlockPos start = standingCell(world, position);
+        BlockPos start = standingCell(world, gait.position);
         double factor = fallDamageFactor();
         Pathfinder.Result route = Pathfinder.find(world, start, goal, PLAN_BUDGET,
                 new FallAllowance((int) Math.ceil(known.health()) - 1, 1, factor));
@@ -1240,9 +1227,9 @@ public final class DeterministicSoldier implements Soldier {
         // (field364), Olga and Ned jumped at a step under a tree's leaves at the farm's edge, each jump
         // read as headway, and the planner never tried another way (operator, 2026-11-17: try twice,
         // then another way).
-        if (progressMark == null || Math.hypot(position.x() - progressMark.x(), position.z() - progressMark.z()) > 0.5
-                || onGround && Math.abs(position.y() - progressMark.y()) > 0.5) {
-            progressMark = position;
+        if (progressMark == null || Math.hypot(gait.position.x() - progressMark.x(), gait.position.z() - progressMark.z()) > 0.5
+                || gait.onGround && Math.abs(gait.position.y() - progressMark.y()) > 0.5) {
+            progressMark = gait.position;
             stuckTicks = 0;
         } else {
             stuckTicks++;
@@ -1281,59 +1268,15 @@ public final class DeterministicSoldier implements Soldier {
         };
     }
 
-    private void applyVerticalMovement(WorldView world) {
-        double x = position.x();
-        double z = position.z();
-        double y = position.y();
-        int fx = (int) Math.floor(x);
-        int fz = (int) Math.floor(z);
-        int feet = (int) Math.floor(y + EPSILON);
-        if (world.isWater(fx, feet, fz)) {
-            // Afloat: no gravity, no fall - the body settles to the surface, head out.
-            afloat = true;
-            onGround = false;
-            verticalVelocity = 0;
-            if (climbingOut) {
-                climbingOut = false;
-                return;
-            }
-            int top = feet;
-            while (world.isWater(fx, top + 1, fz)) {
-                top++;
-            }
-            double rise = Math.max(-SWIM_RISE, Math.min(SWIM_RISE, top + SWIM_FLOAT - y));
-            position = new Position(x, y + rise, z);
-            return;
-        }
-        afloat = false;
-        climbingOut = false;
-        double velocity = onGround ? -GRAVITY * DRAG : verticalVelocity;
-        double nextY = y + velocity;
-
-        if (velocity < 0) {
-            // Land on the highest solid block whose top lies between here and nextY.
-            for (int blockY = (int) Math.floor(y + EPSILON) - 1; blockY >= (int) Math.floor(nextY); blockY--) {
-                if (anySolid(world, x, z, blockY, blockY)) {
-                    position = new Position(position.x(), blockY + 1, position.z());
-                    verticalVelocity = 0;
-                    onGround = true;
-                    return;
-                }
-            }
-        } else if (anySolid(world, x, z, (int) Math.floor(nextY + BODY_HEIGHT), (int) Math.floor(nextY + BODY_HEIGHT))) {
-            nextY = y; // bumped a ceiling
-            velocity = 0;
-        }
-
-        position = new Position(position.x(), nextY, position.z());
-        verticalVelocity = (velocity - GRAVITY) * DRAG;
-        onGround = false;
-    }
 
 
 
     private void stepToward(WorldView world, double targetX, double targetZ) {
         stepToward(world, targetX, targetZ, STEP);
+    }
+
+    private void stepToward(WorldView world, double targetX, double targetZ, double pace) {
+        gait.step(world, targetX, targetZ, (shieldRaised() ? pace * SHIELD_SLOWDOWN : pace));
     }
 
     /**
@@ -1348,16 +1291,10 @@ public final class DeterministicSoldier implements Soldier {
     }
 
     private void stepGuarded(WorldView world, double targetX, double targetZ, double pace) {
-        Position start = position;
-        boolean startGround = onGround;
-        double startVelocity = verticalVelocity;
-        boolean startClimbing = climbingOut;
+        Gait.Snapshot start = gait.snapshot();
         stepToward(world, targetX, targetZ, pace);
-        if (!position.equals(start) && overDrop(world, position)) {
-            position = start;
-            onGround = startGround;
-            verticalVelocity = startVelocity;
-            climbingOut = startClimbing;
+        if (!gait.position.equals(start.position()) && overDrop(world, gait.position)) {
+            gait.restore(start);
         }
     }
 
@@ -1371,29 +1308,25 @@ public final class DeterministicSoldier implements Soldier {
      * Whether the soldier moved, or started a jump to.
      */
     private boolean evade(WorldView world, Position threat) {
-        double away = Math.atan2(position.z() - threat.z(), position.x() - threat.x());
-        Position start = position;
-        boolean startGround = onGround;
-        double startVelocity = verticalVelocity;
-        boolean startClimbing = climbingOut;
+        double away = Math.atan2(gait.position.z() - threat.z(), gait.position.x() - threat.x());
+        Gait.Snapshot snapshot = gait.snapshot();
+        Position start = snapshot.position();
+        boolean startGround = snapshot.onGround();
         double from = Math.hypot(start.x() - threat.x(), start.z() - threat.z());
         double bestGain = 1e-6;
         int best = Integer.MIN_VALUE;
         for (int heading : EVASION_HEADINGS) {
             double angle = away + Math.toRadians(heading);
             stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2);
-            boolean dropsOff = !position.equals(start) && overDrop(world, position);
+            boolean dropsOff = !gait.position.equals(start) && overDrop(world, gait.position);
             // A jump started counts as a little ground gained: it lands farther on next tick.
-            double gain = Math.hypot(position.x() - threat.x(), position.z() - threat.z()) - from
-                    + (onGround != startGround && heading == 0 ? 0.05 : 0);
+            double gain = Math.hypot(gait.position.x() - threat.x(), gait.position.z() - threat.z()) - from
+                    + (gait.onGround != startGround && heading == 0 ? 0.05 : 0);
             if (gain > bestGain && !dropsOff) {
                 bestGain = gain;
                 best = heading;
             }
-            position = start;
-            onGround = startGround;
-            verticalVelocity = startVelocity;
-            climbingOut = startClimbing;
+            gait.restore(snapshot);
         }
         if (best == Integer.MIN_VALUE) {
             return false;
@@ -1401,53 +1334,5 @@ public final class DeterministicSoldier implements Soldier {
         double angle = away + Math.toRadians(best);
         stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2);
         return true;
-    }
-
-    /** Whether the step under way is to a waypoint on the soldier's own level: a snag is slid along before any jump. */
-    private boolean levelStep;
-
-    private void stepToward(WorldView world, double targetX, double targetZ, double pace) {
-        double step = (shieldRaised() ? pace * SHIELD_SLOWDOWN : pace) * (afloat ? SWIM_STEP / STEP : 1);
-        double dx = targetX - position.x();
-        double dz = targetZ - position.z();
-        double distance = Math.hypot(dx, dz);
-        if (distance < EPSILON) {
-            return;
-        }
-        double move = Math.min(step, distance); // never overshoot - nor stall just short of the target
-
-        double stepX = (dx / distance) * move;
-        double stepZ = (dz / distance) * move;
-        double nextX = position.x() + stepX;
-        double nextZ = position.z() + stepZ;
-        double y = position.y();
-        if (bodyFits(world, nextX, y, nextZ)) {
-            position = new Position(nextX, y, nextZ);
-        } else if (afloat && bodyFits(world, nextX, Math.floor(y) + 1, nextZ)
-                && bodyFits(world, position.x(), Math.floor(y) + 1, position.z())) {
-            // A bank one block above the water: rise out of it, then step on once clear of the edge.
-            position = new Position(position.x(), Math.min(y + SWIM_RISE, Math.floor(y) + 1), position.z());
-            climbingOut = true;
-        } else if (levelStep && Math.abs(stepX) > 1e-9 && bodyFits(world, nextX, y, position.z())) {
-            // On the level, a corner snagged is slid along, not jumped onto: a jump costs hunger, and the route goes round
-            // it. Live (field490-494), jumping was the force's biggest burn, most of it walking routes.
-            position = new Position(nextX, y, position.z());
-        } else if (levelStep && Math.abs(stepZ) > 1e-9 && bodyFits(world, position.x(), y, nextZ)) {
-            position = new Position(position.x(), y, nextZ);
-        } else if (onGround && !anyHazard(world, nextX, nextZ, (int) Math.floor(y), (int) Math.floor(y))
-                && bodyFits(world, nextX, Math.floor(y) + 1, nextZ)
-                && bodyFits(world, position.x(), Math.floor(y) + 1, position.z())) {
-            // A one-block rise with headroom here and there: jump; the step happens once airborne.
-            // Never over water or lava: nothing says where the jump comes down.
-            verticalVelocity = JUMP_VELOCITY;
-            onGround = false;
-        } else if (Math.abs(stepX) > 1e-9 && bodyFits(world, nextX, y, position.z())) {
-            // Blocked on the diagonal: slide along the obstacle, one axis at a time - how vanilla
-            // resolves collisions. The route is planned on cell centres; a 0.6-wide body standing
-            // off-centre can snag a corner the plan doesn't see.
-            position = new Position(nextX, y, position.z());
-        } else if (Math.abs(stepZ) > 1e-9 && bodyFits(world, position.x(), y, nextZ)) {
-            position = new Position(position.x(), y, nextZ);
-        }
     }
 }

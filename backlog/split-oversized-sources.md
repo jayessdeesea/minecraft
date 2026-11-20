@@ -34,14 +34,14 @@ lists the files over it, each capped at its length then, to shrink to under.
   (docs/architecture.md, the squad simulation), `DeterministicSoldierTest`'s fight into
   `DeterministicSoldierCombatTest`, the sim server's items into `SimItems`.
 
-## A plan for the operator to agree (2026-11-19)
-Not begun - a plan, cut along the tenets, each step a commit of its own with the ratchet lowered behind it.
+## The plan (agreed by the operator, 2026-11-20)
+Cut along the tenets, each step a commit of its own with the ratchet lowered behind it. Begun: the walk's physics
+- where the body is, how it falls, swims and steps - is `bot.Gait` (DeterministicSoldier 1453 -> 1338).
 
 **`bot.DeterministicSoldier` (1453 lines)** - the soldier's body and mind in one tick. Three parts out, the class left
 a façade whose `tick` asks each in turn and says the report:
-1. `bot.Moves` - the route and the walk: `navigate` (202 lines), `stepToward`, `pillar`, `applyVerticalMovement`,
-   `assessPlan`, `priceOfARiskierRoute`, and their state (the route, its legs, `PlanMemo`, the snags). Pure over a
-   `WorldView` and the soldier's position, as `bot.Body` is - the first to go: least wired to the rest.
+1. `bot.Moves` - the route: `navigate` (202 lines), `pillar`, `assessPlan`, `priceOfARiskierRoute`, and their state
+   (the route, its legs, `PlanMemo`, the snags) over `Gait`, which has the walk's physics.
 2. `bot.Fight` - the threat chosen, closed with, struck, evaded, covered from (`tick`'s fight half, `evade`,
    `coverFrom`, `sweepHitsSquadmate`, the shield), and its state (the target, under fire). It hands `Moves` a goal; it
    never walks itself.
