@@ -188,6 +188,41 @@ class FoodSimulationTest {
         return ground && y == GROUND ? SimServer.FARMLAND : ground && y == GROUND + 1 ? SimServer.WHEAT_SPROUT : pondByCamp(x, y, z);
     }
 
+    /** The pond by the camp, its ground round it farmland under ripe wheat: a harvest waiting. */
+    static int farmRipeByCamp(int x, int y, int z) {
+        int b = farmGrowingByCamp(x, y, z);
+        return b == SimServer.WHEAT_SPROUT ? SimServer.WHEAT_RIPE : b;
+    }
+
+    /**
+     * A camp with no chest yet - moved, its workshop just sited: its harvesters, with their yield and no dump, fit the
+     * camp's chest and put the wheat in it. Live (field503), every harvester's order "no dump yet", 83 harvests and
+     * nothing stockpiled, as only a full load fitted a chest.
+     */
+    @Test
+    void harvestersWithNoDumpFitTheCampsChestAndStockIt() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, FoodSimulationTest::farmRipeByCamp, 1000);
+        Roster roster = new Roster("Alpha:Alice,Bob");
+        Position camp = new Position(0, GROUND + 1, 0);
+        Position farm = new Position(7, GROUND + 1, 7);
+        ChainOfCommand chain = new ChainOfCommand(scripted(s -> new Objective("Farm", farm, "Food that grows",
+                new Objective.Task.Farm())), squadLeader(farm),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.ITEM_BREAD, 64}, new int[]{38, SimServer.ITEM_OAK_LOG, 8})));
+        runner.run();
+
+        clock.advance(10 * 60_000);
+
+        String events = "last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
+        int wheat = server.chests.values().stream().mapToInt(c -> java.util.Arrays.stream(c)
+                .filter(st -> st != null && st[0] == SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT)).mapToInt(st -> st[1]).sum()).sum();
+        assertTrue(wheat > 0, "wheat in the camp's chest: " + wheat + "; " + events);
+    }
+
     /**
      * By day, the camp's farm growing is no means for a soldier with no food of its own: it says so - its squad's Class I
      * RED - for the platoon leader's FORAGE (operator, 2026-11-20). Live (field500), all sixteen short with the stores at 0

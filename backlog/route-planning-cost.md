@@ -23,8 +23,7 @@ routes are planned, not what a cell costs.
 
 ## Done when
 - A soldier that hasn't moved, with the world round it unchanged, doesn't plan the same route again:
-  `cutOff`'s flood kept per soldier while its cell holds, a route replanned only when its goal, its
-  cell or the blocks on it change.
+  a route replanned only when its goal, its cell or the blocks on it change (`cutOff`'s flood is kept, 865).
 - The next profile shows the route planner's share halved, both sample counts in the commit.
 
 ## Measured again at 784
@@ -42,6 +41,12 @@ samples): the route planner 39% (2,759) - by its first caller, the wide search i
 `navigate`'s cheap search 93 - and `nearbyHostiles` 9% (647, its distance filter over every tracked entity). Built at
 848: the wide search's answer kept (`bot.nav.PlanMemo`) while it's asked again from the same cell to the same goal over
 the same ground - `WorldView.stamp`, the block writes into the chunks within four of the start - round the same cells
-with the same blocks. Left: the next profile's share against 848's 39%; `cutOff`'s flood kept per soldier while its
-cell holds; `nearbyHostiles` by chunk, not a scan of every entity.
+with the same blocks. Left: `nearbyHostiles` by chunk, not a scan of every entity (3% at 864).
+
+## Measured at 864
+field500, three minutes, 5,472 samples: the route planner 53% (2,888) - by its first caller `navigate` 1,217 (its
+legs and wide search), `cutOff`'s flood 563, a FARM objective with no water sited afresh each squad cycle 451,
+`Clearer.tick` 363; `EntityTracker.distanceSquared` 3%. Built at 865: `cutOff`'s flood kept ten seconds while the
+soldier stands on its cell (`SiteGeometry.Flood`), and a FARM point none was found for left a minute. Left: the next
+profile (880) against these counts; `navigate`'s share, by which leg and goal.
 

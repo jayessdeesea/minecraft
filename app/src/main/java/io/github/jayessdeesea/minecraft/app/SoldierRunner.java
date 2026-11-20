@@ -910,8 +910,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
     /** Farm cells a farmer couldn't work, passed over by every farmer for a while. */
     private final Setbacks<BlockPos> farmCellsFailed =
-            new Setbacks<>(Farmer.PASS_OVER_TICKS,
-                    16L * Farmer.PASS_OVER_TICKS);
+            new Setbacks<>(Farmer.PASS_OVER_TICKS, 16L * Farmer.PASS_OVER_TICKS);
     /** How many cells the flood that finds a farm's walkable ground may expand: the ground within some 50 blocks. */
     private static final int FARM_REACH_BUDGET = 40_000;
     /** The camp's farm ground by water, as the foothold last measured it: kept by squads short of food. */
@@ -6880,8 +6879,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Farmer farmer = new Farmer(name, session,
                 inventory, treeClaims, farmCellsFailed, scaffolding);
         farmers.put(name, farmer);
-        Forester forester = new Forester(name, session,
-                inventory, treeClaims);
+        Forester forester = new Forester(name, session, inventory, treeClaims);
         foresters.put(name, forester);
         AtomicReference<Depositor> stashing = new AtomicReference<>();
         // What a chest held once a load went in: a mine's stash is kept as the mine's, the rest is the stockpile.
@@ -7484,8 +7482,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // handles or a chest carried down: in the squad simulation a miner spent its logs on it,
             // climbed out for wood for a pickaxe, and stood at the top.
             boolean atMine = working != null && mineOfChest(chestCentre(working)).isPresent();
+            // Or a producer with its yield and no dump yet, the camp's chest not standing (field503: 83 harvests, nothing stockpiled).
+            boolean undumped = dutyBook.of(name).filter(o -> o.dump().isEmpty()).isPresent() && inventory.count(ItemClass.WHEAT) + inventory.count(ItemClass.LOG) >= BREAD_WHEAT;
             boolean fitStore = (atMine ? stashOre && (inventory.count(ItemClass.CHEST) > 0 || inventory.count(ItemClass.LOG) >= STASH_LOGS)
-                    : fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
+                    : fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre || undumped) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
             // The main depot's by its stand, not the object: it's sited again each squad cycle.
             Workshop mainDepot = keepWorkshop;
