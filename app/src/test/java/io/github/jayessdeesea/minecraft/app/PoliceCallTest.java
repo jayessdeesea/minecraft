@@ -147,8 +147,8 @@ class PoliceCallTest {
 
         BlockPos way = PoliceCall.wayBlock(gallery, AT).orElseThrow();
         assertTrue(way.y() == GROUND + 2 && Math.abs(way.z()) == 1 && way.x() == 0, "the wall by its head: " + way);
-        assertEquals(true, cut.isPresent() && cut.get() instanceof io.github.jayessdeesea.minecraft.command.Order.Dig d && d.box().minY() == GROUND + 2,
-                "a stone by its head, not its floor: " + cut);
+        assertEquals(true, cut.isPresent() && cut.get() instanceof io.github.jayessdeesea.minecraft.command.Order.Dig d && d.box().minY() == GROUND + 2
+                && d.tunnel(), "a stone by its head, not its floor, cut as a tunnel's - under rock: " + cut);
     }
 
     /** Its walls not plain stone - andesite, tuff - the nearest plain stone or soil within reach, open to dig at. */

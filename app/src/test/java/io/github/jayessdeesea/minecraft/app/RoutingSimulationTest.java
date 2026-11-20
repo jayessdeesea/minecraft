@@ -120,4 +120,41 @@ class RoutingSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
         assertEquals(List.of(), List.copyOf(server.log).stream().filter(l -> l.startsWith("Alice placed")).toList(), "no block placed on the way");
     }
+
+    /** Stone all round but a gallery two high along x at z=0, from x=-2 to 14; a hole in its floor at x=6, over a cave. */
+    static int galleryWithAGap(int x, int y, int z) {
+        boolean gallery = z == 0 && x >= -2 && x <= 14 && (y == GROUND + 1 || y == GROUND + 2);
+        boolean hole = z == 0 && x == 6 && y <= GROUND && y > GROUND - 10;
+        return y <= -64 ? SimServer.BEDROCK : gallery || hole ? SimServer.AIR : SimServer.STONE;
+    }
+
+    /**
+     * Sent along its gallery past a hole in the floor, a pickaxe in hand and no block: it cuts a stone from the wall and
+     * bridges the hole with it (field512-532: Eli stood a day at such a gap at y=20, the fixes passing their unit tests
+     * and failing live four times over).
+     */
+    @Test
+    void aMinerWithNoBlockCutsOneAndBridgesTheGapInItsGallery() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, RoutingSimulationTest::galleryWithAGap, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position beyond = new Position(11.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Along the gallery", beyond, "There",
+                new Objective.Task.None())), squadLeader(beyond),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(1.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(5 * 60_000);
+
+        server.dumpLog("aMinerWithNoBlockCutsOneAndBridgesTheGapInItsGallery");
+        PlayerPosition alice = server.position("Alice");
+        assertTrue(alice.x() > 7 && alice.y() >= GROUND + 1, "Alice across the gap: at " + alice + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
 }

@@ -116,7 +116,10 @@ final class PoliceCall {
         });
         step.filter(c -> !step.equals(had)).ifPresent(c -> LOG.info(steps.contains(c) ? "[Police] {} takes back a step left at {} {} {}"
                 : "[Police] {} cuts a stone for its way at {} {} {} - no route, and no block to make one with", soldier, c.x(), c.y(), c.z()));
-        return step.map(c -> new Order.Dig(new Box(c.x(), c.y(), c.z(), c.x(), c.y(), c.z()), Set.of()));
+        // A step left stands open to the sky, a ground dig's; a block for the way is in a wall, under rock - a tunnel's:
+        // live (field532), Eli's stone as a ground dig read "0 left" and done at once.
+        return step.map(c -> steps.contains(c) ? new Order.Dig(new Box(c.x(), c.y(), c.z(), c.x(), c.y(), c.z()), Set.of())
+                : Order.Dig.of(Set.of(new io.github.jayessdeesea.minecraft.command.Cell(c.x(), c.y(), c.z()))));
     }
 
     /**

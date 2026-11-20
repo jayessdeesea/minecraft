@@ -60,8 +60,10 @@ final class Engineer {
     static Function<SoldierStatus, Optional<List<Cell>>> pillarDown(WorldView world, Predicate<Position> buried, String squadName) {
         return stuck -> {
             Position at = stuck.position();
-            // Or on the surface at a ledge's edge, sent no higher, the ground below seen down its side: dug down to (Stairway.edgeShaft).
-            boolean down = !buried.test(at) && !(stuck.order() instanceof Order.MoveTo m && m.y() > at.y());
+            // Or on the surface at a ledge's edge, sent lower, the ground below seen down its side: dug down to (Stairway.edgeShaft).
+            // Not sent along its own level: a gap in its way is bridged, not dug down into - in the squad simulation a
+            // miner with no route across a hole in its gallery's floor cut a shaft down beside it.
+            boolean down = !buried.test(at) && stuck.order() instanceof Order.MoveTo m && m.y() < at.y() - 1;
             Optional<List<Cell>> pillar = Stairway.pillarUnder(world, BlockPos.containing(at.x(), at.y(), at.z())).or(() -> down ? Stairway.edgeShaftNear(world, BlockPos.containing(at.x(), at.y(), at.z())) : Optional.empty())
                     .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList());
             pillar.ifPresent(p -> LOG.info("[{}] RECOVERY: {} is stranded up at {} - digs down from {}, {} blocks", squadName, stuck.name(), at, p.getFirst(), p.size()));
