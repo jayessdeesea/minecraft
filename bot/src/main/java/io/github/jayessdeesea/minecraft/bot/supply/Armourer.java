@@ -261,7 +261,10 @@ public final class Armourer {
         // Asked for once a run: what it asks is counted from what's carried, and a run moves what's
         // carried - live, a loaf made raised the bread asked for, and the run was dropped as no
         // longer wanted, 518 times over.
-        Map<Recipe, Integer> items = crafter.active() && asking != null && asking.keySet().equals(making) ? asking : once(making);
+        Map<Recipe, Integer> wanted = crafter.active() && asking != null && making.containsAll(asking.keySet()) ? asking : once(making);
+        // What it can't make for want of what it can't dig - a bucket's iron - set aside, the rest made: live (field508-512),
+        // Olga, the chunk farm's tender with 56 logs, gave up its bucket, chest and fence together, short of 3 raw iron.
+        Map<Recipe, Integer> items = makeable(wanted, world, soldier);
         asking = items;
         if (!crafter.active()) {
             craftingAt = soldier;
@@ -312,6 +315,14 @@ public final class Armourer {
         }
     
         return false;
+    }
+
+    /** {@code wanted} but what's short of something it won't dig ({@link #DUG}, and only while it digs its makings): all, if none can be made. */
+    private Map<Recipe, Integer> makeable(Map<Recipe, Integer> wanted, WorldView world, Position soldier) {
+        Map<Recipe, Integer> can = new java.util.LinkedHashMap<>(wanted);
+        can.keySet().removeIf(r -> CraftPlan.of(Map.of(r, wanted.get(r)), Stock.of(inventory), stationsNear(world, soldier)).short_().keySet()
+                .stream().anyMatch(k -> !digsItsMakings || !DUG.containsKey(k)));
+        return can.isEmpty() ? wanted : can;
     }
 
     /**

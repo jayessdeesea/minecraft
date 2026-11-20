@@ -307,6 +307,26 @@ class TaskOrganisationSimulationTest {
         assertEquals(SimServer.CHEST, server.block(farm.chest().x(), farm.chest().y(), farm.chest().z()), "its chest" + events);
     }
 
+    /**
+     * Its tender with logs and no iron: the fence and chest made from the logs and put up, the bucket set aside for want
+     * of its iron - not the whole batch given up. Live (field508-512), Olga with 56 logs gave up bucket, chest and fence
+     * together, short of 3 raw iron, and the chunk farm stood unfenced for days.
+     */
+    @Test
+    void aChunkFarmsTenderWithLogsAndNoIronStillFencesIt() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::pondOfThreeByTheCamp, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{9, SimServer.ITEM_OAK_LOG, 64}), "0,0");
+        clock.advance(30 * 60_000); // the fence first, post by post, then the chest
+
+        ChunkFarm farm = new ChunkFarm(-1, 0, GROUND);
+        long posts = farm.fence().stream().filter(c -> server.block(c.x(), c.y(), c.z()) == SimItems.FENCE).count();
+        String events = "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
+        assertTrue(posts >= 10, "fence posts up from its logs: " + posts + events);
+        assertEquals(SimServer.CHEST, server.block(farm.chest().x(), farm.chest().y(), farm.chest().z()), "its chest" + events);
+    }
+
     /** As {@link #pondOfThreeByTheCamp}, the chunk farm west of the camp's chest stood at its local (13, 13). */
     private static int pondAndAFarmChest(int x, int y, int z) {
         return x == -3 && y == GROUND + 1 && z == 13 ? SimServer.CHEST : pondOfThreeByTheCamp(x, y, z);
