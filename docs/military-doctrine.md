@@ -1431,7 +1431,10 @@ tree over the camp is shade for whatever the night left inside the wall.
 
 The ground work is handed down as concrete commands, not "level the camp": the engineer's two
 boxes (`command.Groundwork`) - a dig box from the camp's feet level 24 up, and a fill box from 16
-below up to the ground, both inside the wall line - and the squad's drill (`command.Tasking`)
+below up to the ground, both inside the wall line; once that box is level, dug and filled, the dig goes out a
+ring of 4 at a time to the camp's 24 blocks (`app.CampGround`; operator, 2026-11-20: the ground a bit flatter),
+dug down only - nothing filled past the wall line - and never the camp's farm's plot, trenches or water, its
+chunk farms, or a planted grove cell a cell round - and the squad's drill (`command.Tasking`)
 splits the work left in them into a strip for each soldier. Digging first: while anything in the
 dig box is left, each soldier's command is `Order.Dig(box, except)`, every block in its strip that
 breaks by hand within 20 seconds (`Clearing.diggable`) - soil, stone, sand, glass, planks, a chest

@@ -87,6 +87,8 @@ final class SquadState {
     int wallLeft = -1;
     /** Blocks of the camp's ground work still to dig - trees over it, ground above its level - at the last check: -1 before the first. */
     int digLeft = -1;
+    /** How far out the camp's ground work reaches now (CampGround): inside the wall line first. */
+    int groundRadius = SoldierRunner.WALL_RADIUS - 1;
     /** The wall's blocks of dirt or grass, to replace with stone, at the last check: -1 before the first. */
     int softLeft = -1;
     /** Open cells of the camp's ground work still to fill, at the last check: -1 before the first. */

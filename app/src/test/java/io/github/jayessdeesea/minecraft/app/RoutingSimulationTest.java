@@ -234,4 +234,40 @@ class RoutingSimulationTest {
         assertEquals(64.0, chain.foothold().orElseThrow().camp().y(), "the camp's ground where it was set");
         assertTrue(heaped.getAsInt() < before, "the heaps dug down: " + heaped.getAsInt() + " of " + before + " blocks over the ground left");
     }
+
+    /**
+     * Flatter ground (operator, 2026-11-20): the camp's ground level inside its wall line, a heap of dirt two high just
+     * outside it. Its ground work goes out a ring once its box is level (CampGround), and the heap is dug down.
+     */
+    @Test
+    void theCampsGroundWorkGoesOutPastItsWallLine() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x >= 10 && x <= 12 && z >= 0 && z <= 2 && y > GROUND && y <= GROUND + 2
+                ? SimServer.DIRT : SquadSimulationTest.flat(x, y, z), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(0.5, GROUND + 1, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", camp, "There",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0," + (GROUND + 1), state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})))
+                .run();
+
+        clock.advance(10 * 60_000);
+
+        int left = 0;
+        for (int x = 10; x <= 12; x++) {
+            for (int z = 0; z <= 2; z++) {
+                for (int y = GROUND + 1; y <= GROUND + 2; y++) {
+                    left += server.block(x, y, z) == SimServer.AIR ? 0 : 1;
+                }
+            }
+        }
+        assertEquals(0, left, "the heap past the wall line dug down; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
+    }
 }

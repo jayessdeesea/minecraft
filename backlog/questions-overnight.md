@@ -13,6 +13,12 @@ priority: P1
   live (field498-507) eight soldiers were killed by phantoms in the open camp. Beds (backlog/rest-plan.md) end
   the phantoms outright; is a hut each a fair stopgap, or should the squads share one roofed shelter?
 
+- **How far the camp's ground is flattened** (docs/military-doctrine.md § 15, `app.CampGround`): taken by default
+  for "the ground a bit flatter" (operator, 2026-11-20) - once the box inside the wall line is level, the dig goes
+  out a ring of 4 at a time to the camp's 24 blocks, digging heaps down only (no fill past the wall line, so no dirt
+  in a farm's water or trench), and never a farm's plot, trench, water or chunk farm, or a planted grove cell.
+  Further out, or filling hollows too, is the operator's call.
+
 Answered 2026-11-20, each now with its item:
 - **The moat:** none (operator) - the building guide's trench round the lit core is dropped; the cells' lit open
   ground between them stands (backlog/building-guide.md, backlog/cells.md).

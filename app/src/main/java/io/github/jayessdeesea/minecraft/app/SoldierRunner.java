@@ -2194,7 +2194,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Map<String, Order> groundwork(String squad, SquadState state, BlockPos feet, List<SoldierStatus> hands) {
         Set<Cell> except = groundExcept();
         Cell at = new Cell(feet.x(), feet.y(), feet.z());
-        Box dig = Groundwork.dig(at, WALL_RADIUS - 1);
+        Box dig = Groundwork.dig(at, state.groundRadius); // out a ring at a time once level (CampGround), dug only past the wall line
+        if (state.groundRadius > WALL_RADIUS - 1) {
+            except.addAll(CampGround.kept(dig, campFarm, TreeFarm.site(world, feet, CAMP_RADIUS).map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).toList()).orElse(List.of())));
+        }
         // Inside the wall line, as the dig is: the wall's own footing is the masons' (Perimeter.open).
         Box fill = Groundwork.fill(at, WALL_RADIUS - 1);
         // The camp's mine's shaft - the 3x3 columns round its head, where the night shift cuts it - is
@@ -2245,11 +2248,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         List<BlockPos> toDig = Clearing.toClear(world, dig, except);
         campCut = toDig;
-        List<BlockPos> toFill = toDig.isEmpty()
-                ? Clearing.toFill(world, fill, except) : List.of();
-        int digLeft = toDig.size();
+        Box inner = Groundwork.dig(at, WALL_RADIUS - 1); // what's left inside the wall line: the levelling the wall and the rest wait on, the rings never
+        int digLeft = (int) toDig.stream().filter(b -> inner.contains(b.x(), b.y(), b.z())).count();
+        List<BlockPos> toFill = digLeft == 0 ? Clearing.toFill(world, fill, except) : List.of();
         int fillLeft = digLeft > 0 ? -1 : toFill.size();
-        String said = "ground work round " + feet + ": " + digLeft + " blocks to dig (" + dig + ")"
+        String said = "ground work round " + feet + ": " + toDig.size() + " blocks to dig (" + dig + ")"
                 + (fillLeft < 0 ? "" : ", " + fillLeft + " cells to fill (" + fill + ")");
         if (!said.equals(state.groundSaid)) {
             LOG.info("[{}] {}", squad, said);
@@ -2257,9 +2260,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         state.digLeft = digLeft;
         state.fillLeft = fillLeft;
+        state.groundRadius = CampGround.grown(state.groundRadius, toDig.size(), fillLeft, CAMP_RADIUS, squad);
         // Split where the work is, not the whole site (live in the squad simulation, a pit in one half of the camp left the soldier
         // given the other half nothing to fill), a hand to a strip and the spares to other work (SiteGeometry.shareGround).
-        Map<String, Order> orders = shareGround(state, hands, at, WALL_RADIUS, bounds(toDig), bounds(toFill), except, digLeft, clockwork.millis());
+        Map<String, Order> orders = shareGround(state, hands, at, state.groundRadius + 1, bounds(toDig), bounds(toFill), except, toFill.isEmpty() ? toDig.size() : digLeft, clockwork.millis());
         state.fetchingDirt.clear();
         orders.forEach((n, o) -> {
             if (o instanceof Order.Gather) {
@@ -2894,8 +2898,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (plan == null || plan.level() != level || unheld) {
                 // Supplies between levels, not in the middle of one (operator, 2026-11-15): one low on
                 // rations with food in the stockpile, or with no pickaxe, sits this level out to get
-                // them, and is dealt in at the next. Off on an errand, its rectangles stood till they
-                // timed out.
+                // them, and is dealt in at the next. Off on an errand, its rectangles stood till they timed out.
                 boolean foodStocked = chainOfCommand.stockpile().map(st -> st.rations() > 0).orElse(false);
                 Set<String> resupplying = hands.stream().filter(h -> h.condition().flatMap(c -> c.kit())
                                 .filter(k -> foodStocked && Subsistence.low(k.rations()) || !k.pickaxe()).isPresent())
@@ -5671,8 +5674,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         String cutter = cutters.isEmpty() ? null : cutters.getFirst();
         // Securing: the torches still to put down round the objective, worked out again each cycle -
         // every torch put down, by anyone, changes what's left. Read once: the platoon leader's thread may
-        // change the squad's task mid-cycle - live, a second read found SECURE gone and the squad
-        // loop died on it.
+        // change the squad's task mid-cycle - live, a second read found SECURE gone and the squad loop died on it.
         Optional<Objective> secureTask = taskOf(squadName, Objective.Task.Secure.class);
         List<BlockPos> torchesLeft = secureTask.map(o -> {
             // Round the ground most of the camp stands on, as the wall and the foothold's measure are:
@@ -5706,8 +5708,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // One soldier is the closed wall's while it has dirt in it - the one carrying most stone,
         // then the nearest - off the camp's ground work, which outranks the mason and the quarry
         // for its hands and fills with the stone the wall wants. The rest keep the ground. Live,
-        // the ground work, never done, held every soldier all day, and the wall's last dirt block
-        // stood for days.
+        // the ground work, never done, held every soldier all day, and the wall's last dirt block stood for days.
         // Kept while it's here: chosen afresh each cycle it flipped between two with no stone, each
         // taken off the job unfinished as the other came nearer.
         boolean wallWanted = !soft.isEmpty() && wallLeft.isEmpty() && !squadInContact;
@@ -6557,8 +6558,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
         });
         // Clear of the camp's workshop and its mine head: live, the night's hut at the camp's centre
-        // sealed the workshop's chest inside it, and the miners stood all night unable to put their
-        // loads away.
+        // sealed the workshop's chest inside it, and the miners stood all night unable to put their loads away.
         Workshop shop = campWorkshop;
         if (shop != null) {
             Stream.concat(Stream.of(shop.stand(), shop.table(), shop.furnace()), shop.chest().stream())
