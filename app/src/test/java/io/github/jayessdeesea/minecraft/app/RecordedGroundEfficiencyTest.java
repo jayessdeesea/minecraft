@@ -45,7 +45,7 @@ class RecordedGroundEfficiencyTest {
     private static final int PAIRS = Integer.getInteger("movement.pairs", 16);
 
     /** What a walked block, a step up and a swum block cost the soldier, in ticks. */
-    record Costs(double walk, double stepUp, double swim) {
+    record Costs(double walk, double stepUp, double stepDown, double swim) {
     }
 
     @Test
@@ -57,8 +57,8 @@ class RecordedGroundEfficiencyTest {
             return s == WorldRecords.UNKNOWN ? (y < camp.minY() ? STONE : AIR) : s;
         });
         Costs costs = measure();
-        System.out.printf(Locale.ROOT, "[Movement] costs: walk %.2f ticks a block, step up %.2f more, swim %.2f a block%n",
-                costs.walk(), costs.stepUp(), costs.swim());
+        System.out.printf(Locale.ROOT, "[Movement] costs: walk %.2f ticks a block, step up %.2f more, step down %.2f, swim %.2f a block%n",
+                costs.walk(), costs.stepUp(), costs.stepDown(), costs.swim());
         List<BlockPos> stands = new ArrayList<>();
         for (int x = camp.minX() + 6; x < camp.minX() + camp.sizeX() - 6; x++) {
             for (int z = camp.minZ() + 6; z < camp.minZ() + camp.sizeZ() - 6; z++) {
@@ -104,6 +104,7 @@ class RecordedGroundEfficiencyTest {
         double walk = ticks(flat, new BlockPos(0, 64, 0), new BlockPos(30, 64, 0)) / 30.0;
         WorldView stair = world(-16, -16, 64, 32, (x, z) -> x >= 1 && x <= 10 ? 63 + x : x > 10 ? 73 : 63, null);
         double stepUp = (ticks(stair, new BlockPos(0, 64, 0), new BlockPos(20, 74, 0)) - 20 * walk) / 10.0;
+        double stepDown = (ticks(stair, new BlockPos(20, 74, 0), new BlockPos(0, 64, 0)) - 20 * walk) / 10.0;
         WorldView pool = world(-16, -16, 64, 32, (x, z) -> x >= 3 && x <= 22 && Math.abs(z) <= 3 ? 61 : 63,
                 (x, yz) -> {
                     int y = yz >> 16, z = (short) (yz & 0xFFFF);
@@ -111,7 +112,7 @@ class RecordedGroundEfficiencyTest {
                     return y <= (in ? 61 : 63) ? STONE : in && y <= 63 ? WATER : AIR;
                 });
         double swim = (ticks(pool, new BlockPos(0, 64, 0), new BlockPos(25, 64, 0)) - 5 * walk) / 20.0;
-        return new Costs(walk, stepUp, swim);
+        return new Costs(walk, stepUp, stepDown, swim);
     }
 
     /**
@@ -173,6 +174,8 @@ class RecordedGroundEfficiencyTest {
             ticks += across * (world.isWater(to.x(), to.y(), to.z()) ? costs.swim() : costs.walk());
             if (to.y() > from.y()) {
                 ticks += (to.y() - from.y()) * costs.stepUp();
+            } else if (to.y() < from.y()) {
+                ticks += (from.y() - to.y()) * costs.stepDown(); // a drop priced: the worst pairs were all descents
             }
             from = to;
         }

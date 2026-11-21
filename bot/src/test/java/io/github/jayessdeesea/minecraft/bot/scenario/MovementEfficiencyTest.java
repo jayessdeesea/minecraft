@@ -36,7 +36,7 @@ class MovementEfficiencyTest {
     private static final int MOST_TICKS = 6_000;
 
     /** What each kind of move costs the soldier, in ticks, measured on its own physics. */
-    record Costs(double walk, double stepUp, double swim) {
+    record Costs(double walk, double stepUp, double stepDown, double swim) {
     }
 
     /** The costs measured: a flat walk, a stair up, a swim across a pool. */
@@ -50,6 +50,9 @@ class MovementEfficiencyTest {
             stair.setGround(x, 0, 73);
         }
         double stepUp = (ticksA(stair, new BlockPos(0, 64, 0), new BlockPos(20, 74, 0)) - 20 * walk) / 10.0;
+        // Down the same stair: a drop a block at a time, its fall and landing - unpriced, the worst routes of broken
+        // camp ground (app's RecordedGroundEfficiencyTest) were all descents.
+        double stepDown = (ticksA(stair, new BlockPos(20, 74, 0), new BlockPos(0, 64, 0)) - 20 * walk) / 10.0;
         SyntheticWorld pool = flat();
         for (int x = 3; x <= 22; x++) {
             for (int z = -3; z <= 3; z++) {
@@ -59,7 +62,7 @@ class MovementEfficiencyTest {
             }
         }
         double swim = (ticksA(pool, new BlockPos(0, 64, 0), new BlockPos(25, 64, 0)) - 5 * walk) / 20.0;
-        return new Costs(walk, stepUp, swim);
+        return new Costs(walk, stepUp, stepDown, swim);
     }
 
     private static SyntheticWorld flat() {
@@ -96,6 +99,8 @@ class MovementEfficiencyTest {
             ticks += across * (world.isWater(to.x(), to.y(), to.z()) ? costs.swim() : costs.walk());
             if (to.y() > from.y()) {
                 ticks += (to.y() - from.y()) * costs.stepUp();
+            } else if (to.y() < from.y()) {
+                ticks += (from.y() - to.y()) * costs.stepDown();
             }
             from = to;
         }
@@ -106,8 +111,8 @@ class MovementEfficiencyTest {
     @Test
     void everyFamilysEfficiency() {
         Costs costs = measure();
-        System.out.printf(Locale.ROOT, "[Movement] costs: walk %.2f ticks a block, step up %.2f more, swim %.2f a block%n",
-                costs.walk(), costs.stepUp(), costs.swim());
+        System.out.printf(Locale.ROOT, "[Movement] costs: walk %.2f ticks a block, step up %.2f more, step down %.2f, swim %.2f a block%n",
+                costs.walk(), costs.stepUp(), costs.stepDown(), costs.swim());
         Map<Terrain, List<Double>> byFamily = new EnumMap<>(Terrain.class);
         for (Terrain terrain : Terrain.values()) {
             for (long seed = 0; seed < SEEDS; seed++) {
