@@ -782,7 +782,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
         // Every cell the groves hold, 16 at the least and 48 at the most (operator, 2026-11-20: grow more trees): a squad on TREE_FARM till they're full.
         long wanted = Math.min(TREES_MOST, Math.max(TREES_GROWING, grove.map(g -> g.plot().size()).orElse(0) + (keepTrees == null ? 0 : keepTrees.plot().size())));
-        Optional<BlockPos> bare = Stream.concat(grove.stream(), Stream.ofNullable(keepTrees)).filter(g -> g.plot().stream().anyMatch(c -> !TreeFarm.planted(world, c))).map(TreeFarm::centre).findFirst();
+        Optional<BlockPos> bare = Stream.concat(grove.stream(), Stream.ofNullable(keepTrees)).flatMap(g -> g.plot().stream()).filter(c -> !TreeFarm.planted(world, c)).findFirst(); // a cell, not the centre - the camp's grove is the camp's
         standards.add(new Foothold.Standard(3, "wood that grows back", trees >= wanted, trees + " of " + wanted + " saplings or trees planted by the camp and the keep's grove",
                 "TREE_FARM", bare.map(c -> new Position(c.x() + 0.5, c.y(), c.z() + 0.5)))); // where: live (field570), sent to the camp's dug centre, "no open dirt or grass"
         // The camp's mine as the world shows it, as well as a cutter at work this run: live, after a restart with no MINE order, a mine cut to the bottom read "no mine yet".
