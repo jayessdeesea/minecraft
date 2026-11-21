@@ -73,6 +73,13 @@ grid, inside the area of influence (32 blocks out from the camp's edge):
   and its stages differ, the asking, costing and choosing don't.
 - **Remembered**: the platoon leader keeps every tree site and its stage across restarts, and sends a squad to fell
   and replant one that's producing, as it sends farmers to a producing wheat chunk.
+- **Sited near, flat, and built fast** (operator, 2026-11-21): in the airhead and the early phases the renewables are
+  all close by. One site search for wheat and tree chunks (and the supply point), from the camp outward chunk by chunk to
+  64 blocks (4 chunks; operator, 2026-11-21):
+  flat is the requirement - enough of the chunk at one level (`ChunkFarm.MIN_CELLS`) - sea level the preference, costed
+  as the earthwork to it, then the nearer; and the first of each built as soon as one qualifies, a tree chunk growing
+  from its second stage, before its fence. A grove sited for a camp the force has left is given up for the camp's
+  nearest: live (field630), foresters walked 200 to 330 blocks to plant at one by the old keep, (-30, -73).
 - **Saplings supplied, not hoped for** (the errand ledger, field630): foresters failed "no sapling, and no leaves within
   32 blocks" 117 times in a run, each failure a cooldown and a try again, while soldiers off the grove carried 6 and 11
   saplings; and walked 200 to 330 blocks to plant one at a grove by (-30, -73). Wanted: saplings in the kit's report;
