@@ -177,9 +177,13 @@ public final class Pack {
         if (inventory.count(ItemClass.SEEDS) < THROW_FROM) {
             return;
         }
-        surplusSeeds(inventory).ifPresent(slot -> {
+        // Not seeds picked back up lately, as the bulk above: live (field617), Pete stood farming and threw 62 seeds every
+        // 3 to 6 s, 22 times, each throw picked back up where it fell.
+        surplusSeeds(inventory).filter(slot -> ticks - pickedBack.getOrDefault(inventory.itemAt(slot), Long.MIN_VALUE / 2) >= THROWN_FOR)
+                .ifPresent(slot -> {
             LOG.info("{} throws away {} seeds, keeping {} - its pack is for what's worth more", name, inventory.countAt(slot),
                     inventory.count(ItemClass.SEEDS) - inventory.countAt(slot));
+            leftAfter.put(inventory.itemAt(slot), countOf(inventory.itemAt(slot)) - inventory.countAt(slot));
             session.throwStack(0, 0, slot); // stale state: the server resends the inventory
             thrown++;
             settle = SETTLE_TICKS;
