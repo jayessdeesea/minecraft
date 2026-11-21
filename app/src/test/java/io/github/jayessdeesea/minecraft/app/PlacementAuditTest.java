@@ -42,6 +42,23 @@ class PlacementAuditTest {
         assertEquals(4, passed.stream().filter("useBlockFace"::equals).count(), "every use still reaches the server");
     }
 
+    /** A block swapped into the hotbar and selected is the one put, before the server's answer moves it in the inventory. */
+    @Test
+    void theBlockSwappedIntoHandIsTheOnePut() {
+        PlaySession server = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(), new Class<?>[]{PlaySession.class},
+                (proxy, method, args) -> null);
+        Inventory inventory = new Inventory();
+        hold(inventory, "oak_sapling");
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{ItemClassRegistry.idOf("dirt").orElseThrow(), 16});
+        PlacementAudit audit = new PlacementAudit(() -> 0);
+        PlaySession session = audit.wrap("Ann", server, inventory);
+        audit.routeStep("Ann");
+        session.swapWithHotbar(0, 0, Inventory.MAIN_FIRST, 0);
+        session.selectHotbarSlot(0);
+        session.useBlockFace(0, SoldierRunner.SEA_LEVEL + 2, 0, BlockFace.UP);
+        assertEquals(Map.of("route step / dirt", 1), audit.counts(), "field611: dirt read as the sapling it swapped out");
+    }
+
     private static void hold(Inventory inventory, String item) {
         int id = ItemClassRegistry.idOf(item).orElseThrow();
         inventory.setSlot(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot(), new int[]{id, 16});

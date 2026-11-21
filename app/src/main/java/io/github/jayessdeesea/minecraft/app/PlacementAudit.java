@@ -40,6 +40,17 @@ final class PlacementAudit {
     private final Map<String, String> routines = new ConcurrentHashMap<>();
     /** Placements above sea level since the last summary, by routine then item. */
     private final Map<String, Integer> counts = new ConcurrentHashMap<>();
+    /**
+     * The item each soldier's hotbar slot holds by what it sent, ahead of the server's word: a swap into the hotbar is in
+     * hand for the next use, while the inventory still holds what was there till the server answers - live (field611),
+     * route steps of dirt read as a sapling and a fence. By soldier, then hotbar slot: the item and when it was sent, good
+     * for {@link #SENT_MILLIS} - by then the server's answer has the inventory right.
+     */
+    private final Map<String, Map<Integer, long[]>> sent = new ConcurrentHashMap<>();
+    /** How long a swap sent stands for what's in hand, ahead of the server's answer. */
+    static final long SENT_MILLIS = 2_000;
+    /** The hotbar slot each soldier last selected, by what it sent. */
+    private final Map<String, Integer> selected = new ConcurrentHashMap<>();
     /** When the counts were last said - the first placement's time till then. */
     private volatile long summarisedAt = Long.MIN_VALUE;
 
@@ -62,6 +73,17 @@ final class PlacementAudit {
         return (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(), new Class<?>[]{PlaySession.class}, (proxy, method, args) -> {
             if (method.getName().equals("useBlockFace") && args != null && args.length == 4) {
                 heard(soldier, (int) args[0], (int) args[1], (int) args[2], (BlockFace) args[3], inventory);
+            } else if (method.getName().equals("swapWithHotbar") && args != null && args.length == 4) {
+                int slot = (int) args[2], hotbar = (int) args[3];
+                Map<Integer, long[]> mine = sent.computeIfAbsent(soldier, k -> new ConcurrentHashMap<>());
+                long now = clock.getAsLong();
+                long[] before = mine.get(-1 - slot); // a slot swapped from just before: what went there
+                int into = before != null && now - before[1] < SENT_MILLIS ? (int) before[0] : inventory.itemAt(slot);
+                int out = held(soldier, hotbar, inventory);
+                mine.put(hotbar, new long[]{into, now});
+                mine.put(-1 - slot, new long[]{out, now});
+            } else if (method.getName().equals("selectHotbarSlot") && args != null && args.length == 1) {
+                selected.put(soldier, (int) args[0]);
             }
             try {
                 return method.invoke(session, args);
@@ -72,7 +94,7 @@ final class PlacementAudit {
     }
 
     private void heard(String soldier, int x, int y, int z, BlockFace face, Inventory inventory) {
-        int held = inventory.itemAt(Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot());
+        int held = held(soldier, selected.getOrDefault(soldier, inventory.heldHotbarSlot()), inventory);
         Optional<ItemClass> item = ItemClassRegistry.classOf(held);
         int cy = y + face.dy;
         if (item.filter(BLOCKS::contains).isEmpty() || cy <= SoldierRunner.SEA_LEVEL) {
@@ -91,6 +113,12 @@ final class PlacementAudit {
             counts.clear();
             LOG.info("[Place] above sea level in the last {} min, by routine / item: {}", SUMMARY_MILLIS / 60_000, was);
         }
+    }
+
+    /** What {@code soldier}'s hotbar slot {@code hotbar} holds: what it swapped there, else what the inventory says. */
+    private int held(String soldier, int hotbar, Inventory inventory) {
+        long[] swapped = sent.getOrDefault(soldier, Map.of()).get(hotbar);
+        return swapped != null && clock.getAsLong() - swapped[1] < SENT_MILLIS ? (int) swapped[0] : inventory.itemAt(Inventory.HOTBAR_FIRST + hotbar);
     }
 
     /** The counts by routine / item since the last summary (the audit's test). */
