@@ -338,6 +338,32 @@ public final class Farmer {
         return passedOver.stuck().map(s -> "can't keep the farm: " + s);
     }
 
+    /** How far from its eyes a farmer breaks a crop as it passes: inside the server's reach. */
+    static final double PASSING_REACH = 4.0;
+    /** Ticks between two crops broken in passing: a crop breaks at a touch, and the server takes one a tick. */
+    static final int PASSING_TICKS = 2;
+
+    /**
+     * Ripe wheat of its plot within reach broken as it goes, whatever its job - walking to the next crop, tilling,
+     * sowing - one each {@link #PASSING_TICKS} (operator, 2026-11-20: harvest moving forward). Wheat breaks at a touch,
+     * so a farmer walking a row brings it in: in the squad simulation, stopping at a stand for each crop, 25 a minute.
+     */
+    private void harvestInPassing(Position soldier, WorldView world, FarmPlan farm) {
+        if (ticks % PASSING_TICKS != 0) {
+            return;
+        }
+        double ex = soldier.x(), ey = soldier.y() + 1.62, ez = soldier.z();
+        farm.plot().stream().map(c -> c.offset(0, 1, 0))
+                .filter(crop -> world.wheatAge(crop.x(), crop.y(), crop.z()).orElse(-1) == Digger.RIPE && !claims.contains(crop))
+                .filter(crop -> Math.pow(crop.x() + 0.5 - ex, 2) + Math.pow(crop.y() + 0.5 - ey, 2) + Math.pow(crop.z() + 0.5 - ez, 2)
+                        <= PASSING_REACH * PASSING_REACH)
+                .min(java.util.Comparator.comparingDouble(crop -> Math.pow(crop.x() + 0.5 - ex, 2) + Math.pow(crop.z() + 0.5 - ez, 2)))
+                .ifPresent(crop -> {
+                    session.startDigging(crop.x(), crop.y(), crop.z());
+                    session.finishDigging(crop.x(), crop.y(), crop.z());
+                });
+    }
+
     public synchronized void tick(Position soldier, WorldView world, Optional<FarmPlan> farm, boolean free) {
         this.soldier = soldier;
         ticks++;
@@ -356,6 +382,7 @@ public final class Farmer {
             stop();
             return;
         }
+        harvestInPassing(soldier, world, farm.get());
         if (digger != null) {
             switch (digger.tick(soldier, world)) {
                 case Digger.Progress.Working _ -> {

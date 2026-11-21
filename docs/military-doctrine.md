@@ -1043,7 +1043,10 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    put up, and any of their gates shut, opened. The cell over a post reads solid to the route planner - a fence's
    collision is 1.5 high - so a fixture's cell is open when nothing stands in the cell itself (`solidHere`), and a
    torch or a gate, neither solid, is seen to have landed by what it is.
-3. Harvests ripe wheat, for wheat and seeds to plant again.
+3. Harvests ripe wheat, for wheat and seeds to plant again - and whatever its job, breaks the ripe wheat of its plot
+   within 4 blocks of its eyes as it passes, one every second tick (`Farmer.harvestInPassing`; operator, 2026-11-20:
+   harvest moving forward): in the squad simulation a ripe field of 96 came in at 49 a minute, against 25 stopping at
+   each crop.
 4. Plants seeds on bare farmland.
 5. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills
    only under open air.

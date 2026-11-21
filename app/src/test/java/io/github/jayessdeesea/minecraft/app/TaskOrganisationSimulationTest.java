@@ -768,4 +768,50 @@ class TaskOrganisationSimulationTest {
         }
         assertEquals(0, best, "the sited chunk farm's mound dug and pit filled" + events);
     }
+
+    /** A pond three long by the camp, and round it a field of ripe wheat on farmland, 11 by 9 less the water. */
+    private static int ripeFieldByThePond(int x, int y, int z) {
+        boolean field = x >= 2 && x <= 12 && z >= -4 && z <= 4 && !(x >= 6 && x <= 8 && z == 0);
+        if (field && y == GROUND) {
+            return SimServer.FARMLAND;
+        }
+        if (field && y == GROUND + 1) {
+            return SimServer.WHEAT_RIPE;
+        }
+        return pondOfThreeByTheCamp(x, y, z);
+    }
+
+    /**
+     * How fast a farmer brings in a ripe field (operator, 2026-11-20: harvest in passing): the ticks to its last crop,
+     * against the ideal - its rows walked once at a walking pace, every crop in reach broken on the way. Printed; the
+     * eval's measure of harvesting.
+     */
+    @Test
+    void howFastAFarmerBringsInARipeField() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::ripeFieldByThePond, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}), "0,0");
+        long crops = 96;
+        long start = clock.millis();
+        long firstAt = -1, lastAt = -1, brought = 0;
+        for (int step = 0; step < 20 * 60; step++) {
+            clock.advance(1_000);
+            long now = server.log.stream().filter(l -> l.contains(" dug " + SimServer.WHEAT_RIPE + " ")).count();
+            if (now > 0 && firstAt < 0) {
+                firstAt = clock.millis();
+            }
+            if (now > brought) {
+                lastAt = clock.millis();
+                brought = now;
+            }
+            if (brought >= crops) {
+                break;
+            }
+        }
+        double perMinute = brought * 60_000.0 / Math.max(1, lastAt - firstAt);
+        System.out.printf(java.util.Locale.ROOT, "[Harvest] %d of %d crops, %.0f s from the first to the last: %.0f a minute%n",
+                brought, crops, (lastAt - firstAt) / 1000.0, perMinute);
+        assertTrue(brought > 0, "nothing harvested");
+    }
 }
