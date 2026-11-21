@@ -238,7 +238,8 @@ final class DayGuardrails {
                 .ifPresent(f -> spare(out, movable, alarms).ifPresent(k -> {
                     LOG.warn("[Guardrail] the groves short of trees with nobody planting - {} to TREE_FARM, not '{}'", statuses.get(k).squadName(),
                             out.get(k).mission());
-                    out.set(k, new Objective("Plant the groves", f.camp(), "Wood that grows back", new Objective.Task.TreeFarm()));
+                    out.set(k, new Objective("Plant the groves", f.standards().stream().filter(s -> !s.met() && "TREE_FARM".equals(s.task()))
+                            .flatMap(s -> s.at().stream()).findFirst().orElse(f.camp()), "Wood that grows back", new Objective.Task.TreeFarm()));
                 }));
         return out;
     }

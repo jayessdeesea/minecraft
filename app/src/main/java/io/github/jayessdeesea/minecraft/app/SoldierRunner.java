@@ -782,8 +782,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
         // Every cell the groves hold, 16 at the least and 48 at the most (operator, 2026-11-20: grow more trees): a squad on TREE_FARM till they're full.
         long wanted = Math.min(TREES_MOST, Math.max(TREES_GROWING, grove.map(g -> g.plot().size()).orElse(0) + (keepTrees == null ? 0 : keepTrees.plot().size())));
-        standards.add(new Foothold.Standard(3, "wood that grows back", trees >= wanted,
-                trees + " of " + wanted + " saplings or trees planted by the camp and the keep's grove", "TREE_FARM"));
+        Optional<BlockPos> bare = Stream.concat(grove.stream(), Stream.ofNullable(keepTrees)).filter(g -> g.plot().stream().anyMatch(c -> !TreeFarm.planted(world, c))).map(TreeFarm::centre).findFirst();
+        standards.add(new Foothold.Standard(3, "wood that grows back", trees >= wanted, trees + " of " + wanted + " saplings or trees planted by the camp and the keep's grove",
+                "TREE_FARM", bare.map(c -> new Position(c.x() + 0.5, c.y(), c.z() + 0.5)))); // where: live (field570), sent to the camp's dug centre, "no open dirt or grass"
         // The camp's mine as the world shows it, as well as a cutter at work this run: live, after a restart with no MINE order, a mine cut to the bottom read "no mine yet".
         Optional<Staircase> campMine = campStairs();
         int cutNow = Math.max(stairsCut.get(), campMine.map(s -> s.stepsCut(world)).orElse(0));
@@ -2336,8 +2337,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // not this squad's, nor the one whose rectangle it's in - one answer for every cycle, whoever
         // holds what. Ore one builder can't take and another can stays in the dig, and the ore errand
         // sends the one who can. Live, the set-aside followed each squad and each plan's holders, the
-        // site's highest ground with it, and the level went 90, 83, 89, 83 every second, dealt out
-        // again each time.
+        // site's highest ground with it, and the level went 90, 83, 89, 83 every second, dealt out again each time.
         Set<String> siteHands = new HashSet<>();
         keepHandsAt.values().forEach(m -> siteHands.addAll(m.keySet()));
         hands.forEach(h -> siteHands.add(h.name()));

@@ -193,8 +193,9 @@ class ChainOfCommandTest {
         three.restorePhase(Phase.CONSOLIDATION, 0);
         three.setGround((x, z, nearY) -> OptionalInt.of(64));
         three.onTime(TimeOfDay.of(1000, true));
+        Position bareGrove = new Position(40.5, 64, 100.5);
         three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(3, "wood that grows back", false,
-                "36 of 48 saplings or trees planted by the camp and the keep's grove", "TREE_FARM"))));
+                "36 of 48 saplings or trees planted by the camp and the keep's grove", "TREE_FARM", Optional.of(bareGrove)))));
         Objective farm = new Objective("Farm", new Position(-4, 64, 93), "Food", new Objective.Task.Farm());
         java.util.function.Function<String, SquadStatus> farming = name -> new SquadStatus(name, new Report.Farming(),
                 squad(name, name.substring(0, 1) + "x").soldiers(), List.of(), Optional.of(farm), false);
@@ -203,6 +204,8 @@ class ChainOfCommandTest {
         List<Objective> guarded = three.guarded(List.of(farm, farm, farm), squads, List.of(), List.of());
 
         assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.TreeFarm).count(), "one squad planting: " + guarded);
+        assertEquals(bareGrove, guarded.stream().filter(o -> o.task() instanceof Objective.Task.TreeFarm).findFirst().orElseThrow().location(),
+                "at the grove still bare, not the camp's centre - live, dug, \"no open dirt or grass\" there");
     }
 
     /** The platoon leader's FORAGE for squads standing on FARM stands: food work, not put back on the farm. */

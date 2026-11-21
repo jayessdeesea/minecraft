@@ -49,8 +49,9 @@ planting a grove (TREE_FARM): a grove is logs in a day or two, not today (`DayWo
 a squad to are the ones the squads see, or with none seen - up from a night underground - those seen within a
 day, but none within a wood's reach of one its squad leader found cut out that day (`WoodSightings`). The stores it measures shortfalls by are every standing chest's, each as last seen and kept across restarts - a chest the world no longer shows, dug or never put up, forgotten, and none marked full where none stands (`StoresBook`). No guardrail moves a squad on the platoon leader's FORAGE for its own Class I RED - its answer to that squad's hunger
 (field513: a hungry forager taken for other work). Past the SEIZURE, the groves short of trees ("wood that grows back" unmet) with nobody on TREE_FARM have a squad spare
-of the shortfalls put on planting them (operator, 2026-11-20: grow more trees; field565, two squads on the farm and
-nobody planting). In the SEIZURE a camp unlit with nobody on SECURE has a squad spare of the shortfalls put on its lights - the standard the
+of the shortfalls put on planting them at the grove still bare - the camp's or the keep's (the standard's place,
+`Foothold.Standard.at`) - not the camp's centre, dug and paved (operator, 2026-11-20: grow more trees; field565, two
+squads on the farm and nobody planting; field570, sent to the centre, "no open dirt or grass" 125 times). In the SEIZURE a camp unlit with nobody on SECURE has a squad spare of the shortfalls put on its lights - the standard the
 SEIZURE ends on, safety first (docs/military-doctrine.md § 17; live, field517, every squad farmed all day with 52 cells dark). No MINE before the BUILDUP: a squad sent down the mine in the SEIZURE or CONSOLIDATION is put on the food work instead (`PhaseGuardrails.noMineBeforeBuildup`). A squad sent to the production task (FARM, TREE_FARM, WOOD) it already has, within 48 blocks of where it works and not stalled, keeps its spot rather than walking to a new one each decision (`PhaseGuardrails.steady`). The farm squad keeps the camp's farm. The night rule still comes first,
 but for the night shift's last 30 seconds, when the squads climb out to it. A squad's miner, with no
 order of its own, builds the keep with it by day: the whole squad mines by night.

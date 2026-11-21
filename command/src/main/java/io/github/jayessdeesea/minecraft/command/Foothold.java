@@ -29,8 +29,13 @@ public record Foothold(Position camp, List<Standard> standards, Optional<Positio
      * @param met    whether it's met
      * @param status how it stands, in plain words: "18 cells still dark"
      * @param task   the platoon leader's task that advances it: "SECURE"
+     * @param at     where that task's work is, if it has one place: the grove still bare
      */
-    public record Standard(int phase, String name, boolean met, String status, String task) {
+    public record Standard(int phase, String name, boolean met, String status, String task, Optional<Position> at) {
+
+        public Standard(int phase, String name, boolean met, String status, String task) {
+            this(phase, name, met, status, task, Optional.empty());
+        }
     }
 
     /** The earliest phase with a standard not met, or empty when all are. */
