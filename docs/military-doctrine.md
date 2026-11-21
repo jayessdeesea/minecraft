@@ -792,7 +792,7 @@ a fixed table, the equipment ladder (`bot.craft.Ladder`), not a model's decision
 11. An iron axe, which chops a log in a sixth of the bare-handed time.
 12. A bucket, 3 ingots, for water carried to a farm's holes (`bot.supply.WaterCarrier`): filled at
     a pond's source with two sources beside it, which fills again - never a lone one, which a bucket
-    empties for good - up to 64 blocks off, as a hole takes one bucket - and poured from the ground beside the cell, looking at the far side of it half way
+    empties for good - up to 64 blocks off and 8 up or down, as a hole takes one bucket - and poured from the ground beside the cell, looking at the far side of it half way
     up: the server casts its ray along the look, stops on the ground beyond, and the water goes in the
     cell before it.
 13. Diamond - a sword, then the armour, then a pickaxe - once it carries the diamonds: they're ore
@@ -1815,9 +1815,7 @@ The camp is built up the way an airborne force builds a lodgment after the drop,
    wood is grown first.
 3. The buildup, in this order: food while the force eats; wood that grows back (§12, TREE_FARM) - every cell
    of the camp's and the keep's groves planted, 16 at the least and 48 at the most (operator, 2026-11-20: grow
-   more trees),
-   right after it - 16 trees growing in the camp's grove and the keep's together (operator,
-   2026-11-14: a camp goes through a lot of wood); stone and iron from a mine (§16, MINE); and
+   more trees), right after it (operator, 2026-11-14: a camp goes through a lot of wood); stone and iron from a mine (§16, MINE); and
    last the camp's floor paved (FORTIFY): once the wall is closed and of
    stone, its repointer replaces the soil of the floor inside it with cobblestone, block by block,
    at the camp's measured height - until the base is flattened to one height above sea level

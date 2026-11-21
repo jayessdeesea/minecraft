@@ -137,13 +137,13 @@ class WaterCarrierTest {
         assertEquals(new WaterCarrier.Progress.Failed("no bucket carried"), progress);
     }
 
-    /** A hole's pond 50 blocks off, past the old 32: still found, so a chunk farm away from water gets its water. */
+    /** A hole's pond 50 blocks off and 5 under it, past the old 32 and 4: still found, so a chunk farm away from water gets it. */
     @Test
     void aPondFiftyBlocksOffIsFound() {
         WorldView far = new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
-                return y <= 63 && !isWaterSource(x, y, z);
+                return (x < 45 ? y <= 63 : y <= 58) && !isWaterSource(x, y, z);
             }
 
             @Override
@@ -158,7 +158,8 @@ class WaterCarrierTest {
 
             @Override
             public boolean isWaterSource(int x, int y, int z) {
-                return y == 63 && z == 0 && x >= 50 && x <= 52;
+                // Five under the hole: live (field562), the chunk farm's hole at y=67 on heaped ground, the pond at 62.
+                return y == 58 && z == 0 && x >= 50 && x <= 52;
             }
 
             @Override

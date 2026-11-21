@@ -37,6 +37,8 @@ public final class WaterCarrier {
      * within 32 blocks", the camp's pond 55 off.
      */
     public static final int SOURCE_RADIUS = 64;
+    /** And how far over or under it: live (field562), the chunk farm's hole at y=67 on heaped ground, the pond's top at 62. */
+    static final int SOURCE_RISE = 8;
     static final int WALK_TICKS = 600;
     static final int ANSWER_TICKS = 40;
     /** A soldier's eyes over its feet. */
@@ -218,7 +220,7 @@ public final class WaterCarrier {
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -SOURCE_RADIUS; dx <= SOURCE_RADIUS; dx++) {
             for (int dz = -SOURCE_RADIUS; dz <= SOURCE_RADIUS; dz++) {
-                for (int dy = -4; dy <= 4; dy++) {
+                for (int dy = -SOURCE_RISE; dy <= SOURCE_RISE; dy++) {
                     BlockPos c = cell.offset(dx, dy, dz);
                     if (!world.isWaterSource(c.x(), c.y(), c.z()) || Math.hypot(dx, dz) >= bestDistance) {
                         continue;
