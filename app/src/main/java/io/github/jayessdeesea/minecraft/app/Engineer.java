@@ -64,7 +64,10 @@ final class Engineer {
             // Not sent along its own level: a gap in its way is bridged, not dug down into - in the squad simulation a
             // miner with no route across a hole in its gallery's floor cut a shaft down beside it.
             boolean down = !buried.test(at) && stuck.order() instanceof Order.MoveTo m && m.y() < at.y() - 1;
-            Optional<List<Cell>> pillar = Stairway.pillarUnder(world, BlockPos.containing(at.x(), at.y(), at.z())).or(() -> down ? Stairway.edgeShaftNear(world, BlockPos.containing(at.x(), at.y(), at.z())) : Optional.empty())
+            BlockPos feet = BlockPos.containing(at.x(), at.y(), at.z());
+            // Or on a tree's canopy: its leaves dug from on top, it drops through to the ground (Stairway.canopyUnder).
+            Optional<List<Cell>> pillar = Stairway.pillarUnder(world, feet).or(() -> Stairway.canopyUnder(world, feet))
+                    .or(() -> down ? Stairway.edgeShaftNear(world, feet) : Optional.empty())
                     .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList());
             pillar.ifPresent(p -> LOG.info("[{}] RECOVERY: {} is stranded up at {} - digs down from {}, {} blocks", squadName, stuck.name(), at, p.getFirst(), p.size()));
             return pillar;

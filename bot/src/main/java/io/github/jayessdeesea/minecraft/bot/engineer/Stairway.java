@@ -115,6 +115,33 @@ public final class Stairway {
         return pillar.size() >= 2 ? Optional.of(List.copyOf(pillar)) : Optional.empty();
     }
 
+    /** How much further than a step a soldier on a canopy drops once its leaves are dug: 3 health at the most. */
+    public static final int CANOPY_EXTRA_DROP = 3;
+
+    /**
+     * The leaves a soldier at {@code feet} stands on, top first, when under them is a drop to the ground of no more than
+     * {@link #CANOPY_EXTRA_DROP} past a step: dug from on top, it falls through to the ground. Empty when it isn't on
+     * leaves, or the drop is further, or it would land in lava. Live (field551), Fran, Hal and Dana stood on an oak's
+     * canopy eight over the camp's ground, too far to step down, and the drill laid them a stair up.
+     */
+    public static Optional<List<BlockPos>> canopyUnder(WorldView world, BlockPos feet) {
+        List<BlockPos> leaves = new java.util.ArrayList<>();
+        int y = feet.y() - 1;
+        for (; world.leaves(feet.x(), y, feet.z()).isPresent(); y--) {
+            leaves.add(new BlockPos(feet.x(), y, feet.z()));
+        }
+        if (leaves.isEmpty()) {
+            return Optional.empty();
+        }
+        for (; y > feet.y() - Pathfinder.MAX_DROP - CANOPY_EXTRA_DROP - 1; y--) {
+            if (world.isSolid(feet.x(), y, feet.z()) || world.isWater(feet.x(), y, feet.z())) {
+                boolean lava = world.isHazard(feet.x(), y, feet.z()) && !world.isWater(feet.x(), y, feet.z());
+                return lava ? Optional.empty() : Optional.of(List.copyOf(leaves));
+            }
+        }
+        return Optional.empty();
+    }
+
     public static Optional<List<BlockPos>> down(WorldView world, BlockPos feet) {
         return Arrays.stream(HEADINGS)
                 .map(h -> flight(world, feet, h[0], h[1]))

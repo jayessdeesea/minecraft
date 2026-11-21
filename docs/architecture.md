@@ -198,3 +198,10 @@ A live failure becomes a scenario there first: the world that caused it, and the
 squad should reach (cobblestone and raw iron carried, say), not the steps it should take. Each
 scenario's app log goes to `app/target/sim/<scenario>.log`; scenarios run in parallel
 (docs/conventions.md, "Tests run in parallel").
+
+A stuck soldier is a case in the registry of stuck soldiers (`StuckEvalsTest`; operator, 2026-11-20): one file
+under `app/src/test/resources/stuck/` per live failure - the recorded ground (`garrison-state/worlds/`, copied to
+`worlds/`), where the soldier stood, what it carried, where it was going, and what correct is there (stands within
+so far of its goal within so many minutes). Each is replayed and printed `[Eval] stuck/<case>: PASS|FAIL`. A case
+not fixed yet is marked `knownFailure`: reported, not failed - and failed once it passes still marked, so the mark
+comes off with the fix and the case holds it from then on.

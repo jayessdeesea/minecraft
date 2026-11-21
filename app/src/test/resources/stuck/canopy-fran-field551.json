@@ -1,0 +1,17 @@
+{
+  "why": "Fran, Hal and Dana of Bravo stood on an oak's canopy at y=72, eight over the camp's ground, by the patrol base they built: too high to drop, with leaves enough to walk on that the cut-off check never took them for stranded, and no route anywhere for minutes (field551).",
+  "world": "worlds/canopy-fran-field551.json",
+  "soldier": "Fran",
+  "at": [23.6, 72.0, 80.4],
+  "kit": [
+    {"slot": 36, "id": 1035, "count": 1, "item": "stone_sword"},
+    {"slot": 37, "id": 1037, "count": 1, "item": "stone_pickaxe"},
+    {"slot": 38, "id": 1067, "count": 16, "item": "bread"},
+    {"slot": 9, "id": 163, "count": 8, "item": "oak_log"}
+  ],
+  "goal": [24.5, 64.0, 73.5],
+  "correct": "stands within 2.5 blocks of the goal",
+  "radius": 2.5,
+  "withinMinutes": 5,
+  "knownFailure": false
+}

@@ -48,7 +48,7 @@ class RoutingSimulationTest {
     }
 
     /** A squad leader that sends the squad to {@code at}. */
-    private static ChatClient squadLeader(Position at) {
+    static ChatClient squadLeader(Position at) {
         String reply = String.format(Locale.ROOT, """
                 {"x": %.1f, "y": %.1f, "z": %.1f, "formation": "FILE", "interval": "NORMAL",
                  "verticalTolerance": 1, "risk": "LOW", "soldierRisks": [], "rearm": true,

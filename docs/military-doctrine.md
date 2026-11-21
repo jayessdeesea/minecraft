@@ -2069,7 +2069,9 @@ its fetchers find nothing left, the squad's next pit is off another side, round 
 (never west, the depot's side, where a pit takes the ground from under the workshop): live, one with a single block stood all day 15 under its
 strip's top, the hilltop it dug being stone. And one stranded up a pillar of its own - called off
 it, say, to feed itself - digs it down from on top (`Recovery`, `Stairway.pillarUnder`), its
-episode held until it's at the pillar's foot. So does one stranded on a ledge on the surface and sent lower -
+episode held until it's at the pillar's foot. So does one stranded on a tree's canopy over a drop of no more than 6 -
+3 health at the most: its leaves dug, it falls through (`Stairway.canopyUnder`; live, field551, three of Bravo
+stood on an oak eight over the camp's ground, and were laid a stair up). So does one stranded on a ledge on the surface and sent lower -
 too hurt for its drop, with no blocks for a stair: at the nearest edge of its ground, the ground below seen down
 the open side, the column is dug down to that ground's level and it walks off (`Stairway.edgeShaft`; live,
 field497-498, four soldiers stood ten minutes on a ledge 5 over the farm). Not one sent along its own level: a gap
