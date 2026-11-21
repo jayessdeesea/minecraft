@@ -772,9 +772,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + " cells of the camp's farm ground, by the water at x=" + farm.get().water().x() + " z=" + farm.get().water().z()
                         + ", growing wheat")
                         + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM"));
-        Optional<TreeFarm> grove = TreeFarm.site(world, at, CAMP_RADIUS);
+        Optional<TreeFarm> grove = campTrees.grove(world, at, campFarm, clockwork.millis()).or(() -> TreeFarm.site(world, at, CAMP_RADIUS)); // close (CampTrees)
         // Right after food (operator, 2026-11-14: tree farms just after the wheat farms - a camp goes through a lot of wood): the camp's grove and the keep's together.
-        TreeFarm keepTrees = keepGrove;
+        TreeFarm keepTrees = campTrees.chunk().isPresent() ? null : keepGrove; // not walked 200 blocks to while the camp has its own
         long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count()).orElse(0L)
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
         // Every cell the groves hold, 16 at the least and 96 at the most (operator, 2026-11-20: grow more trees; 48 met in field593): a squad on TREE_FARM till they're full.
@@ -916,6 +916,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private static final int FARM_REACH_BUDGET = 40_000;
     /** The camp's farm ground by water, as the foothold last measured it: kept by squads short of food. */
     private volatile FarmPlan campFarm;
+    /** The camp's tree chunk, within 64 blocks: its grove (operator, 2026-11-21: the renewables close by). */
+    private final CampTrees campTrees = new CampTrees();
     /** The camp's farm, sited, grown and kept. */
     private final CampFarm campFarms;
     /** Whether a farmer keeping a farm carries a bucket: the camp's chunk farm is taken in then. */
@@ -1781,8 +1783,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (blocks == 0) {
             int r = Directive.FETCH_RADIUS;
             Position at = level.centre();
-            return Optional.of(new Order.Gather(Resource.SOIL,
-                    new Box((int) at.x() - r, level.y() - 8, (int) at.z() - r,
+            return Optional.of(new Order.Gather(Resource.SOIL, new Box((int) at.x() - r, level.y() - 8, (int) at.z() - r,
                             (int) at.x() + r, level.y() + 4, (int) at.z() + r), WALL_BLOCKS_LOAD));
         }
         return Optional.of(new Order.Fill(fill, except));
@@ -4047,8 +4048,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 case "light the ground" -> lighting.get(n);
                 default -> null;
             };
-            on.put(n, new TaskRegister.Assignment(task, s.report(),
-                    left == null ? OptionalInt.empty() : OptionalInt.of(left.size())));
+            on.put(n, new TaskRegister.Assignment(task, s.report(), left == null ? OptionalInt.empty() : OptionalInt.of(left.size())));
         }
         // What's left of each task the squad measures, for a soldier moved off one as its work ran out.
         Map<String, Integer> measured = new HashMap<>();
