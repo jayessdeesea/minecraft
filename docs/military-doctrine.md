@@ -718,7 +718,10 @@ of what it strikes, squadmates included. So a soldier holding a sword doesn't sw
 player stands within 2 blocks of its target along each axis - a box, as vanilla's, not a circle: a block
 and half a player's and the widest mob's widths (live, field498-507, five soldiers were cut down by squadmates)
 - its body meeting the target's box grown a quarter block up or down (`DeterministicSoldier.SWEEP_REACH`, `SWEEP_RISE`): a flier two blocks over
-a squadmate's feet still sweeps it. It waits until one of them moves. It knows itself among
+a squadmate's feet still sweeps it. It doesn't wait for one of them to move: a sword sweeps only past 0.9 of
+its charge, so it strikes short of that, at 0.84 for three quarters of the damage (`WeaponStats.Stats.unsweptTicks`),
+and charged already it holds a second at most (`SWEEP_HOLD_TICKS`) - live (field584), four squadmates in one cell
+of a slot each held fire for the others, and a zombie killed two of them. It knows itself among
 those players by its entity, not by where it stands: players don't collide, and live a squadmate a
 tenth of a block from the swordsman was taken for it, and killed by the sweep at a third of a heart.
 

@@ -172,6 +172,10 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     private volatile float yaw;
     private volatile float pitch;
     private int ticksUntilAttack = 0; // tick-loop only
+    /** Ticks it's held a charged swing for a squadmate in its sweep - tick-loop only. */
+    private int heldForSweep;
+    /** The most it holds a charged swing for a squadmate in its sweep: a sweep's point of damage, against the fight lost. */
+    static final int SWEEP_HOLD_TICKS = 20;
     private double lastReportedHealth = -1;
     private int deaths;
     // Set by the connection's thread on a hit, consumed by the tick loop.
@@ -553,11 +557,18 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 holdCoverTicks = UNDER_FIRE_TICKS;
             } else {
                 response = armedForMelee() ? "fights hand to hand" : "fights bare-handed";
-                if (ticksUntilAttack == 0 && range <= ATTACK_REACH && !shieldRaised() && !sweepHitsSquadmate(world, threat)) {
+                // A hit's damage scales with the swing's charge: the held weapon's full one waited for - but with a squadmate in
+                // the sword's sweep, struck short of it, which sweeps nobody, and charged already, held at most a second. Live
+                // (field584), four squadmates in one cell of a slot each held fire for the others, and a zombie killed two.
+                Kit carried = kit;
+                WeaponStats.Stats held = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon());
+                boolean sweeps = range <= ATTACK_REACH && sweepHitsSquadmate(world, threat);
+                heldForSweep = sweeps && ticksUntilAttack == 0 ? heldForSweep + 1 : 0;
+                if (range <= ATTACK_REACH && !shieldRaised() && (!sweeps ? ticksUntilAttack == 0
+                        : ticksUntilAttack > 0 && ticksUntilAttack <= held.ticksToCharge() - held.unsweptTicks() || heldForSweep > SWEEP_HOLD_TICKS)) {
                     attack = OptionalInt.of(nearest.entityId());
-                    // A hit's damage scales with the swing's charge: wait for the held weapon's full one.
-                    Kit carried = kit;
-                    ticksUntilAttack = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon()).ticksToCharge();
+                    ticksUntilAttack = held.ticksToCharge();
+                    heldForSweep = 0;
                 }
                 if (range < KEEP_AWAY) {
                     stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z());

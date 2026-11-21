@@ -201,6 +201,48 @@ class DeterministicSoldierCombatTest {
         assertEquals(OptionalInt.of(1), alice.tick(withHostileAt(zombie, false)), "with nobody beside it, she swings");
     }
 
+    /**
+     * With a squadmate in the sweep for good - four in one cell of a slot - it doesn't hold fire for good: a charged
+     * swing held a second at most, then each struck short of full charge, which sweeps nobody. Live (field584), Bob, Gus,
+     * Fran and Jack in one cell, each holding fire for the others, and a zombie killed Gus and Fran.
+     */
+    @Test
+    void aSquadmateInTheSweepForGoodHoldsFireASecondThenStrikesUnswept() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
+        Position zombie = new Position(2, 64, 0);
+        WorldView packed = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, 154, zombie));
+            }
+
+            @Override
+            public List<Position> playersNear(Position center, double radius) {
+                return List.of(new Position(0, 64, 0), new Position(1.5, 64, 0.5)); // Alice, and Bob between her and it
+            }
+        };
+        List<Integer> swings = new java.util.ArrayList<>();
+        for (int tick = 0; tick < 60; tick++) {
+            if (alice.tick(packed).isPresent()) {
+                swings.add(tick);
+            }
+        }
+        int cycle = io.github.jayessdeesea.minecraft.bot.world.WeaponStats.melee(Optional.of("stone_sword")).unsweptTicks();
+        assertTrue(!swings.isEmpty() && swings.getFirst() <= DeterministicSoldier.SWEEP_HOLD_TICKS + 1, "held a second at most: " + swings);
+        assertTrue(swings.size() >= 3 && swings.get(2) - swings.get(1) == cycle, "then struck every " + cycle + " ticks, unswept: " + swings);
+    }
+
     /** A squadmate a block and a half off the target on each axis is in its sweep's box, though 2.1 across: the swing waits. */
     @Test
     void aSquadmateDiagonallyBesideTheTargetIsInItsSweep() {

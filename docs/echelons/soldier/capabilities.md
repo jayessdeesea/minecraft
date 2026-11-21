@@ -90,7 +90,7 @@ How it fights, measured, is in [military-doctrine.md § 8](../../military-doctri
 In short:
 - **Contact interrupts everything.** A hostile in sight within its contact radius, or being hit,
   takes over its movement whatever routine holds its hands.
-- **Melee** at a sword's full charge, holding the swing while a squadmate is in the sweep.
+- **Melee** at a sword's full charge; with a squadmate in the sweep, struck short of it, which sweeps nobody.
 - **Archers:** cover when it can't close or is bare-handed; with a bow, it shoots back.
 - **Creepers:** gets clear; strikes only when boxed in.
 - **Shield** up against arrows in flight. **No fighting step** over a deep drop.
