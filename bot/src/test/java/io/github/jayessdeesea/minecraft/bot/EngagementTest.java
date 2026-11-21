@@ -42,4 +42,19 @@ class EngagementTest {
         assertEquals(Engagement.Kind.WITHDRAW, Engagement.choose(new Engagement.Soldier(3, 0, 0, 1, 1.6, 3), close, true, 4),
                 "bare hands at 3 health: it can't kill it first, and 4 blocks clear costs one shot at most");
     }
+
+    /**
+     * One that follows is fought unless the soldier would lose outright and can get away: a zombie keeps pace with a walk,
+     * so a walk doesn't get away; a sprint does, from one not yet on it.
+     */
+    @Test
+    void aZombieThatKeepsPaceWithAWalkIsFoughtButASprintGetsClear() {
+        Engagement.Hostile zombie = new Engagement.Hostile(20, 3, 1, 2, 5, 4);
+        assertEquals(Engagement.Kind.ENGAGE, Engagement.choose(new Engagement.Soldier(20, 0, 0, 1, 4, 3), zombie, false, 4),
+                "whole, bare hands outlast a zombie's kill (6.7 s to 5): fought - the matrix's zombie+zombie, bare hands, hills");
+        assertEquals(Engagement.Kind.ENGAGE, Engagement.choose(new Engagement.Soldier(4, 0, 0, 1, 4, 3), zombie, false, 4),
+                "at 4 it loses, but at a walk it can't get away: a fight forced on it");
+        assertEquals(Engagement.Kind.COVER, Engagement.choose(new Engagement.Soldier(4, 0, 0, 1, 4, 3, Engagement.SPRINT), zombie, false, 4),
+                "at a sprint it gets clear before the zombie's on it");
+    }
 }

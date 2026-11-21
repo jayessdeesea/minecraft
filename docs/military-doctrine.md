@@ -629,6 +629,11 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   at 0.6 health closed on a skeleton 6.4 off and was shot dead; replayed on her kept ground she lives in cover. A health
   line in its place broke off fights soldiers would have won - four combat-matrix cells lost - and with it one more cell
   passes (pillager, wooden sword, hills).
+- **One that fights hand to hand is fought unless the soldier would lose outright and can get away** (`Engagement`):
+  the margin is for closing on an archer under fire; one that follows brings the fight anyway. Getting away is priced
+  at the difference in pace - a zombie keeps up with a walk, so only a sprint, food over 6, opens the gap - and one
+  that can't be got away from is a fight forced, and fought. Backing off it whenever the exchange was short, a soldier
+  with bare hands fled two zombies for good and was caught on hills (67% of that cell).
 - **An archer well below** - more than 4 blocks under the soldier, across a cave's drop - is out of a sword's
   reach whatever route might go down to it: the soldier takes cover and carries on, as from one it has no route
   to (the engagement doctrine's it-can-I-can't cell; `DeterministicSoldier.ARCHER_BELOW`). Live, three miners

@@ -68,7 +68,9 @@ Bare hands lose to a zombie by the numbers (20 blows), so the soldier backed off
 hills (zombie+zombie, bare hands, hills: 67%); a soldier backing up stepped into a squadmate's sweep. Breaking off is
 priced as a few blocks clear, true on open ground and not with pursuers on rough ground - the exchange wants the
 escape's own cost, from the terrain and what follows, before hand to hand is on it.
-Left: the other branches on the exchange (hand to hand as above, creepers, several hostiles at once, the bow); withdraw's
+Then built: the escape priced by pace and pursuit (`Engagement.escape`), and hand to hand on the exchange with it -
+fought unless lost outright and got away from at a sprint; the matrices hold.
+Left: the other branches on the exchange (creepers, several hostiles at once, the bow); withdraw's
 eat-and-heal and re-engage (the body eats as the runner does, below 18, and swings at nothing meanwhile); the matrix grown by starting health,
 armour and terrain. (Every combat simulation's soldiers have the body now, the squads' too.)
 

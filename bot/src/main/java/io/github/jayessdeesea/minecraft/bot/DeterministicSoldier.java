@@ -595,6 +595,13 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             } else if (nearest.fightsOnlyAtHand() && !armedForMelee()) {
                 response = "backs off: no weapon against one that fights only at hand";
                 stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z());
+            // One that fights hand to hand, the exchange lost and a way clear of it (Engagement): got clear at a sprint - one
+            // that keeps pace can't be got away from, and is fought. In place of always fighting it (operator, 2026-11-21:
+            // flee and recover, re-engage if relevant); healed, the exchange is won again and it closes.
+            } else if (!nearest.shoots() && !nearest.explodes() && meleeExchange(range) != Engagement.Kind.ENGAGE) {
+                response = "gets clear: the exchange lost, hand to hand";
+                sprinting = canSprint();
+                stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z(), sprinting ? SPRINT_STEP : STEP);
             // An archer well below - across a cave's drop - out-shoots a sword as surely as one it has no route to:
             // the engagement doctrine's it-can-I-can't cell, cover and carry on. Live (field410-419), Alice, Hal and
             // Gus closed on skeletons in the caves under their faces and were shot 12-28 blocks down.
@@ -731,25 +738,14 @@ public final class DeterministicSoldier extends Mover implements Soldier {
      * on", and was shot dead.
      */
     static final double HURT_HEALTH = 10;
-    /** An archer's shot as the exchange reckons it, and its shots a second: a skeleton's bow, 3 to 5 every 2 s. */
-    static final double ARCHER_SHOT = 4;
-    static final double ARCHER_SHOTS_A_SECOND = 0.5;
-    /** Armour points a piece worn, as the kit counts pieces: between leather's and iron's. */
-    static final double ARMOUR_A_PIECE = 2.5;
-    /** How far a soldier breaking off from an archer goes to be clear of its shots: its bow's range. */
-    static final double ARCHER_CLEAR = 15;
+    /** The exchange with one that fights hand to hand {@code range} off (Engagement.melee). */
+    private Engagement.Kind meleeExchange(double range) {
+        return Engagement.melee(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS, canSprint());
+    }
 
-    /** The exchange with an archer {@code range} off: closing on it, as the soldier stands now (Engagement). */
+    /** The exchange with an archer {@code range} off (Engagement.archer). */
     private Engagement.Kind archerExchange(double range) {
-        if (lastReportedHealth < 0) {
-            return Engagement.Kind.ENGAGE; // its health not yet reported: no exchange to reckon, as before
-        }
-        Kit carried = kit;
-        WeaponStats.Stats held = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon());
-        double armour = carried == null ? 0 : carried.armour() * ARMOUR_A_PIECE;
-        Engagement.Soldier me = new Engagement.Soldier(Math.max(0, lastReportedHealth), armour, 0, held.damage(), held.attacksPerSecond(), ATTACK_REACH);
-        Engagement.Hostile it = new Engagement.Hostile(20, ARCHER_SHOT, ARCHER_SHOTS_A_SECOND, ARCHER_CLEAR, range);
-        return Engagement.choose(me, it, contactTicks > BEGUN_TICKS, Math.max(0, ARCHER_CLEAR - range));
+        return Engagement.archer(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS);
     }
     /**
      * Ticks since it met the hostile it's in contact with now: past {@link #BEGUN_TICKS} the fight's begun. Not the health
