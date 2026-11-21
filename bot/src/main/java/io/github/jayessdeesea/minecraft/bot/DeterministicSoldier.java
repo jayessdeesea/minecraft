@@ -514,6 +514,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             pinned = false; // a fresh contact gets a fresh look for a way to close
             pinnedCheckIn = 0;
             pinnedOn = nearestId;
+            metAtHealth = lastReportedHealth < 0 ? Double.MAX_VALUE : lastReportedHealth; // when it met this one: a fight begun is one to finish
             byWalk = false; // a fresh contact is closed on straight, till that gains no ground
             lastClose = null;
             noWalk = false;
@@ -602,8 +603,14 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 // from, it held soldiers off their work (operator, 2026-11-20).
                 response = "carries on: an archer out of contact, not shooting, with no way to close on it";
                 navigate(world);
-            } else if (nearest.shoots() && (!armedForMelee() || threat.y() < gait.position.y() - ARCHER_BELOW || pinned(world, threat))) {
+            // Too hurt to close on one met with two shots' worth of health or less: the shots taken crossing to it outlast it.
+            // Live (field611), Eli at 0.6 health closed on a skeleton 6.4 off across level ground and was shot dead. Met
+            // healthier, the fight's finished: broken off once hurt - at HURT_HEALTH, or at this - soldiers were shot running,
+            // four cells of the combat matrix lost and the water scenarios' wading soldiers killed.
+            } else if (nearest.shoots() && (!armedForMelee() || metAtHealth <= ARCHER_CLOSE_HEALTH && range > ATTACK_REACH
+                    || threat.y() < gait.position.y() - ARCHER_BELOW || pinned(world, threat))) {
                 response = !armedForMelee() ? "takes cover: an archer, and no melee weapon"
+                        : metAtHealth <= ARCHER_CLOSE_HEALTH && range > ATTACK_REACH ? "takes cover: an archer, too hurt to close on it"
                         : threat.y() < gait.position.y() - ARCHER_BELOW ? "takes cover: an archer " + ARCHER_BELOW + " or more below"
                         : "takes cover: an archer with no route to strike it from";
                 // An archer out-fights a bare hand from any range, and a sword it can't be closed on:
@@ -723,6 +730,10 @@ public final class DeterministicSoldier extends Mover implements Soldier {
      * on", and was shot dead.
      */
     static final double HURT_HEALTH = 10;
+    /** At or under this health when met, an archer out of reach isn't closed on, whatever it carries: two of its shots' worth. */
+    static final double ARCHER_CLOSE_HEALTH = 6;
+    /** The health it had when it met the hostile it's in contact with now. */
+    private double metAtHealth = Double.MAX_VALUE;
 
     /** How far a soldier fleeing an archer runs before it's fled: past a skeleton's 15 blocks of range. */
     static final double FLED_PAST = 20;

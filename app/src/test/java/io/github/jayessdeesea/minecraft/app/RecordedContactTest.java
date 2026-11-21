@@ -132,4 +132,41 @@ class RecordedContactTest {
         System.out.printf("[Eval] contact/eli-field609: Eli at %s, worst fall %.1f to %s, %s%n", eli.status().position(), worst, worstAt, eli.status().report());
         assertTrue(worst - 3 < health, "contact/eli-field609: a fall of " + worst + " at " + health + " health");
     }
+
+    /**
+     * An archer met at one health: live (field611) Eli, at 0.6 health with no rations, was taken off cutting the mine and
+     * "fights hand to hand" a skeleton 6.4 off on level ground at (-22.1, 20, 91.5) - closed on it across the open and
+     * was shot dead at (-18.2, 20, 90.6). Here its shot is 4 health every 1.5 s it can see her. Correct, a minute on:
+     * alive.
+     */
+    @Test
+    void eliTakesCoverFromTheSkeletonAtOneHealth() throws Exception {
+        WorldRecords.Snapshot ground = WorldRecords.load(Path.of(new ClassPathResource("worlds/contact-eli-field611.json").getURI()));
+        EntityTracker entities = new EntityTracker();
+        Position skeleton = new Position(-16.5, 20.0, 90.5); // in her sight: the live one moved, and from (-15.8, 20, 90.5) a wall hides her
+        entities.spawn(1, UUID.randomUUID(), HostileMobRegistry.typeIdOf("skeleton"), skeleton.x(), skeleton.y(), skeleton.z(), "eval");
+        WorldView world = RecordedGroundEfficiencyTest.world(ground.minX() - 16, ground.minZ() - 16, ground.sizeX() + 32, ground.sizeZ() + 32,
+                (x, z) -> 0, (x, yz) -> {
+                    int y = yz >> 16, z = (short) (yz & 0xFFFF);
+                    int s = ground.stateAt(x, y, z);
+                    return s == WorldRecords.UNKNOWN ? (y < ground.minY() ? 1 : 0) : s;
+                }, entities);
+        DeterministicSoldier eli = new DeterministicSoldier("Eli", new Position(-22.1, 20.0, 91.5));
+        eli.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
+        double health = 1;
+        eli.reportHealth(health, 15);
+        eli.receiveOrder(new Order.MoveTo(-22.1, 20.0, 91.5, 1.5, 3.0, Risk.LOW));
+        Position eye = new Position(skeleton.x(), skeleton.y() + DeterministicSoldier.EYE_HEIGHT, skeleton.z());
+        for (int tick = 0; tick < 1200 && health > 0; tick++) {
+            eli.tick(world);
+            Position at = eli.status().position();
+            if (tick % 30 == 29 && at.distanceTo(skeleton) <= 16
+                    && DeterministicSoldier.lineOfSight(world, eye, new Position(at.x(), at.y() + DeterministicSoldier.TARGET_HEIGHT, at.z()))) {
+                health -= 4;
+                eli.reportHealth(Math.max(0, health), 15);
+            }
+        }
+        System.out.printf("[Eval] contact/eli-field611: Eli at %s, %.0f health, %s%n", eli.status().position(), health, eli.status().report());
+        assertTrue(health > 0, "contact/eli-field611: shot dead at " + eli.status().position());
+    }
 }

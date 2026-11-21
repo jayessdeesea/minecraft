@@ -92,7 +92,7 @@ In short:
 - **Contact interrupts everything.** A hostile in sight within its contact radius, or being hit,
   takes over its movement whatever routine holds its hands.
 - **Melee** by `bot.Strike`: the sword's sweep at full charge with none of the force's in its box; with a squadmate in it, a knockback hit sprinting, else a hit short of the sweep's charge.
-- **Archers:** cover when it can't close or is bare-handed; with a bow, it shoots back.
+- **Archers:** cover when it can't close, is bare-handed, or met it at two shots' health or less; with a bow, it shoots back.
 - **Creepers:** gets clear; strikes only when boxed in.
 - **Shield** up against arrows in flight. **No fighting step** over a deep drop.
 

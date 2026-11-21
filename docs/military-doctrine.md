@@ -618,6 +618,11 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   combat eval matrix, bare hands against a skeleton come through 11 or 12 times in 12 on every ground - its
   follow range 16, so a flight past 20 breaks contact - and against a pillager among trees; against a pillager in
   the open, on hills and in a pond a third or less, its follow range 32 past the flight's 20.
+- **An archer out of reach met at two of its shots' health or less is never closed on** (6,
+  `DeterministicSoldier.ARCHER_CLOSE_HEALTH`): the shots taken crossing to it outlast the soldier, sword or not, and
+  it takes cover. Live (field611), Eli at 0.6 health closed on a skeleton 6.4 off and was shot dead; replayed on her
+  kept ground she lives in cover. Its health when met, not as the fight wears it down: a fight begun is finished - broken
+  off once hurt, soldiers were shot running in the combat matrix and wading out of a pond.
 - **An archer well below** - more than 4 blocks under the soldier, across a cave's drop - is out of a sword's
   reach whatever route might go down to it: the soldier takes cover and carries on, as from one it has no route
   to (the engagement doctrine's it-can-I-can't cell; `DeterministicSoldier.ARCHER_BELOW`). Live, three miners
