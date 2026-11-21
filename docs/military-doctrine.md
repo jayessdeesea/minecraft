@@ -728,14 +728,20 @@ In the combat simulation, three zombies on one soldier's flank kill a lone soldi
 times in 100. With the drill it loses nobody.
 
 A squad closing on one hostile stands round it, and a sword's sweep hits every body within a block
-of what it strikes, squadmates included. So a soldier holding a sword doesn't swing while another
-player stands within 2 blocks of its target along each axis - a box, as vanilla's, not a circle: a block
-and half a player's and the widest mob's widths (live, field498-507, five soldiers were cut down by squadmates)
-- its body meeting the target's box grown a quarter block up or down (`DeterministicSoldier.SWEEP_REACH`, `SWEEP_RISE`): a flier two blocks over
-a squadmate's feet still sweeps it. It doesn't wait for one of them to move: a sword sweeps only past 0.9 of
-its charge, so it strikes short of that, at 0.84 for three quarters of the damage (`WeaponStats.Stats.unsweptTicks`),
-and charged already it holds a second at most (`SWEEP_HOLD_TICKS`) - live (field584), four squadmates in one cell
-of a slot each held fire for the others, and a zombie killed two of them. It knows itself among
+of what it strikes, squadmates included. The sweep has its place, and it's not always (operator, 2026-11-21): with
+none of the force's in its box it's the swing - against two or more hostiles, the best there is - and with a squadmate
+in it, never. The box is another player within 2 blocks of the target along each axis - as vanilla's, not a circle:
+a block and half a player's and the widest mob's widths (live, field498-507, five soldiers were cut down by squadmates)
+- its body meeting the target's box grown a quarter block up or down (`DeterministicSoldier.SWEEP_REACH`, `SWEEP_RISE`):
+a flier two blocks over a squadmate's feet still sweeps it. Each swing is chosen by the server's own rules
+(`bot.Strike`; `Player.attack`, `isSweepAttack` on the pinned 26.3): a hit is strong past 0.9 of its charge, a strong
+hit sprinting is a knockback hit, and only a strong one that's neither that nor critical, on the ground, sweeps. So with
+a squadmate in the box it strikes at full charge sprinting - full damage and knockback, no sweep, the sprint told the
+server before the hit, which stops it - and with no food to sprint on, short of 0.9, its charge first started over by
+the arm's swing alone (`PunchPacket`) if it's past that already. Never held: live (field584), four squadmates in one cell
+of a slot each held fire for the others, and a zombie killed two of them. A sweep's damage to each body in its box is 1
+and the sweeping ratio of the blow, the ratio Sweeping Edge's; a sword's knockback is an input to the choice too -
+enchanted swords are to come (`Strike.Weapon`). It knows itself among
 those players by its entity, not by where it stands: players don't collide, and live a squadmate a
 tenth of a block from the swordsman was taken for it, and killed by the sweep at a third of a heart.
 

@@ -61,6 +61,20 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         return sprinting;
     }
 
+    /** Whether the hit this tick returned is a knockback hit: its sprint told the server first; the server stops it (Strike). */
+    public boolean takeKnockbackHit() {
+        boolean was = knockbackHit;
+        knockbackHit = false;
+        return was;
+    }
+
+    /** Whether its arm swings this tick with no hit, the charge started over (Strike.Kind.RESET). */
+    public boolean takeArmSwing() {
+        boolean was = armSwing;
+        armSwing = false;
+        return was;
+    }
+
     /**
      * How far out an arrow in flight raises the shield: at 1.6 blocks a tick, one loosed from a
      * skeleton's 13 blocks arrives in 8 ticks, and a shield blocks only once it's been up 5.
@@ -174,10 +188,9 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     private int ticksUntilAttack = 0; // tick-loop only
     /** Ticks till it says again what's round it when hurt with nothing in contact - tick-loop only. */
     private int hurtSaidIn;
-    /** Ticks it's held a charged swing for a squadmate in its sweep - tick-loop only. */
-    private int heldForSweep;
-    /** The most it holds a charged swing for a squadmate in its sweep: a sweep's point of damage, against the fight lost. */
-    static final int SWEEP_HOLD_TICKS = 20;
+    /** Whether this tick's hit is a knockback hit - sprinting told the server before it - and whether its arm swings alone. */
+    private volatile boolean knockbackHit;
+    private volatile boolean armSwing;
     private double lastReportedHealth = -1;
     private int deaths;
     // Set by the connection's thread on a hit, consumed by the tick loop.
@@ -602,18 +615,34 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 holdCoverTicks = UNDER_FIRE_TICKS;
             } else {
                 response = armedForMelee() ? "fights hand to hand" : "fights bare-handed";
-                // A hit's damage scales with the swing's charge: the held weapon's full one waited for - but with a squadmate in
-                // the sword's sweep, struck short of it, which sweeps nobody, and charged already, held at most a second. Live
-                // (field584), four squadmates in one cell of a slot each held fire for the others, and a zombie killed two.
+                // Which swing (Strike): the sword's sweep with none of the force's in its box, else one that doesn't sweep - a
+                // knockback hit sprinting, or one short of a sweep's charge (operator, 2026-11-21: the sweep has its place, and it's
+                // not always). Live (field584), four squadmates in one cell of a slot each held fire for the others, and a zombie
+                // killed two; and the second's hold that answered it then swept them.
                 Kit carried = kit;
-                WeaponStats.Stats held = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon());
-                boolean sweeps = range <= ATTACK_REACH && sweepHitsSquadmate(world, threat);
-                heldForSweep = sweeps && ticksUntilAttack == 0 ? heldForSweep + 1 : 0;
-                if (range <= ATTACK_REACH && !shieldRaised() && (!sweeps ? ticksUntilAttack == 0
-                        : ticksUntilAttack > 0 && ticksUntilAttack <= held.ticksToCharge() - held.unsweptTicks() || heldForSweep > SWEEP_HOLD_TICKS)) {
-                    attack = OptionalInt.of(nearest.entityId());
-                    ticksUntilAttack = held.ticksToCharge();
-                    heldForSweep = 0;
+                Optional<String> item = carried == null ? Optional.empty() : carried.weapon();
+                WeaponStats.Stats held = WeaponStats.melee(item);
+                if (range <= ATTACK_REACH && !shieldRaised()) {
+                    long others = threats.stream().filter(t -> t.entityId() != nearest.entityId() && Math.abs(t.position().x() - threat.x()) <= SWEEP_REACH
+                            && Math.abs(t.position().z() - threat.z()) <= SWEEP_REACH).count();
+                    Strike.Kind swing = Strike.choose(Strike.Weapon.of(item), new Strike.Situation(held.ticksToCharge() - ticksUntilAttack,
+                            sweepHitsSquadmate(world, threat), (int) others, canSprint()));
+                    switch (swing) {
+                        case FULL, SHORT, KNOCKBACK -> {
+                            attack = OptionalInt.of(nearest.entityId());
+                            ticksUntilAttack = held.ticksToCharge();
+                            if (swing == Strike.Kind.KNOCKBACK) {
+                                sprinting = true; // told the server before the hit, which stops the sprint with it
+                                knockbackHit = true;
+                            }
+                        }
+                        case RESET -> {
+                            armSwing = true; // the charge started over, for a short hit after
+                            ticksUntilAttack = held.ticksToCharge();
+                        }
+                        case WAIT -> {
+                        }
+                    }
                 }
                 if (range < KEEP_AWAY) {
                     stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z());

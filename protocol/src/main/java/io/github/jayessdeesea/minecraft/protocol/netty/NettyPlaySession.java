@@ -62,6 +62,11 @@ final class NettyPlaySession implements PlaySession {
     }
 
     @Override
+    public void swingArm() {
+        channel.writeAndFlush(new PunchPacket());
+    }
+
+    @Override
     public void sendChatCommand(String command) {
         channel.writeAndFlush(new ChatCommandPacket(command));
     }

@@ -197,8 +197,13 @@ class DeterministicSoldierCombatTest {
             }
         };
 
-        assertEquals(OptionalInt.empty(), alice.tick(bobBeside), "Bob is in the sweep");
+        // In the sweep: struck, but never swept - a knockback hit (bot.Strike).
+        assertTrue(alice.tick(bobBeside).isPresent() && alice.takeKnockbackHit(), "Bob is in the sweep: a knockback hit, no sweep");
+        for (int charging = 0; charging < 13; charging++) {
+            alice.tick(DeterministicSoldierTest.blocks((x, y, z) -> y < GROUND)); // charged again, no hostile near
+        }
         assertEquals(OptionalInt.of(1), alice.tick(withHostileAt(zombie, false)), "with nobody beside it, she swings");
+        assertFalse(alice.takeKnockbackHit(), "with nobody beside it, she swings - a full swing, its sweep hitting none of ours");
     }
 
     /**
@@ -272,17 +277,10 @@ class DeterministicSoldierCombatTest {
         assertTrue(Math.hypot(to.x() - 0.5, to.z() - 2.0) > Math.hypot(from.x() - 0.5, from.z() - 2.0), "away from the creeper: " + from + " -> " + to);
     }
 
-    /**
-     * With a squadmate in the sweep for good - four in one cell of a slot - it doesn't hold fire for good: a charged
-     * swing held a second at most, then each struck short of full charge, which sweeps nobody. Live (field584), Bob, Gus,
-     * Fran and Jack in one cell, each holding fire for the others, and a zombie killed Gus and Fran.
-     */
-    @Test
-    void aSquadmateInTheSweepForGoodHoldsFireASecondThenStrikesUnswept() {
-        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
-        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
+    /** Alice beside a zombie, Bob between them - in her sword's sweep for good, four in one cell of a slot as live (field584). */
+    private static WorldView packed() {
         Position zombie = new Position(2, 64, 0);
-        WorldView packed = new WorldView() {
+        return new WorldView() {
             @Override
             public boolean isSolid(int x, int y, int z) {
                 return y < GROUND;
@@ -303,15 +301,52 @@ class DeterministicSoldierCombatTest {
                 return List.of(new Position(0, 64, 0), new Position(1.5, 64, 0.5)); // Alice, and Bob between her and it
             }
         };
-        List<Integer> swings = new java.util.ArrayList<>();
+    }
+
+    /**
+     * With a squadmate in the sweep and food to sprint, every hit is a knockback hit at full charge - full damage, never a
+     * sweep (bot.Strike; operator, 2026-11-21: the sweep has its place, and it's not always). Live (field584), four in one
+     * cell each held fire for the others, and a zombie killed two; the second's hold that answered it then swept them.
+     */
+    @Test
+    void aSquadmateInTheSweepWithFoodToSprintGetsKnockbackHits() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
+        alice.reportHealth(20, 20);
+        WorldView packed = packed();
+        int hits = 0;
         for (int tick = 0; tick < 60; tick++) {
             if (alice.tick(packed).isPresent()) {
-                swings.add(tick);
+                hits++;
+                assertTrue(alice.takeKnockbackHit(), "hit " + hits + " a knockback hit, not a sweep");
             }
+            assertFalse(alice.takeArmSwing(), "no swing alone with a sprint to strike with");
         }
-        int cycle = io.github.jayessdeesea.minecraft.bot.world.WeaponStats.melee(Optional.of("stone_sword")).unsweptTicks();
-        assertTrue(!swings.isEmpty() && swings.getFirst() <= DeterministicSoldier.SWEEP_HOLD_TICKS + 1, "held a second at most: " + swings);
-        assertTrue(swings.size() >= 3 && swings.get(2) - swings.get(1) == cycle, "then struck every " + cycle + " ticks, unswept: " + swings);
+        assertTrue(hits >= 4, "struck at full charge: " + hits + " in 60 ticks");
+    }
+
+    /**
+     * With a squadmate in the sweep and too hungry to sprint, its charge is started over - a swing alone - then each hit
+     * is short of a sweep's charge: never a full one, which would sweep him.
+     */
+    @Test
+    void aSquadmateInTheSweepTooHungryToSprintGetsShortHits() {
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0, 64, 0));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
+        alice.reportHealth(20, 4);
+        WorldView packed = packed();
+        List<Integer> hits = new java.util.ArrayList<>();
+        boolean reset = false;
+        for (int tick = 0; tick < 60; tick++) {
+            if (alice.tick(packed).isPresent()) {
+                hits.add(tick);
+                assertFalse(alice.takeKnockbackHit(), "no sprint to knock back with");
+            }
+            reset |= alice.takeArmSwing();
+        }
+        int cycle = Strike.Weapon.of(Optional.of("stone_sword")).shortTicks();
+        assertTrue(reset, "its charge started over first");
+        assertTrue(hits.size() >= 3 && hits.get(2) - hits.get(1) == cycle, "short hits every " + cycle + " ticks: " + hits);
     }
 
     /** A squadmate a block and a half off the target on each axis is in its sweep's box, though 2.1 across: the swing waits. */
@@ -342,8 +377,13 @@ class DeterministicSoldierCombatTest {
             }
         };
 
-        assertEquals(OptionalInt.empty(), alice.tick(bobAt.apply(new Position(4.5, 64, 1.5))), "Bob diagonal to the zombie, in its box");
+        // In the sweep: struck, but never swept - a knockback hit (bot.Strike).
+        assertTrue(alice.tick(bobAt.apply(new Position(4.5, 64, 1.5))).isPresent() && alice.takeKnockbackHit(), "Bob diagonal to the zombie, in its box: a knockback hit, no sweep");
+        for (int charging = 0; charging < 13; charging++) {
+            alice.tick(DeterministicSoldierTest.blocks((x, y, z) -> y < GROUND)); // charged again, no hostile near
+        }
         assertEquals(OptionalInt.of(1), alice.tick(bobAt.apply(new Position(5.5, 64, 2.5))), "Bob past it, she swings");
+        assertFalse(alice.takeKnockbackHit(), "Bob past it, she swings - a full swing, its sweep hitting none of ours");
     }
 
     /**
@@ -378,8 +418,13 @@ class DeterministicSoldierCombatTest {
             }
         };
 
-        assertEquals(OptionalInt.empty(), dana.tick(franUnderIt), "Fran stands under the phantom, in the sweep");
+        // In the sweep: struck, but never swept - a knockback hit (bot.Strike).
+        assertTrue(dana.tick(franUnderIt).isPresent() && dana.takeKnockbackHit(), "Fran stands under the phantom, in the sweep: a knockback hit, no sweep");
+        for (int charging = 0; charging < 13; charging++) {
+            dana.tick(DeterministicSoldierTest.blocks((x, y, z) -> y < GROUND)); // charged again, no hostile near
+        }
         assertEquals(OptionalInt.of(1), dana.tick(withHostileAt(phantom, false)), "with nobody under it, she swings");
+        assertFalse(dana.takeKnockbackHit(), "with nobody under it, she swings - a full swing, its sweep hitting none of ours");
     }
 
     @Test
@@ -411,7 +456,8 @@ class DeterministicSoldierCombatTest {
             }
         };
 
-        assertEquals(OptionalInt.empty(), eli.tick(halInHisBoots), "Hal is in the sweep, a tenth of a block from Eli");
+        // In the sweep: struck, but never swept - a knockback hit (bot.Strike).
+        assertTrue(eli.tick(halInHisBoots).isPresent() && eli.takeKnockbackHit(), "Hal is in the sweep, a tenth of a block from Eli: a knockback hit, no sweep");
     }
 
     @Test

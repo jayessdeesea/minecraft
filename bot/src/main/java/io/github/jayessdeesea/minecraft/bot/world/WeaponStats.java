@@ -32,15 +32,6 @@ public final class WeaponStats {
         public int ticksToCharge() {
             return (int) Math.ceil(20 / attacksPerSecond);
         }
-
-        /**
-         * Ticks after a swing that the next is struck at to sweep nobody: a sword sweeps only past 0.9 of its charge
-         * (vanilla: charge = (ticks since the last + 0.5) over its cooldown), so at 0.85 at most - for a sword, 10 of its
-         * 13, at 0.84 and three quarters of the damage.
-         */
-        public int unsweptTicks() {
-            return (int) Math.floor(0.85 * 20 / attacksPerSecond - 0.5);
-        }
     }
 
     private static final Map<String, Stats> STATS = load();

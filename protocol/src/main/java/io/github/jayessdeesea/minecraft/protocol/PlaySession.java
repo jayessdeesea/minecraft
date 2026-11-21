@@ -49,6 +49,12 @@ public interface PlaySession {
     void attack(int entityId);
 
     /**
+     * Swings the arm with no hit: the server starts the attack's charge over ({@code handlePunch}) - a hit short of a
+     * sword's sweep after it, with a squadmate in its box (bot.Strike).
+     */
+    void swingArm();
+
+    /**
      * Runs a chat command as this player, without its leading slash (for example
      * {@code "me moving out"}). Which commands, and what they say, is the caller's business. The
      * server kicks for spam (roughly ten lines in quick succession), so callers send sparingly.

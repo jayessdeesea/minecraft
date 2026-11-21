@@ -5194,8 +5194,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .filter(st -> state.stairs == null || st.position().y() >= state.stairs.head().y() - MINE_BELOW)
                     // Nor a builder on the flatten, nor anyone on its ground: its trenches and steps wall a
                     // soldier in as a hut would, and a room read there is no base. Live, a builder on the
-                    // east bench at y=83 and the farm squad's soldier crossing the site were taken for shut
-                    // in; one boxed in is the recovery drill's.
+                    // east bench at y=83 and the farm squad's soldier crossing the site were taken for shut in; one boxed in is the recovery drill's.
                     // - while one's dug: with none, the site is the keep's ground round the camp, and the
                     // camp's own huts are what the check is for (SquadSimulationTest's camp on a slope).
                     .filter(st -> !keepHands.contains(st.name()) && (keepHands.isEmpty() || !chainOfCommand.flatten()
@@ -5522,13 +5521,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             // Where the stairs can be cut all the way down: the objective's x and z can be beside
             // water - live, the camp's mine stopped at its second step by a pond. Nowhere there is
-            // said once and looked for again a minute on: live, it was searched and said every
-            // second, 747 times, beside a flooded shaft.
+            // said once and looked for again a minute on: live, it was searched and said every second, 747 times, beside a flooded shaft.
             // The camp's mine, kept from before a restart, is cut on down wherever it was sited.
             // Its head on the camp's ground, not where a soldier stands: live, one standing down an
             // old shaft had a staircase sited from a step in it.
-            // Off the camp - the keep's mine - its head on the column's own surface: the point man may
-            // be anywhere at dusk, up a hill or down a pit.
+            // Off the camp - the keep's mine - its head on the column's own surface: the point man may be anywhere at dusk, up a hill or down a pit.
             // No surface read - the column not loaded - is no site yet, not the point man's height: live
             // (field334), with the squad down the old mine at y=-23, the new mine's head was sited there,
             // one step over its bottom, in the old one's tunnels.
@@ -5675,8 +5672,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Optional<Objective> secureTask = taskOf(squadName, Objective.Task.Secure.class);
         List<BlockPos> torchesLeft = secureTask.map(o -> {
             // Round the ground most of the camp stands on, as the wall and the foothold's measure are:
-            // live, the ground found from the objective's height was a hut roof, and SECURE reported
-            // done with 371 cells of the camp still dark.
+            // live, the ground found from the objective's height was a hut roof, and SECURE reported done with 371 cells of the camp still dark.
             // At the camp, the camp's own ground, as the foothold measures it: live, SECURE lit a disc
             // round the platoon leader's point, 3 blocks off the camp's centre and 2 above its ground, and
             // reported DONE for days with 8 of the camp's cells dark.
@@ -5764,8 +5760,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .or(() -> Optional.ofNullable(acrossSquads.get(soldierName)))
                     .ifPresentOrElse(t -> deliveries.put(soldierName, t), () -> deliveries.remove(soldierName));
             // The basic load - a weapon up to a stone sword - is the soldier's own to keep, out of
-            // contact; beyond it, the squad leader's leave. Live, 2 of 8 carried a stone sword or
-            // better for days, every rung waiting on "rearm".
+            // contact; beyond it, the squad leader's leave. Live, 2 of 8 carried a stone sword or better for days, every rung waiting on "rearm".
             rearmAllowed.put(soldierName, !squadInContact);
             upgradeAllowed.put(soldierName, order.rearm() && !squadInContact && !baseOrdered);
             stoneSetAside.put(soldierName, stoneShare);
@@ -5802,8 +5797,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // tended only under a FARM order, and the squads went hungry for hours with wheat to grow.
             // Half of it while the squad is RED or a soldier of it is hungry with nothing to eat; one
             // soldier - the first by roster - while it's merely short of rations (AMBER), so the farm
-            // is kept and the rest work: live, two squads AMBER on rations alone, every soldier fed,
-            // had half of each at the farm and the keep stood.
+            // is kept and the rest work: live, two squads AMBER on rations alone, every soldier fed, had half of each at the farm and the keep stood.
             boolean mustFeed = statuses.stream().anyMatch(s -> s.condition()
                     .map(c -> Subsistence.mustFeed(c.food(), c.kit().map(Kit::rations).orElse(0))).orElse(false));
             // Not while the squad carries enough between them: a hand-over feeds the short one in
@@ -5815,8 +5809,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             boolean shortSquad = state.classOne != null && state.classOne.rating() != Subsistence.Rating.GREEN && !canShare;
             boolean farmDay = !chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
             // Every other soldier by its place in the squad's roster, not in this cycle's reports:
-            // live, their order changed cycle to cycle, and a farmer was taken off its harvest every
-            // few seconds and never reached it.
+            // live, their order changed cycle to cycle, and a farmer was taken off its harvest every few seconds and never reached it.
             int rosterPlace = statuses.stream().map(SoldierStatus::name).sorted().toList().indexOf(soldierName);
             // As the platoon sergeant sets it, by the squad's Class I and the force's rations.
             PlatoonSergeant.Farmers feeding = PlatoonSergeant.farmers(hungrySquad, shortSquad, Optional.ofNullable(rationsSupply));
@@ -6969,9 +6962,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             soldier.tick(world).ifPresent(target -> {
                 LOG.info("{} attacks entity {}", name, target);
+                if (soldier.takeKnockbackHit()) { // its sprint before the hit, not after; the server stops it with the hit (Strike)
+                    session.setSprinting(true);
+                    sprintingSent.set(false);
+                }
                 session.attack(target);
                 foodLedger.attack(name);
             });
+            if (soldier.takeArmSwing()) {
+                session.swingArm(); // the charge started over, for a hit short of the sweep (Strike)
+            }
             // A cell it's been stuck short of three times is a block the server has and the
             // model doesn't: taken as stone until the server says otherwise - a dig timed for stone
             // outwaits anything softer - so the next plan goes round it; and it's broken straight

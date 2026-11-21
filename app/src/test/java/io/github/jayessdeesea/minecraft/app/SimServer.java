@@ -755,6 +755,7 @@ final class SimServer {
         @Override
         public void setSprinting(boolean sprinting) {
         }
+        @Override public void swingArm() { } // the charge started over: the simulation keeps no charge
 
         @Override
         public void quickMove(int window, int stateId, int slot) {
