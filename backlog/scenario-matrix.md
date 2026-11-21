@@ -32,7 +32,11 @@ it's kited at 7.5 for as long as it follows, so the soldier neither works nor ki
 bare hands against a pillager away from trees: it follows to 32, so a flight that breaks contact runs 36 or more,
 and the matrix's world - a box 48 out from the start - corners it first; fled to 36, the cells went from none to a
 third on hills and in a pond, none on flat ground. A wider world for long flights, or the soldier's own answer
-(a bow, a weapon made), is what's left.
+(a bow, a weapon made), is what's left. And squadmates: the battle simulation fights one soldier, so a squad's
+melee isn't in it - live (field584) four swordsmen packed in one cell of a slot each held fire for the others'
+sake (the sweep), and a zombie killed two; fixed as a unit case (`DeterministicSoldierCombatTest`, struck short
+of full charge), but a matrix cell of a squad crowded round one hostile, in a slot and in the open, is what would
+hold it.
 
 ## Done when
 The live tier has a harness (`app`'s `ChainScenarioLiveIT`, DEVELOPMENT.md § 2) and seven
