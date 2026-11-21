@@ -56,6 +56,13 @@ off costs less than finishing: out of contact, shelter, eat - 1.6 s an item - an
 (healed past its line, the hostile still in the way of the work or the squad), and **decline** (not prepared - no weapon,
 no armour, ground unsafe - said up the chain, not fought).
 
+Built: `bot.Engagement`'s exchange - time to kill against time to die, armour as the server cuts a blow, a fight begun
+finished while it outlasts the kill - deciding whether an archer out of reach is closed on, in place of a health line.
+Left: the other branches on it (hand to hand, creepers, several hostiles at once, the bow); withdraw's eat-and-heal and
+re-engage; the battle simulation's regeneration (saturated: up to 1 health a 0.5 s; at 18 food 1 a 4 s), eating time and
+armour wear (a piece loses max(1, damage/4) a hit), all read from the pinned server; the matrix grown by starting
+health, armour and terrain.
+
 **Deaths as a check on the model, not a case each.** Each death is read for what the evals lack - is that dimension
 (the armour's wear, water, a shaft, eating time, regeneration) in the battle simulation at all? - and the missing
 dimension is what's added, the matrix grown by it, not a scenario to pass. Not every battle is won: the measure is the

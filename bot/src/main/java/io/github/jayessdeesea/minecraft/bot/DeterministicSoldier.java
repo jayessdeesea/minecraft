@@ -603,14 +603,14 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 // from, it held soldiers off their work (operator, 2026-11-20).
                 response = "carries on: an archer out of contact, not shooting, with no way to close on it";
                 navigate(world);
-            // Too hurt to close on one met with two shots' worth of health or less: the shots taken crossing to it outlast it.
-            // Live (field611), Eli at 0.6 health closed on a skeleton 6.4 off across level ground and was shot dead. Met
-            // healthier, the fight's finished: broken off once hurt - at HURT_HEALTH, or at this - soldiers were shot running,
-            // four cells of the combat matrix lost and the water scenarios' wading soldiers killed.
-            } else if (nearest.shoots() && (!armedForMelee() || metAtHealth <= ARCHER_CLOSE_HEALTH && range > ATTACK_REACH
+            // Not closed on when the exchange is lost (Engagement): its shots crossing to it and while it's struck down outlast
+            // the soldier. Live (field611), Eli at 0.6 health closed on a skeleton 6.4 off across level ground and was shot
+            // dead. A fight begun is finished while it outlasts the kill: broken off at a health line, soldiers were shot
+            // running - four cells of the combat matrix lost, the water scenarios' wading soldiers killed.
+            } else if (nearest.shoots() && (!armedForMelee() || range > ATTACK_REACH && archerExchange(range) != Engagement.Kind.ENGAGE
                     || threat.y() < gait.position.y() - ARCHER_BELOW || pinned(world, threat))) {
                 response = !armedForMelee() ? "takes cover: an archer, and no melee weapon"
-                        : metAtHealth <= ARCHER_CLOSE_HEALTH && range > ATTACK_REACH ? "takes cover: an archer, too hurt to close on it"
+                        : range > ATTACK_REACH && archerExchange(range) != Engagement.Kind.ENGAGE ? "takes cover: an archer, the exchange lost"
                         : threat.y() < gait.position.y() - ARCHER_BELOW ? "takes cover: an archer " + ARCHER_BELOW + " or more below"
                         : "takes cover: an archer with no route to strike it from";
                 // An archer out-fights a bare hand from any range, and a sword it can't be closed on:
@@ -730,8 +730,23 @@ public final class DeterministicSoldier extends Mover implements Soldier {
      * on", and was shot dead.
      */
     static final double HURT_HEALTH = 10;
-    /** At or under this health when met, an archer out of reach isn't closed on, whatever it carries: two of its shots' worth. */
-    static final double ARCHER_CLOSE_HEALTH = 6;
+    /** An archer's shot as the exchange reckons it, and its shots a second: a skeleton's bow, 3 to 5 every 2 s. */
+    static final double ARCHER_SHOT = 4;
+    static final double ARCHER_SHOTS_A_SECOND = 0.5;
+    /** Armour points a piece worn, as the kit counts pieces: between leather's and iron's. */
+    static final double ARMOUR_A_PIECE = 2.5;
+    /** How far a soldier breaking off from an archer goes to be clear of its shots: its bow's range. */
+    static final double ARCHER_CLEAR = 15;
+
+    /** The exchange with an archer {@code range} off: closing on it, as the soldier stands now (Engagement). */
+    private Engagement.Kind archerExchange(double range) {
+        Kit carried = kit;
+        WeaponStats.Stats held = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon());
+        double armour = carried == null ? 0 : carried.armour() * ARMOUR_A_PIECE;
+        Engagement.Soldier me = new Engagement.Soldier(Math.max(0, lastReportedHealth), armour, 0, held.damage(), held.attacksPerSecond(), ATTACK_REACH);
+        Engagement.Hostile it = new Engagement.Hostile(20, ARCHER_SHOT, ARCHER_SHOTS_A_SECOND, ARCHER_CLEAR, range);
+        return Engagement.choose(me, it, lastReportedHealth < metAtHealth, Math.max(0, ARCHER_CLEAR - range));
+    }
     /** The health it had when it met the hostile it's in contact with now. */
     private double metAtHealth = Double.MAX_VALUE;
 
