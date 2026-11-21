@@ -598,7 +598,8 @@ public final class Farmer {
             }
             // Said when why changes: live (field570) a chunk farm's 92 blocks of earthwork stood a whole day, its
             // farmer at its other work, and nothing said why none was taken.
-            String why = earthwork.size() + " blocks of the farm's earthwork, none taken: " + unburier.idleReason().orElse("its clearer resting");
+            String why = earthwork.size() + " blocks of the farm's earthwork, none taken: " + unburier.idleReason().orElse("its clearer resting")
+                    + " - the first at " + earthwork.getFirst();
             if (!why.equals(earthworkSaid)) {
                 LOG.info("{} - {}", name, why);
                 earthworkSaid = why;
