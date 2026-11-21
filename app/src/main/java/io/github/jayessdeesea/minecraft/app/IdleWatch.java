@@ -69,6 +69,12 @@ final class IdleWatch {
                 && Math.abs(m.y() - at.y()) <= m.verticalTolerance() + 1;
     }
 
+    /** How long {@code soldier} has stood still at {@code now}: 0 while it rests, or before its first update. */
+    synchronized long stillFor(String soldier, long now) {
+        Spell spell = spells.get(soldier);
+        return spell == null ? 0 : now - spell.since();
+    }
+
     /** Whether {@code soldier} has stood still long enough for the alert, and hasn't moved on since. */
     synchronized boolean alarmed(String soldier) {
         Spell spell = spells.get(soldier);

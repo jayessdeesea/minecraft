@@ -224,7 +224,9 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 
 The log lines to read first: `[Casualty]`, each death with the soldier's last seconds (§ 6); `[Contact]`,
 each contact's hostiles, the soldier's kit and the rule that chose its response (§ 8);
-`[Alert]`, a soldier stuck in place for a minute other than while its squad hides or sleeps (§ 3); `[AAR]`, each dawn's review of the
+`[Alert]`, a soldier stuck in place for a minute other than while its squad hides or sleeps (§ 3); `[Idle]`, every ten
+minutes the soldier-seconds stood doing nothing past a 10 s pause - under orders, the soldiers' (named), and without
+work while the squad has a task, the chain of command's (by squad; `app.StoodStill`); `[AAR]`, each dawn's review of the
 day before (§ 17); `[Scoreboard]`, that day's score beside the day before's; and `[Ledger]`, every ten minutes
 what each kind of act was planned to take against what it took - a route's ticks a step planned; a farmer's crop-ticks a crop - each ripe crop of its plot a tick, over those brought in:
 how long one stands ripe - and cell-ticks a cell sown, each bare cell a tick while it carries seeds - the same line the

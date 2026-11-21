@@ -7817,6 +7817,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // And holding where sent by day with work to be had: without work, the squad leader's to give it.
                 withoutWork.update(name, status.position(), clockwork.millis(), !IdleWatch.withoutWork(resting, objectiveOf(unitOf(name, definition.squad())), below != null),
                         () -> "order " + status.order() + ", report " + status.report()).ifPresent(line -> LOG.warn("[Alert] {}", line));
+                afterActionReview.stoodStill.second(name, unitOf(name, definition.squad()), hands.isEmpty() && !(status.report() instanceof Report.InContact)
+                        ? idleWatch.stillFor(name, clockwork.millis()) : 0, withoutWork.stillFor(name, clockwork.millis()), clockwork.millis())
+                        .ifPresent(line -> LOG.info("[Idle] {}", line)); // stood doing nothing: the soldier's, or its chain of command's
                 // And on top of another soldier, moving or not (CrowdWatch) - looked at once a second.
                 Map<String, Position> everyone = new HashMap<>();
                 if (crowdTicks.getAndIncrement() % 20 == 0) {
