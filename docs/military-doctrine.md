@@ -634,14 +634,14 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   does, a skeleton 16, a pillager 32 - each cell held to what correct is there -
   never killed; never in a creeper's blast; armed against a zombie, it's killed; bare-handed, alive however it
   gets away - at 90% of its seeds, and printed as one table. Cells short of it are listed known, and come off
-  with their fix. Short now: the creeper cells (42% on flat ground and among trees, none on hills, 8% in a pond), bare
-  hands against a pillager away from trees (it follows past the flight's 20), and a wooden sword or a sword and
-  shield against a pillager on hills (2 of 12 killed). An archer is closed on straight while that gains ground, and
+  with their fix. A fight's world goes on past the scenario's box (`SyntheticWorld.open`): a closed box's wall at 48
+  cornered flights the open live world wouldn't. Short now: the creeper on hills (83%) and in a pond (17%), where a
+  sprint doesn't get clear, and a wooden sword or a sword and shield against a pillager on hills (2 of 12 killed). An archer is closed on straight while that gains ground, and
   by the walk to it - round a drop, down a ramp - once a step at it gains none (live, field597, Alice stood 46 s on a
   ledge 4 over a skeleton, stepping at the drop, and was shot dead); with no walk to it at all - a route only by
   building or digging - it's pinned, and taken cover from. Two at once (`CombatPairsMatrixTest`, correct: alive):
-  short now a creeper with a zombie, bare-handed (75% flat, 33% on hills) and on hills armed (75%), and a zombie with
-  a skeleton on hills armed (83%); a creeper with a skeleton comes through.
+  short now, on hills, a creeper with a zombie (83%, bare-handed or armed) and a zombie with a skeleton, armed
+  (83%); a creeper with a skeleton comes through.
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the
   response changes, each hostile's type, place, distance, height off the soldier and whether it's in water;
   the soldier's health and kit; and the rule that chose the response - fights, shoots, takes cover (and why),

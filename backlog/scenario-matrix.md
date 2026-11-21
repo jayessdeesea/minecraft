@@ -26,17 +26,13 @@ A regression in one of those shows up only if someone happens to run that case b
 
 Built offline for combat: `CombatMatrixTest` (hostile x kit x ground, docs/military-doctrine.md § 8), its
 cells short of correct listed known; and `CombatPairsMatrixTest`, two hostiles at once (correct: alive), its short
-cells known - a creeper with a zombie bare-handed and on hills, a zombie with a skeleton on hills. Traced, the
-creeper and zombie bare-handed on hills: the blast catches the soldier for 8-15 health and the zombie finishes it,
-and of the dead half are cornered at the world's edge (x or z at 47.7 of the box's 48) - the same box that corners
-a flight from a pillager, so a wider world comes before reading these cells as the soldier's. Left there: the
-bow (not in the battle simulation's fights), slopes and caves as grounds, and each known cell's fix - among them the creeper: got clear of,
-it's kited at 7.5 for as long as it follows, so the soldier neither works nor kills it; a drill that kills one
-(a bow, or a blow before it lights) is what's left, with water and hills where a sprint doesn't get clear. And
-bare hands against a pillager away from trees: it follows to 32, so a flight that breaks contact runs 36 or more,
-and the matrix's world - a box 48 out from the start - corners it first; fled to 36, the cells went from none to a
-third on hills and in a pond, none on flat ground. A wider world for long flights, or the soldier's own answer
-(a bow, a weapon made), is what's left. And squadmates: the battle simulation fights one soldier, so a squad's
+cells known - on hills a creeper with a zombie, bare-handed or armed, and a zombie with a skeleton armed. A fight's
+world is open past its generated box (`SyntheticWorld.open`: the ground goes on at the edge's height), since a
+closed box's wall at 48 cornered flights that the open live world wouldn't. Left there: the bow (not in the battle
+simulation's fights), slopes and caves as grounds, and each known cell's fix - the creeper on hills and in a pond,
+where a sprint doesn't get clear (83% and 17%); a pillager on hills with a wooden sword or a sword and shield; and
+the creeper's drill that kills one (a bow, or a blow before it lights), as got clear of it's kited at 7.5 for as
+long as it follows, so the soldier neither works nor kills it. And squadmates: the battle simulation fights one soldier, so a squad's
 melee isn't in it - live (field584) four swordsmen packed in one cell of a slot each held fire for the others'
 sake (the sweep), and a zombie killed two; fixed as a unit case (`DeterministicSoldierCombatTest`, struck short
 of full charge), but a matrix cell of a squad crowded round one hostile, in a slot and in the open, is what would

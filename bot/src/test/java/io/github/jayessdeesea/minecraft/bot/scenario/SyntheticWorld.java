@@ -44,7 +44,19 @@ public final class SyntheticWorld implements WorldView {
 
     /** The y of the top solid block of the ground column - a soldier stands at {@code ground + 1}. */
     public int ground(int x, int z) {
-        return ground[x - MIN][z - MIN];
+        return ground[Math.clamp(x, MIN, MAX) - MIN][Math.clamp(z, MIN, MAX) - MIN];
+    }
+
+    /**
+     * How far past the generated box the ground goes on, at the height of the box's edge beside it - none, a closed
+     * box. A flight in the combat evals ran into the box's wall at 48 and was cornered there (backlog/scenario-matrix.md:
+     * the pairs' creeper and zombie, a pillager's 32-block follow), where the open live world corners nothing.
+     */
+    private int open;
+
+    /** Opens the box: the ground goes on {@code beyond} blocks past its edge, flat at the edge's height. */
+    void open(int beyond) {
+        this.open = beyond;
     }
 
     void setGround(int x, int z, int y) {
@@ -91,7 +103,7 @@ public final class SyntheticWorld implements WorldView {
     @Override
     public boolean isSolid(int x, int y, int z) {
         if (!inBounds(x, z)) {
-            return true;
+            return open == 0 || x < MIN - open || x > MAX + open || z < MIN - open || z > MAX + open || y <= ground(x, z);
         }
         return y <= ground(x, z) && !dug.contains(new BlockPos(x, y, z)) || solids.contains(new BlockPos(x, y, z));
     }

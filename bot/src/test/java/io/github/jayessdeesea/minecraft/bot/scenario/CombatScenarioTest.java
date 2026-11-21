@@ -228,6 +228,8 @@ class CombatScenarioTest {
 
     /** Water this far round the soldier's start, {@link #MOAT_WIDTH} wide: a hostile beyond it can't be closed on. */
     static final int MOAT_RADIUS = 6;
+    /** How far past the generated box a fight's ground goes on (SyntheticWorld#open). */
+    static final int OPEN = 112;
     static final int MOAT_WIDTH = 4;
 
     /** An armed soldier against a skeleton it can't reach - across water - among trees and in the open. */
@@ -251,6 +253,7 @@ class CombatScenarioTest {
     static Fight fight(Battle.Archetype archetype, long seed, Optional<String> weapon, Terrain terrain, Armour armour, boolean shield,
                        boolean moat) {
         Scenario scenario = Scenario.generate(terrain, seed);
+        scenario.world().open(OPEN); // no wall at 48 to corner a flight
         Battle battle = new Battle(scenario.world(), seed);
         // Start mid-map: the synthetic world is a closed box, and a retreat that backs into its
         // edge is cornered in a way the open live world wouldn't corner it.

@@ -45,7 +45,6 @@ class CombatPairsMatrixTest {
 
     /** Cells that don't pass yet, as "pair/kit/ground". */
     static final Set<String> KNOWN = Set.of(
-            "creeper+zombie/bare hands/flat",
             "creeper+zombie/bare hands/hills",
             "creeper+zombie/stone sword/hills",
             "zombie+skeleton/stone sword/hills");
@@ -53,6 +52,7 @@ class CombatPairsMatrixTest {
     /** Whether the soldier came through alive, against {@code pair} with {@code kit} on {@code ground}. */
     static boolean survives(List<Battle.Archetype> pair, long seed, CombatMatrixTest.KitCase kit, Terrain ground) {
         Scenario scenario = Scenario.generate(ground, seed);
+        scenario.world().open(CombatScenarioTest.OPEN); // no wall at 48 to corner a flight
         Battle battle = new Battle(scenario.world(), seed);
         BlockPos start = new BlockPos(0, scenario.world().ground(0, 0) + 1, 0);
         scenario.world().clearAbove(0, 0);
