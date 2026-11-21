@@ -26,7 +26,9 @@ A regression in one of those shows up only if someone happens to run that case b
 
 Built offline for combat: `CombatMatrixTest` (hostile x kit x ground, docs/military-doctrine.md § 8), its
 cells short of correct listed known. Left there: the bow (not in the battle simulation's fights), several
-hostiles at once, slopes and caves as grounds, and each known cell's fix.
+hostiles at once, slopes and caves as grounds, and each known cell's fix - among them the creeper: got clear of,
+it's kited at 7.5 for as long as it follows, so the soldier neither works nor kills it; a drill that kills one
+(a bow, or a blow before it lights) is what's left, with water and hills where a sprint doesn't get clear.
 
 ## Done when
 The live tier has a harness (`app`'s `ChainScenarioLiveIT`, DEVELOPMENT.md § 2) and seven

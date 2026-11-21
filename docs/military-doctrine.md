@@ -591,6 +591,12 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   night for two iron ingots in a depot 80 blocks off).
 - **Never through a squadmate.** An arrow waits while another player stands within 1.2 of its line to
   the mark (`Ballistics.inTheLine`): live (field463), Ned was killed by Alice's arrow at a mob beyond him.
+- **A creeper is got clear of at a sprint, past where its fuse goes out** - 7.5 off, not the 4.5 of where it
+  lights: a creeper walks faster than a soldier backs off at a walk, and a lit one stands while it swells, so a
+  sprint of its 1.5-second fuse outruns the blast (`DeterministicSoldier.CREEPER_DEFUSE`) - once it's come within
+  4.5, where one lights; one never come that close is gone round, the route kept. Held within reach ten seconds
+  all the same - followed down a tunnel - it's closed on. A soldier afloat can't sprint, so in water
+  it doesn't get clear (the matrix's pond cells); and one followed keeps getting clear rather than working.
 - **A soldier with a bow shoots far-away enemies** (operator, 2026-11-18) - a creeper too, from outside its
   blast (past `DeterministicSoldier.CREEPER_CLEAR`); one at arm's length is still got away from. Live, six
   soldiers were killed by creepers in melee in a few nights.
@@ -610,7 +616,8 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   shield, sword and iron) and the ground (flat, hills, forest, pond), each cell held to what correct is there -
   never killed; never in a creeper's blast; armed against a zombie, it's killed; bare-handed, alive however it
   gets away - at 90% of its seeds, and printed as one table. Cells short of it are listed known, and come off
-  with their fix. Short now: every creeper cell (it's not got clear of the blast), bare hands against an archer
+  with their fix. Short now: the creeper cells (42% on flat ground and among trees, none on hills, 8% in a pond), bare
+  hands against an archer
   (killed in the open), and an armed soldier against a skeleton on hills or a pillager among trees (2 of 12 killed).
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the
   response changes, each hostile's type, place, distance, height off the soldier and whether it's in water;

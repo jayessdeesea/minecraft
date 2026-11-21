@@ -467,7 +467,13 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             if (shot) {
                 holdCoverTicks = 0;
                 response = "shoots";
-            } else if (nearest.explodes() && range > CREEPER_CLEAR) {
+            } else if (nearest.explodes() && (range > CREEPER_DEFUSE || range > CREEPER_CLEAR && clearingFrom != nearest.entityId())) {
+                // Getting clear of one it came within lighting distance of goes on past where its fuse goes out; one
+                // never come that close is gone round, the route kept.
+                creeperStandoff = 0;
+                if (range > CREEPER_DEFUSE) {
+                    clearingFrom = -1;
+                }
                 // In contact with a creeper well outside its blast: it carries on with its order, keeping
                 // its route - a soldier never closes on one, so one that doesn't come on held it standing
                 // for good. Live, three of a squad stood hours in a cave 5 to 8 blocks from creepers that
@@ -486,6 +492,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 // keeps the distance - is engaged once the standoff has gone on (the engagement
                 // doctrine: both can reach, blocking the path): live (field320), a miner stood a minute
                 // 2.9 blocks from one in a one-wide tunnel.
+                clearingFrom = nearest.entityId();
                 creeperStandoff = nearest.entityId() == standoffWith ? creeperStandoff + 1 : 1;
                 standoffWith = nearest.entityId();
                 boolean engage = creeperStandoff > CREEPER_STANDOFF_TICKS;
@@ -585,8 +592,17 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     private int creeperStandoff;
     private int standoffWith = -1;
 
-    /** How far off a creeper stops being contact for a soldier with no bow: past its blast. */
+    /** How far off a creeper is shot at by a soldier with a bow: outside where it lights. */
     static final double CREEPER_CLEAR = 4.5;
+    /**
+     * How far off a creeper stops being contact: past where its fuse, once lit, goes out - 7 in vanilla - so a lit one
+     * is never left burning within the 6 of its blast. In the combat eval matrix every creeper fight blew with the
+     * soldier at 4.5-6, backed off only that far and gone back to its order; live (field554), 367 contacts in an hour
+     * got clear only to step back in.
+     */
+    static final double CREEPER_DEFUSE = 7.5;
+    /** The creeper it's getting clear of, once come within {@link #CREEPER_CLEAR} of it - till past {@link #CREEPER_DEFUSE}. */
+    private int clearingFrom = -1;
 
     /** Whether the last walk-only check found no way to the hostile, and ticks until the next. */
     private boolean noWalk;
@@ -749,11 +765,15 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         Position start = snapshot.position();
         boolean startGround = snapshot.onGround();
         double from = Math.hypot(start.x() - threat.x(), start.z() - threat.z());
+        // At a sprint where it can: a creeper walks faster than a soldier backs off at a walk. In the combat eval matrix
+        // every one closed from 7 to 3 on a soldier backing away, lit, and blew.
+        sprinting = canSprint();
+        double pace = sprinting ? SPRINT_STEP : STEP;
         double bestGain = 1e-6;
         int best = Integer.MIN_VALUE;
         for (int heading : EVASION_HEADINGS) {
             double angle = away + Math.toRadians(heading);
-            stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2);
+            stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2, pace);
             boolean dropsOff = !gait.position.equals(start) && overDrop(world, gait.position);
             // A jump started counts as a little ground gained: it lands farther on next tick.
             double gain = Math.hypot(gait.position.x() - threat.x(), gait.position.z() - threat.z()) - from
@@ -768,7 +788,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             return false;
         }
         double angle = away + Math.toRadians(best);
-        stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2);
+        stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2, pace);
         return true;
     }
 }
