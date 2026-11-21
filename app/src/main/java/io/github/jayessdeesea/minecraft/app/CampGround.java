@@ -105,6 +105,17 @@ final class CampGround {
                 .orElse(b -> false);
     }
 
+    /** Under this far below sea level a soldier is below ground: the mine's, a cave's. */
+    static final int BELOW_GROUND = 8;
+
+    /** Which of the force's areas {@code at} is in: below ground, the camp's ground ({@link #held}), or beyond it. */
+    static String area(io.github.jayessdeesea.minecraft.command.Position at, java.util.Optional<io.github.jayessdeesea.minecraft.command.Position> camp, int wall) {
+        if (at.y() < SoldierRunner.SEA_LEVEL - BELOW_GROUND) {
+            return "below ground";
+        }
+        return held(camp, wall).test(BlockPos.containing(at.x(), at.y(), at.z())) ? "the camp's ground" : "beyond the camp's ground";
+    }
+
     /** Column ({@code x}, {@code z}) of {@code dig} kept: its whole height past {@code inner}, inside it only {@code ground} and the cell over it. */
     private static void keep(Set<Cell> kept, Box dig, Box inner, int x, int z, int ground) {
         if (x < dig.minX() || x > dig.maxX() || z < dig.minZ() || z > dig.maxZ()) {

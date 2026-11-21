@@ -6765,7 +6765,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     Optional.ofNullable(activeSoldiers.get(name)).ifPresent(s -> worldRecords.recordDeath(chunkCache::stateIdAt, s.status(), clockwork.millis())); // a death's ground, its eval
                     afterActionReview.death(name, cause);
                     afterActionReview.commands.casualty(squadTask(unitOf(name, definition.squad())), Optional.ofNullable(activeSoldiers.get(name))
-                            .map(s -> s.status().order().getClass().getSimpleName()).orElse("none"));
+                            .map(s -> s.status().order().getClass().getSimpleName()).orElse("none"), Optional.ofNullable(activeSoldiers.get(name))
+                            .map(s -> CampGround.area(s.status().position(), chainOfCommand.foothold().map(Foothold::camp), WALL_RADIUS)).orElse(null));
                     LOG.warn("[Casualty] since the app started: {}", casualties);
                 }, cause -> onDisconnected(definition, activeScheduler, cause)));
         joined.thenAccept(sessionReady::complete);
@@ -7790,7 +7791,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         || status.report() instanceof Report.InPosition)
                         && IdleWatch.holdingWhereSent(status.order(), status.position())
                         || below != null && status.position().y() < below - MINE_BELOW;
-                afterActionReview.commands.sample(squadTask(unitOf(name, definition.squad())), status.order().getClass().getSimpleName(), status.report());
+                afterActionReview.commands.sample(squadTask(unitOf(name, definition.squad())), status.order().getClass().getSimpleName(), status.report(),
+                        CampGround.area(status.position(), chainOfCommand.foothold().map(Foothold::camp), WALL_RADIUS));
                 idleWatch.update(name, status.position(), clockwork.millis(), resting, () -> "report " + status.report()
                         + ", order " + status.order() + ", hands " + hands.map(Enum::name).orElse("free")
                         // What holds routines back with free hands: food first, and the work it was handed.

@@ -2198,9 +2198,11 @@ It ends with the commands' scorecard (`app.CommandScorecard`). Each soldier is s
 second, and each kind of command is scored by how its soldiers spent their time: each task the
 platoon leader gave (FORTIFY, MINE ...), and each kind of order a soldier carried (`MoveTo`, `Place`).
 The score is soldier-minutes, the share of them under each report, the most frequent CANTCO
-reasons, and the deaths. Places and numbers are taken out of a reason, so the same failure counts
-as one. A command that doesn't work shows as a large share of CANTCO, or of `InPosition` while
-there's work left.
+reasons, and the deaths - with their rate a soldier-hour. Places and numbers are taken out of a reason, so the same
+failure counts as one. A command that doesn't work shows as a large share of CANTCO, or of `InPosition` while
+there's work left. The same score by area too - the camp's ground (32 blocks out past its wall line), below ground
+(8 under sea level), beyond (`CampGround.area`): what each costs in deaths a soldier-hour beside the time spent there,
+the price of holding it (operator, 2026-11-21: win the war, not every battle; backlog/sites.md, losses priced in).
 
 ## 18. Task organisation
 

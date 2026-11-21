@@ -17,6 +17,9 @@ import java.util.stream.Collectors;
  * (the platoon leader's command) and the order it carries (its own), with what it reports. A task's
  * share of soldier-time spent unable (CANTCO) or standing about is what a command that doesn't
  * work looks like - live, a wall left with 39 open cells while its masons stood holding blocks.
+ * And by area - the camp's ground, below ground, beyond - each with its losses a soldier-hour beside the
+ * time spent there (operator, 2026-11-21: win the war, not every battle - an activity's and an area's
+ * loss rate weighed against what it yields; backlog/sites.md, losses priced in).
  * Pure: samples in, the review out, and the tally starts again.
  */
 final class CommandScorecard {
@@ -41,17 +44,34 @@ final class CommandScorecard {
 
     private final Map<String, Tally> tasks = new TreeMap<>();
     private final Map<String, Tally> orders = new TreeMap<>();
+    private final Map<String, Tally> areas = new TreeMap<>();
 
     /** One second of a soldier: its squad's {@code task}, its {@code order}'s kind, and its {@code report}. */
     synchronized void sample(String task, String order, Report report) {
+        sample(task, order, report, null);
+    }
+
+    /** As {@link #sample(String, String, Report)}, the soldier in {@code area} - none counted with none given. */
+    synchronized void sample(String task, String order, Report report, String area) {
         tasks.computeIfAbsent(task, t -> new Tally()).add(report);
         orders.computeIfAbsent(order, o -> new Tally()).add(report);
+        if (area != null) {
+            areas.computeIfAbsent(area, a -> new Tally()).add(report);
+        }
     }
 
     /** A soldier died with its squad on {@code task}, carrying an order of kind {@code order}. */
     synchronized void casualty(String task, String order) {
+        casualty(task, order, null);
+    }
+
+    /** As {@link #casualty(String, String)}, in {@code area}. */
+    synchronized void casualty(String task, String order, String area) {
         tasks.computeIfAbsent(task, t -> new Tally()).casualties++;
         orders.computeIfAbsent(order, o -> new Tally()).casualties++;
+        if (area != null) {
+            areas.computeIfAbsent(area, a -> new Tally()).casualties++;
+        }
     }
 
     /**
@@ -74,8 +94,10 @@ final class CommandScorecard {
         lines.add("commands, by soldier-minutes and what the soldiers reported:");
         tasks.forEach((kind, tally) -> lines.addAll(lines("task " + kind, tally)));
         orders.forEach((kind, tally) -> lines.addAll(lines("order " + kind, tally)));
+        areas.forEach((kind, tally) -> lines.addAll(lines("area " + kind, tally)));
         tasks.clear();
         orders.clear();
+        areas.clear();
         return List.copyOf(lines);
     }
 
@@ -86,7 +108,8 @@ final class CommandScorecard {
                 .map(e -> e.getKey() + " " + Math.round(100.0 * e.getValue() / tally.seconds) + "%")
                 .collect(Collectors.joining(", "));
         lines.add("  " + what + ": " + String.format(Locale.ROOT, "%.0f", tally.seconds / 60.0) + " min - " + shares
-                + (tally.casualties > 0 ? "; " + tally.casualties + " killed" : ""));
+                + (tally.casualties > 0 ? "; " + tally.casualties + " killed" + (tally.seconds == 0 ? ""
+                : String.format(Locale.ROOT, ", %.1f a soldier-hour", tally.casualties * 3600.0 / tally.seconds)) : ""));
         tally.cantco.entrySet().stream().sorted(Map.Entry.<String, Integer>comparingByValue().reversed()
                         .thenComparing(Map.Entry.comparingByKey(Comparator.naturalOrder())))
                 .limit(REASONS_LISTED)
