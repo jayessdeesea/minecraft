@@ -580,9 +580,12 @@ abstract class Mover {
             lastPartialPlanFrom = gait.position;
         }
         report = failedPlans >= CANTCO_AFTER_FAILED_PLANS
+                // Each end named by its block, not its centre rounded: (23.5, 65, 87.5) printed "%.0f" read
+                // as (24, 65, 88), the block beside it - and live, the wrong blocks were probed for why.
                 ? new Report.Cantco(String.format(Locale.ROOT,
-                        "no route from (%.0f, %.0f, %.0f) to within %.0f of (%.0f, %.0f, %.0f)",
-                        gait.position.x(), gait.position.y(), gait.position.z(), goal.horizontalTolerance(), goal.x(), goal.y(), goal.z())
+                        "no route from (%d, %d, %d) to within %.0f of (%d, %d, %d)",
+                        (int) Math.floor(gait.position.x()), (int) Math.floor(gait.position.y()), (int) Math.floor(gait.position.z()),
+                        goal.horizontalTolerance(), (int) Math.floor(goal.x()), (int) Math.floor(goal.y()), (int) Math.floor(goal.z()))
                         + priceOfARiskierRoute(world, plan))
                 : new Report.Moving();
     }

@@ -49,6 +49,43 @@ class ClearerTest {
     private final PlaySession session = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(),
             new Class<?>[]{PlaySession.class}, (proxy, method, args) -> null);
 
+    /**
+     * A stand is somewhere a walk can end now: open, on solid ground - not a cell inside a bank that a step cut on the
+     * way would open. Live (field549-550) farmers were sent to stands inside blocks and under a pond, and each walk
+     * there had no route.
+     */
+    @Test
+    void aCutsStandIsOpenGroundNow() {
+        WorldView bank = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return isSoil(x, y, z);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                // A bank of soil two high from x=1 on, and a mound on its top at x=3.
+                return y <= GROUND || x >= 1 && y <= GROUND + 2 || x == 3 && y == GROUND + 3 && z == 0;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Clearer clearer = new Clearer("Carol", session, new Inventory(), new HashSet<>());
+        clearer.tick(new Position(0.5, GROUND + 1, 0.5), bank, List.of(new BlockPos(3, GROUND + 3, 0)), true);
+
+        Position stand = clearer.standAt().orElseThrow(() -> new AssertionError("no cut: " + clearer.idle()));
+        BlockPos cell = BlockPos.containing(stand.x(), stand.y(), stand.z());
+        assertTrue(io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.standable(bank, cell), "a stand inside the bank: " + cell);
+    }
+
     /** A cut whose stand has no route is passed over, and the next tick takes another, not the same one again. */
     @Test
     void aCutWithNoRouteToItsStandIsPassedOver() {
