@@ -37,6 +37,16 @@ Questions it can answer:
 - What does a commander have to be shown, computed, to choose well among missions?
 - Where does a force overextend, and what gate, pause and fallback keep it within its supply?
 
+> A good martial artist does not become tense, but ready. Not thinking, yet not dreaming. Ready for
+> whatever may come. When the opponent expands, I contract; and when he contracts, I expand. And when
+> there is an opportunity, 'I' do not hit, 'it' hits all by itself. - Bruce Lee, *Enter the Dragon*
+
+The force is meant to grow like that: ready, not tense. Its area of control expands where what the ground
+yields outruns what holding it costs, and contracts where the price rises. It doesn't try to win every fight;
+it wants to win the war. Expanding and contracting are a reflex of state the force measures - stocks, losses,
+yield - not a decision forced under pressure. And the reflex is the soldiers' standing procedures, acting in
+every tick without asking a model. The commander's judgement is kept for what no procedure covers.
+
 Every order, acknowledgement and report is logged as a radio net (`[PL -> Alpha] OPORD`,
 `[Bravo -> PL] CANTCO`). The squad leader and the platoon leader each have a repeatable evaluation
 of their decisions, and whole-chain scenarios run the full hierarchy against the dev server.
