@@ -359,15 +359,23 @@ public final class Farmer {
         LOG.info("{} opens the farm's gate at {}", name, gate);
     }
 
+    /** The hole it was watering given up, its claim with it. */
+    private void unclaimWatering() {
+        if (watering != null) {
+            claims.remove(watering);
+            watering = null;
+        }
+    }
+
     /** A tick of filling the hole it's watering: done when its water's there; a run that fails passes the hole over. */
     private void fill(WorldView world) {
         switch (carrier.tick(soldier, world, watering)) {
             case WaterCarrier.Progress.Working _ -> {
             }
-            case WaterCarrier.Progress.Done _ -> watering = null;
+            case WaterCarrier.Progress.Done _ -> unclaimWatering();
             case WaterCarrier.Progress.Failed(String why) -> {
                 passedOver.failed(watering, ticks, why);
-                watering = null;
+                unclaimWatering();
                 fail(why);
             }
         }
@@ -678,7 +686,9 @@ public final class Farmer {
                     // before its earthwork was ever reached.
                     continue;
                 } else if (world.isSolid(h.x(), h.y() - 1, h.z())) {
+                    // Claimed, as a harvest's crop is: live (field627), Olga and Ned each carried a bucket to the one hole.
                     watering = h;
+                    claims.add(h);
                     fill(world);
                     return;
                 } else if (inventory.count(ItemClass.COBBLESTONE) + inventory.count(ItemClass.DIRT) > 0) {
@@ -938,7 +948,7 @@ public final class Farmer {
         stopDigging();
         unburier.stop();
         carrier.stop();
-        watering = null;
+        unclaimWatering();
         if (placing != null) {
             builders.get(placing).stop();
             placing = null;

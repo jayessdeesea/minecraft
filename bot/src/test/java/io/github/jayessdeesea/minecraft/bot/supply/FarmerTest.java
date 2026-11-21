@@ -689,6 +689,54 @@ class FarmerTest {
     }
 
     /**
+     * A dry water hole one farmer is watering is claimed, so the next waters another: live (field627), Olga and Ned each
+     * carried a bucket 20 blocks to the one hole at (28, 67, 60) in the same second.
+     */
+    @Test
+    void aHoleOneFarmerIsWateringTheNextLeavesToIt() {
+        io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm chunk = new io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm(0, 0, GROUND);
+        Set<BlockPos> holes = Set.copyOf(chunk.holes()); // dug, over their floors, all dry
+        Set<BlockPos> pond = Set.of(new BlockPos(30, GROUND, 30), new BlockPos(31, GROUND, 30), new BlockPos(30, GROUND, 31), new BlockPos(31, GROUND, 31));
+        WorldView dry = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos b = new BlockPos(x, y, z);
+                return y <= GROUND && !holes.contains(b) && !pond.contains(b);
+            }
+
+            @Override
+            public boolean isWaterSource(int x, int y, int z) {
+                return pond.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        FarmPlan plan = new FarmPlan(new BlockPos(8, GROUND, 30), List.of(), List.of(), List.of(chunk));
+        Set<BlockPos> claims = new HashSet<>();
+        Setbacks<BlockPos> shared = new Setbacks<>(Farmer.PASS_OVER_TICKS, 16L * Farmer.PASS_OVER_TICKS);
+        Position by = new Position(chunk.holes().getFirst().x() + 2.5, GROUND + 1, chunk.holes().getFirst().z() + 0.5);
+        for (String name : List.of("Olga", "Ned")) {
+            Inventory own = new Inventory();
+            own.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.BUCKET), 1});
+            new Farmer(name, session, own, claims, shared, Set.of()).tick(by, dry, Optional.of(plan), true);
+        }
+        assertEquals(2, claims.stream().filter(holes::contains).count(), "each waters a hole of its own: " + claims);
+    }
+
+    /**
      * A water hole roofed - one of the squad's steps over it - isn't poured into, which can't work, but waits on its
      * earthwork, which takes the roof off: live (field581), Olga's pours at the chunk farm's hole (20, 67, 60), a step
      * at (20, 68, 60) over it, failed "expected water ... it didn't come" all day, the chunk farm SURVEYED.
