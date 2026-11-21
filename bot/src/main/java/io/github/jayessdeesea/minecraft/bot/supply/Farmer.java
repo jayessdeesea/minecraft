@@ -805,10 +805,13 @@ public final class Farmer {
             LOG.info("{} harvests the wheat at {}", name, crop);
             return;
         }
-        // The nearest: sown in passing on the way, a farmer going from one to the next sweeps the field.
-        Optional<BlockPos> bare = plot.stream().filter(c -> world.isFarmland(c.x(), c.y(), c.z())
-                && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z()))
-                .min(java.util.Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())));
+        // The nearest: sown in passing on the way, a farmer going from one to the next sweeps the field - one far off only
+        // with a batch bare to sweep, as a harvest: live (field631), farmers walked 30 to 38 blocks to sow a single seed.
+        List<BlockPos> bares = plot.stream().filter(c -> world.isFarmland(c.x(), c.y(), c.z())
+                && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z())).toList();
+        Optional<BlockPos> bare = bares.stream()
+                .min(java.util.Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())))
+                .filter(c -> bares.size() >= HARVEST_BATCH || Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()) <= HARVEST_NEAR);
         if (bare.isPresent() && inventory.count(ItemClass.SEEDS) > 0) {
             BlockPos cell = bare.get();
             start(cell, ItemClass.SEEDS, "plant seeds at " + cell, () -> world.wheatAge(cell.x(), cell.y() + 1, cell.z()).isPresent());

@@ -265,6 +265,21 @@ class FarmerTest {
         assertTrue(claims.contains(PLOT.get(1).offset(0, 1, 0)), "beside it: harvested " + claims);
     }
 
+    /** One bare cell far off waits for a batch to sow; one near is sown (field631: 30 to 38 blocks for one seed). */
+    @Test
+    void aLoneBareCellFarOffWaitsForABatch() {
+        PLOT.forEach(farmland::add);
+        wheat.put(PLOT.get(0).offset(0, 1, 0), 3); // one growing, one bare
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.SEEDS), 16});
+        Farmer far = new Farmer("Dana", session, inventory, new HashSet<>());
+        far.tick(new Position(30.5, GROUND + 1, 0.5), world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+        assertTrue(far.standAt().isEmpty(), "28 off, one bare: left for a batch, not walked to: " + far.standAt());
+
+        Farmer near = new Farmer("Dana", session, inventory, new HashSet<>());
+        near.tick(new Position(0.5, GROUND + 1, 1.5), world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+        assertEquals(Optional.of(new Position(PLOT.get(1).x() + 0.5, GROUND + 1, PLOT.get(1).z() + 0.5)), near.standAt(), "beside it: sown");
+    }
+
     @Test
     void wheatASquadmateIsHarvestingIsLeftToIt() {
         PLOT.forEach(c -> {
