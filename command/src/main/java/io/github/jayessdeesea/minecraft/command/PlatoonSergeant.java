@@ -161,7 +161,9 @@ public final class PlatoonSergeant {
         Map<String, Integer> wanted = new java.util.HashMap<>();
         able.forEach(s -> Optional.ofNullable(logsWanted.get(s.name())).ifPresent(n -> wanted.put(s.name(), n)));
         Map<String, Integer> fed = new java.util.HashMap<>();
-        able.forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> Subsistence.low(k.rations()))
+        // Only to one running out, as across squads (operator, 2026-11-21): live (field623), 64 single rations handed
+        // round squads in ten minutes between soldiers with days of food - Olga at 20 giving Ned at 12.
+        able.forEach(s -> s.condition().flatMap(Condition::kit).filter(k -> k.rations() <= CrossLevel.RUNNING_OUT)
                 .ifPresent(k -> fed.put(s.name(), CrossLevel.RATIONS_GIVEN)));
         Map<String, Integer> disarmed = new java.util.HashMap<>();
         Map<String, Integer> pickaxesShort = new java.util.HashMap<>();

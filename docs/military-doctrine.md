@@ -160,8 +160,9 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    Eli, Bravo's miner at the keep's mine, drew iron and cobblestone from the keep's depot all run, its bread none,
    and was shot dead at 1 health. Bread beyond its basic
    load - a whole stack, the basic load still in its pack - goes into the stockpile (§12).
-2. **The squad shares, and keeps the camp's farm.** A soldier below 32, hungry yet or not, is given
-   rations by the nearest squadmate within 8 blocks carrying two more than it (cross-leveling, §13; no walk across the
+2. **The squad shares, and keeps the camp's farm.** A soldier running out - 3 rations or fewer, hungry yet or not - is
+   given rations by the nearest squadmate within 8 blocks carrying two more than it; one with more restocks by the stores
+   (operator, 2026-11-21; live, field623, 64 single rations handed round in ten minutes between soldiers with days of food) (cross-leveling, §13; no walk across the
    farm for a ration - live, field511, 75 in six minutes), so what there is
    evens out - one at a time, the one carrying fewest first, a second apart from one giver to one
    receiver, and from every giver near it at once,

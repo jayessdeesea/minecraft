@@ -439,9 +439,9 @@ class FoodSimulationTest {
     }
 
     /**
-     * Running low, a soldier asks its squadmates before it goes hungry: Hal, fed but carrying 20 of
-     * a basic load of 64 - below its resupply mark, not yet its food-first one - is handed rations
-     * by Fran, who carries 40.
+     * Running out, a soldier is handed rations by its squadmates before it goes hungry: Hal, fed but carrying 3 - running
+     * out (CrossLevel.RUNNING_OUT) - is handed rations by Fran, who carries 40. Not one with days of food: it restocks by
+     * the stores (operator, 2026-11-21; field623, 64 hand-overs in ten minutes).
      */
     @Test
     void aSoldierRunningLowIsSharedRationsByASquadmateBeforeItGoesHungry() {
@@ -456,13 +456,13 @@ class FoodSimulationTest {
         SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "", state.toString())
                 .simulated(clock, server.connector(n -> new PlayerPosition(0.5, GROUND + 1, 0.5),
                         n -> List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
-                                new int[]{37, SimServer.ITEM_BREAD, n.equals("Fran") ? 40 : 20})));
+                                new int[]{37, SimServer.ITEM_BREAD, n.equals("Fran") ? 40 : 3})));
         runner.run();
 
         clock.advance(60_000);
 
         int hal = server.count("Hal", ItemClassRegistry.ItemClass.FOOD);
-        assertTrue(hal > 20, "Hal shared some of Fran's: " + hal + "; last server events: "
+        assertTrue(hal > 3, "Hal shared some of Fran's: " + hal + "; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
@@ -481,16 +481,16 @@ class FoodSimulationTest {
 
     /**
      * One ration at a time, no more often than every second, to whoever carries fewest: Fran, with
-     * 40, feeds both her low squadmates rather than unloading on one (the operator's; a second a
-     * ration, 2026-11-17).
+     * 40, feeds both her squadmates running out rather than unloading on one (the operator's; a second a
+     * ration, 2026-11-17; running out, 3 or fewer, 2026-11-21).
      */
     @Test
     void aGiverSharesOneRationAtATimeRoundEveryoneShort() {
-        Shared run = sharing("Alpha:Fran,Gus,Hal", Map.of("Fran", 40, "Gus", 5, "Hal", 5), 20_000);
+        Shared run = sharing("Alpha:Fran,Gus,Hal", Map.of("Fran", 40, "Gus", 2, "Hal", 2), 20_000);
 
         int gus = run.server().count("Gus", ItemClassRegistry.ItemClass.FOOD), hal = run.server().count("Hal", ItemClassRegistry.ItemClass.FOOD);
         int given = 40 - run.server().count("Fran", ItemClassRegistry.ItemClass.FOOD);
-        assertTrue(gus > 5 && hal > 5, "both fed: Gus " + gus + ", Hal " + hal);
+        assertTrue(gus > 2 && hal > 2, "both fed: Gus " + gus + ", Hal " + hal);
         assertTrue(given <= 20_000 / 1_000 + 1, given + " given in 20 s");
     }
 
