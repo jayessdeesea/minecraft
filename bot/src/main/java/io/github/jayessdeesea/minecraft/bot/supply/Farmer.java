@@ -616,10 +616,16 @@ public final class Farmer {
                 onFarmland = !onFarmland; // the next look from the farmland too, then off it again
             }
             earthworkLooks = unburier.looks();
+            BlockPos highest = earthwork.stream().max(Comparator.comparingInt(BlockPos::y)).orElseThrow();
             String why = earthwork.size() + " blocks of the farm's earthwork, none taken: " + unburier.idleReason().orElse("its clearer resting")
-                    + " - the first at " + earthwork.getFirst();
+                    + " - the first at " + earthwork.getFirst() + ", the highest at " + highest;
             if (!why.equals(earthworkSaid)) {
-                LOG.info("{} - {}", name, why);
+                // Every block, and where it stood: live (field578) the line named a pillar the probes found on a ridge
+                // of heaps, and which of them held the clear up - highest first - wasn't in the log.
+                LOG.info("{} - {}; it at ({}, {}, {}), its look {} from the farmland; the blocks {}", name, why,
+                        String.format(java.util.Locale.ROOT, "%.1f", soldier.x()), String.format(java.util.Locale.ROOT, "%.1f", soldier.y()),
+                        String.format(java.util.Locale.ROOT, "%.1f", soldier.z()), onFarmland ? "next" : "not next",
+                        earthwork.stream().map(b -> b.x() + "," + b.y() + "," + b.z()).toList());
                 earthworkSaid = why;
             }
         }
