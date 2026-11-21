@@ -369,6 +369,16 @@ abstract class Mover {
                 }
             }
             route = plan.path();
+            // Stood on a block's edge over a drop that hurts, the walk goes on to the block first: headed straight for a
+            // diagonal first step it leaves the edge while still over the drop. Live (field609), Eli on the edge of a
+            // mine's shaft at (-24.1, 20, 91.8) made for (-23, 20, 91) and fell 16 blocks to her death. Only over one that
+            // hurts: on a hill's steps, each replan in a fight walked it back to its block, and the combat matrix lost two cells.
+            BlockPos body = BlockPos.containing(gait.position.x(), gait.position.y() + EPSILON, gait.position.z());
+            if (!start.equals(body) && !route.isEmpty() && !route.getFirst().equals(start) && dropUnder(world, body) > SAFE_DROP) {
+                List<BlockPos> onToIt = new java.util.ArrayList<>(List.of(start));
+                onToIt.addAll(route);
+                route = onToIt;
+            }
             pillarFrom = null;
             assessPlan(world, plan, stuck);
             if (onLeg) {
@@ -633,6 +643,18 @@ abstract class Mover {
         Risk needed = left >= Risk.MEDIUM.minHealthAfter() ? Risk.MEDIUM : left >= Risk.HIGH.minHealthAfter() ? Risk.HIGH : null;
         return String.format(Locale.ROOT, "; a route with falls costing %d of my %.0f health exists%s", damage,
                 known.health(), needed == null ? ", too costly even at HIGH risk" : " (" + needed + " risk)");
+    }
+
+    /** Blocks a body falls unhurt: past three, each a point of health. */
+    static final int SAFE_DROP = 3;
+
+    /** How far a body in {@code cell} would drop, to the first floor under it - one past {@link #SAFE_DROP} at most. */
+    static int dropUnder(WorldView world, BlockPos cell) {
+        int drop = 0;
+        while (drop <= SAFE_DROP && !world.isSolid(cell.x(), cell.y() - 1 - drop, cell.z())) {
+            drop++;
+        }
+        return drop;
     }
 
     void trackProgress() {

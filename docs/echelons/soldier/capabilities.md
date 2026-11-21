@@ -9,7 +9,8 @@ To the goal its order names, by A* over block cells (`bot.nav.Pathfinder`), re-p
 seconds or when stuck - a wide search asked again from the same cell to the same goal over ground unchanged since
 (`WorldView.stamp`) given its last answer, not searched again (`bot.nav.PlanMemo`):
 - **Walks** level ground, round anything solid, and diagonally only where both sides are clear. A
-  corner it clips walking a level stretch is slid along, never jumped onto: a jump costs hunger.
+  corner it clips walking a level stretch is slid along, never jumped onto: a jump costs hunger. Stood on a
+  block's edge over a drop, it steps onto the block before its route's first step (`Mover`; field609, a mine's shaft).
 - **Steps up one block** - a jump, only where its route rises. A fence, at 1.5 blocks, is a wall, not a step.
 - **Drops three blocks** unhurt. Further only within the fall allowance its order's risk gives it,
   and only when no route without a fall exists ([military-doctrine.md § 7](../../military-doctrine.md#7-risk-acceptance)).

@@ -92,4 +92,44 @@ class RecordedContactTest {
         System.out.printf("[Eval] contact/mia-field604: Mia at %s, %.0f health, %s%n", mia.status().position(), health, mia.status().report());
         assertFalse(health > 0, "contact/mia-field604 passes now: make it assert she's alive, so it holds the fix");
     }
+
+    /**
+     * A creeper's blast run from over a drop: live (field609) Eli, 5 health and no armour, "gets clear of the creeper's
+     * blast" from one 6 off by the mine, on the edge of its shaft at (-24.1, 20, 91.8) - and fell 16 blocks to
+     * (-23.8, 4, 91.9), dead: her walk's first step was a diagonal, made for straight off the edge. Correct, a minute on:
+     * no fall that its health doesn't outlast - a fall's damage its blocks less 3.
+     */
+    @Test
+    void eliGetsClearOfTheCreeperWithoutAFallThatKillsHer() throws Exception {
+        WorldRecords.Snapshot ground = WorldRecords.load(Path.of(new ClassPathResource("worlds/contact-eli-field609.json").getURI()));
+        EntityTracker entities = new EntityTracker();
+        Position creeper = new Position(-20.5, 21.5, 96.6);
+        entities.spawn(1, UUID.randomUUID(), HostileMobRegistry.typeIdOf("creeper"), creeper.x(), creeper.y(), creeper.z(), "eval");
+        WorldView world = RecordedGroundEfficiencyTest.world(ground.minX() - 16, ground.minZ() - 16, ground.sizeX() + 32, ground.sizeZ() + 32,
+                (x, z) -> 0, (x, yz) -> {
+                    int y = yz >> 16, z = (short) (yz & 0xFFFF);
+                    int s = ground.stateAt(x, y, z);
+                    return s == WorldRecords.UNKNOWN ? (y < ground.minY() ? 1 : 0) : s;
+                }, entities);
+        DeterministicSoldier eli = new DeterministicSoldier("Eli", new Position(-24.1, 20.0, 91.8));
+        eli.reportKit(new Kit(Optional.of("stone_sword"), 0, 0));
+        double health = 5;
+        eli.reportHealth(health, 15);
+        eli.receiveOrder(new Order.MoveTo(-27.0, 24.0, -23.0, 1.5, 3.0, Risk.LOW));
+        double last = eli.status().position().y(), falling = 0, worst = 0;
+        Position worstAt = null;
+        for (int tick = 0; tick < 1200; tick++) {
+            eli.tick(world);
+            double y = eli.status().position().y();
+            // A fall: ticks in a row down faster than a walk down stairs goes.
+            falling = last - y > 0.3 ? falling + last - y : 0;
+            if (falling > worst) {
+                worst = falling;
+                worstAt = eli.status().position();
+            }
+            last = y;
+        }
+        System.out.printf("[Eval] contact/eli-field609: Eli at %s, worst fall %.1f to %s, %s%n", eli.status().position(), worst, worstAt, eli.status().report());
+        assertTrue(worst - 3 < health, "contact/eli-field609: a fall of " + worst + " at " + health + " health");
+    }
 }
