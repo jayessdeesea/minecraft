@@ -63,7 +63,11 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
    (the two holding there, a chestplate, 9 health) reproduced it: the soldier backed 3 off the rim, out of sight, and
    lived at 4 health every seed - so the live cave's shape, or the two moving, is the difference. The next is his
    ground recorded (`app.WorldRecords` keeps a soldier's ground when it's stuck a minute - not when it's killed: a
-   record at a death would be the eval), then the archer put first.
+   record at a death would be the eval), then the archer put first. Seen again (field602): Mia and Ned stood a minute at (45.6, -7, 35.8), "fights hand to hand" a
+   zombie 1.9 off and 5 up, a skeleton 5.8 off and 5 below, and both were shot dead - their ground kept 4 s before
+   (Mia's kept as `app/src/test/resources/worlds/contact-mia-field602.json`, she at (45.6, -7, 35.8)); a third world
+   built by hand, a zombie on a tower with stairs down, didn't reproduce it either. The eval wants hostiles in a
+   replayed world: the battle simulation's (`bot.scenario.Battle`) over a recorded world's ground.
 2. The order fields and their defaults through Order, the squad leader and the soldier.
    A creeper holding a soldier inside its reach ten seconds is engaged (built); the rest of the
    both-reach cell - criteria and weapons control by order - is phase 2's.
