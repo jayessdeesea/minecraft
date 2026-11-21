@@ -39,46 +39,54 @@ final class CampGround {
     }
 
     /**
-     * The columns in {@code dig} never dug past the wall line: the farm's plot, trenches and water, its chunk farms'
-     * boxes, and the grove's {@code planted} cells a cell round - each its whole height in the box. Planted, not where a
-     * grove could go: on open ground that's anywhere, and in the squad simulation it kept a heap past the wall line.
+     * The cells in {@code dig} its ground work leaves: past the wall line ({@code inner}), the farm's plot, trenches and
+     * water, its chunk farms' boxes, and the grove's {@code planted} cells a cell round - each its whole height in the
+     * box. Planted, not where a grove could go: on open ground that's anywhere, and in the squad simulation it kept a heap
+     * past the wall line. Inside the wall line a farm cell keeps only its ground and the cell over it, the crop's: the
+     * heap over it is the camp's ground, dug with the rest - live (field584), plot cells under the camp's hillside, four
+     * to seven blocks down, were kept whole by the camp's dig and out of the farmer's reach, nobody's.
      */
-    static Set<Cell> kept(Box dig, FarmPlan farm, List<BlockPos> planted) {
-        Set<int[]> columns = new HashSet<>();
-        Set<Long> seen = new HashSet<>();
+    static Set<Cell> kept(Box dig, Box inner, FarmPlan farm, List<BlockPos> planted) {
+        Set<Cell> kept = new HashSet<>();
         if (farm != null) {
-            farm.plot().forEach(c -> add(columns, seen, c.x(), c.z(), 0));
-            farm.trenches().forEach(c -> add(columns, seen, c.x(), c.z(), 0));
-            add(columns, seen, farm.water().x(), farm.water().z(), 1);
+            for (BlockPos c : farm.plot()) {
+                keep(kept, dig, inner, c.x(), c.z(), c.y());
+            }
+            for (BlockPos c : farm.trenches()) {
+                keep(kept, dig, inner, c.x(), c.z(), c.y());
+            }
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    keep(kept, dig, inner, farm.water().x() + dx, farm.water().z() + dz, farm.water().y());
+                }
+            }
             for (ChunkFarm chunk : farm.chunks()) {
                 Box b = chunk.box();
                 for (int x = b.minX(); x <= b.maxX(); x++) {
                     for (int z = b.minZ(); z <= b.maxZ(); z++) {
-                        add(columns, seen, x, z, 0);
+                        keep(kept, dig, inner, x, z, chunk.level());
                     }
                 }
             }
         }
-        planted.forEach(c -> add(columns, seen, c.x(), c.z(), 1));
-        Set<Cell> kept = new HashSet<>();
-        for (int[] c : columns) {
-            if (c[0] < dig.minX() || c[0] > dig.maxX() || c[1] < dig.minZ() || c[1] > dig.maxZ()) {
-                continue;
-            }
-            for (int y = dig.minY(); y <= dig.maxY(); y++) {
-                kept.add(new Cell(c[0], y, c[1]));
+        for (BlockPos c : planted) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    keep(kept, dig, null, c.x() + dx, c.z() + dz, c.y());
+                }
             }
         }
         return kept;
     }
 
-    private static void add(Set<int[]> columns, Set<Long> seen, int x, int z, int round) {
-        for (int dx = -round; dx <= round; dx++) {
-            for (int dz = -round; dz <= round; dz++) {
-                if (seen.add(((long) (x + dx) << 32) ^ ((z + dz) & 0xFFFFFFFFL))) {
-                    columns.add(new int[]{x + dx, z + dz});
-                }
-            }
+    /** Column ({@code x}, {@code z}) of {@code dig} kept: its whole height past {@code inner}, inside it only {@code ground} and the cell over it. */
+    private static void keep(Set<Cell> kept, Box dig, Box inner, int x, int z, int ground) {
+        if (x < dig.minX() || x > dig.maxX() || z < dig.minZ() || z > dig.maxZ()) {
+            return;
+        }
+        boolean in = inner != null && x >= inner.minX() && x <= inner.maxX() && z >= inner.minZ() && z <= inner.maxZ();
+        for (int y = in ? Math.max(dig.minY(), ground) : dig.minY(); y <= (in ? Math.min(dig.maxY(), ground + 1) : dig.maxY()); y++) {
+            kept.add(new Cell(x, y, z));
         }
     }
 }

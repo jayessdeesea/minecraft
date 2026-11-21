@@ -2197,7 +2197,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Cell at = new Cell(feet.x(), feet.y(), feet.z());
         Box dig = Groundwork.dig(at, state.groundRadius); // out a ring at a time once level (CampGround), dug only past the wall line
         if (state.groundRadius > WALL_RADIUS - 1) {
-            except.addAll(CampGround.kept(dig, campFarm, TreeFarm.site(world, feet, CAMP_RADIUS).map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).toList()).orElse(List.of())));
+            except.addAll(CampGround.kept(dig, Groundwork.dig(at, WALL_RADIUS - 1), campFarm, TreeFarm.site(world, feet, CAMP_RADIUS).map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).toList()).orElse(List.of())));
         }
         // Inside the wall line, as the dig is: the wall's own footing is the masons' (Perimeter.open).
         Box fill = Groundwork.fill(at, WALL_RADIUS - 1);

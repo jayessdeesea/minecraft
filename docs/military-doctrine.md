@@ -1455,7 +1455,9 @@ boxes (`command.Groundwork`) - a dig box from the camp's feet level 24 up, and a
 below up to the ground, both inside the wall line; once that box is level, dug and filled, the dig goes out a
 ring of 4 at a time to the camp's 24 blocks (`app.CampGround`; operator, 2026-11-20: the ground a bit flatter),
 dug down only - nothing filled past the wall line - and never the camp's farm's plot, trenches or water, its
-chunk farms, or a planted grove cell a cell round - and the squad's drill (`command.Tasking`)
+chunk farms, or a planted grove cell a cell round, past the wall line their whole columns, inside it a farm
+cell's ground and crop only, the heap over it dug with the camp's (field584, plot cells under the camp's hillside
+kept whole and out of the farmer's reach) - and the squad's drill (`command.Tasking`)
 splits the work left in them into a strip for each soldier. Digging first: while anything in the
 dig box is left, each soldier's command is `Order.Dig(box, except)`, every block in its strip that
 breaks by hand within 20 seconds (`Clearing.diggable`) - soil, stone, sand, glass, planks, a chest
