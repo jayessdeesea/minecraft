@@ -172,6 +172,8 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     private volatile float yaw;
     private volatile float pitch;
     private int ticksUntilAttack = 0; // tick-loop only
+    /** Ticks till it says again what's round it when hurt with nothing in contact - tick-loop only. */
+    private int hurtSaidIn;
     /** Ticks it's held a charged swing for a squadmate in its sweep - tick-loop only. */
     private int heldForSweep;
     /** The most it holds a charged swing for a squadmate in its sweep: a sweep's point of damage, against the fight lost. */
@@ -409,7 +411,8 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             shieldTicks--;
         }
         // Hurt, or an arrow on its way that a shield will take: either way, being shot at.
-        if (hurt.getAndSet(false) || !arrows.isEmpty()) {
+        boolean hurtNow = hurt.getAndSet(false);
+        if (hurtNow || !arrows.isEmpty()) {
             underFireTicks = UNDER_FIRE_TICKS;
         }
         // The hostiles near it looked up once a tick, out to the furthest any rule below looks, and each rule takes those within
@@ -443,6 +446,23 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             underFireTicks--;
         }
         cutting = List.of(); // set again below only while navigating onto a step being cut
+        // Hurt with nothing in contact: what's round it, seen or not, for the eval - live (field605), Olga was shot dead by a
+        // skeleton no [Contact] line named, fighting zombies out of reach, and its place couldn't be replayed.
+        if (hurtSaidIn > 0) {
+            hurtSaidIn--;
+        }
+        if (hurtNow && threats.stream().noneMatch(t -> gait.position.distanceTo(t.position()) <= CONTACT_RADIUS) && hurtSaidIn == 0) {
+            hurtSaidIn = 40;
+            Position eye = new Position(gait.position.x(), gait.position.y() + EYE_HEIGHT, gait.position.z());
+            LOG.info("[Contact] {} at ({}, {}, {}) hurt, {} health, with nothing in contact - round it out to {}: {}", name,
+                    String.format(java.util.Locale.ROOT, "%.1f", gait.position.x()), String.format(java.util.Locale.ROOT, "%.1f", gait.position.y()),
+                    String.format(java.util.Locale.ROOT, "%.1f", gait.position.z()), (int) lastReportedHealth, (int) FLED_PAST,
+                    near.isEmpty() ? "none" : near.stream().map(t -> String.format(java.util.Locale.ROOT, "%s at (%.1f, %.1f, %.1f) %.1f off%s",
+                            io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry.nameOf(t.typeId()), t.position().x(), t.position().y(), t.position().z(), gait.position.distanceTo(t.position()),
+                            lineOfSight(world, new Position(t.position().x(), t.position().y() + EYE_HEIGHT, t.position().z()),
+                                    new Position(gait.position.x(), gait.position.y() + TARGET_HEIGHT, gait.position.z())) ? ", in sight" : ", out of sight"))
+                            .collect(java.util.stream.Collectors.joining("; ")));
+        }
         // A creeper inside its blast's clearing comes first, whatever's nearer: live (field595) Olga fought a skeleton 0.8
         // off with a creeper 1.3 off, her answer flipping between the two each tick, and the creeper's blast took her from
         // 16 health to 2 - the next one killed her.

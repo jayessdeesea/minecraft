@@ -4942,8 +4942,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             Position at = stuck.position();
             Map<String, String> whyNot = new LinkedHashMap<>();
             // Never through what no ground work digs - the camp's walls and huts, its mine, a squad's stairs: live
-            // (field433), Pete, inside the camp at dusk, was read as in a pocket and given a stair up 15 blocks long
-            // out through it.
+            // (field433), Pete, inside the camp at dusk, was read as in a pocket and given a stair up 15 blocks long out through it.
             Set<Cell> kept = groundExcept();
             Optional<List<Cell>> stair = Stairway.up(world, BlockPos.containing(at.x(), at.y(), at.z()), whyNot)
                     .map(cells -> cells.stream().map(c -> new Cell(c.x(), c.y(), c.z())).toList()).filter(cells -> {
@@ -5068,8 +5067,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             site = state.baseSite;
         } else if (site != null) {
             // The model's point is a guess at ground it can't see closely: the base goes on the
-            // nearest level footing for the whole floor - never on rubble or a slope, where
-            // soldiers can't all stand in their places.
+            // nearest level footing for the whole floor - never on rubble or a slope, where soldiers can't all stand in their places.
             Position asked = site;
             Position middle = statuses.stream().map(SoldierStatus::position).sorted(Comparator.comparingDouble(Position::y))
                     .toList().get(statuses.size() / 2);
@@ -5188,8 +5186,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             statuses.stream().filter(st -> plan == null || !plan.inside(st.position()))
                     // Not a keep builder on its dirt run, in the borrow pit it's digging: it climbs out
                     // on what it carries. In the squad simulation one three deep in its own pit was
-                    // taken for shut in, cut a "doorway" into the ground beside it every few seconds,
-                    // and never got its load.
+                    // taken for shut in, cut a "doorway" into the ground beside it every few seconds, and never got its load.
                     .filter(st -> !keepFetching.contains(st.name()))
                     // Not down a mine: its tunnels wall every soldier in them. Live, a miner at y=30 was
                     // taken for shut in a room, the room taken for the squad's base, and its way out cut
@@ -5476,12 +5473,15 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (killed >= DangerAreas.DEATHS && blockedBy.isEmpty()) {
                     blockedBy = Optional.of(killed + " killed within " + (int) DangerAreas.RADIUS + " blocks of its stairs in a day - a danger area");
                 }
-                // Its tunnels into a danger area given up, the head safe or not (MineDanger; live, field598, four of Charlie down one gallery).
-                Set<Integer> given = levelsBlocked.computeIfAbsent(state.stairs.head() + "/" + state.stairs.bottom(), k -> ConcurrentHashMap.newKeySet());
-                MineDanger.tunnels(state.stairs.cuts(), c -> dangerAreas.near(c.x() + 0.5, c.y(), c.z() + 0.5, now)).forEach((t, at) -> {
-                    if (given.add(t)) {
-                        LOG.warn("[Outcome] tunnel {} of the mine at {} given up at y={}: a danger area at {}", t, state.stairs.head(), state.stairs.bottom(), at);
-                    }
+                // Its tunnels into a danger area given up, the head safe or not (MineDanger; live, field598, four of Charlie down one gallery) -
+                // every level cut from its head, not the squad's alone: live (field605), Olga killed on a second level the check never saw.
+                Stream.concat(Stream.of(state.stairs), squadStairs.values().stream().filter(l -> l.head().equals(state.stairs.head()))).distinct().forEach(level -> {
+                    Set<Integer> given = levelsBlocked.computeIfAbsent(level.head() + "/" + level.bottom(), k -> ConcurrentHashMap.newKeySet());
+                    MineDanger.tunnels(level.cuts(), c -> dangerAreas.near(c.x() + 0.5, c.y(), c.z() + 0.5, now)).forEach((t, at) -> {
+                        if (given.add(t)) {
+                            LOG.warn("[Outcome] tunnel {} of the mine at {} given up at y={}: a danger area at {}", t, level.head(), level.bottom(), at);
+                        }
+                    });
                 });
                 if (blockedBy.isPresent() && driedUp.add(state.stairs.head())) {
                     deadWell(state.stairs.head());
