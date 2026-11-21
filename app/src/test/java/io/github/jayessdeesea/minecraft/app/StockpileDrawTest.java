@@ -41,4 +41,13 @@ class StockpileDrawTest {
         assertEquals(camp, SiteGeometry.stockpileOf(Optional.empty(), camp));
         assertEquals(CHEST, SiteGeometry.stockpileOf(CHEST, camp), "its own first, nearer its work");
     }
+
+    /** Short of cobblestone for a sword, it draws some from a stockpile holding it; not one with none, nor one making nothing. */
+    @Test
+    void aSoldierShortOfCobblestoneForASwordDrawsIt() {
+        Optional<String> shortOfStone = Optional.of("can't make stone sword: short of {COBBLESTONE=2}");
+        assertTrue(SoldierErrands.drawsStone(shortOfStone, 0, Optional.of(new Stockpile(0, 832, 0)), CHEST));
+        assertFalse(SoldierErrands.drawsStone(shortOfStone, 0, Optional.of(new Stockpile(0, 3, 0)), CHEST), "too few in the chest");
+        assertFalse(SoldierErrands.drawsStone(Optional.empty(), 0, Optional.of(new Stockpile(0, 832, 0)), CHEST), "making nothing");
+    }
 }

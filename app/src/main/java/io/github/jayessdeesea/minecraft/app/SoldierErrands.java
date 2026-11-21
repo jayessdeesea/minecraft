@@ -76,6 +76,18 @@ final class SoldierErrands {
      * what it sees is then known. Live, a bare-handed miner with no tree within 48 blocks stood a day
      * in the mine, while the camp's chest held 85 logs nobody had opened it to see.
      */
+    /** Cobblestone drawn for a weapon or tool short of it: a stone sword's blade, a pickaxe's head, and some over. */
+    static final int DRAW_STONE = 8;
+
+    /**
+     * Whether a soldier whose making is short of cobblestone draws it from the stockpile, as one short of logs does: live
+     * (field541), four soldiers gave their stone swords up "short of COBBLESTONE=2", the camp's chests holding 896.
+     */
+    static boolean drawsStone(Optional<String> failure, int stone, Optional<Stockpile> seen, Optional<Position> stockpile) {
+        return stockpile.isPresent() && stone < DRAW_STONE && failure.filter(f -> f.contains("{COBBLESTONE=")).isPresent()
+                && seen.map(st -> st.stone() >= DRAW_STONE).orElse(true);
+    }
+
     static boolean drawsLogs(Optional<String> failure, int logs, Optional<Stockpile> seen, Optional<Position> stockpile) {
         return stockpile.isPresent() && logs < 2 && failure.filter(f -> f.contains("no LOG") || f.contains("{LOG=")).isPresent()
                 && seen.map(st -> st.logs() >= DRAW_LOGS).orElse(true);

@@ -782,8 +782,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
         standards.add(new Foothold.Standard(3, "wood that grows back", trees >= TREES_GROWING,
                 trees + " of " + TREES_GROWING + " saplings or trees planted by the camp and the keep's grove", "TREE_FARM"));
-        // The camp's mine as the world shows it, as well as a cutter at work this run: live, after a
-        // restart with no MINE order, a mine cut to the bottom read "no mine yet".
+        // The camp's mine as the world shows it, as well as a cutter at work this run: live, after a restart with no MINE order, a mine cut to the bottom read "no mine yet".
         Optional<Staircase> campMine = campStairs();
         int cutNow = Math.max(stairsCut.get(), campMine.map(s -> s.stepsCut(world)).orElse(0));
         boolean mined = stairsDone.get() || campMine.map(s -> s.stepsCut(world) == s.steps()).orElse(false);
@@ -1057,8 +1056,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return;
         }
         Workshop next = shop.withChest(free.get());
-        // The camp's: the common stockpile, re-read by every squad loop at the camp. A squad's own,
-        // its squad loop's to change: noted here, moved on there (nextChestIfFull).
+        // The camp's: the common stockpile, re-read by every squad loop at the camp. A squad's own, its squad loop's to change: noted here, moved on there (nextChestIfFull).
         if (shop.equals(campWorkshop)) {
             campWorkshop = next;
         }
@@ -1894,8 +1892,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     keepWorkshopNowhere = null;
                 }
                 keepWorkshop = keep;
-                // A depot is chests enough for what the dig turns out, not one (operator, 2026-11-14):
-                // their cells laid out round its stand, filled one after another.
+                // A depot is chests enough for what the dig turns out, not one (operator, 2026-11-14): their cells laid out round its stand, filled one after another.
                 keepChests = keep == null ? List.of() : keep.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS);
                 keepChestAt = 0;
                 if (keep != null) {
@@ -7551,6 +7548,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         || depositor.drawing(ItemClass.LOG)) {
                     depositor.tickDraw(status.position(), logsAt.or(depositor::chestAt), ItemClass.LOG, DRAW_LOGS, free && !threatened
                             && drawsLogs(armourer.failure().or(chestFitter::failure).or(() -> torchShort), inventory.count(ItemClass.LOG), chainOfCommand.stores(), logsAt));
+                } else if (drawsStone(armourer.failure(), inventory.count(ItemClass.COBBLESTONE), chainOfCommand.stores(), stockpile)) {
+                    depositor.tickDraw(status.position(), metalChest(ItemClass.COBBLESTONE, status.position()).or(() -> stockpile), ItemClass.COBBLESTONE,
+                            DRAW_STONE, free && !threatened);
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
