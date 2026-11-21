@@ -510,11 +510,12 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             }
         }
         int nearestId = threats.isEmpty() ? -1 : threats.get(0).entityId();
+        contactTicks++;
         if (nearestId != pinnedOn) {
             pinned = false; // a fresh contact gets a fresh look for a way to close
             pinnedCheckIn = 0;
             pinnedOn = nearestId;
-            metAtHealth = lastReportedHealth < 0 ? Double.MAX_VALUE : lastReportedHealth; // when it met this one: a fight begun is one to finish
+            contactTicks = 0; // a fight begun, a second on, is one to finish
             byWalk = false; // a fresh contact is closed on straight, till that gains no ground
             lastClose = null;
             noWalk = false;
@@ -745,10 +746,15 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         double armour = carried == null ? 0 : carried.armour() * ARMOUR_A_PIECE;
         Engagement.Soldier me = new Engagement.Soldier(Math.max(0, lastReportedHealth), armour, 0, held.damage(), held.attacksPerSecond(), ATTACK_REACH);
         Engagement.Hostile it = new Engagement.Hostile(20, ARCHER_SHOT, ARCHER_SHOTS_A_SECOND, ARCHER_CLEAR, range);
-        return Engagement.choose(me, it, lastReportedHealth < metAtHealth, Math.max(0, ARCHER_CLEAR - range));
+        return Engagement.choose(me, it, contactTicks > BEGUN_TICKS, Math.max(0, ARCHER_CLEAR - range));
     }
-    /** The health it had when it met the hostile it's in contact with now. */
-    private double metAtHealth = Double.MAX_VALUE;
+    /**
+     * Ticks since it met the hostile it's in contact with now: past {@link #BEGUN_TICKS} the fight's begun. Not the health
+     * lost since: with the server's regeneration a soldier heals between arrows, read as not begun, and broke off mid-fight.
+     */
+    private int contactTicks;
+    /** A second into a contact, its fight is begun. */
+    static final int BEGUN_TICKS = 20;
 
     /** How far a soldier fleeing an archer runs before it's fled: past a skeleton's 15 blocks of range. */
     static final double FLED_PAST = 20;

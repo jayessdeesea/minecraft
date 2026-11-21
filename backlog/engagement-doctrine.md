@@ -58,10 +58,14 @@ no armour, ground unsafe - said up the chain, not fought).
 
 Built: `bot.Engagement`'s exchange - time to kill against time to die, armour as the server cuts a blow, a fight begun
 finished while it outlasts the kill - deciding whether an archer out of reach is closed on, in place of a health line.
-Left: the other branches on it (hand to hand, creepers, several hostiles at once, the bow); withdraw's eat-and-heal and
-re-engage; the battle simulation's regeneration (saturated: up to 1 health a 0.5 s; at 18 food 1 a 4 s), eating time and
-armour wear (a piece loses max(1, damage/4) a hit), all read from the pinned server; the matrix grown by starting
-health, armour and terrain.
+And the battle simulation's body for one soldier's fights (`scenario.Body`, the combat and pairs matrices): food,
+saturation and exhaustion; regeneration as the server's (saturated, up to a point a 0.5 s; at 18 food, a point a 4 s);
+eating below 18, a loaf after 1.6 s; iron armour worn down max(1, blow/4) a piece a hit - all read from the pinned server.
+With it one more pairs cell passes (creeper and zombie, stone sword, hills); without eating it, three archer cells on
+hills fell to 83%, a soldier's food spent by its healing.
+Left: the other branches on the exchange (hand to hand, creepers, several hostiles at once, the bow); withdraw's
+eat-and-heal and re-engage - a soldier that stops swinging to eat, which the body doesn't yet; the squad fights' body
+(`CombatSquadMatrixTest`, `CombatScenarioTest`'s squad); the matrix grown by starting health, armour and terrain.
 
 **Deaths as a check on the model, not a case each.** Each death is read for what the evals lack - is that dimension
 (the armour's wear, water, a shaft, eating time, regeneration) in the battle simulation at all? - and the missing

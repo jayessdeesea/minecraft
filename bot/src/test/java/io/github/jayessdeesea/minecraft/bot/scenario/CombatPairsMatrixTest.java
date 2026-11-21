@@ -30,7 +30,6 @@ class CombatPairsMatrixTest {
 
     private static final int SEEDS = Integer.getInteger("combat.matrix.seeds", 12);
     private static final int TICKS = 1_200;
-    private static final int REGEN_TICKS = 80;
 
     static final List<List<Battle.Archetype>> PAIRS = List.of(
             List.of(Battle.Archetype.CREEPER, Battle.Archetype.SKELETON),
@@ -46,7 +45,6 @@ class CombatPairsMatrixTest {
     /** Cells that don't pass yet, as "pair/kit/ground". */
     static final Set<String> KNOWN = Set.of(
             "creeper+zombie/bare hands/hills",
-            "creeper+zombie/stone sword/hills",
             "zombie+skeleton/stone sword/hills");
 
     /** Whether the soldier came through alive, against {@code pair} with {@code kit} on {@code ground}. */
@@ -66,6 +64,7 @@ class CombatPairsMatrixTest {
         }
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
         double health = 20;
+        Body body = new Body(kit.armour()); // the server's food, regeneration and armour wear
         soldier.reportHealth(health, 20);
         soldier.reportKit(new Kit(kit.weapon(), 0, kit.armour().pieces, 0, 0, 0, 0, kit.shield()));
         double blow = WeaponStats.melee(kit.weapon()).damage();
@@ -75,13 +74,16 @@ class CombatPairsMatrixTest {
         for (int tick = 0; tick < TICKS; tick++) {
             OptionalInt attack = soldier.tick(battle);
             Position now = soldier.status().position();
-            attack.ifPresent(id -> battle.strike(id, now, DeterministicSoldier.ATTACK_REACH, blow));
+            attack.ifPresent(id -> {
+                battle.strike(id, now, DeterministicSoldier.ATTACK_REACH, blow);
+                body.attacked();
+            });
             shieldUp = soldier.shieldRaised() ? shieldUp + 1 : 0;
-            double damage = kit.armour().absorb(battle.step(now, shieldUp > Battle.SHIELD_DELAY_TICKS
+            double damage = body.hit(battle.step(now, shieldUp > Battle.SHIELD_DELAY_TICKS
                     ? OptionalDouble.of(soldier.yaw()) : OptionalDouble.empty()));
-            double healed = tick % REGEN_TICKS == 0 && health < 20 ? 1 : 0;
-            if (damage > 0 || healed > 0) {
-                health = Math.min(20, health - damage + healed);
+            boolean healed = body.tick();
+            health = body.health();
+            if (damage > 0 || healed) {
                 soldier.reportHealth(Math.max(0, health), 20);
             }
             if (health <= 0) {

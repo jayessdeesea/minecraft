@@ -277,6 +277,7 @@ class CombatScenarioTest {
 
         DeterministicSoldier soldier = new DeterministicSoldier("Alice", new Position(start.x() + 0.5, start.y(), start.z() + 0.5));
         double health = 20;
+        Body body = new Body(armour); // the server's food, regeneration and armour wear
         soldier.reportHealth(health, 20);
         soldier.reportKit(new Kit(weapon, 0, armour.pieces, 0, 0, 0, 0, shield));
         int shieldUp = 0;
@@ -297,13 +298,16 @@ class CombatScenarioTest {
                         + soldier.status().report());
             }
             Position now = soldier.status().position();
-            attack.ifPresent(id -> battle.strike(id, now, DeterministicSoldier.ATTACK_REACH, blow));
+            attack.ifPresent(id -> {
+                battle.strike(id, now, DeterministicSoldier.ATTACK_REACH, blow);
+                body.attacked();
+            });
             shieldUp = soldier.shieldRaised() ? shieldUp + 1 : 0;
-            double damage = armour.absorb(battle.step(now, shieldUp > Battle.SHIELD_DELAY_TICKS
+            double damage = body.hit(battle.step(now, shieldUp > Battle.SHIELD_DELAY_TICKS
                     ? OptionalDouble.of(soldier.yaw()) : OptionalDouble.empty()));
-            double healed = tick % REGEN_TICKS == 0 && health < 20 ? 1 : 0;
-            if (damage > 0 || healed > 0) {
-                health = Math.min(20, health - damage + healed);
+            boolean healed = body.tick();
+            health = body.health();
+            if (damage > 0 || healed) {
                 soldier.reportHealth(Math.max(0, health), 20);
             }
             if (health <= 0) {
