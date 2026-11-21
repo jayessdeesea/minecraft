@@ -1,0 +1,57 @@
+{
+  "why": "Eli's gallery at y=20 broke into a dripstone cave: from z=93 on there's no floor under the gallery's level, and the miner's next stand hung over it. He carried 124 cobblestone and stood with 'no route' to a stand two blocks on, across several runs (field535-552).",
+  "world": "worlds/cave-eli-field552.json",
+  "soldier": "Eli",
+  "at": [
+    -21.5,
+    20.0,
+    91.4
+  ],
+  "kit": [
+    {
+      "slot": 36,
+      "id": 1035,
+      "count": 1,
+      "item": "stone_sword"
+    },
+    {
+      "slot": 37,
+      "id": 1037,
+      "count": 1,
+      "item": "stone_pickaxe"
+    },
+    {
+      "slot": 38,
+      "id": 1067,
+      "count": 16,
+      "item": "bread"
+    },
+    {
+      "slot": 9,
+      "id": 62,
+      "count": 64,
+      "item": "cobblestone"
+    },
+    {
+      "slot": 10,
+      "id": 62,
+      "count": 60,
+      "item": "cobblestone"
+    },
+    {
+      "slot": 11,
+      "id": 163,
+      "count": 60,
+      "item": "oak_log"
+    }
+  ],
+  "goal": [
+    -21.5,
+    20.0,
+    95.5
+  ],
+  "correct": "the gallery floored across the cave at its own level: stands within 1.5 of a point four blocks into it. Blocked on the harness: its goal is given as a platoon leader's objective, which the night rules put on the cave's floor at y=37 - the case wants Eli's own order kept with it (cut the mine), as the live record doesn't yet hold",
+  "radius": 1.5,
+  "withinMinutes": 5,
+  "knownFailure": true
+}

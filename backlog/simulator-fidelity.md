@@ -47,7 +47,11 @@ world wrong is proven wrong.
    miner's duty, its mine - aren't in the replay: a recorded world wants the soldier's orders kept with it.
 5. **Recorded worlds.** Built: a soldier stuck a minute has the ground round it - 49 across, 33 high, each cell's
    state as the client decoded it - kept under `garrison-state/worlds/` (`app.WorldRecords`, `[World]`), and a
-   scenario replays one as its terrain (`SimWorlds.replay`). Left: a scenario per live failure kept that way.
+   scenario replays one as its terrain (`SimWorlds.replay`); a stuck soldier's case in the registry
+   (`StuckEvalsTest`, docs/architecture.md) is one. Left: the live record writes the case itself - the soldier's
+   position, kit and order kept with its ground - and the harness gives the soldier that order, not a platoon
+   leader's objective: replayed with an objective, `stuck/cave-eli-field552` (a gallery broken into a cave) had it
+   put on the cave's floor 17 below by the night rules, so it can't yet show the miner's failure.
 
 ## Done when
 - The ledger runs live and in the simulation, and a `[Fidelity]` line names each act whose live rate is
