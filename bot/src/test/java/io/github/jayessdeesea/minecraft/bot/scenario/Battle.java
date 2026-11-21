@@ -35,7 +35,9 @@ public final class Battle implements WorldView {
         /** Keeps a standoff distance and shoots while it can. */
         SKELETON(0.217, 20),
         /** Closes in, hisses, explodes. */
-        CREEPER(0.217, 20);
+        CREEPER(0.217, 20),
+        /** A crossbow: keeps a shorter standoff than a skeleton and shoots from inside {@link #CROSSBOW_RANGE}. */
+        PILLAGER(0.2, 24);
 
         final double speed;
         final double health;
@@ -50,6 +52,10 @@ public final class Battle implements WorldView {
     static final double ZOMBIE_DAMAGE = 3;
     static final int ZOMBIE_COOLDOWN = 20;
     static final double BOW_RANGE = 15;
+    /** A pillager's crossbow: it shoots from 8 blocks in, and keeps off a little short of it. */
+    static final double CROSSBOW_RANGE = 8;
+    static final double PILLAGER_STANDOFF = 6;
+    static final int CROSSBOW_COOLDOWN = 50;
     /** Holds between 0.75 x 15 and 15 blocks, as {@code RangedBowAttackGoal} strafes (server jar). */
     static final double SKELETON_STANDOFF = 13;
     static final double ARROW_DAMAGE = 3;
@@ -128,7 +134,31 @@ public final class Battle implements WorldView {
     private Position positionOf(Hostile h) {
         int bx = (int) Math.floor(h.x);
         int bz = (int) Math.floor(h.z);
-        return new Position(h.x, world.ground(bx, bz) + 1, h.z);
+        int y = world.ground(bx, bz) + 1;
+        if (!world.isWater(bx, y, bz)) {
+            return new Position(h.x, y, h.z);
+        }
+        // In water it treads it, as a land mob does: up at the surface, its head out.
+        while (world.isWater(bx, y + 1, bz)) {
+            y++;
+        }
+        return new Position(h.x, y + 0.4, h.z);
+    }
+
+    /** The height a mob moves at over column ({@code x}, {@code z}): its ground's, or its water's surface. */
+    private int level(int x, int z) {
+        int y = world.ground(x, z);
+        while (world.isWater(x, y + 1, z)) {
+            y++;
+        }
+        return y;
+    }
+
+    /** Whether {@code h} is in water: it swims, slowly. */
+    private boolean wet(Hostile h) {
+        int bx = (int) Math.floor(h.x);
+        int bz = (int) Math.floor(h.z);
+        return world.isWater(bx, world.ground(bx, bz) + 1, bz);
     }
 
     /** A bare-handed blow on {@code entityId}, if that hostile is alive and within {@code reach}. */
@@ -252,6 +282,20 @@ public final class Battle implements WorldView {
                         h.cooldown = BOW_COOLDOWN;
                     }
                 }
+                case PILLAGER -> {
+                    double speed = wet(h) ? h.archetype.speed / 3 : h.archetype.speed;
+                    if (distance > PILLAGER_STANDOFF + 1) {
+                        move(h, soldier, speed);
+                    } else if (distance < PILLAGER_STANDOFF - 2) {
+                        move(h, soldier, -speed);
+                    }
+                    if (distance <= CROSSBOW_RANGE && h.cooldown == 0 && canSee(here, soldier)) {
+                        double ax = soldier.x() + random.nextGaussian() * ARROW_SPREAD * distance;
+                        double az = soldier.z() + random.nextGaussian() * ARROW_SPREAD * distance;
+                        arrows.add(new Arrow(target, h.x, h.z, ax, az, (int) Math.ceil(distance / ARROW_SPEED)));
+                        h.cooldown = CROSSBOW_COOLDOWN;
+                    }
+                }
                 case CREEPER -> {
                     if (h.fuse >= 0) {
                         if (distance > CREEPER_ABORT) {
@@ -330,9 +374,11 @@ public final class Battle implements WorldView {
     private boolean tryStep(Hostile h, double nx, double nz) {
         int bx = (int) Math.floor(nx);
         int bz = (int) Math.floor(nz);
-        int here = world.ground((int) Math.floor(h.x), (int) Math.floor(h.z));
-        if (!SyntheticWorld.inBounds(bx, bz) || world.ground(bx, bz) > here + 1
-                || world.isSolid(bx, world.ground(bx, bz) + 1, bz) || world.isHazard(bx, world.ground(bx, bz) + 1, bz)) {
+        // A mob in water swims at its surface, and climbs out where the bank is a block above it: heights by the surface.
+        int here = level((int) Math.floor(h.x), (int) Math.floor(h.z));
+        int foot = world.ground(bx, bz) + 1;
+        if (!SyntheticWorld.inBounds(bx, bz) || level(bx, bz) > here + 1
+                || world.isSolid(bx, foot, bz) || world.isHazard(bx, foot, bz) && !world.isWater(bx, foot, bz)) {
             return false;
         }
         h.x = nx;
@@ -348,6 +394,17 @@ public final class Battle implements WorldView {
     @Override
     public boolean isHazard(int x, int y, int z) {
         return world.isHazard(x, y, z);
+    }
+
+    // Its water the soldier's too: without these a soldier in a battle never saw water, and walked a pond's bed.
+    @Override
+    public boolean isWater(int x, int y, int z) {
+        return world.isWater(x, y, z);
+    }
+
+    @Override
+    public boolean isWaterSource(int x, int y, int z) {
+        return world.isWaterSource(x, y, z);
     }
 
     @Override

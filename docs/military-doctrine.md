@@ -598,6 +598,14 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   reach whatever route might go down to it: the soldier takes cover and carries on, as from one it has no route
   to (the engagement doctrine's it-can-I-can't cell; `DeterministicSoldier.ARCHER_BELOW`). Live, three miners
   closed on skeletons in the caves under their faces and were shot 12-28 blocks down.
+- **In water too.** A hostile treading water is closed on by swimming, as on foot: in the bot's battle
+  simulation a soldier with a stone sword on a bank kills a pillager in a pond 1-4 deep wherever it is
+  (`WaterCombatScenarioTest`).
+- **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the
+  response changes, each hostile's type, place, distance, height off the soldier and whether it's in water;
+  the soldier's health and kit; and the rule that chose the response - fights, shoots, takes cover (and why),
+  backs off, gets clear of a creeper, carries on (no way between them). And when it ends, how long it went on
+  and the health it cost.
 - **What's hostile.** The curated list (`tools/entity-hostility-generator`, `HostileMobRegistry`): what
   attacks on sight. The enderman, neutral till its eye is caught or it's hit, is on it for self-defense
   only - in contact within 3 blocks once it has hurt the soldier, never one merely passing at hand, never sought (`HostileMobRegistry.fightsOnlyAtHand`,
