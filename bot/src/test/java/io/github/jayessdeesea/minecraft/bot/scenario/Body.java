@@ -10,7 +10,7 @@ import java.util.List;
  * much exhaustion), else at 18 food or more a point every 80 ticks (6 exhaustion); every 4 exhaustion a point of
  * saturation, or of food when none is left; a blow cut by the armour worn, and each piece worn down max(1, blow / 4) by
  * it, gone at none left. It eats as the runner has a soldier eat: below 18 food, a loaf from its rations - 5 food, 6
- * saturation, after the server's 1.6 s (32 ticks) of eating; its swings go on meanwhile, which the server's wouldn't. In
+ * saturation, after the server's 1.6 s (32 ticks) of eating, no swing made meanwhile - an item in use is the hand's. In
  * place of a flat point every 80 ticks: the exchange a soldier withdraws and heals by is the server's
  * (backlog/engagement-doctrine.md).
  */
@@ -69,6 +69,11 @@ final class Body {
 
     double health() {
         return health;
+    }
+
+    /** Whether it's eating: its hand is the loaf's, and it strikes nothing. */
+    boolean eating() {
+        return eating > 0;
     }
 
     /** The armour points still worn. */

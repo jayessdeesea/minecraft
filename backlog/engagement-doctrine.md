@@ -64,7 +64,7 @@ eating below 18, a loaf after 1.6 s; iron armour worn down max(1, blow/4) a piec
 With it one more pairs cell passes (creeper and zombie, stone sword, hills); without eating it, three archer cells on
 hills fell to 83%, a soldier's food spent by its healing.
 Left: the other branches on the exchange (hand to hand, creepers, several hostiles at once, the bow); withdraw's
-eat-and-heal and re-engage - a soldier that stops swinging to eat, which the body doesn't yet; the squad fights' body
+eat-and-heal and re-engage (the body eats as the runner does, below 18, and swings at nothing meanwhile); the squad fights' body
 (`CombatSquadMatrixTest`, `CombatScenarioTest`'s squad); the matrix grown by starting health, armour and terrain.
 
 **Deaths as a check on the model, not a case each.** Each death is read for what the evals lack - is that dimension

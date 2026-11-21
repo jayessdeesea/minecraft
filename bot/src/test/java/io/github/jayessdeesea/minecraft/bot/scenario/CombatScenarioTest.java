@@ -298,10 +298,10 @@ class CombatScenarioTest {
                         + soldier.status().report());
             }
             Position now = soldier.status().position();
-            attack.ifPresent(id -> {
-                battle.strike(id, now, DeterministicSoldier.ATTACK_REACH, blow);
+            if (attack.isPresent() && !body.eating()) { // no swing while it eats
+                battle.strike(attack.getAsInt(), now, DeterministicSoldier.ATTACK_REACH, blow);
                 body.attacked();
-            });
+            }
             shieldUp = soldier.shieldRaised() ? shieldUp + 1 : 0;
             double damage = body.hit(battle.step(now, shieldUp > Battle.SHIELD_DELAY_TICKS
                     ? OptionalDouble.of(soldier.yaw()) : OptionalDouble.empty()));
