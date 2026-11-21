@@ -1502,7 +1502,10 @@ dirt; a gatherer never digs one for its dirt either), only while no wall is goin
 since the masons stand on steps inside it. Then filling: `Order.Fill(box, except)`, every open cell in each
 column of its strip from the top down to the first solid block or water. The strips are cut from
 where the work is left, not the whole site, so no soldier is handed a strip with nothing in it.
-`except` is what neither touches: the squads' huts, built or going up, the workshops, the farm, the wall line, the
+`except` is what neither touches: the squads' huts, built or going up, on the camp's level - its template, a hut taken
+back each night (operator, 2026-11-21: fixed huts, kept); one put up on ground still over the level, before it's dug
+down, is that night's only, dug with its ground (`CampGround.hutKept`; live, field609, two huts on the hill at the
+camp's centre kept the hill under them) - the workshops, the farm, the wall line, the
 mine - the 3x3 columns round its head, where the night shift cuts it, and its walkway and
 landing - so it's the camp's whatever the squads' tasks. A soldier reports `Working(command, cells left)`.
 

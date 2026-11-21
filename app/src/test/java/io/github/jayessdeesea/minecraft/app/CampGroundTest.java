@@ -52,4 +52,15 @@ class CampGroundTest {
         assertFalse(kept.contains(new Cell(2, 64, 1)) || kept.contains(new Cell(2, 68, 1)), "the heap over it dug");
         assertTrue(kept.contains(new Cell(11, 90, 0)), "past the wall line, its whole column");
     }
+
+    /** A hut on the camp's level is kept; one on the hill still over it is dug with the hill; one off the camp's ground isn't its work. */
+    @Test
+    void onlyAHutOnTheCampsLevelIsKeptFromItsGroundWork() {
+        java.util.Optional<io.github.jayessdeesea.minecraft.command.Position> camp = java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.Position(24, 64, 88));
+        assertTrue(CampGround.hutKept(new io.github.jayessdeesea.minecraft.command.Position(20.5, 64, 84.5), camp, 24), "on the camp's level");
+        assertFalse(CampGround.hutKept(new io.github.jayessdeesea.minecraft.command.Position(22.5, 72, 87.5), camp, 24),
+                "field609: on the hill at the camp's centre, eight over its level");
+        assertTrue(CampGround.hutKept(new io.github.jayessdeesea.minecraft.command.Position(80.5, 72, 87.5), camp, 24), "past the camp's ground");
+        assertTrue(CampGround.hutKept(new io.github.jayessdeesea.minecraft.command.Position(22.5, 72, 87.5), java.util.Optional.empty(), 24), "no camp");
+    }
 }

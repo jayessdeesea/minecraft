@@ -79,6 +79,22 @@ final class CampGround {
         return kept;
     }
 
+    /**
+     * Whether a hut whose floor is walked at {@code floor} is the camp's to keep, out of its ground work: one on the camp's
+     * level - its template, a hut a squad takes back each night (operator, 2026-11-21: fixed huts, kept) - or one past
+     * {@code radius} of the {@code camp}, none of its ground work's. A hut put up on ground still over the camp's level,
+     * before the ground's dug down, is the night's shelter only, dug with that ground by day: live (field609), two huts on
+     * the hill at the camp's centre, nine to eleven over sea level, were kept by the ground work, and the hill under them
+     * never came down.
+     */
+    static boolean hutKept(io.github.jayessdeesea.minecraft.command.Position floor, java.util.Optional<io.github.jayessdeesea.minecraft.command.Position> camp,
+                           int radius) {
+        if (camp.isEmpty() || Math.max(Math.abs(floor.x() - camp.get().x()), Math.abs(floor.z() - camp.get().z())) > radius) {
+            return true;
+        }
+        return Math.floor(floor.y()) == Math.floor(camp.get().y());
+    }
+
     /** Column ({@code x}, {@code z}) of {@code dig} kept: its whole height past {@code inner}, inside it only {@code ground} and the cell over it. */
     private static void keep(Set<Cell> kept, Box dig, Box inner, int x, int z, int ground) {
         if (x < dig.minX() || x > dig.maxX() || z < dig.minZ() || z > dig.maxZ()) {

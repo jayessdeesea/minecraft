@@ -4640,10 +4640,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Never the wall: levelled round the camp's ground, not the wall's centre, its high ground
         // took in the wall's own blocks, dug out as the masons put them back - live, soldiers broke blocks and put them back all day.
         walls.values().forEach(keep::addAll);
-        // A hut going up is kept as well as one built: cobblestone over the floor is dug by day.
-        fortifying.values().forEach(f -> keep.addAll(f.cells()));
+        // A hut going up is kept as well as one built: cobblestone over the floor is dug by day. Only one on the camp's
+        // level, or none of its ground's: one on ground still to come down is the night's, dug with it (CampGround.hutKept).
+        Optional<Position> camp = chainOfCommand.foothold().map(Foothold::camp);
+        fortifying.values().stream().filter(f -> CampGround.hutKept(f.stand(), camp, CAMP_RADIUS)).forEach(f -> keep.addAll(f.cells()));
         for (SquadState s : squadStates.values()) {
-            if (s.builtBase != null) {
+            if (s.builtBase != null && CampGround.hutKept(s.builtBase.floor().getFirst(), camp, CAMP_RADIUS)) {
                 s.builtBase.cells().forEach(c -> keep.add(BlockPos.containing(c.x(), c.y(), c.z())));
                 s.builtBase.floor().forEach(c -> keep.add(BlockPos.containing(c.x(), c.y() - 1, c.z())));
             }
@@ -7148,8 +7150,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // (command.Subsistence) - live, a soldier carried 22 wheat for days while its squad starved.
             int carriedRations = status.condition().flatMap(c -> c.kit()).map(Kit::rations).orElse(0);
             // And still wanted while a loaf is under way: its wheat in the table's grid isn't carried.
-            // Live, a soldier with 4 wheat put 3 in the grid, wanted no bread with the 1 left, and
-            // started and dropped the loaf 518 times.
+            // Live, a soldier with 4 wheat put 3 in the grid, wanted no bread with the 1 left, and started and dropped the loaf 518 times.
             if (inventory.count(ItemClass.WHEAT) >= BREAD_WHEAT && ((dutyBook.of(name).filter(DutyOrder::farm).isEmpty() ? field != null : bakes) || carriedRations < Subsistence.BASIC_LOAD)
                     || armourer.making(Recipe.BREAD)) {
                 tools.add(Recipe.BREAD);
@@ -7230,8 +7231,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     free -> run.tick(status.position(), supplyPoint, free && Resupply.isShort(status) && !inContact
                             && !recovering.contains(name))));
             // A way out chosen is kept until it's broken, not dropped with the next report: live, a
-            // soldier's CANTCO flipped between "no route" and "no blocks to build with" each second,
-            // and the break started and stopped forever.
+            // soldier's CANTCO flipped between "no route" and "no blocks to build with" each second, and the break started and stopped forever.
             boolean breakingOut = !wayOut.get().isEmpty() && exit == null && fort == null && !inContact
                     && wayOut.get().stream().anyMatch(c -> Math.hypot(c.x() + 0.5 - status.position().x(), c.z() + 0.5 - status.position().z()) < 3);
             if (ladderTicks.get() % 20 == 0 && !breakingOut) {
