@@ -2042,6 +2042,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     private final SurfaceCache surfaces = new SurfaceCache();
+    /** Every block a soldier puts above sea level, said by what put it (operator, 2026-11-21: audit it). */
+    private final PlacementAudit placementAudit = new PlacementAudit(() -> clockwork.millis());
     /** Whether {@code at} is under the ground: the column's surface, a second or two old, more than {@link #UNDERGROUND} over it. */
     private boolean underground(Position at) {
         return surfaces.underground(world, at, UNDERGROUND, clockwork.millis());
@@ -6016,8 +6018,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
             } else if (stairs != null && torchesLeft.isEmpty()) {
                 // Out of torches and their makings, the stairs' lights aren't its job any more: live,
-                // one at the landing reported CANTCO for half an hour on lights handed it while it
-                // had torches, never taken back.
+                // one at the landing reported CANTCO for half an hour on lights handed it while it had torches, never taken back.
                 lighting.remove(soldierName);
             }
             if (stairs != null) {
@@ -6041,8 +6042,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // building the base's doorway at the stairs' head, reporting Fortifying.
                 fortifying.remove(soldierName);
                 // The cutter stands where the stairs need it; the rest hold the top, clear of the shaft -
-                // by day. By night they go down behind it: the top is the dark, and down the stairs
-                // nothing spawns within 24 blocks of them.
+                // by day. By night they go down behind it: the top is the dark, and down the stairs nothing spawns within 24 blocks of them.
                 boolean dark = chainOfCommand.time().map(TimeOfDay::dark).orElse(false);
                 if (dark) {
                     nightBelow.put(squadName, stairs.head().y());
@@ -6061,8 +6061,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // No pickaxe, no mine (operator, 2026-11-17: we can't go into the mines without a pickaxe -
                 // be prepared to mine): by night it stays at the head, off the stairs, making one if it
                 // can. Live (field364), Fran, Jack and Pete with no pickaxe and the farm squad's Mia and Ned
-                // stood the night on the stairs between y=1 and y=11, the cutters queued behind them, and
-                // the night's ore was 0 of 16.
+                // stood the night on the stairs between y=1 and y=11, the cutters queued behind them, and the night's ore was 0 of 16.
                 boolean staysUp = dark && !isCutter
                         && !statuses.get(i).condition().flatMap(c -> c.kit()).map(Kit::pickaxe).orElse(false);
                 // One holding the top goes on its errand first: its kit at the workshop, torches made, the stairs lit.
@@ -6083,8 +6082,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         : new Position(stairs.head().x() - 1.5 + i, stairs.head().y(), stairs.head().z() + 3.5);
                 // Exactly where a cut wants it - or the head, where the next cut starts; but waiting the
                 // night out at the landing, as loosely as the rest: live, the landing's stand lost its
-                // floor to the ore under it, and the cutter, held to a spot it couldn't stand in,
-                // reported itself stranded a block below.
+                // floor to the ore under it, and the cutter, held to a spot it couldn't stand in, reported itself stranded a block below.
                 boolean cutting = isCutter && !(dark && cutterAt.equals(rest) && !rest.equals(centre(stairs.head())));
                 byName.get(soldierName).receiveOrder(new Order.MoveTo(place.x(), place.y(), place.z(),
                         // Its own step by night, held to it: a body's width, so two don't settle in one cell.
@@ -6115,8 +6113,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // make kit at, ore to fetch. A chest's stand, if none is found to walk to, its depot's
                 // stand - never the chest itself: live, soldiers sent onto the lid stood on it, and the
                 // load didn't go in. Live, every flatten builder's walk to a chest was steered to
-                // its clearer's stand instead - "last seen 32 blocks off" when the walk timed out - and
-                // not one load went in.
+                // its clearer's stand instead - "last seen 32 blocks off" when the walk timed out - and not one load went in.
                 Hands.Routine holding = handsHeld.get(soldierName);
                 Position here = statuses.get(i).position();
                 Optional<Position> routine = holding == null || holding == Hands.Routine.CLEARER ? Optional.empty()
@@ -6772,7 +6769,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         joined.thenAccept(sessionReady::complete);
         joined.thenAcceptBoth(firstPosition, (session, spawn) -> {
                     joinAttempts.remove(name);
-                    onJoined(definition, session, spawn, activeScheduler, activeSoldier, lastHealth, lastKit, inventory, supplyRun, armourerRef, depositorRef, torchmakerRef);
+                    onJoined(definition, placementAudit.wrap(definition.name(), session, inventory), spawn, activeScheduler, activeSoldier, lastHealth,
+                            lastKit, inventory, supplyRun, armourerRef, depositorRef, torchmakerRef); // its placings above sea level audited
                 }).exceptionally(cause -> {
                     if (stopping) {
                         return null;
@@ -7741,6 +7739,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     free -> scavenger.tick(status.position(), world, free && !cuttingOut && !threatened && fort == null && !(foodCalls || forage != null),
                             item -> atADump(item) || thrownNear(item))));
             Optional<Hands.Routine> hands = Hands.tick(turns);
+            placementAudit.routine(name, hands);
             if (keepHands.contains(name)) {
                 keepSaplingsCarried.put(name, inventory.count(ItemClass.SAPLING));
                 clearer.drainTimes().forEach(t -> keepPace.merge(name, t, LevelPace.Tally::plus));
@@ -7991,6 +7990,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 // A solid block in the model until the server's update says what landed, a tick on: stood on before the
                 // server confirms it - over an open cell only, and taken back if the server never does (ChunkCache.standIn).
+                placementAudit.routeStep(name); // its walk's step, no routine's
                 Builder.support(world, cell).flatMap(face -> footing.placeStep(cell, face, builtCell(cell)))
                         .ifPresent(block -> {
                             chunkCache.standIn(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE, clockwork.millis());
