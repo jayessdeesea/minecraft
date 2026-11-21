@@ -95,6 +95,16 @@ final class CampGround {
         return Math.floor(floor.y()) == Math.floor(camp.get().y());
     }
 
+    /** The camp's area of influence past its wall line (operator, 2026-11-21: 32 blocks out from the camp's edge). */
+    static final int INFLUENCE = 32;
+
+    /** The ground the force holds: the {@code camp} and {@link #INFLUENCE} out past its wall line at {@code wall} - none with no camp. */
+    static java.util.function.Predicate<BlockPos> held(java.util.Optional<io.github.jayessdeesea.minecraft.command.Position> camp, int wall) {
+        int reach = wall + INFLUENCE;
+        return camp.<java.util.function.Predicate<BlockPos>>map(c -> b -> Math.max(Math.abs(b.x() + 0.5 - c.x()), Math.abs(b.z() + 0.5 - c.z())) <= reach)
+                .orElse(b -> false);
+    }
+
     /** Column ({@code x}, {@code z}) of {@code dig} kept: its whole height past {@code inner}, inside it only {@code ground} and the cell over it. */
     private static void keep(Set<Cell> kept, Box dig, Box inner, int x, int z, int ground) {
         if (x < dig.minX() || x > dig.maxX() || z < dig.minZ() || z > dig.maxZ()) {

@@ -304,10 +304,10 @@ abstract class Mover {
             // Wide straight away for a goal a wide search was needed for: a cheap replan on the way
             // round would only lead back to the wall it's going round.
             Pathfinder.Result plan = Pathfinder.find(world, start, goal, goal.equals(wideGoal) ? LONG_PLAN_BUDGET : PLAN_BUDGET,
-                    FallAllowance.NONE, pillarBlocks(), carriesPickaxe(), false, avoid);
+                    FallAllowance.NONE, pillarBlocks(), carriesPickaxe(), false, avoid, holds(start));
             if (!plan.reachesGoal() && pillarBlocks() > 0) {
                 Pathfinder.Result built = Pathfinder.find(world, start, goal, PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(),
-                        carriesPickaxe(), true, avoid);
+                        carriesPickaxe(), true, avoid, holds(start));
                 // Only one that gets there: a partial one, toward a goal beyond one search, leads it astray.
                 if (built.reachesGoal()) {
                     plan = built;
@@ -322,7 +322,7 @@ abstract class Mover {
                     && navTicks - wideFailedAt < Math.min(WIDE_RETRY_MOST_TICKS, WIDE_RETRY_TICKS << Math.min(4, Math.max(0, wideFailures - 1)));
             if (!plan.reachesGoal() && failedPlans > 0 && !wideJustFailed) {
                 Pathfinder.Result wide = wideMemo.find(new Object[]{start, goal, world.stamp(start.x(), start.z(), WIDE_GROUND_CHUNKS), Set.copyOf(avoid),
-                        pillarBlocks(), carriesPickaxe()}, () -> Pathfinder.find(world, start, goal, LONG_PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(), carriesPickaxe(), false, avoid));
+                        pillarBlocks(), carriesPickaxe()}, () -> Pathfinder.find(world, start, goal, LONG_PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(), carriesPickaxe(), false, avoid, holds(start)));
                 if (wide.reachesGoal()) {
                     plan = wide;
                     wideGoal = goal;
@@ -363,7 +363,7 @@ abstract class Mover {
             }
             FallAllowance allowance = fallAllowance(current);
             if (!plan.reachesGoal() && !allowance.equals(FallAllowance.NONE)) {
-                Pathfinder.Result risky = Pathfinder.find(world, start, goal, PLAN_BUDGET, allowance, pillarBlocks(), carriesPickaxe(), false, avoid);
+                Pathfinder.Result risky = Pathfinder.find(world, start, goal, PLAN_BUDGET, allowance, pillarBlocks(), carriesPickaxe(), false, avoid, holds(start));
                 if (risky.reachesGoal()) {
                     plan = risky;
                 }
@@ -643,6 +643,20 @@ abstract class Mover {
         Risk needed = left >= Risk.MEDIUM.minHealthAfter() ? Risk.MEDIUM : left >= Risk.HIGH.minHealthAfter() ? Risk.HIGH : null;
         return String.format(Locale.ROOT, "; a route with falls costing %d of my %.0f health exists%s", damage,
                 known.health(), needed == null ? ", too costly even at HIGH risk" : " (" + needed + " risk)");
+    }
+
+    /** The ground the force holds - the camp's area of influence - where a step left is a debt: none till it's told. */
+    private volatile java.util.function.Predicate<BlockPos> held = c -> false;
+
+    /** The ground the force holds, as the runner has it: its routes place a step there only when no way round is near. */
+    public void holding(java.util.function.Predicate<BlockPos> ground) {
+        held = ground;
+    }
+
+    /** Whether a route from {@code start} to its goal is on ground the force holds: either end in it. */
+    private boolean holds(BlockPos start) {
+        java.util.function.Predicate<BlockPos> ground = held;
+        return ground.test(start) || goal != null && ground.test(BlockPos.containing(goal.x(), goal.y(), goal.z()));
     }
 
     /** Blocks a body falls unhurt: past three, each a point of health. */

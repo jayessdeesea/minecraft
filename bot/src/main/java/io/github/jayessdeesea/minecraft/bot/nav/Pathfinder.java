@@ -223,14 +223,32 @@ public final class Pathfinder {
      */
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
                               boolean pickaxe, boolean build, Set<BlockPos> avoid) {
+        return find(world, start, goal, maxExpanded, falls, blocks, pickaxe, build, avoid, false);
+    }
+
+    /**
+     * What taking a step down again costs, in blocks' walk, on ground the force holds: its dig, and the walk back to it.
+     * Off that ground a step is left; on it, it's a debt the ground work pays (operator, 2026-11-21).
+     */
+    static final double TAKEDOWN_COST = 8;
+
+    /**
+     * As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance, int, boolean, boolean, Set)}, on ground the force
+     * {@code holds} - the camp's area of influence - with a way round looked for even for one block placed, and each
+     * block priced with its {@link #TAKEDOWN_COST} too (operator, 2026-11-21: blocks left round the camp for navigation
+     * are a debt never paid off, where a slightly dearer route leaves none).
+     */
+    public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
+                              boolean pickaxe, boolean build, Set<BlockPos> avoid, boolean holds) {
         Search placing = search(world, start, goal, maxExpanded, falls, blocks, pickaxe, build, avoid);
         // Blocks placed to reach a goal above, up a jump, are the work - a mason onto its wall's top; only placed
         // to cross what's in the way are they a route to walk round.
-        if (!placing.result().reachesGoal() || placing.placed() < WALK_ROUND_FROM || goal.y() - goal.verticalTolerance() > start.y() + 1) {
+        if (!placing.result().reachesGoal() || placing.placed() < (holds ? 1 : WALK_ROUND_FROM) || goal.y() - goal.verticalTolerance() > start.y() + 1) {
             return placing.result();
         }
         Search walking = search(world, start, goal, maxExpanded, falls, 0, pickaxe, false, avoid);
-        return walking.result().reachesGoal() && !walking.rough() && walking.cost() <= placing.cost() + DETOUR_PER_BLOCK * placing.placed()
+        double perBlock = DETOUR_PER_BLOCK + (holds ? TAKEDOWN_COST : 0);
+        return walking.result().reachesGoal() && !walking.rough() && walking.cost() <= placing.cost() + perBlock * placing.placed()
                 ? walking.result() : placing.result();
     }
 

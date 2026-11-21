@@ -6960,6 +6960,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             if (takenBack > 0) {
                 LOG.warn("[World] {} stand-in block(s) the server never confirmed, taken back", takenBack);
             }
+            soldier.holding(CampGround.held(chainOfCommand.foothold().map(Foothold::camp), WALL_RADIUS)); // its routes leave no step on the camp's ground that a way round spares
             soldier.tick(world).ifPresent(target -> {
                 LOG.info("{} attacks entity {}", name, target);
                 if (soldier.takeKnockbackHit()) { // its sprint before the hit, not after; the server stops it with the hit (Strike)
@@ -7270,8 +7271,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 BlockPos headCell = feetCell.offset(0, 1, 0);
                 // A block at its feet alone, two looks running - two seconds, no step's tick - is one it
                 // stands in to the waist: live, gravel fallen into the pocket at the mine's bottom held two
-                // soldiers a day, each with air at its head and a solid cell at its feet, nothing to reach
-                // a stand from, every route "no route".
+                // soldiers a day, each with air at its head and a solid cell at its feet, nothing to reach a stand from, every route "no route".
                 boolean feetOnly = world.isSolid(feetCell.x(), feetCell.y(), feetCell.z()) && !world.isSolid(headCell.x(), headCell.y(), headCell.z());
                 if (!feetOnly) {
                     feetInBlock.set(0);
@@ -7340,8 +7340,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             int x = ax + dx, y = fy + dy, z = az + dz;
                             boolean body = dx == 0 && dz == 0 && (dy == 0 || dy == 1);
                             // Any water, not only sources: live, the shaft's water round three
-                            // stuck soldiers was all flowing, its source out of reach, and with
-                            // only sources to plug they placed nothing.
+                            // stuck soldiers was all flowing, its source out of reach, and with only sources to plug they placed nothing.
                             if (!body && world.isWater(x, y, z)) {
                                 sources.add(new BlockPos(x, y, z));
                             }
@@ -7480,8 +7479,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             // Not while it cuts its way out (the recovery drill's stair up): a load put in or a stack
             // picked up is past the stair it hasn't cut. Live, two soldiers in a cave under the mine's
-            // stairs, their stair up laid out, held their hands for a stockpile and a pickup with no
-            // route to either, and stood.
+            // stairs, their stair up laid out, held their hands for a stockpile and a pickup with no route to either, and stood.
             // Or builds its way down (the drill's stair down, an Order.Place): live, a builder given one
             // held its hands for a stockpile it had no walk to, its order the stair's - Idle, with no
             // stand from a builder that never got the hands - and stood.
@@ -7590,8 +7588,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // after failed trip (deposit, above). With every chest it could go to full, its
                     // cobblestone and dirt go to the dump (surplusKinds), the rest carried on full.
                     // Not up out of the mine by night for a load - the stash's ore goes in below; the rest
-                    // waits for day. Live, the night shift's loads were for the camp's chest 85 blocks off
-                    // and up the stairs, into the dark.
+                    // waits for day. Live, the night shift's loads were for the camp's chest 85 blocks off and up the stairs, into the dark.
                     Integer nightFloor = nightBelow.get(unitOf(name, definition.squad()));
                     boolean downForTheNight = nightFloor != null && status.position().y() < nightFloor - MINE_BELOW && !stashOre;
                     boolean breadWanted = toDepot && !StockLevels.atMost(ItemClass.FOOD, k -> stockedAt(k, Optional.empty()));
@@ -7856,8 +7853,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     ? new Report.Building((int) placing.get(name).stream().filter(c -> world.isSolid(c.x(), c.y(), c.z())).count(),
                             placing.get(name).size())
                     // Stuck in the water says so, in the stranded soldier's words, so the squad's
-                    // recovery drill sends blocks: live, two soldiers afloat reported the wood they
-                    // meant to gather, and nobody came.
+                    // recovery drill sends blocks: live, two soldiers afloat reported the wood they meant to gather, and nobody came.
                     : stuckInWater ? new Report.Cantco(String.format(Locale.ROOT, "no route from (%d, %d, %d) out of the water",
                             ax, (int) Math.floor(at.y()), az))
                     : hunter.active() ? new Report.Hunting()
@@ -8102,8 +8098,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // A keep builder's work load before the protection ladder past its floor (operator, 2026-11-14:
         // kit by role, protection and work apart): a stone sword, then the pickaxes and shovels its share
         // of the dig wears out (bot.craft.WorkLoad), then the rest. Live, builders climbed through copper
-        // armour while the dig's tools wore out with no spare.
-        // Not one in the wood party: its work is the trees, and its load the axe - in the squad
+        // armour while the dig's tools wore out with no spare. Not one in the wood party: its work is the trees, and its load the axe - in the squad
         // simulation a cutter spent its one log on a spare pickaxe's sticks and had none for the axe.
         if (keepHands.contains(name) && !keepParty.has(name)) {
             int share = keepDigLeftBySquad.getOrDefault(squad, 0) / Math.max(1, keepCrews.getOrDefault(squad, List.of()).size());
