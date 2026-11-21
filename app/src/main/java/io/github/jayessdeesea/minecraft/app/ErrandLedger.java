@@ -59,6 +59,11 @@ final class ErrandLedger {
 
     private final Map<String, Spell> spells = new HashMap<>();
     private final Map<String, Totals> totals = new TreeMap<>();
+    /** The day's totals by routine, for dawn's review. */
+    private final Map<String, Totals> day = new TreeMap<>();
+    /** The day's unpaid trips by soldier and routine, and the farthest point each walked to - the place it paid for. */
+    private final Map<String, Integer> dayUnpaid = new TreeMap<>();
+    private final Map<String, String> dayWhere = new HashMap<>();
     private long saidAt = Long.MIN_VALUE;
 
     /**
@@ -80,11 +85,18 @@ final class ErrandLedger {
             spells.remove(soldier);
             int moved = moved(spell.carried, carried);
             Totals t = totals.computeIfAbsent(spell.routine, r -> new Totals());
-            t.spells++;
-            t.walked += spell.walked;
-            t.moved += moved;
+            Totals d = day.computeIfAbsent(spell.routine, r -> new Totals());
+            for (Totals x : List.of(t, d)) {
+                x.spells++;
+                x.walked += spell.walked;
+                x.moved += moved;
+            }
             if (spell.walked >= FAR_BLOCKS && moved <= LITTLE_ITEMS) {
                 t.unpaid++;
+                d.unpaid++;
+                String who = soldier + "'s " + spell.routine;
+                dayUnpaid.merge(who, 1, Integer::sum);
+                dayWhere.put(who, at(spell.farthest) + ", " + Math.round(distance(spell.farthest, spell.from)) + " out");
                 lines.add(String.format(Locale.ROOT, "%s's %s: %.0f blocks walked in %.0f s for %d item(s) moved%s - from %s, farthest %s, %.0f blocks out",
                         soldier, spell.routine, spell.walked, (now - spell.since) / 1000.0, moved, changes(spell.carried, carried),
                         at(spell.from), at(spell.farthest), distance(spell.farthest, spell.from)));
@@ -103,6 +115,23 @@ final class ErrandLedger {
             totals.clear();
             lines.add(line.toString());
         }
+        return lines;
+    }
+
+    /**
+     * The day's errands for dawn's review, as lines: each routine's spells and yield a spell, and the trips that didn't pay
+     * most often, by soldier, with the last place each walked to for little - what moving it nearer would save. Starts again.
+     */
+    synchronized List<String> review() {
+        List<String> lines = new ArrayList<>();
+        lines.add("errands, by routine - spells, blocks and items a spell, trips that didn't pay:");
+        day.forEach((r, t) -> lines.add(String.format(Locale.ROOT, "  %s: %d, %.0f blocks, %.1f items, %d unpaid", r, t.spells,
+                t.walked / t.spells, (double) t.moved / t.spells, t.unpaid)));
+        dayUnpaid.entrySet().stream().sorted(Map.Entry.<String, Integer>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey()))
+                .limit(5).forEach(e -> lines.add("  unpaid: " + e.getKey() + " " + e.getValue() + " times, last out to " + dayWhere.get(e.getKey())));
+        day.clear();
+        dayUnpaid.clear();
+        dayWhere.clear();
         return lines;
     }
 

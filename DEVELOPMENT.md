@@ -229,7 +229,8 @@ minutes the soldier-seconds stood doing nothing past a 10 s pause - under orders
 work while the squad has a task, the chain of command's (by squad; `app.StoodStill`); `[Productivity]`, an errand -
 any routine's spell with a soldier's hands - that walked 40 blocks or more for 3 items or fewer, with where it started
 and the farthest it went, the place whose distance it paid for; and `[Errand]`, every ten minutes each routine's spells,
-blocks and items a spell (`app.ErrandLedger`); `[AAR]`, each dawn's review of the
+blocks and items a spell (`app.ErrandLedger`), the day's in the dawn review with the trips that most often didn't
+pay and how far out each went; `[AAR]`, each dawn's review of the
 day before (§ 17); `[Scoreboard]`, that day's score beside the day before's; and `[Ledger]`, every ten minutes
 what each kind of act was planned to take against what it took - a route's ticks a step planned; a farmer's crop-ticks a crop - each ripe crop of its plot a tick, over those brought in:
 how long one stands ripe - and cell-ticks a cell sown, each bare cell a tick while it carries seeds - the same line the

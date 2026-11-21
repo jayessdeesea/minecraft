@@ -24,6 +24,8 @@ final class AfterActionReview {
     final CommandScorecard commands = new CommandScorecard();
     /** The soldier-seconds stood doing nothing, the soldiers' and the chain of command's. */
     final StoodStill stoodStill = new StoodStill();
+    /** Each errand's yield against its walk, and the trips that didn't pay. */
+    final ErrandLedger errands = new ErrandLedger();
 
     private final Map<String, List<String>> deaths = new TreeMap<>();
     private final Map<String, Integer> idle = new TreeMap<>();
@@ -153,6 +155,7 @@ final class AfterActionReview {
         review.append("\n  idle by day: ").append(idle.isEmpty() ? "none" : idle.toString());
         commands.review().forEach(line -> review.append("\n  ").append(line));
         stoodStill.review().forEach(line -> review.append("\n  ").append(line));
+        errands.review().forEach(line -> review.append("\n  ").append(line));
         deaths.clear();
         idle.clear();
         return Optional.of(new Dawn(review.toString(), score));

@@ -31,6 +31,8 @@ class ErrandLedgerTest {
         }
         lines.addAll(ledger.tick("Ned", Optional.empty(), new Position(3, 63, 95), after, now));
         assertEquals(1, lines.size(), lines.toString());
+        List<String> review = ledger.review();
+        assertTrue(review.contains("  unpaid: Ned's ARMOURER 1 times, last out to (28, 63, 95), 25 out"), "at dawn, up the chain: " + review);
         assertTrue(lines.getFirst().startsWith("Ned's ARMOURER: 50 blocks walked") && lines.getFirst().contains("for 3 item(s) moved (+1 food, -3 wheat)")
                 && lines.getFirst().endsWith("from (3, 63, 95), farthest (28, 63, 95), 25 blocks out"), lines.getFirst());
     }

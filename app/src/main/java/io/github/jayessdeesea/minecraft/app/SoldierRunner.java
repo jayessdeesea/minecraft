@@ -2040,8 +2040,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final SurfaceCache surfaces = new SurfaceCache();
     /** Every block a soldier puts above sea level, said by what put it (operator, 2026-11-21: audit it). */
     private final PlacementAudit placementAudit = new PlacementAudit(() -> clockwork.millis());
-    /** What each errand yields against its walk, and the trips that didn't pay (operator, 2026-11-21: Ned shouldn't suffer in silence). */
-    private final ErrandLedger errandLedger = new ErrandLedger();
     /** Whether {@code at} is under the ground: the column's surface, a second or two old, more than {@link #UNDERGROUND} over it. */
     private boolean underground(Position at) {
         return surfaces.underground(world, at, UNDERGROUND, clockwork.millis());
@@ -7736,7 +7734,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             item -> atADump(item) || thrownNear(item))));
             Optional<Hands.Routine> hands = Hands.tick(turns);
             placementAudit.routine(name, hands);
-            errandLedger.tick(name, hands, status.position(), ErrandLedger.carried(inventory), clockwork.millis())
+            afterActionReview.errands.tick(name, hands, status.position(), ErrandLedger.carried(inventory), clockwork.millis())
                     .forEach(line -> LOG.info(line.startsWith("errands") ? "[Errand] {}" : "[Productivity] {}", line)); // a trip's yield against its walk
             if (keepHands.contains(name)) {
                 keepSaplingsCarried.put(name, inventory.count(ItemClass.SAPLING));
