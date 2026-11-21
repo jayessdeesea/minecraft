@@ -79,7 +79,7 @@ class FarmSiteTest {
         FarmSite.Work work = FarmSite.work(flat, FARM);
 
         int postTorches = FARM.torches().size() - 4;
-        assertEquals(new FarmSite.Work(4, 0, 0, 4, 216, 216, 4, FARM.fence().size() + postTorches, 4), work, "a torch on a post's top the fence's");
+        assertEquals(new FarmSite.Work(4, 0, 0, 4, 216, 216, 4, FARM.fence().size() + postTorches, FARM.gates().size()), work, "a torch on a post's top the fence's");
         assertEquals(FarmSite.Stage.SURVEYED, work.stage(), "its holes still to dig");
         assertEquals(new FarmSite.Supply(0, 216, 4, true), work.toProducing(), "seeds, torches and a bucket - no blocks");
     }

@@ -47,6 +47,22 @@ the wood party when none qualifies; trees felled whole and replanted (docs/milit
 farm's, a grove's and a wood's ground whole chunks on the server's grid (`command.WorkArea`).
 Left: levelling production chunks; gates worked on a route (see More farmland below).
 
+## Tree chunks: the high-density grove (operator, 2026-11-21)
+A tree farm a chunk, laid out like the wheat chunk and beside them, alternating wheat and trees on the camp's chunk
+grid, inside the area of influence (32 blocks out from the camp's edge):
+- **Ground** flat at sea level, dirt or grass.
+- **16 birch** at local 2, 6, 10, 14 both ways - `bot.farm.TreeFarm`'s world grid already.
+- **Fence** on the x%16==0 and z%16==0 lines, shared with the next chunk; each corner a post, and every fence cell
+  beside a corner a gate - both sides, eight a chunk, as `ChunkFarm` lays the wheat chunks out (one grid).
+- **Torches**: nine on the ground at local 4, 8, 12 both ways - light 10 at each trunk, growth wants 9 - and one on
+  every fourth fence post, so nothing spawns against the fence.
+- **Chest** at local (1, 1): two axes, so cutters needn't carry them; a reserve of saplings (64) to replant after a
+  disaster or start another; spare torches.
+- **Worked by rotation**: one tender fells each tree as it's grown, whole, replants its cell, takes its steps down,
+  and picks up what the leaves drop before it despawns (5 minutes).
+- **A site through stages** like the chunk farms: ground, fenced and lit, planted, producing - its yield measured in
+  the squad simulation against a baseline.
+
 ## The keep's grove (operator, 2026-11-17)
 No site near the depot holds 16 cells: several groves, each what the ground holds, and the search
 for them travels farther. Built: a grove of 8 cells or more, sought out to 96 blocks
@@ -164,7 +180,7 @@ the force can build them:
   (docs/military-doctrine.md, the camp's farm). Left: a gate worked on a route - opened, walked through, shut - so the
   gates can stand shut against mobs; its chunk flattened to one level - sea level in time; (the next chunk farm
   is built: taken in once every one is past SURVEYED, docs/military-doctrine.md) the design as the operator gave it: chunk farms, built one at a time. Each a chunk, flat at sea level,
-  fenced on its x%16==0 and z%16==0 lines (shared with the next farm), gates beside the corners; tilled but for
+  fenced on its x%16==0 and z%16==0 lines (shared with the next farm), a gate each side of each corner; tilled but for
   four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) - each hydrates the 9x9 round it - in the farmland's
   own layer (water a block below hydrates nothing); and a chest at local (13, 13) for its seed (to 256) and wheat.
   In steady state one soldier tends one farm - harvesting, replanting and mending holed ground as it goes - so the
@@ -175,7 +191,7 @@ the force can build them:
 - **The operator's prototype (2026-11-19; the cover over each hole keeps the farm lit - skipped for now, 2026-11-20):** fence on x = -81 and -65, z = 96 and 112 (x a block off the chunk lines -
   backlog/questions-overnight.md); eight gates, one on each line beside each corner; torches on the corner and middle
   posts; a grass block and a torch over each water hole; and nothing high beside the fence - zombies came in off a tree
-  there. Tried and not landed (kept as a patch outside the tree): the eight gates; torches on the posts (a torch's cell is
+  there. Tried and not landed (kept as a patch outside the tree): torches on the posts (a torch's cell is
   over a post's 1.5-high collision - `solidHere`, not `isSolid` - and a torch builder takes a torch as placed); the
   ground and trees beside the fence dug as earthwork; a chunk farm's fence kept off the camp's walled ground (a line
   through it was dug as fast as it went up); a failed fixture's cells passed over. In the squad simulation the farmer

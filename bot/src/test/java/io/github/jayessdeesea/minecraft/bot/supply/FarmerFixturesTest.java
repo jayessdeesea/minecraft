@@ -53,13 +53,29 @@ class FarmerFixturesTest {
     /** Every post, gate and chest cell still open is left to put up; one put up, or given up on, isn't. */
     @Test
     void theFixturesLeftAreTheOpenCellsNotGivenUpOn() {
-        assertEquals(60, Farmer.fixtures(world, farm, ItemClass.FENCE, Set.of()).size());
+        assertEquals(56, Farmer.fixtures(world, farm, ItemClass.FENCE, Set.of()).size());
         assertEquals(chunk.gates(), Farmer.fixtures(world, farm, ItemClass.FENCE_GATE, Set.of()));
         assertEquals(List.of(chunk.chest()), Farmer.fixtures(world, farm, ItemClass.CHEST, Set.of()));
         placed.add(chunk.chest());
         BlockPos skipped = chunk.fence().getFirst();
         assertEquals(List.of(), Farmer.fixtures(world, farm, ItemClass.CHEST, Set.of()), "the chest stands");
         assertTrue(!Farmer.fixtures(world, farm, ItemClass.FENCE, Set.of(skipped)).contains(skipped), "a post given up on");
+    }
+
+    /**
+     * A post where a gate goes now - a farm fenced when each corner had one gate, not one each side - is the farm's
+     * earthwork, dug for the gate (operator, 2026-11-21); the corner's own post stays.
+     */
+    @Test
+    void aPostWhereAGateGoesIsDugForTheGate() {
+        BlockPos gate = chunk.gates().get(1);
+        BlockPos corner = new BlockPos(ChunkFarm.SIDE, GROUND + 1, 0);
+        placed.add(gate);
+        placed.add(corner);
+        assertTrue(Farmer.earthwork(world, farm).contains(gate), "the post on the gate's cell dug: " + gate);
+        assertTrue(!Farmer.earthwork(world, farm).contains(corner), "the corner's post stays");
+        placed.remove(gate);
+        assertTrue(Farmer.fixtures(world, farm, ItemClass.FENCE_GATE, Set.of()).contains(gate), "then the gate put up");
     }
 
     /** A hoe, a bucket for the dry holes, and each fixture it carries none of - its torches too. */

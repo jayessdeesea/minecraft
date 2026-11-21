@@ -41,14 +41,18 @@ class ChunkFarmTest {
         };
     }
 
-    /** Fenced on the chunk's lines and the next ones, a gate beside each corner; holes, chest, field torches and 216 cells inside. */
+    /** Fenced on the chunk's lines and the next ones, a gate each side of each corner; holes, chest, field torches and 216 cells inside. */
     @Test
     void aChunkFarmIsLaidOutOnItsChunksLines() {
         ChunkFarm farm = new ChunkFarm(-1, 2, GROUND);
 
-        assertEquals(List.of(new BlockPos(-15, GROUND + 1, 32), new BlockPos(0, GROUND + 1, 33), new BlockPos(-1, GROUND + 1, 48),
-                new BlockPos(-16, GROUND + 1, 47)), farm.gates(), "beside each corner, going round");
-        assertEquals(17 * 4 - 4 - 4, farm.fence().size(), "the ring of 17 a side, less its gates");
+        assertEquals(List.of(new BlockPos(-15, GROUND + 1, 32), new BlockPos(-1, GROUND + 1, 32), new BlockPos(0, GROUND + 1, 33),
+                new BlockPos(0, GROUND + 1, 47), new BlockPos(-1, GROUND + 1, 48), new BlockPos(-15, GROUND + 1, 48),
+                new BlockPos(-16, GROUND + 1, 47), new BlockPos(-16, GROUND + 1, 33)), farm.gates(), "each side of each corner, going round");
+        assertEquals(17 * 4 - 4 - 8, farm.fence().size(), "the ring of 17 a side, less its gates");
+        for (int[] corner : new int[][]{{-16, 32}, {0, 32}, {0, 48}, {-16, 48}}) {
+            assertTrue(farm.fence().contains(new BlockPos(corner[0], GROUND + 1, corner[1])), "each corner a post");
+        }
         assertTrue(farm.fence().stream().allMatch(c -> Math.floorMod(c.x(), 16) == 0 || Math.floorMod(c.z(), 16) == 0),
                 "every post on a chunk line");
         assertEquals(List.of(new BlockPos(-12, GROUND, 36), new BlockPos(-12, GROUND, 44), new BlockPos(-4, GROUND, 36), new BlockPos(-4, GROUND, 44)),

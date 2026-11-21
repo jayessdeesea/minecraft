@@ -14,7 +14,7 @@ import java.util.function.Predicate;
 /**
  * A farm laid out on one chunk of the server's grid (operator, 2026-11-19), built once the force has a bucket: flat
  * at one level, fenced on the chunk's lines - x%16==0 and z%16==0, each line shared with the farm beside it - with a
- * gate beside each corner; its ground tilled but for four water holes at local (4, 4), (4, 12), (12, 4) and (12, 12),
+ * gate each side of each corner; its ground tilled but for four water holes at local (4, 4), (4, 12), (12, 4) and (12, 12),
  * dug in the farmland's own layer and filled by bucket - each hydrates the 9x9 round it, the four the whole of the
  * fenced 15x15 - and a chest at local (13, 13) for the farm's seed and wheat.
  *
@@ -43,11 +43,18 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
         return chunkZ * SIDE;
     }
 
-    /** The gates, on the ground over its level: beside each corner, one on each of its four lines, going round. */
+    /**
+     * The gates, on the ground over its level: each corner a post, and the cell beside it on each of its two lines a gate
+     * - eight, going round (operator, 2026-11-21: the corner a fence, right next to it a gate on both sides). One grid for
+     * every chunk farm, wheat or trees: the lines are shared, and so are the corners.
+     */
     public List<BlockPos> gates() {
         int y = level + 1;
-        return List.of(new BlockPos(x0() + 1, y, z0()), new BlockPos(x0() + SIDE, y, z0() + 1),
-                new BlockPos(x0() + SIDE - 1, y, z0() + SIDE), new BlockPos(x0(), y, z0() + SIDE - 1));
+        int x1 = x0() + SIDE;
+        int z1 = z0() + SIDE;
+        return List.of(new BlockPos(x0() + 1, y, z0()), new BlockPos(x1 - 1, y, z0()), new BlockPos(x1, y, z0() + 1),
+                new BlockPos(x1, y, z1 - 1), new BlockPos(x1 - 1, y, z1), new BlockPos(x0() + 1, y, z1),
+                new BlockPos(x0(), y, z1 - 1), new BlockPos(x0(), y, z0() + 1));
     }
 
     /** The fence posts, on the ground over its level: its four lines, the corners in, the gates out. */

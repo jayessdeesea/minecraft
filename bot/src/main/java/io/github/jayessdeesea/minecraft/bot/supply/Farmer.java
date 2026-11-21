@@ -238,6 +238,12 @@ public final class Farmer {
                     }
                 }
             }
+            // A post where a gate goes - put up before the corners had a gate each side - dug, for the gate.
+            for (BlockPos g : chunk.gates()) {
+                if (world.solidHere(g.x(), g.y(), g.z()) && !world.isGate(g.x(), g.y(), g.z())) {
+                    dig.add(g);
+                }
+            }
             for (BlockPos g : chunk.ground()) {
                 for (int up = 3; up >= 1; up--) {
                     BlockPos b = g.offset(0, up, 0);

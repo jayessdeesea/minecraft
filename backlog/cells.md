@@ -34,7 +34,10 @@ adding cells outward.
   of fields with water; then the ring of 12 chunks round the keep, from the ramps outward.
 - **Scaffolding of bamboo** (operator, 2026-11-12: preferred over dirt for climbing). Left: bamboo
   scaffolding is climbed inside and sneaked down, not stood on, so it wants its own moves in the
-  route planner, and bamboo from a jungle and string to make it.
+  route planner, and bamboo from a jungle and string to make it. None seen near the camp (operator, 2026-11-21):
+  bamboo in any chunk loaded said as a sighting; the squad simulation's growth a model per plant (wheat's ages, a
+  sapling's tree, bamboo's height cut above its base), so bamboo is a plant added, not a rewrite. Grown by hand
+  first, its scaffolding's worth that a climb comes down with one break at its foot - a step's debt paid at once.
 - **A pillar's stub.** A soldier stranded up its own pillar digs it down (`Recovery`, the pillar's
   episode), but the last block or two it steps off, building a step down beside them, and leaves
   both: in the squad simulation, a two-block stub and three steps by it. Left: its episode held

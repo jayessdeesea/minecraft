@@ -203,7 +203,8 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    as soon as can be) (`bot.farm.ChunkFarm`): the
    chunk within two of the camp's - never the camp's own - with the most ground at one level that makes
    farmland, at least 128 of its 220 (over half: the rest flattened to it in time); laid out on the chunk's lines - a fence on x%16==0 and z%16==0, a
-   gate beside each corner, four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) in the
+   post at each corner and a gate each side of it - eight a chunk, one grid for wheat and trees, so a post still on a
+   gate's cell from before is the farm's earthwork, dug for the gate (operator, 2026-11-21) - four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) in the
    farmland's own layer, a chest at local (13, 13), and four torches in the field at local (5, 5), (5, 11),
    (11, 5), (11, 11) - a step in on the diagonal from each hole, on ground left untilled - so nothing spawns in
    it by night (operator, 2026-11-20; its tender makes torches only from coal it carries). Its farmers dig the holes and fill them from a
