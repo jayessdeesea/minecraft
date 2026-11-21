@@ -17,10 +17,13 @@ reuses the hut's floor there. What makes it stack live - a doorway cut, a roof b
 what's left to find.
 
 ## What
-1. The ground of a soldier cut off is kept (`app.WorldRecords`, from `CutOff`): replay it in a scenario that stacks.
-2. Fix the site search so a hut never goes on a hut, as the scenario shows.
-3. The stacks there now taken down: the camp's flatten digs over its level, once the phase opens it; or a police
-   call that takes a hut no squad holds.
+Since (2026-11-20): the camp's ground is set at y=64 (`minecraft.camp`'s ground), not read off its roofs; at night the
+squads go down the mine, not into huts at the camp; and the camp's ground work goes out a ring at a time to 24 blocks
+once its box is level (`app.CampGround`), a hut no squad holds no exception to it - so the stacks within 24 are dug
+down as it goes. Left:
+1. Live, the rings reaching the stacks at (23, 89) and the camp's ground there at 64 again.
+2. The site search: a hut never on a hut, shown in a scenario first (`app.WorldRecords` keeps a stuck soldier's
+   ground and `StuckEvalsTest` replays it) - for the night a squad does shelter at the camp.
 
 ## Done when
 - A recorded camp point with a stack, replayed, gets its hut on the ground; live, a week of nights adds no storey.
