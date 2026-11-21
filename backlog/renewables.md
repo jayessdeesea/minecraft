@@ -59,9 +59,20 @@ grid, inside the area of influence (32 blocks out from the camp's edge):
 - **Chest** at local (1, 1): two axes, so cutters needn't carry them; a reserve of saplings (64) to replant after a
   disaster or start another; spare torches.
 - **Worked by rotation**: one tender fells each tree as it's grown, whole, replants its cell, takes its steps down,
-  and picks up what the leaves drop before it despawns (5 minutes).
-- **A site through stages** like the chunk farms: ground, fenced and lit, planted, producing - its yield measured in
-  the squad simulation against a baseline.
+  and picks up what the leaves drop - saplings and sticks - before it despawns (5 minutes). Its saplings past its
+  pack's go in the chunk's chest, to 256 (as a wheat chunk's seed).
+- **A site through stages**, wood from the second - the fence isn't needed to grow wood: (1) **Ground** - flat at its
+  level, dirt or grass at each trunk cell; (2) **Planted** - a sapling at each trunk cell, the chest up; (3) **Lit** -
+  its ground torches, growth by night and nothing spawning; (4) **Producing** - trees standing to fell; (5) **Fenced**
+  - fence, gates, post torches, when wood isn't short. Its yield measured in the squad simulation against a baseline.
+- **By bids, like the wheat chunks** (operator, 2026-11-21): the platoon leader, short of wood, asks for bids on tree
+  sites; each squad leader hands it to its soldiers, who cost the chunks nearest them from the world model (blocks to
+  dig and fill to the level, saplings, coal, logs, the walk); the bids go up through the squad leader, the platoon
+  leader takes the cheapest the wood wants, and the winning squad gets the build order with the template, its bid the
+  plan it's measured by. One cycle for wheat and trees (the sites-by-bids section above is the wheat's): the template
+  and its stages differ, the asking, costing and choosing don't.
+- **Remembered**: the platoon leader keeps every tree site and its stage across restarts, and sends a squad to fell
+  and replant one that's producing, as it sends farmers to a producing wheat chunk.
 
 ## The keep's grove (operator, 2026-11-17)
 No site near the depot holds 16 cells: several groves, each what the ground holds, and the search
