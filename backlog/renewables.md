@@ -74,6 +74,40 @@ grid, inside the area of influence (32 blocks out from the camp's edge):
 - **Remembered**: the platoon leader keeps every tree site and its stage across restarts, and sends a squad to fell
   and replant one that's producing, as it sends farmers to a producing wheat chunk.
 
+## The supply point: a chunk of stores (operator, 2026-11-21)
+The camp's stores on a chunk of their own, laid out like the wheat and tree chunks and on their grid: flat at sea
+level, fenced on the chunk's lines, a post at each corner and a gate each side of it. Called the **supply point** - the
+Army's and the Air Force's place supplies are held and issued from (FM 4-0, ATP 4-90): a depot is a theater's, a dump
+the old word for a temporary one, and the stockpile is what's held, not where (its levels are ProductionLevels').
+- **Chests by class of supply**, rows of double chests along x - six to a half-row, a cross-aisle at local x=8 - with
+  two aisles between rows, each chest reached from both sides: local z=3 Class I (food), z=6 Class IV (cobblestone,
+  dirt, logs, planks), z=9 Classes II and IX (tools, armour, ore, ingots), z=12 Classes III and V (coal, torches,
+  arrows) - 24 double chests in all. Nothing solid over a chest: a block on it won't let it open (a torch is fine).
+- **Seeds and saplings stay with their farms** - each wheat chunk's chest, each tree chunk's - and come here only while
+  there's no farm of theirs to hold them: the seed for a first farm, the saplings to start a grove or replant after a
+  disaster (operator, 2026-11-21).
+- **Not filled at first**: a row goes up when its class's stock nears what its chests hold - food and Class IV first.
+- **Ground torches** in the aisles at local x=2, 7, 12 on z=2, 7, 11; a torch on every fourth post, and spare torches in
+  its Class III chest. A **workshop** by a gate along local z=14: a crafting table and a bank of furnaces (operator,
+  2026-11-21: a furnace and a crafting table, and a bunch of furnaces) - smelting ore and cooking from the stores
+  beside them, several loads at once, so a soldier crafting needn't cross the chunk or carry the stores away to do it.
+- **The ad hoc chests consolidated into it** (operator, 2026-11-21): once it's stocked, the chests the camp has
+  scattered - the workshop's row, a keep's depot, chests found full - are looked through (the world model's known
+  chests and what each was last seen holding), and their contents hauled to the supply point by class, a chest
+  emptied before it's dug up; a haul is a task like any other, measured by what arrived against what was taken.
+- **Stages, the fence before the stores**: (1) ground, (2) fenced and lit, (3) stocked - the first row up, (4) grown, a
+  row a class as it needs. Unlike a grove, which grows wood before its fence: a creeper among the chests is the loss
+  that sends a site to RECONSTITUTE (backlog/sites.md), and the fence keeps the ground ones out.
+- **Moved, as any template can be** (operator, 2026-11-21: move this tree farm over here): a site - wheat chunk, tree
+  chunk, supply point - is moved by building the new one through its stages first, then running the old one down -
+  its crop or trees harvested and not replanted, its chest's contents hauled to the new one, its fixtures taken up -
+  and its ground given back to the flatten. The platoon leader orders it like a build, by bids, with the old site's
+  run-down costed in.
+- **By bids, the same cycle as the farms** (backlog/renewables.md), costed by where it stands as much as by its
+  ground: the earthwork to level it, and the trips to it - from the farms, the groves and the mine's head, which bring,
+  and from the camp and the keep, which draw. The middle of the ring of farm and tree chunks round the camp, rougher
+  ground there before flatter ground far out.
+
 ## The keep's grove (operator, 2026-11-17)
 No site near the depot holds 16 cells: several groves, each what the ground holds, and the search
 for them travels farther. Built: a grove of 8 cells or more, sought out to 96 blocks
