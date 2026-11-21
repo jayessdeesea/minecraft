@@ -48,10 +48,33 @@ class WaterCombatScenarioTest {
         assertTrue(missed.isEmpty(), "pillagers in water not engaged: " + missed);
     }
 
-    /** One fight: the pond from x=3 on, the soldier on the bank at x=0, the pillager {@code out} into it. */
+    /**
+     * A pillager floating out in a pond, out of contact and holding - not shooting till a soldier comes within its range
+     * (operator, 2026-11-20: soldiers neither worked nor fought pillagers in a pond). An archer in sight within
+     * {@code DeterministicSoldier.ARCHER_ENGAGE} is closed on by one armed for melee: correct is the pillager killed.
+     */
+    @Test
+    void aPillagerHoldingOutInAPondIsClosedOn() {
+        List<String> missed = new ArrayList<>();
+        for (int out = 9; out <= 13; out += 2) {
+            for (int side = -3; side <= 3; side += 3) {
+                String ending = fight(3, out, side, true);
+                if (!ending.equals("killed it")) {
+                    missed.add(out + " out, " + side + " along: " + ending);
+                }
+            }
+        }
+        assertTrue(missed.isEmpty(), "pillagers holding out in a pond not closed on: " + missed);
+    }
+
     static String fight(int depth, int out, int side) {
+        return fight(depth, out, side, false);
+    }
+
+    /** One fight: the pond from x=3 on, the soldier on the bank at x=0, the pillager {@code out} into it, holding or not. */
+    static String fight(int depth, int out, int side, boolean holding) {
         SyntheticWorld world = new SyntheticWorld(63);
-        for (int x = 3; x <= 14; x++) {
+        for (int x = 3; x <= 20; x++) {
             for (int z = -6; z <= 6; z++) {
                 world.setGround(x, z, 63 - depth);
                 for (int y = 64 - depth; y <= 63; y++) {
@@ -60,7 +83,8 @@ class WaterCombatScenarioTest {
             }
         }
         Battle battle = new Battle(world, depth * 100L + out * 10L + side);
-        Battle.Hostile pillager = battle.spawn(Battle.Archetype.PILLAGER, 2.5 + out, 0.5 + side);
+        Battle.Hostile pillager = holding ? battle.spawnHolding(Battle.Archetype.PILLAGER, 2.5 + out, 0.5 + side)
+                : battle.spawn(Battle.Archetype.PILLAGER, 2.5 + out, 0.5 + side);
         DeterministicSoldier soldier = new DeterministicSoldier("Liam", new Position(0.5, 64, 0.5));
         double health = 20;
         soldier.reportHealth(health, 20);

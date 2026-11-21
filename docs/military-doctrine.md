@@ -601,6 +601,10 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 - **In water too.** A hostile treading water is closed on by swimming, as on foot: in the bot's battle
   simulation a soldier with a stone sword on a bank kills a pillager in a pond 1-4 deep wherever it is
   (`WaterCombatScenarioTest`).
+- **An archer in sight within 16 is closed on** by a soldier armed for melee, shooting or not - a skeleton or a
+  pillager, past the 8 blocks of contact (operator, 2026-11-20; `DeterministicSoldier.ARCHER_ENGAGE`): live,
+  pillagers floating in a pond held soldiers off their work, fought by none. One it can't close on - below,
+  or no route - that's out of contact and not shooting is let be, and the work goes on: not hidden from.
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the
   response changes, each hostile's type, place, distance, height off the soldier and whether it's in water;
   the soldier's health and kit; and the rule that chose the response - fights, shoots, takes cover (and why),

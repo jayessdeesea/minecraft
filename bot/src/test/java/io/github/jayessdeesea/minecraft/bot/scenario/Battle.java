@@ -98,6 +98,8 @@ public final class Battle implements WorldView {
         int cooldown;
         int fuse = -1;
         boolean exploded;
+        /** Holding where it is - a pillager floating in a pond, a patrol not yet alerted - till a soldier comes within its range or strikes it. */
+        boolean holding;
 
         Hostile(int id, Archetype archetype, double x, double z) {
             this.id = id;
@@ -124,6 +126,13 @@ public final class Battle implements WorldView {
     public Hostile spawn(Archetype archetype, double x, double z) {
         Hostile hostile = new Hostile(1000 + hostiles.size(), archetype, x, z);
         hostiles.add(hostile);
+        return hostile;
+    }
+
+    /** As {@link #spawn}, holding where it is till a soldier comes within its range or strikes it. */
+    public Hostile spawnHolding(Archetype archetype, double x, double z) {
+        Hostile hostile = spawn(archetype, x, z);
+        hostile.holding = true;
         return hostile;
     }
 
@@ -283,6 +292,10 @@ public final class Battle implements WorldView {
                     }
                 }
                 case PILLAGER -> {
+                    if (h.holding && distance > CROSSBOW_RANGE && h.health == h.archetype.health) {
+                        continue;
+                    }
+                    h.holding = false;
                     double speed = wet(h) ? h.archetype.speed / 3 : h.archetype.speed;
                     if (distance > PILLAGER_STANDOFF + 1) {
                         move(h, soldier, speed);

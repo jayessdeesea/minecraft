@@ -410,6 +410,11 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         }
         // A soldier with a bow reaches further than a sword: what it can see within bow range is contact.
         List<TrackedEntity> threats = visible(world, world.nearbyHostiles(gait.position, canShoot() ? BOW_RANGE : CONTACT_RADIUS));
+        // An archer in sight within ARCHER_ENGAGE, to one armed for melee: closed on, not left to shoot when it will
+        // (operator, 2026-11-20). Live, pillagers floating in a pond held soldiers off their work, fought by none.
+        if (threats.isEmpty() && armedForMelee()) {
+            threats = visible(world, world.nearbyHostiles(gait.position, ARCHER_ENGAGE)).stream().filter(TrackedEntity::shoots).toList();
+        }
         if (threats.isEmpty() && underFireTicks > 0) {
             // Hit with nothing in reach: someone is shooting - find the shooter.
             threats = visible(world, world.nearbyHostiles(gait.position, UNDER_FIRE_RADIUS));
@@ -500,6 +505,12 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             // An archer well below - across a cave's drop - out-shoots a sword as surely as one it has no route to:
             // the engagement doctrine's it-can-I-can't cell, cover and carry on. Live (field410-419), Alice, Hal and
             // Gus closed on skeletons in the caves under their faces and were shot 12-28 blocks down.
+            } else if (nearest.shoots() && armedForMelee() && range > CONTACT_RADIUS && underFireTicks == 0
+                    && (threat.y() < gait.position.y() - ARCHER_BELOW || pinned(world, threat))) {
+                // Out of reach for its sword, out of contact and not shooting: let be, and the work goes on - hidden
+                // from, it held soldiers off their work (operator, 2026-11-20).
+                response = "carries on: an archer out of contact, not shooting, with no way to close on it";
+                navigate(world);
             } else if (nearest.shoots() && (!armedForMelee() || threat.y() < gait.position.y() - ARCHER_BELOW || pinned(world, threat))) {
                 response = !armedForMelee() ? "takes cover: an archer, and no melee weapon"
                         : threat.y() < gait.position.y() - ARCHER_BELOW ? "takes cover: an archer " + ARCHER_BELOW + " or more below"
@@ -561,6 +572,9 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         gait.fall(world);
         return attack;
     }
+
+    /** How far off an archer in sight is closed on by a soldier armed for melee, shooting or not. */
+    static final double ARCHER_ENGAGE = 16;
 
     /** How far below a soldier an archer is out of its reach for a sword, however a route might go down to it. */
     static final double ARCHER_BELOW = 4;
