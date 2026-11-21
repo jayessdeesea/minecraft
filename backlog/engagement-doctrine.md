@@ -55,19 +55,10 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
    and both crossed the open below its bow. Built for an archer more than 4 below (`DeterministicSoldier.ARCHER_BELOW`):
    cover, carry on; an archer in sight within 16 closed on by one armed for melee, and one it can't close on that's
    out of contact and not shooting let be, its work going on (operator, 2026-11-20, `ARCHER_ENGAGE`). Left: one across
-   a cave at the soldier's own height. And the nearest isn't always the danger: a creeper within 4.5 is put first
-   (built, field595); an archer beside a hand-to-hand hostile out of reach isn't yet - live (field598) Jack stood at
-   (16.3, -10, 120.3) over a pit with a zombie and a skeleton 2.5 off and 6 below, his answer flipping between "takes
-   cover: an archer 4.0 or more below" and "fights hand to hand" as the nearer changed, and was shot from 9 health to
-   none where he stood. Neither a unit world with the pit open and a ramp for the zombie nor the battle simulation's pit
-   (the two holding there, a chestplate, 9 health) reproduced it: the soldier backed 3 off the rim, out of sight, and
-   lived at 4 health every seed - so the live cave's shape, or the two moving, is the difference. The next is his
-   ground recorded (`app.WorldRecords` keeps a soldier's ground when it's stuck a minute - not when it's killed: a
-   record at a death would be the eval), then the archer put first. Seen again (field602): Mia and Ned stood a minute at (45.6, -7, 35.8), "fights hand to hand" a
-   zombie 1.9 off and 5 up, a skeleton 5.8 off and 5 below, and both were shot dead - their ground kept 4 s before
-   (Mia's kept as `app/src/test/resources/worlds/contact-mia-field602.json`, she at (45.6, -7, 35.8)); a third world
-   built by hand, a zombie on a tower with stairs down, didn't reproduce it either. The eval wants hostiles in a
-   replayed world: the battle simulation's (`bot.scenario.Battle`) over a recorded world's ground.
+   a cave at the soldier's own height. The nearest isn't always the danger: a creeper within 4.5 and an archer
+   beside a hand-to-hand hostile out of reach are put first (built, field595-602, replayed on a dead soldier's kept
+   ground - `app.RecordedContactTest`). Left: more contacts replayed so - the battle simulation's moving hostiles on
+   a kept ground, not only hostiles standing where they were logged.
 2. The order fields and their defaults through Order, the squad leader and the soldier.
    A creeper holding a soldier inside its reach ten seconds is engaged (built); the rest of the
    both-reach cell - criteria and weapons control by order - is phase 2's.

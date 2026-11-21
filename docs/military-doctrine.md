@@ -605,7 +605,9 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   all the same - followed down a tunnel - it's closed on. A soldier afloat can't sprint, so in water
   it doesn't get clear (the matrix's pond cells); and one followed keeps getting clear rather than working. One
   within 4.5 comes first, whatever's nearer - live (field595), Olga fought a skeleton 0.8 off with a creeper 1.3
-  off, and its blast took her from 16 health to 2.
+  off, and its blast took her from 16 health to 2. And an archer comes before a hand-to-hand hostile out of reach:
+  live (field598, field602), Jack, Mia and Ned stood "fighting hand to hand" a zombie 5 above or below them while a
+  skeleton shot them dead - replayed on Mia's kept ground (`app.RecordedContactTest`), she stood; now she goes at it.
 - **A soldier with a bow shoots far-away enemies** (operator, 2026-11-18) - a creeper too, from outside its
   blast (past `DeterministicSoldier.CREEPER_CLEAR`); one at arm's length is still got away from. Live, six
   soldiers were killed by creepers in melee in a few nights.

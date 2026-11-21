@@ -453,6 +453,19 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             first.addFirst(blast.get());
             threats = List.copyOf(first);
         }
+        // And an archer before a hand-to-hand one out of reach: live (field598), Jack stood over a pit with a zombie and a
+        // skeleton 6 below, his answer flipping between "takes cover" and "fights hand to hand" as the nearer changed, and
+        // was shot from 9 health to none where he stood.
+        if (!threats.isEmpty() && !threats.getFirst().shoots() && !threats.getFirst().explodes()
+                && gait.position.distanceTo(threats.getFirst().position()) > ATTACK_REACH) {
+            Optional<TrackedEntity> archer = threats.stream().filter(TrackedEntity::shoots).findFirst();
+            if (archer.isPresent()) {
+                List<TrackedEntity> first = new java.util.ArrayList<>(threats);
+                first.remove(archer.get());
+                first.addFirst(archer.get());
+                threats = List.copyOf(first);
+            }
+        }
         int nearestId = threats.isEmpty() ? -1 : threats.get(0).entityId();
         if (nearestId != pinnedOn) {
             pinned = false; // a fresh contact gets a fresh look for a way to close

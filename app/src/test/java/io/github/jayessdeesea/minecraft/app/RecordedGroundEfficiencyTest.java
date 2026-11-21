@@ -120,6 +120,11 @@ class RecordedGroundEfficiencyTest {
      * each cell (x, y << 16 | z), or with none, stone to {@code top}'s height and air over it.
      */
     static WorldView world(int minX, int minZ, int sizeX, int sizeZ, IntBinaryOperator top, IntBinaryOperator state) {
+        return world(minX, minZ, sizeX, sizeZ, top, state, new EntityTracker());
+    }
+
+    /** As {@link #world(int, int, int, int, IntBinaryOperator, IntBinaryOperator)}, its entities {@code entities}'s. */
+    static WorldView world(int minX, int minZ, int sizeX, int sizeZ, IntBinaryOperator top, IntBinaryOperator state, EntityTracker entities) {
         ChunkCache chunks = new ChunkCache();
         for (int cx = Math.floorDiv(minX, 16); cx <= Math.floorDiv(minX + sizeX - 1, 16); cx++) {
             for (int cz = Math.floorDiv(minZ, 16); cz <= Math.floorDiv(minZ + sizeZ - 1, 16); cz++) {
@@ -141,7 +146,7 @@ class RecordedGroundEfficiencyTest {
                 chunks.load(cx, cz, sections, "eval");
             }
         }
-        return new WorldModel(chunks, new EntityTracker());
+        return new WorldModel(chunks, entities);
     }
 
     /** The ticks a soldier takes from {@code start} to stand at {@code goal}, or the most allowed. */
