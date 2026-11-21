@@ -489,7 +489,9 @@ class FarmerTest {
     /**
      * A pillar two high on a plot cell, farmland all round it, is cut - stood on the farmland beside it at its level,
      * which treads no crop down. Live (field576), three farmers said "22 blocks of the farm's earthwork, none taken:
-     * nothing in reach", the first a cobblestone pillar two high at (-2, 64-65, 92), every stand beside it farmland.
+     * nothing in reach", the first a cobblestone pillar two high at (-2, 64-65, 92), every stand beside it farmland. And
+     * with the field all sown, the farmer at its earthwork every tick: live (field577) the look from the farmland was
+     * flipped on and off each tick of the clearer's rest, and came round off again for every look.
      */
     @Test
     void aPillarRingedByFarmlandIsCut() {
@@ -517,6 +519,12 @@ class FarmerTest {
                 return plot.contains(new BlockPos(x, y, z)) && !pillar.contains(new BlockPos(x, y + 1, z));
             }
 
+            // All sown, no crop ripe: nothing else on the farm to do, so the farmer looks at its earthwork every tick.
+            @Override
+            public OptionalInt wheatAge(int x, int y, int z) {
+                return isFarmland(x, y - 1, z) ? OptionalInt.of(3) : OptionalInt.empty();
+            }
+
             @Override
             public boolean isHazard(int x, int y, int z) {
                 return new BlockPos(x, y, z).equals(WATER);
@@ -531,10 +539,10 @@ class FarmerTest {
         Farmer farmer = new Farmer("Fran", session, inventory, new HashSet<>());
         boolean cut = false;
         for (int tick = 0; tick < 1_000 && !cut; tick++) {
-            farmer.tick(new Position(3.5, GROUND + 1, 2.5), field, Optional.of(new FarmPlan(WATER, plot)), true);
-            cut = farmer.standAt().filter(s -> s.y() == GROUND + 1 && Math.hypot(s.x() - 3.5, s.z() - 0.5) <= 2).isPresent();
+            farmer.tick(new Position(3.5, GROUND + 1, 7.5), field, Optional.of(new FarmPlan(WATER, plot)), true);
+            cut = farmer.earthworkStand().filter(s -> s.y() == GROUND + 1 && Math.hypot(s.x() - 3.5, s.z() - 0.5) <= 2).isPresent();
         }
 
-        assertTrue(cut, "the pillar cut from the farmland beside it: " + farmer.standAt());
+        assertTrue(cut, "the pillar cut from the farmland beside it: " + farmer.earthworkStand());
     }
 }

@@ -105,6 +105,14 @@ public final class Clearer {
         return digger != null ? Optional.empty() : Optional.ofNullable(idle);
     }
 
+    /** How many times it has looked for a cut: its idle reason stands through the rest after each, so a change is a new look. */
+    private int looks;
+
+    /** How many times it has looked for a cut - one past the last when the {@link #idleReason} is that look's. */
+    public synchronized int looks() {
+        return looks;
+    }
+
     /** Why it isn't cutting: nothing in reach, a cut failed, no tool, not free - empty while it is. */
     public synchronized Optional<String> idleReason() {
         return digger != null ? Optional.empty() : Optional.ofNullable(idle);
@@ -197,6 +205,7 @@ public final class Clearer {
         if (cooldown > 0) {
             return;
         }
+        looks++;
         Set<BlockPos> excluded = failed.barredNow(ticks);
         excluded.addAll(claims);
         // What its tools can't dig is left to a squadmate's, or until the tool is made: a pickaxe's

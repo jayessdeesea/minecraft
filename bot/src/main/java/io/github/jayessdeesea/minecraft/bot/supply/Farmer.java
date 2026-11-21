@@ -313,6 +313,11 @@ public final class Farmer {
     }
 
     /** Where the soldier should be standing for the job under way. */
+    /** Where its earthwork's cut is stood, while one is under way (the farm's tests). */
+    synchronized Optional<Position> earthworkStand() {
+        return unburier.standAt();
+    }
+
     public synchronized Optional<Position> standAt() {
         return digger != null ? Optional.of(digger.standAt()) : unburier.active() ? unburier.standAt()
                 : carrier.active() ? carrier.standAt() : placing != null ? builders.get(placing).standAt() : Optional.ofNullable(standAt);
@@ -420,6 +425,8 @@ public final class Farmer {
     private long ripeTicks, bareTicks;
     /** Whether the earthwork's next look for a stand takes one on the farmland, none off it having reached. */
     private boolean onFarmland;
+    /** The earthwork clearer's {@link Clearer#looks} when last seen: {@link #onFarmland} flips on a new look's "nothing in reach". */
+    private int earthworkLooks;
     /** The last said of why the farm's earthwork took no cut. */
     private String earthworkSaid;
     /** What the field job under way uses: a hoe to till, seeds to sow - none for a gate opened. */
@@ -603,9 +610,12 @@ public final class Farmer {
             }
             // Said when why changes: live (field570) a chunk farm's 92 blocks of earthwork stood a whole day, its
             // farmer at its other work, and nothing said why none was taken.
-            if (unburier.idleReason().filter(r -> r.startsWith("nothing in reach")).isPresent()) {
+            // Once a look, not once a tick: the reason stands through the clearer's rest, and live (field577) flipped each
+            // tick of it, the farmland off again for every look.
+            if (unburier.looks() != earthworkLooks && unburier.idleReason().filter(r -> r.startsWith("nothing in reach")).isPresent()) {
                 onFarmland = !onFarmland; // the next look from the farmland too, then off it again
             }
+            earthworkLooks = unburier.looks();
             String why = earthwork.size() + " blocks of the farm's earthwork, none taken: " + unburier.idleReason().orElse("its clearer resting")
                     + " - the first at " + earthwork.getFirst();
             if (!why.equals(earthworkSaid)) {
