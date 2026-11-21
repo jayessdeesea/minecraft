@@ -228,7 +228,9 @@ what each kind of act was planned to take against what it took - a route's ticks
 how long one stands ripe - and cell-ticks a cell sown, each bare cell a tick while it carries seeds - the same line the
 squad simulation logs, so the two can be set side by side (`app.Ledger`; backlog/simulator-fidelity.md); and
 `[Fidelity]`, a kind's spell more than 1.5 times off the simulation's rate either way (`app.Ledger.BASELINES`: a flat
-walk's 4.9 ticks a step, 87.7 crop-ticks a crop, 1045 cell-ticks a cell) - the game and the simulation parting. A soldier stuck a minute has its
+walk's 4.9 ticks a step, 87.7 crop-ticks a crop, 1045 cell-ticks a cell). Crop-ticks ripe measure harvest hands
+against supply as well as the farmer's pace: live (field563) 3,250 a crop, about 22 ripe crops standing on 400-odd
+cells, against the simulation's 96 cells for one farmer - the game and the simulation parting. A soldier stuck a minute has its
 ground kept for the simulation (`[World]`, `garrison-state/worlds/`): `SimWorlds.replay` makes it a scenario's terrain. The scoreboard's
 history, a line a day across restarts, is `garrison-state/scoreboard.jsonl`.
 

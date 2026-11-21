@@ -33,7 +33,7 @@ import java.util.Set;
  * no wall to pillar beside - one block a step against ground beside it, two in open air. Built
  * steps are offered only toward the goal's height, so the search never builds into the sky.
  * Water is swum at the surface - in from the bank, level or a drop down, across, and out onto
- * ground level with the water or one block up - at {@link #SWIM_COST} a block: a soldier is never
+ * ground level with the water or one block up, or over a lip and down a drop it takes unhurt - at {@link #SWIM_COST} a block: a soldier is never
  * stopped by a pond or a river. Other hazards (lava, fire) are never entered; no ladders.
  *
  * <p>A goal outside the budget isn't a failure: the result is a path to the explored cell that
@@ -409,11 +409,11 @@ public final class Pathfinder {
                 }
                 continue;
             }
-            if (afloat) {
-                continue; // no drop is walked off from the water
-            }
             if (clear(world, level)) {
-                int deepest = Math.min(MAX_FALL, MAX_DROP + (int) Math.floor(falls.maxDamage() / falls.damageFactor()));
+                // From the water only a drop it takes unhurt: swum out over a lip and down to ground or water within a
+                // step's drop. Live (field563) Olga stood afloat in a lone cell of flowing water at y=69 over a farm,
+                // open air all round it at its height and the farm two under - no move out at all.
+                int deepest = afloat ? MAX_DROP : Math.min(MAX_FALL, MAX_DROP + (int) Math.floor(falls.maxDamage() / falls.damageFactor()));
                 for (int drop = 1; drop <= deepest; drop++) {
                     BlockPos down = from.offset(d[0], -drop, d[1]);
                     if (!open(world, down.x(), down.y(), down.z())) {

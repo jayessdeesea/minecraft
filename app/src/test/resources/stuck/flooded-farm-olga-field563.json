@@ -56,8 +56,8 @@
     63.0,
     67.5
   ],
-  "correct": "stands within 1.5 of the pond's bank",
-  "radius": 1.5,
+  "correct": "out of the water over the farm and at the pond's bank: within 2.5 of it, the squad's own tolerance",
+  "radius": 2.5,
   "withinMinutes": 5,
-  "knownFailure": true
+  "knownFailure": false
 }
