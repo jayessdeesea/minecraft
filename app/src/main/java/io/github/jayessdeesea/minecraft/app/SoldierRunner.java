@@ -7712,7 +7712,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         .filter(stand -> Math.hypot(stand.x() - to.x(), stand.z() - to.z()) < 0.5 && Math.abs(stand.y() - to.y()) < 1).isPresent()) {
                     farmer.unreachable(why);
                 }
-                farmer.tick(status.position(), world, Optional.ofNullable(forage != null ? forage : field), free && !threatened && !foodCalls);
+                farmer.tick(status.position(), world, Optional.ofNullable(forage != null ? forage : field), free && !threatened && !foodCalls
+                        && status.position().y() >= SEA_LEVEL - CampGround.BELOW_GROUND); // not from down the mine: field635, 46 "no route" from y=8
             }));
             // A supply run from the ground work's drill first: so much of a resource, from that box.
             Order.Gather groundRun = groundGather.get(name);
