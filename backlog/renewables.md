@@ -73,6 +73,12 @@ grid, inside the area of influence (32 blocks out from the camp's edge):
   and its stages differ, the asking, costing and choosing don't.
 - **Remembered**: the platoon leader keeps every tree site and its stage across restarts, and sends a squad to fell
   and replant one that's producing, as it sends farmers to a producing wheat chunk.
+- **Saplings supplied, not hoped for** (the errand ledger, field630): foresters failed "no sapling, and no leaves within
+  32 blocks" 117 times in a run, each failure a cooldown and a try again, while soldiers off the grove carried 6 and 11
+  saplings; and walked 200 to 330 blocks to plant one at a grove by (-30, -73). Wanted: saplings in the kit's report;
+  a forester with none drawing from a squadmate's spares or the tree chunk's chest (to 256); a squad with no saplings and
+  no leaves in reach not put on planting, its resources line saying so; and the grove planted the one nearest the camp
+  that wants it - the tree chunk beside the wheat, when there is one.
 
 ## The supply point: a chunk of stores (operator, 2026-11-21)
 The camp's stores on a chunk of their own, laid out like the wheat and tree chunks and on their grid: flat at sea
