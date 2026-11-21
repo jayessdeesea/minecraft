@@ -353,4 +353,52 @@ class FarmerTest {
             }
         }, new FarmPlan(WATER, PLOT, List.of(trench))).isEmpty(), "dug and filled: nothing left");
     }
+
+    /**
+     * A water hole whose pond has no route to it is passed over, not watered again at once: live (field563), Olga
+     * started the same hole's watering 1,321 times in a quarter of an hour, "no route" to the pond's bank each time.
+     */
+    @Test
+    void aWaterHoleWithNoRouteToItsPondIsPassedOver() {
+        io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm chunk = new io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm(0, 0, GROUND);
+        Set<BlockPos> holes = Set.copyOf(chunk.holes());
+        WorldView dry = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= GROUND && !holes.contains(new BlockPos(x, y, z)) && !isWaterSource(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return isWaterSource(x, y, z);
+            }
+
+            @Override
+            public boolean isWater(int x, int y, int z) {
+                return isWaterSource(x, y, z);
+            }
+
+            @Override
+            public boolean isWaterSource(int x, int y, int z) {
+                return y == GROUND && z == 30 && x >= 7 && x <= 9;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.BUCKET), 1});
+        Farmer farmer = new Farmer("Olga", session, inventory, new HashSet<>());
+        FarmPlan plan = new FarmPlan(new BlockPos(8, GROUND, 30), List.of(), List.of(), List.of(chunk));
+        Position soldier = new Position(8.5, GROUND + 1, 8.5);
+        farmer.tick(soldier, dry, Optional.of(plan), true);
+        BlockPos first = farmer.wateringHole().orElseThrow(() -> new AssertionError("no hole watered"));
+
+        farmer.unreachable("no route from here to within 0 of the pond's bank");
+        for (int tick = 0; tick < 400; tick++) {
+            farmer.tick(soldier, dry, Optional.of(plan), true);
+            assertTrue(farmer.wateringHole().filter(first::equals).isEmpty(), "the same hole again at tick " + tick);
+        }
+    }
 }

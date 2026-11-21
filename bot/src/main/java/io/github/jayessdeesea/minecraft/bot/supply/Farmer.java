@@ -333,6 +333,11 @@ public final class Farmer {
     private int restarts;
     private final Setbacks<BlockPos> passedOver = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
 
+    /** The water hole it's watering, if it is: for tests. */
+    synchronized Optional<BlockPos> wateringHole() {
+        return Optional.ofNullable(watering);
+    }
+
     /** Why it needs its squad leader's help, if it's out of ways of its own ({@link Setbacks#stuck}). */
     public synchronized Optional<String> stuck() {
         return passedOver.stuck().map(s -> "can't keep the farm: " + s);
@@ -734,7 +739,9 @@ public final class Farmer {
         // Its cell out of reach - across water, behind a wall - or its job refused: the rest first.
         // A harvest is a dig, its spot the crop over the plot cell: live, with no cell passed over
         // for it, four soldiers walked at one ripe wheat they couldn't reach all day.
-        BlockPos cell = digger != null ? digger.spot().block().offset(0, -1, 0) : claimed;
+        // Or the water hole it's watering: live (field563), with none passed over, Olga started one 1,321 times in a
+        // quarter of an hour, "no route" to the pond's bank each time.
+        BlockPos cell = digger != null ? digger.spot().block().offset(0, -1, 0) : claimed != null ? claimed : watering;
         if (cell != null) {
             passedOver.failed(cell, ticks, why);
             shared.failed(cell, ticks);
