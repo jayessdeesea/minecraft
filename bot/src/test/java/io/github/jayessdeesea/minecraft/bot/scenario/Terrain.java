@@ -92,6 +92,29 @@ public enum Terrain {
     },
 
     /** An elliptical lake between start and objective; wide ones span the map bank to bank. */
+    /** A pond of water two deep across the way: swum straight over, or walked round - whichever is quicker. */
+    POND {
+        @Override
+        void build(SyntheticWorld world, Random random, int startZ, int goalX, int goalZ) {
+            int cx = coord(random) / 2;
+            int cz = (startZ + goalZ) / 2 + random.nextInt(11) - 5;
+            double rx = 6 + random.nextInt(40);
+            double rz = 4 + random.nextInt(10);
+            for (int x = MIN; x <= MAX; x++) {
+                for (int z = MIN; z <= MAX; z++) {
+                    double dx = (x - cx) / rx;
+                    double dz = (z - cz) / rz;
+                    if (dx * dx + dz * dz <= 1) {
+                        int g = world.ground(x, z);
+                        world.setGround(x, z, g - 2);
+                        world.water(x, g - 1, z);
+                        world.water(x, g, z);
+                    }
+                }
+            }
+        }
+    },
+
     LAKE {
         @Override
         void build(SyntheticWorld world, Random random, int startZ, int goalX, int goalZ) {

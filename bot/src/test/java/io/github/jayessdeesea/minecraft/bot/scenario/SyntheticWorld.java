@@ -18,6 +18,9 @@ import java.util.Set;
  */
 public final class SyntheticWorld implements WorldView {
 
+    /** Cells of standing water - swum, not walked: a lake a soldier crosses, unlike a hazard it goes round. */
+    private final java.util.Set<BlockPos> water = new java.util.HashSet<>();
+
     public static final int MIN = -48;
     public static final int MAX = 47;
 
@@ -101,6 +104,21 @@ public final class SyntheticWorld implements WorldView {
     @Override
     public boolean isHazard(int x, int y, int z) {
         return hazards.contains(new BlockPos(x, y, z));
+    }
+
+    /** Water stands in the cell: a source, swum through, not walked. */
+    public void water(int x, int y, int z) {
+        water.add(new BlockPos(x, y, z));
+    }
+
+    @Override
+    public boolean isWater(int x, int y, int z) {
+        return water.contains(new BlockPos(x, y, z));
+    }
+
+    @Override
+    public boolean isWaterSource(int x, int y, int z) {
+        return water.contains(new BlockPos(x, y, z));
     }
 
     @Override
