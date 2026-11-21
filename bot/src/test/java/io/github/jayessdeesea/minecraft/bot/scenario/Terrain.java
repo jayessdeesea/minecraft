@@ -182,7 +182,29 @@ public enum Terrain {
                 world.solid(x, y, z);
             }
         }
+    },
+
+    /**
+     * Last of the families, so the others keep their ordinals and the seeds their scenarios draw. A plateau 3 to 6 higher behind a sheer wall, as CLIFF's, with a stair one wide down its face at a random spot: found
+     * and climbed, not pillared up or gone round (operator, 2026-11-20: stairs and slopes among the movement eval's).
+     */
+    STAIRS {
+        @Override
+        void build(SyntheticWorld world, Random random, int startZ, int goalX, int goalZ) {
+            int wallZ = goalZ + 12 + random.nextInt(Math.max(1, startZ - goalZ - 24));
+            int height = 3 + random.nextInt(4);
+            for (int x = MIN; x <= MAX; x++) {
+                for (int z = MIN; z <= wallZ; z++) {
+                    world.setGround(x, z, Scenario.BASE_GROUND + height);
+                }
+            }
+            int stairX = coord(random);
+            for (int k = 1; k < height; k++) {
+                world.setGround(stairX, wallZ + k, Scenario.BASE_GROUND + height - k);
+            }
+        }
     };
+
 
     abstract void build(SyntheticWorld world, Random random, int startZ, int goalX, int goalZ);
 

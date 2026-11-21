@@ -78,8 +78,9 @@ mvn -pl bot test -Dtest=SoldierScenarioTest -Dscenario.only=forest:7  # replay o
 
 **Movement efficiency.** `bot`'s `MovementEfficiencyTest` measures what a block walked, a step up and a block swum
 cost the soldier in ticks, then over every family prices the unbounded search's route at those costs - the reference
-best - against the ticks it takes, and prints each family's median and worst efficiency. Run as the eval it holds
-each median to 90%:
+best - against the ticks it takes, and prints each family's median and worst efficiency - stairs up a cliff, hills,
+a forest, a pond, a lake, a ravine, a walled compound with one gate, and the rest of `Terrain`. Run as the eval it
+holds each median to 90%. Left: broken camp ground from a recorded world, and crowding:
 
 ```bash
 mvn -pl bot test -Dtest=MovementEfficiencyTest -Dmovement.eval=true -Dmovement.seeds=40
