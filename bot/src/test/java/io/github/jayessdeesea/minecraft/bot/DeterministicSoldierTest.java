@@ -362,6 +362,23 @@ class DeterministicSoldierTest {
         assertTrue(cantco.reason().endsWith("a route with falls costing 7 of my 20 health exists (MEDIUM risk)"), cantco.reason());
     }
 
+    /**
+     * Held up on a route with no fall in it - a squadmate in the way - the CANTCO names no riskier order: live (field577),
+     * 36 a block or two from their goal said "a route with falls costing 0 of my 20 health exists (MEDIUM risk)".
+     */
+    @Test
+    void aCantcoHeldUpOnARouteWithNoFallAsksForNoRiskierOrder() {
+        WorldView flat = blocks((x, y, z) -> y < GROUND);
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));
+        alice.reportHealth(20, 20);
+        alice.receiveOrder(new Order.MoveTo(3.5, GROUND, 0.5, 0.3, 0.5, Risk.LOW));
+        alice.tick(flat);
+
+        String price = alice.priceOfARiskierRoute(flat, new io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.Result(List.of(), false));
+
+        assertEquals("; a route with no fall in it exists - held up on the way, not by the risk", price);
+    }
+
     /** Where Alice ends up after 200 ticks under {@code order}, having reported {@code health} (-1: never). */
     static Position afterTicks(WorldView world, Order order, double health, int food) {
         DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 0.5));

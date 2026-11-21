@@ -623,6 +623,12 @@ abstract class Mover {
             return "";
         }
         int damage = (int) Math.ceil(Pathfinder.fallDamage(start, route.path()) * factor);
+        // A route with no fall past what its own order allows is no riskier route: it was held up on the way - stuck,
+        // a squadmate in the way - not barred by the risk. Live (field577), 36 CANTCOs a block or two from their goal
+        // said "falls costing 0 ... (MEDIUM risk)", and a MEDIUM order would have met the same squadmate.
+        if (damage == 0 && route.reachesGoal()) {
+            return "; a route with no fall in it exists - held up on the way, not by the risk";
+        }
         double left = known.health() - damage;
         Risk needed = left >= Risk.MEDIUM.minHealthAfter() ? Risk.MEDIUM : left >= Risk.HIGH.minHealthAfter() ? Risk.HIGH : null;
         return String.format(Locale.ROOT, "; a route with falls costing %d of my %.0f health exists%s", damage,
