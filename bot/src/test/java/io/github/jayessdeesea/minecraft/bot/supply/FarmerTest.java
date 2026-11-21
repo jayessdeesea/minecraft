@@ -668,4 +668,57 @@ class FarmerTest {
         assertTrue(cut, "the step and the earthwork under it cut: " + farmer.earthworkStand());
         assertTrue(Farmer.hasWork(field, new FarmPlan(WATER, plot), Set.of(step, wayOut)), "the capped heap is work");
     }
+
+    /**
+     * A water hole roofed - one of the squad's steps over it - isn't poured into, which can't work, but waits on its
+     * earthwork, which takes the roof off: live (field581), Olga's pours at the chunk farm's hole (20, 67, 60), a step
+     * at (20, 68, 60) over it, failed "expected water ... it didn't come" all day, the chunk farm SURVEYED.
+     */
+    @Test
+    void aWaterHoleRoofedByAStepHasItsRoofDug() {
+        io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm chunk = new io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm(0, 0, GROUND);
+        BlockPos hole = chunk.holes().getFirst();
+        BlockPos roof = hole.offset(0, 1, 0);
+        Set<BlockPos> holes = Set.copyOf(chunk.holes()); // all dug, over their floors - the one roofed
+        WorldView roofed = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos b = new BlockPos(x, y, z);
+                return y <= GROUND && !holes.contains(b) || b.equals(roof);
+            }
+
+            @Override
+            public boolean isWaterSource(int x, int y, int z) {
+                return holes.contains(new BlockPos(x, y, z)) && !new BlockPos(x, y, z).equals(hole);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        FarmPlan plan = new FarmPlan(new BlockPos(8, GROUND, 30), List.of(), List.of(), List.of(chunk));
+        assertTrue(Farmer.earthwork(roofed, plan).contains(roof), "the roof is earthwork: " + Farmer.earthwork(roofed, plan));
+
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.BUCKET), 1});
+        Farmer farmer = new Farmer("Olga", session, inventory, new HashSet<>(), new Setbacks<>(Farmer.PASS_OVER_TICKS, 16L * Farmer.PASS_OVER_TICKS),
+                Set.of(roof));
+        boolean dug = false;
+        for (int tick = 0; tick < 4 * Farmer.COOLDOWN_TICKS && !dug; tick++) {
+            farmer.tick(new Position(hole.x() + 2.5, GROUND + 1, hole.z() + 0.5), roofed, Optional.of(plan), true);
+            assertTrue(farmer.failure().isEmpty(), "failed at tick " + tick + ": " + farmer.failure());
+            dug = farmer.earthworkStand().filter(st -> Math.hypot(st.x() - hole.x() - 0.5, st.z() - hole.z() - 0.5) <= 2).isPresent();
+        }
+        assertTrue(dug, "the roof dug from beside the hole: " + farmer.earthworkStand());
+    }
 }

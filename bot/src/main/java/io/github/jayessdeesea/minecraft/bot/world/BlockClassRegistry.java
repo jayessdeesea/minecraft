@@ -86,7 +86,7 @@ final class BlockClassRegistry {
     private static final BitSet TILLABLE = new BitSet();
     /** Short and tall grass: broken for wheat seeds. Filled while loading. */
     private static final BitSet GRASS_PLANTS = new BitSet();
-    /** Cobblestone, plain or mossy: what soldiers build with, so a block of it over the camp's floor was put there. */
+    /** Cobblestone, plain, mossy or cobbled deepslate: what soldiers build with, so a block of it over the camp's floor was put there. */
     private static final BitSet COBBLESTONES = new BitSet();
     /** Pointed dripstone's upward tips: lethal to land on. */
     private static final BitSet STALAGMITES = new BitSet();
@@ -277,7 +277,9 @@ final class BlockClassRegistry {
                     if (fields.length > 2 && (fields[2].equals("short_grass") || fields[2].equals("tall_grass"))) {
                         GRASS_PLANTS.set(stateId);
                     }
-                    if (fields.length > 2 && (fields[2].equals("cobblestone") || fields[2].equals("mossy_cobblestone"))) {
+                    // Cobbled deepslate too: the item a soldier carries and places as cobblestone (ItemClass.COBBLESTONE), the block
+                    // has to read as it - live (field583), the chunk farm's ground stood under deepslate steps no earthwork took.
+                    if (fields.length > 2 && Set.of("cobblestone", "mossy_cobblestone", "cobbled_deepslate").contains(fields[2])) {
                         COBBLESTONES.set(stateId);
                     }
                     if (fields.length > 6 && fields[6].equals("stalagmite")) {

@@ -1090,7 +1090,10 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    was reached only where the ground happened to be level, and steps built out of it buried a
    third of the camp's farm. A chunk farm's ground is levelled to its template the same way: what stands over it,
    three high, dug top first, and its open or flooded cells - but its trenches - filled with that dirt (`Farmer.groundToFill`;
-   FarmSite's SURVEYED stage). Then its chunk farms' fence, gates, chest and torches - four in the field a
+   FarmSite's SURVEYED stage) - cobbled deepslate as cobblestone, the item a soldier places as it - and what roofs a
+   water hole, a step included: the pour aims down past the block over the hole, and a roofed hole isn't poured, it
+   waits on that earthwork (field581-583, a step over a hole and deepslate over the ground kept the camp's chunk farm
+   SURVEYED for days). Then its chunk farms' fence, gates, chest and torches - four in the field a
    step in on the diagonal from each water hole, and one on every fourth fence post's top (`ChunkFarm.torches`)
    - with what it carries (`Farmer.fixtures`): a cell the builder can't place in passed over a while, the rest
    put up, and any of their gates shut, opened. The cell over a post reads solid to the route planner - a fence's

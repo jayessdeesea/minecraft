@@ -209,7 +209,7 @@ public final class ChunkCache {
         return stateId != UNKNOWN && BlockClassRegistry.isStalagmite(stateId);
     }
 
-    /** Whether the block is cobblestone, plain or mossy - unknown blocks aren't. */
+    /** Whether the block is cobblestone, plain, mossy or cobbled deepslate - unknown blocks aren't. */
     public boolean isCobblestone(int x, int y, int z) {
         int stateId = rawStateIdAt(x, y, z);
         return stateId != UNKNOWN && BlockClassRegistry.isCobblestone(stateId);

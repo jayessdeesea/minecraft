@@ -180,7 +180,14 @@ public final class Farmer {
     private List<BlockPos> unburying(WorldView world, FarmPlan farm) {
         List<BlockPos> all = earthwork(world, farm);
         Set<BlockPos> heaped = Set.copyOf(all);
-        return all.stream().filter(c -> !steps.contains(c) || onEarthwork(c, heaped)).toList();
+        // A step roofing a water hole too: no route needs a step over a hole, and the hole's pour does need it gone.
+        Set<BlockPos> overHoles = new java.util.HashSet<>();
+        farm.chunks().forEach(c -> c.holes().forEach(h -> {
+            for (int up = 1; up <= 3; up++) {
+                overHoles.add(h.offset(0, up, 0));
+            }
+        }));
+        return all.stream().filter(c -> !steps.contains(c) || onEarthwork(c, heaped) || overHoles.contains(c)).toList();
     }
 
     /** Whether the step {@code c} stands, down its column through steps, on earthwork that isn't a step. */
@@ -221,6 +228,16 @@ public final class Farmer {
         // dug - the top first - for the dirt its hollows are filled with. Live (field516-543), the camp's chunk farm stood
         // a day SURVEYED, 64 blocks over its ground and 52 cells under, its tender farming only what lay level.
         for (ChunkFarm chunk : farm.chunks()) {
+            // And what roofs a water hole: a pour aims down into it past the block over it, and live (field581) Olga's
+            // pours at (20, 67, 60) under a step at (20, 68, 60) failed "expected water ... it didn't come" all day.
+            for (BlockPos h : chunk.holes()) {
+                for (int up = 3; up >= 1; up--) {
+                    BlockPos b = h.offset(0, up, 0);
+                    if (world.isSoil(b.x(), b.y(), b.z()) || world.isCobblestone(b.x(), b.y(), b.z()) || world.isStone(b.x(), b.y(), b.z())) {
+                        dig.add(b);
+                    }
+                }
+            }
             for (BlockPos g : chunk.ground()) {
                 for (int up = 3; up >= 1; up--) {
                     BlockPos b = g.offset(0, up, 0);
@@ -623,6 +640,9 @@ public final class Farmer {
                         LOG.info("{} digs the farm's water hole at {}", name, h);
                         return;
                     }
+                } else if (world.isSolid(h.x(), h.y() + 1, h.z())) {
+                    // Roofed - a block over it the pour can't get past: it waits on the earthwork that takes the roof off.
+                    continue;
                 } else if (world.isSolid(h.x(), h.y() - 1, h.z()) && WaterCarrier.beside(world, h).isEmpty()) {
                     // No ground beside it to pour from - the farm's heaped ground standing round it: it waits on the
                     // earthwork, not failed. Live (field566), 614 failures at one such hole took Olga off the farm

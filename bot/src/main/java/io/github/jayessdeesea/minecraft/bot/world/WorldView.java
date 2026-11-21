@@ -87,7 +87,7 @@ public interface WorldView {
         return false;
     }
 
-    /** Whether the block is cobblestone, plain or mossy - placed, as a rule: soldiers build with it (it's also {@link #isSolid}). */
+    /** Whether the block is cobblestone, plain, mossy or cobbled deepslate - placed, as a rule: soldiers build with it (it's also {@link #isSolid}). */
     default boolean isCobblestone(int x, int y, int z) {
         return false;
     }

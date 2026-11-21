@@ -43,6 +43,13 @@ class BlockClassRegistryTest {
     }
 
     /** A fence gate, shut or open, is a gate. */
+    /** Cobbled deepslate is cobblestone as a block, as it is as an item: a soldier places it as cobblestone. */
+    @Test
+    void cobbledDeepslateIsCobblestone() {
+        assertTrue(BlockClassRegistry.isCobblestone(14) && BlockClassRegistry.isCobblestone(4924), "cobblestone, mossy");
+        assertTrue(BlockClassRegistry.isCobblestone(33776), "cobbled deepslate");
+    }
+
     @Test
     void aFenceGateIsAGate() {
         assertTrue(BlockClassRegistry.isGate(10387) && BlockClassRegistry.isGate(10385), "oak, shut and open");
