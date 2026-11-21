@@ -174,7 +174,8 @@ class SoldierScenarioTest {
                     if (world.isSolid(bx, y, bz)) {
                         return "body inside a solid block at (" + bx + ", " + y + ", " + bz + "), soldier at " + p;
                     }
-                    if (world.isHazard(bx, y, bz)) {
+                    // Water is a hazard as the model classes it, but swum through on purpose: lava and fire are what's never entered.
+                    if (world.isHazard(bx, y, bz) && !world.isWater(bx, y, bz)) {
                         return "body in a hazard at (" + bx + ", " + y + ", " + bz + "), soldier at " + p;
                     }
                 }

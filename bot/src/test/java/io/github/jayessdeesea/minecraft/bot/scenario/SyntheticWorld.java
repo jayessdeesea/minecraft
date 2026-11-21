@@ -103,7 +103,8 @@ public final class SyntheticWorld implements WorldView {
 
     @Override
     public boolean isHazard(int x, int y, int z) {
-        return hazards.contains(new BlockPos(x, y, z));
+        // Water is a hazard as the client's model classes it (bot.world.BlockClassRegistry: a liquid): swum, not stood in.
+        return hazards.contains(new BlockPos(x, y, z)) || water.contains(new BlockPos(x, y, z));
     }
 
     /** Water stands in the cell: a source, swum through, not walked. */
