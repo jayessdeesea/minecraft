@@ -425,6 +425,13 @@ public final class Farmer {
     static final int SEEDS_RADIUS = 32;
     /** How long a plot cell whose job failed - not walked to, not answered - is first passed over; longer each time. */
     public static final int PASS_OVER_TICKS = 2400;
+    /** A ripe crop this near is harvested at once... */
+    static final double HARVEST_NEAR = 8;
+    /**
+     * ...one farther only with this many ripe to sweep, nearest first: ripe wheat keeps, and a farmer walking the field for
+     * each one as it ripens walks a field a crop (operator, 2026-11-21: this is killing productivity).
+     */
+    static final int HARVEST_BATCH = 8;
     private long ticks;
     /** How many times a harvest is started on one crop, never done, before it's passed over. */
     static final int RESTARTS_BEFORE_PASSING_OVER = 3;
@@ -765,7 +772,10 @@ public final class Farmer {
             open(world, shut.get());
             return;
         }
-        Optional<BlockPos> ripe = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).findFirst();
+        // A crop far off is worth its walk only with a batch ripe to sweep: live (field617), Ned walked 27 blocks for one.
+        List<BlockPos> ripes = plot.stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).toList();
+        Optional<BlockPos> ripe = ripes.stream().findFirst().filter(c -> ripes.size() >= HARVEST_BATCH
+                || Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z()) <= HARVEST_NEAR);
         if (ripe.isPresent()) {
             BlockPos crop = ripe.get().offset(0, 1, 0);
             // Started on again and again, never done: a failure, whatever stopped it each time.

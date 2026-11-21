@@ -247,6 +247,24 @@ class FarmerTest {
         assertTrue(Farmer.hasWork(world, farm, java.util.Set.of()), "ripe");
     }
 
+    /** One crop ripe far off waits for a batch to sweep; one near is taken (field617: Ned walked 27 blocks for one crop). */
+    @Test
+    void aLoneRipeCropFarOffWaitsForABatch() {
+        PLOT.forEach(c -> {
+            farmland.add(c);
+            wheat.put(c.offset(0, 1, 0), 3);
+        });
+        wheat.put(PLOT.get(1).offset(0, 1, 0), Digger.RIPE);
+        Set<BlockPos> claims = new HashSet<>();
+        Farmer far = new Farmer("Ned", session, inventory, claims);
+        far.tick(new Position(30.5, GROUND + 1, 0.5), world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+        assertTrue(!claims.contains(PLOT.get(1).offset(0, 1, 0)), "28 off, one ripe: left for a batch " + claims);
+
+        Farmer near = new Farmer("Ned", session, inventory, claims);
+        near.tick(new Position(0.5, GROUND + 1, 1.5), world, Optional.of(new FarmPlan(WATER, PLOT)), true);
+        assertTrue(claims.contains(PLOT.get(1).offset(0, 1, 0)), "beside it: harvested " + claims);
+    }
+
     @Test
     void wheatASquadmateIsHarvestingIsLeftToIt() {
         PLOT.forEach(c -> {

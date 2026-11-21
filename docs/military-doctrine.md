@@ -1196,7 +1196,9 @@ without one. The platoon leader's part is the squad's: with half or more of its 
 leader is shown - says how many are behind.
 
 Each job is an expect script: stand on the cell - landed, not still coming down onto it - item in hand, use it on the cell, and done when
-the server's block update shows farmland or a sprout. A soldier without a hoe makes a wooden one,
+the server's block update shows farmland or a sprout. A ripe crop within 8 blocks is harvested at once; one farther
+waits for 8 ripe to sweep nearest first, since ripe wheat keeps (`Farmer.HARVEST_BATCH`; live, field617, a farmer walked
+27 blocks for each crop as it ripened). A soldier without a hoe makes a wooden one,
 and one carrying eight loaves' wheat bakes it into bread, the ration every soldier eats (§11) - on an
 errand of its own, never held up by other kit it's short of the makings of; a bare-handed soldier's
 weapon still comes first. It reports
