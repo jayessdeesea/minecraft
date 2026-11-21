@@ -202,7 +202,8 @@ java -jar app/target/app.jar --minecraft.operators=YourName --minecraft.yield-to
   "--minecraft.platoon-leader.mission=Make camp around x=0 z=0 and stay within 48 blocks of it, and build it up into a lodgment. Each squad spends the night sealed inside a patrol base near there, until dawn."
 ```
 
-`minecraft.camp` has the platoon leader build the camp up phase by phase, each phase measured
+`minecraft.camp` (x,z, or x,z,ground to set the camp's ground - its feet height - rather than read it off the
+surface: a camp heaped with spoil reads its ground on the heaps) has the platoon leader build the camp up phase by phase, each phase measured
 (docs/military-doctrine.md § 17), so the mission needn't list the work. What the garrison must
 remember across a restart - each camp wall's layout - is kept under `minecraft.state-dir`
 (`garrison-state/`, git-ignored).

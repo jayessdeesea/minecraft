@@ -693,6 +693,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         // The camp's ground found once and kept: found again from where the squads are, it moves
         // onto a hut roof one time and back the next, and every measure moves with it.
+        // Or set: a camp put at a height on purpose - the operator's at sea level - has its ground there, not read off a
+        // surface. Live (field539-540), the camp heaped with spoil to y=71 read its ground at y=69, and its upkeep took the
+        // heaps for the ground it keeps level.
+        if (campGround == null && camp.length > 2) {
+            campGround = new BlockPos(camp[0], camp[2], camp[1]);
+        }
         if (campGround == null) {
             // Near the surface, found from above, not near where the squads are: live, restarted at
             // night with every soldier down the mine, the camp's ground was read off a cave floor at
@@ -770,8 +776,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + ", growing wheat")
                         + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM"));
         Optional<TreeFarm> grove = TreeFarm.site(world, at, CAMP_RADIUS);
-        // Right after food (operator, 2026-11-14: tree farms just after the wheat farms - a camp goes
-        // through a lot of wood): the camp's grove and the keep's together.
+        // Right after food (operator, 2026-11-14: tree farms just after the wheat farms - a camp goes through a lot of wood): the camp's grove and the keep's together.
         TreeFarm keepTrees = keepGrove;
         long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count()).orElse(0L)
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
@@ -1341,8 +1346,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         this.planBook = new PlanBook(Path.of(stateDir));
         this.scoreboard = new Scoreboard(Path.of(stateDir));
         this.camp = camp.isBlank() ? null : Arrays.stream(camp.split(",")).mapToInt(v -> Integer.parseInt(v.strip())).toArray();
-        if (this.camp != null && this.camp.length != 2) {
-            throw new IllegalArgumentException("minecraft.camp is x,z - not " + camp);
+        if (this.camp != null && this.camp.length != 2 && this.camp.length != 3) {
+            throw new IllegalArgumentException("minecraft.camp is x,z or x,z,ground - not " + camp);
         }
         this.oldCamps = oldCamps(chestStore, this.camp);
         this.stockpileWatch = new StockpileWatch(chestStore);
@@ -7422,8 +7427,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 foodless.remove(name);
             }
-            // And a meal carried comes before either: live, a soldier on a stone run back to back sat at
-            // food 0 with two rations in its pack.
+            // And a meal carried comes before either: live, a soldier on a stone run back to back sat at food 0 with two rations in its pack.
             boolean foodCalls = huntWanted && !hunter.active()
                     && Hunter.gameInSight(world, huntGround, food, quarry)
                     || !rations.active() && !threatened && inventory.slotOf(ItemClass.FOOD) >= 0
@@ -7697,8 +7701,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     BlockPos.containing(status.position().x(), status.position().y(), status.position().z()));
             List<BlockPos> repoint = repointing.getOrDefault(name, List.of());
             turns.put(Hands.Routine.MASON, turn(mason::active, free -> {
-                // Its dirt replaced while there's no open cell it can build: live, one cell nobody
-                // could reach held a whole wall's stone back.
+                // Its dirt replaced while there's no open cell it can build: live, one cell nobody could reach held a whole wall's stone back.
                 if (!repoint.isEmpty() && inventory.count(ItemClass.COBBLESTONE) > 0
                         && (wall.isEmpty() || mason.nothingToBuild() || mason.active() && mason.repointing())) {
                     mason.repoint(status.position(), world, wallCentre, WALL_RADIUS, repoint, free && !threatened && !(foodCalls || forage != null));
@@ -7743,8 +7746,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 keepSaplingsCarried.put(name, inventory.count(ItemClass.SAPLING));
                 clearer.drainTimes().forEach(t -> keepPace.merge(name, t, LevelPace.Tally::plus));
                 KeepPlan levelPlan = keepPlan;
-                // With no routine holding its hands, why it has no rectangle - so "waiting" is only a
-                // builder on the crew the plan gave nothing to.
+                // With no routine holding its hands, why it has no rectangle - so "waiting" is only a builder on the crew the plan gave nothing to.
                 String held = hands.map(r -> r.name().toLowerCase(java.util.Locale.ROOT))
                         .orElseGet(() -> levelPlan != null && levelPlan.boxes().containsKey(name) && !keepDue.containsKey(name)
                                 ? "done, waiting for the level"
@@ -7782,8 +7784,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             FlightRecorder recorder = recorders.computeIfAbsent(name, n -> new FlightRecorder());
             if (recorder.due()) {
-                // Hiding or sleeping: the squad in its patrol base, or down its mine for the night.
-                // Anything else still that long is worth a look.
+                // Hiding or sleeping: the squad in its patrol base, or down its mine for the night. Anything else still that long is worth a look.
                 Integer below = nightBelow.get(unitOf(name, definition.squad()));
                 // Or holding where its squad leader sent it - and got to: waiting there is the order.
                 boolean resting = taskOf(unitOf(name, definition.squad()), Objective.Task.PatrolBase.class).isPresent()
@@ -8134,8 +8135,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 setAside.getOrDefault(material, 0) == 0 && Armourer.canDig(material, inventory, world, at, treeClaims)
                         || nearStockpile && pool.map(st -> material == ItemClass.RAW_COPPER ? st.rawCopper()
                         : material == ItemClass.RAW_IRON ? st.rawIron() : 0).orElse(0) > 0;
-        // Past no rung the camp's level doesn't authorise (backlog/maturity-model.md, basis of issue);
-        // with no camp there's no level to go by.
+        // Past no rung the camp's level doesn't authorise (backlog/maturity-model.md, basis of issue); with no camp there's no level to go by.
         Optional<Recipe> next = Ladder.upTo(inventory, setAside, inReach, canDig,
                 upgradeAllowed.getOrDefault(name, false) ? highest : Math.min(highest, Ladder.BASIC_LOAD),
                 camp == null ? Optional.empty() : Optional.of(campLevel));

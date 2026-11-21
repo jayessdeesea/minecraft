@@ -192,4 +192,46 @@ class RoutingSimulationTest {
         assertTrue(Math.hypot(eli.x() - branch.x(), eli.z() - branch.z()) <= 2.5, "Eli at his branch: at " + eli + "; last server events: "
                 + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size()));
     }
+
+    /**
+     * The camp at (24, 88) as kept live (field540, Mia's ground): heaped with spoil from its ground at y=63 up to y=71,
+     * huts on huts among it. Set at sea level ("24,88,64"), its ground is there, not up the heaps - live, read off the
+     * surface, it was y=69 - and its upkeep digs the heaps down.
+     */
+    @Test
+    void aHeapedCampsGroundIsReadUnderItsHeaps() throws Exception {
+        WorldRecords.Snapshot ground = WorldRecords.load(java.nio.file.Path.of(
+                RoutingSimulationTest.class.getResource("/worlds/camp-heaped-field540.json").toURI()));
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, SimWorlds.replay(ground), 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position camp = new Position(24.5, 72, 88.5);
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Hold the camp", camp, "There",
+                new Objective.Task.None())), squadLeader(camp),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "24,88,64", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(22.5, 72, 87.5), List.of(
+                        new int[]{36, SimServer.ITEM_STONE_PICKAXE, 1},
+                        new int[]{37, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{38, SimServer.ITEM_BREAD, 16})))
+                .run();
+        java.util.function.IntSupplier heaped = () -> {
+            int n = 0;
+            for (int x = 16; x <= 32; x++) {
+                for (int z = 80; z <= 96; z++) {
+                    for (int y = 65; y <= 72; y++) {
+                        n += server.block(x, y, z) == SimServer.AIR ? 0 : 1;
+                    }
+                }
+            }
+            return n;
+        };
+        int before = heaped.getAsInt();
+
+        clock.advance(10 * 60_000);
+
+        assertEquals(64.0, chain.foothold().orElseThrow().camp().y(), "the camp's ground where it was set");
+        assertTrue(heaped.getAsInt() < before, "the heaps dug down: " + heaped.getAsInt() + " of " + before + " blocks over the ground left");
+    }
 }
