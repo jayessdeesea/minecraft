@@ -28,7 +28,11 @@ Built offline for combat: `CombatMatrixTest` (hostile x kit x ground, docs/milit
 cells short of correct listed known. Left there: the bow (not in the battle simulation's fights), several
 hostiles at once, slopes and caves as grounds, and each known cell's fix - among them the creeper: got clear of,
 it's kited at 7.5 for as long as it follows, so the soldier neither works nor kills it; a drill that kills one
-(a bow, or a blow before it lights) is what's left, with water and hills where a sprint doesn't get clear.
+(a bow, or a blow before it lights) is what's left, with water and hills where a sprint doesn't get clear. And
+bare hands against a pillager away from trees: it follows to 32, so a flight that breaks contact runs 36 or more,
+and the matrix's world - a box 48 out from the start - corners it first; fled to 36, the cells went from none to a
+third on hills and in a pond, none on flat ground. A wider world for long flights, or the soldier's own answer
+(a bow, a weapon made), is what's left.
 
 ## Done when
 The live tier has a harness (`app`'s `ChainScenarioLiveIT`, DEVELOPMENT.md § 2) and seven

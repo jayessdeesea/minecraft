@@ -15,6 +15,14 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
   armour. Each soldier walks off alone for the 8 copper a chestplate takes: in field119, 39 of 67
   of those trips never reached the ore, one 90 blocks from camp.
 
+- **Food too, seen live (field568):** Eli, Bravo's miner at the keep's mine, carried no rations all run after a
+  respawn - Class I RED, "no squadmate with any to share" (his squadmates at the camp, rations handed only within 8)
+  - and at 1.3 health, food 16, too low to heal, was shot dead at his face. He drew iron and cobblestone from the
+  keep's depot at (-66, 63, -71) but never bread: `SoldierErrands.drawsFood` goes only to the stockpile its soldier
+  draws from, while the camp's held 18 bread and squadmates 30-127 each. One stockpile of food a soldier can draw
+  from wherever its squad works - or its depot stocked with bread - is the fix; a scenario first: a miner at a depot
+  with no bread and the camp's chest with some.
+
 ## Built so far
 - Raw ore through the stockpile (`bot.supply.MetalPool`, docs/military-doctrine.md § 12): kept
   only for a piece it makes, drawn to complete one, else pooled - one squad's copper armours the
