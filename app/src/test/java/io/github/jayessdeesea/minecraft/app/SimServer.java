@@ -888,14 +888,23 @@ final class SimServer {
             log.add(name + " threw away " + stack[1] + " of " + stack[0]);
         }
 
+        /** When each dig of this player's began, by its cell: the server times a dig from its start. */
+        private final Map<Long, Long> digStarted = new HashMap<>();
+
         @Override
         public void startDigging(int x, int y, int z) {
+            digStarted.put(key(x, y, z), clock.millis());
         }
 
         /** Whether the cell's centre is within the server's reach of the eyes: it refuses past that. */
         private boolean reaches(int x, int y, int z) {
             double dx = x + 0.5 - position.x(), dy = y + 0.5 - (position.y() + 1.62), dz = z + 0.5 - position.z();
             return dx * dx + dy * dy + dz * dz <= REACH * REACH;
+        }
+
+        /** Whether the dig at the cell finished too soon for what's in hand ({@link SimItems#dugTooFast}). */
+        private boolean dugTooFast(int x, int y, int z, int state) {
+            return SimItems.dugTooFast(state, heldItem().orElse(-1), digStarted.remove(key(x, y, z)), clock.millis());
         }
 
         @Override
@@ -906,6 +915,11 @@ final class SimServer {
             }
             int state = block(x, y, z);
             if (state == AIR || state == WATER) {
+                return;
+            }
+            if (dugTooFast(x, y, z, state)) {
+                log.add(name + " REFUSED: dug " + state + " at " + x + "," + y + "," + z + " too fast for what's in hand");
+                set(x, y, z, state); // the server sends the block back
                 return;
             }
             if (state == BEDROCK) {

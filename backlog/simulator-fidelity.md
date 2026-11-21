@@ -17,7 +17,9 @@ world wrong is proven wrong.
 
 ## What
 1. **Known gaps, fixed in both the simulation and the soldier's world model** where the model is wrong too:
-   the gaps in backlog/physics-fidelity.md, each when it costs something.
+   the gaps in backlog/physics-fidelity.md, each when it costs something. The squad simulation times a dig by the tool in hand, as the
+   server does (`SimItems.dugTooFast`); left of the hotbar: a task keeping the right tool ready - the hoe or an empty
+   hand to harvest, the sword within reach - measured in the time it costs.
 2. **A prediction ledger.** Built for routes (`app.Ledger`, `[Ledger]` every ten minutes: a route's ticks a step
    planned, from its first route to the goal to standing there). Left, the other kinds: the blocks a route places, a
    dig's time,

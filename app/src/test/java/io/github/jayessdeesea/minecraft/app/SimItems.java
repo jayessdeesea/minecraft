@@ -56,6 +56,27 @@ final class SimItems {
     }
 
     /**
+     * Whether a dig of {@code state} with {@code held} in hand (-1 for none), begun at {@code started} (null: never begun),
+     * finished at {@code now} too soon: under 70% of its break time with that tool, as the server holds it. Without it the
+     * simulation broke any block at once whatever was in hand (operator, 2026-11-20: simulate the hotbar - the tool must
+     * be in hand to use it).
+     */
+    static boolean dugTooFast(int state, int held, Long started, long now) {
+        Optional<io.github.jayessdeesea.minecraft.bot.world.Hardness> hardness = io.github.jayessdeesea.minecraft.bot.world.ChunkCache.hardnessOf(state);
+        if (hardness.isEmpty() || hardness.get().hardness() == 0) {
+            return false;
+        }
+        int hand = io.github.jayessdeesea.minecraft.bot.world.Hardness.HAND;
+        int tier = held < 0 ? hand : ItemClassRegistry.miningTier(held).orElse(hand);
+        double speed = held < 0 ? 1 : switch (hardness.get().tool()) {
+            case AXE -> ItemClassRegistry.axeSpeed(held).orElse(1);
+            case SHOVEL -> ItemClassRegistry.shovelSpeed(held).orElse(1);
+            default -> 1;
+        };
+        return started == null || (now - started) / 50.0 < 0.7 * hardness.get().ticks(tier, speed);
+    }
+
+    /**
      * The item a block drops whose own item the client's tables don't list - granite, andesite, tuff: as live, the soldier
      * carries it and counts it as nothing it builds or makes with.
      */

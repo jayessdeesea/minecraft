@@ -447,6 +447,11 @@ public final class ChunkCache {
         return BlockClassRegistry.nameOf(stateId);
     }
 
+    /** What digging a state takes - its hardness, the pickaxe for its drop, the tool that digs it fastest - if the table lists it. */
+    public static java.util.Optional<Hardness> hardnessOf(int stateId) {
+        return BlockClassRegistry.hardness(stateId);
+    }
+
     /** Whether a state is rock - mined with a pickaxe, dropping nothing to a hand. */
     public static boolean isRock(int stateId) {
         return BlockClassRegistry.classOf(stateId) == BlockClassRegistry.BlockClass.ROCK;
