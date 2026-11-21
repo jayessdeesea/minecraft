@@ -129,7 +129,14 @@ final class CampFarm {
             for (ChunkFarm c : kept.chunks()) {
                 FarmSite.Work work = FarmSite.work(world, c);
                 if (!work.stage().equals(stages.put(ChunkFarm.key(c.chunkX(), c.chunkZ()), work.stage()))) {
-                    LOG.info("[Farm] chunk {}, {}: {} - {}", c.chunkX(), c.chunkZ(), work.stage(), work);
+                    // SURVEYED: what it waits on, the first of each - its ground's blocks to dig and cells to fill.
+                    String waits = "";
+                    if (work.stage() == FarmSite.Stage.SURVEYED) {
+                        List<List<BlockPos>> left = FarmSite.surveyed(world, c);
+                        waits = " - to dig " + left.get(0).stream().limit(12).map(b -> b.x() + "," + b.y() + "," + b.z()).toList()
+                                + ", to fill " + left.get(1).stream().limit(12).map(b -> b.x() + "," + b.y() + "," + b.z()).toList();
+                    }
+                    LOG.info("[Farm] chunk {}, {}: {} - {}{}", c.chunkX(), c.chunkZ(), work.stage(), work, waits);
                 }
             }
         }

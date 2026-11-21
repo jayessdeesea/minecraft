@@ -58,6 +58,31 @@ public final class FarmSite {
     private FarmSite() {
     }
 
+    /**
+     * The blocks {@link #work} counts to dig, and the cells it counts to fill, on {@code farm}: what its SURVEYED stage
+     * waits on, block by block - live (field577-581) the camp's chunk farm stood at dig=103, fill=32 run after run, and
+     * the count alone said nothing of what or where.
+     */
+    public static List<List<BlockPos>> surveyed(WorldView world, ChunkFarm farm) {
+        List<BlockPos> dig = new java.util.ArrayList<>(), fill = new java.util.ArrayList<>();
+        for (BlockPos c : farm.ground()) {
+            if (!world.isSolid(c.x(), c.y(), c.z()) || world.isWater(c.x(), c.y(), c.z())) {
+                fill.add(c);
+            }
+            for (int up = 1; up <= 3; up++) {
+                if (world.isSolid(c.x(), farm.level() + up, c.z())) {
+                    dig.add(new BlockPos(c.x(), farm.level() + up, c.z()));
+                }
+            }
+        }
+        for (BlockPos h : farm.holes()) {
+            if (!world.isWaterSource(h.x(), h.y(), h.z()) && world.isSolid(h.x(), h.y(), h.z())) {
+                dig.add(h);
+            }
+        }
+        return List.of(List.copyOf(dig), List.copyOf(fill));
+    }
+
     /** The work left on {@code farm} as {@code world} has it. */
     public static Work work(WorldView world, ChunkFarm farm) {
         int dig = 0, fill = 0, floors = 0, pours = 0, till = 0, sow = 0, torches = 0, posts = 0, gates = 0;
