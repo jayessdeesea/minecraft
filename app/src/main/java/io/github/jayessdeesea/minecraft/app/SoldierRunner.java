@@ -6856,7 +6856,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         gatherers.put(name, gatherer);
         Farmer farmer = new Farmer(name, session, inventory, treeClaims, farmCellsFailed, scaffolding);
         farmers.put(name, farmer);
-        Forester forester = new Forester(name, session, inventory, treeClaims);
+        Forester forester = new Forester(name, session, inventory, treeClaims, farmCellsFailed); // a cell one couldn't plant, none tries for a while
         foresters.put(name, forester);
         AtomicReference<Depositor> stashing = new AtomicReference<>();
         // What a chest held once a load went in: a mine's stash is kept as the mine's, the rest is the stockpile.

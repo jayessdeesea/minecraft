@@ -125,4 +125,34 @@ class ForesterTest {
         assertEquals(List.of("birch", "spruce", "oak"), plantedInTurn, "birch, then spruce, then the oak: " + saplings);
         assertTrue(forester.failure().isEmpty(), forester.failure().orElse(""));
     }
+
+    /**
+     * A cell one forester couldn't stand in is passed over by the next: live (field618), (38, 66, 82) was walked at 22
+     * times by Fran, Bob and the rest in turn.
+     */
+    @Test
+    void aCellOneForesterCouldntReachTheNextPassesOver() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item("birch_sapling"), 4});
+        BlockPos far = CENTRE.offset(3, 0, 0);
+        TreeFarm farm = new TreeFarm(CENTRE, List.of(CENTRE, far));
+        Setbacks<BlockPos> shared = new Setbacks<>(Farmer.PASS_OVER_TICKS, 16L * Farmer.PASS_OVER_TICKS);
+        Forester fran = new Forester("Fran", session, inventory, new HashSet<>(), shared);
+        Position stuck = new Position(-5.5, GROUND, 0.5); // never gets to the cell it's sent to
+        for (int tick = 0; tick < Forester.WALK_TICKS + 50; tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            fran.tick(stuck, grass, Optional.of(farm), true);
+        }
+        assertTrue(fran.failure().isPresent(), "Fran couldn't get to " + CENTRE);
+
+        Forester bob = new Forester("Bob", session, inventory, new HashSet<>(), shared);
+        Position soldier = new Position(-5.5, GROUND, 0.5);
+        for (int tick = 0; tick < 200 && saplings.isEmpty(); tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            bob.tick(soldier, grass, Optional.of(farm), true);
+            soldier = bob.standAt().orElse(soldier);
+        }
+        assertEquals(java.util.Set.of(far), saplings.keySet(), "Bob plants the cell Fran could get to, not hers again");
+    }
 }

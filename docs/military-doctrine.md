@@ -1240,7 +1240,8 @@ grass within 8 blocks, with seven blocks of air above each for the trunk (`bot.f
 Birch is the farm's first tree - one straight trunk to a predictable height, with no giant form -
 and spruce its second. A soldier plants birch if it carries any, then spruce, then any other, and
 with no sapling breaks leaves for one, birch leaves first, then spruce; one leaf block in twenty
-drops a sapling (`bot.supply.Forester`).
+drops a sapling (`bot.supply.Forester`). A cell one forester couldn't plant - not stood in, its sapling refused -
+is passed over by every forester for a while, as a farm's cells are (live, field618: one walked at 22 times in turn).
 Planting is an expect script like the farm's. The trees that grow are logs like any others, for a
 squad sent for WOOD there. A squad that sees no trees is told, on its resources line, that its
 wood has to be grown. The soldier at it reports `Planting`.

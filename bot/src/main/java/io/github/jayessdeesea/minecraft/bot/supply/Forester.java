@@ -59,12 +59,24 @@ public final class Forester {
     private Position soldier;
     private int cooldown;
     private String failure;
+    /**
+     * Grove cells a forester couldn't plant, passed over by every forester for a while, as the farm's are: live
+     * (field618), one at (38, 66, 82) no soldier could stand in was walked at 22 times, each forester in turn.
+     */
+    private final Setbacks<BlockPos> shared;
+    private long ticks;
 
     public Forester(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims) {
+        this(name, session, inventory, claims, new Setbacks<>(Farmer.PASS_OVER_TICKS, 16L * Farmer.PASS_OVER_TICKS));
+    }
+
+    /** As above, the cells it couldn't plant {@code shared} with every forester. */
+    public Forester(String name, PlaySession session, Inventory inventory, Set<BlockPos> claims, Setbacks<BlockPos> shared) {
         this.name = name;
         this.session = session;
         this.inventory = inventory;
         this.claims = claims;
+        this.shared = shared;
     }
 
     public synchronized boolean active() {
@@ -89,6 +101,7 @@ public final class Forester {
     /** Each tick: plants {@code farm} while {@code free}; anything else stops the job under way. */
     public synchronized void tick(Position soldier, WorldView world, Optional<TreeFarm> farm, boolean free) {
         this.soldier = soldier;
+        ticks++;
         if (cooldown > 0) {
             cooldown--;
         }
@@ -121,7 +134,7 @@ public final class Forester {
     }
 
     private void next(WorldView world, TreeFarm farm) {
-        Optional<BlockPos> bare = farm.plot().stream().filter(c -> !claims.contains(c) && !TreeFarm.planted(world, c))
+        Optional<BlockPos> bare = farm.plot().stream().filter(c -> !claims.contains(c) && !TreeFarm.planted(world, c) && !shared.barred(c, ticks))
                 .min(Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())));
         if (bare.isEmpty()) {
             return;
@@ -210,6 +223,9 @@ public final class Forester {
 
     private void fail(String why) {
         LOG.warn("{} stops planting for a while - {}", name, why);
+        if (claimed != null) {
+            shared.failed(claimed, ticks, why); // the cell, not only the forester, kept off for a while
+        }
         failure = why;
         cooldown = COOLDOWN_TICKS;
         stop();
