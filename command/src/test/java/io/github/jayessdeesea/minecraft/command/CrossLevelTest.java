@@ -140,6 +140,21 @@ class CrossLevelTest {
         assertEquals(List.of(), CrossLevel.across(short_, List.of(carrying("Gus", 40, 64))), "Gus is 40 blocks off");
     }
 
+    /**
+     * Across squads a ration is walked over only to one about to run out, and far only to one with none: live (field618),
+     * 452 hand-overs in ten minutes, single rations walked 40 to 120 blocks to soldiers with days of food (low is under 32).
+     */
+    @Test
+    void acrossSquadsARationIsWalkedOverOnlyToOneRunningOut() {
+        List<SoldierStatus> givers = List.of(carrying("Eli", 30, 40));
+        assertEquals(List.of(), CrossLevel.across(List.of(carrying("Carol", 0, 20)), givers), "Carol has twenty: she restocks when she's by the stores");
+        assertEquals(List.of(), CrossLevel.across(List.of(carrying("Bob", 0, 3)), givers), "Bob is running out, but Eli is 30 off");
+        assertEquals(List.of(new CrossLevel.Transfer("Eli", "Bob", CrossLevel.Item.RATIONS, 1)),
+                CrossLevel.across(List.of(carrying("Bob", 0, 3)), List.of(carrying("Eli", 6, 40))), "Eli beside him");
+        assertEquals(List.of(new CrossLevel.Transfer("Eli", "Bob", CrossLevel.Item.RATIONS, 1)),
+                CrossLevel.across(List.of(carrying("Bob", 0, 0)), givers), "Bob has none: worth Eli's walk");
+    }
+
     @Test
     void oneRunningLowItselfStillGivesToOneWithFewerButTwoAlikeDont() {
         Map<String, Integer> wanted = Map.of("Alice", CrossLevel.RATIONS_GIVEN, "Bob", CrossLevel.RATIONS_GIVEN, "Carol", CrossLevel.RATIONS_GIVEN);

@@ -466,12 +466,16 @@ class FoodSimulationTest {
                 + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
     }
 
-    /** Running low with no squadmate to share, a soldier is given rations by a soldier of the other squad. */
+    /**
+     * Running out with no squadmate to share, a soldier is given rations by a soldier of the other squad beside it - only
+     * running out (CrossLevel.RUNNING_OUT): one carrying days of food restocks by the stores (field618: 452 hand-overs
+     * in ten minutes, single rations walked 40 to 120 blocks).
+     */
     @Test
     void aSoldierNoSquadmateCanFeedIsSharedRationsAcrossSquads() {
-        Shared run = sharing("Alpha:Fran;Bravo:Hal", Map.of("Fran", 40, "Hal", 20), 60_000);
+        Shared run = sharing("Alpha:Fran;Bravo:Hal", Map.of("Fran", 40, "Hal", 3), 60_000);
 
-        assertTrue(run.server().count("Hal", ItemClassRegistry.ItemClass.FOOD) > 20, "Hal shared some of Fran's; last server events: "
+        assertTrue(run.server().count("Hal", ItemClassRegistry.ItemClass.FOOD) > 3, "Hal shared some of Fran's; last server events: "
                 + run.server().log.subList(Math.max(0, run.server().log.size() - 10), run.server().log.size()));
     }
 

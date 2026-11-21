@@ -166,8 +166,10 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    receiver, and from every giver near it at once,
    so a giver's spare goes round everyone short rather than to the first (the operator's). A
    squadmate below 32 itself still gives, to one it's left with more than; below 15 it has none to
-   spare. One no squadmate can feed is given them across squads, by the nearest soldier of another
-   squad within 32 blocks with some to spare and no hand-over of its own (`CrossLevel.across`). One starving at death's door - food
+   spare. One no squadmate can feed and running out - 3 rations or fewer - is given them across squads, by the
+   nearest soldier of another squad with some to spare and no hand-over of its own: within 8 blocks, or 32 to one
+   with none (`CrossLevel.across`, `RUNNING_OUT`). One with more restocks by the stores: live (field618), 452
+   hand-overs in ten minutes walked single rations 40 to 120 blocks to soldiers with days of food. One starving at death's door - food
    0, health 6 or less - gets a meal from the nearest squadmate carrying any, its last or not,
    before anything else is handed across: buddy aid. Live, a soldier stood at a third of a heart
    beside a squadmate with one ration, kept as its own. And while the squad is RED, or a soldier

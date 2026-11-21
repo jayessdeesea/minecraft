@@ -163,17 +163,24 @@ public final class CrossLevel {
      * gets to. Fewest first, one transfer a giver. Neither side in contact or linking up: the caller's
      * to leave out a squad in contact, as {@link #pair} does its own.
      */
-    /** How near another squad's giver must be: a squad on its own mission a way off isn't walked across the map. */
+    /** How near another squad's giver must be to one with none: a squad on its own mission a way off isn't walked across the map. */
     public static final double ACROSS_REACH = 32;
+    /**
+     * At or under this many rations a soldier is running out: another squad's giver beside it - within {@link #RATIONS_REACH}
+     * - hands it one; with none, one within {@link #ACROSS_REACH} walks over. Over it, it restocks when it's by the stores
+     * ({@link Subsistence#low}): live (field618), 452 hand-overs in ten minutes, single rations walked 40 to 120 blocks to
+     * soldiers carrying days of food (operator, 2026-11-21: this is killing productivity).
+     */
+    public static final int RUNNING_OUT = 3;
 
     public static List<Transfer> across(List<SoldierStatus> short_, List<SoldierStatus> givers) {
         List<Transfer> transfers = new ArrayList<>();
         Set<String> busy = new HashSet<>();
-        short_.stream().filter(r -> !(r.report() instanceof Report.LinkingUp))
+        short_.stream().filter(r -> !(r.report() instanceof Report.LinkingUp) && Item.RATIONS.carried(r) <= RUNNING_OUT)
                 .sorted(Comparator.comparingInt(Item.RATIONS::carried)).forEach(receiver -> givers.stream()
                         .filter(g -> !busy.contains(g.name()) && !g.name().equals(receiver.name()) && !critical(g) && withinHeight(g, receiver)
                                 && !(g.report() instanceof Report.LinkingUp) && !(g.report() instanceof Report.InContact)
-                                && Cohesion.distance(g.position(), receiver.position()) <= ACROSS_REACH)
+                                && Cohesion.distance(g.position(), receiver.position()) <= (Item.RATIONS.carried(receiver) == 0 ? ACROSS_REACH : RATIONS_REACH))
                         .filter(g -> evens(g, receiver))
                         .min(Comparator.comparingDouble(g -> Cohesion.distance(g.position(), receiver.position())))
                         .ifPresent(g -> {
