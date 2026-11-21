@@ -1991,7 +1991,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         if (campGround != null && Math.hypot(at.x() - campGround.x(), at.z() - campGround.z()) <= CAMP_WORKSHOP_RANGE) {
             Workshop camp = campWorkshop;
-            if (camp == null || !Pathfinder.standable(world, camp.stand())) {
+            if (camp == null || !Workshop.usable(world, camp.stand())) {
                 camp = Workshop.hasty(world, stockpileWatch.ground().orElse(campGround), claimed).orElse(null);
                 if (camp == null) {
                     LOG.warn("[{}] nowhere at the camp's ground {} to site its workshop", squad, campGround);

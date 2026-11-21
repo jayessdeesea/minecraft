@@ -54,6 +54,34 @@ class WorkshopTest {
         assertNotEquals(w.table().x() - w.stand().x(), w.stand().x() - w.furnace().x(), "not opposite sides: the stand stays open");
     }
 
+    /** A pocket sealed under a heap by the ground isn't a workshop's stand: no walk gets in without digging. */
+    @Test
+    void aPocketSealedUnderAHeapIsNoWorkshopStand() {
+        // The ground at y=63 heaped two high at y=64-65 all round, a roof at y=66 over a hollow at x=-2..2, z=-2..2.
+        WorldView heaped = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                boolean hollow = Math.abs(x) <= 2 && Math.abs(z) <= 2;
+                return y <= 63 || !hollow && y <= 65 || Math.abs(x) <= 3 && Math.abs(z) <= 3 && y == 66;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Optional<Workshop> w = Workshop.hasty(heaped, new BlockPos(0, 64, 0), Set.of());
+        assertTrue(w.isPresent(), "sited on the heap's top");
+        assertTrue(Math.abs(w.get().stand().x()) > 2 || Math.abs(w.get().stand().z()) > 2 || w.get().stand().y() > 66,
+                "not in the hollow under the roof: " + w.get().stand());
+        assertTrue(Workshop.usable(flat(Map.of()), new BlockPos(0, 64, 0)), "open ground is");
+    }
+
     @Test
     void aTableAlreadyStandingNearbyIsTheWorkshopsSoARestartFindsTheSameOne() {
         BlockPos table = new BlockPos(3, 64, 2);

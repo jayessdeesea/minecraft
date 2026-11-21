@@ -899,7 +899,9 @@ it left there, and a squadmate waits for it.
 - **The camp's**, at the camp's ground: for every squad whose objective is within 48 blocks of it.
 - **A hasty one** at the objective's ground otherwise. It is sited round a table already standing
   there, if there is one, so the same workshop is found after a restart, and never in the squad's
-  patrol base or on its wall.
+  patrol base or on its wall. Its stand has a walk out to open sky (`Workshop.usable`): looked for from
+  3 below the ground to 8 over it, a heap's top before a pocket sealed under the heap, which no walk
+  gets into without digging - and the camp's workshop is sited again once its stand isn't usable.
 - **The mine base's**, at the bottom of the camp's stairs (§16): for a soldier more than 3 blocks
   down, once the landing is cut. By night it's a mining squad's only workshop, so nobody climbs
   out into the dark for a tool - and no armour is made there: the shift's work is the ore, and

@@ -112,7 +112,8 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
         List<BlockPos> around = new ArrayList<>();
         for (int dx = -SEARCH; dx <= SEARCH; dx++) {
             for (int dz = -SEARCH; dz <= SEARCH; dz++) {
-                for (int dy = -3; dy <= 3; dy++) {
+                // Up to the top of a heap over the ground too: under one, its pockets aren't stands (usable).
+                for (int dy = -3; dy <= HEAP_RISE; dy++) {
                     around.add(ground.offset(dx, dy, dz));
                 }
             }
@@ -122,7 +123,7 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
             if (world.workstation(table.x(), table.y(), table.z()).equals(Optional.of(Workstation.CRAFTING_TABLE))) {
                 for (int[] side : SIDES) {
                     BlockPos stand = table.offset(-side[0], 0, -side[1]);
-                    if (Pathfinder.standable(world, stand) && !claimed.contains(stand)) {
+                    if (usable(world, stand) && !claimed.contains(stand)) {
                         Optional<BlockPos> furnace = furnaceBeside(world, stand, table, claimed);
                         if (furnace.isPresent()) {
                             return Optional.of(new Workshop(stand, table, furnace.get(), chestBehind(world, stand, table, furnace.get(), claimed)));
@@ -137,7 +138,7 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
         // nearest with room for the table and furnace.
         Workshop chestless = null;
         for (BlockPos stand : around) {
-            if (!Pathfinder.standable(world, stand) || claimed.contains(stand)) {
+            if (!usable(world, stand) || claimed.contains(stand)) {
                 continue;
             }
             for (int i = 0; i < SIDES.length; i++) {
@@ -156,6 +157,33 @@ public record Workshop(BlockPos stand, BlockPos table, BlockPos furnace, Optiona
             }
         }
         return Optional.ofNullable(chestless);
+    }
+
+    /** How far over the ground a hasty workshop's stand is looked for: a heap's top, live up to 8 over the camp's ground. */
+    static final int HEAP_RISE = 8;
+    /** How far a workshop's stand is searched round for a way out to open sky, and over how many cells. */
+    static final int WAY_OUT_SPAN = 6, WAY_OUT_BUDGET = 600;
+    /** Headroom over a cell that's open sky: nothing solid this far up. */
+    static final int SKY_CLEARANCE = 24;
+
+    /**
+     * Whether a workshop can stand at {@code stand}: open ground with a walk from it out to open sky - not a pocket
+     * sealed under a heap, which no walk gets into without digging. Live (field540, replayed in
+     * RoutingSimulationTest), the camp's workshop was sited by its ground at y=64 in such a pocket under the spoil, and
+     * every trip there for a tool had no route.
+     */
+    public static boolean usable(WorldView world, BlockPos stand) {
+        return Pathfinder.standable(world, stand) && (openSky(world, stand)
+                || Pathfinder.climbs(world, stand, WAY_OUT_SPAN, WAY_OUT_BUDGET, 0).keySet().stream().anyMatch(c -> openSky(world, c)));
+    }
+
+    private static boolean openSky(WorldView world, BlockPos cell) {
+        for (int up = 2; up <= SKY_CLEARANCE; up++) {
+            if (world.isSolid(cell.x(), cell.y() + up, cell.z())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
