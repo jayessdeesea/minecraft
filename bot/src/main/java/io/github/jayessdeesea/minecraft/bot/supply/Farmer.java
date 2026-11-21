@@ -1,6 +1,7 @@
 package io.github.jayessdeesea.minecraft.bot.supply;
 
 import io.github.jayessdeesea.minecraft.bot.craft.Recipe;
+import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
@@ -76,6 +77,8 @@ public final class Farmer {
     private final Map<ItemClass, Builder> builders = new EnumMap<>(ItemClass.class);
     /** What lays a water hole's floor, of the cobblestone or dirt it carries. */
     private final Builder holeFloor;
+    /** Fills a chunk farm's ground where it's missing (FarmSite, the SURVEYED stage). */
+    private final Builder groundFill;
     /** The kind of fixture it's putting up. */
     private ItemClass placing;
     /** Does the farm's {@link #earthwork}: a {@link Clearer} over it. */
@@ -115,6 +118,7 @@ public final class Farmer {
         this.carrier = new WaterCarrier(name, session, inventory);
         FIXTURES.forEach(item -> builders.put(item, new Builder(name, session, inventory, List.of(item))));
         this.holeFloor = new Builder(name, session, inventory, List.of(ItemClass.COBBLESTONE, ItemClass.DIRT));
+        this.groundFill = new Builder(name, session, inventory, List.of(ItemClass.DIRT, ItemClass.COBBLESTONE));
         // Cut from off the farmland: in the squad simulation, stands on the plot in its hollow had the
         // farmers walking in and out over it, trampling it, to dig the ground round it.
         this.unburier = new Clearer(name, session, inventory, claims, (world, stand) -> !world.isFarmland(stand.x(), stand.y() - 1, stand.z()));
@@ -155,7 +159,29 @@ public final class Farmer {
                 }
             }
         }
+        // A chunk farm's ground levelled to its template (FarmSite, the SURVEYED stage): what stands over it, three high,
+        // dug - the top first - for the dirt its hollows are filled with. Live (field516-543), the camp's chunk farm stood
+        // a day SURVEYED, 64 blocks over its ground and 52 cells under, its tender farming only what lay level.
+        for (ChunkFarm chunk : farm.chunks()) {
+            for (BlockPos g : chunk.ground()) {
+                for (int up = 3; up >= 1; up--) {
+                    BlockPos b = g.offset(0, up, 0);
+                    if ((world.isSoil(b.x(), b.y(), b.z()) || world.isCobblestone(b.x(), b.y(), b.z()) || world.isStone(b.x(), b.y(), b.z()))
+                            && !world.isFarmland(b.x(), b.y(), b.z())) {
+                        dig.add(b);
+                    }
+                }
+            }
+        }
         return List.copyOf(dig);
+    }
+
+    /** The cells of {@code farm}'s chunk farms' ground missing - open, or water - for its tender to fill with the dirt it carries. */
+    static List<BlockPos> groundToFill(WorldView world, FarmPlan farm) {
+        // Not a trench: its water is the farm's own (in the squad simulation, the tender filled the camp farm's trench in).
+        Set<BlockPos> trenches = Set.copyOf(farm.trenches());
+        return farm.chunks().stream().flatMap(c -> c.ground().stream()).filter(g -> !trenches.contains(g))
+                .filter(g -> !world.isSolid(g.x(), g.y(), g.z()) || world.isWater(g.x(), g.y(), g.z())).toList();
     }
 
     /**
@@ -275,7 +301,8 @@ public final class Farmer {
         return farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE
                 || world.isFarmland(c.x(), c.y(), c.z()) && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z())
                 || world.isTillable(c.x(), c.y(), c.z()) && !world.isSolid(c.x(), c.y() + 1, c.z()))
-                || !trenchToCut(world, farm).isEmpty() || earthwork(world, farm).stream().anyMatch(c -> !steps.contains(c));
+                || !trenchToCut(world, farm).isEmpty() || earthwork(world, farm).stream().anyMatch(c -> !steps.contains(c))
+                || !groundToFill(world, farm).isEmpty();
     }
 
     public synchronized boolean active() {
@@ -456,6 +483,14 @@ public final class Farmer {
             if (unburier.active()) {
                 return;
             }
+        }
+        // Then its chunk farms' ground filled, with what the earthwork gave it - not a cell passed over lately.
+        List<BlockPos> fill = groundToFill(world, farm).stream().filter(c -> !passedOver.barred(c, ticks)).toList();
+        if (!fill.isEmpty() && inventory.count(ItemClass.DIRT) + inventory.count(ItemClass.COBBLESTONE) > 0) {
+            if (groundFill.tick(soldier, world, fill) instanceof Builder.Progress.Failed(String why)) {
+                fill.forEach(c -> passedOver.failed(c, ticks, "the chunk farm's ground at " + c + " not filled: " + why));
+            }
+            return;
         }
         // Its chunk farms' fixtures, with what it carries: the fence, the gates - opened, the farm's way in - and the chest.
         for (ItemClass item : FIXTURES) {

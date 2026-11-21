@@ -1035,7 +1035,9 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    (`Pathfinder.TRAMPLE_COST`), never a wall: with the farm tilled to its rim, every soldier at the
    camp stood with "no route" to the keep - and never builds a step on it, so a farm in a hollow
    was reached only where the ground happened to be level, and steps built out of it buried a
-   third of the camp's farm. Then its chunk farms' fence, gates, chest and torches - four in the field a
+   third of the camp's farm. A chunk farm's ground is levelled to its template the same way: what stands over it,
+   three high, dug top first, and its open or flooded cells - but its trenches - filled with that dirt (`Farmer.groundToFill`;
+   FarmSite's SURVEYED stage). Then its chunk farms' fence, gates, chest and torches - four in the field a
    step in on the diagonal from each water hole, and one on every fourth fence post's top (`ChunkFarm.torches`)
    - with what it carries (`Farmer.fixtures`): a cell the builder can't place in passed over a while, the rest
    put up, and any of their gates shut, opened. The cell over a post reads solid to the route planner - a fence's

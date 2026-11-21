@@ -721,4 +721,51 @@ class TaskOrganisationSimulationTest {
         }
         assertEquals(Plan.RIFLEMAN, new PlanBook(state).of("Alice"), "the level is done, and Alice back with the squad");
     }
+
+    /** The chunks round the camp, each broken alike by its local x and z, so whichever the chunk farm is sited in is broken. */
+    private static final int[][] CHUNKS = java.util.stream.IntStream.rangeClosed(-3, 3).boxed()
+            .flatMap(cx -> java.util.stream.IntStream.rangeClosed(-3, 3).mapToObj(cz -> new int[]{cx, cz})).toArray(int[][]::new);
+
+    /** As {@link #pondOfThreeByTheCamp}, the chunk farms' ground by the camp broken: a dirt mound two high, and a pit a block deep. */
+    private static int brokenChunkGround(int x, int y, int z) {
+        int lx = Math.floorMod(x, 16), lz = Math.floorMod(z, 16);
+        boolean inOne = Math.abs(Math.floorDiv(x, 16)) <= 3 && Math.abs(Math.floorDiv(z, 16)) <= 3;
+        boolean mound = inOne && lx >= 6 && lx <= 8 && lz >= 6 && lz <= 8 && (y == GROUND + 1 || y == GROUND + 2);
+        boolean pit = inOne && lx >= 10 && lx <= 11 && lz >= 2 && lz <= 3 && y == GROUND;
+        return mound ? SimServer.DIRT : pit ? SimServer.AIR : pondOfThreeByTheCamp(x, y, z);
+    }
+
+    /**
+     * The chunk farm's ground levelled to its template by its tender: the mound over it dug, and its dirt filling the pit
+     * (FarmSite's SURVEYED stage). Live (field516-543), the camp's chunk farm stood a day SURVEYED, 64 blocks over its
+     * ground and 52 cells under, its tender farming only what lay level.
+     */
+    @Test
+    void aChunkFarmsTenderLevelsItsGround() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::brokenChunkGround, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.BUCKET), 1}), "0,0");
+        clock.advance(30 * 60_000);
+
+        String events = "; last server events: " + server.log.subList(Math.max(0, server.log.size() - 12), server.log.size());
+        long best = Long.MAX_VALUE;
+        for (int[] c : CHUNKS) {
+            long left = 0;
+            for (int lx = 6; lx <= 8; lx++) {
+                for (int lz = 6; lz <= 8; lz++) {
+                    for (int y = GROUND + 1; y <= GROUND + 2; y++) {
+                        left += server.block(c[0] * 16 + lx, y, c[1] * 16 + lz) == SimServer.DIRT ? 1 : 0;
+                    }
+                }
+            }
+            for (int lx = 10; lx <= 11; lx++) {
+                for (int lz = 2; lz <= 3; lz++) {
+                    left += server.block(c[0] * 16 + lx, GROUND, c[1] * 16 + lz) == SimServer.AIR ? 1 : 0;
+                }
+            }
+            best = Math.min(best, left);
+        }
+        assertEquals(0, best, "the sited chunk farm's mound dug and pit filled" + events);
+    }
 }
