@@ -120,8 +120,9 @@ public final class Farmer {
         this.holeFloor = new Builder(name, session, inventory, List.of(ItemClass.COBBLESTONE, ItemClass.DIRT));
         this.groundFill = new Builder(name, session, inventory, List.of(ItemClass.DIRT, ItemClass.COBBLESTONE));
         // Cut from off the farmland: in the squad simulation, stands on the plot in its hollow had the
-        // farmers walking in and out over it, trampling it, to dig the ground round it.
-        this.unburier = new Clearer(name, session, inventory, claims, (world, stand) -> !world.isFarmland(stand.x(), stand.y() - 1, stand.z()));
+        // farmers walking in and out over it, trampling it, to dig the ground round it. But from it when no stand off it
+        // reaches (onFarmland): live (field576), a pillar two high on a plot cell, farmland all round, was never cut.
+        this.unburier = new Clearer(name, session, inventory, claims, (world, stand) -> onFarmland || !world.isFarmland(stand.x(), stand.y() - 1, stand.z()));
     }
 
     /**
@@ -417,6 +418,8 @@ public final class Farmer {
     public static final double SIM_TICKS_A_SOWING = 1045;
     private int harvested, sown;
     private long ripeTicks, bareTicks;
+    /** Whether the earthwork's next look for a stand takes one on the farmland, none off it having reached. */
+    private boolean onFarmland;
     /** The last said of why the farm's earthwork took no cut. */
     private String earthworkSaid;
     /** What the field job under way uses: a hoe to till, seeds to sow - none for a gate opened. */
@@ -600,6 +603,9 @@ public final class Farmer {
             }
             // Said when why changes: live (field570) a chunk farm's 92 blocks of earthwork stood a whole day, its
             // farmer at its other work, and nothing said why none was taken.
+            if (unburier.idleReason().filter(r -> r.startsWith("nothing in reach")).isPresent()) {
+                onFarmland = !onFarmland; // the next look from the farmland too, then off it again
+            }
             String why = earthwork.size() + " blocks of the farm's earthwork, none taken: " + unburier.idleReason().orElse("its clearer resting")
                     + " - the first at " + earthwork.getFirst();
             if (!why.equals(earthworkSaid)) {

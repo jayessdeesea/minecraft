@@ -1071,7 +1071,8 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    makes a cut that lets water in (`Clearing.letsInWater`), and a trench is that cut.
 2. Its earthwork (`Farmer.earthwork`): digs off any cobblestone or soil on a plot cell - the whole heap, to its
    top, as the clearer cuts the highest first (live, field574, a cell's dirt under more dirt left 13 blocks no cut
-   could take) - and cuts
+   could take); from off the farmland, and from it at its level when no stand off it reaches (field576, a pillar
+   two high on a plot cell, farmland all round, never cut) - and cuts
    the ground beside the plot down to its level, up to two blocks - an apron, so every cell is
    walked onto on the flat - but never a step the squad built (`SoldierRunner.scaffolding`): in
    the squad simulation a farmer dug its own step out of the hollow as dirt over the plot, its

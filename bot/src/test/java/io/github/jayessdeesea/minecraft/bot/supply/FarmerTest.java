@@ -485,4 +485,56 @@ class FarmerTest {
         assertTrue(Farmer.earthwork(heaped, new FarmPlan(WATER, List.of(cell))).containsAll(heap),
                 "both blocks of the heap: " + Farmer.earthwork(heaped, new FarmPlan(WATER, List.of(cell))));
     }
+
+    /**
+     * A pillar two high on a plot cell, farmland all round it, is cut - stood on the farmland beside it at its level,
+     * which treads no crop down. Live (field576), three farmers said "22 blocks of the farm's earthwork, none taken:
+     * nothing in reach", the first a cobblestone pillar two high at (-2, 64-65, 92), every stand beside it farmland.
+     */
+    @Test
+    void aPillarRingedByFarmlandIsCut() {
+        List<BlockPos> plot = new ArrayList<>();
+        for (int x = -4; x <= 10; x++) {
+            for (int z = -7; z <= 7; z++) {
+                plot.add(new BlockPos(x, GROUND, z));
+            }
+        }
+        Set<BlockPos> pillar = Set.of(new BlockPos(3, GROUND + 1, 0), new BlockPos(3, GROUND + 2, 0));
+        WorldView field = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos b = new BlockPos(x, y, z);
+                return y <= GROUND && !b.equals(WATER) || pillar.contains(b);
+            }
+
+            @Override
+            public boolean isCobblestone(int x, int y, int z) {
+                return pillar.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isFarmland(int x, int y, int z) {
+                return plot.contains(new BlockPos(x, y, z)) && !pillar.contains(new BlockPos(x, y + 1, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(WATER);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.PICKAXE), 1});
+        Farmer farmer = new Farmer("Fran", session, inventory, new HashSet<>());
+        boolean cut = false;
+        for (int tick = 0; tick < 1_000 && !cut; tick++) {
+            farmer.tick(new Position(3.5, GROUND + 1, 2.5), field, Optional.of(new FarmPlan(WATER, plot)), true);
+            cut = farmer.standAt().filter(s -> s.y() == GROUND + 1 && Math.hypot(s.x() - 3.5, s.z() - 0.5) <= 2).isPresent();
+        }
+
+        assertTrue(cut, "the pillar cut from the farmland beside it: " + farmer.standAt());
+    }
 }
