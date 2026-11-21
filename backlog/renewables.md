@@ -51,9 +51,13 @@ Left: levelling production chunks; gates worked on a route (see More farmland be
 No site near the depot holds 16 cells: several groves, each what the ground holds, and the search
 for them travels farther. Built: a grove of 8 cells or more, sought out to 96 blocks
 (`SoldierRunner.GROVE_MIN_CELLS`, `GROVE_RINGS`). The wood standard asks every cell of the camp's and the keep's groves
-planted, 16 to 48. Left: a second grove sited once the first is planted - the keep holds one (`keepGrove`) - so
-the standard's ceiling grows with the groves; and the keep's grove planted only by its building crew's wood party
-(PlatoonSergeant.woodParty), none while the keep has nothing to build.
+planted, 16 to 48, and names a cell still bare; past the SEIZURE, unmet with nobody on TREE_FARM, a squad spare of the
+shortfalls is put on planting there (`DayGuardrails`; operator, 2026-11-20: grow more trees). Live (field570) it went
+34 to 42 of 48 in minutes, then back to 34 - felled as fast as planted. Left: whether the woodcutters fell the
+groves' own trees faster than they're planted, and the wild instead while the groves grow; a second grove sited once
+the first is planted - the keep holds one (`keepGrove`) - so the standard's ceiling grows with the groves; and the
+keep's grove planted only by its building crew's wood party (PlatoonSergeant.woodParty), none while the keep has
+nothing to build.
 
 ## Doctrine
 **Base camps** (ATP 3-37.10): a camp that is held longer develops its own sustainment instead of

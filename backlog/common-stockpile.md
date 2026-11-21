@@ -18,10 +18,10 @@ Armour is short - 10 of 32 slots filled live - and the ore for it isn't reaching
 - **Food too, seen live (field568):** Eli, Bravo's miner at the keep's mine, carried no rations all run after a
   respawn - Class I RED, "no squadmate with any to share" (his squadmates at the camp, rations handed only within 8)
   - and at 1.3 health, food 16, too low to heal, was shot dead at his face. He drew iron and cobblestone from the
-  keep's depot at (-66, 63, -71) but never bread: `SoldierErrands.drawsFood` goes only to the stockpile its soldier
-  draws from, while the camp's held 18 bread and squadmates 30-127 each. One stockpile of food a soldier can draw
-  from wherever its squad works - or its depot stocked with bread - is the fix; a scenario first: a miner at a depot
-  with no bread and the camp's chest with some.
+  keep's depot at (-66, 63, -71) but never bread, while the camp's held 18 and squadmates 30-127 each. Built: with
+  no rations, bread comes before any other draw, from the nearest chest holding some (970). Left: seen live on the
+  next soldier out of rations, and a squad simulation of it (an armourer drawing iron beside a starving soldier);
+  and a depot by the work stocked with bread, so the walk for it is short.
 
 ## Built so far
 - Raw ore through the stockpile (`bot.supply.MetalPool`, docs/military-doctrine.md § 12): kept
