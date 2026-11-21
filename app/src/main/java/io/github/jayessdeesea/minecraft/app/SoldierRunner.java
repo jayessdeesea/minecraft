@@ -4847,8 +4847,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 return s;
             }
             Position from = s.position();
-            // Its flood kept a while on the same cell: flooded afresh each cycle for each soldier, it was a tenth of the garrison's time (p864).
-            Set<BlockPos> walkable = cutOffFloods.compute(s.name(), (n, f) -> f != null && f.from().equals(BlockPos.containing(from.x(), from.y(), from.z())) && now - f.at() < FLOOD_KEPT_MILLIS ? f
+            // Its flood kept a while while it stands in it, flooded afresh each cycle a tenth of the garrison's time (p864) - on its cell, then p976 9%.
+            Set<BlockPos> walkable = cutOffFloods.compute(s.name(), (n, f) -> f != null && f.cells().contains(BlockPos.containing(from.x(), from.y(), from.z())) && now - f.at() < FLOOD_KEPT_MILLIS ? f
                     : new Flood(BlockPos.containing(from.x(), from.y(), from.z()), now, Pathfinder.reachable(world, BlockPos.containing(from.x(), from.y(), from.z()), CUT_OFF_SPAN, CUT_OFF_BUDGET))).cells();
             int cells = walkable.size();
             // Or a cave of any size under where it's sent, with no way up to that height: live, two
