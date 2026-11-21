@@ -38,7 +38,6 @@ class CombatScenarioTest {
     private static final int TICKS = 1_200;
     private static final double BROKE_CONTACT = 16;
     /** Food 20: vanilla regenerates roughly 1 health every 80 ticks when well fed. */
-    private static final int REGEN_TICKS = 80;
 
     enum Ending { DIED, KILLED_IT, SURVIVED_BLAST, BROKE_CONTACT, STILL_ENGAGED }
 
@@ -108,6 +107,7 @@ class CombatScenarioTest {
         List<DeterministicSoldier> squad = new ArrayList<>();
         List<Order> slots = new ArrayList<>();
         double[] health = new double[soldiers];
+        Body[] bodies = new Body[soldiers]; // each the server's food, regeneration and armour wear
         for (int i = 0; i < soldiers; i++) {
             int x = i * 10 - 10;
             world.clearAbove(x, 20);
@@ -117,6 +117,7 @@ class CombatScenarioTest {
             slots.add(new Order.MoveTo(x + 0.5, Scenario.BASE_GROUND + 1, -40.5, 3, 3, Risk.LOW));
             soldier.receiveOrder(slots.get(i));
             health[i] = 20;
+            bodies[i] = new Body(Armour.NONE);
         }
         // The pack comes in on the west flank, just inside the first soldier's contact radius.
         double packX = -10.5 - 6 - random.nextDouble() * 1.5;
@@ -149,15 +150,19 @@ class CombatScenarioTest {
                 DeterministicSoldier soldier = squad.get(i);
                 OptionalInt attack = soldier.tick(battle);
                 Position now = soldier.status().position();
-                attack.ifPresent(id -> battle.strike(id, now, DeterministicSoldier.ATTACK_REACH));
+                if (attack.isPresent() && !bodies[i].eating()) { // no swing while it eats
+                    battle.strike(attack.getAsInt(), now, DeterministicSoldier.ATTACK_REACH);
+                    bodies[i].attacked();
+                }
                 positions.add(now);
             }
             double[] damage = battle.step(positions);
             for (int k = 0; k < alive.size(); k++) {
                 int i = alive.get(k);
-                double healed = tick % REGEN_TICKS == 0 && health[i] < 20 ? 1 : 0;
-                if (damage[k] > 0 || healed > 0) {
-                    health[i] = Math.min(20, health[i] - damage[k] + healed);
+                double taken = bodies[i].hit(damage[k]);
+                boolean healed = bodies[i].tick();
+                health[i] = bodies[i].health();
+                if (taken > 0 || healed) {
                     squad.get(i).reportHealth(Math.max(0, health[i]), 20);
                     if (health[i] <= 0) {
                         deaths++;

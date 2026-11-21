@@ -30,7 +30,6 @@ class CombatSquadMatrixTest {
 
     private static final int SEEDS = Integer.getInteger("combat.matrix.seeds", 12);
     private static final int TICKS = 1_200;
-    private static final int REGEN_TICKS = 80;
 
     static final List<List<Battle.Archetype>> PACKS = List.of(
             List.of(Battle.Archetype.ZOMBIE, Battle.Archetype.ZOMBIE),
@@ -68,6 +67,7 @@ class CombatSquadMatrixTest {
         double[][] places = {{0.5, 0.5}, {2.0, 0.5}, {0.5, 2.0}};
         List<DeterministicSoldier> squad = new ArrayList<>();
         double[] health = new double[size];
+        Body[] bodies = new Body[size]; // each the server's food, regeneration and armour wear
         int[] since = new int[size];
         Strike.Weapon weapon = Strike.Weapon.of(kit.weapon());
         double blow = WeaponStats.melee(kit.weapon()).damage();
@@ -79,6 +79,7 @@ class CombatSquadMatrixTest {
             DeterministicSoldier s = new DeterministicSoldier("S" + i, new Position(places[i][0], at.y(), places[i][1]));
             s.entityId(Battle.PLAYER_ID_FIRST + i); // itself known by its entity, as live - not by where it stands
             health[i] = 20;
+            bodies[i] = new Body(kit.armour());
             s.reportHealth(20, 20);
             s.reportKit(new Kit(kit.weapon(), 0, kit.armour().pieces, 0, 0, 0, 0, kit.shield()));
             s.receiveOrder(new Order.MoveTo(places[i][0], at.y(), places[i][1], 1.5, 3.0, Risk.LOW));
@@ -100,12 +101,14 @@ class CombatSquadMatrixTest {
                 s.takeArmSwing();
                 Position now = s.status().position();
                 since[i]++;
-                if (attack.isPresent()) {
+                if (attack.isPresent() && !bodies[i].eating()) { // no swing while it eats
                     double[] hit = battle.swing(attack.getAsInt(), now, DeterministicSoldier.ATTACK_REACH, kind, weapon, blow, since[i], at);
+                    bodies[i].attacked();
                     for (int j = 0; j < size; j++) {
                         if (hit[j] > 0) {
                             friendly += hit[j];
-                            health[j] -= hit[j];
+                            bodies[j].hit(hit[j]);
+                            health[j] = bodies[j].health();
                         }
                     }
                     since[i] = 0;
@@ -127,10 +130,10 @@ class CombatSquadMatrixTest {
             double[] damage = battle.step(alive);
             for (int k = 0; k < who.size(); k++) {
                 int i = who.get(k);
-                double taken = kit.armour().absorb(damage[k]);
-                double healed = tick % REGEN_TICKS == 0 && health[i] < 20 ? 1 : 0;
-                if (taken > 0 || healed > 0) {
-                    health[i] = Math.min(20, health[i] - taken + healed);
+                double taken = bodies[i].hit(damage[k]);
+                boolean healed = bodies[i].tick();
+                health[i] = bodies[i].health();
+                if (taken > 0 || healed) {
                     squad.get(i).reportHealth(Math.max(0, health[i]), 20);
                 }
                 if (health[i] <= 0) {
