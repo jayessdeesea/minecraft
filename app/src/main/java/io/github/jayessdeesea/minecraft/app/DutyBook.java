@@ -210,6 +210,16 @@ final class DutyBook {
      * work is at the dump - and the whole for a farmer with no farm order. A chunk farm's tender has its chunk; the
      * other harvesters the ground outside the chunks tended, whatever their ground's box takes in.
      */
+    /** The harvester whose share lies nearest {@code chunk}'s chest, by name on a tie. */
+    private String nearestHarvester(ChunkFarm chunk) {
+        return orders.values().stream().filter(o -> o.duty() == DutyOrder.Duty.HARVESTER && o.ground().isPresent())
+                .min(java.util.Comparator.<DutyOrder>comparingDouble(o -> {
+                    Box g = o.ground().get();
+                    double cx = Math.max(g.minX(), Math.min(g.maxX(), chunk.chest().x())), cz = Math.max(g.minZ(), Math.min(g.maxZ(), chunk.chest().z()));
+                    return Math.hypot(cx - chunk.chest().x(), cz - chunk.chest().z());
+                }).thenComparing(DutyOrder::soldier)).map(DutyOrder::soldier).orElse("");
+    }
+
     FarmPlan field(String soldier, FarmPlan farm) {
         DutyOrder order = orders.get(soldier);
         if (farm == null || order == null || !order.farm()) {
@@ -220,8 +230,13 @@ final class DutyBook {
         boolean tender = order.dump().filter(d -> tended.stream().anyMatch(c -> c.chestAt().equals(d))).isPresent();
         java.util.function.Predicate<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> mine = c -> order.ground().filter(g -> g.contains(c.x(), c.y(), c.z())).isPresent()
                 && (tender || tended.stream().noneMatch(t -> t.box().contains(c.x(), c.y(), c.z())));
+        // A chunk farm no tender has and no share holds the chest of - its ground not level yet, off every strip - is the
+        // nearest harvester's: live (field516-544), the camp's chunk farm lay a day off all the strips, nobody's, SURVEYED.
+        java.util.function.Predicate<ChunkFarm> orphan = c -> !tended.contains(c) && orders.values().stream()
+                .noneMatch(o -> o.farm() && o.ground().filter(g -> g.contains(c.chest().x(), c.chest().y(), c.chest().z())).isPresent());
         return order.duty() == DutyOrder.Duty.BAKER ? null
                 : new FarmPlan(farm.water(), farm.plot().stream().filter(mine).toList(), farm.trenches().stream().filter(mine).toList(),
-                farm.chunks().stream().filter(c -> tender ? order.dump().get().equals(c.chestAt()) : !tended.contains(c) && mine.test(c.chest())).toList());
+                farm.chunks().stream().filter(c -> tender ? order.dump().get().equals(c.chestAt())
+                        : !tended.contains(c) && mine.test(c.chest()) || orphan.test(c) && soldier.equals(nearestHarvester(c))).toList());
     }
 }

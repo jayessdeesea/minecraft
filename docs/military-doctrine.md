@@ -1069,7 +1069,8 @@ specific farm; `FarmDuties.Tended`): the last harvesters on the roster each tend
 fence lines its ground, its chest its dump - while one harvester is left for the rest of the plot,
 which the others share; the baker is kept. A lone harvester keeps the whole plot, chunk farm and
 all. A tender's field is its chunk's plot, holes and fixtures; another harvester's field leaves out
-every tended chunk its ground's box takes in (`DutyBook.field`).
+every tended chunk its ground's box takes in (`DutyBook.field`) - and a chunk farm no tender has and no share holds
+the chest of, its ground not level yet and off every strip, is the nearest harvester's.
 
 Each producer's duty reaches it as one value, its duty order (`command.DutyOrder`, `FarmDuties.orders`,
 `WoodDuties.orders`): the duty (harvester, baker, woodcutter, planter), the ground it works and the dump

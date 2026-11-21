@@ -200,4 +200,22 @@ class DutyBookTest {
         assertNotEquals(alpha.get("Alice").ground(), alpha.get("Ivy").ground());
         assertTrue(alpha.get("Alice").ground().orElseThrow().maxX() < alpha.get("Ivy").ground().orElseThrow().minX(), "no column in both");
     }
+
+    /**
+     * A chunk farm off every harvester's strip, no tender yet - its ground not level, its chest not up - is the nearest
+     * harvester's, and no other's. Live (field516-544), the camp's chunk farm lay a day nobody's, SURVEYED.
+     */
+    @Test
+    void aChunkFarmOffEveryStripIsTheNearestHarvesters() {
+        io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm chunk = new io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm(1, 3, 63);
+        FarmPlan farm = new FarmPlan(new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(24, 63, 100), List.of(), List.of(), List.of(chunk));
+        DutyBook book = new DutyBook();
+        book.assign("Delta", List.of("Mia", "Ned"), Map.of(
+                "Mia", new DutyOrder("Mia", DutyOrder.Duty.HARVESTER, Optional.of(new io.github.jayessdeesea.minecraft.command.Box(17, 60, 79, 20, 70, 127)), Optional.empty()),
+                "Ned", new DutyOrder("Ned", DutyOrder.Duty.HARVESTER, Optional.of(new io.github.jayessdeesea.minecraft.command.Box(22, 60, 79, 29, 70, 127)), Optional.empty())),
+                Optional.of("FARM"), 0);
+
+        assertEquals(List.of(chunk), book.field("Ned", farm).chunks(), "Ned's strip over x 22..29 is nearest its chest at x=29");
+        assertEquals(List.of(), book.field("Mia", farm).chunks());
+    }
 }

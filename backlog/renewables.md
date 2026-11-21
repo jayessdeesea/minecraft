@@ -104,8 +104,8 @@ Not one chunk farm at a time but several, each a site of its own (`command.Site`
 and shown to the platoon leader - its stage and what the next wants - who sends constructors to one below Producing
 and farmers to one at it; a farm counts toward food only from Producing:
 1. **Ground** - the 15x15 inside its fence lines at one level, its four hole cells open with a floor under each:
-   flattened down to it, or built up over shallow water (whether to build over water is asked in
-   backlog/questions-overnight.md). Constructors: the flatten's dig and fill.
+   flattened down to it, or built up over shallow water. The camp's own chunk farm's tender levels its ground itself
+   (`Farmer.earthwork`, `groundToFill`); a site with no tender yet wants constructors.
 2. **Watered** - its four holes full. One soldier with a bucket.
 3. **Producing** - tilled, sown, its four field torches up: viable for food. Kept lit and hydrated - a dry hole or a
    torch knocked off drops it back a stage, to be put right. Farmers.
@@ -138,7 +138,7 @@ Producing.
 
 Built toward it: the layout, the holes' floors, the field torches, the tender (docs/military-doctrine.md § 4).
 Built: a site's stage and the work left to each from the world (`bot.farm.FarmSite`, its supply to Producing; logged
-`[Farm]` as it moves). Left, in order: the planner's sequence for the soldier, from its template; the bids and the
+`[Farm]` as it moves); the camp's chunk farm levelled to its template by its tender. Left, in order: the planner's sequence for the soldier, from its template; the bids and the
 platoon leader's choice; the build order carrying the template; several farms at once; the 90% measure.
 
 ## More farmland: the farm by phase (operator, 2026-11-19)
