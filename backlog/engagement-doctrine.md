@@ -55,7 +55,13 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
    and both crossed the open below its bow. Built for an archer more than 4 below (`DeterministicSoldier.ARCHER_BELOW`):
    cover, carry on; an archer in sight within 16 closed on by one armed for melee, and one it can't close on that's
    out of contact and not shooting let be, its work going on (operator, 2026-11-20, `ARCHER_ENGAGE`). Left: one across
-   a cave at the soldier's own height.
+   a cave at the soldier's own height. And the nearest isn't always the danger: a creeper within 4.5 is put first
+   (built, field595); an archer beside a hand-to-hand hostile out of reach isn't yet - live (field598) Jack stood at
+   (16.3, -10, 120.3) over a pit with a zombie and a skeleton 2.5 off and 6 below, his answer flipping between "takes
+   cover: an archer 4.0 or more below" and "fights hand to hand" as the nearer changed, and was shot from 9 health to
+   none where he stood. A unit world with the pit open and a ramp for the zombie didn't reproduce it (the soldier took
+   cover either way) - the next is his ground recorded (`app.WorldRecords`) or a battle-simulation pit, then the archer
+   put first.
 2. The order fields and their defaults through Order, the squad leader and the soldier.
    A creeper holding a soldier inside its reach ten seconds is engaged (built); the rest of the
    both-reach cell - criteria and weapons control by order - is phase 2's.
