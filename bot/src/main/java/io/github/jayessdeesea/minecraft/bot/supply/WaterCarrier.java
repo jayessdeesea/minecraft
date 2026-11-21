@@ -31,8 +31,12 @@ public final class WaterCarrier {
 
     private static final Logger LOG = LogManager.getLogger(WaterCarrier.class);
 
-    /** How far from the cell to water it looks for a pond to fill at. */
-    public static final int SOURCE_RADIUS = 32;
+    /**
+     * How far from the cell to water it looks for a pond to fill at. A hole takes one bucket, so a long walk for it is
+     * cheap against the farm it waters: live (field558-560), the chunk farm at (1, 3) stood SURVEYED all day, "no pond
+     * within 32 blocks", the camp's pond 55 off.
+     */
+    public static final int SOURCE_RADIUS = 64;
     static final int WALK_TICKS = 600;
     static final int ANSWER_TICKS = 40;
     /** A soldier's eyes over its feet. */

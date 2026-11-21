@@ -136,4 +136,40 @@ class WaterCarrierTest {
         WaterCarrier.Progress progress = new WaterCarrier("Alice", session, inventory).tick(new Position(0.5, GROUND + 1, 1.5), world, HOLE);
         assertEquals(new WaterCarrier.Progress.Failed("no bucket carried"), progress);
     }
+
+    /** A hole's pond 50 blocks off, past the old 32: still found, so a chunk farm away from water gets its water. */
+    @Test
+    void aPondFiftyBlocksOffIsFound() {
+        WorldView far = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= 63 && !isWaterSource(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return isWaterSource(x, y, z);
+            }
+
+            @Override
+            public boolean isWater(int x, int y, int z) {
+                return isWaterSource(x, y, z);
+            }
+
+            @Override
+            public boolean isWaterSource(int x, int y, int z) {
+                return y == 63 && z == 0 && x >= 50 && x <= 52;
+            }
+
+            @Override
+            public java.util.List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(
+                    io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return java.util.List.of();
+            }
+        };
+        java.util.Optional<io.github.jayessdeesea.minecraft.bot.nav.BlockPos[]> pond = WaterCarrier.pond(far,
+                new io.github.jayessdeesea.minecraft.bot.nav.BlockPos(0, 63, 0));
+        org.junit.jupiter.api.Assertions.assertTrue(pond.isPresent(), "the pond 50 off");
+        org.junit.jupiter.api.Assertions.assertEquals(51, pond.get()[0].x(), "its middle source, with two beside it");
+    }
 }
