@@ -159,6 +159,44 @@ class RoutingSimulationTest {
         assertEquals(List.of(), List.copyOf(server.log).stream().filter(l -> l.startsWith("Alice placed")).toList(), "no step left on the way");
     }
 
+    /** Flat, a hill four high from x=6 on, and a stair up it at z=12 - one block a step, from x=2. */
+    static int hillWithAStair(int x, int y, int z) {
+        boolean hill = x >= 6 && y > GROUND && y <= GROUND + 4 && Math.abs(z) <= 40;
+        boolean stair = z == 12 && x >= 2 && x <= 5 && y > GROUND && y <= GROUND + x - 1;
+        return hill || stair ? SimServer.STONE : SquadSimulationTest.flat(x, y, z);
+    }
+
+    /**
+     * Up onto a hill on the camp's ground, a stair 12 blocks along: walked, not built (operator, 2026-11-21: a block left
+     * round the camp for navigation is a debt never paid off). Live (field615), soldiers built 46 steps on the camp's
+     * ground in thirteen minutes, staircases up its hill - not by this: with a stair to walk, the walk is taken. Each
+     * step's [Place] line says whether a walk round was there.
+     */
+    @Test
+    void onTheCampsGroundASoldierWalksUpTheStairRatherThanBuildOne() {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, RoutingSimulationTest::hillWithAStair, 1000);
+        Roster roster = new Roster("Alpha:Alice");
+        Position up = new Position(10.5, GROUND + 5, 0.5);
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> new Objective("Up on the hill", up, "There",
+                new Objective.Task.None())), squadLeader(up),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "-20,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), List.of(
+                        new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1},
+                        new int[]{37, SimServer.ITEM_BREAD, 16},
+                        new int[]{38, SimServer.ITEM_COBBLESTONE, 32})))
+                .run();
+
+        clock.advance(2 * 60_000);
+
+        PlayerPosition alice = server.position("Alice");
+        assertTrue(alice.x() > 6 && alice.y() >= GROUND + 5, "Alice up on the hill: at " + alice + "; last server events: "
+                + server.log.subList(Math.max(0, server.log.size() - 10), server.log.size()));
+        assertEquals(List.of(), List.copyOf(server.log).stream().filter(l -> l.startsWith("Alice placed")).toList(), "no step left on the way");
+    }
+
     /** Stone all round, the surface 12 up, but a gallery two high along x at z=0, from x=-2 to 14; a hole in its floor at x=6, over a cave. */
     static int galleryWithAGap(int x, int y, int z) {
         boolean gallery = z == 0 && x >= -2 && x <= 14 && (y == GROUND + 1 || y == GROUND + 2);

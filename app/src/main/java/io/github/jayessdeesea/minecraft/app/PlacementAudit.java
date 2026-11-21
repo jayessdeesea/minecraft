@@ -63,9 +63,13 @@ final class PlacementAudit {
         routines.put(soldier, routine.map(Object::toString).orElse("none"));
     }
 
-    /** {@code soldier}'s walk putting a step this tick - no routine has its hands for it. */
-    void routeStep(String soldier) {
+    /** What each soldier's walk said of the step it's putting: its goal, and the walk round there is or isn't. */
+    private final Map<String, String> stepWhy = new ConcurrentHashMap<>();
+
+    /** {@code soldier}'s walk putting a step this tick - no routine has its hands for it - and {@code why}, said with it. */
+    void routeStep(String soldier, String why) {
         routines.put(soldier, "route step");
+        stepWhy.put(soldier, why);
     }
 
     /** {@code session}, its block placings above sea level said as {@code soldier}'s, with what {@code inventory} holds in hand. */
@@ -102,8 +106,9 @@ final class PlacementAudit {
         }
         String routine = routines.getOrDefault(soldier, "none");
         counts.merge(routine + " / " + item.get().name().toLowerCase(java.util.Locale.ROOT), 1, Integer::sum);
-        LOG.info("[Place] {} puts {} at ({}, {}, {}), {} over sea level - {}", soldier, item.get().name().toLowerCase(java.util.Locale.ROOT),
-                x + face.dx, cy, z + face.dz, cy - SoldierRunner.SEA_LEVEL, routine);
+        LOG.info("[Place] {} puts {} at ({}, {}, {}), {} over sea level - {}{}", soldier, item.get().name().toLowerCase(java.util.Locale.ROOT),
+                x + face.dx, cy, z + face.dz, cy - SoldierRunner.SEA_LEVEL, routine,
+                routine.equals("route step") ? " " + stepWhy.getOrDefault(soldier, "") : "");
         long now = clock.getAsLong();
         if (summarisedAt == Long.MIN_VALUE) {
             summarisedAt = now;

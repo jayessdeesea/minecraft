@@ -7991,7 +7991,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 // A solid block in the model until the server's update says what landed, a tick on: stood on before the
                 // server confirms it - over an open cell only, and taken back if the server never does (ChunkCache.standIn).
-                placementAudit.routeStep(name); // its walk's step, no routine's
+                placementAudit.routeStep(name, soldier.walkRound(world)); // its walk's step, no routine's - and whether a walk round was there
                 Builder.support(world, cell).flatMap(face -> footing.placeStep(cell, face, builtCell(cell)))
                         .ifPresent(block -> {
                             chunkCache.standIn(cell.x(), cell.y(), cell.z(), COBBLESTONE_STATE, clockwork.millis());

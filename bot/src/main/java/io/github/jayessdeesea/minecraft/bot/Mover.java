@@ -659,6 +659,22 @@ abstract class Mover {
         return ground.test(start) || goal != null && ground.test(BlockPos.containing(goal.x(), goal.y(), goal.z()));
     }
 
+    /**
+     * Its route's goal, and whether a walk there places nothing - and how much longer it is - said for a step it puts
+     * down: what the audit of the camp's placings needs to tell a step there was no way round from one a walk would
+     * have spared (operator, 2026-11-21).
+     */
+    public String walkRound(WorldView world) {
+        Goal g = goal;
+        List<BlockPos> r = route;
+        if (g == null) {
+            return "no goal";
+        }
+        Pathfinder.Result walk = Pathfinder.find(world, standingCell(world, gait.position), g, PLAN_BUDGET, FallAllowance.NONE, 0, carriesPickaxe());
+        return String.format(Locale.ROOT, "to (%.0f, %.0f, %.0f), its route %d steps; %s", g.x(), g.y(), g.z(), r == null ? 0 : r.size(),
+                walk.reachesGoal() ? "a walk round " + walk.path().size() + " steps" : "no walk round in " + PLAN_BUDGET + " cells");
+    }
+
     /** Blocks a body falls unhurt: past three, each a point of health. */
     static final int SAFE_DROP = 3;
 

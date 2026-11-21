@@ -32,7 +32,7 @@ class PlacementAuditTest {
 
         audit.routine("Ann", Optional.empty());
         session.useBlockFace(0, SoldierRunner.SEA_LEVEL, 0, BlockFace.UP); // the block at sea level + 1
-        audit.routeStep("Ann");
+        audit.routeStep("Ann", "to (0, 70, 0)");
         session.useBlockFace(0, SoldierRunner.SEA_LEVEL + 4, 0, BlockFace.NORTH);
         session.useBlockFace(0, SoldierRunner.SEA_LEVEL - 1, 0, BlockFace.UP); // at sea level: flat ground
         hold(inventory, "iron_hoe");
@@ -52,7 +52,7 @@ class PlacementAuditTest {
         inventory.setSlot(Inventory.MAIN_FIRST, new int[]{ItemClassRegistry.idOf("dirt").orElseThrow(), 16});
         PlacementAudit audit = new PlacementAudit(() -> 0);
         PlaySession session = audit.wrap("Ann", server, inventory);
-        audit.routeStep("Ann");
+        audit.routeStep("Ann", "to (0, 70, 0)");
         session.swapWithHotbar(0, 0, Inventory.MAIN_FIRST, 0);
         session.selectHotbarSlot(0);
         session.useBlockFace(0, SoldierRunner.SEA_LEVEL + 2, 0, BlockFace.UP);
