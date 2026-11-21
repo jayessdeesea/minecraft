@@ -134,6 +134,44 @@ public final class Farmer {
      * round it, was reached only by stepping down onto it, which tramples farmland.
      */
     /** {@link #earthwork} less the squad's own steps, which stay. */
+    /**
+     * The heap of {@code earthwork} nearest the soldier: its blocks whose columns touch, side or corner, one to the next.
+     */
+    private List<BlockPos> heap(List<BlockPos> earthwork) {
+        if (earthwork.isEmpty() || soldier == null) {
+            return earthwork;
+        }
+        BlockPos nearest = earthwork.stream().min(Comparator.comparingDouble(b -> Math.hypot(b.x() + 0.5 - soldier.x(), b.z() + 0.5 - soldier.z())))
+                .orElseThrow();
+        return heapOf(earthwork, nearest);
+    }
+
+    /** The blocks of {@code earthwork} in {@code seed}'s heap: columns touching side or corner, one to the next. */
+    static List<BlockPos> heapOf(List<BlockPos> earthwork, BlockPos seed) {
+        Set<Long> columns = new java.util.HashSet<>();
+        java.util.ArrayDeque<long[]> open = new java.util.ArrayDeque<>();
+        Set<Long> all = new java.util.HashSet<>();
+        earthwork.forEach(b -> all.add(column(b.x(), b.z())));
+        columns.add(column(seed.x(), seed.z()));
+        open.add(new long[]{seed.x(), seed.z()});
+        while (!open.isEmpty()) {
+            long[] c = open.poll();
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    long k = column((int) c[0] + dx, (int) c[1] + dz);
+                    if (all.contains(k) && columns.add(k)) {
+                        open.add(new long[]{c[0] + dx, c[1] + dz});
+                    }
+                }
+            }
+        }
+        return earthwork.stream().filter(b -> columns.contains(column(b.x(), b.z()))).toList();
+    }
+
+    private static long column(int x, int z) {
+        return ((long) x << 32) ^ (z & 0xffffffffL);
+    }
+
     private List<BlockPos> unburying(WorldView world, FarmPlan farm) {
         return earthwork(world, farm).stream().filter(c -> !steps.contains(c)).toList();
     }
@@ -340,6 +378,8 @@ public final class Farmer {
     private BlockPos lastHarvest;
     private int restarts;
     private final Setbacks<BlockPos> passedOver = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
+    /** Earthwork heaps nothing reached, set aside so the next is cut: a heap out of reach holds up no other. */
+    private final Setbacks<BlockPos> heapsSetAside = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
 
     /** The water hole it's watering, if it is: for tests. */
     synchronized Optional<BlockPos> wateringHole() {
@@ -602,7 +642,11 @@ public final class Farmer {
             }
         }
         // Earthwork first: a cell in a hollow walked into for a harvest or a sowing is trampled.
-        List<BlockPos> earthwork = unburying(world, farm);
+        List<BlockPos> all = unburying(world, farm);
+        // A heap at a time, the nearest not set aside: the clearer goes highest first, and live (field579) the camp farm's
+        // 22 blocks were one list, a 7-high heap at (25, 63-69, 81) out of reach its top level - a pillar 27 blocks off,
+        // two high, waiting on it for hours.
+        List<BlockPos> earthwork = heap(all.stream().filter(b -> !heapsSetAside.barred(b, ticks)).toList());
         if (!earthwork.isEmpty()) {
             unburier.tick(soldier, world, earthwork, true);
             if (unburier.active()) {
@@ -614,6 +658,14 @@ public final class Farmer {
             // tick of it, the farmland off again for every look.
             if (unburier.looks() != earthworkLooks && unburier.idleReason().filter(r -> r.startsWith("nothing in reach")).isPresent()) {
                 onFarmland = !onFarmland; // the next look from the farmland too, then off it again
+                // Looked at from off the farmland and from on it, and nothing in reach: the heap set aside for the next.
+                if (!onFarmland) {
+                    earthwork.forEach(b -> heapsSetAside.failed(b, ticks, "the farm's earthwork heap at " + earthwork.getFirst()
+                            + " out of reach from off the farmland and on it"));
+                    LOG.info("{} sets aside the farm's earthwork heap of {} at {} - nothing in reach of it from off the farmland or on it, "
+                            + "from ({}, {}, {}); {} other block(s) of earthwork", name, earthwork.size(), earthwork.getFirst(),
+                            (int) Math.floor(soldier.x()), (int) Math.floor(soldier.y()), (int) Math.floor(soldier.z()), all.size() - earthwork.size());
+                }
             }
             earthworkLooks = unburier.looks();
             BlockPos highest = earthwork.stream().max(Comparator.comparingInt(BlockPos::y)).orElseThrow();

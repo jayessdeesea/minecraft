@@ -23,6 +23,12 @@ priority: P1
   cobblestone the miner carries, keeping the gallery's level, rather than ending the branch at the cave and
   reporting it. Live, Eli's gallery at y=20 broke into a dripstone cave and he stood at its edge for runs.
 
+- **A farm's earthwork heap out of reach** (docs/military-doctrine.md § farm upkeep, `Farmer.heapOf`): taken by
+  default - the earthwork cut a heap at a time, nearest first, and a heap whose top no stand reaches set aside a
+  while for the next, rather than the clearing rule's never skip a high block across the whole farm. Live
+  (field579), a 7-high heap at one corner of the camp farm held up a pillar 27 blocks off for hours. The other way
+  is to scaffold up to such a heap's top (farmers carry no blocks for it now).
+
 Answered 2026-11-20, each now with its item:
 - **The moat:** none (operator) - the building guide's trench round the lit core is dropped; the cells' lit open
   ground between them stands (backlog/building-guide.md, backlog/cells.md).

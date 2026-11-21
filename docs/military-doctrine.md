@@ -1074,7 +1074,9 @@ one cell at a time (`bot.supply.Farmer`), in this order:
 2. Its earthwork (`Farmer.earthwork`): digs off any cobblestone or soil on a plot cell - the whole heap, to its
    top, as the clearer cuts the highest first (live, field574, a cell's dirt under more dirt left 13 blocks no cut
    could take); from off the farmland, and from it at its level when no stand off it reaches (field576, a pillar
-   two high on a plot cell, farmland all round, never cut) - and cuts
+   two high on a plot cell, farmland all round, never cut); a heap at a time - the blocks whose columns touch - the
+   nearest first, and one nothing reaches from off the farmland or on it set aside a while for the next (field579, a
+   heap's top out of reach at one corner of the camp farm held up a pillar 27 blocks off, the clear highest first) - and cuts
    the ground beside the plot down to its level, up to two blocks - an apron, so every cell is
    walked onto on the flat - but never a step the squad built (`SoldierRunner.scaffolding`): in
    the squad simulation a farmer dug its own step out of the hollow as dirt over the plot, its

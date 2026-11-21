@@ -545,4 +545,66 @@ class FarmerTest {
 
         assertTrue(cut, "the pillar cut from the farmland beside it: " + farmer.earthworkStand());
     }
+
+    /**
+     * A heap of the farm's earthwork no stand reaches holds up no other: the clear goes highest first, and live (field579)
+     * the camp farm's 22 blocks were one list, a heap at (25, 63-69, 81) out of reach its top level, and a pillar 27
+     * blocks off waited on it for hours. Here a column nine high at the plot's corner, its top out of reach, no
+     * pickaxe to cut a stair up it, and a block of dirt on a cell across the field.
+     */
+    @Test
+    void aHeapOfEarthworkOutOfReachHoldsUpNoOther() {
+        List<BlockPos> plot = new ArrayList<>();
+        for (int x = -4; x <= 10; x++) {
+            for (int z = -7; z <= 7; z++) {
+                plot.add(new BlockPos(x, GROUND, z));
+            }
+        }
+        Set<BlockPos> heaped = new HashSet<>(Set.of(new BlockPos(3, GROUND + 1, 0)));
+        for (int y = GROUND + 1; y <= GROUND + 9; y++) {
+            heaped.add(new BlockPos(10, y, -7));
+        }
+        WorldView field = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos b = new BlockPos(x, y, z);
+                return y <= GROUND && !b.equals(WATER) || heaped.contains(b);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return heaped.contains(new BlockPos(x, y, z)) || y <= GROUND && !isFarmland(x, y, z) && !new BlockPos(x, y, z).equals(WATER);
+            }
+
+            @Override
+            public boolean isFarmland(int x, int y, int z) {
+                return plot.contains(new BlockPos(x, y, z)) && !heaped.contains(new BlockPos(x, y + 1, z));
+            }
+
+            // All sown, no crop ripe: nothing else on the farm to do, so the farmer looks at its earthwork every tick.
+            @Override
+            public OptionalInt wheatAge(int x, int y, int z) {
+                return isFarmland(x, y - 1, z) ? OptionalInt.of(3) : OptionalInt.empty();
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(WATER);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Farmer farmer = new Farmer("Fran", session, inventory, new HashSet<>());
+        boolean cut = false;
+        for (int tick = 0; tick < 2_000 && !cut; tick++) {
+            // Nearest the column: looked at from off the farmland and on it, set aside, and the dirt across the field next.
+            farmer.tick(new Position(9.5, GROUND + 1, -4.5), field, Optional.of(new FarmPlan(WATER, plot)), true);
+            cut = farmer.earthworkStand().filter(s -> Math.hypot(s.x() - 3.5, s.z() - 0.5) <= 2).isPresent();
+        }
+
+        assertTrue(cut, "the dirt across the field cut: " + farmer.earthworkStand());
+    }
 }
