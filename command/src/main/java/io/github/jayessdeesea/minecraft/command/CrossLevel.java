@@ -49,6 +49,11 @@ public final class CrossLevel {
      * depot - bot.craft.LoadPlan; four, 2026-11-12, before it).
      */
     public static final int TOOL_LOAD = 2;
+    /**
+     * Saplings handed to a planter with none, from the nearest squadmate carrying some (operator, 2026-11-21): live
+     * (field630), foresters failed for want of a sapling 117 times in a run while squadmates off the grove carried 6 and 11.
+     */
+    public static final int SAPLINGS_GIVEN = 4;
     /** Below this many of a tool, a soldier asks its squadmates for one, as for rations. */
     public static final int TOOLS_LOW = 2;
     /** What a giver keeps of a tool: it gives only beyond this, one at a time. */
@@ -67,7 +72,7 @@ public final class CrossLevel {
 
     /** What's handed across. */
     public enum Item {
-        LOGS, RATIONS, WEAPON, PICKAXE, SHOVEL;
+        LOGS, RATIONS, WEAPON, PICKAXE, SHOVEL, SAPLINGS;
 
         /** How many of it {@code soldier} has to give and keep - for a weapon, only its spares. */
         int carried(SoldierStatus soldier) {
@@ -77,6 +82,7 @@ public final class CrossLevel {
                 case WEAPON -> k.spareWeapons();
                 case PICKAXE -> k.pickaxes();
                 case SHOVEL -> k.shovels();
+                case SAPLINGS -> k.saplings();
             }).orElse(0);
         }
 
@@ -86,6 +92,7 @@ public final class CrossLevel {
                 case RATIONS -> KEEP_RATIONS;
                 case WEAPON -> 0; // a spare is spare, to one bare-handed: the giver keeps its best
                 case PICKAXE, SHOVEL -> KEEP_TOOLS;
+                case SAPLINGS -> 0; // a planter with none is the receiver; anyone else's are spares
             };
         }
     }
@@ -153,6 +160,23 @@ public final class CrossLevel {
         });
         pair(squad, Item.PICKAXE, pickaxesWanted, busy, transfers);
         pair(squad, Item.SHOVEL, shovelsWanted, busy, transfers);
+        return List.copyOf(transfers);
+    }
+
+    /** As {@link #pair(List, Map, Map, Map, Map, Map)}, and saplings to each planter in {@code saplingsWanted}. */
+    public static List<Transfer> pair(List<SoldierStatus> squad, Map<String, Integer> logsWanted, Map<String, Integer> rationsWanted,
+                                      Map<String, Integer> weaponsWanted, Map<String, Integer> pickaxesWanted,
+                                      Map<String, Integer> shovelsWanted, Map<String, Integer> saplingsWanted) {
+        List<Transfer> transfers = new ArrayList<>(pair(squad, logsWanted, rationsWanted, weaponsWanted, pickaxesWanted, shovelsWanted));
+        if (squad.stream().anyMatch(s -> s.report() instanceof Report.InContact)) {
+            return List.of();
+        }
+        Set<String> busy = new HashSet<>();
+        transfers.forEach(t -> {
+            busy.add(t.giver());
+            busy.add(t.receiver());
+        });
+        pair(squad, Item.SAPLINGS, saplingsWanted, busy, transfers);
         return List.copyOf(transfers);
     }
 

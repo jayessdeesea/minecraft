@@ -195,6 +195,7 @@ public final class Handover {
             case WEAPON -> ItemClass.WEAPON;
             case PICKAXE -> ItemClass.PICKAXE;
             case SHOVEL -> ItemClass.SHOVEL;
+            case SAPLINGS -> ItemClass.SAPLING;
         };
         remaining = logs;
         phase = Phase.WALKING;

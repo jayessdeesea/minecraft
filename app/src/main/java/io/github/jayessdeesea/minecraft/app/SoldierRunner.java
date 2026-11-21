@@ -5046,7 +5046,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         Map<String, DeterministicSoldier> byName = new HashMap<>();
         squad.forEach(soldier -> byName.put(soldier.status().name(), soldier));
         // Cross-leveling (docs/military-doctrine.md §13), as the platoon sergeant pairs it.
-        List<CrossLevel.Transfer> transfers = PlatoonSergeant.crossLevel(statuses, logsWanted, state.recovery::recovering);
+        List<CrossLevel.Transfer> transfers = PlatoonSergeant.crossLevel(statuses, logsWanted, state.recovery::recovering, planting::containsKey);
         Set<CrossLevel.Transfer> crossLeveling = Set.copyOf(transfers);
         crossLeveling.stream().filter(t -> !state.crossLeveling.contains(t))
                 .forEach(t -> LOG.info("[{} -> {}] CROSS-LEVEL: {} {} to {}", t.giver(), squadName, t.count(),

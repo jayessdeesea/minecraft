@@ -211,4 +211,16 @@ class CrossLevelTest {
                 Optional.of(new Condition(20, 20, 0, Optional.of(new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, 0, 20,
                         false, pickaxes > 0, 0, false, 0, pickaxes, shovels)))));
     }
+
+    /** A planter with no saplings is handed some by the nearest squadmate carrying them (field630: 117 times without). */
+    @Test
+    void aPlanterWithNoSaplingsIsHandedSomeByASquadmate() {
+        SoldierStatus fran = new SoldierStatus("Fran", new Position(0, 64, 0), SLOT, new Report.Idle(), Optional.of(new Condition(20, 20, 0,
+                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 20, false, false, 0, false, 0, 0, 0, 0)))));
+        SoldierStatus ned = new SoldierStatus("Ned", new Position(5, 64, 0), SLOT, new Report.Idle(), Optional.of(new Condition(20, 20, 0,
+                Optional.of(new Kit(Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 20, false, false, 0, false, 0, 0, 0, 11)))));
+        assertEquals(List.of(new CrossLevel.Transfer("Ned", "Fran", CrossLevel.Item.SAPLINGS, CrossLevel.SAPLINGS_GIVEN)),
+                PlatoonSergeant.crossLevel(List.of(fran, ned), Map.of(), n -> false, "Fran"::equals), "Ned has 11, off the grove");
+        assertEquals(List.of(), PlatoonSergeant.crossLevel(List.of(fran, ned), Map.of(), n -> false, n -> false), "nobody planting");
+    }
 }

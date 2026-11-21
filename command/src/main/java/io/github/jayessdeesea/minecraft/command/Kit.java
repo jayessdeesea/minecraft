@@ -20,9 +20,10 @@ import java.util.Optional;
  * @param spareWeapons  melee weapons carried beyond the best one - to hand a bare-handed squadmate
  * @param pickaxes  pickaxes carried, toward the tool load ({@link CrossLevel#TOOL_LOAD})
  * @param shovels  shovels carried, toward the tool load
+ * @param saplings  saplings carried - a planter's to plant, anyone else's to hand to one (operator, 2026-11-21)
  */
 public record Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations,
-                  boolean shield, boolean pickaxe, int dirt, boolean bow, int spareWeapons, int pickaxes, int shovels) {
+                  boolean shield, boolean pickaxe, int dirt, boolean bow, int spareWeapons, int pickaxes, int shovels, int saplings) {
 
     public static final int ARMOUR_SLOTS = 4;
     /** Vanilla caps enchantment protection at 20 points, each taking 4% off the damage. */
@@ -32,6 +33,12 @@ public record Kit(Optional<String> weapon, int arrows, int armour, int fallProte
         if (fallProtection < 0 || fallProtection > MAX_PROTECTION) {
             throw new IllegalArgumentException("fall protection out of range: " + fallProtection);
         }
+    }
+
+    /** Kit counting no saplings. */
+    public Kit(Optional<String> weapon, int arrows, int armour, int fallProtection, int logs, int stone, int rations,
+               boolean shield, boolean pickaxe, int dirt, boolean bow, int spareWeapons, int pickaxes, int shovels) {
+        this(weapon, arrows, armour, fallProtection, logs, stone, rations, shield, pickaxe, dirt, bow, spareWeapons, pickaxes, shovels, 0);
     }
 
     /** Kit counting no tools beyond whether a pickaxe is carried: one, or none. */

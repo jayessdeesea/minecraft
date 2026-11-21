@@ -157,6 +157,13 @@ public final class PlatoonSergeant {
      */
     public static List<CrossLevel.Transfer> crossLevel(List<SoldierStatus> statuses, Map<String, Integer> logsWanted,
                                                        java.util.function.Predicate<String> recovering) {
+        return crossLevel(statuses, logsWanted, recovering, name -> false);
+    }
+
+    /** As above, and saplings to each soldier {@code planting} with none (CrossLevel.SAPLINGS_GIVEN). */
+    public static List<CrossLevel.Transfer> crossLevel(List<SoldierStatus> statuses, Map<String, Integer> logsWanted,
+                                                       java.util.function.Predicate<String> recovering,
+                                                       java.util.function.Predicate<String> planting) {
         List<SoldierStatus> able = statuses.stream().filter(s -> !recovering.test(s.name())).toList();
         Map<String, Integer> wanted = new java.util.HashMap<>();
         able.forEach(s -> Optional.ofNullable(logsWanted.get(s.name())).ifPresent(n -> wanted.put(s.name(), n)));
@@ -179,7 +186,10 @@ public final class PlatoonSergeant {
                 shovelsShort.put(s.name(), 1);
             }
         }));
-        return CrossLevel.pair(able, wanted, fed, disarmed, pickaxesShort, shovelsShort);
+        Map<String, Integer> saplingsShort = new java.util.HashMap<>();
+        able.stream().filter(s -> planting.test(s.name())).forEach(s -> s.condition().flatMap(Condition::kit)
+                .filter(k -> k.saplings() == 0).ifPresent(k -> saplingsShort.put(s.name(), CrossLevel.SAPLINGS_GIVEN)));
+        return CrossLevel.pair(able, wanted, fed, disarmed, pickaxesShort, shovelsShort, saplingsShort);
     }
 
     /**
