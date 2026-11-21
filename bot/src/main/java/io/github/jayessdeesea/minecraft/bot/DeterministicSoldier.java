@@ -415,6 +415,15 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         if (threats.isEmpty() && armedForMelee()) {
             threats = visible(world, world.nearbyHostiles(gait.position, ARCHER_ENGAGE)).stream().filter(TrackedEntity::shoots).toList();
         }
+        // One fleeing an archer keeps fleeing it till well past its range, not back into it as it leaves contact: in the
+        // combat eval matrix a bare hand sprinted to 9 off, a skeleton's arrows reaching 15, and walked back to its order.
+        if (threats.isEmpty() && fleeingFrom != -1) {
+            int from = fleeingFrom;
+            threats = world.nearbyHostiles(gait.position, FLED_PAST).stream().filter(t -> t.entityId() == from).toList();
+            if (threats.isEmpty()) {
+                fleeingFrom = -1;
+            }
+        }
         if (threats.isEmpty() && underFireTicks > 0) {
             // Hit with nothing in reach: someone is shooting - find the shooter.
             threats = visible(world, world.nearbyHostiles(gait.position, UNDER_FIRE_RADIUS));
@@ -525,10 +534,18 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 // An archer out-fights a bare hand from any range, and a sword it can't be closed on:
                 // get out of its sight, and stay out.
                 Optional<Position> cover = coverFrom(world, threat);
+                // To cover at a sprint, or with none in reach, out of its range at one: a walk away from an archer
+                // stays inside its range, and in the combat eval matrix a bare hand in the open was shot dead 10 or
+                // more times in 12.
+                sprinting = canSprint();
+                double pace = sprinting ? SPRINT_STEP : STEP;
+                if (!armedForMelee()) {
+                    fleeingFrom = nearest.entityId();
+                }
                 if (cover.isPresent()) {
-                    stepGuarded(world, cover.get().x(), cover.get().z());
+                    stepGuarded(world, cover.get().x(), cover.get().z(), pace);
                 } else {
-                    stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z());
+                    stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z(), pace);
                 }
                 holdCoverTicks = UNDER_FIRE_TICKS;
             } else {
@@ -579,6 +596,11 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         gait.fall(world);
         return attack;
     }
+
+    /** How far a soldier fleeing an archer runs before it's fled: past a skeleton's 15 blocks of range. */
+    static final double FLED_PAST = 20;
+    /** The archer it's fleeing with no melee weapon, or -1. */
+    private int fleeingFrom = -1;
 
     /** How far off an archer in sight is closed on by a soldier armed for melee, shooting or not. */
     static final double ARCHER_ENGAGE = 16;

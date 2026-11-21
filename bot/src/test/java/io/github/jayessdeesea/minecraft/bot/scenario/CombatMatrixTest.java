@@ -47,8 +47,6 @@ class CombatMatrixTest {
     /** Cells that don't pass yet, as "hostile/kit/ground". */
     static final Set<String> KNOWN = Set.of(
             "skeleton/bare hands/flat",
-            "skeleton/bare hands/hills",
-            "skeleton/bare hands/forest",
             "skeleton/bare hands/pond",
             "skeleton/wooden sword/hills",
             "skeleton/stone sword/hills",
@@ -74,7 +72,6 @@ class CombatMatrixTest {
             "creeper/sword, iron/pond",
             "pillager/bare hands/flat",
             "pillager/bare hands/hills",
-            "pillager/bare hands/forest",
             "pillager/bare hands/pond",
             "pillager/wooden sword/forest",
             "pillager/stone sword/forest",

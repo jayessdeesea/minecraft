@@ -600,6 +600,12 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 - **A soldier with a bow shoots far-away enemies** (operator, 2026-11-18) - a creeper too, from outside its
   blast (past `DeterministicSoldier.CREEPER_CLEAR`); one at arm's length is still got away from. Live, six
   soldiers were killed by creepers in melee in a few nights.
+- **With no melee weapon an archer is fled at a sprint** - to cover in reach, else straight away - and on past
+  its range, to 20 off, before the soldier goes back to its order (`DeterministicSoldier.FLED_PAST`): a walk away
+  stays inside a skeleton's 15 blocks, and one that left contact at 9 off walked back into its arrows. In the
+  combat eval matrix, bare hands against a skeleton on hills or among trees, or a pillager among trees, now come
+  through 11 times in 12; in the open and in a pond it's still a third or less - the order taking it back past
+  the archer.
 - **An archer well below** - more than 4 blocks under the soldier, across a cave's drop - is out of a sword's
   reach whatever route might go down to it: the soldier takes cover and carries on, as from one it has no route
   to (the engagement doctrine's it-can-I-can't cell; `DeterministicSoldier.ARCHER_BELOW`). Live, three miners
