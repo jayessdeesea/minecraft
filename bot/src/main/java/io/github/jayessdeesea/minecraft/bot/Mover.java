@@ -164,8 +164,15 @@ abstract class Mover {
     /** How many of a leg got nowhere's first cells the next leg goes round. */
     static final int LEG_AVOID_CELLS = 4;
     int wideFailedAt;
-    /** Ticks before a goal a wide search failed for is searched wide again: five seconds. */
+    /**
+     * Ticks before a goal a wide search failed for is searched wide again: five seconds, doubled for each failure in a
+     * row for the same goal, to {@link #WIDE_RETRY_MOST_TICKS}. Commit 944's profile: Eli at a cave's edge, no route to
+     * his gallery's next stand, searched 60,000 cells every five seconds - a thirteenth of the garrison's time.
+     */
     static final int WIDE_RETRY_TICKS = 100;
+    static final int WIDE_RETRY_MOST_TICKS = 1600;
+    /** Wide searches in a row that have failed for {@link #wideFailedGoal}. */
+    int wideFailures;
     /**
      * Walking a leg: the way a wide search found toward a goal beyond it, to its nearest ground to the
      * goal, followed to its end before the next search - not replanned on the clock, which from inside
@@ -311,14 +318,17 @@ abstract class Mover {
             // Not again straight after one that didn't get there: commit 624's profile, three soldiers at a
             // mine's bottom with no route out searched 60,000 cells at the end of each partial route, two
             // thirds of the soldiers' CPU.
-            boolean wideJustFailed = goal.equals(wideFailedGoal) && navTicks - wideFailedAt < WIDE_RETRY_TICKS;
+            boolean wideJustFailed = goal.equals(wideFailedGoal)
+                    && navTicks - wideFailedAt < Math.min(WIDE_RETRY_MOST_TICKS, WIDE_RETRY_TICKS << Math.min(4, Math.max(0, wideFailures - 1)));
             if (!plan.reachesGoal() && failedPlans > 0 && !wideJustFailed) {
                 Pathfinder.Result wide = wideMemo.find(new Object[]{start, goal, world.stamp(start.x(), start.z(), WIDE_GROUND_CHUNKS), Set.copyOf(avoid),
                         pillarBlocks(), carriesPickaxe()}, () -> Pathfinder.find(world, start, goal, LONG_PLAN_BUDGET, FallAllowance.NONE, pillarBlocks(), carriesPickaxe(), false, avoid));
                 if (wide.reachesGoal()) {
                     plan = wide;
                     wideGoal = goal;
+                    wideFailures = 0;
                 } else {
+                    wideFailures = goal.equals(wideFailedGoal) ? wideFailures + 1 : 1;
                     wideFailedGoal = goal;
                     wideFailedAt = navTicks;
                     // Beyond even the wide search, a leg: the way to its nearest ground to the goal,
