@@ -778,7 +778,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         TreeFarm keepTrees = keepGrove;
         long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count()).orElse(0L)
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
-        // Every cell the groves hold, 16 at the least and 48 at the most (operator, 2026-11-20: grow more trees): a squad on TREE_FARM till they're full.
+        // Every cell the groves hold, 16 at the least and 96 at the most (operator, 2026-11-20: grow more trees; 48 met in field593): a squad on TREE_FARM till they're full.
         long wanted = Math.min(TREES_MOST, Math.max(TREES_GROWING, grove.map(g -> g.plot().size()).orElse(0) + (keepTrees == null ? 0 : keepTrees.plot().size())));
         Optional<BlockPos> bare = Stream.concat(grove.stream(), Stream.ofNullable(keepTrees)).flatMap(g -> g.plot().stream()).filter(c -> !TreeFarm.planted(world, c)).findFirst(); // a cell, not the centre - the camp's grove is the camp's
         standards.add(new Foothold.Standard(3, "wood that grows back", trees >= wanted, trees + " of " + wanted + " saplings or trees planted by the camp and the keep's grove",
@@ -926,7 +926,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Farm cells growing wheat for the camp's food to count as met. */
     private static final int FARM_GROWING = 12;
     /** Trees growing for wood to be no worry (operator, 2026-11-14: with 16 or 32 growing, zero problems with wood), and the most asked. */
-    private static final int TREES_GROWING = 16, TREES_MOST = 48;
+    private static final int TREES_GROWING = 16, TREES_MOST = 96;
     /** How far out from a FORTIFY objective its wall stands. */
     static final int WALL_RADIUS = 8;
     /** How far above and below the camp's centre its ground is kept from digging. */
