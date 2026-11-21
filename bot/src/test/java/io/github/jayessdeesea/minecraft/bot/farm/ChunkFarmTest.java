@@ -78,6 +78,41 @@ class ChunkFarmTest {
                 Set.of(ChunkFarm.key(0, 1))).orElseThrow(), "that taken, a corner");
     }
 
+    /** Of the chunks flat enough, the one at sea level before a nearer one higher up (operator, 2026-11-21). */
+    @Test
+    void ofTheFlatChunksTheOneAtSeaLevelIsSitedFirst() {
+        // Chunk (1, 0) flat at sea level + 6, chunk (2, 0) flat at sea level; everything else broken ground.
+        WorldView world = new WorldView() {
+            int top(int x, int z) {
+                int chunkX = Math.floorDiv(x, 16), chunkZ = Math.floorDiv(z, 16);
+                return chunkZ != 0 ? Integer.MIN_VALUE : chunkX == 1 ? ChunkFarm.SEA_LEVEL + 6 : chunkX == 2 ? ChunkFarm.SEA_LEVEL
+                        : ChunkFarm.SEA_LEVEL + Math.floorMod(x * 7 + z * 13, 9) - 4;
+            }
+
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= top(x, z);
+            }
+
+            @Override
+            public boolean isTillable(int x, int y, int z) {
+                return y == top(x, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(io.github.jayessdeesea.minecraft.command.Position c, double r) {
+                return List.of();
+            }
+        };
+        ChunkFarm farm = ChunkFarm.site(world, new BlockPos(5, ChunkFarm.SEA_LEVEL + 1, 5), 2, c -> true, Set.of()).orElseThrow();
+        assertEquals(new ChunkFarm(2, 0, ChunkFarm.SEA_LEVEL), farm, "sea level, a chunk farther, before the nearer one 6 up");
+    }
+
     /** Ground too broken for a farm - a walk to only some of it - none sited, but the best is said, with what it makes. */
     @Test
     void groundTooBrokenForAFarmHasNoneSitedButTheBestSaid() {

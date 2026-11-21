@@ -205,8 +205,9 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
    the ground within 4 of its water is the plot's (operator, 2026-11-19). From the first, it takes in a chunk
    farm, its farmer making the bucket for its holes as any tool (operator, 2026-11-20: the high-density farms
    as soon as can be) (`bot.farm.ChunkFarm`): the
-   chunk within two of the camp's - never the camp's own - with the most ground at one level that makes
-   farmland, at least 128 of its 220 (over half: the rest flattened to it in time); laid out on the chunk's lines - a fence on x%16==0 and z%16==0, a
+   chunk within four of the camp's, 64 blocks - never the camp's own - flat enough, at least 128 of its 220 at one level
+   that makes farmland (over half: the rest flattened to it in time), and of those the one nearest sea level, then the
+   nearest (operator, 2026-11-21: flat the requirement, sea level the preference, close by); laid out on the chunk's lines - a fence on x%16==0 and z%16==0, a
    post at each corner and a gate each side of it - eight a chunk, one grid for wheat and trees, so a post still on a
    gate's cell from before is the farm's earthwork, dug for the gate (operator, 2026-11-21) - four water holes at local (4, 4), (4, 12), (12, 4), (12, 12) in the
    farmland's own layer, a chest at local (13, 13), and four torches in the field at local (5, 5), (5, 11),

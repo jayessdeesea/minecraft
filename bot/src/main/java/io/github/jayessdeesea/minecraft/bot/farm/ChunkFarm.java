@@ -155,14 +155,39 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
         return new FarmPlan(holes().getFirst(), plot, List.of(), List.of(this));
     }
 
+    /** Sea level: the ground's top a farm is best at - the camp's area of influence is flattened to it. */
+    public static final int SEA_LEVEL = 63;
+
     /**
-     * The chunk to farm nearest {@code camp}'s, out to {@code rings} chunks round it - not the camp's own, nor one in
-     * {@code taken}: the one with the most of its ground at one level that makes farmland, standing on cells
-     * {@code walkable} allows, the nearer of equals - and at least {@link #MIN_CELLS}.
+     * The chunk to farm round {@code camp}'s, out to {@code rings} chunks - not the camp's own, nor one in {@code taken}:
+     * of those flat enough - {@link #MIN_CELLS} of its ground at one level that makes farmland, on cells {@code walkable}
+     * allows - the one nearest sea level, then the nearest the camp (operator, 2026-11-21: flat the requirement, sea level
+     * the preference, close by).
      */
     public static Optional<ChunkFarm> site(WorldView world, BlockPos camp, int rings, Predicate<BlockPos> walkable,
                                            java.util.Set<Long> taken) {
-        return best(world, camp, rings, walkable, taken).filter(f -> f.plan(world, walkable).plot().size() >= MIN_CELLS);
+        int cx = Math.floorDiv(camp.x(), SIDE), cz = Math.floorDiv(camp.z(), SIDE);
+        ChunkFarm chosen = null;
+        double score = Double.MAX_VALUE;
+        for (int dx = -rings; dx <= rings; dx++) {
+            for (int dz = -rings; dz <= rings; dz++) {
+                if (dx == 0 && dz == 0 || taken.contains(key(cx + dx, cz + dz))) {
+                    continue;
+                }
+                Optional<ChunkFarm> farm = levelled(world, cx + dx, cz + dz, camp.y(), walkable)
+                        .filter(f -> f.plan(world, walkable).plot().size() >= MIN_CELLS);
+                if (farm.isEmpty()) {
+                    continue;
+                }
+                // Sea level first - a block of earthwork a cell of the chunk weighs more than a chunk's walk - then near.
+                double s = Math.abs(farm.get().level() - SEA_LEVEL) * 100 + Math.hypot(dx, dz);
+                if (s < score) {
+                    chosen = farm.get();
+                    score = s;
+                }
+            }
+        }
+        return Optional.ofNullable(chosen);
     }
 
     /** As {@link #site}, at any size: the chunk nearest the most ground at one level, for the log to say how near a farm it came. */

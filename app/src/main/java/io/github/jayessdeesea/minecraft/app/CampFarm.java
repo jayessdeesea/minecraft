@@ -42,8 +42,8 @@ final class CampFarm {
      * held 165 cells, the target 384, and the farm didn't grow.
      */
     static final int GROWN_RADIUS = 32;
-    /** How many chunks round the camp's own its chunk farm is looked for. */
-    static final int CHUNK_RINGS = 2;
+    /** How many chunks round the camp's own its chunk farm is looked for: 4, 64 blocks (operator, 2026-11-21). */
+    static final int CHUNK_RINGS = 4;
 
     private final WallStore store;
     private final int reachBudget;
