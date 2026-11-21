@@ -119,7 +119,7 @@ class RecordedGroundEfficiencyTest {
      * A world of block states over {@code sizeX} by {@code sizeZ} from ({@code minX}, {@code minZ}): {@code state}'s for
      * each cell (x, y << 16 | z), or with none, stone to {@code top}'s height and air over it.
      */
-    private static WorldView world(int minX, int minZ, int sizeX, int sizeZ, IntBinaryOperator top, IntBinaryOperator state) {
+    static WorldView world(int minX, int minZ, int sizeX, int sizeZ, IntBinaryOperator top, IntBinaryOperator state) {
         ChunkCache chunks = new ChunkCache();
         for (int cx = Math.floorDiv(minX, 16); cx <= Math.floorDiv(minX + sizeX - 1, 16); cx++) {
             for (int cz = Math.floorDiv(minZ, 16); cz <= Math.floorDiv(minZ + sizeZ - 1, 16); cz++) {

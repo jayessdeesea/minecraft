@@ -50,12 +50,23 @@ final class CampFarm {
     private volatile FarmPlan farm;
     /** Whether it's been grown this run, as far as the ground allows. */
     private boolean grown;
-    /** Whether its chunk farm has been looked for this run. */
-    private boolean chunked;
+    /** How many chunk farms it had when it last looked for one more this run - looked for again only with a new count. */
+    private int chunkedAt = -1;
+    /**
+     * The most chunk farms it takes in: the next sited once every one it has is past SURVEYED, its ground done
+     * (operator, 2026-11-20: the next chunk farm once one is tended, as soon as can be - farms are what there is to forage).
+     */
+    static final int MOST_CHUNK_FARMS = 4;
 
     CampFarm(WallStore store, int reachBudget) {
         this.store = store;
         this.reachBudget = reachBudget;
+    }
+
+    /** Whether {@code farm} takes in one more chunk farm: fewer than the most, not looked for at this count, every one past SURVEYED. */
+    private boolean wantsChunkFarm(WorldView world, FarmPlan farm) {
+        return farm.chunks().size() != chunkedAt && farm.chunks().size() < MOST_CHUNK_FARMS
+                && farm.chunks().stream().allMatch(c -> FarmSite.work(world, c).stage() != FarmSite.Stage.SURVEYED);
     }
 
     /** Its chunk farms' chests: each a farm's own, its seed apart from the general stockpile's. */
@@ -87,7 +98,7 @@ final class CampFarm {
                     .map(c -> new ChunkFarm(c.x(), c.z(), c.y())).toList())).orElse(null);
         }
         boolean resite = kept == null || !world.isWater(kept.water().x(), kept.water().y(), kept.water().z());
-        boolean chunk = bucket && !chunked && kept != null && kept.chunks().isEmpty();
+        boolean chunk = bucket && kept != null && wantsChunkFarm(world, kept);
         if (resite || !grown || chunk) {
             Set<BlockPos> walkable = Pathfinder.reachable(world, at, RADIUS + 4, reachBudget);
             FarmPlan before = resite ? null : kept;
@@ -98,15 +109,16 @@ final class CampFarm {
                 kept = FarmPlan.grown(world, kept, cells(soldiers), VERTICAL, walkable::contains, GROWN_RADIUS);
                 grown = true;
             }
-            if (kept != null && bucket && kept.chunks().isEmpty()) {
-                chunked = true;
+            if (kept != null && bucket && wantsChunkFarm(world, kept)) {
+                chunkedAt = kept.chunks().size();
                 FarmPlan watered = kept;
-                Optional<ChunkFarm> site = ChunkFarm.site(world, at, CHUNK_RINGS, walkable::contains, Set.of());
+                Set<Long> taken = kept.chunks().stream().map(c -> ChunkFarm.key(c.chunkX(), c.chunkZ())).collect(java.util.stream.Collectors.toSet());
+                Optional<ChunkFarm> site = ChunkFarm.site(world, at, CHUNK_RINGS, walkable::contains, taken);
                 site.ifPresent(c -> LOG.info("[Foothold] the camp's chunk farm: chunk {}, {} at y={}, {} cells", c.chunkX(), c.chunkZ(), c.level(),
                         c.plan(world, walkable::contains).plot().size()));
                 // None, it says how near the best came - the ground to level for one (backlog/renewables.md).
                 if (site.isEmpty()) {
-                    ChunkFarm.best(world, at, CHUNK_RINGS, walkable::contains, Set.of()).ifPresentOrElse(c -> LOG.warn(
+                    ChunkFarm.best(world, at, CHUNK_RINGS, walkable::contains, taken).ifPresentOrElse(c -> LOG.warn(
                             "[Foothold] no chunk farm by the camp: the best, chunk {}, {} at y={}, makes {} cells of the {} one wants", c.chunkX(), c.chunkZ(),
                             c.level(), c.plan(world, walkable::contains).plot().size(), ChunkFarm.MIN_CELLS), () -> LOG.warn("[Foothold] no chunk farm by the camp: no ground"));
                 }

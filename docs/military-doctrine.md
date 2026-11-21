@@ -1131,6 +1131,9 @@ have one set of shares and one baker (`DutyBook.onOneFarm`) - which it harvests 
 With three or more on the farm, the last on the roster is its baker: it draws the stockpile's wheat a
 stack at a time and bakes it, and the bread past its own load goes in. A harvester below its basic
 load still bakes for itself - that's its own upkeep. With two, both harvest and bake as they go.
+The camp's farm takes in a chunk farm with its bucket, and the next as soon as every one it has is past SURVEYED,
+its ground done, up to four (`CampFarm.MOST_CHUNK_FARMS`; operator, 2026-11-20: the next chunk farm once one is
+tended, as soon as can be - farms are what there is to forage).
 A chunk farm on the farm has one tender (operator, 2026-11-19: a single soldier at a time works a
 specific farm; `FarmDuties.Tended`): the last harvesters on the roster each tend one - its chunk and
 fence lines its ground, its chest its dump - while one harvester is left for the rest of the plot,
