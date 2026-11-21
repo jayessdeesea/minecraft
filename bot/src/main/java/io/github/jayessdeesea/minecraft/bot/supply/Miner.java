@@ -179,6 +179,8 @@ public final class Miner {
 
     /** The head it last said it found shut with nowhere to cut it from - said once a head. */
     private BlockPos headShutSaid;
+    /** What it last said it read at the mine's head. */
+    private String headSeen;
 
     /** The first step of {@code stairs} not yet cut, or empty when all are. */
     public static OptionalInt firstUncut(WorldView world, Staircase stairs) {
@@ -339,6 +341,15 @@ public final class Miner {
         if (head.isEmpty() && !stairs.well() && soldier.y() >= top.y() - 1 && world.isSolid(top.x(), top.y(), top.z()) && !top.equals(headShutSaid)) {
             headShutSaid = top;
             LOG.warn("{} finds the mine's head at {} shut, and no ground beside it within two to cut it from", name, top);
+        }
+        // What it reads at the head, said as it changes: live (field590) Bravo's head held a chest on the server, the
+        // miners at the top cut step 1 and walked into it, and nothing said what their model of the head was.
+        String headRead = soldier.y() >= top.y() - 1 ? "head " + top + (world.isSolid(top.x(), top.y(), top.z()) ? " solid" : " open")
+                + (world.isChest(top.x(), top.y(), top.z()) ? " (a chest)" : "") + ", over it " + (world.isSolid(top.x(), top.y() + 1, top.z()) ? "solid" : "open")
+                + head.map(c -> ", cut from " + c.stand()).orElse("") : null;
+        if (headRead != null && !headRead.equals(headSeen)) {
+            headSeen = headRead;
+            LOG.info("{} at the top of the mine reads its {}", name, headRead);
         }
         OptionalInt next = head.isPresent() ? OptionalInt.of(0) : OptionalInt.empty();
         Staircase.Cut cut = head.orElse(null);
