@@ -415,6 +415,8 @@ public final class Farmer {
     public static final double SIM_TICKS_A_SOWING = 1045;
     private int harvested, sown;
     private long ripeTicks, bareTicks;
+    /** The last said of why the farm's earthwork took no cut. */
+    private String earthworkSaid;
     /** What the field job under way uses: a hoe to till, seeds to sow - none for a gate opened. */
     private ItemClass fieldItem;
 
@@ -593,6 +595,13 @@ public final class Farmer {
             unburier.tick(soldier, world, earthwork, true);
             if (unburier.active()) {
                 return;
+            }
+            // Said when why changes: live (field570) a chunk farm's 92 blocks of earthwork stood a whole day, its
+            // farmer at its other work, and nothing said why none was taken.
+            String why = earthwork.size() + " blocks of the farm's earthwork, none taken: " + unburier.idleReason().orElse("its clearer resting");
+            if (!why.equals(earthworkSaid)) {
+                LOG.info("{} - {}", name, why);
+                earthworkSaid = why;
             }
         }
         // Then its chunk farms' ground filled, with what the earthwork gave it - not a cell passed over lately.
