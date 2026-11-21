@@ -252,12 +252,13 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
 
         /**
          * Whether {@code cell} of this cut is still to cut. A recess's table, furnace or chest is left
-         * standing - what was put there; anywhere else a table or furnace is in the way and is cut -
-         * live (field324), the camp's stairs were laid through its workshop's table, and the miner
-         * stood at step 1 of 184 - and only a chest, whose contents would spill, is left.
+         * standing - what was put there; anywhere else whatever stands is in the way and is cut - live
+         * (field324), the camp's stairs were laid through its workshop's table, and the miner stood at
+         * step 1 of 184 - a chest too, its contents spilt for the picking up: live (field585) a chest put
+         * up in Bravo's stair head, left standing, shut the mine to the half of the platoon sent down it.
          */
         public boolean toCut(WorldView world, BlockPos cell) {
-            return recess ? uncut(world, cell) : world.isSolid(cell.x(), cell.y(), cell.z()) && !world.isChest(cell.x(), cell.y(), cell.z());
+            return recess ? uncut(world, cell) : world.isSolid(cell.x(), cell.y(), cell.z());
         }
     }
 

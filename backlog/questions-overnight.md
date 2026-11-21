@@ -23,6 +23,12 @@ priority: P1
   cobblestone the miner carries, keeping the gallery's level, rather than ending the branch at the cave and
   reporting it. Live, Eli's gallery at y=20 broke into a dripstone cave and he stood at its edge for runs.
 
+- **A chest in a mine's stairs** (docs/military-doctrine.md § mines, `Staircase.Cut.toCut`): taken by default - cut
+  like any block in a step or tunnel, its contents spilt for the cutter or a scavenger to pick up, rather than left
+  standing (the rule before). Live (field585), the stockpile's row put a chest in Bravo's stair head, and half the
+  platoon stood beside it for runs; the row no longer does. The other way is to empty it first, a chest's contents
+  carried off before it's cut - work to build if spilt loads go missing.
+
 - **A farm's earthwork heap out of reach** (docs/military-doctrine.md § farm upkeep, `Farmer.heapOf`): taken by
   default - the earthwork cut a heap at a time, nearest first, and a heap whose top no stand reaches set aside a
   while for the next, rather than the clearing rule's never skip a high block across the whole farm. Live

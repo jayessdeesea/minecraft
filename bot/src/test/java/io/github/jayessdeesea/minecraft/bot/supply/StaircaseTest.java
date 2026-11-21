@@ -281,4 +281,39 @@ class StaircaseTest {
         assertTrue(row.size() > 4 && row.stream().noneMatch(mine.headCells()::contains), "none in the shaft: " + row);
         assertTrue(shop.chestCells(flat, java.util.Set.of(), 17).stream().anyMatch(mine.headCells()::contains), "without it, one was");
     }
+
+    /**
+     * A chest in a step of the stairs - out of a recess - is in the way and is cut, its contents spilt: live (field585) a
+     * chest in Bravo's stair head at (-10, 64, 7), left standing, shut the mine to the half of the platoon sent down it.
+     */
+    @Test
+    void aChestInAStepIsCut() {
+        Staircase mine = new Staircase(new BlockPos(-10, 64, 7), 0);
+        Staircase.Cut first = mine.cuts().getFirst();
+        BlockPos chest = first.cells().getLast();
+        io.github.jayessdeesea.minecraft.bot.world.WorldView chested = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(chest);
+            }
+
+            @Override
+            public boolean isChest(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(chest);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public java.util.List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(
+                    io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return java.util.List.of();
+            }
+        };
+        assertTrue(first.toCut(chested, chest), "the chest in the step is to cut");
+        assertTrue(Miner.firstUncut(chested, mine).equals(java.util.OptionalInt.of(0)), "and the first step is uncut again");
+    }
 }
