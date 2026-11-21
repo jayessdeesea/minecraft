@@ -401,4 +401,53 @@ class FarmerTest {
             assertTrue(farmer.wateringHole().filter(first::equals).isEmpty(), "the same hole again at tick " + tick);
         }
     }
+
+    /**
+     * A water hole with blocks on every side of it a block up has no ground to pour from: those blocks are the farm's
+     * earthwork, dug so it gets some. Live (field566), a hole at (28, 67, 52) on the chunk farm's heaped ground failed
+     * "no ground beside it to pour from" 614 times.
+     */
+    @Test
+    void theBlocksBoxingAWaterHoleInAreEarthwork() {
+        io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm chunk = new io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm(0, 0, GROUND);
+        BlockPos hole = chunk.holes().getFirst();
+        Set<BlockPos> heap = new HashSet<>();
+        for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            heap.add(hole.offset(d[0], 1, d[1]));
+        }
+        WorldView boxed = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos b = new BlockPos(x, y, z);
+                return y <= GROUND && !b.equals(hole) || heap.contains(b);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        FarmPlan plan = new FarmPlan(new BlockPos(8, GROUND, 30), List.of(), List.of(), List.of(chunk));
+
+        assertTrue(Farmer.earthwork(boxed, plan).containsAll(heap), "the blocks round the hole dug: " + Farmer.earthwork(boxed, plan));
+
+        // And the hole waits on them, not watered and failed over and over: live, its four failures in a row took
+        // Olga off the farm before its earthwork was ever reached.
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.BUCKET), 1});
+        Farmer farmer = new Farmer("Olga", session, inventory, new HashSet<>());
+        for (int tick = 0; tick < 4 * Farmer.COOLDOWN_TICKS; tick++) {
+            farmer.tick(new Position(8.5, GROUND + 1, 8.5), boxed, Optional.of(plan), true);
+            assertTrue(farmer.failure().filter(f -> f.contains("no ground beside")).isEmpty(), "the boxed hole failed at tick " + tick + ": " + farmer.failure());
+        }
+    }
 }

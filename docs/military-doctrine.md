@@ -1055,7 +1055,10 @@ one cell at a time (`bot.supply.Farmer`), in this order:
 1. With a bucket, its water holes (`FarmPlan.holes`): each dug from the ground beside it, a block of the
    cobblestone or dirt it carries put under one with open ground below - a cave - so its water stands (operator,
    2026-11-20: something under the farm's water), then filled from a pond (`bot.supply.WaterCarrier`); a fill
-   or a floor that fails passes the hole over a while.
+   or a floor that fails passes the hole over a while, and so does one whose pond has no route to it (field563,
+   one watered 1,321 times in a quarter of an hour). A hole with no ground beside it to pour from - the farm's
+   heaped ground standing round it - waits on the earthwork that clears it, not tried and failed (field566, 614
+   failures at one took its farmer off the farm).
    Then its trenches (`Farmer.trenchToCut`), out from the pond a cell beside water at a time, so each
    fills as it's cut - a cell cut ahead of the water is a hole, and a route fills it in again -
    from the ground across the trench. The farmer cuts them itself: its earthwork, a clearing, never

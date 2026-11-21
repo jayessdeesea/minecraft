@@ -552,6 +552,11 @@ public final class Farmer {
                         LOG.info("{} digs the farm's water hole at {}", name, h);
                         return;
                     }
+                } else if (world.isSolid(h.x(), h.y() - 1, h.z()) && WaterCarrier.beside(world, h).isEmpty()) {
+                    // No ground beside it to pour from - the farm's heaped ground standing round it: it waits on the
+                    // earthwork, not failed. Live (field566), 614 failures at one such hole took Olga off the farm
+                    // before its earthwork was ever reached.
+                    continue;
                 } else if (world.isSolid(h.x(), h.y() - 1, h.z())) {
                     watering = h;
                     fill(world);

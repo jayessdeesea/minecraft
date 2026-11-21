@@ -23,7 +23,12 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   left: the LOGSTAT counting raw iron and diamonds; and a gallery that breaks into a cave - its next stand over the
   cave's void with no floor, the miner with no route to it for runs (`stuck/cave-eli-field552`; live, Eli at y=20,
   field535-552, and a thirteenth of the garrison's time in commit 944's profile). Default taken: floored across at
-  its level with the cobblestone it carries (backlog/questions-overnight.md).
+  its level with the cobblestone it carries (backlog/questions-overnight.md). First, a squad simulation that holds a
+  scenario's objective at its height underground: the platoon leader's objective is put on the ground
+  (`NightRules.grounded`, as it should be for a model's guessed height), the camp's ground work and the recovery
+  drill then take the soldier up to it, and the cave is never crossed - tried with a gallery at y=20 meeting a
+  void, and a bridge allowed level with the goal (`Pathfinder.stepBuild`'s ground-beyond rule relaxed) went
+  unproven so.
 - **Levels.** Built: a squad to a level at y%4==0, two cutters to a level, a second level for a
   squad of four, levels cut on down while ore is wanted, and a dried-up mine moved to a fresh site
   (docs/military-doctrine.md § 16). What's left: the rest of the mine base (backlog/sites.md); and
