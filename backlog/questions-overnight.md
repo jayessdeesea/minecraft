@@ -19,6 +19,10 @@ priority: P1
   in a farm's water or trench), and never a farm's plot, trench, water or chunk farm, or a planted grove cell.
   Further out, or filling hollows too, is the operator's call.
 
+- **A gallery broken into a cave** (backlog/mining.md): taken by default - floored across at its own level with the
+  cobblestone the miner carries, keeping the gallery's level, rather than ending the branch at the cave and
+  reporting it. Live, Eli's gallery at y=20 broke into a dripstone cave and he stood at its edge for runs.
+
 Answered 2026-11-20, each now with its item:
 - **The moat:** none (operator) - the building guide's trench round the lit core is dropped; the cells' lit open
   ground between them stands (backlog/building-guide.md, backlog/cells.md).

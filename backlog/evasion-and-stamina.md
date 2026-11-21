@@ -11,10 +11,13 @@ doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
   unless they carry a shield to raise (docs/military-doctrine.md § 8).
 
 ## Done when
-- **Cover is live for a bare-handed soldier** (docs/military-doctrine.md § 8). Against a skeleton
-  among trees: 36 of 100 die taking cover, against 75 of 100 charging in. On flat ground there's
-  rarely cover: 79 against 94. An armed soldier with no route to the archer takes cover the same
-  way. What's left:
+- **Cover is live for a bare-handed soldier, and flight at a sprint past an archer's range**
+  (docs/military-doctrine.md § 8; `DeterministicSoldier.FLED_PAST`). In the combat eval matrix
+  (`CombatMatrixTest`) bare hands against a skeleton now come through 11 times in 12 on hills and among trees, a
+  pillager among trees the same; in the open and in a pond it's still a third or less, as the soldier's order takes
+  it back past the archer. An armed soldier with no route to the archer takes cover the same way. What's left:
+  - An unarmed soldier's order past an archer: held off it, or routed round, till the archer's gone - the matrix's
+    bare-hands flat and pond cells.
   - Breaking contact properly, back toward the squad, instead of only backing away. Pinned across
     water in the open, with no cover to take, a stone-sworded soldier still dies 40 times in 40.
     In `CombatScenarioTest`'s moat the water rings the soldier, so there is nowhere to run - a
@@ -35,8 +38,9 @@ doctrine: ATP 3-21.8 (individual movement techniques; cover and concealment)
   falling to 2 with nothing in its fight changing; the next, with a wooden sword and a shield,
   raising its shield again and again as its health fell 8, 5, 2. Nothing in the fight looks at the
   soldier's own health: an armed soldier always closes on an archer it can reach. A pillager's
-  crossbow isn't yet in `CombatScenarioTest`, and neither is a soldier hurt before the fight -
-  both first, then whether one at low health should take cover as a bare-handed one does.
+  crossbow is in the battle simulation now (`Battle.Archetype.PILLAGER`, the combat eval matrix); a soldier
+  hurt before the fight isn't - that first, then whether one at low health should take cover as a bare-handed
+  one does.
 
 ## Notes
 - Exhaustion from damage taken (0.1 per hit) and from jumping (0.05) is charged by the server

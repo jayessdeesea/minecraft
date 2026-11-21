@@ -20,7 +20,10 @@ working base at each mining level - y=32 and y=0, say - and runs tunnels out fro
   ore put back. What's left: live, a mine sited to it and cut to its landing; the main tunnel's
   and branches' walls kept whole the same way.
 - **Branch tunnels, the rest.** The tunnels are cut and lit (docs/military-doctrine.md § 16). What's
-  left: the LOGSTAT counting raw iron and diamonds.
+  left: the LOGSTAT counting raw iron and diamonds; and a gallery that breaks into a cave - its next stand over the
+  cave's void with no floor, the miner with no route to it for runs (`stuck/cave-eli-field552`; live, Eli at y=20,
+  field535-552, and a thirteenth of the garrison's time in commit 944's profile). Default taken: floored across at
+  its level with the cobblestone it carries (backlog/questions-overnight.md).
 - **Levels.** Built: a squad to a level at y%4==0, two cutters to a level, a second level for a
   squad of four, levels cut on down while ore is wanted, and a dried-up mine moved to a fresh site
   (docs/military-doctrine.md § 16). What's left: the rest of the mine base (backlog/sites.md); and

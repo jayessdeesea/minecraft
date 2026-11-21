@@ -18,6 +18,10 @@ Three times in one day the shared `ChunkCache` showed a block the server didn't 
   fresh start, so not a chunk kept from before): three farmers tried to harvest it 168 times,
   most of that run's "harvests", the walk to it failing each time.
 
+- A caveat on what follows: till commit 934 (2026-11-20) a "no route ... to within N of (x, y, z)" CANTCO named each
+  end's centre rounded half up - a goal at (23.5, 65, 87.5) read (24, 65, 88), the block beside it on each axis
+  whose centre is positive. A probe of the block a CANTCO named before then probed a neighbour: "a stand a block
+  down and diagonal" below is that rounding's signature, not yet a stale model.
 - the commonest live CANTCO of field148-152 (2026-11-13), "no route to within 0 of" a stand a block
   down and diagonal: at one, (-25, 69, 7), a probe's own fresh chunks showed the stand solid, a
   gatherer having walked at it for a minute. A dig failing at once on a stand read as filled was
