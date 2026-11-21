@@ -4061,8 +4061,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             measured.put("fill the camp's ground", state.fillLeft);
         }
         // The keep's by the squad's share of it: a soldier walking to its strip, or on one its
-        // squadmates are clearing, is on work that's going - live, the keep's dig measured as the
-        // camp's read every builder as stalled.
+        // squadmates are clearing, is on work that's going - live, the keep's dig measured as the camp's read every builder as stalled.
         if (state.keepDigLeft >= 0) {
             measured.put("dig the keep", state.keepDigLeft);
         }
@@ -6773,6 +6772,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     String cause = death.contains("[") ? death.substring(0, death.indexOf('[')) : death;
                     casualties.merge(cause, 1, Integer::sum);
                     Optional.ofNullable(activeSoldiers.get(name)).ifPresent(s -> dangerAreas.killed(s.status().position(), clockwork.millis()));
+                    Optional.ofNullable(activeSoldiers.get(name)).ifPresent(s -> worldRecords.record(chunkCache::stateIdAt, s.status(), clockwork.millis())); // a death's ground, its eval
                     afterActionReview.death(name, cause);
                     afterActionReview.commands.casualty(squadTask(unitOf(name, definition.squad())), Optional.ofNullable(activeSoldiers.get(name))
                             .map(s -> s.status().order().getClass().getSimpleName()).orElse("none"));

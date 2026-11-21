@@ -51,7 +51,7 @@ world wrong is proven wrong.
    And live (field536) with 62 logs he gave up his stone sword "short of COBBLESTONE=2", and his quarry order got
    no hands; replayed with the same kit, he digs the cobblestone and makes the sword. His squad's orders - a
    miner's duty, its mine - aren't in the replay: a recorded world wants the soldier's orders kept with it.
-5. **Recorded worlds.** Built: a soldier stuck a minute has the ground round it - 49 across, 33 high, each cell's
+5. **Recorded worlds.** Built: a soldier stuck a minute, or killed, has the ground round it - 49 across, 33 high, each cell's
    state as the client decoded it - kept under `garrison-state/worlds/` (`app.WorldRecords`, `[World]`), and a
    scenario replays one as its terrain (`SimWorlds.replay`); a stuck soldier's case in the registry
    (`StuckEvalsTest`, docs/architecture.md) is one. The live record drafts the case beside it (`app.StuckCase`). Left: the
