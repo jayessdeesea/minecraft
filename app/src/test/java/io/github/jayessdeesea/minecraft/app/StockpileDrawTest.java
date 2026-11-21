@@ -49,5 +49,9 @@ class StockpileDrawTest {
         assertTrue(SoldierErrands.drawsStone(shortOfStone, 0, Optional.of(new Stockpile(0, 832, 0)), CHEST));
         assertFalse(SoldierErrands.drawsStone(shortOfStone, 0, Optional.of(new Stockpile(0, 3, 0)), CHEST), "too few in the chest");
         assertFalse(SoldierErrands.drawsStone(Optional.empty(), 0, Optional.of(new Stockpile(0, 832, 0)), CHEST), "making nothing");
+        assertTrue(SoldierErrands.drawsStone(Optional.of("can't make bucket and stone sword: short of {RAW_IRON=3, LOG=1, COBBLESTONE=2}"), 0,
+                Optional.of(new Stockpile(0, 832, 0)), CHEST), "cobblestone third in the list (field542)");
+        assertTrue(SoldierErrands.drawsLogs(Optional.of("short of {RAW_IRON=3, LOG=1, COBBLESTONE=2}"), 0, Optional.of(new Stockpile(85, 0, 0)), CHEST),
+                "logs second in it");
     }
 }

@@ -76,6 +76,15 @@ final class SoldierErrands {
      * what it sees is then known. Live, a bare-handed miner with no tree within 48 blocks stood a day
      * in the mine, while the camp's chest held 85 logs nobody had opened it to see.
      */
+    /**
+     * Whether {@code failure} - "short of {RAW_IRON=3, LOG=1, COBBLESTONE=2}" - lists {@code item} among what it's short
+     * of, wherever in the list: live (field542), Olga's sword batched with a bucket read cobblestone third, and no draw
+     * matched it.
+     */
+    static boolean shortOf(String failure, String item) {
+        return java.util.regex.Pattern.compile("[{ ]" + item + "=").matcher(failure).find();
+    }
+
     /** Cobblestone drawn for a weapon or tool short of it: a stone sword's blade, a pickaxe's head, and some over. */
     static final int DRAW_STONE = 8;
 
@@ -84,12 +93,12 @@ final class SoldierErrands {
      * (field541), four soldiers gave their stone swords up "short of COBBLESTONE=2", the camp's chests holding 896.
      */
     static boolean drawsStone(Optional<String> failure, int stone, Optional<Stockpile> seen, Optional<Position> stockpile) {
-        return stockpile.isPresent() && stone < DRAW_STONE && failure.filter(f -> f.contains("{COBBLESTONE=")).isPresent()
+        return stockpile.isPresent() && stone < DRAW_STONE && failure.filter(f -> shortOf(f, "COBBLESTONE")).isPresent()
                 && seen.map(st -> st.stone() >= DRAW_STONE).orElse(true);
     }
 
     static boolean drawsLogs(Optional<String> failure, int logs, Optional<Stockpile> seen, Optional<Position> stockpile) {
-        return stockpile.isPresent() && logs < 2 && failure.filter(f -> f.contains("no LOG") || f.contains("{LOG=")).isPresent()
+        return stockpile.isPresent() && logs < 2 && failure.filter(f -> f.contains("no LOG") || shortOf(f, "LOG")).isPresent()
                 && seen.map(st -> st.logs() >= DRAW_LOGS).orElse(true);
     }
 
