@@ -82,7 +82,8 @@ prompt ends counting and naming the reply asked for - one objective for each squ
 foothold's standards shared out among them (`SpringAiPlatoonLeader.roster`; live, it gave every squad an
 objective for each unmet standard, twelve in all, and the reply was refused). A failed call (a malformed
 reply, the model down) is logged loudly, and the squads keep their last objectives - but a squad named twice
-or left out fails alone, keeping its own - or with none, holding where it is till the next decision - while the
+or left out is asked about again, alone, through the same call (operator, 2026-11-20: every squad its objective, a
+defect if not), a squad not listed dropped; one still without one fails alone, keeping its own - or with none, holding where it is till the next decision - while the
 others' objectives stand (`SpringAiPlatoonLeader.toObjectives`) - put through the same
 rules as a decision's (the night rule, the guardrails), so a reply refused at dusk still sends them down the
 mines.

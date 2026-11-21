@@ -288,4 +288,20 @@ class SpringAiPlatoonLeaderTest {
         assertTrue(said.contains("Short of FOOD: a squad on FARM at a \"ground to farm\" site; and with 140 ripe wheat standing within 100 blocks"
                 + " of the camp, each squad whose Class I is RED on FORAGE."), said);
     }
+
+    /**
+     * A reply naming Alpha twice and Bravo not at all is asked again for just those two; the re-ask's answers fill them in,
+     * an unlisted squad's dropped (operator, 2026-11-20: every squad its objective - a defect if not).
+     */
+    @Test
+    void theSquadsLeftOutOrNamedTwiceAreAskedAgainAndFilledIn() {
+        List<SquadStatus> squads = List.of(ALPHA, BRAVO);
+        PlatoonLeaderReply first = new PlatoonLeaderReply(List.of(objective("Alpha"), objective("Alpha"), objective("Charlie")));
+
+        assertEquals(List.of("Alpha", "Bravo"), SpringAiPlatoonLeader.unanswered(first, squads).stream().map(SquadStatus::squadName).toList());
+
+        PlatoonLeaderReply merged = SpringAiPlatoonLeader.merged(first, new PlatoonLeaderReply(List.of(objective("Alpha"), objective("Bravo"))), squads);
+        assertEquals(List.of("Alpha", "Bravo"), merged.objectives().stream().map(PlatoonLeaderReply.ObjectiveReply::squad).toList());
+        assertEquals(2, SpringAiPlatoonLeader.toObjectives(merged, squads).size());
+    }
 }

@@ -139,7 +139,40 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
         if (squadStatuses.isEmpty()) {
             return List.of();
         }
-        return toObjectives(callModel(context(squadStatuses)), squadStatuses);
+        PlatoonLeaderReply reply = callModel(context(squadStatuses));
+        // Every squad its one objective (operator, 2026-11-20: it's a defect if one hasn't): the squads left out or named
+        // twice asked again, alone. Live (field533-545), nearly every decision missed one, and it got no new order.
+        List<SquadStatus> unanswered = unanswered(reply, squadStatuses);
+        if (!unanswered.isEmpty()) {
+            LOG.warn("[PL] no single objective for {} - asked again for {}", unanswered.stream().map(SquadStatus::squadName).toList(),
+                    unanswered.size() == 1 ? "it" : "them");
+        }
+        // Merged even when every squad had its one: a squad not listed in the reply is dropped, not a broken decision.
+        return toObjectives(merged(reply, unanswered.isEmpty() ? null : callModel(context(unanswered)), squadStatuses), squadStatuses);
+    }
+
+    /** The squads {@code reply} doesn't give exactly one objective: left out, or named twice. */
+    static List<SquadStatus> unanswered(PlatoonLeaderReply reply, List<SquadStatus> squadStatuses) {
+        List<PlatoonLeaderReply.ObjectiveReply> given = reply == null || reply.objectives() == null ? List.of() : reply.objectives();
+        return squadStatuses.stream().filter(s -> given.stream().filter(o -> s.squadName().equals(o.squad())).count() != 1).toList();
+    }
+
+    /**
+     * One reply of the two: each listed squad's single objective from the first, else from the re-ask - and nothing for a
+     * squad not listed. A squad neither gives one to stays out, and fails alone, loud ({@link #toObjectives}).
+     */
+    static PlatoonLeaderReply merged(PlatoonLeaderReply first, PlatoonLeaderReply again, List<SquadStatus> squadStatuses) {
+        List<PlatoonLeaderReply.ObjectiveReply> out = new ArrayList<>();
+        for (SquadStatus squad : squadStatuses) {
+            single(first, squad.squadName()).or(() -> single(again, squad.squadName())).ifPresent(out::add);
+        }
+        return new PlatoonLeaderReply(out);
+    }
+
+    private static Optional<PlatoonLeaderReply.ObjectiveReply> single(PlatoonLeaderReply reply, String squad) {
+        List<PlatoonLeaderReply.ObjectiveReply> named = reply == null || reply.objectives() == null ? List.of()
+                : reply.objectives().stream().filter(o -> squad.equals(o.squad())).toList();
+        return named.size() == 1 ? Optional.of(named.getFirst()) : Optional.empty();
     }
 
     /** The situation the next decision would be asked about: the user prompt, as the model sees it - for reading. */

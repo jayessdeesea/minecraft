@@ -342,7 +342,13 @@ class PlatoonLeaderScenarioIT {
                 long start = System.nanoTime();
                 List<String> failures;
                 try {
-                    failures = situation.judge().apply(situation.squads(), platoonLeader.decide(situation.squads()));
+                    List<Objective> given = platoonLeader.decide(situation.squads());
+                    List<String> judged = new ArrayList<>(situation.judge().apply(situation.squads(), given));
+                    // Every squad its own objective, re-asked or not (operator, 2026-11-20: a defect if one hasn't): one held
+                    // where it is had none from the platoon leader at all.
+                    given.stream().filter(o -> o.mission().startsWith("Hold where you are till the next decision"))
+                            .forEach(o -> judged.add("a squad given no objective at all"));
+                    failures = judged;
                 } catch (IllegalStateException e) {
                     failures = List.of("invalid reply: " + e.getMessage());
                 }
