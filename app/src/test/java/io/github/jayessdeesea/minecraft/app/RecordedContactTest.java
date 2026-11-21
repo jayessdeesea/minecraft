@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -51,5 +52,44 @@ class RecordedContactTest {
         boolean hidden = !DeterministicSoldier.lineOfSight(world, eye, new Position(at.x(), at.y() + DeterministicSoldier.TARGET_HEIGHT, at.z()));
         boolean atIt = at.distanceTo(skeleton) <= DeterministicSoldier.ATTACK_REACH;
         assertTrue(hidden || atIt, "Mia out of the skeleton's sight, or at it, a minute on: at " + at + ", " + mia.status().report());
+    }
+
+    /**
+     * A drowned's trident, from water 9 below: live (field604) Mia held her post at (-1.2, 62.2, 175.8), "carries on: no way
+     * between them on foot" - a drowned counted as one fighting hand to hand - while its throws took her from 15 health
+     * to none. Here its throw is 4 health every 1.5 s it can see her. Correct, a minute on: alive. A known failure: she
+     * holds her post and dies; counted as one that shoots (a drowned may hold a trident), she backs 3 blocks into the
+     * ground behind her, still in its sight, and dies - getting out of a thrower's sight across open ground is what's
+     * left (backlog/engagement-doctrine.md). Once she lives, take the known mark off so the case holds the fix.
+     */
+    @Test
+    void miaGetsOutOfTheDrownedsReach() throws Exception {
+        WorldRecords.Snapshot ground = WorldRecords.load(Path.of(new ClassPathResource("worlds/contact-mia-field604.json").getURI()));
+        EntityTracker entities = new EntityTracker();
+        Position drowned = new Position(4.5, 53.2, 166.6);
+        entities.spawn(1, UUID.randomUUID(), HostileMobRegistry.typeIdOf("drowned"), drowned.x(), drowned.y(), drowned.z(), "eval");
+        WorldView world = RecordedGroundEfficiencyTest.world(ground.minX() - 16, ground.minZ() - 16, ground.sizeX() + 32, ground.sizeZ() + 32,
+                (x, z) -> 0, (x, yz) -> {
+                    int y = yz >> 16, z = (short) (yz & 0xFFFF);
+                    int s = ground.stateAt(x, y, z);
+                    return s == WorldRecords.UNKNOWN ? (y < ground.minY() ? 1 : 0) : s;
+                }, entities);
+        DeterministicSoldier mia = new DeterministicSoldier("Mia", new Position(-1.2, 62.2, 175.8));
+        mia.reportKit(new Kit(Optional.of("wooden_sword"), 2, 0));
+        double health = 15;
+        mia.reportHealth(health, 17);
+        mia.receiveOrder(new Order.MoveTo(-1.2, 62.2, 175.8, 1.5, 3.0, Risk.LOW)); // her post
+        Position eye = new Position(drowned.x(), drowned.y() + DeterministicSoldier.EYE_HEIGHT, drowned.z());
+        for (int tick = 0; tick < 1200 && health > 0; tick++) {
+            mia.tick(world);
+            Position at = mia.status().position();
+            if (tick % 30 == 0 && at.distanceTo(drowned) <= 24
+                    && DeterministicSoldier.lineOfSight(world, eye, new Position(at.x(), at.y() + DeterministicSoldier.TARGET_HEIGHT, at.z()))) {
+                health -= 4;
+                mia.reportHealth(Math.max(0, health), 17);
+            }
+        }
+        System.out.printf("[Eval] contact/mia-field604: Mia at %s, %.0f health, %s%n", mia.status().position(), health, mia.status().report());
+        assertFalse(health > 0, "contact/mia-field604 passes now: make it assert she's alive, so it holds the fix");
     }
 }

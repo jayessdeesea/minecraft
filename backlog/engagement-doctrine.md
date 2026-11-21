@@ -58,7 +58,11 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
    a cave at the soldier's own height. The nearest isn't always the danger: a creeper within 4.5 and an archer
    beside a hand-to-hand hostile out of reach are put first (built, field595-602, replayed on a dead soldier's kept
    ground - `app.RecordedContactTest`). Left: more contacts replayed so - the battle simulation's moving hostiles on
-   a kept ground, not only hostiles standing where they were logged.
+   a kept ground, not only hostiles standing where they were logged; and the drowned's trident (field604: Mia held her
+   post 10.8 from a drowned 9 below in water, "carries on: no way between them on foot", and was killed - replayed,
+   `contact/mia-field604`, known). Counted as one that shoots, she backs 3 blocks into the ground behind her, still in
+   its sight, and dies: what's left is getting out of a thrower's sight across open ground - away along the route
+   out of its line, not a step straight back.
 2. The order fields and their defaults through Order, the squad leader and the soldier.
    A creeper holding a soldier inside its reach ten seconds is engaged (built); the rest of the
    both-reach cell - criteria and weapons control by order - is phase 2's.
