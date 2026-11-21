@@ -154,7 +154,10 @@ and asks its squadmates for some, and below 10 it is short, and food comes befor
 1. **The soldier feeds itself.** Hungry, it eats. Below its basic load it bakes all the wheat it
    carries into bread at its workshop (§11). Below 32, within 16 blocks of a stockpile last seen
    holding rations, it draws some out until it carries 32 (`SoldierRunner.drawsFood`); short, it
-   draws from it wherever it is, and hunts any game in sight, fed or not. Bread beyond its basic
+   draws from it wherever it is, and hunts any game in sight, fed or not. With none at all, bread comes before any
+   other draw - metal, stone, logs - from the nearest chest holding some, not only its own depot's: live (field568)
+   Eli, Bravo's miner at the keep's mine, drew iron and cobblestone from the keep's depot all run, its bread none,
+   and was shot dead at 1 health. Bread beyond its basic
    load - a whole stack, the basic load still in its pack - goes into the stockpile (§12).
 2. **The squad shares, and keeps the camp's farm.** A soldier below 32, hungry yet or not, is given
    rations by the nearest squadmate within 8 blocks carrying two more than it (cross-leveling, §13; no walk across the

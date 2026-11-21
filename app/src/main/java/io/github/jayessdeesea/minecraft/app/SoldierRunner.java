@@ -6338,8 +6338,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     Position centre = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
                     // Not on a chest: one is less than a block high, so a stand on it is never quite
                     // reached, and a body on it shuts its lid. Live, the farm squad's soldier was sent
-                    // onto the chest beside the camp's stockpile, failed five walks to it in a row, and
-                    // stood with its load.
+                    // onto the chest beside the camp's stockpile, failed five walks to it in a row, and stood with its load.
                     // In reach wherever in the stand the walk stops - 0.3 of its centre - not only from its
                     // centre: live, a walk ended 3.5 blocks off, a hair past reach, and the load wasn't put in.
                     boolean reachedFromAll = Depositor.withinReach(new Position(centre.x() - 0.3, centre.y(), centre.z() - 0.3), chest)
@@ -6712,8 +6711,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     }
                 },
                 // Every soldier passes on what it hears: a line said aloud reaches every connection and
-                // is passed on once; one whispered to a soldier (/msg) reaches only that one, which
-                // relays it up the chain.
+                // is passed on once; one whispered to a soldier (/msg) reaches only that one, which relays it up the chain.
                 chat -> {
                     if (firstHearing(chat)) {
                         operatorOrders.orderFrom(chat).ifPresent(order -> {
@@ -7245,8 +7243,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // Toward a goal near its own level: one a wall away. A goal far above or below isn't
                 // behind a wall - the way there is the recovery drill's stair (docs/military-doctrine.md
                 // § 7). In the squad simulation a soldier in a gallery 25 blocks down broke tunnel after
-                // tunnel sideways toward its slot on the surface, and its stair up was laid out again
-                // from each new spot.
+                // tunnel sideways toward its slot on the surface, and its stair up was laid out again from each new spot.
                 wayOut.set(exit == null && fort == null && !inContact && noRoute && status.order() instanceof Order.MoveTo to
                         && Math.abs(to.y() - status.position().y()) <= WAY_OUT_RISE
                         ? WayOut.cells(world, BlockPos.containing(status.position().x(), status.position().y() + 0.01, status.position().z()),
@@ -7534,6 +7531,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         furnace.ifPresent(f -> furnacesSwept.put(BlockPos.containing(f.x(), f.y(), f.z()), clockwork.millis()));
                     }
                     depositor.tickEmpty(status.position(), furnace, free && !threatened && fort == null);
+                } else if (carried != null && Subsistence.short_(carried.rations()) && chestHolding(ItemClass.FOOD, status.position()).isPresent()) {
+                    // No rations: bread first, from the nearest chest holding some - not after metal and stone, nor only its own depot's. Live (field568), Eli drew iron and cobblestone all run, shot dead at 1 health.
+                    depositor.tickDraw(status.position(), chestHolding(ItemClass.FOOD, status.position()), ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened);
                 } else if (unstash.isPresent()) {
                     depositor.tickDraw(status.position(), Optional.of(unstash.get().chest()), unstash.get().ore(), unstash.get().carry(),
                             free && !threatened);
