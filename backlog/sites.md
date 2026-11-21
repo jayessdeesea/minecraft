@@ -208,6 +208,20 @@ class's production is below its requirement at steady state, the site waits for 
 class also reports production against requirement over the day, and the platoon sergeant gives a
 shortfall producers - a second grove, a second miner - rather than waiting on it.
 
+**Losses priced in, beside stock** (operator, 2026-11-21: we won't win every battle - we want to win the war;
+minimise losses, but maximise resources and expand the camp, establishing ourselves and expanding our area of control
+without over-extending; the evals tell us when to expand and when to contract). A death is a cost, not a failure in
+itself: the kit lost, the trip back, the time out of work. Each activity and each area carries a loss rate - deaths
+and health spent a soldier-hour, live and in the squad simulation - beside the yield it makes, so the gate weighs a
+site's next ring by what it returns against what holding it costs:
+- **Measured live**: every `[Casualty]` tagged with its activity, area, hostile, and the soldier's health, armour and
+  kit at contact; the platoon leader shown each area's loss rate and yield a soldier-hour, computed, never worked out.
+- **Predicted by the evals**: the combat matrix and squad simulation cost an activity in a ground before the force
+  takes it on - the mine's galleries at night, a chunk past the wall - so a ring is taken in when its yield outruns its
+  price, and given up (RECONSTITUTE's contraction) when the price outruns the yield.
+- **Over-extension** is the area's price rising faster than its yield: a ring whose holding draws soldiers from the
+  rings inside it.
+
 ### Pause, fall back, and holding a level
 **Three responses, by how far a class has fallen:**
 

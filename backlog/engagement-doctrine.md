@@ -45,6 +45,22 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
 - **After dark:** no soldier walks the surface on an errand - a respawn's link-up (built), a walk to a
   workshop or the stockpile - as no resupply walk does (`SoldierRunner.nightSupply`).
 
+## The exchange, not thresholds (operator, 2026-11-21)
+Each death so far got a rule of its own (`HURT_HEALTH`, `ARCHER_CLOSE_HEALTH`, the health a contact was met at); a
+piece of armour breaking mid-fight is one no threshold sees. In their place, one pure decision (`bot.Engagement`, as
+`Strike` is) over the exchange: its time to kill against its time to die - the approach under fire counted, its armour
+and each piece's wear, its weapon's and the hostile's damage a second - and what breaking off costs (shots taken
+running, slower in water). Its states: **engage** (melee, or the bow with arrows where that trades better), **hold or
+cover** (can't win from here, can hold - a creeper in a shaft, no arrows), **withdraw** (loses the exchange and breaking
+off costs less than finishing: out of contact, shelter, eat - 1.6 s an item - and heal, fast at full food), **re-engage**
+(healed past its line, the hostile still in the way of the work or the squad), and **decline** (not prepared - no weapon,
+no armour, ground unsafe - said up the chain, not fought).
+
+**Deaths as a check on the model, not a case each.** Each death is read for what the evals lack - is that dimension
+(the armour's wear, water, a shaft, eating time, regeneration) in the battle simulation at all? - and the missing
+dimension is what's added, the matrix grown by it, not a scenario to pass. Not every battle is won: the measure is the
+war's (backlog/sites.md, losses priced in) - the loss rate an activity carries against its yield.
+
 ## Phases
 1. The matrix at contact and bypass in routing: a creeper on the route gone round is built
    (docs/military-doctrine.md, contact). Left: a hostile not on the path and not targeting
