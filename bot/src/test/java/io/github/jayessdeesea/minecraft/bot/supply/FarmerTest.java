@@ -721,4 +721,62 @@ class FarmerTest {
         }
         assertTrue(dug, "the roof dug from beside the hole: " + farmer.earthworkStand());
     }
+
+    /**
+     * A heap looked at from far off - nothing in reach of it from there - isn't set aside: the farmer near it again cuts
+     * it. Live (field592), Olga set the chunk farm's heaps aside from 70 blocks off, at the camp, and none was cut.
+     */
+    @Test
+    void aHeapLookedAtFromFarOffIsNotSetAside() {
+        List<BlockPos> plot = new ArrayList<>();
+        for (int x = -4; x <= 10; x++) {
+            for (int z = -7; z <= 7; z++) {
+                plot.add(new BlockPos(x, GROUND, z));
+            }
+        }
+        BlockPos earth = new BlockPos(3, GROUND + 1, 0);
+        WorldView field = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos b = new BlockPos(x, y, z);
+                return y <= GROUND && !b.equals(WATER) || b.equals(earth);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(earth) || y <= GROUND && !isFarmland(x, y, z) && !new BlockPos(x, y, z).equals(WATER);
+            }
+
+            @Override
+            public boolean isFarmland(int x, int y, int z) {
+                return plot.contains(new BlockPos(x, y, z)) && !new BlockPos(x, y + 1, z).equals(earth);
+            }
+
+            @Override
+            public OptionalInt wheatAge(int x, int y, int z) {
+                return isFarmland(x, y - 1, z) ? OptionalInt.of(3) : OptionalInt.empty();
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(WATER);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Farmer farmer = new Farmer("Olga", session, inventory, new HashSet<>());
+        // Far off - a hollow it can't climb out of, so nothing reaches from there - for four looks and more.
+        for (int tick = 0; tick < 6 * Clearer.COOLDOWN_TICKS; tick++) {
+            farmer.tick(new Position(3.5, GROUND - 20, 70.5), field, Optional.of(new FarmPlan(WATER, plot)), true);
+        }
+        boolean cut = false;
+        for (int tick = 0; tick < 4 * Clearer.COOLDOWN_TICKS && !cut; tick++) {
+            farmer.tick(new Position(3.5, GROUND + 1, 3.5), field, Optional.of(new FarmPlan(WATER, plot)), true);
+            cut = farmer.earthworkStand().filter(s -> Math.hypot(s.x() - 3.5, s.z() - 0.5) <= 2).isPresent();
+        }
+        assertTrue(cut, "the heap cut once near it: " + farmer.earthworkStand());
+    }
 }

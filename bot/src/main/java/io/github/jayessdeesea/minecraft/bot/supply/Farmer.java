@@ -412,6 +412,8 @@ public final class Farmer {
     private BlockPos lastHarvest;
     private int restarts;
     private final Setbacks<BlockPos> passedOver = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
+    /** How near a heap a look that reaches nothing sets it aside: from farther, the look says nothing of the heap. */
+    static final double SET_ASIDE_NEAR = 6;
     /** Earthwork heaps nothing reached, set aside so the next is cut: a heap out of reach holds up no other. */
     private final Setbacks<BlockPos> heapsSetAside = new Setbacks<>(PASS_OVER_TICKS, 16L * PASS_OVER_TICKS);
 
@@ -696,7 +698,10 @@ public final class Farmer {
             if (unburier.looks() != earthworkLooks && unburier.idleReason().filter(r -> r.startsWith("nothing in reach")).isPresent()) {
                 onFarmland = !onFarmland; // the next look from the farmland too, then off it again
                 // Looked at from off the farmland and from on it, and nothing in reach: the heap set aside for the next.
-                if (!onFarmland) {
+                // Only from near it: from far off, nothing is in reach of a heap it could cut from its foot - live (field592)
+                // Olga set the chunk farm's heaps aside from 70 blocks off, at the camp, and none was cut.
+                double off = earthwork.stream().mapToDouble(b -> Math.hypot(b.x() + 0.5 - soldier.x(), b.z() + 0.5 - soldier.z())).min().orElse(0);
+                if (!onFarmland && off <= SET_ASIDE_NEAR) {
                     earthwork.forEach(b -> heapsSetAside.failed(b, ticks, "the farm's earthwork heap at " + earthwork.getFirst()
                             + " out of reach from off the farmland and on it"));
                     LOG.info("{} sets aside the farm's earthwork heap of {} at {} - nothing in reach of it from off the farmland or on it, "
