@@ -224,11 +224,11 @@ The log lines to read first: `[Casualty]`, each death with the soldier's last se
 each contact's hostiles, the soldier's kit and the rule that chose its response (§ 8);
 `[Alert]`, a soldier stuck in place for a minute other than while its squad hides or sleeps (§ 3); `[AAR]`, each dawn's review of the
 day before (§ 17); `[Scoreboard]`, that day's score beside the day before's; and `[Ledger]`, every ten minutes
-what each kind of act was planned to take against what it took - a route's ticks a step planned, a farmer's ticks a crop while its plot is ripe and ticks a cell sown while it carries
-seeds with farmland bare - the same line the
+what each kind of act was planned to take against what it took - a route's ticks a step planned; a farmer's crop-ticks a crop - each ripe crop of its plot a tick, over those brought in:
+how long one stands ripe - and cell-ticks a cell sown, each bare cell a tick while it carries seeds - the same line the
 squad simulation logs, so the two can be set side by side (`app.Ledger`; backlog/simulator-fidelity.md); and
 `[Fidelity]`, a kind's spell more than 1.5 times off the simulation's rate either way (`app.Ledger.BASELINES`: a flat
-walk's 4.9 ticks a step, a ripe field's 24.5 a crop, a tilled field's 5.6 a cell) - the game and the simulation parting. A soldier stuck a minute has its
+walk's 4.9 ticks a step, 87.7 crop-ticks a crop, 1045 cell-ticks a cell) - the game and the simulation parting. A soldier stuck a minute has its
 ground kept for the simulation (`[World]`, `garrison-state/worlds/`): `SimWorlds.replay` makes it a scenario's terrain. The scoreboard's
 history, a line a day across restarts, is `garrison-state/scoreboard.jsonl`.
 

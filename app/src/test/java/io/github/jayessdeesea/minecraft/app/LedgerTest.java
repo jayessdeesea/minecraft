@@ -41,7 +41,7 @@ class LedgerTest {
         slow.route(100, 1000, 0);
         assertEquals("route: 10.00 ticks a unit over 1, the simulation's 4.90 - 2.0x off", slow.fidelity().orElseThrow());
         Ledger slowFarm = new Ledger();
-        slowFarm.record("harvest", 10, 1000, 0);
-        assertEquals("harvest: 100.00 ticks a unit over 1, the simulation's 24.50 - 4.1x off", slowFarm.fidelity().orElseThrow());
+        slowFarm.record("harvest", 10, 4000, 0);
+        assertEquals("harvest: 400.00 ticks a unit over 1, the simulation's 87.70 - 4.6x off", slowFarm.fidelity().orElseThrow());
     }
 }

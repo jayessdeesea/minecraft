@@ -349,13 +349,12 @@ public final class Farmer {
      * so a farmer walking a row brings it in: in the squad simulation, stopping at a stand for each crop, 25 a minute.
      */
     private void harvestInPassing(Position soldier, WorldView world, FarmPlan farm) {
-        boolean ripe = farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE);
-        if (ripe) {
-            ripeTicks++;
-        }
-        if (inventory.count(ItemClass.SEEDS) > 0 && farm.plot().stream().anyMatch(c -> world.isFarmland(c.x(), c.y(), c.z())
-                && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z()))) {
-            bareTicks++;
+        // Crop-ticks: each ripe crop of its plot a tick - over the crops brought in, how long one stands ripe before it's
+        // in, whatever the field's size or how fast it grows (Little's law). So too each bare cell, with seeds carried.
+        ripeTicks += farm.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE).count();
+        if (inventory.count(ItemClass.SEEDS) > 0) {
+            bareTicks += farm.plot().stream().filter(c -> world.isFarmland(c.x(), c.y(), c.z())
+                    && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z())).count();
         }
         if (ticks % PASSING_TICKS != 0) {
             return;
@@ -402,11 +401,15 @@ public final class Farmer {
                 });
     }
 
-    /** The squad simulation's rate on a ripe field (TaskOrganisationSimulationTest): ticks a crop, 49 a minute - the ledger's baseline. */
-    public static final double SIM_TICKS_A_CROP = 24.5;
-    /** The squad simulation's rate on a tilled field, seeds carried (TaskOrganisationSimulationTest): ticks a cell, 213 a minute. */
-    public static final double SIM_TICKS_A_SOWING = 5.6;
-    private int harvested, ripeTicks, sown, bareTicks;
+    /**
+     * The ledger's baselines, measured by the same counters in the squad simulation (TaskOrganisationSimulationTest's
+     * tilled field kept for a ledger spell, its wheat ripening and resown): the crop-ticks a crop stands ripe before
+     * it's brought in, and the cell-ticks a cell stands bare, seeds carried, before it's sown.
+     */
+    public static final double SIM_TICKS_A_CROP = 87.7;
+    public static final double SIM_TICKS_A_SOWING = 1045;
+    private int harvested, sown;
+    private long ripeTicks, bareTicks;
     /** What the field job under way uses: a hoe to till, seeds to sow - none for a gate opened. */
     private ItemClass fieldItem;
 
@@ -418,12 +421,12 @@ public final class Farmer {
     public synchronized java.util.Map<String, int[]> takeYields() {
         java.util.Map<String, int[]> taken = new java.util.TreeMap<>();
         if (harvested > 0) {
-            taken.put("harvest", new int[]{harvested, ripeTicks});
+            taken.put("harvest", new int[]{harvested, (int) Math.min(Integer.MAX_VALUE, ripeTicks)});
             harvested = 0;
             ripeTicks = 0;
         }
         if (sown > 0) {
-            taken.put("sowing", new int[]{sown, bareTicks});
+            taken.put("sowing", new int[]{sown, (int) Math.min(Integer.MAX_VALUE, bareTicks)});
             sown = 0;
             bareTicks = 0;
         }

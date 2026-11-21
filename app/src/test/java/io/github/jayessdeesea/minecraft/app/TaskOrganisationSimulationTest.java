@@ -793,7 +793,7 @@ class TaskOrganisationSimulationTest {
                 [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
                 List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}), "0,0");
         long crops = 96;
-        long start = clock.millis();
+        long start = clock.millis(), start0 = start;
         long firstAt = -1, lastAt = -1, brought = 0;
         for (int step = 0; step < 20 * 60; step++) {
             clock.advance(1_000);
@@ -810,6 +810,7 @@ class TaskOrganisationSimulationTest {
             }
         }
         double perMinute = brought * 60_000.0 / Math.max(1, lastAt - firstAt);
+        clock.advance(12 * 60_000L - (clock.millis() - start0));
         System.out.printf(java.util.Locale.ROOT, "[Harvest] %d of %d crops, %.0f s from the first to the last: %.0f a minute%n",
                 brought, crops, (lastAt - firstAt) / 1000.0, perMinute);
         assertTrue(brought > 0, "nothing harvested");
@@ -833,6 +834,7 @@ class TaskOrganisationSimulationTest {
                 List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.SEEDS), 64},
                         new int[]{41, SimServer.itemOf(ItemClass.SEEDS), 64}), "0,0");
         long cells = 96;
+        long start0 = clock.millis();
         long firstAt = -1, lastAt = -1, sown = 0;
         for (int step = 0; step < 20 * 60; step++) {
             clock.advance(1_000);
@@ -848,6 +850,7 @@ class TaskOrganisationSimulationTest {
                 break;
             }
         }
+        clock.advance(12 * 60_000L - (clock.millis() - start0));
         System.out.printf(java.util.Locale.ROOT, "[Sowing] %d of %d cells, %.0f s from the first to the last: %.0f a minute%n",
                 sown, cells, (lastAt - firstAt) / 1000.0, sown * 60_000.0 / Math.max(1, lastAt - firstAt));
         assertTrue(sown > 0, "nothing sown");
