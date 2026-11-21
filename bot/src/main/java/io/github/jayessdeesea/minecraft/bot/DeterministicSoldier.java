@@ -408,25 +408,28 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         if (hurt.getAndSet(false) || !arrows.isEmpty()) {
             underFireTicks = UNDER_FIRE_TICKS;
         }
+        // The hostiles near it looked up once a tick, out to the furthest any rule below looks, and each rule takes those within
+        // its own reach: commit 960's profile, four lookups a tick each walking every hostile tracked, a tenth of the garrison.
+        List<TrackedEntity> near = world.nearbyHostiles(gait.position, FLED_PAST);
         // A soldier with a bow reaches further than a sword: what it can see within bow range is contact.
-        List<TrackedEntity> threats = visible(world, world.nearbyHostiles(gait.position, canShoot() ? BOW_RANGE : CONTACT_RADIUS));
+        List<TrackedEntity> threats = visible(world, within(near, canShoot() ? BOW_RANGE : CONTACT_RADIUS));
         // An archer in sight within ARCHER_ENGAGE, to one armed for melee: closed on, not left to shoot when it will
         // (operator, 2026-11-20). Live, pillagers floating in a pond held soldiers off their work, fought by none.
         if (threats.isEmpty() && armedForMelee()) {
-            threats = visible(world, world.nearbyHostiles(gait.position, ARCHER_ENGAGE)).stream().filter(TrackedEntity::shoots).toList();
+            threats = visible(world, within(near, ARCHER_ENGAGE).stream().filter(TrackedEntity::shoots).toList());
         }
         // One fleeing an archer keeps fleeing it till well past its range, not back into it as it leaves contact: in the
         // combat eval matrix a bare hand sprinted to 9 off, a skeleton's arrows reaching 15, and walked back to its order.
         if (threats.isEmpty() && fleeingFrom != -1) {
             int from = fleeingFrom;
-            threats = world.nearbyHostiles(gait.position, FLED_PAST).stream().filter(t -> t.entityId() == from).toList();
+            threats = near.stream().filter(t -> t.entityId() == from).toList();
             if (threats.isEmpty()) {
                 fleeingFrom = -1;
             }
         }
         if (threats.isEmpty() && underFireTicks > 0) {
             // Hit with nothing in reach: someone is shooting - find the shooter.
-            threats = visible(world, world.nearbyHostiles(gait.position, UNDER_FIRE_RADIUS));
+            threats = visible(world, within(near, UNDER_FIRE_RADIUS));
         }
         // An enderman only in self-defense: just hit, and it at hand - a swing at one passing provokes it. Live
         // (field451), Eli at the mine's bottom swung at three in eight seconds, and was killed by them.
@@ -595,6 +598,19 @@ public final class DeterministicSoldier extends Mover implements Soldier {
 
         gait.fall(world);
         return attack;
+    }
+
+    /** Those of {@code near} - nearest first - within {@code radius} of the soldier. */
+    private List<TrackedEntity> within(List<TrackedEntity> near, double radius) {
+        double r2 = radius * radius;
+        List<TrackedEntity> in = new java.util.ArrayList<>(near.size());
+        for (TrackedEntity t : near) {
+            double dx = t.position().x() - gait.position.x(), dy = t.position().y() - gait.position.y(), dz = t.position().z() - gait.position.z();
+            if (dx * dx + dy * dy + dz * dz <= r2) {
+                in.add(t);
+            }
+        }
+        return in;
     }
 
     /** How far a soldier fleeing an archer runs before it's fled: past a skeleton's 15 blocks of range. */

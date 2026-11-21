@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.bot.world;
 
 import io.github.jayessdeesea.minecraft.command.Position;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -89,12 +90,20 @@ public final class EntityTracker {
     public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
         double radiusSquared = radius * radius;
         double atHandSquared = Math.min(radius, AT_HAND) * Math.min(radius, AT_HAND);
-        return hostiles.entrySet().stream()
-                .filter(e -> distanceSquared(center, e.getValue().position)
-                        <= (HostileMobRegistry.fightsOnlyAtHand(e.getValue().typeId) ? atHandSquared : radiusSquared))
-                .map(e -> new TrackedEntity(e.getKey(), e.getValue().typeId, e.getValue().position))
-                .sorted(Comparator.comparingDouble(entity -> distanceSquared(center, entity.position())))
-                .toList();
+        // A loop with a cheap reject on each axis first, the few within sorted - not a stream over every hostile tracked
+        // with a sort: commit 960's profile, that a tenth of the garrison's time.
+        List<TrackedEntity> near = new ArrayList<>();
+        for (Map.Entry<Integer, Entry> e : hostiles.entrySet()) {
+            Position p = e.getValue().position;
+            if (Math.abs(p.x() - center.x()) > radius || Math.abs(p.z() - center.z()) > radius || Math.abs(p.y() - center.y()) > radius) {
+                continue;
+            }
+            if (distanceSquared(center, p) <= (HostileMobRegistry.fightsOnlyAtHand(e.getValue().typeId) ? atHandSquared : radiusSquared)) {
+                near.add(new TrackedEntity(e.getKey(), e.getValue().typeId, p));
+            }
+        }
+        near.sort(Comparator.comparingDouble(entity -> distanceSquared(center, entity.position())));
+        return near;
     }
 
     /**
