@@ -20,15 +20,13 @@ world wrong is proven wrong.
    the gaps in backlog/physics-fidelity.md, each when it costs something. The squad simulation times a dig by the tool in hand, as the
    server does (`SimItems.dugTooFast`); left of the hotbar: a task keeping the right tool ready - the hoe or an empty
    hand to harvest, the sword within reach - measured in the time it costs.
-2. **A prediction ledger.** Built for routes (`app.Ledger`, `[Ledger]` every ten minutes: a route's ticks a step
-   planned, from its first route to the goal to standing there). Left, the other kinds: the blocks a route places, a
-   dig's time,
-   a placement accepted or refused, a chest's open and what it held, a harvest's yield, a task's yield
+2. **A prediction ledger.** Built for routes, harvests and sowing (`app.Ledger`, `[Ledger]` every ten minutes; a
+   farmer's kinds from `Farmer.takeYields`). Left, the other kinds: felling and quarrying, the blocks a route places,
+   a dig's time, a placement accepted or refused, a chest's open and what it held, a task's yield
    for the time spent (docs/conventions.md, Check the outcome). The same ledger runs in the squad
    simulation. Its rows are the comparison.
-3. **A divergence check.** Built for routes: a spell's ticks a step planned, over all its routes, more than 1.5x off
-   the simulation's flat walk (`bot.Trip.FLAT_TICKS_A_STEP`, measured by `DeterministicSoldierTest`) is logged
-   `[Fidelity]`. Left: the same for the other kinds, against the simulation over the same kind of ground. Per kind of act, the live ledger set against the simulation's over the same
+3. **A divergence check.** Built for the ledger's kinds: a spell's rate more than 1.5x off the simulation's
+   (`Ledger.BASELINES`) is logged `[Fidelity]`. Left: the same for the other kinds, against the simulation over the same kind of ground. Per kind of act, the live ledger set against the simulation's over the same
    kind of ground: a rate off by more than a set factor (say 1.5x), or an outcome the simulation never
    produces (a refusal, a block that came back), is logged loud (`[Fidelity]`) with its examples, and
    the dawn's after-action review lists the worst. Each is a lead for item 1.

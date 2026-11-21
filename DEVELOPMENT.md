@@ -223,10 +223,11 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 The log lines to read first: `[Casualty]`, each death with the soldier's last seconds (§ 6);
 `[Alert]`, a soldier stuck in place for a minute other than while its squad hides or sleeps (§ 3); `[AAR]`, each dawn's review of the
 day before (§ 17); `[Scoreboard]`, that day's score beside the day before's; and `[Ledger]`, every ten minutes
-what each kind of act was planned to take against what it took - a route's ticks a step planned, a farmer's ticks a crop while its plot is ripe - the same line the
+what each kind of act was planned to take against what it took - a route's ticks a step planned, a farmer's ticks a crop while its plot is ripe and ticks a cell sown while it carries
+seeds with farmland bare - the same line the
 squad simulation logs, so the two can be set side by side (`app.Ledger`; backlog/simulator-fidelity.md); and
-`[Fidelity]`, a spell's routes walked more than 1.5 times off the simulation's flat walk (4.9 ticks a step,
-`bot.Trip.FLAT_TICKS_A_STEP`) either way - the game and the simulation parting. A soldier stuck a minute has its
+`[Fidelity]`, a kind's spell more than 1.5 times off the simulation's rate either way (`app.Ledger.BASELINES`: a flat
+walk's 4.9 ticks a step, a ripe field's 24.5 a crop, a tilled field's 5.6 a cell) - the game and the simulation parting. A soldier stuck a minute has its
 ground kept for the simulation (`[World]`, `garrison-state/worlds/`): `SimWorlds.replay` makes it a scenario's terrain. The scoreboard's
 history, a line a day across restarts, is `garrison-state/scoreboard.jsonl`.
 

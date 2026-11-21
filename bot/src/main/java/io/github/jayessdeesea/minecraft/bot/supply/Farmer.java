@@ -353,6 +353,10 @@ public final class Farmer {
         if (ripe) {
             ripeTicks++;
         }
+        if (inventory.count(ItemClass.SEEDS) > 0 && farm.plot().stream().anyMatch(c -> world.isFarmland(c.x(), c.y(), c.z())
+                && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z()))) {
+            bareTicks++;
+        }
         if (ticks % PASSING_TICKS != 0) {
             return;
         }
@@ -367,24 +371,63 @@ public final class Farmer {
                     session.finishDigging(crop.x(), crop.y(), crop.z());
                     harvested++;
                 });
+        sowInPassing(ex, ey, ez, world, farm);
+    }
+
+    /** Ticks a cell sown in passing is left for the server's answer before it's sown again. */
+    static final int SOWN_ANSWER_TICKS = 20;
+    /** Cells sown in passing, the tick each was sent: not sent again till the server's had time to answer. */
+    private final java.util.Map<BlockPos, Long> sownAt = new java.util.HashMap<>();
+
+    /**
+     * With seeds already in hand, the bare farmland of its plot within reach sown as it goes, one each
+     * {@link #PASSING_TICKS} (operator, 2026-11-20: tilling and sowing the way harvesting is done): a farmer walking to
+     * the next cell to sow plants every one it passes. Seeds aren't taken in hand for it - the hand isn't swapped about.
+     */
+    private void sowInPassing(double ex, double ey, double ez, WorldView world, FarmPlan farm) {
+        if (!inHand(ItemClass.SEEDS)) {
+            return;
+        }
+        sownAt.values().removeIf(at -> ticks - at > SOWN_ANSWER_TICKS);
+        farm.plot().stream()
+                .filter(c -> world.isFarmland(c.x(), c.y(), c.z()) && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty()
+                        && !world.isSolid(c.x(), c.y() + 1, c.z()) && !sownAt.containsKey(c) && (c.equals(claimed) || !claims.contains(c)))
+                .filter(c -> Math.pow(c.x() + 0.5 - ex, 2) + Math.pow(c.y() + 1 - ey, 2) + Math.pow(c.z() + 0.5 - ez, 2)
+                        <= PASSING_REACH * PASSING_REACH)
+                .min(java.util.Comparator.comparingDouble(c -> Math.pow(c.x() + 0.5 - ex, 2) + Math.pow(c.z() + 0.5 - ez, 2)))
+                .ifPresent(c -> {
+                    session.useBlockFace(c.x(), c.y(), c.z(), BlockFace.UP);
+                    sownAt.put(c, ticks);
+                    sown++;
+                });
     }
 
     /** The squad simulation's rate on a ripe field (TaskOrganisationSimulationTest): ticks a crop, 49 a minute - the ledger's baseline. */
     public static final double SIM_TICKS_A_CROP = 24.5;
-    private int harvested, ripeTicks;
+    /** The squad simulation's rate on a tilled field, seeds carried (TaskOrganisationSimulationTest): ticks a cell, 213 a minute. */
+    public static final double SIM_TICKS_A_SOWING = 5.6;
+    private int harvested, ripeTicks, sown, bareTicks;
+    /** What the field job under way uses: a hoe to till, seeds to sow - none for a gate opened. */
+    private ItemClass fieldItem;
 
     /**
-     * The crops brought in, and the ticks its plot had ripe wheat, since the last taken - for the ledger's harvest
-     * (backlog/simulator-fidelity.md): empty while none's been brought in.
+     * What it's brought about since last taken, for the ledger (backlog/simulator-fidelity.md), each kind's units and
+     * the ticks there was work of that kind: "harvest", crops brought in over ticks its plot had ripe wheat; "sowing",
+     * cells sown over ticks it carried seeds with farmland bare. A kind with nothing done isn't there.
      */
-    public synchronized java.util.Optional<int[]> takeHarvest() {
-        if (harvested == 0) {
-            return java.util.Optional.empty();
+    public synchronized java.util.Map<String, int[]> takeYields() {
+        java.util.Map<String, int[]> taken = new java.util.TreeMap<>();
+        if (harvested > 0) {
+            taken.put("harvest", new int[]{harvested, ripeTicks});
+            harvested = 0;
+            ripeTicks = 0;
         }
-        int[] taken = {harvested, ripeTicks};
-        harvested = 0;
-        ripeTicks = 0;
-        return java.util.Optional.of(taken);
+        if (sown > 0) {
+            taken.put("sowing", new int[]{sown, bareTicks});
+            sown = 0;
+            bareTicks = 0;
+        }
+        return taken;
     }
 
     public synchronized void tick(Position soldier, WorldView world, Optional<FarmPlan> farm, boolean free) {
@@ -423,6 +466,10 @@ public final class Farmer {
                 case Digger.Progress.Failed(String why) -> fail(why);
             }
             return;
+        }
+        if (fieldWork != null && fieldItem != null && inventory.count(fieldItem) == 0) {
+            // Its seeds all sown in passing on the way: the job's over, not failed - the next one takes what's carried.
+            endFieldWork();
         }
         if (fieldWork != null) {
             switch (fieldWork.tick()) {
@@ -577,8 +624,10 @@ public final class Farmer {
             LOG.info("{} harvests the wheat at {}", name, crop);
             return;
         }
+        // The nearest: sown in passing on the way, a farmer going from one to the next sweeps the field.
         Optional<BlockPos> bare = plot.stream().filter(c -> world.isFarmland(c.x(), c.y(), c.z())
-                && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z())).findFirst();
+                && world.wheatAge(c.x(), c.y() + 1, c.z()).isEmpty() && !world.isSolid(c.x(), c.y() + 1, c.z()))
+                .min(java.util.Comparator.comparingDouble(c -> Math.hypot(c.x() + 0.5 - soldier.x(), c.z() + 0.5 - soldier.z())));
         if (bare.isPresent() && inventory.count(ItemClass.SEEDS) > 0) {
             BlockPos cell = bare.get();
             start(cell, ItemClass.SEEDS, "plant seeds at " + cell, () -> world.wheatAge(cell.x(), cell.y() + 1, cell.z()).isPresent());
@@ -607,14 +656,17 @@ public final class Farmer {
 
     /** A job on {@code cell}: stand on it, {@code item} in hand, use it on the cell's top - done when {@code done}. */
     private void start(BlockPos cell, ItemClass item, String job, BooleanSupplier done) {
+        fieldItem = item;
         claimed = cell;
         claims.add(cell);
         standAt = new Position(cell.x() + 0.5, cell.y() + 1, cell.z() + 0.5);
+        // In hand before the walk, so seeds are sown in passing on the way (sowInPassing).
         fieldWork = new Script(name, List.of(
-                new Step("walk to " + cell, () -> {
-                }, new Expect("standing on " + cell, () -> on(cell)), Math.max(WALK_TICKS, Digger.walkTicks(soldier, cell))),
                 new Step(item + " in hand", () -> inHand(item), () -> takeInHand(item),
                         new Expect(item + " in hand", () -> inHand(item)), ANSWER_TICKS),
+                new Step("walk to " + cell, done, () -> {
+                }, new Expect("standing on " + cell + ", or its job done in passing", () -> on(cell) || done.getAsBoolean()),
+                        Math.max(WALK_TICKS, Digger.walkTicks(soldier, cell))),
                 new Step(job, done, () -> {
                     if (item == ItemClass.HOE) {
                         // A hoe tills only under open air: grass or a flower on the cell is broken
@@ -624,6 +676,7 @@ public final class Farmer {
                         session.finishDigging(cell.x(), cell.y() + 1, cell.z());
                     }
                     session.useBlockFace(cell.x(), cell.y(), cell.z(), BlockFace.UP);
+                    sown += item == ItemClass.SEEDS ? 1 : 0;
                 }, new Expect(job + " done", done), ANSWER_TICKS)));
     }
 
@@ -687,6 +740,7 @@ public final class Farmer {
 
     private void endFieldWork() {
         fieldWork = null;
+        fieldItem = null;
         standAt = null;
         if (claimed != null) {
             claims.remove(claimed);

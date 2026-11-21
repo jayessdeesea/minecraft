@@ -1047,7 +1047,10 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    within 4 blocks of its eyes as it passes, one every second tick (`Farmer.harvestInPassing`; operator, 2026-11-20:
    harvest moving forward): in the squad simulation a ripe field of 96 came in at 49 a minute, against 25 stopping at
    each crop.
-4. Plants seeds on bare farmland.
+4. Plants seeds on bare farmland, the nearest first, seeds in hand before it walks - and with seeds in hand, whatever
+   its job, sows the bare farmland of its plot within 4 blocks as it passes, one every second tick
+   (`Farmer.sowInPassing`): in the squad simulation a tilled field of 96 was sown at 213 a minute, against 45 stopping
+   at each cell. Its seeds all sown on the way, the job's over, not failed.
 5. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills
    only under open air.
 6. With no seeds, breaks grass for them, since one in eight drops some - out to 32 blocks, as a

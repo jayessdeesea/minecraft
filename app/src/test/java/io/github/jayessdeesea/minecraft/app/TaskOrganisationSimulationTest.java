@@ -814,4 +814,42 @@ class TaskOrganisationSimulationTest {
                 brought, crops, (lastAt - firstAt) / 1000.0, perMinute);
         assertTrue(brought > 0, "nothing harvested");
     }
+
+    /** The ripe field's ground, tilled and bare: farmland round the pond, nothing on it. */
+    private static int bareFieldByThePond(int x, int y, int z) {
+        int state = ripeFieldByThePond(x, y, z);
+        return state == SimServer.WHEAT_RIPE ? SimServer.AIR : state;
+    }
+
+    /**
+     * How fast a farmer sows a tilled field (operator, 2026-11-20: tilling and sowing in passing, as harvesting): the
+     * seconds from its first seed to its last, printed as cells a minute - the eval's measure of sowing.
+     */
+    @Test
+    void howFastAFarmerSowsATilledField() {
+        SimClock clock = new SimClock();
+        SimServer server = run(clock, TaskOrganisationSimulationTest::bareFieldByThePond, """
+                [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
+                List.<int[]>of(new int[]{39, SimServer.itemOf(ItemClass.HOE), 1}, new int[]{40, SimServer.itemOf(ItemClass.SEEDS), 64},
+                        new int[]{41, SimServer.itemOf(ItemClass.SEEDS), 64}), "0,0");
+        long cells = 96;
+        long firstAt = -1, lastAt = -1, sown = 0;
+        for (int step = 0; step < 20 * 60; step++) {
+            clock.advance(1_000);
+            long now = server.log.stream().filter(l -> l.contains(" sowed ")).count();
+            if (now > 0 && firstAt < 0) {
+                firstAt = clock.millis();
+            }
+            if (now > sown) {
+                lastAt = clock.millis();
+                sown = now;
+            }
+            if (sown >= cells) {
+                break;
+            }
+        }
+        System.out.printf(java.util.Locale.ROOT, "[Sowing] %d of %d cells, %.0f s from the first to the last: %.0f a minute%n",
+                sown, cells, (lastAt - firstAt) / 1000.0, sown * 60_000.0 / Math.max(1, lastAt - firstAt));
+        assertTrue(sown > 0, "nothing sown");
+    }
 }

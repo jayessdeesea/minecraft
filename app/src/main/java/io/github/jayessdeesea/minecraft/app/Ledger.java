@@ -87,15 +87,11 @@ final class Ledger {
 
     /**
      * Each kind's rate in the squad simulation, ticks a unit: a route's step on flat open ground (bot.Trip), a crop
-     * brought in off a ripe field (bot.supply.Farmer) - what the live rate is set against.
+     * brought in off a ripe field and a cell sown on a tilled one (bot.supply.Farmer) - what the live rate is set against.
      */
     static final Map<String, Double> BASELINES = Map.of("route", io.github.jayessdeesea.minecraft.bot.Trip.FLAT_TICKS_A_STEP,
-            "harvest", io.github.jayessdeesea.minecraft.bot.supply.Farmer.SIM_TICKS_A_CROP);
-
-    /** Crops brought in over ticks the plot had ripe wheat, at {@code now}. */
-    synchronized void harvest(int crops, int ripeTicks, long now) {
-        record("harvest", crops, ripeTicks, now);
-    }
+            "harvest", io.github.jayessdeesea.minecraft.bot.supply.Farmer.SIM_TICKS_A_CROP,
+            "sowing", io.github.jayessdeesea.minecraft.bot.supply.Farmer.SIM_TICKS_A_SOWING);
 
     /** The quarter, median and three-quarter marks of what each act took a unit planned, if any was planned. */
     static Optional<double[]> rates(List<double[]> acts) {

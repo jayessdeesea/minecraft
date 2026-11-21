@@ -7983,7 +7983,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // the cell is broken first - it goes at a touch, and the server won't put a block where one is: live, a
             // soldier pillaring out of a pocket from a torch's cell jumped in place for good.
             soldier.takeTrip().ifPresent(t -> ledger.route(t.planned(), t.ticks(), clockwork.millis()));
-            farmer.takeHarvest().ifPresent(h -> ledger.harvest(h[0], h[1], clockwork.millis()));
+            farmer.takeYields().forEach((kind, y) -> ledger.record(kind, y[0], y[1], clockwork.millis()));
             soldier.takePlacement().filter(cell -> !bodyIn(name, cell)).filter(cell -> !refusedStep(name, cell)).ifPresent(cell -> {
                 if (world.isTorch(cell.x(), cell.y(), cell.z())) {
                     session.startDigging(cell.x(), cell.y(), cell.z());
