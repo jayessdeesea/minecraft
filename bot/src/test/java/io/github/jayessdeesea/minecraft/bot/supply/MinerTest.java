@@ -822,4 +822,26 @@ class MinerTest {
         assertTrue(dug.contains(HEAD), "the chest in the head cut");
         assertTrue(dug.contains(stairs.step(0)), "and the first step after it");
     }
+
+    /**
+     * And with the ground two out on every side built on - live (field589), the stockpile's chests and table round
+     * Bravo's head - the chest is cut from ground a block out.
+     */
+    @Test
+    void aChestInTheStairsHeadIsCutFromABlockOutWhenTwoOutIsBuiltOn() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        chests.add(HEAD);
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                if (Math.max(Math.abs(dx), Math.abs(dz)) == 2) {
+                    placed.add(HEAD.offset(dx, 0, dz));
+                    placed.add(HEAD.offset(dx, 1, dz));
+                }
+            }
+        }
+
+        dig(stairs, 4000, new Inventory(), new Position(1.5, GROUND, 1.5));
+
+        assertTrue(dug.contains(HEAD), "the chest in the head cut");
+    }
 }

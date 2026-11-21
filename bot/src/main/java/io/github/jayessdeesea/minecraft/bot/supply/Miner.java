@@ -153,24 +153,32 @@ public final class Miner {
 
     /**
      * The cut that opens {@code stairs}' head when something stands in it or over it: the head and the cell over it,
-     * stood from beside the shaft - two out, on ground - since the head is where the first step is cut from. Empty with
-     * the head open, or no ground beside to stand on, or for a well, whose head is its walk in.
+     * stood from ground beside it - the nearest within two, a block up or down - since the head is where the first step
+     * is cut from. Empty with the head open, or no ground beside to stand on, or for a well, whose head is its walk in.
+     * Live (field589), ground two out on every side of Bravo's head stood under the stockpile's chests and table.
      */
     static Optional<Staircase.Cut> headCut(WorldView world, Staircase stairs) {
         BlockPos head = stairs.head();
         if (stairs.well() || !world.isSolid(head.x(), head.y(), head.z()) && !world.isSolid(head.x(), head.y() + 1, head.z())) {
             return Optional.empty();
         }
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                BlockPos stand = head.offset(dx, 0, dz);
-                if (Math.max(Math.abs(dx), Math.abs(dz)) == 2 && io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.standable(world, stand)) {
-                    return Optional.of(new Staircase.Cut(stand, List.of(head.offset(0, 1, 0), head), -1));
+        for (int out = 1; out <= 2; out++) {
+            for (int dy : new int[]{0, 1, -1}) {
+                for (int dx = -out; dx <= out; dx++) {
+                    for (int dz = -out; dz <= out; dz++) {
+                        BlockPos stand = head.offset(dx, dy, dz);
+                        if (Math.max(Math.abs(dx), Math.abs(dz)) == out && io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.standable(world, stand)) {
+                            return Optional.of(new Staircase.Cut(stand, List.of(head.offset(0, 1, 0), head), -1));
+                        }
+                    }
                 }
             }
         }
         return Optional.empty();
     }
+
+    /** The head it last said it found shut with nowhere to cut it from - said once a head. */
+    private BlockPos headShutSaid;
 
     /** The first step of {@code stairs} not yet cut, or empty when all are. */
     public static OptionalInt firstUncut(WorldView world, Staircase stairs) {
@@ -327,6 +335,11 @@ public final class Miner {
         // cut's stand is the step over it and the first's is the head. Live (field585-588), a chest in Bravo's stair head
         // at (-10, 64, 7) shut the mine, the squadmates sent down it waiting at the head, inside the chest, "no route".
         Optional<Staircase.Cut> head = soldier.y() >= stairs.head().y() - 1 ? headCut(world, stairs) : Optional.empty();
+        BlockPos top = stairs.head();
+        if (head.isEmpty() && !stairs.well() && soldier.y() >= top.y() - 1 && world.isSolid(top.x(), top.y(), top.z()) && !top.equals(headShutSaid)) {
+            headShutSaid = top;
+            LOG.warn("{} finds the mine's head at {} shut, and no ground beside it within two to cut it from", name, top);
+        }
         OptionalInt next = head.isPresent() ? OptionalInt.of(0) : OptionalInt.empty();
         Staircase.Cut cut = head.orElse(null);
         Optional<ItemClassRegistry.ItemClass> bridging = bridgeBlock();

@@ -1629,8 +1629,9 @@ step or a tunnel is in the way and is cut like any block (`Staircase.Cut.toCut`;
 stairs were laid through its workshop's table, and the miner stood at step 1 of 184), a chest too,
 its contents spilt for the picking up (live, field585, a chest left standing in Bravo's stair head shut the mine to
 half the platoon; no chest row puts one in a mine's head now, `Staircase.headCells`). The head itself - the stand
-the first step is cut from - shut by a block in it or over it is opened first, by a miner at the top, from ground
-two out from the shaft (`Miner.headCut`). A step on, beside the main tunnel's second cell, it cuts
+the first step is cut from - shut by a block in it or over it is opened first, by a miner at the top, from the
+nearest ground beside it within two (`Miner.headCut`; live, field589, the ground two out stood under the stockpile's
+chests). A step on, beside the main tunnel's second cell, it cuts
 the **store** (`Staircase.store`): the mine's stash, a chest in its recess. A soldier down the mine
 carrying 8 or more raw iron, raw copper and diamonds fits the chest if it isn't standing - as a
 workshop's is (§ 12), from a chest carried down or with 4 logs or more, so a pickaxe's handles are
