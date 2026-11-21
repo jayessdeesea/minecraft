@@ -926,7 +926,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** Farm cells growing wheat for the camp's food to count as met. */
     private static final int FARM_GROWING = 12;
     /** Trees growing for wood to be no worry (operator, 2026-11-14: with 16 or 32 growing, zero problems with wood), and the most asked. */
-    private static final int TREES_GROWING = 16, TREES_MOST = 96;
+    private static final int TREES_GROWING = 16, TREES_MOST = 96, SEEDS_DRAWN = 64; // seeds a farmer out of them draws
     /** How far out from a FORTIFY objective its wall stands. */
     static final int WALL_RADIUS = 8;
     /** How far above and below the camp's centre its ground is kept from digging. */
@@ -4636,8 +4636,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private Set<BlockPos> campKeep() {
         Set<BlockPos> keep = new HashSet<>();
         // Never the wall: levelled round the camp's ground, not the wall's centre, its high ground
-        // took in the wall's own blocks, dug out as the masons put them back - live, soldiers broke
-        // blocks and put them back all day.
+        // took in the wall's own blocks, dug out as the masons put them back - live, soldiers broke blocks and put them back all day.
         walls.values().forEach(keep::addAll);
         // A hut going up is kept as well as one built: cobblestone over the floor is dug by day.
         fortifying.values().forEach(f -> keep.addAll(f.cells()));
@@ -4827,8 +4826,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         return reported.stream().map(s -> {
             // A soldier in a pocket is stranded whatever its routine says between its "no route"
             // reports: live, one in a dead end at the mine's bottom reported the dig it meant to pillar
-            // up to, and "nothing left to gather", between them, and the drill's count of twenty
-            // reports running never got there.
+            // up to, and "nothing left to gather", between them, and the drill's count of twenty reports running never got there.
             // And one stood still a minute (IdleWatch) with no "no route" said at all: live, a soldier in
             // a pocket, its gatherer finding no gravel, reported "nothing left to gather" all morning.
             if (Recovery.stranded(s)) {
@@ -7534,6 +7532,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (carried != null && Subsistence.short_(carried.rations()) && chestHolding(ItemClass.FOOD, status.position()).isPresent()) {
                     // No rations: bread first, from the nearest chest holding some - not after metal and stone, nor only its own depot's. Live (field568), Eli drew iron and cobblestone all run, shot dead at 1 health.
                     depositor.tickDraw(status.position(), chestHolding(ItemClass.FOOD, status.position()), ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened);
+                } else if (farmer.outOfSeeds() && chestHolding(ItemClass.SEEDS, status.position()).isPresent()) { // its sowing's seeds, drawn (field603)
+                    depositor.tickDraw(status.position(), chestHolding(ItemClass.SEEDS, status.position()), ItemClass.SEEDS, SEEDS_DRAWN, free && !threatened);
                 } else if (unstash.isPresent()) {
                     depositor.tickDraw(status.position(), Optional.of(unstash.get().chest()), unstash.get().ore(), unstash.get().carry(),
                             free && !threatened);

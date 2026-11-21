@@ -395,6 +395,20 @@ public final class Farmer {
                 : carrier.active() ? carrier.standAt() : placing != null ? builders.get(placing).standAt() : Optional.ofNullable(standAt);
     }
 
+    /** Whether its sowing waits on seeds it hasn't got and no grass near gives: set so, till it carries some. */
+    private boolean outOfSeeds;
+
+    /**
+     * Whether it's out of seeds to sow with, and no grass near to find them in - for its runner to draw some from a chest
+     * holding them: live (field603), Olga, the chunk farm's tender, "stops farming for a while - no seeds", 187 cells to sow.
+     */
+    public synchronized boolean outOfSeeds() {
+        if (inventory.count(ItemClass.SEEDS) > 0) {
+            outOfSeeds = false;
+        }
+        return outOfSeeds;
+    }
+
     /** Why the last job failed, while the soldier waits before the next. */
     public synchronized Optional<String> failure() {
         return cooldown > 0 ? Optional.ofNullable(failure) : Optional.empty();
@@ -788,6 +802,7 @@ public final class Farmer {
             Optional<Digger.Spot> grass = Digger.findSpot(world, BlockPos.containing(soldier.x(), soldier.y(), soldier.z()), claims,
                     Digger.Target.GRASS, SEEDS_RADIUS);
             if (grass.isEmpty()) {
+                outOfSeeds = true;
                 fail("no seeds, and no grass within " + SEEDS_RADIUS + " blocks to find them in");
                 return;
             }

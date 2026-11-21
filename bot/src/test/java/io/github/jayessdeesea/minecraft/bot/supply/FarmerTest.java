@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Farmer against a server that answers as the real one does, a tick late: a hoe tills, a seed sprouts. */
@@ -778,5 +779,47 @@ class FarmerTest {
             cut = farmer.earthworkStand().filter(s -> Math.hypot(s.x() - 3.5, s.z() - 0.5) <= 2).isPresent();
         }
         assertTrue(cut, "the heap cut once near it: " + farmer.earthworkStand());
+    }
+
+    /**
+     * A farmer with bare farmland, no seeds and no grass near says it's out of seeds - for its runner to draw some - till
+     * it carries some. Live (field603), Olga, the chunk farm's tender, "stops farming for a while - no seeds", 187 to sow.
+     */
+    @Test
+    void aFarmerWithNoSeedsAndNoGrassSaysItsOutOfSeeds() {
+        List<BlockPos> plot = new ArrayList<>();
+        for (int x = 1; x <= 4; x++) {
+            for (int z = 1; z <= 4; z++) {
+                plot.add(new BlockPos(x, GROUND, z));
+            }
+        }
+        WorldView bare = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= GROUND && !new BlockPos(x, y, z).equals(WATER);
+            }
+
+            @Override
+            public boolean isFarmland(int x, int y, int z) {
+                return plot.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(WATER);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Farmer farmer = new Farmer("Olga", session, inventory, new HashSet<>());
+        for (int tick = 0; tick < 50 && !farmer.outOfSeeds(); tick++) {
+            farmer.tick(new Position(2.5, GROUND + 1, 2.5), bare, Optional.of(new FarmPlan(WATER, plot)), true);
+        }
+        assertTrue(farmer.outOfSeeds(), "out of seeds: " + farmer.failure());
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.SEEDS), 64});
+        assertFalse(farmer.outOfSeeds(), "seeds carried");
     }
 }

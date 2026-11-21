@@ -1125,7 +1125,8 @@ one cell at a time (`bot.supply.Farmer`), in this order:
 5. Tills the plot with a hoe, breaking first any grass or flower on the cell: the server tills
    only under open air.
 6. With no seeds, breaks grass for them, since one in eight drops some - out to 32 blocks, as a
-   squad soon clears what grows near.
+   squad soon clears what grows near; with no grass there either, it draws 64 from the nearest chest holding some
+   (`Farmer.outOfSeeds`; live, field603, the chunk farm's tender stopped, 187 cells to sow, the farm chests' seed unused).
 
 A plot cell whose job fails - its place not walked to, the server not answering, a ripe crop it
 can't reach - is passed over for two minutes, longer each time it fails again, by every soldier
