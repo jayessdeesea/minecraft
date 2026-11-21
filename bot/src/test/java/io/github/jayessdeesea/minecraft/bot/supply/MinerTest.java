@@ -49,7 +49,7 @@ class MinerTest {
         @Override
         public boolean isSolid(int x, int y, int z) {
             BlockPos cell = new BlockPos(x, y, z);
-            return tree.contains(cell) || placed.contains(cell) || chests.contains(cell) || tables.contains(cell) && !dug.contains(cell)
+            return tree.contains(cell) || placed.contains(cell) || chests.contains(cell) && !dug.contains(cell) || tables.contains(cell) && !dug.contains(cell)
                     || y < GROUND && !dug.contains(cell) && !water.contains(cell) && !cave.contains(cell);
         }
 
@@ -73,7 +73,7 @@ class MinerTest {
 
         @Override
         public boolean isChest(int x, int y, int z) {
-            return chests.contains(new BlockPos(x, y, z));
+            return chests.contains(new BlockPos(x, y, z)) && !dug.contains(new BlockPos(x, y, z));
         }
 
         @Override
@@ -805,5 +805,21 @@ class MinerTest {
     @Test
     void openGroundTakesTheStairsWhereAsked() {
         assertEquals(new BlockPos(0, GROUND, 0), Staircase.site(world, 0, 0, GROUND, 16).orElseThrow().head());
+    }
+
+    /**
+     * A chest put in the stairs' head - the stand the first step is cut from - is cut out from beside, and the stairs go
+     * on: live (field585-588), a chest in Bravo's stair head shut the mine, its squadmates waiting at the head, inside
+     * the chest, "no route".
+     */
+    @Test
+    void aChestInTheStairsHeadIsCutFromBeside() {
+        Staircase stairs = new Staircase(HEAD, GROUND - 6);
+        chests.add(HEAD);
+
+        dig(stairs, 4000, new Inventory(), new Position(2.5, GROUND, 0.5));
+
+        assertTrue(dug.contains(HEAD), "the chest in the head cut");
+        assertTrue(dug.contains(stairs.step(0)), "and the first step after it");
     }
 }

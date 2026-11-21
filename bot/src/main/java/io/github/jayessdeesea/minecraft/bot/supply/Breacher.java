@@ -155,11 +155,11 @@ public final class Breacher {
 
     /**
      * Solid, and to be broken: a workshop's table, furnace or chest in a cut - the landing's recesses -
-     * is left standing; with stations not kept, only a chest is.
+     * is left standing; with stations not kept, none is, a chest's contents spilt (Staircase.Cut#toCut) - live
+     * (field588), a chest in Bravo's stair head read to cut and was never broken, the breacher leaving it.
      */
     private boolean solid(BlockPos cell) {
-        return keepStations ? Staircase.uncut(world, cell)
-                : world.isSolid(cell.x(), cell.y(), cell.z()) && !world.isChest(cell.x(), cell.y(), cell.z());
+        return keepStations ? Staircase.uncut(world, cell) : world.isSolid(cell.x(), cell.y(), cell.z());
     }
 
     /** Whether a table or furnace in the cells it's given is left standing: yes but for a mine's stairs and tunnels. */

@@ -151,6 +151,27 @@ public final class Miner {
     private Staircase lastStairs;
     private Position lastSoldier;
 
+    /**
+     * The cut that opens {@code stairs}' head when something stands in it or over it: the head and the cell over it,
+     * stood from beside the shaft - two out, on ground - since the head is where the first step is cut from. Empty with
+     * the head open, or no ground beside to stand on, or for a well, whose head is its walk in.
+     */
+    static Optional<Staircase.Cut> headCut(WorldView world, Staircase stairs) {
+        BlockPos head = stairs.head();
+        if (stairs.well() || !world.isSolid(head.x(), head.y(), head.z()) && !world.isSolid(head.x(), head.y() + 1, head.z())) {
+            return Optional.empty();
+        }
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                BlockPos stand = head.offset(dx, 0, dz);
+                if (Math.max(Math.abs(dx), Math.abs(dz)) == 2 && io.github.jayessdeesea.minecraft.bot.nav.Pathfinder.standable(world, stand)) {
+                    return Optional.of(new Staircase.Cut(stand, List.of(head.offset(0, 1, 0), head), -1));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
     /** The first step of {@code stairs} not yet cut, or empty when all are. */
     public static OptionalInt firstUncut(WorldView world, Staircase stairs) {
         return firstUncut(world, stairs.cuts(), Set.of());
@@ -302,15 +323,19 @@ public final class Miner {
         lastSoldier = soldier;
         this.share = share;
         List<Staircase.Cut> cuts = stairs.cuts();
-        OptionalInt next;
-        Staircase.Cut cut;
+        // Its head shut - a block put in the way down, or over it - opened first, by one at the top, from beside: every
+        // cut's stand is the step over it and the first's is the head. Live (field585-588), a chest in Bravo's stair head
+        // at (-10, 64, 7) shut the mine, the squadmates sent down it waiting at the head, inside the chest, "no route".
+        Optional<Staircase.Cut> head = soldier.y() >= stairs.head().y() - 1 ? headCut(world, stairs) : Optional.empty();
+        OptionalInt next = head.isPresent() ? OptionalInt.of(0) : OptionalInt.empty();
+        Staircase.Cut cut = head.orElse(null);
         Optional<ItemClassRegistry.ItemClass> bridging = bridgeBlock();
         Optional<ItemClassRegistry.ItemClass> flooring = floorBlock();
         if (flooring.isPresent()) {
             waiting.clear(); // blocks again: the tunnels that waited on them are cut on
             blocklessTicks = 0;
         }
-        while (true) {
+        while (head.isEmpty()) {
             Set<Integer> skipped = new HashSet<>(blocked);
             skipped.addAll(waiting);
             share.ifPresent(mine -> cuts.stream().map(Staircase.Cut::tunnel).filter(t -> !mine.contains(t)).forEach(skipped::add));
