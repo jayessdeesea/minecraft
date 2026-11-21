@@ -636,7 +636,9 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   gets away - at 90% of its seeds, and printed as one table. Cells short of it are listed known, and come off
   with their fix. Short now: the creeper cells (42% on flat ground and among trees, none on hills, 8% in a pond), bare
   hands against a pillager away from trees (it follows past the flight's 20), and an armed soldier against a
-  skeleton on hills or a pillager among trees (2 of 12 killed).
+  skeleton on hills or a pillager among trees (2 of 12 killed). Two at once (`CombatPairsMatrixTest`, correct: alive):
+  short now a creeper with a zombie, bare-handed (75% flat, 33% on hills) and on hills armed (75%), and a zombie with
+  a skeleton on hills armed (83%); a creeper with a skeleton comes through.
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the
   response changes, each hostile's type, place, distance, height off the soldier and whether it's in water;
   the soldier's health and kit; and the rule that chose the response - fights, shoots, takes cover (and why),
