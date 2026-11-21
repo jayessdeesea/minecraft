@@ -90,7 +90,7 @@ loaves an hour. So:
 | Site | Supports | Wheat cells | Bread in store | Notes |
 |---|---|---|---|---|
 | Foothold | the force while it arms and armours (2 squads, 8 soldiers) | ~160 (built: grown toward 192, 156 where the ground allows) | none beyond the basic loads | minimal: a wall, lit ground, a farm, a mine |
-| Outpost | one squad visiting, resupplied and sent on | ~80 | one basic load for each soldier of a squad: ~256 | one chunk, fenced and gated, a light moat round it (backlog/cells.md) |
+| Outpost | one squad visiting, resupplied and sent on | ~80 | one basic load for each soldier of a squad: ~256 | one chunk, fenced and gated, lit open ground round it (backlog/cells.md) |
 | Main base | several squads coming back from missions depleted | ~20 a soldier it feeds, plus the store's | a basic load for every soldier it supports, and a reserve: ~1,000 for 4 squads | 2x2 chunks; the abundance is the point - squads come back empty |
 
 The same rule holds for the other stores - logs, stone, ore and ingots, torches: a site holds

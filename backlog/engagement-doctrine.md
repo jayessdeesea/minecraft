@@ -53,11 +53,17 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
    under them and were shot 16 blocks down, 13 s after they left their cut - a route to the archer
    existed (down the cave, or by digging), so neither was "pinned" (`DeterministicSoldier.pinned`)
    and both crossed the open below its bow. Built for an archer more than 4 below (`DeterministicSoldier.ARCHER_BELOW`):
-   cover, carry on. Left: one across a cave at the soldier's own height, and the report.
+   cover, carry on; an archer in sight within 16 closed on by one armed for melee, and one it can't close on that's
+   out of contact and not shooting let be, its work going on (operator, 2026-11-20, `ARCHER_ENGAGE`). Left: one across
+   a cave at the soldier's own height.
 2. The order fields and their defaults through Order, the squad leader and the soldier.
    A creeper holding a soldier inside its reach ten seconds is engaged (built); the rest of the
    both-reach cell - criteria and weapons control by order - is phase 2's.
-3. Contact and capability-gap reports, and the sergeant's answer to repeated gaps.
+3. Contact and capability-gap reports, and the sergeant's answer to repeated gaps. Built at the soldier: each
+   contact logged with the hostile, the soldier's kit and the rule that chose its response (`bot.ContactLog`,
+   `[Contact]`). Left: the report up the chain, and the sergeant's answer.
+4. Each cell measured: the combat eval matrix (`CombatMatrixTest`, docs/military-doctrine.md § 8) holds each kind
+   of contact to what correct is, its short cells known.
 
 ## To verify first
 - Phantom spawning and whether the server counts time since rest for these clients.
