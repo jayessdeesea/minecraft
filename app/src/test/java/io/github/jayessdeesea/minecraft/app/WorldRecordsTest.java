@@ -46,6 +46,20 @@ class WorldRecordsTest {
         assertEquals(SimServer.AIR, terrain.at(0, 75, 0), "unknown: air");
     }
 
+    /** A death keeps its ground however lately the soldier's was kept: live (field602), Ned's death two minutes after. */
+    @Test
+    void aDeathKeepsItsGroundWhateverWasKeptLately() throws IOException {
+        WorldRecords.States world = (x, y, z) -> OptionalInt.of(y < 60 ? SimServer.STONE : SimServer.AIR);
+        WorldRecords records = new WorldRecords(state);
+
+        records.record(world, eli(new Position(0.5, 60, 0.5)), 1000);
+        records.recordDeath(world, eli(new Position(40.5, 60, 0.5)), 2000);
+
+        try (var files = Files.list(state.resolve("worlds"))) {
+            assertEquals(2, files.filter(f -> !f.getFileName().toString().endsWith(".case.json")).count(), "the stuck one and the death");
+        }
+    }
+
     /** Beside the ground, a draft of the stuck soldier's case: where it stood, its kit rebuilt, the goal of its walk. */
     @Test
     void aStuckSoldiersCaseIsDraftedBesideItsGround() throws IOException {

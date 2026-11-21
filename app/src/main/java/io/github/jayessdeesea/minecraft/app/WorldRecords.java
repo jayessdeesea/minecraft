@@ -75,10 +75,23 @@ final class WorldRecords {
      * time a soldier is stuck, an eval of what correct is there): where it stood, its kit, the goal of its walk.
      */
     void record(States world, SoldierStatus status, long now) {
+        record(world, status, now, false);
+    }
+
+    /**
+     * As {@link #record(States, SoldierStatus, long)}, for a soldier killed: kept whatever was kept lately - a death is
+     * rarer than a soldier stuck, and each one an eval. Live (field602), Ned shot dead on the surface two minutes after
+     * his ground was kept stuck below, and the half hour's wait kept none of where he died.
+     */
+    void recordDeath(States world, SoldierStatus status, long now) {
+        record(world, status, now, true);
+    }
+
+    private void record(States world, SoldierStatus status, long now, boolean death) {
         String soldier = status.name();
         Position at = status.position();
         Long last = lastKept.get(soldier);
-        if (last != null && now - last < EVERY_MILLIS) {
+        if (!death && last != null && now - last < EVERY_MILLIS) {
             return;
         }
         lastKept.put(soldier, now);

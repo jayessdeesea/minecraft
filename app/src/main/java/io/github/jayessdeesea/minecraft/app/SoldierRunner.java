@@ -6772,7 +6772,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     String cause = death.contains("[") ? death.substring(0, death.indexOf('[')) : death;
                     casualties.merge(cause, 1, Integer::sum);
                     Optional.ofNullable(activeSoldiers.get(name)).ifPresent(s -> dangerAreas.killed(s.status().position(), clockwork.millis()));
-                    Optional.ofNullable(activeSoldiers.get(name)).ifPresent(s -> worldRecords.record(chunkCache::stateIdAt, s.status(), clockwork.millis())); // a death's ground, its eval
+                    Optional.ofNullable(activeSoldiers.get(name)).ifPresent(s -> worldRecords.recordDeath(chunkCache::stateIdAt, s.status(), clockwork.millis())); // a death's ground, its eval
                     afterActionReview.death(name, cause);
                     afterActionReview.commands.casualty(squadTask(unitOf(name, definition.squad())), Optional.ofNullable(activeSoldiers.get(name))
                             .map(s -> s.status().order().getClass().getSimpleName()).orElse("none"));
