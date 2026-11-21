@@ -202,6 +202,40 @@ class DeterministicSoldierCombatTest {
     }
 
     /**
+     * An archer below a ledge is closed on by the walk down to it, not straight at the drop: live (field597), Alice stood
+     * 46 s on a ledge 4 over a skeleton 6.4 off, "fights hand to hand", and was shot dead.
+     */
+    @Test
+    void anArcherBelowALedgeIsClosedOnByTheWalkDown() {
+        // A ledge at GROUND for x < 3; past it the ground 4 lower, but for a ramp down at z 5..7.
+        WorldView ledge = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                int top = x < 3 ? GROUND : z >= 5 && z <= 7 && x <= 6 ? GROUND - (x - 2) : GROUND - 4;
+                return y < top;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(new TrackedEntity(1, HostileMobRegistry.typeIdOf("skeleton"), new Position(7.5, GROUND - 4, 0.5)));
+            }
+        };
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(1.5, GROUND, 0.5));
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, 254, 0, false));
+        alice.reportHealth(20, 20);
+        boolean struck = false;
+        for (int tick = 0; tick < 400 && !struck; tick++) {
+            struck = alice.tick(ledge).isPresent();
+        }
+        assertTrue(struck, "down the ramp and at it: " + alice.status().position());
+    }
+
+    /**
      * A creeper at arm's length comes first, a skeleton nearer: it gets clear of the blast, not fights the skeleton. Live
      * (field595), Olga fought a skeleton 0.8 off with a creeper 1.3 off, and the blast took her from 16 health to 2.
      */

@@ -46,8 +46,6 @@ class CombatMatrixTest {
 
     /** Cells that don't pass yet, as "hostile/kit/ground". */
     static final Set<String> KNOWN = Set.of(
-            "skeleton/wooden sword/hills",
-            "skeleton/stone sword/hills",
             "creeper/bare hands/flat",
             "creeper/bare hands/hills",
             "creeper/bare hands/forest",
@@ -71,10 +69,8 @@ class CombatMatrixTest {
             "pillager/bare hands/flat",
             "pillager/bare hands/hills",
             "pillager/bare hands/pond",
-            "pillager/wooden sword/forest",
-            "pillager/stone sword/forest",
-            "pillager/sword, shield/hills",
-            "pillager/sword, shield/forest");
+            "pillager/wooden sword/hills",
+            "pillager/sword, shield/hills");
 
     static boolean correct(Battle.Archetype hostile, KitCase kit, CombatScenarioTest.Fight fight) {
         Ending ending = fight.ending();

@@ -458,6 +458,8 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             pinned = false; // a fresh contact gets a fresh look for a way to close
             pinnedCheckIn = 0;
             pinnedOn = nearestId;
+            byWalk = false; // a fresh contact is closed on straight, till that gains no ground
+            lastClose = null;
             noWalk = false;
             noWalkCheckIn = 0;
         }
@@ -585,7 +587,15 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 } else if (range > ATTACK_REACH) {
                     // Closing on what it fights: every tick in the open is a tick under its fire.
                     sprinting = canSprint();
-                    stepGuarded(world, threat.x(), threat.z(), sprinting ? SPRINT_STEP : STEP);
+                    // An archer by the walk to it - down round a drop - not straight at it: live (field597), Alice stood 46 s on
+                    // a ledge 4 over a skeleton 6.4 off, "fights hand to hand", stepping at the drop, and was shot dead.
+                    // Straight at it while that gains ground; the walk once a step at it gains none.
+                    boolean gaining = lastClose == null || Math.hypot(gait.position.x() - lastClose.x(), gait.position.z() - lastClose.z()) > 0.02;
+                    lastClose = gait.position;
+                    byWalk = nearest.shoots() && (byWalk || !gaining);
+                    Optional<BlockPos> by = byWalk ? nextOnClosePath() : Optional.empty();
+                    stepGuarded(world, by.map(b -> b.x() + 0.5).orElse(threat.x()), by.map(b -> b.z() + 0.5).orElse(threat.z()),
+                            sprinting ? SPRINT_STEP : STEP);
                 }
             }
             route = null; // wherever the fight ends up, the old route no longer starts here
@@ -710,11 +720,29 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         // the hostile out of reach, and stood "in contact" across two restarts, its drill held off.
         if (pinnedCheckIn-- <= 0 && (gait.onGround || wet)) {
             pinnedCheckIn = PINNED_CHECK_TICKS;
+            // A walk, no step built or block dug: the close walks it (nextOnClosePath) - live (field597), a route by building
+            // read Alice not pinned, and her close, straight at the skeleton below her ledge, never moved.
             Goal reach = new Goal(threat.x(), threat.y(), threat.z(), ATTACK_REACH, Pathfinder.MAX_DROP);
-            pinned = !Pathfinder.find(world, standingCell(world, gait.position), reach, PLAN_BUDGET,
-                    FallAllowance.NONE, pillarBlocks(), carriesPickaxe()).reachesGoal();
+            Pathfinder.Result walk = Pathfinder.find(world, standingCell(world, gait.position), reach, PLAN_BUDGET, FallAllowance.NONE, 0, false);
+            pinned = !walk.reachesGoal();
+            closePath = walk.reachesGoal() ? new java.util.ArrayList<>(walk.path()) : new java.util.ArrayList<>();
         }
         return pinned;
+    }
+
+    /** Where it stood at its last step closing on a hostile, and whether it's closing on an archer by the walk to it. */
+    private Position lastClose;
+    private boolean byWalk;
+
+    /** The walk to strike an archer from, as last planned ({@link #pinned}) - its cells left to step through. */
+    private List<BlockPos> closePath = new java.util.ArrayList<>();
+
+    /** The next cell of the walk to the archer it's closing on, the ones it's at dropped; empty with none planned. */
+    private Optional<BlockPos> nextOnClosePath() {
+        while (!closePath.isEmpty() && Math.hypot(closePath.getFirst().x() + 0.5 - gait.position.x(), closePath.getFirst().z() + 0.5 - gait.position.z()) < 0.7) {
+            closePath.removeFirst();
+        }
+        return closePath.isEmpty() ? Optional.empty() : Optional.of(closePath.getFirst());
     }
 
     /** Ticks left holding cover from an archer, once out of its sight. */
