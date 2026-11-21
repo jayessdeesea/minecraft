@@ -133,7 +133,6 @@ public final class Farmer {
      * its hollow, the farmland under each turned to dirt; and the rest, a block below the ground
      * round it, was reached only by stepping down onto it, which tramples farmland.
      */
-    /** {@link #earthwork} less the squad's own steps, which stay. */
     /**
      * The heap of {@code earthwork} nearest the soldier: its blocks whose columns touch, side or corner, one to the next.
      */
@@ -172,8 +171,26 @@ public final class Farmer {
         return ((long) x << 32) ^ (z & 0xffffffffL);
     }
 
+    /**
+     * {@link #earthwork} less the squad's own steps, which stay - but a step stacked on earthwork that isn't one, a
+     * pillar's top, comes down with the heap under it: the clear takes ground only from an open top, and live (field580)
+     * four one-block heaps on the camp farm, each with a step over it - the pillar at (-2, 64, 92) under the step at
+     * (-2, 65, 92) - had no cut, from off the farmland or on it.
+     */
     private List<BlockPos> unburying(WorldView world, FarmPlan farm) {
-        return earthwork(world, farm).stream().filter(c -> !steps.contains(c)).toList();
+        List<BlockPos> all = earthwork(world, farm);
+        Set<BlockPos> heaped = Set.copyOf(all);
+        return all.stream().filter(c -> !steps.contains(c) || onEarthwork(c, heaped)).toList();
+    }
+
+    /** Whether the step {@code c} stands, down its column through steps, on earthwork that isn't a step. */
+    private boolean onEarthwork(BlockPos c, Set<BlockPos> heaped) {
+        for (BlockPos under = c.offset(0, -1, 0); heaped.contains(under); under = under.offset(0, -1, 0)) {
+            if (!steps.contains(under)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static List<BlockPos> earthwork(WorldView world, FarmPlan farm) {

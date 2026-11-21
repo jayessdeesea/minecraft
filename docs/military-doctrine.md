@@ -1078,7 +1078,9 @@ one cell at a time (`bot.supply.Farmer`), in this order:
    nearest first, and one nothing reaches from off the farmland or on it set aside a while for the next (field579, a
    heap's top out of reach at one corner of the camp farm held up a pillar 27 blocks off, the clear highest first) - and cuts
    the ground beside the plot down to its level, up to two blocks - an apron, so every cell is
-   walked onto on the flat - but never a step the squad built (`SoldierRunner.scaffolding`): in
+   walked onto on the flat - but never a step the squad built (`SoldierRunner.scaffolding`), unless it's stacked on
+   earthwork that isn't one, a pillar's top (field580, four one-block heaps capped by steps, the clear taking ground
+   only from an open top, never cut): in
    the squad simulation a farmer dug its own step out of the hollow as dirt over the plot, its
    route built it again, and every jump up it that fell back trampled the farmland. Landing on
    farmland from over half a block tramples it back to dirt,
