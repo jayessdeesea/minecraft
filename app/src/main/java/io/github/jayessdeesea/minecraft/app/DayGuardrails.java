@@ -230,6 +230,16 @@ final class DayGuardrails {
                     LOG.warn("[Guardrail] the camp unlit with nobody on it - {} to SECURE, not '{}'", statuses.get(k).squadName(), out.get(k).mission());
                     out.set(k, new Objective("Light the camp", f.camp(), "The airhead lit: safety first", new Objective.Task.Secure()));
                 }));
+        // Wood that grows back, past the SEIZURE (operator, 2026-11-20: grow more trees): unmet with nobody on TREE_FARM, a squad
+        // spare of the shortfalls is put on it. Live (field565), 36 of the groves' 48 cells planted, two squads on the farm and
+        // nobody planting.
+        d.foothold().filter(f -> d.phase() != Phase.SEIZURE && f.standards().stream().anyMatch(s -> !s.met() && "TREE_FARM".equals(s.task()))
+                        && out.stream().noneMatch(o -> o.task() instanceof Objective.Task.TreeFarm))
+                .ifPresent(f -> spare(out, movable, alarms).ifPresent(k -> {
+                    LOG.warn("[Guardrail] the groves short of trees with nobody planting - {} to TREE_FARM, not '{}'", statuses.get(k).squadName(),
+                            out.get(k).mission());
+                    out.set(k, new Objective("Plant the groves", f.camp(), "Wood that grows back", new Objective.Task.TreeFarm()));
+                }));
         return out;
     }
 

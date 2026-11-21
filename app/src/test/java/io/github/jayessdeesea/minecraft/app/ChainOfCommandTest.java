@@ -177,6 +177,34 @@ class ChainOfCommandTest {
         assertTrue(chain.byDay(WALL, squad("Bravo", "Bob")).task() instanceof Objective.Task.Keep, "work that isn't the day's: the keep");
     }
 
+    /**
+     * The groves short of trees with nobody planting, past the SEIZURE: a squad spare of the shortfalls is put on
+     * TREE_FARM (operator, 2026-11-20: grow more trees). Live (field565), two squads on the farm, 36 of 48 planted.
+     */
+    @Test
+    void theGrovesShortOfTreesGetASquadPlanting() {
+        ChainOfCommand three = new ChainOfCommand(
+                (PlatoonLeader) Proxy.newProxyInstance(PlatoonLeader.class.getClassLoader(), new Class<?>[]{PlatoonLeader.class}, (proxy, method, args) -> null),
+                ChatClient.create((ChatModel) prompt -> {
+                    throw new AssertionError("no model call expected");
+                }), new SquadLeaderPrompts("", ""),
+                new Roster("Alpha:Alice;Bravo:Bob;Charlie:Carol"), true, "model");
+        three.setKeepByDay(true);
+        three.restorePhase(Phase.CONSOLIDATION, 0);
+        three.setGround((x, z, nearY) -> OptionalInt.of(64));
+        three.onTime(TimeOfDay.of(1000, true));
+        three.onFoothold(new Foothold(new Position(24, 64, 89), List.of(new Foothold.Standard(3, "wood that grows back", false,
+                "36 of 48 saplings or trees planted by the camp and the keep's grove", "TREE_FARM"))));
+        Objective farm = new Objective("Farm", new Position(-4, 64, 93), "Food", new Objective.Task.Farm());
+        java.util.function.Function<String, SquadStatus> farming = name -> new SquadStatus(name, new Report.Farming(),
+                squad(name, name.substring(0, 1) + "x").soldiers(), List.of(), Optional.of(farm), false);
+        List<SquadStatus> squads = List.of(farming.apply("Alpha"), farming.apply("Bravo"), farming.apply("Charlie"));
+
+        List<Objective> guarded = three.guarded(List.of(farm, farm, farm), squads, List.of(), List.of());
+
+        assertEquals(1, guarded.stream().filter(o -> o.task() instanceof Objective.Task.TreeFarm).count(), "one squad planting: " + guarded);
+    }
+
     /** The platoon leader's FORAGE for squads standing on FARM stands: food work, not put back on the farm. */
     @Test
     void aForageOrderForASquadOnTheFarmStands() {
