@@ -603,9 +603,9 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 - **With no melee weapon an archer is fled at a sprint** - to cover in reach, else straight away - and on past
   its range, to 20 off, before the soldier goes back to its order (`DeterministicSoldier.FLED_PAST`): a walk away
   stays inside a skeleton's 15 blocks, and one that left contact at 9 off walked back into its arrows. In the
-  combat eval matrix, bare hands against a skeleton on hills or among trees, or a pillager among trees, now come
-  through 11 times in 12; in the open and in a pond it's still a third or less - the order taking it back past
-  the archer.
+  combat eval matrix, bare hands against a skeleton come through 11 or 12 times in 12 on every ground - its
+  follow range 16, so a flight past 20 breaks contact - and against a pillager among trees; against a pillager in
+  the open, on hills and in a pond a third or less, its follow range 32 past the flight's 20.
 - **An archer well below** - more than 4 blocks under the soldier, across a cave's drop - is out of a sword's
   reach whatever route might go down to it: the soldier takes cover and carries on, as from one it has no route
   to (the engagement doctrine's it-can-I-can't cell; `DeterministicSoldier.ARCHER_BELOW`). Live, three miners
@@ -621,12 +621,13 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   Eli at 1 health walked back to his cave edge in a skeleton's line between its shots and was shot dead).
 - **The combat eval matrix** (`CombatMatrixTest`; operator, 2026-11-20): one soldier against one hostile, by
   its type (zombie, skeleton, creeper, pillager), the soldier's kit (bare hands, wooden or stone sword, sword and
-  shield, sword and iron) and the ground (flat, hills, forest, pond), each cell held to what correct is there -
+  shield, sword and iron) and the ground (flat, hills, forest, pond) - each hostile following as far as vanilla's
+  does, a skeleton 16, a pillager 32 - each cell held to what correct is there -
   never killed; never in a creeper's blast; armed against a zombie, it's killed; bare-handed, alive however it
   gets away - at 90% of its seeds, and printed as one table. Cells short of it are listed known, and come off
   with their fix. Short now: the creeper cells (42% on flat ground and among trees, none on hills, 8% in a pond), bare
-  hands against an archer
-  (killed in the open), and an armed soldier against a skeleton on hills or a pillager among trees (2 of 12 killed).
+  hands against a pillager away from trees (it follows past the flight's 20), and an armed soldier against a
+  skeleton on hills or a pillager among trees (2 of 12 killed).
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the
   response changes, each hostile's type, place, distance, height off the soldier and whether it's in water;
   the soldier's health and kit; and the rule that chose the response - fights, shoots, takes cover (and why),

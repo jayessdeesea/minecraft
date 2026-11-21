@@ -31,20 +31,23 @@ public final class Battle implements WorldView {
     /** Hostile archetypes, named for the vanilla mob each approximates. */
     public enum Archetype {
         /** Closes to contact at walking speed and hits. */
-        ZOMBIE(0.2, 20),
+        ZOMBIE(0.2, 20, 35),
         /** Keeps a standoff distance and shoots while it can. */
-        SKELETON(0.217, 20),
+        SKELETON(0.217, 20, 16),
         /** Closes in, hisses, explodes. */
-        CREEPER(0.217, 20),
+        CREEPER(0.217, 20, 16),
         /** A crossbow: keeps a shorter standoff than a skeleton and shoots from inside {@link #CROSSBOW_RANGE}. */
-        PILLAGER(0.2, 24);
+        PILLAGER(0.2, 24, 32);
 
         final double speed;
         final double health;
+        /** How far off it keeps after a target, as vanilla's follow range: past it, it lets the soldier go. */
+        final double follow;
 
-        Archetype(double speed, double health) {
+        Archetype(double speed, double health, double follow) {
             this.speed = speed;
             this.health = health;
+            this.follow = follow;
         }
     }
 
@@ -266,6 +269,11 @@ public final class Battle implements WorldView {
             }
             Position soldier = soldiers.get(target);
             double distance = horizontal(here, soldier);
+            // Past its follow range it lets the soldier go, as vanilla's mobs do - a lit creeper's fuse aside: without it
+            // a skeleton chased a fleeing soldier across the map, cornered it at the edge, and the flight never broke contact.
+            if (distance > h.archetype.follow && h.fuse < 0) {
+                continue;
+            }
             switch (h.archetype) {
                 case ZOMBIE -> {
                     if (distance > ZOMBIE_REACH * 0.8) {
