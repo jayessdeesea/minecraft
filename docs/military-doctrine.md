@@ -438,7 +438,8 @@ and the squads keep their orders. A kept order isn't re-sent: the log says `hold
 The platoon leader's heights are guesses, so an objective is put on the ground at its x and z: the
 typical height of the ground round it - not the top of a heap of old huts at a camp's centre -
 looked for within 24 blocks of the squad's middle height - not one soldier's, which
-might be stranded up a tower
+might be stranded up a tower; from a squad down a mine, the surface over it, read through a tree's canopy to the
+ground under it (`TerrainSurveyor.ground`; live, field592-595, an objective put on an oak's top at y=80)
 (`NightRules.grounded`; the log says `put on the ground`). A MINE objective keeps its own, since
 its y is a depth.
 

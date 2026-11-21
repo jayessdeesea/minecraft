@@ -102,6 +102,24 @@ public final class TerrainSurveyor {
         return java.util.Optional.empty();
     }
 
+    /**
+     * As {@link #surface}, a tree's canopy and trunk read through to the ground under them: where an objective at the
+     * column goes. Live (field592-595), the camp's farm objective at (24, 88) was put on the ground at y=80 - the top of
+     * the oak over the camp, its leaves at y=79.
+     */
+    public static java.util.Optional<BlockPos> ground(WorldView world, int x, int z, int fromY) {
+        for (int y = fromY; y > WORLD_FLOOR; y--) {
+            if (world.isHazard(x, y, z)) {
+                return java.util.Optional.empty();
+            }
+            boolean onTree = world.isLog(x, y - 1, z) || world.leaves(x, y - 1, z).isPresent();
+            if (!onTree && world.isSolid(x, y - 1, z) && !world.isSolid(x, y, z) && !world.isSolid(x, y + 1, z)) {
+                return java.util.Optional.of(new BlockPos(x, y, z));
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
     static BlockPos groundUnder(WorldView world, BlockPos cell) {
         for (int ring = 0; ring <= WADE_RADIUS; ring++) {
             for (int dz = -ring; dz <= ring; dz++) {

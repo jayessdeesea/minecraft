@@ -88,6 +88,34 @@ class TerrainSurveyorTest {
         assertEquals(Optional.empty(), TerrainSurveyor.surface(lake, -90, -24, 319), "not the cave at y=24 under the lake");
     }
 
+    /** The ground under a tree, not its canopy: live (field592-595), an objective put on an oak's top at y=80. */
+    @Test
+    void theGroundUnderATreeIsUnderItsCanopy() {
+        WorldView oak = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < 64 || y >= 75 && y <= 79;
+            }
+
+            @Override
+            public Optional<String> leaves(int x, int y, int z) {
+                return y >= 75 && y <= 79 ? Optional.of("oak") : Optional.empty();
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertEquals(Optional.of(new BlockPos(0, 80, 0)), TerrainSurveyor.surface(oak, 0, 0, 319), "the surface, the canopy's top");
+        assertEquals(Optional.of(new BlockPos(0, 64, 0)), TerrainSurveyor.ground(oak, 0, 0, 319), "the ground under it");
+    }
+
     private static TerrainSurvey.Sample at(TerrainSurvey survey, int x, int z) {
         return survey.samples().stream().filter(s -> s.x() == x && s.z() == z).findFirst().orElseThrow();
     }

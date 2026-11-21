@@ -6844,7 +6844,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
 
                 @Override
                 public OptionalInt surfaceAt(int x, int z, int nearY) {
-                    return TerrainSurveyor.surface(world, x, z, nearY + SURFACE_ABOVE).map(cell -> OptionalInt.of(cell.y())).orElse(OptionalInt.empty());
+                    return TerrainSurveyor.ground(world, x, z, nearY + SURFACE_ABOVE).map(cell -> OptionalInt.of(cell.y())).orElse(OptionalInt.empty());
                 }
             });
         }
