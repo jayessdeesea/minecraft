@@ -741,6 +741,9 @@ public final class DeterministicSoldier extends Mover implements Soldier {
 
     /** The exchange with an archer {@code range} off: closing on it, as the soldier stands now (Engagement). */
     private Engagement.Kind archerExchange(double range) {
+        if (lastReportedHealth < 0) {
+            return Engagement.Kind.ENGAGE; // its health not yet reported: no exchange to reckon, as before
+        }
         Kit carried = kit;
         WeaponStats.Stats held = WeaponStats.melee(carried == null ? Optional.empty() : carried.weapon());
         double armour = carried == null ? 0 : carried.armour() * ARMOUR_A_PIECE;

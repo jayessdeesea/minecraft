@@ -63,7 +63,12 @@ saturation and exhaustion; regeneration as the server's (saturated, up to a poin
 eating below 18, a loaf after 1.6 s; iron armour worn down max(1, blow/4) a piece a hit - all read from the pinned server.
 With it one more pairs cell passes (creeper and zombie, stone sword, hills); without eating it, three archer cells on
 hills fell to 83%, a soldier's food spent by its healing.
-Left: the other branches on the exchange (hand to hand, creepers, several hostiles at once, the bow); withdraw's
+Tried and not landed - hand to hand on the exchange, backing off when lost: the matrix showed what the exchange lacks.
+Bare hands lose to a zombie by the numbers (20 blows), so the soldier backed off for good and two zombies caught it on
+hills (zombie+zombie, bare hands, hills: 67%); a soldier backing up stepped into a squadmate's sweep. Breaking off is
+priced as a few blocks clear, true on open ground and not with pursuers on rough ground - the exchange wants the
+escape's own cost, from the terrain and what follows, before hand to hand is on it.
+Left: the other branches on the exchange (hand to hand as above, creepers, several hostiles at once, the bow); withdraw's
 eat-and-heal and re-engage (the body eats as the runner does, below 18, and swings at nothing meanwhile); the matrix grown by starting health,
 armour and terrain. (Every combat simulation's soldiers have the body now, the squads' too.)
 
