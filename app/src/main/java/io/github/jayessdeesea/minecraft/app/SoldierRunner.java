@@ -441,8 +441,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** How the soldier's {@code Order.Place} went at its last tick - absent before the first. */
     private final Map<String, Builder.Progress> placeProgress = new ConcurrentHashMap<>();
     /** A soldier's part in building its squad's patrol base. */
-    private record Fortify(Position stand, List<BlockPos> cells, boolean allInside,
-                           boolean makeTorches, boolean placeTorch) {
+    private record Fortify(Position stand, List<BlockPos> cells, boolean allInside, boolean makeTorches, boolean placeTorch) {
     }
     /** What each soldier is building, while its squad builds a patrol base - squad loop writes, tick reads. */
     private final Map<String, Fortify> fortifying = new ConcurrentHashMap<>();
@@ -1403,8 +1402,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      * leading - {@link Formations} and the drills).
      */
     private void leadSquad() {
-        record Present(String squad, List<DeterministicSoldier> soldiers, List<SoldierStatus> statuses,
-                       Optional<Position> principalAt) {
+        record Present(String squad, List<DeterministicSoldier> soldiers, List<SoldierStatus> statuses, Optional<Position> principalAt) {
         }
         if (yieldingToAnExperiment()) {
             return;
@@ -1771,13 +1769,11 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private Optional<Order> levelWork(SoldierStatus soldier, Directive.Level level) {
         Set<Cell> except = groundExcept();
-        Box dig = new Box(level.minX(), level.y(), level.minZ(),
-                level.maxX(), level.y() + LEVEL_ABOVE, level.maxZ());
+        Box dig = new Box(level.minX(), level.y(), level.minZ(), level.maxX(), level.y() + LEVEL_ABOVE, level.maxZ());
         if (!Clearing.toClear(world, dig, except).isEmpty()) {
             return Optional.of(new Order.Dig(dig, except));
         }
-        Box fill = new Box(level.minX(), level.y() - LEVEL_BELOW,
-                level.minZ(), level.maxX(), level.y() - 1, level.maxZ());
+        Box fill = new Box(level.minX(), level.y() - LEVEL_BELOW, level.minZ(), level.maxX(), level.y() - 1, level.maxZ());
         if (Clearing.toFill(world, fill, except).isEmpty()) {
             return Optional.empty();
         }
@@ -2044,6 +2040,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final SurfaceCache surfaces = new SurfaceCache();
     /** Every block a soldier puts above sea level, said by what put it (operator, 2026-11-21: audit it). */
     private final PlacementAudit placementAudit = new PlacementAudit(() -> clockwork.millis());
+    /** What each errand yields against its walk, and the trips that didn't pay (operator, 2026-11-21: Ned shouldn't suffer in silence). */
+    private final ErrandLedger errandLedger = new ErrandLedger();
     /** Whether {@code at} is under the ground: the column's surface, a second or two old, more than {@link #UNDERGROUND} over it. */
     private boolean underground(Position at) {
         return surfaces.underground(world, at, UNDERGROUND, clockwork.millis());
@@ -7738,6 +7736,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             item -> atADump(item) || thrownNear(item))));
             Optional<Hands.Routine> hands = Hands.tick(turns);
             placementAudit.routine(name, hands);
+            errandLedger.tick(name, hands, status.position(), ErrandLedger.carried(inventory), clockwork.millis())
+                    .forEach(line -> LOG.info(line.startsWith("errands") ? "[Errand] {}" : "[Productivity] {}", line)); // a trip's yield against its walk
             if (keepHands.contains(name)) {
                 keepSaplingsCarried.put(name, inventory.count(ItemClass.SAPLING));
                 clearer.drainTimes().forEach(t -> keepPace.merge(name, t, LevelPace.Tally::plus));
