@@ -204,4 +204,7 @@ under `app/src/test/resources/stuck/` per live failure - the recorded ground (`g
 `worlds/`), where the soldier stood, what it carried, where it was going, and what correct is there (stands within
 so far of its goal within so many minutes). Each is replayed and printed `[Eval] stuck/<case>: PASS|FAIL`. A case
 not fixed yet is marked `knownFailure`: reported, not failed - and failed once it passes still marked, so the mark
-comes off with the fix and the case holds it from then on.
+comes off with the fix and the case holds it from then on. Live, a soldier stuck a minute has its case drafted
+beside its kept ground (`app.StuckCase`, `garrison-state/worlds/<soldier>-<time>.case.json`): where it stood,
+its kit rebuilt from the counts it reports, the goal of its walk, marked known - what correct is there is the
+filer's to confirm or rewrite.

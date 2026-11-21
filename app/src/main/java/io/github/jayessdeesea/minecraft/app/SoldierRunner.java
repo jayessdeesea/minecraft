@@ -803,7 +803,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int stoneSword = ItemClassRegistry.meleeRank("stone_sword");
         everyone.forEach(s -> cutOff.update(s, clockwork.millis())); // the cut off reported, not counted on (CutOff)
         List<String> away = everyone.stream().map(SoldierStatus::name).filter(n -> cutOff.cutOff(n, clockwork.millis())).toList();
-        everyone.stream().filter(s -> away.contains(s.name())).forEach(s -> worldRecords.record(chunkCache::stateIdAt, s.name(), s.position(), clockwork.millis()));
+        everyone.stream().filter(s -> away.contains(s.name())).forEach(s -> worldRecords.record(chunkCache::stateIdAt, s, clockwork.millis()));
         long armed = everyone.stream().filter(s -> !away.contains(s.name())).filter(s -> cutOff.armed(s.name(), s.condition().flatMap(c -> c.kit())
                 .flatMap(k -> k.weapon()).filter(w -> !w.equals("bow")).map(w -> {
                     try {
@@ -7813,7 +7813,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                             LOG.warn("[Alert] {}", line);
                             if (line.contains("stationary")) {
                                 afterActionReview.idle(name);
-                                worldRecords.record(chunkCache::stateIdAt, name, status.position(), clockwork.millis()); // for the simulation
+                                worldRecords.record(chunkCache::stateIdAt, status, clockwork.millis()); // ground and case for the simulation
                             }
                         });
                 // And holding where sent by day with work to be had: without work, the squad leader's to give it.

@@ -45,6 +45,11 @@ public final class ItemClassRegistry {
         return Optional.ofNullable(ITEMS.get(itemId)).map(Entry::itemClass);
     }
 
+    /** A counted item's id by its registry name ("iron_sword"), if it's one. */
+    public static OptionalInt idOf(String name) {
+        return ITEMS.entrySet().stream().filter(e -> e.getValue().name().equals(name)).mapToInt(Map.Entry::getKey).findFirst();
+    }
+
     /** The item's registry name ("iron_sword"), for counted items. */
     public static Optional<String> nameOf(int itemId) {
         return Optional.ofNullable(ITEMS.get(itemId)).map(Entry::name);

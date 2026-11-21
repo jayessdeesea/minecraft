@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.jayessdeesea.minecraft.command.Position;
+import io.github.jayessdeesea.minecraft.command.SoldierStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -68,8 +69,14 @@ final class WorldRecords {
         return new Snapshot(soldier, now, minX, minY, minZ, size, height, size, states);
     }
 
-    /** Keeps {@code soldier}'s ground round {@code at}, unless it was kept within {@link #EVERY_MILLIS}. */
-    void record(States world, String soldier, Position at, long now) {
+    /**
+     * Keeps {@code status}'s soldier's ground round where it stands, unless it was kept within {@link #EVERY_MILLIS} -
+     * and beside it a draft of its case for the registry of stuck soldiers (StuckEvalsTest; operator, 2026-11-20: any
+     * time a soldier is stuck, an eval of what correct is there): where it stood, its kit, the goal of its walk.
+     */
+    void record(States world, SoldierStatus status, long now) {
+        String soldier = status.name();
+        Position at = status.position();
         Long last = lastKept.get(soldier);
         if (last != null && now - last < EVERY_MILLIS) {
             return;
@@ -82,7 +89,13 @@ final class WorldRecords {
         } catch (IOException e) {
             throw new UncheckedIOException("couldn't keep " + soldier + "'s ground at " + file, e);
         }
-        LOG.info("[World] {}'s ground kept for the simulation: {}", soldier, file);
+        Path draft = directory.resolve("worlds").resolve(soldier + "-" + now + ".case.json");
+        try {
+            JSON.writerWithDefaultPrettyPrinter().writeValue(draft.toFile(), StuckCase.draft(status, "worlds/" + file.getFileName()));
+        } catch (IOException e) {
+            throw new UncheckedIOException("couldn't keep " + soldier + "'s case at " + draft, e);
+        }
+        LOG.info("[World] {}'s ground kept for the simulation: {}, its case drafted: {}", soldier, file, draft);
     }
 
     /** A snapshot kept before. */

@@ -34,15 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class StuckEvalsTest {
 
-    /** A stuck soldier's case, as kept under {@code stuck/}. */
-    record Case(String why, String world, String soldier, double[] at, List<Item> kit, double[] goal, String correct,
-                double radius, int withinMinutes, boolean knownFailure) {
-    }
-
-    /** A stack it carried: the inventory slot, the item's id, how many, and its name for the reader. */
-    record Item(int slot, int id, int count, String item) {
-    }
-
     @TempDir
     Path state;
 
@@ -55,7 +46,7 @@ class StuckEvalsTest {
 
     private void run(Resource resource) throws Exception {
         String name = resource.getFilename().replace(".json", "");
-        Case c = new ObjectMapper().readValue(resource.getInputStream(), Case.class);
+        StuckCase c = new ObjectMapper().readValue(resource.getInputStream(), StuckCase.class);
         ThreadContext.put("scenario", "stuck-" + name);
         try {
             WorldRecords.Snapshot ground = WorldRecords.load(Path.of(new ClassPathResource(c.world()).getURI()));
