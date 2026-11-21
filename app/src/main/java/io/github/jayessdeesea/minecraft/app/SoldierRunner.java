@@ -780,8 +780,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         TreeFarm keepTrees = keepGrove;
         long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count()).orElse(0L)
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
-        standards.add(new Foothold.Standard(3, "wood that grows back", trees >= TREES_GROWING,
-                trees + " of " + TREES_GROWING + " saplings or trees planted by the camp and the keep's grove", "TREE_FARM"));
+        // Every cell the groves hold, 16 at the least and 48 at the most (operator, 2026-11-20: grow more trees): a squad on TREE_FARM till they're full.
+        long wanted = Math.min(TREES_MOST, Math.max(TREES_GROWING, grove.map(g -> g.plot().size()).orElse(0) + (keepTrees == null ? 0 : keepTrees.plot().size())));
+        standards.add(new Foothold.Standard(3, "wood that grows back", trees >= wanted,
+                trees + " of " + wanted + " saplings or trees planted by the camp and the keep's grove", "TREE_FARM"));
         // The camp's mine as the world shows it, as well as a cutter at work this run: live, after a restart with no MINE order, a mine cut to the bottom read "no mine yet".
         Optional<Staircase> campMine = campStairs();
         int cutNow = Math.max(stairsCut.get(), campMine.map(s -> s.stepsCut(world)).orElse(0));
@@ -924,9 +926,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private BlockPos campGround;
     /** Farm cells growing wheat for the camp's food to count as met. */
     private static final int FARM_GROWING = 12;
-    /** Saplings or trees for the camp's wood to count as met. */
-    /** Trees growing for wood to be no worry (operator, 2026-11-14: with 16 or 32 growing, zero problems with wood). */
-    private static final int TREES_GROWING = 16;
+    /** Trees growing for wood to be no worry (operator, 2026-11-14: with 16 or 32 growing, zero problems with wood), and the most asked. */
+    private static final int TREES_GROWING = 16, TREES_MOST = 48;
     /** How far out from a FORTIFY objective its wall stands. */
     static final int WALL_RADIUS = 8;
     /** How far above and below the camp's centre its ground is kept from digging. */
@@ -5260,8 +5261,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         FarmPlan farm = taskOf(squadName, Objective.Task.Farm.class).map(o -> {
             BlockPos at = BlockPos.containing(o.location().x(), o.location().y(), o.location().z());
             // Kept for the point it was sited for, as a wall is: live, its water lay just over the
-            // radius from the site, and it was sited afresh every cycle, found or not by where a
-            // soldier stood.
+            // radius from the site, and it was sited afresh every cycle, found or not by where a soldier stood.
             if (state.farm != null && (at.equals(state.farmFor)
                     || Math.hypot(state.farm.water().x() - at.x(), state.farm.water().z() - at.z()) <= FARM_SITE_RADIUS)) {
                 return state.farm;

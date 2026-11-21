@@ -1813,7 +1813,9 @@ The camp is built up the way an airborne force builds a lodgment after the drop,
    camp's farm ground is, so the squad is sent there. With no logs
    carried to make torches from and no tree in sight, the lit standard's task is TREE_FARM: the
    wood is grown first.
-3. The buildup, in this order: food while the force eats; wood that grows back (§12, TREE_FARM),
+3. The buildup, in this order: food while the force eats; wood that grows back (§12, TREE_FARM) - every cell
+   of the camp's and the keep's groves planted, 16 at the least and 48 at the most (operator, 2026-11-20: grow
+   more trees),
    right after it - 16 trees growing in the camp's grove and the keep's together (operator,
    2026-11-14: a camp goes through a lot of wood); stone and iron from a mine (§16, MINE); and
    last the camp's floor paved (FORTIFY): once the wall is closed and of
