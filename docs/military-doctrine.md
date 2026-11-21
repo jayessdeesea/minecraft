@@ -643,7 +643,9 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   ledge 4 over a skeleton, stepping at the drop, and was shot dead); with no walk to it at all - a route only by
   building or digging - it's pinned, and taken cover from. Two at once (`CombatPairsMatrixTest`, correct: alive):
   short now, on hills, a creeper with a zombie (83%, bare-handed or armed) and a zombie with a skeleton, armed
-  (83%); a creeper with a skeleton comes through.
+  (83%); a creeper with a skeleton comes through. A squad's melee (`CombatSquadMatrixTest`): two or three against a
+  pack, every hostile killed, none of the squad, and no squadmate hit by a sweep in any cell - the swing struck as the
+  server strikes it (`Battle.swing`); its sweeps took 22-92 hostiles a cell where they hit none of ours.
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the
   response changes, each hostile's type, place, distance, height off the soldier and whether it's in water;
   the soldier's health and kit; and the rule that chose the response - fights, shoots, takes cover (and why),

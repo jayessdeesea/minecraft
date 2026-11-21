@@ -68,6 +68,16 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         return was;
     }
 
+    /** The swing it chose this tick, WAIT with none - for the battle simulation to strike as the server would. */
+    private volatile Strike.Kind swingKind = Strike.Kind.WAIT;
+
+    /** The swing it chose this tick (Strike), and WAIT once taken. */
+    public Strike.Kind takeSwingKind() {
+        Strike.Kind was = swingKind;
+        swingKind = Strike.Kind.WAIT;
+        return was;
+    }
+
     /** Whether its arm swings this tick with no hit, the charge started over (Strike.Kind.RESET). */
     public boolean takeArmSwing() {
         boolean was = armSwing;
@@ -627,6 +637,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                             && Math.abs(t.position().z() - threat.z()) <= SWEEP_REACH).count();
                     Strike.Kind swing = Strike.choose(Strike.Weapon.of(item), new Strike.Situation(held.ticksToCharge() - ticksUntilAttack,
                             sweepHitsSquadmate(world, threat), (int) others, canSprint()));
+                    swingKind = swing;
                     switch (swing) {
                         case FULL, SHORT, KNOCKBACK -> {
                             attack = OptionalInt.of(nearest.entityId());

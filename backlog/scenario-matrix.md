@@ -32,11 +32,9 @@ closed box's wall at 48 cornered flights that the open live world wouldn't. Left
 simulation's fights), slopes and caves as grounds, and each known cell's fix - the creeper on hills and in a pond,
 where a sprint doesn't get clear (83% and 17%); a pillager on hills with a wooden sword or a sword and shield; and
 the creeper's drill that kills one (a bow, or a blow before it lights), as got clear of it's kited at 7.5 for as
-long as it follows, so the soldier neither works nor kills it. And squadmates: the battle simulation fights one soldier, so a squad's
-melee isn't in it - live (field584) four swordsmen packed in one cell of a slot each held fire for the others'
-sake (the sweep), and a zombie killed two; fixed as a unit case (`DeterministicSoldierCombatTest`, struck short
-of full charge), but a matrix cell of a squad crowded round one hostile, in a slot and in the open, is what would
-hold it.
+long as it follows, so the soldier neither works nor kills it. A squad's melee is in it now (`CombatSquadMatrixTest`: squads of two and three against packs, the battle simulation
+striking each swing as the server does - its sweep, knockback, a short hit - with no squadmate's sweep damage allowed
+in any cell); short there: two against a zombie and a skeleton on hills (83%).
 
 ## Done when
 The live tier has a harness (`app`'s `ChainScenarioLiveIT`, DEVELOPMENT.md § 2) and seven

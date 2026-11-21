@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import io.github.jayessdeesea.minecraft.bot.Strike;
 import io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.TrackedEntity;
 import io.github.jayessdeesea.minecraft.bot.world.WeaponStats;
@@ -172,6 +173,76 @@ public final class Battle implements WorldView {
         int bz = (int) Math.floor(h.z);
         return world.isWater(bx, world.ground(bx, bz) + 1, bz);
     }
+
+    /** The squad's soldiers where each stands this tick: the players a soldier sees near it, its sweep's squadmates. */
+    private List<Position> players = List.of();
+
+    /** The squad's soldiers this tick, each where it stands. */
+    public void players(List<Position> at) {
+        players = List.copyOf(at);
+    }
+
+    @Override
+    public List<Position> playersNear(Position center, double radius) {
+        return players.stream().filter(p -> horizontal(p, center) <= radius).toList();
+    }
+
+    /** The squad's entity ids, PLAYER_ID_FIRST on in {@link #players}' order: each soldier knows itself by its own, as live. */
+    public static final int PLAYER_ID_FIRST = 9000;
+
+    @Override
+    public List<Position> playersNear(Position center, double radius, int except) {
+        List<Position> near = new ArrayList<>();
+        for (int i = 0; i < players.size(); i++) {
+            if (PLAYER_ID_FIRST + i != except && horizontal(players.get(i), center) <= radius) {
+                near.add(players.get(i));
+            }
+        }
+        return near;
+    }
+
+    /**
+     * A sweep's box round its target, along each axis: the target's own box grown a block (vanilla's), as far as the body
+     * of another it meets - a player's or a zombie's half-width, 0.3.
+     */
+    static final double SWEEP_BOX = 1.0 + 0.3 + 0.3;
+
+    /**
+     * A {@code kind} swing (bot.Strike) of {@code weapon} on {@code entityId} by the soldier at {@code soldier}, as the
+     * server strikes it: a short one's blow scaled by its charge {@code ticksSinceSwing} after the last (vanilla's
+     * 0.2 + 0.8 x charge squared); a knockback one pushed twice as far; a full one with a sword swept - every other
+     * hostile and every other of {@code squad} in the target's box taking 1 and the sweeping ratio of the blow. Returns
+     * what the sweep did to each of {@code squad}.
+     */
+    public double[] swing(int entityId, Position soldier, double reach, Strike.Kind kind, Strike.Weapon weapon, double blow, int ticksSinceSwing,
+                          List<Position> squad) {
+        double[] friendly = new double[squad.size()];
+        Hostile target = hostiles.stream().filter(h -> h.id == entityId && h.alive() && horizontal(positionOf(h), soldier) <= reach).findFirst().orElse(null);
+        if (target == null || kind == Strike.Kind.WAIT || kind == Strike.Kind.RESET) {
+            return friendly;
+        }
+        double charge = kind == Strike.Kind.SHORT ? weapon.charge(ticksSinceSwing) : 1;
+        target.health -= blow * (0.2 + 0.8 * charge * charge);
+        move(target, soldier, kind == Strike.Kind.KNOCKBACK ? -2 * KNOCKBACK : -KNOCKBACK);
+        if (Strike.sweeps(weapon, kind)) {
+            double sweep = Strike.sweepDamage(weapon, blow);
+            sweptHostiles += hostiles.stream().filter(h -> h != target && h.alive() && Math.abs(h.x - target.x) <= SWEEP_BOX
+                    && Math.abs(h.z - target.z) <= SWEEP_BOX).peek(h -> h.health -= sweep).count();
+            // Up and down too, as the server's box is: the target's grown a quarter block, against a player's height.
+            double ty = positionOf(target).y();
+            for (int i = 0; i < squad.size(); i++) {
+                Position p = squad.get(i);
+                if (horizontal(p, soldier) > 0.1 && Math.abs(p.x() - target.x) <= SWEEP_BOX && Math.abs(p.z() - target.z) <= SWEEP_BOX
+                        && ty - 0.25 <= p.y() + 1.8 && p.y() <= ty + 1.95 + 0.25) {
+                    friendly[i] += sweep;
+                }
+            }
+        }
+        return friendly;
+    }
+
+    /** Hostiles a sweep has taken, besides the ones struck. */
+    public int sweptHostiles;
 
     /** A bare-handed blow on {@code entityId}, if that hostile is alive and within {@code reach}. */
     public void strike(int entityId, Position soldier, double reach) {

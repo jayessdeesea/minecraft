@@ -51,12 +51,12 @@ public final class Strike {
         }
 
         /** Its charge {@code ticks} after the last swing, as the server reckons it. */
-        double charge(int ticks) {
+        public double charge(int ticks) {
             return Math.min(1, (ticks + 0.5) / cooldown());
         }
 
         /** The ticks after a swing a short hit goes at: the most whose charge is short of a strong hit's 0.9. */
-        int shortTicks() {
+        public int shortTicks() {
             return (int) Math.ceil(STRONG * cooldown() - 0.5) - 1;
         }
     }
