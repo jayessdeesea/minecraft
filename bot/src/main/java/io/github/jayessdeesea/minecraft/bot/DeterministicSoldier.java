@@ -443,6 +443,16 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             underFireTicks--;
         }
         cutting = List.of(); // set again below only while navigating onto a step being cut
+        // A creeper inside its blast's clearing comes first, whatever's nearer: live (field595) Olga fought a skeleton 0.8
+        // off with a creeper 1.3 off, her answer flipping between the two each tick, and the creeper's blast took her from
+        // 16 health to 2 - the next one killed her.
+        Optional<TrackedEntity> blast = threats.stream().filter(t -> t.explodes() && gait.position.distanceTo(t.position()) <= CREEPER_CLEAR).findFirst();
+        if (blast.isPresent() && !threats.getFirst().equals(blast.get())) {
+            List<TrackedEntity> first = new java.util.ArrayList<>(threats);
+            first.remove(blast.get());
+            first.addFirst(blast.get());
+            threats = List.copyOf(first);
+        }
         int nearestId = threats.isEmpty() ? -1 : threats.get(0).entityId();
         if (nearestId != pinnedOn) {
             pinned = false; // a fresh contact gets a fresh look for a way to close

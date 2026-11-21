@@ -603,7 +603,9 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   sprint of its 1.5-second fuse outruns the blast (`DeterministicSoldier.CREEPER_DEFUSE`) - once it's come within
   4.5, where one lights; one never come that close is gone round, the route kept. Held within reach ten seconds
   all the same - followed down a tunnel - it's closed on. A soldier afloat can't sprint, so in water
-  it doesn't get clear (the matrix's pond cells); and one followed keeps getting clear rather than working.
+  it doesn't get clear (the matrix's pond cells); and one followed keeps getting clear rather than working. One
+  within 4.5 comes first, whatever's nearer - live (field595), Olga fought a skeleton 0.8 off with a creeper 1.3
+  off, and its blast took her from 16 health to 2.
 - **A soldier with a bow shoots far-away enemies** (operator, 2026-11-18) - a creeper too, from outside its
   blast (past `DeterministicSoldier.CREEPER_CLEAR`); one at arm's length is still got away from. Live, six
   soldiers were killed by creepers in melee in a few nights.

@@ -202,6 +202,43 @@ class DeterministicSoldierCombatTest {
     }
 
     /**
+     * A creeper at arm's length comes first, a skeleton nearer: it gets clear of the blast, not fights the skeleton. Live
+     * (field595), Olga fought a skeleton 0.8 off with a creeper 1.3 off, and the blast took her from 16 health to 2.
+     */
+    @Test
+    void aCreeperAtArmsLengthComesBeforeANearerSkeleton() {
+        DeterministicSoldier olga = new DeterministicSoldier("Olga", new Position(0.5, GROUND, 0.5));
+        olga.reportKit(new Kit(Optional.of("stone_sword"), 0, 4));
+        TrackedEntity skeleton = new TrackedEntity(1, HostileMobRegistry.typeIdOf("skeleton"), new Position(1.3, GROUND, 0.5));
+        TrackedEntity creeper = new TrackedEntity(2, HostileMobRegistry.typeIdOf("creeper"), new Position(0.5, GROUND, 2.0));
+        WorldView both = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < GROUND;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of(skeleton, creeper);
+            }
+        };
+        Position from = olga.status().position();
+        OptionalInt swing = OptionalInt.empty();
+        for (int tick = 0; tick < 5; tick++) {
+            OptionalInt s = olga.tick(both);
+            swing = s.isPresent() ? s : swing;
+        }
+        Position to = olga.status().position();
+        assertTrue(swing.isEmpty() || swing.getAsInt() == 2, "not the skeleton: " + swing);
+        assertTrue(Math.hypot(to.x() - 0.5, to.z() - 2.0) > Math.hypot(from.x() - 0.5, from.z() - 2.0), "away from the creeper: " + from + " -> " + to);
+    }
+
+    /**
      * With a squadmate in the sweep for good - four in one cell of a slot - it doesn't hold fire for good: a charged
      * swing held a second at most, then each struck short of full charge, which sweeps nobody. Live (field584), Bob, Gus,
      * Fran and Jack in one cell, each holding fire for the others, and a zombie killed Gus and Fran.
