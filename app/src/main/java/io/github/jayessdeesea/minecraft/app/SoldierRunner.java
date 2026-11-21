@@ -2293,8 +2293,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         // Salvage (backlog/salvage-and-pack.md): a chest standing on the ground to flatten - the old depot's,
         // the site moved onto it - is emptied into the depot before it's dug; till it's seen empty it stands
-        // on a pillar of the ground under it and round it, so its salvager can still reach it. Dug, a chest
-        // spills what it holds on the ground.
+        // on a pillar of the ground under it and round it, so its salvager can still reach it. Dug, a chest spills what it holds on the ground.
         Set<BlockPos> condemnedNow = condemned(ground, hands);
         for (BlockPos c : condemnedNow) {
             if (emptied(c)) {
@@ -2319,8 +2318,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 .strips(Math.max(1, onKeep.size())).get(share);
         Box fillShare = ground.fill().strips(Math.max(1, onKeep.size())).get(share);
         // Level by level, strip by strip: each soldier's floor is two under the highest ground left in
-        // and round its strip (Tasking.keepDig), every squad's share counted - the seam between two
-        // squads' strips is an edge like any other.
+        // and round its strip (Tasking.keepDig), every squad's share counted - the seam between two squads' strips is an edge like any other.
         // Ore whose drop its strip's builder can't get - emerald with a stone pickaxe - is set aside,
         // with the ground under it, till that builder carries the pickaxe for it (operator,
         // 2026-11-13: left for a tool of the right strength). Left in the dig it would be its strip's
@@ -2428,8 +2426,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Food first: a builder hungry with nothing to eat is left to its own feeding - the farm, the
         // hunt, a squadmate's share - and comes back when it's fed. Live, with every soldier on the
         // keep, the camp's farm went unkept and a builder worked the hilltop at food 1 with none; and
-        // held off for carrying fewer than 10 rations at food 20, two builders dug the camp's ground
-        // while their strips stood.
+        // held off for carrying fewer than 10 rations at food 20, two builders dug the camp's ground while their strips stood.
         List<Tasking.Hand> crew = hands.stream()
                 .filter(h -> h.condition().map(c -> !Subsistence.mustFeed(c.food(), c.kit().map(Kit::rations).orElse(0))).orElse(true))
                 .map(h -> new Tasking.Hand(h.name(),
@@ -2456,8 +2453,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         // A pillar's stock: a builder on the keep's dig short of blocks to climb on fetches a load of
         // dirt from a borrow pit off its squad's side of the keep. Live, a builder sent to cut its
-        // strip's top 15 blocks up carried one block of dirt - its steps had used the rest, and the
-        // hilltop it dug was stone - and stood under it.
+        // strip's top 15 blocks up carried one block of dirt - its steps had used the rest, and the hilltop it dug was stone - and stood under it.
         // North for the first share, east for the second - and when its fetchers find nothing left there,
         // the next side round: live, two builders spent a day at a pit dug out, "nothing left to gather".
         // Never west, the depot's side: a pit there is dug out of the depot's ground, and in the squad
@@ -3206,8 +3202,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         keepParty = party;
         // Off the party, its tree is let go of, its patience with it too: live (field399), Liam's tree was
-        // kept through his night down the mine, and given up as out of reach at dawn - its three minutes
-        // run out while he was 70 blocks under it.
+        // kept through his night down the mine, and given up as out of reach at dawn - its three minutes run out while he was 70 blocks under it.
         felling.keySet().retainAll(party.cutters());
         fellingLeft.keySet().retainAll(party.cutters());
         fellingSince.keySet().retainAll(party.cutters());
@@ -3453,8 +3448,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             int left = (int) tree.stream().filter(c -> world.isLog(c.x(), c.y(), c.z())).count();
             Integer was = fellingLeft.get(cutter);
             // Its patience runs only while it's at the tree's work, not on an errand: live (field388), Eli
-            // made tools and fetched iron from the stockpile three minutes, and let go as out of reach a
-            // tree beside the workshop he'd never gone to.
+            // made tools and fetched iron from the stockpile three minutes, and let go as out of reach a tree beside the workshop he'd never gone to.
             Hands.Routine errand = handsHeld.get(cutter);
             if (errand != null && ERRANDS.contains(errand)) {
                 fellingSince.put(cutter, now);
@@ -3728,8 +3722,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         // climbed to from the dig - live, the planter pillared the bench's outer row
                         // from the level up to a grove 13 blocks over it. Below it, walked down to, it's
                         // as good: live (field350-364), the keep had no grove at all, every ring's
-                        // ground 6 under the depot's stand at y=75 (operator, 2026-11-17: the area
-                        // round -49, 69, -15 a grove).
+                        // ground 6 under the depot's stand at y=75 (operator, 2026-11-17: the area round -49, 69, -15 a grove).
                         .filter(g -> g.centre().y() - depot.stand().y() <= GROVE_RISE);
                 if (grove.isPresent()) {
                     int score = groveScore(grove.get(), r);
@@ -5486,6 +5479,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 if (killed >= DangerAreas.DEATHS && blockedBy.isEmpty()) {
                     blockedBy = Optional.of(killed + " killed within " + (int) DangerAreas.RADIUS + " blocks of its stairs in a day - a danger area");
                 }
+                // Its tunnels into a danger area given up, the head safe or not (MineDanger; live, field598, four of Charlie down one gallery).
+                Set<Integer> given = levelsBlocked.computeIfAbsent(state.stairs.head() + "/" + state.stairs.bottom(), k -> ConcurrentHashMap.newKeySet());
+                MineDanger.tunnels(state.stairs.cuts(), (cx, cz) -> dangerAreas.near(cx, cz, now)).forEach((t, at) -> {
+                    if (given.add(t)) {
+                        LOG.warn("[Outcome] tunnel {} of the mine at {} given up at y={}: a danger area at {}", t, state.stairs.head(), state.stairs.bottom(), at);
+                    }
+                });
                 if (blockedBy.isPresent() && driedUp.add(state.stairs.head())) {
                     deadWell(state.stairs.head());
                     String why = blockedBy.get();
