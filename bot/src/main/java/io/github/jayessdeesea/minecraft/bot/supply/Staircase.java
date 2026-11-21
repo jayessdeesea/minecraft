@@ -77,6 +77,23 @@ public record Staircase(BlockPos head, int bottom, int stretches, boolean well) 
         return Math.max(floor, Math.floorDiv(Math.min(depth, headY - 1), WELL_TURN) * WELL_TURN);
     }
 
+    /**
+     * Its shaft's cells at its head, a block under it to two over: what's kept clear of a chest, a table, a step - the way
+     * down. Live (field585), the stockpile's row put a chest in Bravo's stair head at (-10, 64, 7), and half the platoon
+     * stood beside it, "no route", sent down a mine it couldn't get into.
+     */
+    public Set<BlockPos> headCells() {
+        Set<BlockPos> cells = new java.util.HashSet<>();
+        for (int dx = -3; dx <= 3; dx++) {
+            for (int dz = -3; dz <= 3; dz++) {
+                for (int dy = -1; dy <= 2 && inShaft(head.x() + dx, head.z() + dz); dy++) {
+                    cells.add(head.offset(dx, dy, dz));
+                }
+            }
+        }
+        return cells;
+    }
+
     /** Whether column ({@code x}, {@code z}) is in the shaft: a well's 4x4, a spiral's 3x3. */
     public boolean inShaft(int x, int z) {
         if (well) {

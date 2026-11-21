@@ -292,7 +292,8 @@ whatever its own squad's task - live, the builders of squads sent to it from the
 92 loads to the camp's chest 70 blocks off. The depot is a row of chests, not one (operator, 2026-11-14): as many cells as fit round the
 workshop's stand, each within reach of it and a step up or down a slope from it at most, open
 above so its lid lifts, none beside the stand or beside another chest - two
-side by side would join into one double chest (`Workshop.chestCells`). They're filled in turn: a
+side by side would join into one double chest (`Workshop.chestCells`) - and none in a mine's shaft at its head, its
+way down (`Staircase.headCells`; live, field585, a chest in Bravo's stair head jammed half the platoon beside it). They're filled in turn: a
 keep builder's load that won't go into the chest it reached and opened marks that chest full
 (`Depositor.full`), and the depot's chest becomes the next cell, fitted by the first builder there
 with the logs for it or a full pack. Every workshop's chest - the camp's stockpile, a squad's

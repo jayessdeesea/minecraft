@@ -722,8 +722,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // The cells SECURE lights, no others: one measure for the standard and the task that meets it.
         int dark = offTheWall(Lighting.darkCells(world, at, SECURE_RADIUS)).size();
         // Torches are made from logs: with none carried and no tree in sight, lighting waits on wood
-        // grown first - the lookup done for the platoon leader, which otherwise sends squads to SECURE with
-        // nothing to make torches from.
+        // grown first - the lookup done for the platoon leader, which otherwise sends squads to SECURE with nothing to make torches from.
         int logs = everyone.stream().mapToInt(s -> s.condition().flatMap(c -> c.kit()).map(Kit::logs).orElse(0)).sum();
         int torches = torchesCarried.values().stream().mapToInt(Integer::intValue).sum();
         boolean noWood = dark > 0 && torches == 0 && logs < TORCH_LOGS && !chainOfCommand.woodSeen();
@@ -736,8 +735,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         wallStore.keys().stream().filter(k -> Math.hypot(Integer.parseInt(k.split(",")[0]) - camp[0],
                         Integer.parseInt(k.split(",")[1]) - camp[1]) <= WALL_RADIUS)
                 .forEach(k -> walls.computeIfAbsent(k, key -> wallStore.load(key).orElseThrow()));
-        // The one the world shows most built, of the layouts round the camp: one was laid out for each
-        // place FORTIFY was ever ordered near it.
+        // The one the world shows most built, of the layouts round the camp: one was laid out for each place FORTIFY was ever ordered near it.
         // Of two as built, the more of stone: and that's the one the squads finish, so the standard
         // and the work are one wall. Live, two closed layouts round the camp were counted by turns,
         // and the masons repointed the one with 23 dirt blocks while the camp's read 1.
@@ -1051,7 +1049,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return;
         }
         saveFullChests();
-        List<BlockPos> row = shop.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS);
+        List<BlockPos> row = shop.chestCells(world, chestClaims(), DEPOT_CHESTS);
         Optional<BlockPos> free = row.stream().filter(c -> !fullChests.contains(c)).findFirst();
         if (free.isEmpty()) {
             LOG.warn("[Workshop] the chest at {} is full - and every chest of its row, {} of them", cell, row.size());
@@ -1177,7 +1175,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         if (shop == null || shop.chest().filter(fullChests::contains).isEmpty()) {
             return shop;
         }
-        List<BlockPos> row = shop.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS);
+        List<BlockPos> row = shop.chestCells(world, chestClaims(), DEPOT_CHESTS);
         return row.stream().filter(c -> !fullChests.contains(c)).findFirst().map(shop::withChest).orElse(shop);
     }
 
@@ -1473,8 +1471,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 continue;
             }
             SquadState state = squadStates.computeIfAbsent(squad.name(), name -> new SquadState());
-            // Replacements (respawned soldiers) go to the rear and rejoin by link-up, so the first
-            // formed soldier is the point man.
+            // Replacements (respawned soldiers) go to the rear and rejoin by link-up, so the first formed soldier is the point man.
             // The soldiers' own reports: a replacement's CANTCO, before link-up relabels it, says it's stranded.
             state.reported = soldiers.stream().map(DeterministicSoldier::status).toList();
             List<SoldierStatus> statuses = state.linkUp.reconstitute(state.reported);
@@ -1875,8 +1872,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 // On the depot's surface, from high over any hill there down - not the first cell with
                 // ground under it near the slab's height, which under a hill is a cave's floor or a
                 // tunnel's: live, that was a one-wide tunnel into the hill west of the keep, and both
-                // squads said "nowhere" every second for hours while their builders walked 50 blocks to
-                // a stray table for bread.
+                // squads said "nowhere" every second for hours while their builders walked 50 blocks to a stray table for bread.
                 int depotX = (int) Math.floor(depotAt.x()), depotZ = (int) Math.floor(depotAt.z());
                 BlockPos depot = TerrainSurveyor.surface(world, depotX, depotZ, (int) depotAt.y() + 60)
                         .orElseGet(() -> TerrainSurveyor.groundAt(world, BlockPos.containing(depotAt.x() + 0.5, depotAt.y(), depotAt.z() + 0.5)));
@@ -1895,7 +1891,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 keepWorkshop = keep;
                 // A depot is chests enough for what the dig turns out, not one (operator, 2026-11-14): their cells laid out round its stand, filled one after another.
-                keepChests = keep == null ? List.of() : keep.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS);
+                keepChests = keep == null ? List.of() : keep.chestCells(world, chestClaims(), DEPOT_CHESTS);
                 keepChestAt = 0;
                 if (keep != null) {
                     LOG.info("[{}] the keep's depot: {} chest(s) laid out at {}", squad, keepChests.size(), keepChests);
@@ -2080,8 +2076,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             return supplyPoint;
         }
         // On the flatten's crew, its depot - whatever its squad's own task: live, the builders of the
-        // squads sent to it from the mine carried every load to the camp's chest 70 blocks off, 53 of
-        // 92, while the depot stood at the site's edge.
+        // squads sent to it from the mine carried every load to the camp's chest 70 blocks off, 53 of 92, while the depot stood at the site's edge.
         if (keepHands.contains(soldier)) {
             Optional<Position> depot = chestOf(keepWorkshop);
             if (depot.isPresent()) {
@@ -2202,8 +2197,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // Inside the wall line, as the dig is: the wall's own footing is the masons' (Perimeter.open).
         Box fill = Groundwork.fill(at, WALL_RADIUS - 1);
         // The camp's mine's shaft - the 3x3 columns round its head, where the night shift cuts it - is
-        // never ground work, by day or night, whoever's on it: live, a day's fill with no squad on
-        // MINE would have poured dirt down it.
+        // never ground work, by day or night, whoever's on it: live, a day's fill with no squad on MINE would have poured dirt down it.
         if (camp != null) {
             List<int[]> heads = new ArrayList<>();
             heads.add(new int[]{camp[0] + ChainOfCommand.MINE_HEAD_DX, camp[1] + ChainOfCommand.MINE_HEAD_DZ});
@@ -2236,8 +2230,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             scaffolding.forEach(c -> except.add(new Cell(c.x(), c.y(), c.z())));
         }
         // Leaves high over the camp aren't its ground work: their trunk is, and cut, they decay on their
-        // own. Live, six soldiers stood under a canopy 11 blocks up with no log under it, a dig of
-        // twelve leaves between them, for minutes.
+        // own. Live, six soldiers stood under a canopy 11 blocks up with no log under it, a dig of twelve leaves between them, for minutes.
         for (int x = dig.minX(); x <= dig.maxX(); x++) {
             for (int z = dig.minZ(); z <= dig.maxZ(); z++) {
                 for (int y = feet.y() + LEAVES_OVER_CAMP + 1; y <= dig.maxY(); y++) {
@@ -4180,6 +4173,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     }
 
     /** The camp's mine, as kept on disk: empty for no camp, or no mine sited. */
+    /** What a chest row leaves: the trees' claims and each mine's way down at its head (Staircase#headCells). */
+    private Set<BlockPos> chestClaims() {
+        Set<BlockPos> claims = new HashSet<>(treeClaims);
+        Stream.concat(squadStairs.values().stream(), campStairs().stream()).forEach(m -> claims.addAll(m.headCells()));
+        return claims;
+    }
+
     private Optional<Staircase> campStairs() {
         if (campStairs == null) {
             campStairs = camp == null ? Optional.empty() : keptMine(camp[0] + "," + camp[1]);
@@ -4663,7 +4663,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // (field480, field486), the camp's upkeep dug its full chests out, and the stores they held were forgotten.
         // And every chest standing in the camp workshop's row: live (field487), idle squads dug them out of it.
         Stream.concat(Stream.concat(shops.stream().flatMap(w -> Stream.concat(Stream.of(w.stand(), w.table(), w.furnace()), w.chest().stream())), fullChests.stream()),
-                        campWorkshop == null ? Stream.empty() : campWorkshop.chestCells(world, new HashSet<>(treeClaims), DEPOT_CHESTS).stream()
+                        campWorkshop == null ? Stream.empty() : campWorkshop.chestCells(world, chestClaims(), DEPOT_CHESTS).stream()
                                 .filter(c -> world.isChest(c.x(), c.y(), c.z())))
                 .forEach(c -> keep.addAll(List.of(c, c.offset(0, -1, 0))));
         return keep;

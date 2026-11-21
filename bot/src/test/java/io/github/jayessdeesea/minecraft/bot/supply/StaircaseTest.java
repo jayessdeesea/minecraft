@@ -250,4 +250,35 @@ class StaircaseTest {
                 assertTrue(lights.stream().anyMatch(l -> Math.abs(l.x() - cell.x()) + Math.abs(l.y() - cell.y()) + Math.abs(l.z() - cell.z())
                         <= Lighting.REACH), cell + " is dark"));
     }
+
+    /**
+     * A chest row by a mine's head leaves its way down: live (field585) the stockpile's row put a chest in Bravo's stair
+     * head at (-10, 64, 7), and half the platoon stood beside it, "no route" down.
+     */
+    @Test
+    void aChestRowLeavesAMinesHead() {
+        Staircase mine = new Staircase(new BlockPos(-10, 64, 7), 0);
+        io.github.jayessdeesea.minecraft.bot.engineer.Workshop shop = new io.github.jayessdeesea.minecraft.bot.engineer.Workshop(
+                new BlockPos(-6, 64, 7), new BlockPos(-6, 64, 9), new BlockPos(-6, 64, 5), java.util.Optional.empty());
+        io.github.jayessdeesea.minecraft.bot.world.WorldView flat = new io.github.jayessdeesea.minecraft.bot.world.WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y < 64;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public java.util.List<io.github.jayessdeesea.minecraft.bot.world.TrackedEntity> nearbyHostiles(
+                    io.github.jayessdeesea.minecraft.command.Position center, double radius) {
+                return java.util.List.of();
+            }
+        };
+        java.util.List<BlockPos> row = shop.chestCells(flat, mine.headCells(), 17);
+        assertTrue(row.size() > 4 && row.stream().noneMatch(mine.headCells()::contains), "none in the shaft: " + row);
+        assertTrue(shop.chestCells(flat, java.util.Set.of(), 17).stream().anyMatch(mine.headCells()::contains), "without it, one was");
+    }
 }
