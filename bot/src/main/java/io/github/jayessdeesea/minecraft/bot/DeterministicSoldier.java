@@ -524,7 +524,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             // An archer well below - across a cave's drop - out-shoots a sword as surely as one it has no route to:
             // the engagement doctrine's it-can-I-can't cell, cover and carry on. Live (field410-419), Alice, Hal and
             // Gus closed on skeletons in the caves under their faces and were shot 12-28 blocks down.
-            } else if (nearest.shoots() && armedForMelee() && range > CONTACT_RADIUS && underFireTicks == 0
+            } else if (nearest.shoots() && armedForMelee() && range > CONTACT_RADIUS && underFireTicks == 0 && lastReportedHealth >= HURT_HEALTH
                     && (threat.y() < gait.position.y() - ARCHER_BELOW || pinned(world, threat))) {
                 // Out of reach for its sword, out of contact and not shooting: let be, and the work goes on - hidden
                 // from, it held soldiers off their work (operator, 2026-11-20).
@@ -612,6 +612,13 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         }
         return in;
     }
+
+    /**
+     * Under this health an archer it can't close on isn't let be between its shots: kept out of its sight, as one with no
+     * weapon keeps out of it. Live (field568), Eli at 1 health walked back to his cave edge in a skeleton's line, "carries
+     * on", and was shot dead.
+     */
+    static final double HURT_HEALTH = 10;
 
     /** How far a soldier fleeing an archer runs before it's fled: past a skeleton's 15 blocks of range. */
     static final double FLED_PAST = 20;

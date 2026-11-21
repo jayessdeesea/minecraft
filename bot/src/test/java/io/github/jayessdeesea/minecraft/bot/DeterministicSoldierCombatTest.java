@@ -608,4 +608,46 @@ class DeterministicSoldierCombatTest {
 
         assertTrue(alice.status().position().x() > 0, "a distant hostile shouldn't interrupt the order");
     }
+
+    /**
+     * A skeleton 8 below in a pit it can't be closed on in, and not shooting: a healthy soldier armed for melee carries on
+     * with its order along the rim, but one at 2 health keeps out of its sight - live (field568), Eli at 1 health walked
+     * back to his cave edge in a skeleton's line between its shots, "carries on", and was shot dead.
+     */
+    @Test
+    void aHurtSoldierKeepsOutOfAnArchersSightItCantCloseOn() {
+        assertTrue(rimWalk(20) > 4, "healthy: on with its order along the rim");
+        assertTrue(rimWalk(2) < 2, "hurt: kept out of the archer's sight, not walked on along the rim");
+    }
+
+    /** How far along the rim, toward x=6, a soldier at {@code health} gets in two seconds, a skeleton in the pit below. */
+    private static double rimWalk(double health) {
+        Position skeleton = new Position(7.5, GROUND - 8, 0.5);
+        WorldView pit = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                boolean hole = x >= 2 && x <= 12 && Math.abs(z) <= 3 && y >= GROUND - 8 && y < GROUND;
+                return y < GROUND && !hole;
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return Math.sqrt(Math.pow(skeleton.x() - center.x(), 2) + Math.pow(skeleton.y() - center.y(), 2) + Math.pow(skeleton.z() - center.z(), 2)) <= radius
+                        ? List.of(new TrackedEntity(1, HostileMobRegistry.typeIdOf("skeleton"), skeleton)) : List.of();
+            }
+        };
+        DeterministicSoldier alice = new DeterministicSoldier("Alice", new Position(0.5, GROUND, 4.5));
+        alice.reportHealth(health, 16);
+        alice.reportKit(new Kit(Optional.of("stone_sword"), 0, 0, 0, 0, 0, 0, false));
+        alice.receiveOrder(new Order.MoveTo(6.5, GROUND, 4.5, 0.5, 1, Risk.LOW));
+        for (int tick = 0; tick < 40; tick++) {
+            alice.tick(pit);
+        }
+        return alice.status().position().x() - 0.5;
+    }
 }

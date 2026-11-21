@@ -616,7 +616,9 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 - **An archer in sight within 16 is closed on** by a soldier armed for melee, shooting or not - a skeleton or a
   pillager, past the 8 blocks of contact (operator, 2026-11-20; `DeterministicSoldier.ARCHER_ENGAGE`): live,
   pillagers floating in a pond held soldiers off their work, fought by none. One it can't close on - below,
-  or no route - that's out of contact and not shooting is let be, and the work goes on: not hidden from.
+  or no route - that's out of contact and not shooting is let be, and the work goes on: not hidden from - but by a
+  soldier under half health it is, as by one with no weapon (`DeterministicSoldier.HURT_HEALTH`; live, field568,
+  Eli at 1 health walked back to his cave edge in a skeleton's line between its shots and was shot dead).
 - **The combat eval matrix** (`CombatMatrixTest`; operator, 2026-11-20): one soldier against one hostile, by
   its type (zombie, skeleton, creeper, pillager), the soldier's kit (bare hands, wooden or stone sword, sword and
   shield, sword and iron) and the ground (flat, hills, forest, pond), each cell held to what correct is there -
