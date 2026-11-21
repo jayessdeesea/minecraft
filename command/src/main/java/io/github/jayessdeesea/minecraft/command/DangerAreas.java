@@ -50,6 +50,19 @@ public final class DangerAreas {
         return deaths.stream().filter(d -> now - d.millis() <= WINDOW_MILLIS && Math.hypot(d.at().x() - x, d.at().z() - z) <= RADIUS).count();
     }
 
+    /** How far up or down from a level its deaths count for one of the level's tunnels ({@link #near(double, double, double, long)}). */
+    public static final double LEVEL_HEIGHT = 8;
+
+    /**
+     * How many were killed within {@link #RADIUS} across of ({@code x}, {@code z}) and {@link #LEVEL_HEIGHT} up or down of
+     * {@code y}: a tunnel's danger, at its own level - the column's {@link #near(double, double, long)} is a mine's
+     * stairs', every level on them. Live (field599), deaths on the surface by a mine's head gave up its tunnels 60 below.
+     */
+    public long near(double x, double y, double z, long now) {
+        return deaths.stream().filter(d -> now - d.millis() <= WINDOW_MILLIS && Math.hypot(d.at().x() - x, d.at().z() - z) <= RADIUS
+                && Math.abs(d.at().y() - y) <= LEVEL_HEIGHT).count();
+    }
+
     /** Whether column ({@code x}, {@code z}) is a danger area as of {@code now}. */
     public boolean dangerous(double x, double z, long now) {
         return near(x, z, now) >= DEATHS;

@@ -5481,7 +5481,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 // Its tunnels into a danger area given up, the head safe or not (MineDanger; live, field598, four of Charlie down one gallery).
                 Set<Integer> given = levelsBlocked.computeIfAbsent(state.stairs.head() + "/" + state.stairs.bottom(), k -> ConcurrentHashMap.newKeySet());
-                MineDanger.tunnels(state.stairs.cuts(), (cx, cz) -> dangerAreas.near(cx, cz, now)).forEach((t, at) -> {
+                MineDanger.tunnels(state.stairs.cuts(), c -> dangerAreas.near(c.x() + 0.5, c.y(), c.z() + 0.5, now)).forEach((t, at) -> {
                     if (given.add(t)) {
                         LOG.warn("[Outcome] tunnel {} of the mine at {} given up at y={}: a danger area at {}", t, state.stairs.head(), state.stairs.bottom(), at);
                     }

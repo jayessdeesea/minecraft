@@ -26,6 +26,11 @@ final class DangerAreaBook {
         store.saveRows(KEY, areas.rows(millis));
     }
 
+    /** As {@link #near(double, double, long)}, at ({@code x}, {@code y}, {@code z})'s level only (DangerAreas#near with a height). */
+    synchronized long near(double x, double y, double z, long now) {
+        return areas.near(x, y, z, now);
+    }
+
     /** How many were killed within the danger radius of column ({@code x}, {@code z}) in the window before {@code now}. */
     synchronized long near(double x, double z, long now) {
         return areas.near(x, z, now);

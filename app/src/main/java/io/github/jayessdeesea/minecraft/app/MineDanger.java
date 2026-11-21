@@ -7,7 +7,7 @@ import io.github.jayessdeesea.minecraft.command.DangerAreas;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.function.ToLongBiFunction;
+import java.util.function.ToLongFunction;
 
 /**
  * The tunnels of a mine that run into a danger area (command.DangerAreas): a cut of theirs within the danger radius of
@@ -21,15 +21,15 @@ final class MineDanger {
     private MineDanger() {
     }
 
-    /** Each tunnel of {@code cuts} that comes within the radius of a danger area, by {@code near} - with where it does. */
-    static Map<Integer, BlockPos> tunnels(List<Staircase.Cut> cuts, ToLongBiFunction<Double, Double> near) {
+    /** Each tunnel of {@code cuts} that comes within the radius of a danger area at its level, by {@code near} - with where. */
+    static Map<Integer, BlockPos> tunnels(List<Staircase.Cut> cuts, ToLongFunction<BlockPos> near) {
         Map<Integer, BlockPos> into = new TreeMap<>();
         for (Staircase.Cut cut : cuts) {
             if (cut.tunnel() < 0 || into.containsKey(cut.tunnel())) {
                 continue; // the stairs are the way down, for the head's own check
             }
             BlockPos at = cut.feet();
-            if (near.applyAsLong(at.x() + 0.5, at.z() + 0.5) >= DangerAreas.DEATHS) {
+            if (near.applyAsLong(at) >= DangerAreas.DEATHS) {
                 into.put(cut.tunnel(), at);
             }
         }

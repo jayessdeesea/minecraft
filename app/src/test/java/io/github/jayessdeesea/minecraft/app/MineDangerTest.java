@@ -27,9 +27,23 @@ class MineDangerTest {
         }
         assertTrue(areas.near(0.5, 0.5, 10_000) < DangerAreas.DEATHS, "the head reads safe");
 
-        Map<Integer, BlockPos> into = MineDanger.tunnels(mine.cuts(), (x, z) -> areas.near(x, z, 10_000));
+        Map<Integer, BlockPos> into = MineDanger.tunnels(mine.cuts(), c -> areas.near(c.x() + 0.5, c.y(), c.z() + 0.5, 10_000));
 
         assertTrue(into.containsKey(0), "the main tunnel given up: " + into);
         assertEquals(into.keySet().stream().filter(t -> t < 0).count(), 0L, "never the stairs");
+    }
+
+    /** Deaths at another level over the tunnel - the surface by the mine's head - give it up no more: live (field599). */
+    @Test
+    void deathsAtAnotherLevelDontGiveATunnelUp() {
+        Staircase mine = new Staircase(new BlockPos(0, 64, 0), 40, 6);
+        BlockPos end = mine.tunnelEnd();
+        DangerAreas areas = new DangerAreas();
+        for (int i = 0; i < DangerAreas.DEATHS; i++) {
+            areas.killed(new io.github.jayessdeesea.minecraft.command.Position(end.x() + 0.5, 64, end.z() + 0.5), 1000L * i);
+        }
+
+        assertTrue(MineDanger.tunnels(mine.cuts(), c -> areas.near(c.x() + 0.5, c.y(), c.z() + 0.5, 10_000)).isEmpty(),
+                "deaths 24 over the tunnel, on the surface");
     }
 }
