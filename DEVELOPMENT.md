@@ -223,7 +223,7 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 The log lines to read first: `[Casualty]`, each death with the soldier's last seconds (§ 6);
 `[Alert]`, a soldier stuck in place for a minute other than while its squad hides or sleeps (§ 3); `[AAR]`, each dawn's review of the
 day before (§ 17); `[Scoreboard]`, that day's score beside the day before's; and `[Ledger]`, every ten minutes
-what each kind of act was planned to take against what it took - a route's ticks a step planned - the same line the
+what each kind of act was planned to take against what it took - a route's ticks a step planned, a farmer's ticks a crop while its plot is ripe - the same line the
 squad simulation logs, so the two can be set side by side (`app.Ledger`; backlog/simulator-fidelity.md); and
 `[Fidelity]`, a spell's routes walked more than 1.5 times off the simulation's flat walk (4.9 ticks a step,
 `bot.Trip.FLAT_TICKS_A_STEP`) either way - the game and the simulation parting. A soldier stuck a minute has its

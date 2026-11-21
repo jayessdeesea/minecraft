@@ -349,6 +349,10 @@ public final class Farmer {
      * so a farmer walking a row brings it in: in the squad simulation, stopping at a stand for each crop, 25 a minute.
      */
     private void harvestInPassing(Position soldier, WorldView world, FarmPlan farm) {
+        boolean ripe = farm.plot().stream().anyMatch(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).orElse(-1) == Digger.RIPE);
+        if (ripe) {
+            ripeTicks++;
+        }
         if (ticks % PASSING_TICKS != 0) {
             return;
         }
@@ -361,7 +365,26 @@ public final class Farmer {
                 .ifPresent(crop -> {
                     session.startDigging(crop.x(), crop.y(), crop.z());
                     session.finishDigging(crop.x(), crop.y(), crop.z());
+                    harvested++;
                 });
+    }
+
+    /** The squad simulation's rate on a ripe field (TaskOrganisationSimulationTest): ticks a crop, 49 a minute - the ledger's baseline. */
+    public static final double SIM_TICKS_A_CROP = 24.5;
+    private int harvested, ripeTicks;
+
+    /**
+     * The crops brought in, and the ticks its plot had ripe wheat, since the last taken - for the ledger's harvest
+     * (backlog/simulator-fidelity.md): empty while none's been brought in.
+     */
+    public synchronized java.util.Optional<int[]> takeHarvest() {
+        if (harvested == 0) {
+            return java.util.Optional.empty();
+        }
+        int[] taken = {harvested, ripeTicks};
+        harvested = 0;
+        ripeTicks = 0;
+        return java.util.Optional.of(taken);
     }
 
     public synchronized void tick(Position soldier, WorldView world, Optional<FarmPlan> farm, boolean free) {
@@ -388,6 +411,7 @@ public final class Farmer {
                 case Digger.Progress.Working _ -> {
                 }
                 case Digger.Progress.Done _ -> {
+                    harvested += digger.spot().target() == Digger.Target.WHEAT ? 1 : 0;
                     passedOver.worked(digger.spot().block().offset(0, -1, 0));
                     lastHarvest = null;
                     restarts = 0;

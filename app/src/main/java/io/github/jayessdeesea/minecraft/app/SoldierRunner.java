@@ -1927,8 +1927,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 }
                 campWorkshop = camp;
             }
-            // Its outposts, the depots along its edge but the main one: each kept while it stands where
-            // its depot is, its chest the next of its row once one's full.
+            // Its outposts, the depots along its edge but the main one: each kept while it stands where its depot is, its chest the next of its row once one's full.
             List<Workshop> outposts = new ArrayList<>();
             for (Position p : chainOfCommand.flatten().depots()) {
                 if (Math.hypot(p.x() - depotAt.x(), p.z() - depotAt.z()) < 1) {
@@ -7984,6 +7983,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // the cell is broken first - it goes at a touch, and the server won't put a block where one is: live, a
             // soldier pillaring out of a pocket from a torch's cell jumped in place for good.
             soldier.takeTrip().ifPresent(t -> ledger.route(t.planned(), t.ticks(), clockwork.millis()));
+            farmer.takeHarvest().ifPresent(h -> ledger.harvest(h[0], h[1], clockwork.millis()));
             soldier.takePlacement().filter(cell -> !bodyIn(name, cell)).filter(cell -> !refusedStep(name, cell)).ifPresent(cell -> {
                 if (world.isTorch(cell.x(), cell.y(), cell.z())) {
                     session.startDigging(cell.x(), cell.y(), cell.z());

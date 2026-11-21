@@ -71,17 +71,30 @@ final class Ledger {
      * simulation either way - the game walking slower or faster than the simulation says it should.
      */
     synchronized Optional<String> fidelity() {
-        List<double[]> routes = acts.getOrDefault("route", List.of());
-        double planned = routes.stream().mapToDouble(a -> a[0]).sum();
-        if (planned == 0) {
-            return Optional.empty();
-        }
-        double rate = routes.stream().mapToDouble(a -> a[1]).sum() / planned;
-        double base = io.github.jayessdeesea.minecraft.bot.Trip.FLAT_TICKS_A_STEP;
-        return rate > base * FIDELITY_FACTOR || rate < base / FIDELITY_FACTOR
-                ? Optional.of(String.format(Locale.ROOT, "route: %.2f ticks a step planned over %d routes, the simulation's flat walk %.2f - %.1fx off",
-                rate, routes.size(), base, rate / base))
-                : Optional.empty();
+        List<String> off = new ArrayList<>();
+        BASELINES.forEach((kind, base) -> {
+            List<double[]> list = acts.getOrDefault(kind, List.of());
+            double planned = list.stream().mapToDouble(a -> a[0]).sum();
+            if (planned > 0) {
+                double rate = list.stream().mapToDouble(a -> a[1]).sum() / planned;
+                if (rate > base * FIDELITY_FACTOR || rate < base / FIDELITY_FACTOR) {
+                    off.add(String.format(Locale.ROOT, "%s: %.2f ticks a unit over %d, the simulation's %.2f - %.1fx off", kind, rate, list.size(), base, rate / base));
+                }
+            }
+        });
+        return off.isEmpty() ? Optional.empty() : Optional.of(String.join("; ", off));
+    }
+
+    /**
+     * Each kind's rate in the squad simulation, ticks a unit: a route's step on flat open ground (bot.Trip), a crop
+     * brought in off a ripe field (bot.supply.Farmer) - what the live rate is set against.
+     */
+    static final Map<String, Double> BASELINES = Map.of("route", io.github.jayessdeesea.minecraft.bot.Trip.FLAT_TICKS_A_STEP,
+            "harvest", io.github.jayessdeesea.minecraft.bot.supply.Farmer.SIM_TICKS_A_CROP);
+
+    /** Crops brought in over ticks the plot had ripe wheat, at {@code now}. */
+    synchronized void harvest(int crops, int ripeTicks, long now) {
+        record("harvest", crops, ripeTicks, now);
     }
 
     /** The quarter, median and three-quarter marks of what each act took a unit planned, if any was planned. */
