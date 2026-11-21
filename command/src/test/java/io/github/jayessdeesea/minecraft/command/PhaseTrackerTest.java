@@ -57,4 +57,23 @@ class PhaseTrackerTest {
 
         assertEquals(Phase.CONSOLIDATION, after.update(ready, PhaseTracker.DWELL_MILLIS));
     }
+
+    /** Unmet a moment within the day, the phase still goes up a day after its standard first held; unmet over a tenth of it, not. */
+    @Test
+    void aMomentUnmetDoesntStartTheDayOver() {
+        PhaseTracker.Readiness ready = new PhaseTracker.Readiness(true, true, false, 0, 0, false);
+        PhaseTracker.Readiness unarmed = new PhaseTracker.Readiness(true, false, false, 0, 0, false);
+        PhaseTracker brief = new PhaseTracker();
+        brief.update(ready, 0);
+        brief.update(unarmed, 10_000);
+        brief.update(ready, 20_000);
+        assertEquals(Phase.CONSOLIDATION, brief.update(ready, PhaseTracker.DWELL_MILLIS), "20 s unmet in a day");
+
+        PhaseTracker long_ = new PhaseTracker();
+        long_.update(ready, 0);
+        long_.update(unarmed, 10_000);
+        long_.update(unarmed, 10_000 + PhaseTracker.DWELL_MILLIS / 5);
+        long_.update(ready, 20_000 + PhaseTracker.DWELL_MILLIS / 5);
+        assertEquals(Phase.SEIZURE, long_.update(ready, PhaseTracker.DWELL_MILLIS), "a fifth of the day unmet: started over");
+    }
 }

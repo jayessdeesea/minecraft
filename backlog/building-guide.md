@@ -25,13 +25,11 @@ against what's built, each pointing at the item it belongs to.
 - **Openings: fence gates or iron doors, never wooden doors** - zombies break wooden doors on hard
   difficulty, vindicators in raids. backlog/durable-shelter.md.
 - **Clear sky 32 blocks out, not just inside the wall,** and a lit band beyond it extended ring by
-  ring; then a trench 2 deep and 2 wide (or water) round the lit core, crossed only at gated
-  bridges. backlog/cells.md (the moat).
+  ring (backlog/cells.md, the open ground). No trench round it (operator, 2026-11-20: no moat).
 - **Phase exit criteria**, all measurable, as foothold standards (command.Foothold) the general
   already reads: to leave the foothold, a bed, stone pickaxe, axe and sword, 16 food, 32 torches
   (or their coal and sticks), 2 stacks of cobblestone; to leave the base, iron tools and armour, a
-  renewable food source inside the base, storage sorted by category, the moat closed with gated
-  crossings, 3 stacks of torches. backlog/sites.md.
+  renewable food source inside the base, storage sorted by category, 3 stacks of torches. backlog/sites.md.
 - **Outposts:** a single-chunk cell at each resource site, surface or mining level, each with
   walls, roof, full light, a table and furnace, an **emergency stash chest** (food, a weapon, a
   pickaxe, torches) and storage for its output; no work site more than about 200 blocks from a

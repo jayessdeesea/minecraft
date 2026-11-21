@@ -29,6 +29,10 @@ public final class PhaseTracker {
     private Phase phase = Phase.SEIZURE;
     private long since = Long.MIN_VALUE / 2;
     private long upHeldSince = Long.MIN_VALUE;
+    /** How long the next phase's standard has gone unmet within its day so far, and when it was last measured. */
+    private long unmetMillis, lastUpdate = Long.MIN_VALUE;
+    /** The share of the day the next phase's standard must hold for the phase to go up. */
+    public static final double HELD_SHARE = 0.9;
 
     public Phase phase() {
         return phase;
@@ -78,14 +82,20 @@ public final class PhaseTracker {
             case BUILDUP -> readiness.days() < BUILDUP_DOWN;
             case BREAKOUT -> readiness.days() < BREAKOUT_DOWN || !readiness.armoured();
         };
+        long step = lastUpdate == Long.MIN_VALUE ? 0 : Math.max(0, now - lastUpdate);
+        lastUpdate = now;
         if (down && now - since >= DWELL_MILLIS) {
             enter(Phase.values()[phase.ordinal() - 1], now);
         } else if (up) {
             if (upHeldSince == Long.MIN_VALUE) {
                 upHeldSince = now;
+                unmetMillis = 0;
             } else if (now - upHeldSince >= DWELL_MILLIS) {
                 enter(Phase.values()[phase.ordinal() + 1], now);
             }
+        } else if (upHeldSince != Long.MIN_VALUE && (unmetMillis += step) <= DWELL_MILLIS * (1 - HELD_SHARE)) {
+            // A moment unmet within the day doesn't start it over (operator, 2026-11-20): held 90% of it is held. Live
+            // (field538-539), the seizure's day broke on a sword swapped out to build, a soldier killed and respawned.
         } else {
             upHeldSince = Long.MIN_VALUE;
         }
@@ -96,6 +106,7 @@ public final class PhaseTracker {
         phase = next;
         since = now;
         upHeldSince = Long.MIN_VALUE;
+        unmetMillis = 0;
     }
 
     /** What stands between the force and the next phase, for the platoon leader. */

@@ -10,7 +10,7 @@ doctrine: ATP 3-37.10 (base camp layout, perimeter sectors); FM 3-90 (sectors of
 The camp today is one ring of dirt wall eight blocks out from its centre (docs/military-doctrine.md
 § 15), plus each squad's hut. It doesn't grow, and outside the ring is dark ground that spawns
 monsters right up to it. The operator expected something else: the ground divided along chunk
-boundaries into cells, each levelled, fenced, gated and lit, with open sky over the moat between
+boundaries into cells, each levelled, fenced, gated and lit, with open sky over the open ground between
 them. Monsters don't spawn on the lit ground, and any that do burn at dawn. The camp grows by
 adding cells outward.
 
@@ -57,10 +57,10 @@ adding cells outward.
 - **Lit with the fewest torches, on fence posts.** A torch on every few fence posts along the
   boundary, and one on a single fence post in the middle of each cell. That's the least light that
   keeps every floor cell above block light 0, the only light monsters spawn at.
-- **The moat:** the lit, open ground between and round the cells, under clear sky, so anything
+- **The open ground:** the lit ground between and round the cells, under clear sky, so anything
   that does spawn in the night burns at dawn. Nothing is built over it.
 - **Level at the plan's height.** The fields at sea level, the keep raised on its platform (above):
-  cut high ground, fill low ground. That makes the moat easy to keep open and the ground easy to walk.
+  cut high ground, fill low ground. That makes the open ground easy to keep open and the ground easy to walk.
 - **Fenced and gated:** fence on each cell's edges, with a fence gate on each side that has a
   neighbouring cell. Spiders still climb fences; the keep's lip is its wall.
 - **A purpose for each cell:** keep, barracks (beds), farm, pumpkins and melons, a pen (sheep for
@@ -111,7 +111,7 @@ adding cells outward.
   that is good, and it's iterated on continuously. A floor isn't left with potholes: it's
   inspected like the wall, and a crater (a creeper's) is filled and paved again. Sizes: a
   foothold minimal, while the squads arm and armour; an outpost one chunk, 16x16, fenced and gated
-  on the chunk's boundary with a light moat round it; the main base the same, 2x2 chunks.
+  on the chunk's boundary with lit open ground round it; the main base the same, 2x2 chunks.
   Height: the main base's is set above; an outpost's sea level, y=63, unless there's a practical
   reason not to - a mountain, a valley, a village to keep. Measured so far: the walks from the camp's centre to its sites
   (`RouteEffort`, docs/military-doctrine.md § 17).
