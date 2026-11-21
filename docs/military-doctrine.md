@@ -1072,7 +1072,9 @@ the nearest cell within reach of the chest it can stand in and get to (`SoldierR
 cell, which no one can stand in - and puts in
 the material it has a full load of (`bot.supply.Depositor`), and the rations beyond its basic load
 (§4, Class I) - only that, so a soldier quarrying stone keeps the logs for its next pickaxe, which
-wears out in 59 blocks. What the chest holds when it's
+wears out in 59 blocks. A trip past halfway is finished though its reason has gone - the squad put on other work -
+since the walk back costs what the rest does (`Depositor.pastHalfway`; live, field618, Mia walked a load 40 blocks
+out and back); a threat, the night or a routine before it still stop it. What the chest holds when it's
 opened goes to the platoon leader (`PlatoonLeader.receiveStockpile`), shown with the supply point. It's drawn on
 too: a mason out of blocks, when the stockpile was last seen holding a load of cobblestone, walks
 over and shift-clicks stacks out until it carries a load (`Depositor.tickDraw`) before it digs any

@@ -58,6 +58,20 @@ public final class Depositor {
     private Position soldierAt;
     private boolean wanted;
     private boolean walking;
+    /** Where the trip under way set off from. */
+    private Position tripFrom;
+
+    /**
+     * Whether a trip is under way and past halfway to where it's going: a reason to finish it, wanted or not - the walk
+     * back costs what the rest of the way does, and what it carries is put away. Live (field618), Mia set off 81 blocks
+     * with a load, was put on the farm half a minute on, and walked back with it (operator, 2026-11-21: this is killing
+     * productivity). A reason, not a veto past the runner's: a threat, the night or a routine before it still stop it.
+     */
+    public synchronized boolean pastHalfway() {
+        Position from = tripFrom, now = soldierAt, to = at;
+        return script != null && walking && from != null && now != null && to != null
+                && Math.hypot(now.x() - to.x(), now.z() - to.z()) <= Math.hypot(from.x() - to.x(), from.z() - to.z()) / 2;
+    }
     private Set<ItemClass> load = Set.of();
     /** The rations a trip leaves in the pack once it has put its surplus in: the inventory's count of food, or fewer. */
     private int foodLeft = Integer.MAX_VALUE;
@@ -241,6 +255,7 @@ public final class Depositor {
             dumping = Set.copyOf(surplus);
             LOG.info("{} leaves its surplus {} at the dump at {} - {}", name, dumping, at, inventory.summary());
             walking = true;
+            tripFrom = soldierAt;
             script = new Script(name, List.of(
                     new Step("walk to the dump", () -> walking = true,
                             new Expect("at the dump", () -> Math.hypot(soldierAt.x() - at.x(), soldierAt.z() - at.z()) <= DUMP_REACH
@@ -354,6 +369,7 @@ public final class Depositor {
             emptyingFurnace = true;
             LOG.info("{} empties the furnace at {} - {}", name, at, inventory.summary());
             walking = true;
+            tripFrom = soldierAt;
             script = new Script(name, List.of(
                     new Step("walk to the furnace", () -> walking = true,
                             new Expect("the furnace in reach", () -> ChestWindow.withinReach(soldierAt, at)), walkTicks()),
@@ -385,6 +401,7 @@ public final class Depositor {
 
     private Script drawTrip() {
         walking = true;
+        tripFrom = soldierAt;
         return new Script(name, List.of(
                 new Step("walk to the stockpile", () -> walking = true,
                         new Expect("the chest in reach", () -> ChestWindow.withinReach(soldierAt, at)), walkTicks()),
@@ -414,6 +431,7 @@ public final class Depositor {
 
     private Script trip() {
         walking = true;
+        tripFrom = soldierAt;
         return new Script(name, List.of(
                 new Step("walk to the stockpile", () -> walking = true,
                         new Expect("the chest in reach", () -> ChestWindow.withinReach(soldierAt, at)), walkTicks()),

@@ -7596,7 +7596,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     // (field424), Eli on his stair up from y=-43 set off for the depot 49 times in ten minutes, each
                     // trip taking his hands from the stair and dropped as no longer wanted.
                     depositor.tick(status.position(), deposit, free && (fullLoad || breadWanted && Depositor.surplusFood(inventory) || poolOre || stashOre
-                                    || surplusTrip || stockTrip) && !threatened && fort == null && !downForTheNight && !recovering.contains(name), pooled,
+                                    || surplusTrip || stockTrip || depositor.pastHalfway()) && !threatened && fort == null && !downForTheNight && !recovering.contains(name), pooled,
                             inv -> {
                                 List<Integer> slots = new ArrayList<>(plan.map(p -> p.surplus(inv)).orElse(List.of()));
                                 if (toDepot) {

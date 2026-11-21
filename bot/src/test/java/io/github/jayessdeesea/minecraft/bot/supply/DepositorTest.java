@@ -40,6 +40,24 @@ class DepositorTest {
         }
     }
 
+    /** Past halfway to where it's going, a trip is a reason to finish it (field618: Mia walked back with her load). */
+    @Test
+    void aTripPastHalfwaySaysSo() {
+        server.inventory.setSlot(10, new int[]{itemOf(ItemClass.COBBLESTONE), 64});
+        server.inventory.setSlot(11, new int[]{itemOf(ItemClass.COBBLESTONE), 64});
+        java.util.Set<ItemClass> surplus = java.util.Set.of(ItemClass.COBBLESTONE);
+        for (int i = 0; i < 3; i++) {
+            server.tick();
+            depositor.tickDump(FAR, Optional.of(BESIDE), surplus, true);
+        }
+        assertTrue(depositor.dumping());
+        assertFalse(depositor.pastHalfway(), "setting off");
+        depositor.tickDump(new Position(16, 64, 0), Optional.of(BESIDE), surplus, true);
+        assertFalse(depositor.pastHalfway(), "a quarter of the way");
+        depositor.tickDump(new Position(10, 64, 0), Optional.of(BESIDE), surplus, true);
+        assertTrue(depositor.pastHalfway(), "past halfway: finished, wanted or not");
+    }
+
     @Test
     void leavesItsSurplusAtTheDumpButAStackOfEach() {
         server.inventory.setSlot(10, new int[]{itemOf(ItemClass.COBBLESTONE), 64});
