@@ -26,7 +26,10 @@ A regression in one of those shows up only if someone happens to run that case b
 
 Built offline for combat: `CombatMatrixTest` (hostile x kit x ground, docs/military-doctrine.md § 8), its
 cells short of correct listed known; and `CombatPairsMatrixTest`, two hostiles at once (correct: alive), its short
-cells known - a creeper with a zombie bare-handed and on hills, a zombie with a skeleton on hills. Left there: the
+cells known - a creeper with a zombie bare-handed and on hills, a zombie with a skeleton on hills. Traced, the
+creeper and zombie bare-handed on hills: the blast catches the soldier for 8-15 health and the zombie finishes it,
+and of the dead half are cornered at the world's edge (x or z at 47.7 of the box's 48) - the same box that corners
+a flight from a pillager, so a wider world comes before reading these cells as the soldier's. Left there: the
 bow (not in the battle simulation's fights), slopes and caves as grounds, and each known cell's fix - among them the creeper: got clear of,
 it's kited at 7.5 for as long as it follows, so the soldier neither works nor kills it; a drill that kills one
 (a bow, or a blow before it lights) is what's left, with water and hills where a sprint doesn't get clear. And
