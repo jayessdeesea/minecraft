@@ -1,0 +1,51 @@
+{
+  "why": "By the keep, in a heap of chests, tables and furnaces, Bob had no route from (-46, 74, 41) to a stand at (-47, 74, 42) a block off - the spot Carol was stuck at for minutes in field548-549 - on keep the farm (field556). Bob stuck at its post: Cantco[reason=no route from (-46, 74, 41) to within 0 of (-47, 74, 42)] - order MoveTo[x=-46.5, y=74.0, z=42.5, horizontalTolerance=0.3, verticalTolerance=0.5, risk=LOW, urgent=false]",
+  "world": "worlds/keep-heap-bob-field556.json",
+  "soldier": "Bob",
+  "at": [
+    -45.35469870843781,
+    74.0,
+    41.499711333424074
+  ],
+  "kit": [
+    {
+      "slot": 36,
+      "id": 1035,
+      "count": 1,
+      "item": "stone_sword"
+    },
+    {
+      "slot": 37,
+      "id": 1037,
+      "count": 1,
+      "item": "stone_pickaxe"
+    },
+    {
+      "slot": 38,
+      "id": 1067,
+      "count": 47,
+      "item": "bread"
+    },
+    {
+      "slot": 9,
+      "id": 62,
+      "count": 47,
+      "item": "cobblestone"
+    },
+    {
+      "slot": 10,
+      "id": 163,
+      "count": 26,
+      "item": "oak_log"
+    }
+  ],
+  "goal": [
+    -46.5,
+    74.0,
+    42.5
+  ],
+  "correct": "stands within 1.5 of its walk's goal, or the job gives the stand up and takes another",
+  "radius": 1.5,
+  "withinMinutes": 5,
+  "knownFailure": true
+}

@@ -462,6 +462,11 @@ public final class SpringAiPlatoonLeader implements PlatoonLeader {
                 .call()
                 .entity(PlatoonLeaderReply.class, spec -> spec.useProviderStructuredOutput().validateSchema());
         LOG.debug("PL reply: {}", reply);
+        if (reply != null && (reply.objectives() == null || reply.objectives().isEmpty())) {
+            // Its prompt kept, for a PlatoonLeaderScenarioIT case: live (field557) one reply in 53, and its re-ask,
+            // named no squad at all.
+            LOG.warn("[PL] a reply naming no objective at all, to this prompt:\n{}", context.prompt());
+        }
         return reply;
     }
 
