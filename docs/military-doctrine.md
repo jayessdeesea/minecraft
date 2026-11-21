@@ -605,11 +605,19 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   pillager, past the 8 blocks of contact (operator, 2026-11-20; `DeterministicSoldier.ARCHER_ENGAGE`): live,
   pillagers floating in a pond held soldiers off their work, fought by none. One it can't close on - below,
   or no route - that's out of contact and not shooting is let be, and the work goes on: not hidden from.
+- **The combat eval matrix** (`CombatMatrixTest`; operator, 2026-11-20): one soldier against one hostile, by
+  its type (zombie, skeleton, creeper, pillager), the soldier's kit (bare hands, wooden or stone sword, sword and
+  shield, sword and iron) and the ground (flat, hills, forest, pond), each cell held to what correct is there -
+  never killed; never in a creeper's blast; armed against a zombie, it's killed; bare-handed, alive however it
+  gets away - at 90% of its seeds, and printed as one table. Cells short of it are listed known, and come off
+  with their fix. Short now: every creeper cell (it's not got clear of the blast), bare hands against an archer
+  (killed in the open), and an armed soldier against a skeleton on hills or a pillager among trees (2 of 12 killed).
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the
   response changes, each hostile's type, place, distance, height off the soldier and whether it's in water;
   the soldier's health and kit; and the rule that chose the response - fights, shoots, takes cover (and why),
-  backs off, gets clear of a creeper, carries on (no way between them). And when it ends, how long it went on
-  and the health it cost.
+  backs off, gets clear of a creeper, carries on (no way between them). And when it ends - 2 seconds with no
+  hostile, so one at the edge of contact isn't said begun and over each second - how long it went on and the
+  health it cost.
 - **What's hostile.** The curated list (`tools/entity-hostility-generator`, `HostileMobRegistry`): what
   attacks on sight. The enderman, neutral till its eye is caught or it's hit, is on it for self-defense
   only - in contact within 3 blocks once it has hurt the soldier, never one merely passing at hand, never sought (`HostileMobRegistry.fightsOnlyAtHand`,

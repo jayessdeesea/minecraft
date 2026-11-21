@@ -22,8 +22,15 @@ final class ContactLog {
 
     private static final Logger LOG = LogManager.getLogger(ContactLog.class);
 
+    /**
+     * Ticks with no hostile before a contact is over: one at the edge of contact goes in and out of it each second.
+     * Live (field554), a skeleton 8 blocks off said Eli's contact begun and over twelve times in ten seconds.
+     */
+    static final int END_TICKS = 40;
+
     private final String name;
     private String response;
+    private long lastSeen;
     private int with = -1;
     private long ticks, startedAt;
     private double healthAtStart;
@@ -39,14 +46,15 @@ final class ContactLog {
     void tick(WorldView world, Position at, double health, Kit kit, List<TrackedEntity> threats, String response) {
         ticks++;
         if (threats.isEmpty() || response == null) {
-            if (this.response != null) {
+            if (this.response != null && ticks - lastSeen >= END_TICKS) {
                 LOG.info("[Contact] {} out of contact after {} s, health {} -> {}", name, String.format(Locale.ROOT, "%.1f",
-                        (ticks - startedAt) / 20.0), fmt(healthAtStart), fmt(health));
+                        (lastSeen - startedAt) / 20.0), fmt(healthAtStart), fmt(health));
                 this.response = null;
                 with = -1;
             }
             return;
         }
+        lastSeen = ticks;
         if (this.response == null) {
             startedAt = ticks;
             healthAtStart = health;

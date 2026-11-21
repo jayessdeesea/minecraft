@@ -388,9 +388,12 @@ public final class Battle implements WorldView {
         int bx = (int) Math.floor(nx);
         int bz = (int) Math.floor(nz);
         // A mob in water swims at its surface, and climbs out where the bank is a block above it: heights by the surface.
+        if (!SyntheticWorld.inBounds(bx, bz)) {
+            return false;
+        }
         int here = level((int) Math.floor(h.x), (int) Math.floor(h.z));
         int foot = world.ground(bx, bz) + 1;
-        if (!SyntheticWorld.inBounds(bx, bz) || level(bx, bz) > here + 1
+        if (level(bx, bz) > here + 1
                 || world.isSolid(bx, foot, bz) || world.isHazard(bx, foot, bz) && !world.isWater(bx, foot, bz)) {
             return false;
         }

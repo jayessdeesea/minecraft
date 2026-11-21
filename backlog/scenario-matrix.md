@@ -24,6 +24,10 @@ wide enough for an objective past the survey's radius, and the progress check sc
 
 A regression in one of those shows up only if someone happens to run that case by hand.
 
+Built offline for combat: `CombatMatrixTest` (hostile x kit x ground, docs/military-doctrine.md § 8), its
+cells short of correct listed known. Left there: the bow (not in the battle simulation's fights), several
+hostiles at once, slopes and caves as grounds, and each known cell's fix.
+
 ## Done when
 The live tier has a harness (`app`'s `ChainScenarioLiveIT`, DEVELOPMENT.md § 2) and seven
 scenarios: `patrol-base-before-dark`, `hold-base-through-the-night`, `rearm-to-iron`,
