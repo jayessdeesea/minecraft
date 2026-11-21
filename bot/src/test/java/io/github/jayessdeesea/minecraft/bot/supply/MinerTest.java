@@ -844,4 +844,15 @@ class MinerTest {
 
         assertTrue(dug.contains(HEAD), "the chest in the head cut");
     }
+
+    /** A well's head - its walk in - shut by a chest is cut out from beside it too: live (field591), Bravo's mine is a well. */
+    @Test
+    void aChestInAWellsHeadIsCutFromBeside() {
+        Staircase well = Staircase.wellAt(world, 0, 0, GROUND, GROUND - 16).orElseThrow();
+        chests.add(well.head());
+
+        dig(well, 4000, new Inventory(), new Position(well.head().x() + 2.5, GROUND, well.head().z() + 0.5));
+
+        assertTrue(dug.contains(well.head()), "the chest in the well's head at " + well.head() + " cut");
+    }
 }

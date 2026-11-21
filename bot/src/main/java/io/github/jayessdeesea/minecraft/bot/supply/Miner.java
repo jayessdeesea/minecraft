@@ -154,12 +154,13 @@ public final class Miner {
     /**
      * The cut that opens {@code stairs}' head when something stands in it or over it: the head and the cell over it,
      * stood from ground beside it - the nearest within two, a block up or down - since the head is where the first step
-     * is cut from. Empty with the head open, or no ground beside to stand on, or for a well, whose head is its walk in.
-     * Live (field589), ground two out on every side of Bravo's head stood under the stockpile's chests and table.
+     * is cut from - a well's too, its walk in. Empty with the head open, or no ground beside to stand on. Live
+     * (field589), ground two out on every side of Bravo's head stood under the stockpile's chests and table; and
+     * (field591) Bravo's mine is a well, which this left out, and twelve read the chest in its head and cut nothing.
      */
     static Optional<Staircase.Cut> headCut(WorldView world, Staircase stairs) {
         BlockPos head = stairs.head();
-        if (stairs.well() || !world.isSolid(head.x(), head.y(), head.z()) && !world.isSolid(head.x(), head.y() + 1, head.z())) {
+        if (!world.isSolid(head.x(), head.y(), head.z()) && !world.isSolid(head.x(), head.y() + 1, head.z())) {
             return Optional.empty();
         }
         for (int out = 1; out <= 2; out++) {
@@ -338,7 +339,7 @@ public final class Miner {
         // at (-10, 64, 7) shut the mine, the squadmates sent down it waiting at the head, inside the chest, "no route".
         Optional<Staircase.Cut> head = soldier.y() >= stairs.head().y() - 1 ? headCut(world, stairs) : Optional.empty();
         BlockPos top = stairs.head();
-        if (head.isEmpty() && !stairs.well() && soldier.y() >= top.y() - 1 && world.isSolid(top.x(), top.y(), top.z()) && !top.equals(headShutSaid)) {
+        if (head.isEmpty() && soldier.y() >= top.y() - 1 && world.isSolid(top.x(), top.y(), top.z()) && !top.equals(headShutSaid)) {
             headShutSaid = top;
             LOG.warn("{} finds the mine's head at {} shut, and no ground beside it within two to cut it from", name, top);
         }
