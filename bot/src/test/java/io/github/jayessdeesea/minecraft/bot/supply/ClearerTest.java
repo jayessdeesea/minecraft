@@ -49,6 +49,44 @@ class ClearerTest {
     private final PlaySession session = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(),
             new Class<?>[]{PlaySession.class}, (proxy, method, args) -> null);
 
+    /** A cut whose stand has no route is passed over, and the next tick takes another, not the same one again. */
+    @Test
+    void aCutWithNoRouteToItsStandIsPassedOver() {
+        BlockPos other = new BlockPos(-2, GROUND + 1, 0);
+        WorldView twoMounds = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return y <= GROUND || isSoil(x, y, z);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                BlockPos b = new BlockPos(x, y, z);
+                return y <= GROUND || b.equals(MOUND) || b.equals(other);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        Clearer clearer = new Clearer("Carol", session, new Inventory(), new HashSet<>());
+        Position feet = new Position(0.5, GROUND + 1, 0.5);
+        clearer.tick(feet, twoMounds, List.of(MOUND, other), true);
+        Position first = clearer.standAt().orElseThrow();
+
+        clearer.unreachable("no route from here to within 0 of it");
+        assertFalse(clearer.active(), "the cut stopped");
+        clearer.tick(feet, twoMounds, List.of(MOUND, other), true);
+
+        assertTrue(clearer.standAt().filter(next -> !next.equals(first)).isPresent(), "the other mound's cut, not " + first + " again");
+    }
+
     @Test
     void timeAtOtherWorkCountsTowardTheWaitBeforeItLooksAgain() {
         Clearer clearer = new Clearer("Alice", session, new Inventory(), new HashSet<>());

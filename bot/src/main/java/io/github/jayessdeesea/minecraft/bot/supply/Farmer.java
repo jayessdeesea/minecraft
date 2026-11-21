@@ -719,6 +719,10 @@ public final class Farmer {
         if (standAt().isEmpty()) {
             return;
         }
+        if (digger == null && unburier.active()) {
+            unburier.unreachable(why); // its earthwork's cut: passed over by the clearer, which holds it
+            return;
+        }
         fail(why);
         cooldown = 0;
     }

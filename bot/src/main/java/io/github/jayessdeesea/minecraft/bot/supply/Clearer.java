@@ -300,6 +300,20 @@ public final class Clearer {
                 : world.isSoil(b.x(), b.y(), b.z()) && !world.isSolid(b.x(), b.y() + 1, b.z()) ? Digger.Target.SOIL : Digger.Target.OTHER;
     }
 
+    /**
+     * The walk to its cut's stand has no route: the cut passed over a while and the cut stopped, so the next it takes
+     * is another - not the same one again after its owner's cooldown. Live (field548-549), Carol stood four minutes
+     * and more at a farm's earthwork, its stand inside a block, the same cut taken again each time.
+     */
+    public synchronized void unreachable(String why) {
+        if (digger == null) {
+            return;
+        }
+        LOG.info("{} leaves that cut for now - {}", name, why);
+        failed.failed(digger.spot().block(), ticks, why);
+        stop();
+    }
+
     /** Stops the cut under way, its claims given up. */
     public synchronized void stop() {
         if (digger != null) {
