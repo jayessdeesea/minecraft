@@ -181,7 +181,8 @@ public final class Forester {
         String sapling = ItemClassRegistry.nameOf(item).orElse("sapling");
         planting = new Script(name, List.of(
                 new Step("walk to " + cell, () -> {
-                }, new Expect("standing in " + cell, () -> on(cell)), WALK_TICKS),
+                }, new Expect("standing in " + cell, () -> on(cell)), Digger.walkTicks(soldier, cell)), // as far as it is: live (field627),
+                // cells 50 blocks off, 90 by route, timed out at 20 s every time, 17 trips, each cell then barred for all
                 new Step(sapling + " in hand", () -> heldItem() == item, () -> takeInHand(item),
                         new Expect(sapling + " in hand", () -> heldItem() == item), ANSWER_TICKS),
                 new Step("plant " + sapling + " at " + cell, () -> TreeFarm.planted(world, cell), () -> {

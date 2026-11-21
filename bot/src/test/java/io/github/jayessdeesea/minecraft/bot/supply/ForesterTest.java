@@ -155,4 +155,21 @@ class ForesterTest {
         }
         assertEquals(java.util.Set.of(far), saplings.keySet(), "Bob plants the cell Fran could get to, not hers again");
     }
+
+    /** A cell far off is given the walk it takes, not a fixed 20 s (field627: 50 blocks off, timed out 17 times). */
+    @Test
+    void aCellFarOffIsGivenTheWalkItTakes() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item("birch_sapling"), 4});
+        BlockPos far = CENTRE.offset(60, 0, 0);
+        TreeFarm farm = new TreeFarm(CENTRE, List.of(far));
+        Forester ivy = new Forester("Ivy", session, inventory, new HashSet<>());
+        Position walking = new Position(0.5, GROUND, 0.5);
+        for (int tick = 0; tick < Forester.WALK_TICKS + 100; tick++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            ivy.tick(walking, grass, Optional.of(farm), true);
+            walking = new Position(Math.min(far.x() + 0.5, walking.x() + 0.12), GROUND, 0.5); // a slow walk there, 25 s and more
+        }
+        assertTrue(ivy.failure().isEmpty(), "still walking to the cell 60 off: " + ivy.failure().orElse(""));
+    }
 }
