@@ -450,4 +450,39 @@ class FarmerTest {
             assertTrue(farmer.failure().filter(f -> f.contains("no ground beside")).isEmpty(), "the boxed hole failed at tick " + tick + ": " + farmer.failure());
         }
     }
+
+    /**
+     * A heap two high over a plot cell is earthwork, all of it, from the top: live (field574), the camp's farm said "13
+     * blocks of the farm's earthwork, none taken: nothing in reach", its first at (11, 63, 98) - dirt with dirt over it,
+     * the block over it no earthwork, so its clearer, cutting the highest first, had no cut to take.
+     */
+    @Test
+    void aHeapOverAPlotCellIsEarthworkToItsTop() {
+        BlockPos cell = new BlockPos(1, GROUND, 0);
+        Set<BlockPos> heap = Set.of(cell.offset(0, 1, 0), cell.offset(0, 2, 0));
+        WorldView heaped = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                BlockPos b = new BlockPos(x, y, z);
+                return y <= GROUND && !b.equals(WATER) || heap.contains(b);
+            }
+
+            @Override
+            public boolean isSoil(int x, int y, int z) {
+                return isSolid(x, y, z);
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return new BlockPos(x, y, z).equals(WATER);
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        assertTrue(Farmer.earthwork(heaped, new FarmPlan(WATER, List.of(cell))).containsAll(heap),
+                "both blocks of the heap: " + Farmer.earthwork(heaped, new FarmPlan(WATER, List.of(cell))));
+    }
 }

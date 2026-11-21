@@ -141,8 +141,10 @@ public final class Farmer {
         Set<BlockPos> plot = Set.copyOf(farm.plot());
         Set<BlockPos> dig = new LinkedHashSet<>();
         for (BlockPos c : farm.plot()) {
-            BlockPos top = c.offset(0, 1, 0);
-            if (world.isCobblestone(top.x(), top.y(), top.z()) || world.isSoil(top.x(), top.y(), top.z()) && !world.isFarmland(top.x(), top.y(), top.z())) {
+            // The whole heap over it, to its top: the clearer cuts the highest first, and live (field574) a cell's dirt
+            // with dirt over it - the block over it no earthwork - left the camp's farm 13 blocks no cut could take.
+            for (BlockPos top = c.offset(0, 1, 0); world.isCobblestone(top.x(), top.y(), top.z())
+                    || world.isSoil(top.x(), top.y(), top.z()) && !world.isFarmland(top.x(), top.y(), top.z()); top = top.offset(0, 1, 0)) {
                 dig.add(top);
             }
             for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
