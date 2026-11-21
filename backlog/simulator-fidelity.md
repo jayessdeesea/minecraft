@@ -20,6 +20,12 @@ world wrong is proven wrong.
    the gaps in backlog/physics-fidelity.md, each when it costs something. The squad simulation times a dig by the tool in hand, as the
    server does (`SimItems.dugTooFast`); left of the hotbar: a task keeping the right tool ready - the hoe or an empty
    hand to harvest, the sword within reach - measured in the time it costs.
+   A lead, the bucket: live (field562-563) a pour at the chunk farm at (1, 3) failed "expected water at (20, 67,
+   60)", and flowing water stood at y=68-69 over its farmland at 67. The simulation traces the pour's ray as the
+   server does (`SimBuckets`), stopping at the first block that's neither air nor water - wheat and grass included.
+   Whether the server's ray stops at a crop's outline the same way, and puts the water in front of it or in its
+   place, decides where a pour over a planted farm lands; probed live, either way it's a scenario.
+   `stuck/flooded-farm-olga-field563` is a soldier caught in that water.
 2. **A prediction ledger.** Built for routes, harvests and sowing (`app.Ledger`, `[Ledger]` every ten minutes; a
    farmer's kinds from `Farmer.takeYields`). Left, the other kinds: felling and quarrying, the blocks a route places,
    a dig's time, a placement accepted or refused, a chest's open and what it held, a task's yield
