@@ -61,8 +61,10 @@ caves, one hostile after the next. 541, 549 and 550 built the matrix's bottom-ri
    a kept ground, not only hostiles standing where they were logged; and the drowned's trident (field604: Mia held her
    post 10.8 from a drowned 9 below in water, "carries on: no way between them on foot", and was killed - replayed,
    `contact/mia-field604`, known). Counted as one that shoots, she backs 3 blocks into the ground behind her, still in
-   its sight, and dies: what's left is getting out of a thrower's sight across open ground - away along the route
-   out of its line, not a step straight back.
+   its sight, and dies. Taking cover by the walk to it - the nearest cover cell with a walk there, followed - doesn't
+   save her either, nor cover looked for out to 12: from where she stood no walk reaches any cover cell, so she's
+   boxed there by the ground; what's left is cover made, not walked to - a block put between her and the thrower, or
+   dug down out of its line.
 2. The order fields and their defaults through Order, the squad leader and the soldier.
    A creeper holding a soldier inside its reach ten seconds is engaged (built); the rest of the
    both-reach cell - criteria and weapons control by order - is phase 2's.
