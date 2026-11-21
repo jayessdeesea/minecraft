@@ -31,7 +31,8 @@ final class SurfaceCache {
         long key = ((long) x << 32) ^ (z & 0xffffffffL);
         Seen seen = columns.get(key);
         if (seen == null || now - seen.at() > KEPT_MILLIS) {
-            seen = new Seen(TerrainSurveyor.surface(world, x, z, Keep.SKY_TOP), now);
+            // The ground, read through a tree's canopy: live (field598), Ned under an oak 13 high read as down the mine.
+            seen = new Seen(TerrainSurveyor.ground(world, x, z, Keep.SKY_TOP), now);
             columns.put(key, seen);
             if (columns.size() > 4096) {
                 columns.values().removeIf(s -> now - s.at() > KEPT_MILLIS);
