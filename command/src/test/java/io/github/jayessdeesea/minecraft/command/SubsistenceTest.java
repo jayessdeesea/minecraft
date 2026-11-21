@@ -69,4 +69,13 @@ class SubsistenceTest {
         assertEquals(List.of("Alice", "Bob"), status.helpless());
         assertTrue(status.line().startsWith("Class I RED - request: Alice, Bob out of food"), status.line());
     }
+
+    /** A trip to the table bakes a batch, or a loaf for one running out (field617: Ned's 50-block walk for one loaf). */
+    @Test
+    void aBakeTripIsABatchOrALoafForOneRunningOut() {
+        org.junit.jupiter.api.Assertions.assertFalse(Subsistence.bakeTrip(5, 15), "Ned: five wheat, fifteen rations - not yet");
+        org.junit.jupiter.api.Assertions.assertTrue(Subsistence.bakeTrip(24, 15), "eight loaves' worth");
+        org.junit.jupiter.api.Assertions.assertTrue(Subsistence.bakeTrip(3, 2), "a loaf for one running out");
+        org.junit.jupiter.api.Assertions.assertFalse(Subsistence.bakeTrip(2, 0), "no loaf in two wheat");
+    }
 }

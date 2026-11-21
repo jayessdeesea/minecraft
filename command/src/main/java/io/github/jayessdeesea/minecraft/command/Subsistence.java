@@ -112,6 +112,23 @@ public final class Subsistence {
         return food < Condition.REGENERATION_FOOD && rations == 0;
     }
 
+    /** Wheat to a loaf. */
+    public static final int BREAD_WHEAT = 3;
+    /**
+     * Loaves' worth of wheat a soldier carries before it walks to a table to bake them: a trip a batch, not a loaf - live
+     * (field617), Ned walked from the farm to the camp's table and back, some 50 blocks, to bake one (operator, 2026-11-21:
+     * this is killing productivity).
+     */
+    public static final int BAKE_BATCH = 8;
+
+    /**
+     * Whether a soldier carrying {@code wheat} and {@code rations} should go and bake: a batch of loaves' worth, or a loaf's
+     * when it's running out of rations (3 or fewer, CrossLevel's running out) and needs one now.
+     */
+    public static boolean bakeTrip(int wheat, int rations) {
+        return wheat >= BAKE_BATCH * BREAD_WHEAT || wheat >= BREAD_WHEAT && rations <= 3;
+    }
+
     /** Whether a soldier carrying {@code rations} restocks when it's convenient: below {@link #RESUPPLY}. */
     public static boolean low(int rations) {
         return rations < RESUPPLY;

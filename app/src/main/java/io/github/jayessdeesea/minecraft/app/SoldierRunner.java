@@ -7151,7 +7151,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             int carriedRations = status.condition().flatMap(c -> c.kit()).map(Kit::rations).orElse(0);
             // And still wanted while a loaf is under way: its wheat in the table's grid isn't carried.
             // Live, a soldier with 4 wheat put 3 in the grid, wanted no bread with the 1 left, and started and dropped the loaf 518 times.
-            if (inventory.count(ItemClass.WHEAT) >= BREAD_WHEAT && ((dutyBook.of(name).filter(DutyOrder::farm).isEmpty() ? field != null : bakes) || carriedRations < Subsistence.BASIC_LOAD)
+            if (Subsistence.bakeTrip(inventory.count(ItemClass.WHEAT), carriedRations) && ((dutyBook.of(name).filter(DutyOrder::farm).isEmpty() ? field != null : bakes) || carriedRations < Subsistence.BASIC_LOAD)
                     || armourer.making(Recipe.BREAD)) {
                 tools.add(Recipe.BREAD);
             }

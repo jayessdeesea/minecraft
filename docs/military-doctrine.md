@@ -152,7 +152,8 @@ of standing at it.
 carries a **basic load** of 64 rations - a stack. Below 32 it restocks when that's convenient
 and asks its squadmates for some, and below 10 it is short, and food comes before its work:
 1. **The soldier feeds itself.** Hungry, it eats. Below its basic load it bakes all the wheat it
-   carries into bread at its workshop (§11). Below 32, within 16 blocks of a stockpile last seen
+   carries into bread at its workshop (§11) - a batch at a trip, eight loaves' wheat, or a loaf's when it's down to
+   3 rations (`Subsistence.bakeTrip`; live, field617, a farmer walked 50 blocks to the table for one loaf). Below 32, within 16 blocks of a stockpile last seen
    holding rations, it draws some out until it carries 32 (`SoldierRunner.drawsFood`); short, it
    draws from it wherever it is, and hunts any game in sight, fed or not. With none at all, bread comes before any
    other draw - metal, stone, logs - from the nearest chest holding some, not only its own depot's: live (field568)
@@ -1196,7 +1197,7 @@ leader is shown - says how many are behind.
 
 Each job is an expect script: stand on the cell - landed, not still coming down onto it - item in hand, use it on the cell, and done when
 the server's block update shows farmland or a sprout. A soldier without a hoe makes a wooden one,
-and one carrying three wheat bakes it into bread, the ration every soldier eats (§11) - on an
+and one carrying eight loaves' wheat bakes it into bread, the ration every soldier eats (§11) - on an
 errand of its own, never held up by other kit it's short of the makings of; a bare-handed soldier's
 weapon still comes first. It reports
 `Farming`. Each ripe wheat gives seeds back, more than its cell takes to sow again, so a soldier
