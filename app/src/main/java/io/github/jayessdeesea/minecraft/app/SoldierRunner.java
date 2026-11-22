@@ -7504,13 +7504,13 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 chestFitter.stop(status.position(), world);
                 Optional<Position> stockpile = stashOre && !depositor.active() || depositor.chestAt().flatMap(this::mineOfChest).isPresent() && depositor.active()
                         ? chestOf(working) : stockpileFor(name);
-                // A flatten builder's surplus - cobblestone or dirt past what the stockpile needs - is left
-                // at its depot's dump, a stack of each kept for steps.
+                // A flatten builder's surplus - cobblestone or dirt past what the stockpile needs - is left at its depot's dump, a stack of each kept for steps.
                 java.util.function.Predicate<Position> notFull = c -> !fullChests.contains(BlockPos.containing(c.x(), c.y(), c.z()));
                 Optional<Position> deposit = (keepHands.contains(name) ? chestOf(shop.orElse(null)).filter(notFull).or(() -> stockpile)
                         : dutyBook.dump(name, world).or(() -> stockpile)).filter(notFull);
                 Set<ItemClass> surplus = keepHands.contains(name) && !depositor.active() || depositor.dumping() ? surplusKinds(chestsSeen.values(), deposit) : Set.of();
                 boolean dumpNow = fullLoad && surplus.stream().anyMatch(c -> inventory.count(c) > Depositor.KEEP);
+                if (bakes && tickNow % 1200 == 0) LOG.info("[Baker] {}: {} wheat carried, a chest holding wheat {}, hands {}, free {}, threatened {}, fortifying {}, drawing {}", name, inventory.count(ItemClass.WHEAT), chestHolding(ItemClass.WHEAT, status.position()).map(Object::toString).orElse("none known"), handsHeld.get(name), free, threatened, fort != null, depositor.active()); // field640-655: no baker drew wheat
                 if (depositor.dumping() || dumpNow && !depositor.active()) {
                     depositor.tickDump(status.position(), shop.or(() -> Optional.ofNullable(mainDepot)).flatMap(d -> dumpOf(d, world)), surplus,
                             free && !threatened && fort == null && (depositor.dumping() || dumpNow));
