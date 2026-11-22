@@ -1765,7 +1765,10 @@ the steps from the top that stand open (`Staircase.stepsCut`) - as well as a cut
 mine cut before a restart counts after it.
 
 The camp's mine is the night shift's work (docs/echelons/platoon-leader/operator-rules.md). Once the
-stairs reach the iron, their tunnels are the mining. The stairs' state is the world's, so a run stopped by a fight or a restart picks up
+stairs reach the iron, their tunnels are the mining. Worked out while ore is wanted - the force short of iron, or a soldier short of
+armour - its MINE task isn't done but worked on: run on a stretch, a level deeper (live, field674, it read DONE each
+minute as it was extended, and the platoon leader gave it again); done, and the camp's mine moved on to its next site,
+only with no ore wanted. The stairs' state is the world's, so a run stopped by a fight or a restart picks up
 where they end. A dig waits out the block's own break time: its hardness, and the pickaxe in hand
 against the least tier that gets its drop. Both come from the server jar (`bot.world.Hardness`;
 DEVELOPMENT.md § 7). Ore it can see on the way - beside its body or the step it cuts, outside the

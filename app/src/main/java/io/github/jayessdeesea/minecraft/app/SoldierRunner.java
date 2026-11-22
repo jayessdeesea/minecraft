@@ -4686,9 +4686,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 List<String> crew = state.stairs == null ? List.of() : mineCrew(state.stairs).stream()
                         .filter(n -> statuses.stream().anyMatch(s -> s.name().equals(n))).toList();
                 if (!crew.isEmpty() && crew.stream().allMatch(n -> stairsProgress.get(n) instanceof Miner.Progress.Done)) {
-                    done = Optional.of("the stairs are cut down to y=" + state.stairs.bottom() + ", and the ore beside them taken");
-                    // The camp's, with no ore wanted to run it on for, is spent: it moves on (live, field663: sent down it again each minute all night).
-                    if (!oreWanted() && campStairs().filter(c -> c.head().equals(state.stairs.head())).isPresent() && driedUp.add(state.stairs.head())) campMineSpent();
+                    // With ore wanted it's run on, not done (field674: DONE each minute as it was extended); with none, the camp's is spent and moves on (field663).
+                    if (oreWanted()) left = Optional.of("the stairs cut down to y=" + state.stairs.bottom() + ", worked on for the ore wanted");
+                    else { done = Optional.of("the stairs are cut down to y=" + state.stairs.bottom() + ", and the ore beside them taken"); if (campStairs().filter(c -> c.head().equals(state.stairs.head())).isPresent() && driedUp.add(state.stairs.head())) campMineSpent(); }
                 } else if (state.stairs != null) {
                     left = Optional.of("the stairs " + state.stairs.stepsCut(world) + " of " + state.stairs.steps() + " steps down");
                 }
