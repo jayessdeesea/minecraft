@@ -111,6 +111,14 @@ class TreeChunkTest {
         assertEquals(-1, TreeChunk.site(world, camp, 4, c -> true, Set.of(), Set.of()).orElseThrow().chunkX(), "the first of the nearest: (-1, 0)");
         mounds.add(new BlockPos(-16 + 6, 0, 10)); // one trunk cell of chunk (-1, 0) under a mound
         TreeChunk sited = TreeChunk.site(world, camp, 4, c -> true, Set.of(), Set.of()).orElseThrow();
-        assertTrue(sited.chunkX() != -1 || sited.chunkZ() != 0, "not the chunk with a trunk cell under ground: " + sited);
+        assertTrue(sited.chunkX() != -1 || sited.chunkZ() != 0, "not the chunk with a trunk cell under ground, beside one with none: " + sited);
+        TreeChunk buried = new TreeChunk(-1, 0, GROUND);
+        assertEquals(15, buried.plantable(world).size(), "its plantable trunks: the one under the mound left out");
+        for (int t = 0; t < 8; t++) { // half its trunks under ground, everywhere: still a tree chunk, the rest its plot
+            for (int[] c : new int[][]{{-1, 0}, {1, 0}, {0, 1}, {0, -1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}}) {
+                mounds.add(new BlockPos(c[0] * 16 + TreeChunk.TRUNKS[t % 4], 0, c[1] * 16 + TreeChunk.TRUNKS[t / 4]));
+            }
+        }
+        assertTrue(TreeChunk.site(world, camp, 1, c -> true, Set.of(), Set.of()).isPresent(), "half its trunks take a sapling: enough");
     }
 }

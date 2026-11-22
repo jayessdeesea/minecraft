@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -48,16 +49,17 @@ final class CampTrees {
                                 chunk.chunkZ() * 16 + 8 - camp.z())), chunk.stage(world));
             }
         }
-        return farm();
+        return farm(world);
     }
 
     /**
      * The tree chunk sited, as the grove a squad growing trees plants - wherever its order points: live (field645), Charlie
      * was sent onto the camp's hill, the ground being flattened, while the camp's tree chunk stood bare.
      */
-    Optional<TreeFarm> farm() {
+    Optional<TreeFarm> farm(WorldView world) {
         TreeChunk c = chunk;
-        return c == null ? Optional.empty() : Optional.of(new TreeFarm(c.trunks().getFirst(), c.trunks(), c.torches(), Optional.of(c.chest())));
+        List<BlockPos> plot = c == null ? List.of() : c.plantable(world); // its trunks that take a sapling: none walked at buried
+        return plot.isEmpty() ? Optional.empty() : Optional.of(new TreeFarm(c.trunks().getFirst(), plot, c.torches(), Optional.of(c.chest())));
     }
 
     /** The chunk sited, if any. */

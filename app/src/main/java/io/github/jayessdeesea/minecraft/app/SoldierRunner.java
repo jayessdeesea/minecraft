@@ -5281,7 +5281,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // The tree farm: laid out once, kept while the objective stays put - what grows in it is the farm working.
         TreeFarm trees = taskOf(squadName, Objective.Task.TreeFarm.class).map(o -> {
             BlockPos at = TerrainSurveyor.groundAt(world, BlockPos.containing(o.location().x(), o.location().y(), o.location().z()));
-            Optional<TreeFarm> camps = campTrees.farm(); // the camp's tree chunk, wherever the order points (CampTrees.farm)
+            Optional<TreeFarm> camps = campTrees.farm(world); // the camp's tree chunk, wherever the order points (CampTrees.farm)
             if (state.trees != null && camps.map(c -> c.centre().equals(state.trees.centre())).orElse(state.trees.centre().x() == at.x() && state.trees.centre().z() == at.z())) {
                 return state.trees;
             }

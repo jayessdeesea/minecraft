@@ -47,6 +47,14 @@ public record TreeChunk(int chunkX, int chunkZ, int level) {
         return cells;
     }
 
+    /** Its trunk cells that take a sapling as the world stands - or have one: the cells to plant, none buried or overhung. */
+    public List<BlockPos> plantable(WorldView world) {
+        return trunks().stream().filter(t -> TreeFarm.plantable(world, t)).toList();
+    }
+
+    /** The fewest trunk cells able to take a sapling for a chunk to be a tree chunk: half of them. */
+    static final int TRUNKS_LEAST = 8;
+
     /** The nine ground torches. */
     public List<BlockPos> torches() {
         List<BlockPos> cells = new ArrayList<>();
@@ -108,14 +116,16 @@ public record TreeChunk(int chunkX, int chunkZ, int level) {
                 }
                 Optional<ChunkFarm> level = ChunkFarm.levelled(world, x, z, camp.y(), walkable)
                         .filter(f -> f.plan(world, walkable).plot().size() >= ChunkFarm.MIN_CELLS);
-                // Every trunk cell able to take its sapling: flat enough for wheat is half the chunk - live (field647-648),
-                // chunk (5, 5)'s west trunks lay under a rise and only its east cells were ever planted.
-                if (level.isEmpty() || !new TreeChunk(x, z, level.get().level()).trunks().stream().allMatch(t -> TreeFarm.plantable(world, t))) {
+                // Half its trunk cells at the least able to take a sapling, the more the better: flat enough for wheat is half
+                // the chunk's cells, not its trunks' - live (field647-648), chunk (5, 5)'s west trunks lay under a rise;
+                // all 16 wanted, none qualified near the camp (field650) and the grove went on the ground being flattened.
+                long trunks = level.isEmpty() ? 0 : new TreeChunk(x, z, level.get().level()).plantable(world).size();
+                if (trunks < TRUNKS_LEAST) {
                     continue;
                 }
                 boolean beside = farmed.contains(ChunkFarm.key(x + 1, z)) || farmed.contains(ChunkFarm.key(x - 1, z))
                         || farmed.contains(ChunkFarm.key(x, z + 1)) || farmed.contains(ChunkFarm.key(x, z - 1));
-                double s = (beside ? 0 : 10_000) + Math.abs(level.get().level() - ChunkFarm.SEA_LEVEL) * 100 + Math.hypot(dx, dz);
+                double s = (beside ? 0 : 10_000) + Math.abs(level.get().level() - ChunkFarm.SEA_LEVEL) * 100 + (16 - trunks) * 50 + Math.hypot(dx, dz);
                 if (s < score) {
                     chosen = new TreeChunk(x, z, level.get().level());
                     score = s;
