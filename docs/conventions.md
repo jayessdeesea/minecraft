@@ -152,7 +152,7 @@ garrison is profiled before the next change is started (operator, 2026-11-15), a
 offenders are fixed where it makes sense to:
 - **Record** three minutes of the running garrison with Java Flight Recorder, which attaches to the
   live JVM at about 1% cost: `jcmd <pid> JFR.start name=prof duration=180s settings=profile
-  filename=<file>.jfr` (the PID is in the garrison log's `with PID` line).
+  filename=<file>.jfr` (the PID is in `GARRISON_RUNS/garrison.pid`).
 - **Read** the self-time hot spots: `jfr print --events jdk.ExecutionSample --stack-depth 1` counted
   by frame, then with `--stack-depth 25` attributed to the project's own caller - the JDK frame
   on top (a map lookup, a sort) is rarely where the fix goes. `jfr summary` gives the sample count

@@ -1,20 +1,20 @@
 #!/bin/sh
-# Deploys the working tree as garrison run $1: cleans stale classes, installs the modules and
-# packages the app without tests (run the suite first), checks the fat jar, then stops the running
-# garrison by its PID (never all java), copies the jar to $S/garrison-app.jar and starts the new
-# run from the copy - so the troops stay in the field through the build.
-# $S is GARRISON_RUNS, default C:/mc-state/garrison - off OneDrive, which holds files open; each run logs to
-# $S/garrison-<run>.log, and the previous run's PID is read from its log's "with PID" line.
-# With no names, the previous run is the newest log there and the new run the next number after it (field686, so
-# field687).
-# Usage: deploy.sh [<run-name> [<previous-run-name>]]
+# Deploys what's committed as a garrison run: cleans stale classes, installs the modules and packages the app without
+# tests (commit.sh ran the suite), checks the fat jar, then stops the running garrison by its PID (never all java),
+# copies the jar to $S/garrison-app.jar and starts the new run from the copy - so the troops stay in the field
+# through the build.
+# $S is GARRISON_RUNS, default C:/mc-state/garrison, outside any cloud-sync folder, which holds files open. The
+# garrison writes its PID to $S/garrison.pid and its log to $S/logs, a file an hour (start-garrison.sh). Each run is a
+# line of $S/runs.log - "<name> <started, UTC> <commit> <PID>" - which run-log.sh picks a run's lines out of the log by.
+# With no name, the run is the next number after the last in runs.log (field688, so field689).
+# Usage: deploy.sh [<run-name>]
 set -e
 S="${GARRISON_RUNS:-C:/mc-state/garrison}"
 mkdir -p "$S"
 cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-LAST=$(ls -t "$S"/garrison-*.log 2>/dev/null | head -1 | sed -E 's#.*/garrison-(.*)\.log#\1#')
-set -- "${1:-$(echo "$LAST" | sed -E 's/[0-9]+$//')$(( $(echo "$LAST" | grep -oE '[0-9]+$') + 1 ))}" "${2:-$LAST}"
-if ! echo "$1" | grep -qE '^[A-Za-z]+[0-9]+$' || [ -f "$S/garrison-$1.log" ]; then echo "no run name to deploy as ('$1'): name it - deploy.sh <run-name> <previous-run-name>" >&2; exit 2; fi
+LAST=$(tail -1 "$S/runs.log" 2>/dev/null | cut -d' ' -f1)
+RUN="${1:-$(echo "$LAST" | sed -E 's/[0-9]+$//')$(( $(echo "$LAST" | grep -oE '[0-9]+$') + 1 ))}"
+if ! echo "$RUN" | grep -qE '^[A-Za-z]+[0-9]+$' || grep -q "^$RUN " "$S/runs.log" 2>/dev/null; then echo "no run name to deploy as ('$RUN'): name a new one - deploy.sh <run-name>" >&2; exit 2; fi
 # Only what's committed and pushed is deployed: commit.sh pushes a commit only once its verify passes, so what's on
 # origin/main is verified, and a tree with uncommitted changes to tracked files (field556 went out so, its verify
 # failed) or a commit still being verified is not.
@@ -54,15 +54,23 @@ python - <<'PY' || { echo "app.jar lacks BOOT-INF/classes/application.yml - not 
 import zipfile, sys
 sys.exit(0 if 'BOOT-INF/classes/application.yml' in zipfile.ZipFile('app/target/app.jar').namelist() else 1)
 PY
-PREV="$S/garrison-$2.log"
-if [ -f "$PREV" ]; then
-  PID=$(grep -o "with PID [0-9]*" "$PREV" | head -1 | grep -o "[0-9]*")
-  # Only while that PID is still a java process: a run long dead may have left its number to something else.
-  if [ -n "$PID" ] && tasklist //FI "PID eq $PID" //FO CSV //NH 2>/dev/null | grep -qi '^"java'; then taskkill //PID "$PID" //F > /dev/null 2>&1 || true; fi
+# The run before, by the PID it wrote - and only while that's still a java process: a run long dead may have left
+# its number to something else.
+PID=$(cat "$S/garrison.pid" 2>/dev/null || true)
+if [ -n "$PID" ] && tasklist //FI "PID eq $PID" //FO CSV //NH 2>/dev/null | grep -qi '^"java'; then
+  taskkill //PID "$PID" //F > /dev/null 2>&1 || true
   sleep 3
 fi
+rm -f "$S/garrison.pid"
 cp app/target/app.jar "$S/garrison-app.jar"
-echo "app.jar $SIZE bytes; starting $1"
-nohup sh tools/ops/start-garrison.sh "$1" > /dev/null 2>&1 &
-sleep 8
-grep -m1 "Started Application" "$S/garrison-$1.log" || echo "not started yet - see $S/garrison-$1.log"
+STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+echo "app.jar $SIZE bytes; starting $RUN"
+nohup sh tools/ops/start-garrison.sh > /dev/null 2>&1 &
+# Its PID file is written once the app is up; a start that never gets there says why on its console.
+for wait in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  [ -s "$S/garrison.pid" ] && break
+  sleep 2
+done
+if [ ! -s "$S/garrison.pid" ]; then echo "$RUN didn't start - see $S/garrison-console.log and the newest file under $S/logs" >&2; exit 1; fi
+echo "$RUN $STARTED $(git rev-parse --short HEAD) $(cat "$S/garrison.pid")" >> "$S/runs.log"
+tail -1 "$S/runs.log"

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The garrison's log (DEVELOPMENT.md, "Keeping a garrison running"): written straight to the file of the hour it's in,
+  never to one name moved aside after - so a restart, or a rollover missed, loses nothing and misfiles nothing:
+
+      <logging.file.path>/yyyy/MM/dd/yyyy-MM-dd-HH_application.log
+
+  The hour in the file's name and the time on every line are UTC. At each hour's turn, files of this log older than
+  seven days go, and the oldest past LOG_KEPT in all. A line is Spring Boot's own shape - time, level, PID, thread,
+  logger, message - so a run is told from another by its PID (tools/ops/run-log.sh).
+
+  Nothing goes to the console: what the JVM itself prints is start-garrison.sh's to keep.
+  The squad simulation's log is its own (app/src/test/resources/log4j2-test.xml).
+-->
+<Configuration status="WARN">
+    <Properties>
+        <Property name="LOG_DIR">${sys:LOG_PATH}</Property>
+        <Property name="LOG_KEPT">100 GB</Property>
+        <Property name="LINE">%d{yyyy-MM-dd'T'HH:mm:ss.SSS'Z'}{UTC} %5p ${sys:PID} --- [%15.15t] %-40.40c{1.} : %m%n</Property>
+    </Properties>
+    <Appenders>
+        <RollingFile name="hourly" filePattern="${LOG_DIR}/%d{yyyy/MM/dd/yyyy-MM-dd-HH}{UTC}_application.log">
+            <PatternLayout pattern="${LINE}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DirectWriteRolloverStrategy>
+                <Delete basePath="${LOG_DIR}" maxDepth="4">
+                    <IfFileName glob="*/*/*/*_application.log">
+                        <IfAny>
+                            <IfLastModified age="P7D"/>
+                            <IfAccumulatedFileSize exceeds="${LOG_KEPT}"/>
+                        </IfAny>
+                    </IfFileName>
+                </Delete>
+            </DirectWriteRolloverStrategy>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="hourly"/>
+        </Root>
+    </Loggers>
+</Configuration>

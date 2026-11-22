@@ -1,19 +1,25 @@
 #!/bin/sh
-# A live round's digest of a garrison log: what to dig into first, counted, with the first few of each - the alerts by
-# kind, the deaths, blocks the tables don't know, the missions and objectives, who was taken off a task most often, and
-# what was thrown away - then the chat probe (chatprobe.sh). Reads only.
-# Usage: round-report.sh [garrison log, default the newest in GARRISON_RUNS] [--no-chat]
+# A live round's digest of the garrison's log: what to dig into first, counted, with the first few of each - the
+# alerts by kind, the deaths, blocks the tables don't know, the missions and objectives, who was taken off a task most
+# often, the changes of activity, and what was thrown away - then the chat probe (chatprobe.sh). Reads only; the run's
+# lines are gathered into $S/round-<run>.log (run-log.sh) for looking further.
+# Usage: round-report.sh [run-name, default the last; or a log file] [--no-chat]
 S="${GARRISON_RUNS:-C:/mc-state/garrison}"
-L=""; CHAT=yes
+RUN=""; CHAT=yes
 for a in "$@"; do
-  case "$a" in --no-chat) CHAT=no ;; *) L="$a" ;; esac
+  case "$a" in --no-chat) CHAT=no ;; *) RUN="$a" ;; esac
 done
-[ -n "$L" ] || L=$(ls -t "$S"/garrison-*.log 2>/dev/null | head -1)
-[ -f "$L" ] || { echo "usage: round-report.sh [garrison log] [--no-chat]; none found in $S" >&2; exit 2; }
+if [ -f "$RUN" ]; then
+  L="$RUN"
+else
+  [ -n "$RUN" ] || RUN=$(tail -1 "$S/runs.log" 2>/dev/null | cut -d' ' -f1)
+  L="$S/round-$RUN.log"
+  sh "$(dirname "$0")/run-log.sh" "$RUN" > "$L" || exit 2
+fi
 # The message of a log line: what follows the logger's name.
-msg() { sed -E 's/^.{29} +[A-Z]+ [0-9]+ --- \[[^]]*\] [^ ]+ +: //' | cut -c1-200; }
+msg() { sed -E 's/^[^ ]+ +[A-Z]+ [0-9]+ --- \[[^]]*\] [^ ]+ +: //' | cut -c1-200; }
 section() { echo; echo "== $1"; }
-echo "$(basename "$L"): $(head -c 4000 "$L" | grep -o "^20[0-9T:.-]*" | head -1) to $(tail -c 4000 "$L" | grep -o "^20[0-9T:.-]*" | tail -1)"
+echo "$(basename "$L" .log): $(head -1 "$L" | cut -d' ' -f1) to $(tail -1 "$L" | cut -d' ' -f1), $(grep -c "" "$L") lines"
 
 section "[Alert]: $(grep -c "\[Alert\]" "$L"), by soldier and kind"
 grep "\[Alert\]" "$L" | grep -v "has room again" | msg | sed -E 's/^\[Alert\] ([A-Za-z]+) ([a-z]+).*/\1 \2/' | sort | uniq -c | sort -rn | head -15
@@ -42,5 +48,5 @@ grep "throws away" "$L" | msg | sed -E 's/^([A-Za-z]+) throws away [0-9]+ of (it
 
 if [ "$CHAT" = yes ]; then
   section "chat probe: each answer reads above 0, names what's true, gives no command"
-  sh "$(dirname "$0")/chatprobe.sh" "$L"
+  sh "$(dirname "$0")/chatprobe.sh"
 fi

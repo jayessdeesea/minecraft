@@ -1,4 +1,8 @@
 spring:
+  pid:
+    # The running app's process id, written at start (app.Application) for the ops scripts to stop it by
+    # (tools/ops/deploy.sh). start-garrison.sh puts it with the runs; run by hand, it goes with the log.
+    file: logs/garrison.pid
   ai:
     # Every provider is configured; each echelon picks one below (minecraft.*.chat-model).
     # Provider choice lives here, never in code.
@@ -10,6 +14,12 @@ spring:
           # Qwen3 reasons before answering by default: ~20s per decision with it, ~0.5s without.
           think-option: FALSE
           temperature: 0.3
+
+logging:
+  file:
+    # Where the log's hourly files go, UTC (log4j2-spring.xml): <path>/yyyy/MM/dd/yyyy-MM-dd-HH_application.log.
+    # start-garrison.sh puts it with the runs; run by hand, it is ./logs.
+    path: logs
 
 minecraft:
   platoon-leader:

@@ -2,6 +2,7 @@ package io.github.jayessdeesea.minecraft.app;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.ApplicationPidFileWriter;
 
 /**
  * Composition root. Component scan is widened to the shared root package
@@ -12,6 +13,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class Application {
 
     public static void main(String[] args) {
-        SpringApplication.run(Application.class, args);
+        SpringApplication application = new SpringApplication(Application.class);
+        // Its process id to spring.pid.file, for a deploy to stop this run by - not read back out of a log.
+        application.addListeners(new ApplicationPidFileWriter());
+        application.run(args);
     }
 }

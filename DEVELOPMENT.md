@@ -250,15 +250,25 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
   whole suite (`verify.sh`) in a worktree of its own (`VERIFY_WORKTREE`, default `C:/mc-worktrees/verify`), and
   pushes it only on BUILD SUCCESS. The tree is free to work in meanwhile; a commit that fails is taken back, its
   changes left staged. It says when the commit count makes a profile due.
-- `deploy.sh [<run> [<previous run>]]` builds what's committed and pushed, checks the fat jar, stops the previous run
-  by the PID in its log and starts the new one from a copy of the jar (`start-garrison.sh`), logging to
-  `garrison-<run>.log`. With no names, the previous run is the newest log and the new one the next number. Its
-  arguments - your name, the camp, the mission - are yours, one a line in `garrison.args` there, not in the repo.
-- `round-report.sh [garrison log]` is a live round's digest of the newest log: the alerts by soldier and kind, the
-  deaths, blocks the tables don't know, the missions and objectives, who was taken off a task most often and what
-  was thrown away - then the chat probe (`--no-chat` leaves it out).
-- `chatprobe.sh <garrison log>` asks the operator's chat a fixed set of questions - questions only - and records each
+- `deploy.sh [<run>]` builds what's committed and pushed, checks the fat jar, stops the run before by the PID in
+  `garrison.pid` and starts the new one from a copy of the jar (`start-garrison.sh`). Each run is a line of
+  `runs.log` there - its name, when it started (UTC), its commit and its PID; with no name, the new run is the next
+  number after the last. Its arguments - your name, the camp, the mission - are yours, one a line in `garrison.args`
+  there, not in the repo.
+- `run-log.sh [<run>]` prints one run's lines of the log, the last run's by default.
+- `round-report.sh [<run>]` is a live round's digest of a run, the last by default: the alerts by soldier and kind,
+  the deaths, blocks the tables don't know, the missions and objectives, who was taken off a task most often, the
+  changes of activity and what was thrown away - then the chat probe (`--no-chat` leaves it out).
+- `chatprobe.sh` asks the operator's chat a fixed set of questions - questions only - and records each
   reply with the register reads it made; each should read and name what's true, with no command given.
+
+**The log** (`app/src/main/resources/log4j2-spring.xml`) is written straight to the file of the hour it's in, never to
+one name moved aside after: `<logging.file.path>/yyyy/MM/dd/yyyy-MM-dd-HH_application.log`, the hour in the name and
+the time on every line UTC. `start-garrison.sh` puts it under `GARRISON_RUNS/logs`; run by hand, it's `./logs`. At each
+hour's turn, files older than seven days go, and the oldest past 100 GB in all. Nothing is printed to the console: follow
+the newest file (`tail -f`). Every line carries the app's PID, which is how a run's lines are told from another's
+(`run-log.sh`); what the JVM itself prints - a crash, a failure before the log is up - is in
+`GARRISON_RUNS/garrison-console.log`.
 
 The log lines to read first: `[Casualty]`, each death with the soldier's last seconds (§ 6); `[Contact]`,
 each contact's hostiles, the soldier's kit and the rule that chose its response (§ 8);
