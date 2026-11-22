@@ -37,7 +37,8 @@ seconds or when stuck - a wide search asked again from the same cell to the same
   blocks or more (`WALK_ROUND_FROM`), and a goal no more than a jump above it: a single step up a
   slope is a builder's stride, and blocks placed to reach a goal higher - a mason onto its wall's
   top - are the work. On the camp's ground - its area of influence, 32 blocks out past its wall line
-  (`CampGround.INFLUENCE`; operator, 2026-11-21) - a single step is walked round too, and each block
+  (`CampGround.INFLUENCE`; operator, 2026-11-21) - a single step is walked round too, a goal up a hill is
+  walked to when a way up stands (a wall's top has none, so a mason still builds), and each block
   priced 8 blocks' walk more for its taking down (`Pathfinder.TAKEDOWN_COST`): a step left there is a debt.
 - **Takes back the steps routes left** (police call; operator, 2026-11-20: a block is placed with intent): one
   without work a minute, or stood a minute on a CANTCO, digs the nearest step within 16 blocks, and 4 up or down, that a route put

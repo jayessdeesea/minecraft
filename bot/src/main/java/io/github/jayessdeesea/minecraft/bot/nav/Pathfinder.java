@@ -235,7 +235,7 @@ public final class Pathfinder {
     /**
      * As {@link #find(WorldView, BlockPos, Goal, int, FallAllowance, int, boolean, boolean, Set)}, on ground the force
      * {@code holds} - the camp's area of influence - with a way round looked for even for one block placed, and each
-     * block priced with its {@link #TAKEDOWN_COST} too (operator, 2026-11-21: blocks left round the camp for navigation
+     * block priced with its {@link #TAKEDOWN_COST} too, a goal above weighed like any other (operator, 2026-11-21: blocks left round the camp for navigation
      * are a debt never paid off, where a slightly dearer route leaves none).
      */
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
@@ -243,7 +243,11 @@ public final class Pathfinder {
         Search placing = search(world, start, goal, maxExpanded, falls, blocks, pickaxe, build, avoid);
         // Blocks placed to reach a goal above, up a jump, are the work - a mason onto its wall's top; only placed
         // to cross what's in the way are they a route to walk round.
-        if (!placing.result().reachesGoal() || placing.placed() < (holds ? 1 : WALK_ROUND_FROM) || goal.y() - goal.verticalTolerance() > start.y() + 1) {
+        // On ground the force holds a goal above is weighed against the walk too: a wall's top has no walk to it, so a mason
+        // still builds there; a hill does - live (field644), the flatten crew put 19 steps up the camp's hill in three
+        // minutes, most beside a walk round as short (operator, 2026-11-21: we should be trending to sea level).
+        if (!placing.result().reachesGoal() || placing.placed() < (holds ? 1 : WALK_ROUND_FROM)
+                || !holds && goal.y() - goal.verticalTolerance() > start.y() + 1) {
             return placing.result();
         }
         Search walking = search(world, start, goal, maxExpanded, falls, 0, pickaxe, false, avoid);

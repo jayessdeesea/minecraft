@@ -669,6 +669,29 @@ class PathfinderTest {
         assertTrue(over.path().stream().anyMatch(c -> c.y() > GROUND), "90 blocks round is too far: over the wall: " + over.path());
     }
 
+    /** A hill four high from x=4 on, and a stair up it at z=10 - one block a step, from x=0. */
+    private static WorldView hillWithAStair() {
+        return world((x, y, z) -> y >= GROUND && (x >= 4 && y <= GROUND + 3 && Math.abs(z) <= 30
+                || z == 10 && x >= 0 && x <= 3 && y <= GROUND + x));
+    }
+
+    /**
+     * Up onto a hill with a stair to walk: off the force's ground the climb is built, the blocks the work; on it the
+     * stair is walked (field644: the flatten crew put 19 steps up the camp's hill, most beside a walk round as short).
+     */
+    @Test
+    void onHeldGroundAGoalUpAHillIsWalkedToByItsStair() {
+        Goal top = new Goal(5.5, GROUND + 4, 0.5, 0.5, 0.5);
+
+        Pathfinder.Result built = Pathfinder.find(hillWithAStair(), START, top, 20000, FallAllowance.NONE, 20, false, true, Set.of(), false);
+        assertTrue(built.reachesGoal(), "" + built.path());
+        assertTrue(built.path().stream().noneMatch(c -> c.z() >= 9), "straight up, built: " + built.path());
+
+        Pathfinder.Result walked = Pathfinder.find(hillWithAStair(), START, top, 20000, FallAllowance.NONE, 20, false, true, Set.of(), true);
+        assertTrue(walked.reachesGoal(), "" + walked.path());
+        assertTrue(walked.path().stream().anyMatch(c -> c.z() >= 9), "up the stair at z=10, nothing built: " + walked.path());
+    }
+
     /**
      * A gallery one wide, walled both sides, a hole in its floor over a cave: bridged with a block carried, not with
      * none (backlog/mining.md; field512, Eli stood for good at such a gap at y=20).
