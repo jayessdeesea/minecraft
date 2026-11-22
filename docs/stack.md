@@ -21,6 +21,11 @@ scope.
 - **No web framework.** The operator's chat page (`app.OperatorChat`) is the JDK's
   `com.sun.net.httpserver.HttpServer`, JSON through Jackson, and one static HTML page with plain
   JavaScript - no build step, nothing loaded from off the machine.
+- **H2, embedded, and Flyway** for the platoon leader's registers - the chunks, keyed by x and z, and the
+  objectives (`app.Registers`): one database file a garrison or a simulation owns, its schema the migrations under
+  `app/src/main/resources/db/registers`, a change a new migration, never an edit. Plain JDBC, no ORM. The rest of the
+  state is still JSON files (`app.WallStore`). A file held open lives outside a cloud-sync folder: one syncing it can
+  lock or corrupt it.
 - **Netty**, hand-rolled protocol implementation. No MCProtocolLib, no PacketEvents, no NBT/world
   libraries of any kind — VarInt/VarLong, packet framing, compression, encryption, and the full
   connection state machine (Handshake → Status/Login → Configuration → Play) are all written here.
