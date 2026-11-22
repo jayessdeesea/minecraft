@@ -597,6 +597,8 @@ public class ChainOfCommand implements DisposableBean {
 
     /** Every request going up the chain, timed from raised to answered (docs/military-doctrine.md § 4). */
     private final RequestLedger requests = new RequestLedger();
+    /** The objective register, kept as objectives are given and squads report (app.ObjectiveBook); none until it's handed one. */ private volatile Optional<ObjectiveBook> objectiveBook = Optional.empty();
+    /** Keeps the objectives in {@code book}: the garrison's registers. */ void keepObjectives(ObjectiveBook book) { objectiveBook = Optional.of(book); }
     /** Each soldier's CANTCO to its squad leader. */
     private final SoldierRequests soldierRequests = new SoldierRequests();
 
@@ -849,6 +851,7 @@ public class ChainOfCommand implements DisposableBean {
         sitreps.forEach(sitrep -> readinessLog.log(sitrep.squad(), Readiness.of(new SquadStatus(sitrep.squad(), squads.get(sitrep.squad()).report(),
                 sitrep.soldiers(), List.of(), Optional.empty(), sitrep.holdingBase()), Optional.ofNullable(foothold))));
         trackRequests(sitreps, clockwork.millis());
+        objectiveBook.ifPresent(b -> sitreps.forEach(s -> b.sitrep(s.squad(), squads.get(s.squad()).report(), s.progress(), clockwork.millis()))); // pushed up as it comes
         long traceNow = clockwork.millis();
         for (OrderTrace trace : traces) {
             for (Sitrep sitrep : sitreps) {
@@ -864,8 +867,7 @@ public class ChainOfCommand implements DisposableBean {
             if (squad.newCantco()) {
                 wake("a CANTCO from " + sitrep.squad() + "'s squad leader: " + squad.report(), false);
             }
-            // Not while it decides: the decision under way gives it one - live, each SITREP of the 20
-            // seconds a decision took woke it again, for a second decision straight after.
+            // Not while it decides: the decision under way gives it one - live, each SITREP of a 20 s decision woke it again.
             if (!squad.hasObjective() && !platoonLeaderBusy.get()) {
                 wake(sitrep.squad() + " has no objective", true);
             }
@@ -944,6 +946,7 @@ public class ChainOfCommand implements DisposableBean {
                             Optional.ofNullable(foothold).flatMap(Foothold::dump));
                     if (squads.get(name).objective().filter(given::equals).isPresent()) {
                         LOG.info("[PL -> {}] ({} ms, {}) holds: {}", name, millis, phase(time), given.mission());
+                        objectiveBook.ifPresent(b -> b.held(name, given, clockwork.millis()));
                         // The feedback not taken: the squad said its task is finished or stuck, and it was kept.
                         statuses.get(i).progress().filter(p -> p.state() != Progress.State.UNDER_WAY)
                                 .ifPresent(p -> LOG.warn("[Feedback] the platoon leader kept {}'s task though it reported {}: {}", name, p.state(), p.detail()));
@@ -951,9 +954,8 @@ public class ChainOfCommand implements DisposableBean {
                         continue;
                     }
                     decided.put(name, Optional.of(given));
-                    // The platoon leader's answer to what the squad asked, if it asked: any new order answers a
-                    // finished or stalled task; only a farm answers a request for food - live, the
-                    // platoon leader answered a starving squad with torches, and that was counted an answer.
+                    // Its answer to what the squad asked: any new order answers a finished or stalled task; only a farm a request for food
+                    // - live, the platoon leader answered a starving squad with torches, and that was counted an answer.
                     long answeredAt = clockwork.millis();
                     requests.answer(name + ":task", answeredAt).ifPresent(LOG::info);
                     if (given.task() instanceof Objective.Task.Farm) {
@@ -967,6 +969,7 @@ public class ChainOfCommand implements DisposableBean {
                     transmit("[PL -> " + name + "] OPORD: " + given.mission() + " at " + at(given.location())
                             + task(given) + ". Intent: " + given.intent());
                     squads.get(name).receiveObjective(given);
+                    objectiveBook.ifPresent(b -> b.given(name, given, clockwork.millis()));
                 }
                 long decidedAt = clockwork.millis();
                 traces.stream().filter(t -> t.version == missionAsked)

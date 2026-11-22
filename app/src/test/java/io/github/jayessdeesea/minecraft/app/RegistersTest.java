@@ -52,14 +52,17 @@ class RegistersTest {
         assertEquals(List.of(), registers.objectivesOn(2, 3));
     }
 
-    /** A mission's step kept twice, or an update to one never kept, fails loud. */
+    /** The same objective given again - a later day - is a row of its own; an update to one never kept fails loud. */
     @Test
-    void aStepKeptTwiceOrAnUpdateToNoneFailsLoud() {
+    void anObjectiveGivenAgainIsARowOfItsOwnAndAnUpdateToNoneFailsLoud() {
         Registers registers = new Registers(state.resolve("registers"));
-        ObjectiveRecord step = new ObjectiveRecord(0, "a farm at chunk (1, 3)", 0, "flatten to y=62", 1, 3, Optional.empty(),
-                ObjectiveRecord.State.PLANNED, 0, Optional.empty());
-        registers.add(step);
-        assertThrows(IllegalStateException.class, () -> registers.add(step));
+        ObjectiveRecord step = new ObjectiveRecord(0, "Flatten x=8..40 z=72..104 to y=63", 0, "KEEP", 1, 5, Optional.of("Charlie"),
+                ObjectiveRecord.State.UNDER_WAY, 0, Optional.empty());
+        ObjectiveRecord first = registers.add(step);
+        registers.update(first.now(ObjectiveRecord.State.RELIEVED, first.squad(), Optional.empty(), 10));
+        ObjectiveRecord again = registers.add(step);
+        assertEquals(2, registers.objectives().size());
+        assertEquals(Optional.of(again), registers.open("Charlie"), "the open one the last given");
         assertThrows(IllegalStateException.class, () -> registers.update(new ObjectiveRecord(99, "none", 0, "none", 0, 0, Optional.empty(),
                 ObjectiveRecord.State.DONE, 0, Optional.empty())));
     }

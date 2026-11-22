@@ -49,10 +49,14 @@ The platoon leader's books are kept by code, never asked of the model (operator,
   `FarmSite` stage, a tree chunk's `TreeChunk` stage. Kept as the world shows it each foothold check, a row written
   when it changes and said (`app.ChunkLedger`): `[Chunks] chunk (1, 3): WHEAT at y=63, SURVEYED`.
 - **The objective register**: each objective a mission's step on a chunk - its task, the squad on it, how it stands
-  (planned, under way, done, CANTCO), when and why.
+  (planned, under way, done, CANTCO, relieved), when and why. Written when the platoon leader gives a squad an
+  objective - its open one, if another, relieved - or holds one no row is open for (the first decision after a
+  restart); and each squad's SITREP pushed into its row as it comes, every second (operator, 2026-11-21: the squad
+  leaders push updates to the platoon leader): its squad leader's CANTCO with why, its task's progress as said, done
+  with what was measured (`app.ObjectiveBook`; `[Objectives] Charlie: Flatten ... CANTCO - no route to ...`).
 
 The garrison's file is `minecraft.registers` (`C:/mc-state/registers`), outside a cloud-sync folder since it's held
-open; a simulation's is its state directory's own. Not yet shown to the model: the chunk table goes into its prompt next.
+open; a simulation's is its state directory's own. Not yet shown to the model or the operator's chat: next.
 
 ## What it decides: `command.Objective`, one per squad
 - **Where:** a location. Its height is the platoon leader's guess, and is put on the ground there
