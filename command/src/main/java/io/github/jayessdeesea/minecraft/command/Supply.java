@@ -1,6 +1,8 @@
 package io.github.jayessdeesea.minecraft.command;
 
 import java.util.ArrayDeque;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Locale;
 
@@ -87,7 +89,7 @@ public record Supply(String name, int stock, double upkeep, double committed, do
         }
 
         /** The stock as looked at {@code now}. */
-        public void stock(int stock, long now) {
+        public synchronized void stock(int stock, long now) {
             if (firstAt == Long.MIN_VALUE) {
                 firstAt = now;
             }
@@ -103,8 +105,29 @@ public record Supply(String name, int stock, double upkeep, double committed, do
 
         private long now;
 
+        /** When it was first looked at, and each fall since as {at, how much}: what a restart restores (app.BurnStore). */
+        public synchronized long[][] snapshot() {
+            List<long[]> all = new ArrayList<>();
+            all.add(new long[]{firstAt, last});
+            falls.forEach(f -> all.add(f.clone()));
+            return all.toArray(new long[0][]);
+        }
+
+        /** It as {@code snapshot} left it: its first look and stock, and its falls - the days before a restart still counted. */
+        public synchronized void restore(long[][] snapshot) {
+            if (snapshot.length == 0) {
+                return;
+            }
+            firstAt = snapshot[0][0];
+            last = (int) snapshot[0][1];
+            falls.clear();
+            for (int i = 1; i < snapshot.length; i++) {
+                falls.addLast(snapshot[i].clone());
+            }
+        }
+
         /** Consumption a day: the falls over the days they span - at least one, so a first hour's meal isn't a day's. */
-        public double perDay() {
+        public synchronized double perDay() {
             if (firstAt == Long.MIN_VALUE) {
                 return 0;
             }

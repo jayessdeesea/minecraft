@@ -556,7 +556,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** First figures for the days making more takes (backlog/maturity-model.md): wheat's ripening, a grove's cut and the wood party's run. */
     static final double RATIONS_LEAD_DAYS = 1, LOGS_LEAD_DAYS = 1;
     /** Each class's measured burn - the main loop's. */
-    private final Supply.Burn rationsBurn = new Supply.Burn(DAY_MILLIS), logsBurn = new Supply.Burn(DAY_MILLIS);
+    private final Supply.Burn rationsBurn, logsBurn; // kept across restarts (BurnStore)
+    private final BurnStore burns;
     /** The keep's work left as measured, for its rate - the main loop's. */
     private final Supply.Burn keepWorkBurn = new Supply.Burn(DAY_MILLIS);
     /** The keep's estimate as last worked out, and whether it was feasible when last logged - the main loop's. */
@@ -583,6 +584,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         int logs = kits.stream().mapToInt(Kit::logs).sum() + pile.map(Stockpile::logs).orElse(0);
         rationsBurn.stock(rations, now);
         logsBurn.stock(logs, now);
+        burns.save();
         // The keep's estimate (command.MissionEstimate): its work at the rate measured from that work's
         // falls, its rations at the force's measured burn a soldier, its logs against the stock above
         // Class IV's reorder point - and the logs it draws a day are Class IV's committed burn.
@@ -1314,6 +1316,9 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                          @Value("${minecraft.state-dir}") String stateDir) {
         this.roster = roster;
         this.wallStore = new WallStore(Path.of(stateDir));
+        this.burns = new BurnStore(Path.of(stateDir), DAY_MILLIS);
+        this.rationsBurn = burns.rations();
+        this.logsBurn = burns.logs();
         this.campFarms = new CampFarm(new WallStore(Path.of(stateDir), "farm"), FARM_REACH_BUDGET);
         this.mineStore = new WallStore(Path.of(stateDir), "stairs");
         this.chestStore = new WallStore(Path.of(stateDir), "chests");
@@ -5008,8 +5013,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                     .map(TrackedEntity::position).toList();
             orders = ReactToContact.orders(statuses, Escort.intercept(statuses,
                     // No link-up: a replacement's place is its slot in the ring, not beside the point man.
-                    Resupply.orders(statuses, Escort.slots(statuses, order, principal),
-                            principal, supplyPoint), principal, threats));
+                    Resupply.orders(statuses, Escort.slots(statuses, order, principal), principal, supplyPoint), principal, threats));
         } else {
             // Each soldier's own report, in the statuses' order and only for those led here: the main
             // body's reports also hold its detached soldiers', and a replacement's place differs. Live,
@@ -5277,8 +5281,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // The tree farm: laid out round the objective's ground once, and kept while the objective
         // stays put - what grows in it is the farm working, not a reason to lay it out again.
         TreeFarm trees = taskOf(squadName, Objective.Task.TreeFarm.class).map(o -> {
-            BlockPos at = TerrainSurveyor.groundAt(world,
-                    BlockPos.containing(o.location().x(), o.location().y(), o.location().z()));
+            BlockPos at = TerrainSurveyor.groundAt(world, BlockPos.containing(o.location().x(), o.location().y(), o.location().z()));
             if (state.trees != null && state.trees.centre().x() == at.x() && state.trees.centre().z() == at.z()) {
                 return state.trees;
             }
@@ -5681,8 +5684,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }
             BlockPos at = typicalGround((int) Math.floor(o.location().x()),
                     (int) Math.floor(o.location().z()), (int) Math.floor(o.location().y()))
-                    .orElse(TerrainSurveyor.groundAt(world,
-                            BlockPos.containing(o.location().x(), o.location().y(), o.location().z())));
+                    .orElse(TerrainSurveyor.groundAt(world, BlockPos.containing(o.location().x(), o.location().y(), o.location().z())));
             return torchPlan(at);
         }).orElse(List.of());
         // The camp kept lit whatever the task: the plan is worked out again each cycle from the
@@ -6194,8 +6196,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 Collections.rotate(cells, -i * cells.size() / statuses.size());
                 boolean makeTorches = soldierName.equals(torchbearer) && workshop != null;
                 Position place = makeTorches ? workshop : building.stands().get(i);
-                fortifying.put(soldierName, new Fortify(place, List.copyOf(cells), allInside, makeTorches,
-                        soldierName.equals(lighter)));
+                fortifying.put(soldierName, new Fortify(place, List.copyOf(cells), allInside, makeTorches, soldierName.equals(lighter)));
                 // Rearming while it waits: it goes where its sword-making takes it, then back to its place.
                 Optional<Position> rearming = Optional.ofNullable(armourers.get(soldierName)).flatMap(Armourer::standAt);
                 byName.get(soldierName).receiveOrder(rearming
@@ -6488,8 +6489,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private List<Position> patrolRound(Position objective) {
         BlockPos centre = typicalGround((int) Math.floor(objective.x()), (int) Math.floor(objective.z()), (int) Math.floor(objective.y()))
-                .orElse(TerrainSurveyor.groundAt(world,
-                        BlockPos.containing(objective.x(), objective.y(), objective.z())));
+                .orElse(TerrainSurveyor.groundAt(world, BlockPos.containing(objective.x(), objective.y(), objective.z())));
         int r = PATROL_RADIUS;
         int[][] round = {{-r, -r}, {0, -r}, {r, -r}, {r, 0}, {r, r}, {0, r}, {-r, r}, {-r, 0}};
         List<Position> waypoints = new ArrayList<>();

@@ -243,7 +243,8 @@ counts by routine / item (`app.PlacementAudit`). Crop-ticks ripe measure harvest
 against supply as well as the farmer's pace: live (field563) 3,250 a crop, about 22 ripe crops standing on 400-odd
 cells, against the simulation's 96 cells for one farmer - the game and the simulation parting. A soldier stuck a minute has its
 ground kept for the simulation (`[World]`, `garrison-state/worlds/`): `SimWorlds.replay` makes it a scenario's terrain. The scoreboard's
-history, a line a day across restarts, is `garrison-state/scoreboard.jsonl`.
+history, a line a day across restarts, is `garrison-state/scoreboard.jsonl`. The burn of food and wood the supply
+gates are set from - a three-day moving average - is kept across restarts in `garrison-state/burn.json` (`app.BurnStore`).
 
 A soldier rejoins where it last logged out, so a squad that last ran a scenario starts on the
 arena; `spreadplayers` puts them back on the ground. `minecraft.yield-to-experiments` stands the
