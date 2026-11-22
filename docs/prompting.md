@@ -37,6 +37,12 @@ A prompt's wording lives in its file; Java works out the facts that go into it.
   for an objective beyond the survey, only that instruction.
 - **Worked examples are copied the same way**, their coordinates and their choices: one example of
   a sealed squad sent to SECURE pulled every sealed squad out.
+- **State in the prompt beats a tool beside it.** The operator's chat, shown its last decision's prompt and
+  given tools over its registers, answered every question from the prompt and called no tool (0 of 4 live,
+  field684): its "missions" were the squads' orders, the operator's own mission left out, a block's chunk worked out
+  in its head. With the books out of the turn's prompt - the last decision a tool of its own - and every answer
+  about them told to start with a read, `qwen3:14b` read first and answered right 12 of 12
+  (`OperatorChatScenarioIT`). Give a model with tools nothing in the prompt it could answer from instead.
 - **Put a rule in the paragraph of the task it sets**, not in a platoon leader section after it.
 - **Show the state, don't add a rule about it.** Shown a stranded soldier's CANTCO, the squad
   leader reported the mission CANTCO (6 of 14). A rule that he's the recovery drill's made it

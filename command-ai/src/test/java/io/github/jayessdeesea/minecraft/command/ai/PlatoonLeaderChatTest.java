@@ -159,7 +159,7 @@ class PlatoonLeaderChatTest {
      * standing order as its prompt held it - and the clock as it stands now, worked out for it.
      */
     @Test
-    void aTurnIsShownTheLastDecisionAndTheClockNow() {
+    void aTurnIsShownTheClockNowAndTheLastDecisionOnlyThroughItsTool() {
         List<Prompt> sent = new ArrayList<>();
         ChatClient client = ChatClient.create(scripted(sent, words("""
                 {"objectives": [{"squad": "Alpha", "keep": false, "reason": "", "mission": "scout north", "x": 0, "y": 70, "z": -60,
@@ -179,8 +179,9 @@ class PlatoonLeaderChatTest {
         assertEquals("Who's out?", messages.get(1).getText());
         assertEquals("Alpha.", messages.get(2).getText());
         String user = messages.get(3).getText();
-        assertTrue(user.contains(platoonLeader.lastShown().orElseThrow()), user);
-        assertTrue(user.contains("win the war"), "the mission, as the last decision was shown it");
+        // Not its last decision in the turn's prompt - shown it live (field684), a model answered from it and read nothing.
+        assertTrue(!user.contains("win the war"), "the last decision kept out of the turn's prompt: " + user);
+        assertEquals(platoonLeader.lastShown().orElseThrow(), chat.tools("why?").lastDecision(), "the last decision, word for word, its tool's");
         assertTrue(user.contains("Minecraft time 12:00 (tick 6000 of the day's 24000)."), user);
         assertTrue(user.contains("Next dusk in 7178 ticks (5 min 58 s); next dawn in 18000 ticks (15 min 00 s)."), user);
         assertTrue(user.contains("<operator>\nWhat's under way?\n</operator>"), user);
@@ -301,7 +302,7 @@ class PlatoonLeaderChatTest {
 
         Map<String, ToolDefinition> tools = Arrays.stream(ToolCallbacks.from(chat(scripted(new ArrayList<>()), NO_COMMANDS).tools("")))
                 .map(ToolCallback::getToolDefinition).collect(Collectors.toMap(ToolDefinition::name, d -> d));
-        assertEquals(List.of("cancelMission", "chunk", "chunkOfBlock", "chunks", "escort", "giveFarmMission", "missions", "replacePlatoonMission",
+        assertEquals(List.of("cancelMission", "chunk", "chunkOfBlock", "chunks", "escort", "giveFarmMission", "lastDecision", "missions", "replacePlatoonMission",
                 "setFlattenGround", "task", "tasks"), tools.keySet().stream().sorted().toList());
         assertTrue(tools.get("missions").description().contains("when the operator asks about missions or operations"));
         assertTrue(tools.get("tasks").description().contains("or about 'objectives' meaning the squads' assignments"));
@@ -313,9 +314,9 @@ class PlatoonLeaderChatTest {
 
     @Test
     void beforeAnyDecisionItSaysNothingHasBeenShown() {
-        String user = PlatoonLeaderChat.buildContext(PROMPTS, "status?", Optional.empty(), Flatten.KEEP, Optional.empty()).prompt();
+        String user = PlatoonLeaderChat.buildContext(PROMPTS, "status?", Optional.empty(), Flatten.KEEP).prompt();
 
-        assertTrue(user.contains("You haven't decided yet"), user);
+        assertTrue(!user.contains("last_decision") && !user.contains("standing order"), "nothing of the books in the turn's prompt: " + user);
         assertTrue(user.contains("The time of day: not known"), user);
     }
 

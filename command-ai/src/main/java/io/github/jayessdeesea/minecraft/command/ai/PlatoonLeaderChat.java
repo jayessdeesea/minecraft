@@ -69,7 +69,7 @@ public final class PlatoonLeaderChat {
         if (message == null || message.isBlank()) {
             throw new IllegalArgumentException("an empty message");
         }
-        PromptContext context = buildContext(prompts, message, time, flatten, platoonLeader.lastShown());
+        PromptContext context = buildContext(prompts, message, time, flatten);
         LOG.info("[Chat] the platoon leader is shown, after {} earlier turn(s):\n{}", earlier.size(), context.prompt());
         PlatoonLeaderTools tools = tools(message.strip());
         String reply = chatClient.prompt()
@@ -89,7 +89,7 @@ public final class PlatoonLeaderChat {
 
     /** The turn's tools over the registers and the commands, told the operator's {@code message}. */
     PlatoonLeaderTools tools(String message) {
-        return new PlatoonLeaderTools(registers, commands, message);
+        return new PlatoonLeaderTools(registers, commands, message, platoonLeader::lastShown);
     }
 
     /** The earlier turns as the model's own conversation: the operator's words, and its answers. */
@@ -102,13 +102,15 @@ public final class PlatoonLeaderChat {
         return messages;
     }
 
-    /** The operator's turn as the user template's parameters: now, the last decision's situation, and what was said. */
-    static PromptContext buildContext(OperatorChatPrompts prompts, String message, Optional<TimeOfDay> time, Flatten flatten,
-                                      Optional<String> lastShown) {
+    /**
+     * The operator's turn as the user template's parameters: now, and what was said - nothing of the books, which are read
+     * with the tools. Live (field684), shown its last decision's prompt, the model answered "list the missions" from its
+     * squads' orders there, called no tool, and left out the operator's own mission.
+     */
+    static PromptContext buildContext(OperatorChatPrompts prompts, String message, Optional<TimeOfDay> time, Flatten flatten) {
         Map<String, Object> params = new HashMap<>();
         params.put("clock", time.map(PlatoonLeaderChat::describe).orElse("The time of day: not known - the server hasn't sent it yet."));
         params.put("flatten", flatten.describe());
-        params.put("lastDecision", lastShown.<Object>map(s -> s).orElse(false));
         params.put("message", message.strip());
         return new PromptContext(prompts.user(), params);
     }

@@ -170,10 +170,11 @@ turn is a model call through the same `ChatClient` (`command.ai.PlatoonLeaderCha
   (`command-ai/src/main/resources/prompts/platoon-leader-chat-system-prompt.md`) with the [terms](#terms), the earlier
   turns as the conversation, and in the turn's own prompt (`platoon-leader-chat-prompt.md`): `<now>` - the Minecraft
   time, day or night, and the ticks and minutes to the next dusk and dawn, worked out from the overworld clock
-  (`command.TimeOfDay`), and the ground to flatten - and `<last_decision>`, the user prompt of its last decision word
-  for word (`SpringAiPlatoonLeader.lastShown`): the mission, each squad's standing order, task and progress, the day's
-  work and the camp's phases, as they stood then. Before its first decision it's told it has been shown nothing about
-  the squads.
+  (`command.TimeOfDay`), and the ground to flatten - nothing of the books: everything about missions, tasks, chunks
+  and orders is read with a tool, and the prompt says every such answer starts with one. Live (field684), shown its
+  last decision's prompt, a local model answered "list the missions" from the squads' orders there, called no tool,
+  and left the operator's own mission out. That prompt, word for word (`SpringAiPlatoonLeader.lastShown`), is the
+  `lastDecision` tool's, for why it decided; before its first decision it says nothing has been shown.
 - **Its registers, read through tools** (`command.ai.PlatoonLeaderTools`, Spring AI `@Tool`s), each answering in plain
   text computed by `command.RegistersSaid` - counts, ages, a chunk's blocks and a block's chunk worked out, never
   left to the model - over `command.PlatoonRegisters` (`app.ChatRegisters`, the garrison's registers):

@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 /**
@@ -32,10 +33,23 @@ final class PlatoonLeaderTools {
     private final String message;
     private final List<String> done = new ArrayList<>();
 
-    PlatoonLeaderTools(PlatoonRegisters registers, OperatorCommands commands, String message) {
+    /** What the platoon leader was shown at its last decision, word for word, if it has decided. */
+    private final Supplier<Optional<String>> lastShown;
+
+    PlatoonLeaderTools(PlatoonRegisters registers, OperatorCommands commands, String message,
+                       Supplier<Optional<String>> lastShown) {
         this.registers = registers;
         this.commands = commands;
         this.message = message;
+        this.lastShown = lastShown;
+    }
+
+    @Tool(resultConverter = PlatoonLeaderTools.PlainText.class, name = "lastDecision", description = "What you were shown at your last "
+            + "decision, word for word - the platoon's mission, each squad's standing order, task and status, the day's work, the "
+            + "camp's phases - as it stood then. Use it when the operator asks why you decided something. For what's under way now, "
+            + "read the missions and tasks instead.")
+    String lastDecision() {
+        return read("the last decision", () -> lastShown.get().orElse("You haven't decided yet: nothing about the squads has been shown to you."));
     }
 
     /** What this turn's commands did, each as it said, in order. */
