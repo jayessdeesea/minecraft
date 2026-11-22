@@ -110,6 +110,28 @@ public final class Footing {
         return place(cell, item, support);
     }
 
+    /**
+     * Puts what's in inventory slot {@code slot} in hand - the tool for a dig - through the spare hotbar slot as a block to
+     * place is ({@link #place}); the weapon goes back after ({@link #tick}).
+     */
+    public synchronized void hold(int slot) {
+        idleTicks = 0;
+        inHand = ItemClassRegistry.classOf(inventory.itemAt(slot)).orElse(null);
+        if (slot == Inventory.HOTBAR_FIRST + inventory.heldHotbarSlot()) {
+            return;
+        }
+        boolean inHotbar = slot >= Inventory.HOTBAR_FIRST && slot < Inventory.HOTBAR_FIRST + 9;
+        int hotbar = inHotbar ? slot - Inventory.HOTBAR_FIRST : spareHotbarSlot();
+        if (previousHotbar < 0) {
+            previousHotbar = inventory.heldHotbarSlot();
+        }
+        if (!inHotbar) {
+            session.swapWithHotbar(0, 0, slot, hotbar);
+        }
+        session.selectHotbarSlot(hotbar);
+        inventory.selectHotbar(hotbar);
+    }
+
     /** Starts digging the block at {@code cell}: the server times the dig, so finish it only after its break time. */
     public synchronized void startDigging(BlockPos cell) {
         session.startDigging(cell.x(), cell.y(), cell.z());

@@ -2225,7 +2225,8 @@ brought to the base's layers one step at a time, each started when the one befor
   sea-level flatten cut round its wheat.
 - **Floored in cobblestone** at that level, every cell, natural stone included, but a template's (`Objective.Task.Floor`,
   `Mason.pave`): each paver its strip of the layer, the nearest cell first, stood for from the cell beside it a block
-  up; a cell solid and not cobblestone dug out by hand's break time and its cobblestone put back in the one job, so
+  up; a cell solid and not cobblestone dug out with the tool carried for it - the best pickaxe for rock, the fastest
+  shovel for soil, in hand before the dig and timed for it - and its cobblestone put back in the one job, so
   no hole stands open below sea level; an open one built; a paver out of cobblestone draws a load from the stockpile
   while it holds some. Done when every cell is cobblestone.
 - **The template** at the farm's level on the floor: its dirt laid on the cobblestone, its water holes' floor the

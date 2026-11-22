@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.bot.script.Script.Expect;
 import io.github.jayessdeesea.minecraft.bot.script.Script.Step;
 import io.github.jayessdeesea.minecraft.bot.world.Hardness;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
+import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
 import io.github.jayessdeesea.minecraft.bot.world.WorldView;
 import io.github.jayessdeesea.minecraft.command.Position;
@@ -265,7 +266,7 @@ public final class Mason {
         LOG.info("{} replaces the dirt at {} with cobblestone", name, cell);
     }
 
-    /** The longest a floor's cell is given to break by hand: slower than deepslate, it's passed over. */
+    /** The longest a floor's cell is given to break with what's carried: slower than deepslate by hand, it's passed over. */
     static final int PAVE_DIG_MOST = 400;
 
     /**
@@ -319,15 +320,22 @@ public final class Mason {
     /** How many of the nearest cells a look between jobs tries for a stand: each a route searched. */
     static final int PAVE_LOOKS = 8;
 
-    /** Whether a floor's {@code c} is one to pave now: solid, breaking by hand in time; or open, with a block to go against. */
-    private static boolean paveable(WorldView world, BlockPos c) {
+    /** Whether a floor's {@code c} is one to pave now: solid, breaking in time with the tool carried for it; or open, with a block to go against. */
+    private boolean paveable(WorldView world, BlockPos c) {
         return world.isSolid(c.x(), c.y(), c.z()) ? digTicks(world, c) < Integer.MAX_VALUE : Builder.support(world, c).isPresent();
     }
 
-    /** The ticks {@code c} takes to break by hand - a pickaxe in hand is no slower - and the margin the server's timing wants. */
-    private static int digTicks(WorldView world, BlockPos c) {
-        return world.hardness(c.x(), c.y(), c.z()).map(h -> h.ticks(Hardness.HAND)).filter(t -> t <= PAVE_DIG_MOST)
-                .map(t -> t + Breacher.MARGIN_TICKS).orElse(Integer.MAX_VALUE);
+    /**
+     * The ticks {@code c} takes to break with the tool carried for it - the best pickaxe for rock, the fastest shovel for
+     * soil, a hand with neither ({@link Digger.Target#toolFor}) - and the margin the server's timing wants. Live (field690),
+     * a paver carrying four pickaxes and two shovels dug a farm's floor out by hand, a cell at a time.
+     */
+    private int digTicks(WorldView world, BlockPos c) {
+        return world.hardness(c.x(), c.y(), c.z()).map(h -> {
+            int slot = Digger.Target.toolFor(h, inventory);
+            int item = slot < 0 ? 0 : inventory.itemAt(slot);
+            return h.ticks(ItemClassRegistry.miningTier(item).orElse(Hardness.HAND), Digger.Target.speedFor(h, item));
+        }).filter(t -> t <= PAVE_DIG_MOST).map(t -> t + Breacher.MARGIN_TICKS).orElse(Integer.MAX_VALUE);
     }
 
     private void startPave(WorldView world, BlockPos cell, BlockPos stand) {
@@ -346,6 +354,8 @@ public final class Mason {
                 }, new Expect("standing in " + stand, () -> on(stand, PAVE_ON)), WALK_TICKS),
                 new Step("dig the floor at " + cell, open, () -> {
                     digStarted[0] = ticks;
+                    world.hardness(cell.x(), cell.y(), cell.z()).map(h -> Digger.Target.toolFor(h, inventory)).filter(slot -> slot >= 0)
+                            .ifPresent(footing::hold); // the tool in hand before the dig: the server times it by what's held
                     footing.startDigging(cell);
                 }, new Expect("the break time to pass", () -> ticks - digStarted[0] >= breakTicks), breakTicks + 2),
                 new Step("break the floor at " + cell, open, () -> footing.finishDigging(cell),

@@ -4,6 +4,7 @@ import io.github.jayessdeesea.minecraft.bot.nav.BlockPos;
 import io.github.jayessdeesea.minecraft.bot.nav.FallAllowance;
 import io.github.jayessdeesea.minecraft.bot.nav.Goal;
 import io.github.jayessdeesea.minecraft.bot.nav.Pathfinder;
+import io.github.jayessdeesea.minecraft.bot.world.Hardness;
 import io.github.jayessdeesea.minecraft.bot.world.Inventory;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
@@ -403,6 +404,94 @@ class MasonTest {
         assertTrue(mason.standAt().isPresent(), "back at the cell");
         assertTrue(!mason.standAt().get().equals(new Position(unreached.x() + 0.5, unreached.y(), unreached.z() + 0.5)),
                 "not the place it couldn't get to: " + mason.standAt());
+    }
+
+    /**
+     * A floor's stone is dug with the pickaxe carried, in hand before the dig and for the pickaxe's time - not by hand.
+     * Live (field690), Jack paved a farm chunk's floor with four pickaxes and two shovels in his pack and none in hand.
+     */
+    @Test
+    void aPaverDigsTheFloorWithThePickaxeItCarries() {
+        inventory.setSlot(Inventory.MAIN_FIRST, new int[]{item(ItemClass.COBBLESTONE), 64});
+        int pickaxeSlot = Inventory.MAIN_FIRST + 1;
+        inventory.setSlot(pickaxeSlot, new int[]{DiggerTest.item("stone_pickaxe"), 1});
+        BlockPos floor = new BlockPos(2, GROUND - 1, 0);
+        Hardness stone = new Hardness(1.5, 0, Hardness.Tool.PICKAXE);
+        Set<BlockPos> dug = new HashSet<>();
+        Set<BlockPos> cobbled = new HashSet<>();
+        WorldView ground = new WorldView() {
+            @Override
+            public boolean isSolid(int x, int y, int z) {
+                return flat.isSolid(x, y, z) && !dug.contains(new BlockPos(x, y, z)) || cobbled.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public boolean isCobblestone(int x, int y, int z) {
+                return cobbled.contains(new BlockPos(x, y, z));
+            }
+
+            @Override
+            public Optional<Hardness> hardness(int x, int y, int z) {
+                return isSolid(x, y, z) ? Optional.of(stone) : Optional.empty();
+            }
+
+            @Override
+            public boolean isHazard(int x, int y, int z) {
+                return false;
+            }
+
+            @Override
+            public List<TrackedEntity> nearbyHostiles(Position center, double radius) {
+                return List.of();
+            }
+        };
+        List<String> sent = new ArrayList<>();
+        int[] tick = {0};
+        int[] started = {-1}, finished = {-1};
+        PlaySession session = (PlaySession) Proxy.newProxyInstance(PlaySession.class.getClassLoader(),
+                new Class<?>[]{PlaySession.class}, (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "swapWithHotbar" -> sent.add("swap " + args[2]);
+                        case "selectHotbarSlot" -> sent.add("select");
+                        case "startDigging" -> {
+                            BlockPos cell = new BlockPos((int) args[0], (int) args[1], (int) args[2]);
+                            if (cell.equals(floor) && started[0] < 0) {
+                                started[0] = tick[0];
+                                sent.add("dig");
+                            }
+                        }
+                        case "finishDigging" -> {
+                            BlockPos cell = new BlockPos((int) args[0], (int) args[1], (int) args[2]);
+                            if (cell.equals(floor) && finished[0] < 0 && started[0] >= 0) {
+                                finished[0] = tick[0];
+                                answers.add(() -> dug.add(cell));
+                            }
+                        }
+                        case "useBlockFace" -> {
+                            BlockFace face = (BlockFace) args[3];
+                            BlockPos cell = new BlockPos((int) args[0] + face.dx, (int) args[1] + face.dy, (int) args[2] + face.dz);
+                            answers.add(() -> cobbled.add(cell));
+                        }
+                        default -> throw new AssertionError("unexpected " + method.getName());
+                    }
+                    return null;
+                });
+        Mason mason = new Mason("Jack", inventory, new Footing(session, inventory), new HashSet<>());
+        Position soldier = new Position(0.5, GROUND, 0.5);
+
+        for (; tick[0] < 2000 && !cobbled.contains(floor); tick[0]++) {
+            answers.forEach(Runnable::run);
+            answers.clear();
+            mason.pave(soldier, ground, List.of(floor), true);
+            soldier = mason.standAt().orElse(soldier);
+        }
+
+        assertTrue(cobbled.contains(floor), "the floor's cell paved; " + mason.failure().orElse("no failure") + "; sent " + sent);
+        assertEquals(List.of("swap " + pickaxeSlot, "select", "dig"), sent.subList(sent.indexOf("dig") - 2, sent.indexOf("dig") + 1),
+                "the pickaxe put in hand, then the dig: " + sent);
+        int byHand = stone.ticks(Hardness.HAND), byPickaxe = stone.ticks(Hardness.STONE_TIER);
+        assertTrue(finished[0] - started[0] < byHand / 2 && finished[0] - started[0] >= byPickaxe,
+                "dug in the pickaxe's time, " + byPickaxe + " ticks and its margin, not a hand's " + byHand + ": took " + (finished[0] - started[0]));
     }
 
     private static int item(ItemClass itemClass) {
