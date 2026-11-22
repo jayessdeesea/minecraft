@@ -3,8 +3,6 @@ package io.github.jayessdeesea.minecraft.app;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import io.github.jayessdeesea.minecraft.command.FarmMission;
-import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.ai.ChatReply;
 import io.github.jayessdeesea.minecraft.command.ai.PlatoonLeaderChat;
@@ -36,9 +34,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>Each turn is logged and keyed out on the radio net ({@code [Operator -> PL]}, {@code [PL -> Operator]}), its model
  * call timed through the chain of command's queue ({@link ModelCalls}) on this server's own threads, never a
- * soldier's. The reply's action is one the operator's chat orders already have, given through the same path
- * ({@link ChainOfCommand#onOperatorMission} and the rest); a farm answers what it would be and that it can't be placed
- * yet. A request that fails is answered 500 with why, and logged; the next is served.
+ * soldier's. The platoon leader's commands are its tools' ({@link ChatCommands}), each one of the operator's own orders
+ * through the same path ({@link ChainOfCommand#onOperatorMission} and the rest); what each did is answered with the reply,
+ * as computed. A request that fails is answered 500 with why, and logged; the next is served.
  *
  * <p>Only a request addressed to this machine by name or loopback address is served, and {@code POST /chat} only as
  * JSON: a page from elsewhere in the operator's browser can neither read the answers nor give orders.
@@ -57,8 +55,8 @@ public class OperatorChat implements DisposableBean {
     record ChatRequest(List<PlatoonLeaderChat.Turn> turns, String message) {
     }
 
-    /** {@code POST /chat}'s answer: the platoon leader's reply as said on the net, and the action it took. */
-    record ChatResponse(String reply, ChatReply.Action action, String argument) {
+    /** {@code POST /chat}'s answer: the platoon leader's reply as said on the net, and what each of its commands did. */
+    record ChatResponse(String reply, List<String> done) {
     }
 
     /**
@@ -157,7 +155,7 @@ public class OperatorChat implements DisposableBean {
         exchange.getResponseBody().write(body);
     }
 
-    /** One of the operator's turns: said on the net, answered through the model queue, its action given. */
+    /** One of the operator's turns: said on the net, answered through the model queue, its commands given as it calls them. */
     ChatResponse turn(ChatRequest request) {
         List<PlatoonLeaderChat.Turn> earlier = request.turns() == null ? List.of() : request.turns();
         String message = request.message() == null ? "" : request.message().strip();
@@ -170,89 +168,13 @@ public class OperatorChat implements DisposableBean {
         ModelCalls.Ticket ticket = chain.modelCalls().queued("Operator chat");
         ticket.started();
         try {
-            reply = chat.answer(earlier, message, chain.time(), chain.flatten(), chain.objectiveBook.map(b -> b.describe(chain.clockwork.millis())));
+            reply = chat.answer(earlier, message, chain.time(), chain.flatten());
         } finally {
             ticket.finished();
         }
-        String argument = reply.argument() == null ? "" : reply.argument().strip();
-        if (reply.action() == ChatReply.Action.FARM && !farmArgument(argument, message).equals(argument)) {
-            LOG.warn("[Chat] the platoon leader's FARM \"{}\" read as \"{}\": the place and the level the operator's", argument, farmArgument(argument, message));
-            argument = farmArgument(argument, message);
-        }
-        Runnable order = order(reply.action(), argument);
-        // A FARM said as computed, not in the model's words: live (field671) its reply said "at y=67" over a mission at 63.
-        String said = reply.action() == ChatReply.Action.FARM ? "WILCO: " + farm(argument).name() + ": " + String.join(", then ",
-                farm(argument).steps().stream().map(FarmMission.Step::task).toList()) + "." : reply.reply().strip();
-        LOG.info("[PL -> {}] {}{}", OPERATOR, said, reply.action() == ChatReply.Action.NONE ? "" : " (" + reply.action() + " " + argument + ")");
-        chain.radio("[PL -> " + OPERATOR + "] " + said);
-        order.run();
-        return new ChatResponse(said, reply.action(), argument);
-    }
-
-    /**
-     * The order {@code action} gives, through the same path as the operator's chat orders - read before anything is said,
-     * so an argument it can't read fails the turn, loud, with nothing given.
-     */
-    private Runnable order(ChatReply.Action action, String argument) {
-        if (action != ChatReply.Action.NONE && argument.isEmpty()) {
-            throw new IllegalStateException("the platoon leader's " + action + " has no argument");
-        }
-        return switch (action) {
-            case NONE -> () -> { };
-            case FARM -> {
-                FarmMission farm = farm(argument);
-                yield () -> chain.onOperatorFarm(OPERATOR, farm);
-            }
-            case MISSION -> () -> chain.onOperatorMission(OPERATOR, argument);
-            case ESCORT -> () -> chain.onOperatorEscort(OPERATOR, argument);
-            case FLATTEN -> {
-                Flatten site = Flatten.parse(argument).orElseThrow(() -> new IllegalStateException(
-                        "the platoon leader's FLATTEN isn't \"x1 z1 x2 z2 y\": " + argument));
-                yield () -> chain.onOperatorFlatten(OPERATOR, site);
-            }
-        };
-    }
-
-    /**
-     * {@code argument} - a FARM's "x z" or "x z y" - with its level kept only if the operator's {@code message} says it: the
-     * level is the operator's to give, and sea level unless given. Live (field668), told "at sea level", the model gave y=67,
-     * and the mission was to flatten a chunk to 66.
-     */
-    /**
-     * The model's FARM {@code argument} as given: its numbers in order, however it writes them ("x=24,z=56" one turn, "24 56"
-     * the next); with none or too few, the operator's own {@code message}'s (field670: a FARM with no argument) - the place
-     * is the operator's to give; and its level kept only if the operator said it (levelAsSaid).
-     */
-    static String farmArgument(String argument, String message) {
-        String numbers = numbersOf(argument);
-        if (numbers.split(" ").length < 2 && numbersOf(message).split(" ").length >= 2) {
-            numbers = numbersOf(message);
-        }
-        return levelAsSaid(numbers, message);
-    }
-
-    static String numbersOf(String argument) {
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("-?\\d+").matcher(argument);
-        List<String> numbers = new java.util.ArrayList<>();
-        while (m.find()) {
-            numbers.add(m.group());
-        }
-        return String.join(" ", numbers);
-    }
-
-    static String levelAsSaid(String argument, String message) {
-        String[] parts = argument.strip().split("\\s+");
-        boolean said = parts.length != 3 || java.util.regex.Pattern.compile("(?<![0-9-])" + java.util.regex.Pattern.quote(parts[2]) + "(?![0-9])")
-                .matcher(message).find();
-        return said ? argument : parts[0] + " " + parts[1];
-    }
-
-    /**
-     * The farm mission {@code argument} gives - "x z", or "x z y": a farm on the chunk the block is in, at sea level unless a
-     * level is given (command.FarmMission) - computed, not left to the model; one it can't read fails the turn, loud.
-     */
-    static FarmMission farm(String argument) {
-        return FarmMission.parse(argument).orElseThrow(() -> new IllegalStateException("the platoon leader's FARM isn't \"x z\" or \"x z y\": " + argument));
+        LOG.info("[PL -> {}] {}{}", OPERATOR, reply.reply(), reply.done().isEmpty() ? "" : " (did: " + String.join(" | ", reply.done()) + ")");
+        chain.radio("[PL -> " + OPERATOR + "] " + reply.reply());
+        return new ChatResponse(reply.reply(), reply.done());
     }
 
     @Override

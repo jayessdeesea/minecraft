@@ -79,4 +79,30 @@ class FarmMissionsTest {
         assertEquals(ObjectiveRecord.State.PLANNED, registers.objectives().stream().filter(r -> r.mission().equals(right.name()) && r.step() == 0)
                 .findFirst().orElseThrow().state(), "its flatten's row open again");
     }
+
+    /**
+     * The operator's cancel: the mission on the chunk taken off - the next given worked in its place, the platoon leader
+     * woken - its phases SUPERSEDED with why, none deleted; a chunk with none open cancels nothing.
+     */
+    @Test
+    void aCancelledMissionIsClosedAndTheNextWorked() {
+        Registers registers = new Registers(state.resolve("registers"));
+        List<String> woken = new java.util.ArrayList<>();
+        FarmMissions missions = new FarmMissions(woken::add);
+        missions.keptIn(new ObjectiveBook(() -> registers));
+        missions.give(FarmMission.atSeaLevel(1, 3), 1_000);
+        missions.give(FarmMission.atSeaLevel(2, 3), 1_000);
+
+        assertEquals(java.util.Optional.empty(), missions.cancel(9, 9, "nothing there", 2_000));
+        assertEquals(java.util.Optional.of(FarmMission.atSeaLevel(1, 3)), missions.cancel(1, 3, "cancelled by Operator: not needed", 2_000));
+
+        assertEquals(FarmMission.atSeaLevel(2, 3), missions.current().orElseThrow().getKey(), "the next one worked");
+        assertEquals(6, registers.objectives().size(), "none deleted");
+        assertEquals(List.of(new Row(ObjectiveRecord.State.SUPERSEDED, java.util.Optional.of("cancelled by Operator: not needed"))),
+                registers.objectives().stream().filter(r -> r.chunkX() == 1).map(r -> new Row(r.state(), r.why())).distinct().toList());
+        assertEquals("the operator's farm cancelled", woken.getLast());
+    }
+
+    private record Row(ObjectiveRecord.State state, java.util.Optional<String> why) {
+    }
 }

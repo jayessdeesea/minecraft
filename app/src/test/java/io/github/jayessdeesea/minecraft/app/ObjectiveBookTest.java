@@ -76,7 +76,6 @@ class ObjectiveBookTest {
         book.planned(farm, 1_500);
         assertEquals(List.of(ObjectiveRecord.State.PLANNED, ObjectiveRecord.State.PLANNED, ObjectiveRecord.State.PLANNED),
                 registers.objectives().stream().map(ObjectiveRecord::state).toList(), "three rows, once");
-        assertEquals(true, book.describe(2_000).contains("- a farm at chunk (1, 3) at y=63, step 2: floor chunk (1, 3)"), book.describe(2_000));
 
         Objective flatten = new Objective(farm.said(farm.steps().getFirst()), new Position(24, 63, 56), "step 1", new Objective.Task.Keep());
         book.given("Alpha", flatten, 2_000);
@@ -89,23 +88,6 @@ class ObjectiveBookTest {
         book.done(farm, farm.steps().getFirst(), "nothing over y=62", 5_000);
         assertEquals(Optional.empty(), registers.open("Alpha"), "its squad's row closed");
         assertEquals(java.util.Map.of(farm.name(), 1), new ObjectiveBook(() -> registers).openMissions(), "after a restart, at its second step");
-    }
-
-    /** The register as the platoon leader reads it: each squad's open objective, how it stands and why, and the chunks kept. */
-    @Test
-    void theRegisterIsDescribedForTheModelToQuote() {
-        Registers registers = new Registers(state.resolve("registers"));
-        ObjectiveBook book = new ObjectiveBook(() -> registers);
-        assertEquals("Objectives open, as each squad last reported:\n- none\nChunks kept, what the force has made of each:\n- none", book.describe(0));
-
-        book.given("Charlie", FLATTEN, 1_000);
-        book.sitrep("Charlie", new Report.Cantco("no route to (30, 72, 90)"), Optional.empty(), 2_000);
-        registers.put(new io.github.jayessdeesea.minecraft.command.ChunkRecord(1, 3, io.github.jayessdeesea.minecraft.command.ChunkRecord.Kind.WHEAT, 63,
-                Optional.of("SURVEYED"), 2_000));
-
-        String said = book.describe(12_000);
-        assertEquals(true, said.contains("- Charlie: Flatten x=8..40 z=72..104 to y=63 (KEEP) in chunk (1, 5) - CANTCO for 10 s: no route to (30, 72, 90)"), said);
-        assertEquals(true, said.contains("- chunk (1, 3), x 16..31 z 48..63: WHEAT at y=63, SURVEYED"), said);
     }
 
     private record Row(ObjectiveRecord.State state, Optional<String> why) {

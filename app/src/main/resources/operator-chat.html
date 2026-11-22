@@ -115,7 +115,7 @@ form.addEventListener("submit", async (event) => {
     });
     const body = await r.json();
     if (!r.ok) throw new Error(body.error || ("HTTP " + r.status));
-    waiting.lastChild.textContent = body.reply + (body.action && body.action !== "NONE" ? "\n[" + body.action + " " + body.argument + "]" : "");
+    waiting.lastChild.textContent = body.reply + (body.done || []).map(d => "\n[" + d + "]").join("");
     turns.push({ operator: message, platoonLeader: body.reply });
   } catch (e) {
     waiting.classList.add("error");

@@ -204,9 +204,10 @@ orders (`!fortify the base`) is answered SAY AGAIN, with the orders there are - 
 **Talking with the platoon leader.** While the app runs, open <http://127.0.0.1:8125/> on the same machine
 (`minecraft.operator-chat.port`; the log says `[Chat] the operator's chat with the platoon leader is at ...` on
 start). It's bound to the loopback address, so it isn't reachable from another machine. Type a message and press
-Enter: the platoon leader answers from what it was shown at its last decision and the clock now - "what time of day is
-it?", "what objectives are you tracking?" - and can give a mission, an escort or a flatten from plain words, said on the net
-as from game chat. The strip at the top is the Minecraft time and the time to the next dusk and dawn. The page holds the
+Enter: the platoon leader answers from its registers, what it was shown at its last decision and the clock now - "what
+time of day is it?", "list the missions", "what tasks are open for Charlie?", "what chunk is x=20 z=50 in?" - and from
+plain words can give or cancel a farm mission, replace the platoon's mission, escort or set the ground to flatten, said on
+the net as from game chat; what each command did is shown under its reply. The strip at the top is the Minecraft time and the time to the next dusk and dawn. The page holds the
 conversation: reloading it starts a new one. Its parts: [docs/echelons/platoon-leader/decisions.md](docs/echelons/platoon-leader/decisions.md#talking-with-the-operator).
 
 Each order is followed down the chain and reported back on the net as it goes, under an id from

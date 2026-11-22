@@ -441,7 +441,14 @@ public class ChainOfCommand implements DisposableBean {
         OrderTrace trace = trace(operator, "!farm " + farm.name(), version);
         LOG.info("[{} -> PL] FARM ({}): {} - {}", operator, trace.id, farm.name(), farm.steps().stream().map(FarmMission.Step::task).toList());
         farmMissions.give(farm, clockwork.millis());
-        transmit("[PL -> " + operator + "] WILCO (" + trace.id + "): " + farm.name() + " - " + farm.steps().size() + " steps, the first " + farm.steps().getFirst().task());
+        transmit("[PL -> " + operator + "] WILCO (" + trace.id + "): " + farm.name() + " - " + farm.steps().size() + " phases, the first " + farm.steps().getFirst().task());
+    }
+
+    /** The operator's farm mission on chunk ({@code chunkX}, {@code chunkZ}) cancelled for {@code why} (FarmMissions#cancel): the one cancelled, if one was open. Acknowledged on the radio. */
+    public Optional<FarmMission> onOperatorCancel(String operator, int chunkX, int chunkZ, String why) {
+        Optional<FarmMission> cancelled = farmMissions.cancel(chunkX, chunkZ, "cancelled by " + operator + ": " + why, clockwork.millis());
+        cancelled.ifPresent(m -> transmit("[PL -> " + operator + "] WILCO (" + trace(operator, "cancel " + m.name(), missionVersion.incrementAndGet()).id + "): " + m.name() + " cancelled - " + why));
+        return cancelled;
     }
 
     /**
