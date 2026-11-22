@@ -203,6 +203,29 @@ public enum Terrain {
                 world.setGround(stairX, wallZ + k, Scenario.BASE_GROUND + height - k);
             }
         }
+    },
+
+    /**
+     * Last, as STAIRS is, so the others keep their ordinals. A cave: rock over the ground everywhere three blocks up, and
+     * pillars of it standing floor to roof here and there - low, no sky, little room to back off in and the way back
+     * broken. Live (field663, field666), Eli was shot dead twice mining in caves, between a zombie and a skeleton,
+     * stood in one cell; on open ground the battle simulation's soldier gets clear of the same pair.
+     */
+    CAVE {
+        @Override
+        void build(SyntheticWorld world, Random random, int startZ, int goalX, int goalZ) {
+            for (int x = MIN; x <= MAX; x++) {
+                for (int z = MIN; z <= MAX; z++) {
+                    int g = world.ground(x, z);
+                    world.solid(x, g + 4, z);
+                    if (random.nextInt(100) < 12 && (Math.abs(x) > 1 || Math.abs(z) > 1)) { // a pillar, but never on the fight's start
+                        for (int y = g + 1; y <= g + 3; y++) {
+                            world.solid(x, y, z);
+                        }
+                    }
+                }
+            }
+        }
     };
 
 

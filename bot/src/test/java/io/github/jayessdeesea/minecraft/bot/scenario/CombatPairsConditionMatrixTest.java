@@ -22,11 +22,11 @@ class CombatPairsConditionMatrixTest {
 
     static final List<Battle.Archetype> PAIR = List.of(Battle.Archetype.ZOMBIE, Battle.Archetype.SKELETON);
     static final List<Double> HEALTHS = List.of(20.0, 8.0);
-    static final List<Terrain> GROUNDS = List.of(Terrain.FLAT, Terrain.HILLS, Terrain.RAVINE);
+    static final List<Terrain> GROUNDS = List.of(Terrain.FLAT, Terrain.HILLS, Terrain.RAVINE, Terrain.CAVE);
 
     /** Cells that don't pass yet, as "health/kit/ground". */
     static final Set<String> KNOWN = Set.of(
-            "20/bare hands/ravine", "8/bare hands/ravine");
+            "20/bare hands/ravine", "8/bare hands/ravine", "20/bare hands/cave", "8/bare hands/cave");
 
     @Test
     void aZombieAndASkeletonMetHealthyOrHurt() {

@@ -683,7 +683,8 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   building or digging - it's pinned, and taken cover from. Two at once (`CombatPairsMatrixTest`, correct: alive):
   short now, on hills, a creeper with a zombie, bare-handed (83%); every other pair comes through. By the soldier's
   condition (`CombatConditionMatrixTest`), and a zombie and a skeleton together by it too (`CombatPairsConditionMatrixTest`:
-  met at 20 or 8, bare hands, a stone sword or full iron, on the flat, hills and a ravine; short, bare hands in the ravine):
+  met at 20 or 8, bare hands, a stone sword or full iron, on the flat, hills, a ravine and a cave - a roof three
+  up, pillars floor to roof (`Terrain.CAVE`); short, bare hands in the ravine and the cave):
   a stone sword against each hostile, met whole, at 12 and at 6, in no iron, a
   chestplate or the whole set, on the flat, hills, trees, a pond, either side of a ravine and under a cliff - correct as
   above, and against a zombie met hurt, got away from counts, as does one let be across a ravine with neither touched. A
