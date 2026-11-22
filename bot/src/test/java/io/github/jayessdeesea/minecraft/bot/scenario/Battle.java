@@ -54,6 +54,9 @@ public final class Battle implements WorldView {
 
     static final double ZOMBIE_REACH = 1.5;
     static final double ZOMBIE_DAMAGE = 3;
+    /** A zombie's height and a player's, for whether one's blow reaches the other. */
+    static final double ZOMBIE_HEIGHT = 1.95;
+    static final double PLAYER_HEIGHT = 1.8;
     static final int ZOMBIE_COOLDOWN = 20;
     static final double BOW_RANGE = 15;
     /** A pillager's crossbow: it shoots from 8 blocks in, and keeps off a little short of it. */
@@ -350,7 +353,10 @@ public final class Battle implements WorldView {
                     if (distance > ZOMBIE_REACH * 0.8) {
                         move(h, soldier, h.archetype.speed);
                     }
-                    if (distance <= ZOMBIE_REACH && h.cooldown == 0) {
+                    // Its attack box is its own grown sideways, not up or down (vanilla's getAttackBoundingBox): one in a ravine
+                    // under the soldier's feet doesn't reach it. Without it a zombie in a trench killed soldiers standing over it.
+                    if (distance <= ZOMBIE_REACH && h.cooldown == 0 && soldier.y() < here.y() + ZOMBIE_HEIGHT
+                            && soldier.y() + PLAYER_HEIGHT > here.y()) {
                         damage[target] += ZOMBIE_DAMAGE;
                         h.cooldown = ZOMBIE_COOLDOWN;
                     }

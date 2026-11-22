@@ -57,4 +57,45 @@ class EngagementTest {
         assertEquals(Engagement.Kind.COVER, Engagement.choose(new Engagement.Soldier(4, 0, 0, 1, 4, 3, Engagement.SPRINT), zombie, false, 4),
                 "at a sprint it gets clear before the zombie's on it");
     }
+
+    /** Withdrawn, it gets clear, holds to heal, and comes back past its line - not fought to the death, not fled for good. */
+    @Test
+    void aWithdrawalBreaksContactRecoversAndResumes() {
+        assertEquals(Engagement.Withdrawal.BREAK_CONTACT, Engagement.withdrawal(6, 11, true, 5, true, true), "a zombie 5 off");
+        assertEquals(Engagement.Withdrawal.BREAK_CONTACT, Engagement.withdrawal(6, 11, true, 12, false, true),
+                "a zombie out of sight still comes on round what's between");
+        assertEquals(Engagement.Withdrawal.RECOVER, Engagement.withdrawal(6, 11, true, 12, false, false),
+                "out of an archer's sight, it holds to eat and heal");
+        assertEquals(Engagement.Withdrawal.RECOVER, Engagement.withdrawal(6, 11, true, Double.POSITIVE_INFINITY, false, true),
+                "lost track of: clear");
+        assertEquals(Engagement.Withdrawal.RESUME, Engagement.withdrawal(11, 11, true, 5, true, true), "healed past its line");
+        assertEquals(Engagement.Withdrawal.RESUME, Engagement.withdrawal(6, 11, false, 30, false, true),
+                "nothing to heal on - below 18 food, no food carried: it doesn't hold for good");
+    }
+
+    @Test
+    void theLineIsWhereItWouldCloseAgainWithTheMargin() {
+        io.github.jayessdeesea.minecraft.command.Kit stone = new io.github.jayessdeesea.minecraft.command.Kit(
+                java.util.Optional.of("stone_sword"), 0, 0, 0, 0, 0, 0, false);
+        io.github.jayessdeesea.minecraft.command.Kit bare = new io.github.jayessdeesea.minecraft.command.Kit(
+                java.util.Optional.empty(), 0, 0, 0, 0, 0, 0, false);
+        double zombieLine = Engagement.line(stone, false, 20);
+        assertTrue(zombieLine > 7 && zombieLine < 20, "a stone sword's against a zombie is well short of whole: " + zombieLine);
+        assertEquals(20, Engagement.line(bare, false, 20), 1e-9, "bare hands never have the margin on a zombie: whole");
+        assertTrue(Engagement.line(stone, true, 20) > zombieLine, "an archer's is higher: the walk to it under fire");
+    }
+
+    /** Getting away is priced at the pace it can go and the archer's, which follows: swimming, it can't, and fights. */
+    @Test
+    void anArcherFollowsSoASwimmerCantGetAwayAndFights() {
+        io.github.jayessdeesea.minecraft.command.Kit wooden = new io.github.jayessdeesea.minecraft.command.Kit(
+                java.util.Optional.of("wooden_sword"), 0, 0, 0, 0, 0, 0, false);
+        assertEquals(Engagement.Kind.WITHDRAW, Engagement.archer(8.3, wooden, 7.9, true, Engagement.SPRINT, true),
+                "the matrix's pond, on the bank at 8.3: at a sprint it gets clear");
+        assertEquals(Engagement.Kind.ENGAGE, Engagement.archer(8.3, wooden, 7.9, true, Engagement.SWIM, true),
+                "in the water it can't, and a fight forced is fought");
+        assertEquals(Engagement.Kind.ENGAGE, Engagement.archer(20, wooden, 7.9, true, Engagement.SPRINT, true));
+        assertEquals(Engagement.Kind.WITHDRAW, Engagement.archer(20, wooden, 7.9, true, Engagement.SPRINT, false),
+                "whole, but its steps at it gaining nothing: it strikes nothing, and gets clear");
+    }
 }

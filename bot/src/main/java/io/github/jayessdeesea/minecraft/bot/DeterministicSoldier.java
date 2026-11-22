@@ -214,8 +214,9 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         contactLog = new ContactLog(name);
     }
 
-    /** Its contacts said as they go, for evals of them (ContactLog). */
+    /** Its contacts said as they go, for evals of them (ContactLog); and the response to the one under way, null out of contact. */
     private final ContactLog contactLog;
+    public String contactResponse() { return contactLog.response(); }
 
     @Override
     public void receiveOrder(Order order) {
@@ -480,15 +481,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         }
         if (hurtNow && threats.stream().noneMatch(t -> gait.position.distanceTo(t.position()) <= CONTACT_RADIUS) && hurtSaidIn == 0) {
             hurtSaidIn = 40;
-            Position eye = new Position(gait.position.x(), gait.position.y() + EYE_HEIGHT, gait.position.z());
-            LOG.info("[Contact] {} at ({}, {}, {}) hurt, {} health, with nothing in contact - round it out to {}: {}", name,
-                    String.format(java.util.Locale.ROOT, "%.1f", gait.position.x()), String.format(java.util.Locale.ROOT, "%.1f", gait.position.y()),
-                    String.format(java.util.Locale.ROOT, "%.1f", gait.position.z()), (int) lastReportedHealth, (int) FLED_PAST,
-                    near.isEmpty() ? "none" : near.stream().map(t -> String.format(java.util.Locale.ROOT, "%s at (%.1f, %.1f, %.1f) %.1f off%s",
-                            io.github.jayessdeesea.minecraft.bot.world.HostileMobRegistry.nameOf(t.typeId()), t.position().x(), t.position().y(), t.position().z(), gait.position.distanceTo(t.position()),
-                            lineOfSight(world, new Position(t.position().x(), t.position().y() + EYE_HEIGHT, t.position().z()),
-                                    new Position(gait.position.x(), gait.position.y() + TARGET_HEIGHT, gait.position.z())) ? ", in sight" : ", out of sight"))
-                            .collect(java.util.stream.Collectors.joining("; ")));
+            contactLog.hurtWithNothing(world, gait.position, lastReportedHealth, near);
         }
         // A creeper inside its blast's clearing comes first, whatever's nearer: live (field595) Olga fought a skeleton 0.8
         // off with a creeper 1.3 off, her answer flipping between the two each tick, and the creeper's blast took her from
@@ -524,6 +517,14 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             lastClose = null;
             noWalk = false;
             noWalkCheckIn = 0;
+            boxedIn = false;
+            stalledTicks = 0;
+        }
+        // Withdrawn from one that won the exchange (Engagement.withdrawal): clear of it, held there to eat and heal - not fought to
+        // the death, not fled for good - till healed past its line; a fresh hostile nearer is met as any is.
+        if (withdrawingFrom != -1 && (threats.isEmpty() || threats.getFirst().entityId() == withdrawingFrom) && withdraw(world, near)) {
+            gait.fall(world);
+            return attack;
         }
         // A hostile that fights hand to hand, out of reach with no way to it - water, a drop, a wall
         // between - has no way to the soldier either: not a fight, and the soldier carries on. Live,
@@ -604,6 +605,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             // flee and recover, re-engage if relevant); healed, the exchange is won again and it closes.
             } else if (!nearest.shoots() && !nearest.explodes() && meleeExchange(range) != Engagement.Kind.ENGAGE) {
                 response = "gets clear: the exchange lost, hand to hand";
+                withdrawFrom(nearest, false);
                 sprinting = canSprint();
                 stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z(), sprinting ? SPRINT_STEP : STEP);
             // An archer well below - across a cave's drop - out-shoots a sword as surely as one it has no route to:
@@ -627,7 +629,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                         : "takes cover: an archer with no route to strike it from";
                 // An archer out-fights a bare hand from any range, and a sword it can't be closed on:
                 // get out of its sight, and stay out.
-                Optional<Position> cover = coverFrom(world, threat);
+                Optional<Position> cover = coverFrom(world, gait.position, threat);
                 // To cover at a sprint, or with none in reach, out of its range at one: a walk away from an archer
                 // stays inside its range, and in the combat eval matrix a bare hand in the open was shot dead 10 or
                 // more times in 12.
@@ -635,6 +637,8 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                 double pace = sprinting ? SPRINT_STEP : STEP;
                 if (!armedForMelee()) {
                     fleeingFrom = nearest.entityId();
+                } else if (archerExchange(range) != Engagement.Kind.ENGAGE) {
+                    withdrawFrom(nearest, true);
                 }
                 if (cover.isPresent()) {
                     stepGuarded(world, cover.get().x(), cover.get().z(), pace);
@@ -684,6 +688,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                     // Straight at it while that gains ground; the walk once a step at it gains none.
                     boolean gaining = lastClose == null || Math.hypot(gait.position.x() - lastClose.x(), gait.position.z() - lastClose.z()) > 0.02;
                     lastClose = gait.position;
+                    stalledTicks = gaining ? 0 : stalledTicks + 1;
                     byWalk = nearest.shoots() && (byWalk || !gaining);
                     Optional<BlockPos> by = byWalk ? nextOnClosePath() : Optional.empty();
                     stepGuarded(world, by.map(b -> b.x() + 0.5).orElse(threat.x()), by.map(b -> b.z() + 0.5).orElse(threat.z()),
@@ -745,12 +750,13 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     static final double HURT_HEALTH = 10;
     /** The exchange with one that fights hand to hand {@code range} off (Engagement.melee). */
     private Engagement.Kind meleeExchange(double range) {
-        return Engagement.melee(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS, canSprint());
+        return Engagement.melee(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS, boxedIn ? 0 : canSprint() ? Engagement.SPRINT : Engagement.WALK);
     }
 
     /** The exchange with an archer {@code range} off (Engagement.archer). */
     private Engagement.Kind archerExchange(double range) {
-        return Engagement.archer(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS);
+        return Engagement.archer(lastReportedHealth, kit, range, contactTicks > BEGUN_TICKS, boxedIn ? 0 : wet ? Engagement.SWIM
+                : canSprint() ? Engagement.SPRINT : Engagement.WALK, stalledTicks <= BEGUN_TICKS);
     }
     /**
      * Ticks since it met the hostile it's in contact with now: past {@link #BEGUN_TICKS} the fight's begun. Not the health
@@ -759,6 +765,81 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     private int contactTicks;
     /** A second into a contact, its fight is begun. */
     static final int BEGUN_TICKS = 20;
+
+    /** The hostile it's withdrawn from, or -1; whether that one shoots; and the health it re-engages past (Engagement.line). */
+    private int withdrawingFrom = -1;
+    private boolean withdrawnFromArcher;
+    private double withdrawLine;
+    /** Whether, withdrawing from the hostile in contact now, it can't get clear of it: it's fought, as one that can't be got away from. */
+    private boolean boxedIn;
+    /** Ticks closing on the hostile in contact with no ground gained: past {@link #BEGUN_TICKS}, it isn't closing, and strikes nothing. */
+    private int stalledTicks;
+    /** Whether the withdrawal's cover proved none - seen or shot at in it. */
+    private boolean coverFailed;
+
+    /** Withdraws from {@code hostile}, the exchange with it lost - unless it's past its line to re-engage at already. */
+    private void withdrawFrom(TrackedEntity hostile, boolean archer) {
+        double line = Engagement.line(kit, archer, Condition.MAX_HEALTH);
+        if (lastReportedHealth < line) {
+            withdrawingFrom = hostile.entityId();
+            coverFailed = false;
+            withdrawnFromArcher = archer;
+            withdrawLine = line;
+        }
+    }
+
+    /**
+     * This tick of the withdrawal, if it isn't over: away from the hostile while it's near and in sight or following - to
+     * cover from an archer, else the heading that gains most - and held clear of it, out of contact so the runner's
+     * rations are eaten, while it heals. Over once past its line, or with nothing to heal on (Engagement.withdrawal), or
+     * boxed in where no step gets it further off: the hostile met afresh.
+     */
+    private boolean withdraw(WorldView world, List<TrackedEntity> near) {
+        int from = withdrawingFrom;
+        Optional<TrackedEntity> hostile = near.stream().filter(t -> t.entityId() == from).findFirst();
+        Condition known = condition;
+        Kit carried = kit;
+        boolean canHeal = known != null && (known.food() >= Condition.REGENERATION_FOOD || carried != null && carried.rations() > 0);
+        Engagement.Withdrawal next = Engagement.withdrawal(lastReportedHealth, withdrawLine, canHeal,
+                hostile.map(t -> gait.position.distanceTo(t.position())).orElse(Double.POSITIVE_INFINITY),
+                hostile.isPresent() && (underFireTicks > 0 || !visible(world, List.of(hostile.get())).isEmpty()), !withdrawnFromArcher);
+        if (next == Engagement.Withdrawal.BREAK_CONTACT) {
+            Position threat = hostile.orElseThrow().position(), was = gait.position;
+            // Still the exchange's to say, each step: one it can't get away from after all - swimming, the archer keeping up -
+            // is a fight forced on it, fought to the end: at a bank's edge, swimming and sprinting flipped it in and out.
+            double range = gait.position.distanceTo(threat);
+            boxedIn = (withdrawnFromArcher ? archerExchange(range) : meleeExchange(range)) == Engagement.Kind.ENGAGE;
+            if (boxedIn) {
+                withdrawingFrom = -1;
+                return false;
+            }
+            // Cover from an archer - till it stands in cover still seen or shot at: then that's no cover, and it gets off.
+            Optional<Position> cover = withdrawnFromArcher && !coverFailed ? coverFrom(world, gait.position, threat) : Optional.empty();
+            coverFailed |= cover.filter(c -> Math.hypot(c.x() - gait.position.x(), c.z() - gait.position.z()) <= 0.5).isPresent();
+            sprinting = canSprint();
+            cover.filter(c -> !coverFailed).ifPresent(c -> stepGuarded(world, c.x(), c.z(), sprinting ? SPRINT_STEP : STEP));
+            if (gait.position.equals(was) && !evade(world, threat)) {
+                withdrawingFrom = -1; // boxed in: no getting clear of it, and it's fought
+                boxedIn = true;
+                return false;
+            }
+            route = null;
+            report = new Report.InContact(1);
+            contactLog.tick(world, gait.position, lastReportedHealth, kit, List.of(hostile.get()),
+                    String.format(java.util.Locale.ROOT, "withdraws: the exchange lost, to heal past %.0f", withdrawLine));
+            look(threat);
+            return true;
+        }
+        if (next == Engagement.Withdrawal.RESUME) {
+            withdrawingFrom = -1;
+            contactTicks = 0; // met again, a fresh contact: closed on with the margin, healed
+            stalledTicks = 0;
+            return false;
+        }
+        report = new Report.Moving(); // clear of it: out of contact, holding to heal
+        contactLog.tick(world, gait.position, lastReportedHealth, kit, List.of(), null);
+        return true;
+    }
 
     /** How far a soldier fleeing an archer runs before it's fled: past a skeleton's 15 blocks of range. */
     static final double FLED_PAST = 20;
@@ -873,36 +954,6 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     }
 
     /**
-     * The nearest standing cell within {@link #COVER_RADIUS} that {@code shooter} can't see - nothing
-     * solid between its eyes and the soldier's - if there's one.
-     */
-    private Optional<Position> coverFrom(WorldView world, Position shooter) {
-        Position shooterEye = new Position(shooter.x(), shooter.y() + EYE_HEIGHT, shooter.z());
-        BlockPos here = BlockPos.containing(gait.position.x(), gait.position.y() + EPSILON, gait.position.z());
-        Position best = null;
-        double bestDistance = Double.MAX_VALUE;
-        for (int dx = -COVER_RADIUS; dx <= COVER_RADIUS; dx++) {
-            for (int dz = -COVER_RADIUS; dz <= COVER_RADIUS; dz++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    BlockPos cell = here.offset(dx, dy, dz);
-                    if (!Pathfinder.standable(world, cell)) {
-                        continue;
-                    }
-                    Position spot = new Position(cell.x() + 0.5, cell.y(), cell.z() + 0.5);
-                    double distance = Math.hypot(spot.x() - gait.position.x(), spot.z() - gait.position.z());
-                    if (distance < bestDistance
-                            && !lineOfSight(world, shooterEye, new Position(spot.x(), spot.y() + EYE_HEIGHT, spot.z()))
-                            && !lineOfSight(world, shooterEye, new Position(spot.x(), spot.y() + 0.5, spot.z()))) {
-                        best = spot;
-                        bestDistance = distance;
-                    }
-                }
-            }
-        }
-        return Optional.ofNullable(best);
-    }
-
-    /**
      * Turns to face a squadmate standing at {@code target} - before handing something across, which
      * flies the way the soldier faces. The next step or fight turns it again.
      */
@@ -931,67 +982,5 @@ public final class DeterministicSoldier extends Mover implements Soldier {
         double dy = target.y() + TARGET_HEIGHT - (gait.position.y() + EYE_HEIGHT);
         yaw = yawToward(dx, dz);
         pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
-    }
-
-
-    /**
-     * The deepest drop a step in a fight may leave the soldier over: one the server charges no
-     * health for. Live, a soldier at 1 health fighting a phantom on a hut roof backed off its edge.
-     */
-    static final int FIGHT_DROP = Pathfinder.MAX_DROP;
-
-    /** As {@link #stepToward(WorldView, double, double, double)}, not taken if it would leave the soldier over a deeper drop than {@link #FIGHT_DROP}. */
-    private void stepGuarded(WorldView world, double targetX, double targetZ) {
-        stepGuarded(world, targetX, targetZ, STEP);
-    }
-
-    private void stepGuarded(WorldView world, double targetX, double targetZ, double pace) {
-        Gait.Snapshot start = gait.snapshot();
-        stepToward(world, targetX, targetZ, pace);
-        if (!gait.position.equals(start.position()) && overDrop(world, gait.position)) {
-            gait.restore(start);
-        }
-    }
-
-
-    /** Headings tried to get away from a threat, in degrees off straight away from it: nearest first. */
-    private static final int[] EVASION_HEADINGS = {0, 45, -45, 90, -90, 135, -135};
-
-    /**
-     * A step away from {@code threat}: of the headings round straight away, the one that gains the
-     * most distance from it - a wall at the back turns it sideways - and never one that loses any.
-     * Whether the soldier moved, or started a jump to.
-     */
-    private boolean evade(WorldView world, Position threat) {
-        double away = Math.atan2(gait.position.z() - threat.z(), gait.position.x() - threat.x());
-        Gait.Snapshot snapshot = gait.snapshot();
-        Position start = snapshot.position();
-        boolean startGround = snapshot.onGround();
-        double from = Math.hypot(start.x() - threat.x(), start.z() - threat.z());
-        // At a sprint where it can: a creeper walks faster than a soldier backs off at a walk. In the combat eval matrix
-        // every one closed from 7 to 3 on a soldier backing away, lit, and blew.
-        sprinting = canSprint();
-        double pace = sprinting ? SPRINT_STEP : STEP;
-        double bestGain = 1e-6;
-        int best = Integer.MIN_VALUE;
-        for (int heading : EVASION_HEADINGS) {
-            double angle = away + Math.toRadians(heading);
-            stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2, pace);
-            boolean dropsOff = !gait.position.equals(start) && overDrop(world, gait.position);
-            // A jump started counts as a little ground gained: it lands farther on next tick.
-            double gain = Math.hypot(gait.position.x() - threat.x(), gait.position.z() - threat.z()) - from
-                    + (gait.onGround != startGround && heading == 0 ? 0.05 : 0);
-            if (gain > bestGain && !dropsOff) {
-                bestGain = gain;
-                best = heading;
-            }
-            gait.restore(snapshot);
-        }
-        if (best == Integer.MIN_VALUE) {
-            return false;
-        }
-        double angle = away + Math.toRadians(best);
-        stepToward(world, start.x() + Math.cos(angle) * 2, start.z() + Math.sin(angle) * 2, pace);
-        return true;
     }
 }

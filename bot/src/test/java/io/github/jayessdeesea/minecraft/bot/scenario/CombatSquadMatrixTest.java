@@ -81,7 +81,7 @@ class CombatSquadMatrixTest {
             health[i] = 20;
             bodies[i] = new Body(kit.armour());
             s.reportHealth(20, 20);
-            s.reportKit(new Kit(kit.weapon(), 0, kit.armour().pieces, 0, 0, 0, 0, kit.shield()));
+            s.reportKit(new Kit(kit.weapon(), 0, kit.armour().pieces, 0, 0, 0, Body.RATIONS, kit.shield()));
             s.receiveOrder(new Order.MoveTo(places[i][0], at.y(), places[i][1], 1.5, 3.0, Risk.LOW));
             squad.add(s);
             since[i] = 100;
@@ -131,10 +131,10 @@ class CombatSquadMatrixTest {
             for (int k = 0; k < who.size(); k++) {
                 int i = who.get(k);
                 double taken = bodies[i].hit(damage[k]);
-                boolean healed = bodies[i].tick();
+                boolean healed = bodies[i].tick(Body.free(squad.get(i), battle));
                 health[i] = bodies[i].health();
                 if (taken > 0 || healed) {
-                    squad.get(i).reportHealth(Math.max(0, health[i]), 20);
+                    squad.get(i).reportHealth(Math.max(0, health[i]), bodies[i].food());
                 }
                 if (health[i] <= 0) {
                     return new Fight(false, true, friendly, battle.sweptHostiles);

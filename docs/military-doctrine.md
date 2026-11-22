@@ -630,15 +630,28 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 - **An archer out of reach is closed on only when the exchange is won** (`bot.Engagement`): its time to kill - the
   walk to it, then its blows - against its time to die under the archer's shots after its armour, as the server's
   `CombatRules` cuts them. Not begun, it closes with half again to spare, else takes cover; begun, it finishes the fight
-  while it outlasts the kill, and gets clear only when it would die first and can get clear alive. Live (field611), Eli
-  at 0.6 health closed on a skeleton 6.4 off and was shot dead; replayed on her kept ground she lives in cover. A health
-  line in its place broke off fights soldiers would have won - four combat-matrix cells lost - and with it one more cell
-  passes (pillager, wooden sword, hills).
+  while it outlasts the kill, and gets clear only when it would die first and can get clear alive. Getting clear is
+  priced at the soldier's pace - a sprint, a walk, a swim, none boxed in - against the archer's, which follows to keep
+  its range at about 2.2 blocks a second, out to 20 off (`Engagement.CLEAR_OF`): a swimmer can't, and fights (in the
+  matrix's pond a soldier swimming off a skeleton was followed and shot dead). One whose steps at it gain no ground for
+  a second isn't closing, and is reckoned to strike nothing. Live (field611), Eli at 0.6 health closed on a skeleton 6.4
+  off and was shot dead; replayed on her kept ground she lives in cover. A health line in its place broke off fights
+  soldiers would have won - four combat-matrix cells lost.
 - **One that fights hand to hand is fought unless the soldier would lose outright and can get away** (`Engagement`):
   the margin is for closing on an archer under fire; one that follows brings the fight anyway. Getting away is priced
   at the difference in pace - a zombie keeps up with a walk, so only a sprint, food over 6, opens the gap - and one
   that can't be got away from is a fight forced, and fought. Backing off it whenever the exchange was short, a soldier
   with bare hands fled two zombies for good and was caught on hills (67% of that cell).
+- **A lost exchange is a withdrawal, not a flight** (`Engagement.withdrawal`, `DeterministicSoldier.withdraw`): the
+  soldier breaks contact - to cover from an archer, till cover proves none by its being seen or shot in it, else the
+  heading that gains most - and keeps going while the hostile is near and in sight, or follows; clear of it, it holds
+  where it is. Held there out of contact, the runner's rations are eaten (out of contact only, so a soldier in a long
+  fight goes hungry - in the combat matrix three archer cells on hills fell to 83% when the body stopped eating mid-fight,
+  as no live soldier does) and it heals; past its line - the health it would close at, not begun, with the margin
+  (`Engagement.line`; a stone sword's against a zombie about 11, bare hands' a whole 20) - it goes back to its work, and
+  meets the hostile afresh if it's still in the way. Each step of the withdrawal is still the exchange's: one it can't
+  get clear of after all - in the water, boxed in where no step gains ground - is a fight forced, fought to its end. With
+  nothing to heal on (below 18 food, none carried) the withdrawal is over: no soldier holds for good.
 - **An archer well below** - more than 4 blocks under the soldier, across a cave's drop - is out of a sword's
   reach whatever route might go down to it: the soldier takes cover and carries on, as from one it has no route
   to (the engagement doctrine's it-can-I-can't cell; `DeterministicSoldier.ARCHER_BELOW`). Live, three miners
@@ -659,13 +672,23 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
   never killed; never in a creeper's blast; armed against a zombie, it's killed; bare-handed, alive however it
   gets away - at 90% of its seeds, and printed as one table. Cells short of it are listed known, and come off
   with their fix. A fight's world goes on past the scenario's box (`SyntheticWorld.open`): a closed box's wall at 48
-  cornered flights the open live world wouldn't. Short now: the creeper on hills (83%) and in a pond (17%), where a
-  sprint doesn't get clear, and a wooden sword or a sword and shield against a pillager on hills (2 of 12 killed). An archer is closed on straight while that gains ground, and
+  cornered flights the open live world wouldn't. Each soldier has the server's body (the battle simulation's
+  `scenario.Body`): food, saturation and exhaustion, regeneration, armour worn down a blow at a time, and its rations
+  eaten as the runner eats them - below 18 food, out of contact only. Short now: the creeper on hills (83%) and in a
+  pond (17%), where a sprint doesn't get clear, and a wooden sword or a sword and shield against a pillager on hills
+  (75%) - a pillager keeps 6 off and follows at a walk, and on hills a soldier closing on one stalls on the ground or
+  takes cover a crossbow still reaches. An archer is closed on straight while that gains ground, and
   by the walk to it - round a drop, down a ramp - once a step at it gains none (live, field597, Alice stood 46 s on a
   ledge 4 over a skeleton, stepping at the drop, and was shot dead); with no walk to it at all - a route only by
   building or digging - it's pinned, and taken cover from. Two at once (`CombatPairsMatrixTest`, correct: alive):
-  short now, on hills, a creeper with a zombie (83%, bare-handed or armed) and a zombie with a skeleton, armed
-  (83%); a creeper with a skeleton comes through. A squad's melee (`CombatSquadMatrixTest`): two or three against a
+  short now, on hills, a creeper with a zombie, bare-handed (83%); every other pair comes through. By the soldier's
+  condition (`CombatConditionMatrixTest`): a stone sword against each hostile, met whole, at 12 and at 6, in no iron, a
+  chestplate or the whole set, on the flat, hills, trees, a pond, either side of a ravine and under a cliff - correct as
+  above, and against a zombie met hurt, got away from counts, as does one let be across a ravine with neither touched. A
+  zombie's blow reaches only a body level with its own (`Battle`, vanilla's attack box): one in a trench under the
+  soldier's feet doesn't hit it. Short now: the creeper on every ground but the flat and the trees, whatever the
+  condition; met at 6 unarmoured or nearly, a skeleton in a pond (33%, the swimmer can't get clear and fights) and a
+  pillager on hills, among trees or afloat (50-83%). A squad's melee (`CombatSquadMatrixTest`): two or three against a
   pack, every hostile killed, none of the squad, and no squadmate hit by a sweep in any cell - the swing struck as the
   server strikes it (`Battle.swing`); its sweeps took 22-92 hostiles a cell where they hit none of ours.
 - **Each contact is said** (`bot.ContactLog`, `[Contact]`), for an eval of it: when it starts and whenever the

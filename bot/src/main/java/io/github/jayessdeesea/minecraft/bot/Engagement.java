@@ -104,9 +104,10 @@ public final class Engagement {
         double die = timeToDie(soldier, hostile);
         boolean getsAway = escape(soldier, hostile, clear) < soldier.health();
         if (!begun) {
-            // The margin is for closing under fire, on one that holds its ground; one that follows brings the fight to the
-            // soldier whatever it does, and is broken off only when it would win outright - and can be got away from.
-            if (hostile.speed() > 0) {
+            // The margin is for closing under fire, on one that fights from range; one that follows into its own reach brings
+            // the fight to the soldier whatever it does, and is broken off only when it would win outright - and can be got
+            // away from. An archer follows only to keep its range: closed on with the margin still.
+            if (hostile.speed() > 0 && hostile.reach() <= soldier.reach()) {
                 return die >= kill || !getsAway ? Kind.ENGAGE : Kind.COVER;
             }
             return die >= kill * MARGIN ? Kind.ENGAGE : Kind.COVER;
@@ -117,16 +118,31 @@ public final class Engagement {
         return getsAway ? Kind.WITHDRAW : Kind.ENGAGE;
     }
 
-    /** A sprint's blocks a second: vanilla's 5.6. */
+    /** A sprint's blocks a second: vanilla's 5.6. And a swim's, at the surface: about 2. */
     public static final double SPRINT = 5.6;
+    public static final double SWIM = 2;
 
-    /** An archer's shot as the exchange reckons it, and its shots a second: a skeleton's bow, 3 to 5 every 2 s. */
+    /** An archer's shot as the exchange reckons it: a skeleton's bow, 3 to 5. */
     static final double ARCHER_SHOT = 4;
-    static final double ARCHER_SHOTS_A_SECOND = 0.5;
     /** Armour points a piece worn, as the kit counts pieces: between leather's and iron's. */
     static final double ARMOUR_A_PIECE = 2.5;
-    /** How far a soldier breaking off from an archer goes to be clear of its shots: its bow's range. */
-    static final double ARCHER_CLEAR = 15;
+
+    /** An archer's shots a second, its range - its reach - and its health: a skeleton's bow, a shot every 2 s from 15. */
+    static final double ARCHER_SHOTS_A_SECOND = 0.5;
+    static final double ARCHER_RANGE = 15;
+    static final double ARCHER_HEALTH = 20;
+    /**
+     * An archer's pace after a soldier breaking off - it follows to keep its range, at half speed with its bow drawn
+     * ({@code RangedBowAttackGoal}): about 2.2 blocks a second, faster than a soldier swims. In the combat matrix's pond, a
+     * soldier swimming off a skeleton was followed and shot dead; fought, it won.
+     */
+    static final double ARCHER_PACE = 2.2;
+
+    /** An archer {@code distance} off, as the exchange takes it. */
+    private static Hostile archerAt(double distance) {
+        return new Hostile(ARCHER_HEALTH, ARCHER_SHOT, ARCHER_SHOTS_A_SECOND, ARCHER_RANGE, distance, ARCHER_PACE);
+    }
+
     /** A zombie's blow as the exchange reckons it, its blows a second, its reach and its pace - it keeps up with a walk. */
     static final double MELEE_BLOW = 3;
     static final double MELEE_BLOWS_A_SECOND = 1;
@@ -144,23 +160,74 @@ public final class Engagement {
     }
 
     /**
-     * The exchange with an archer {@code range} off, for a soldier at {@code health} carrying {@code kit} - its fight
-     * {@code begun} or not. With its health not yet reported (under 0), no exchange to reckon: it engages, as before.
+     * The exchange with an archer {@code range} off, for a soldier at {@code health} carrying {@code kit} and moving at
+     * {@code pace} - a walk, a sprint, a swim, or none boxed in - its fight {@code begun} or not, and {@code closing} on
+     * it or stalled: got away from past {@link #CLEAR_OF}, the archer following to keep its range. With its health not yet reported
+     * (under 0), no exchange to reckon: it engages.
      */
-    public static Kind archer(double health, io.github.jayessdeesea.minecraft.command.Kit kit, double range, boolean begun) {
+    public static Kind archer(double health, io.github.jayessdeesea.minecraft.command.Kit kit, double range, boolean begun, double pace,
+                              boolean closing) {
         if (health < 0) {
             return Kind.ENGAGE;
         }
-        return choose(soldier(health, kit, WALK), new Hostile(20, ARCHER_SHOT, ARCHER_SHOTS_A_SECOND, ARCHER_CLEAR, range), begun,
-                Math.max(0, ARCHER_CLEAR - range));
+        Soldier soldier = soldier(health, kit, pace);
+        // One that isn't closing - its steps at it gaining no ground - strikes nothing however near it stands.
+        return choose(closing ? soldier : new Soldier(health, soldier.armour(), soldier.toughness(), 0, soldier.attacksPerSecond(),
+                soldier.reach(), pace), archerAt(range), begun, CLEAR_OF - ARCHER_RANGE);
     }
 
-    /** The exchange with one that fights hand to hand {@code range} off, got away from at a sprint if it {@code canSprint}. */
-    public static Kind melee(double health, io.github.jayessdeesea.minecraft.command.Kit kit, double range, boolean begun, boolean canSprint) {
+    /** The exchange with one that fights hand to hand {@code range} off, got away from at {@code pace} - a sprint, a walk, none. */
+    public static Kind melee(double health, io.github.jayessdeesea.minecraft.command.Kit kit, double range, boolean begun, double pace) {
         if (health < 0) {
             return Kind.ENGAGE;
         }
-        return choose(soldier(health, kit, canSprint ? SPRINT : WALK),
+        return choose(soldier(health, kit, pace),
                 new Hostile(20, MELEE_BLOW, MELEE_BLOWS_A_SECOND, MELEE_REACH, range, MELEE_PACE), begun, MELEE_CLEAR);
+    }
+
+    /** What a soldier that withdrew from a hostile does next. */
+    public enum Withdrawal {
+        /** The hostile still near and in sight, or following: get further off it. */
+        BREAK_CONTACT,
+        /** Clear of it: hold where it is - out of contact it eats, if it carries food - and heal. */
+        RECOVER,
+        /** Healed past its line - or with nothing to heal on - the withdrawal is over: back to its work, the hostile met afresh if it's in the way. */
+        RESUME
+    }
+
+    /** How far off a hostile in sight, or one that follows, a withdrawing soldier is clear of it: past a skeleton's bow. */
+    public static final double CLEAR_OF = 20;
+
+    /**
+     * The withdrawal's next step, pure: at {@code health} against its {@code line}, able to heal or not ({@code canHeal}:
+     * at the food it regenerates on, or carrying food to eat), the hostile {@code distance} off - infinite once lost
+     * track of - in its sight or not (shot at is in sight, whatever the soldier sees), and following or holding its ground. One that holds its ground out of sight is
+     * cleared at any distance; one that follows only past {@link #CLEAR_OF}, as it comes on round what's between.
+     */
+    public static Withdrawal withdrawal(double health, double line, boolean canHeal, double distance, boolean inSight, boolean follows) {
+        if (health >= line || !canHeal) {
+            return Withdrawal.RESUME;
+        }
+        return distance < CLEAR_OF && (inSight || follows) ? Withdrawal.BREAK_CONTACT : Withdrawal.RECOVER;
+    }
+
+    /**
+     * The health past which {@code soldier} closes on {@code hostile}, not yet begun, with the {@link #MARGIN} to spare - its
+     * line to re-engage at after a withdrawal - at most {@code most}: the time to die it needs, back into health at the
+     * hostile's rate of fire through its armour.
+     */
+    static double line(Soldier soldier, Hostile hostile, double most) {
+        double perSecond = soldier.taken(hostile.damage()) * hostile.blowsPerSecond();
+        double untilInReach = Math.max(0, hostile.distance() - hostile.reach()) / WALK;
+        return Math.min(most, Math.max(0, timeToKill(soldier, hostile) * MARGIN - untilInReach) * perSecond);
+    }
+
+    /**
+     * The line a soldier carrying {@code kit} re-engages at, against an archer (from its range) or one that fights hand to
+     * hand (from its reach): at most {@code most}, a whole soldier's health.
+     */
+    public static double line(io.github.jayessdeesea.minecraft.command.Kit kit, boolean archer, double most) {
+        return line(soldier(most, kit, WALK), archer ? archerAt(ARCHER_RANGE)
+                : new Hostile(20, MELEE_BLOW, MELEE_BLOWS_A_SECOND, MELEE_REACH, MELEE_REACH, MELEE_PACE), most);
     }
 }
