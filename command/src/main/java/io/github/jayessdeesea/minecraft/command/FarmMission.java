@@ -1,0 +1,61 @@
+package io.github.jayessdeesea.minecraft.command;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+
+/**
+ * The operator's "a farm at chunk (x, z)", at a level - sea level unless one's given (operator, 2026-11-21) - and the
+ * steps the platoon leader breaks it into by doctrine, each an objective started when the one before is measured done:
+ * the chunk flattened to a block below the level, its floor laid in cobblestone there, then the chunk farm template on
+ * the floor at the level - dirt at the level, its water holes on the cobblestone. Computed here, never by a model.
+ *
+ * @param chunkX the chunk's x, block x / 16
+ * @param chunkZ the chunk's z, block z / 16
+ * @param level  the farm's ground: the dirt's level, the crops a block over it
+ */
+public record FarmMission(int chunkX, int chunkZ, int level) {
+
+    /** The level a farm is made at unless the order gives one: the world's sea level. */
+    public static final int SEA_LEVEL = 63;
+
+    /** What a step of the mission is. */
+    public enum Kind { FLATTEN, FLOOR, FARM_TEMPLATE }
+
+    /** A step of the mission: its place in it, what it is, the level it works to, as said down the chain. */
+    public record Step(int index, Kind kind, int level, String task) {
+        public Step {
+            Objects.requireNonNull(kind, "kind");
+            Objects.requireNonNull(task, "task");
+        }
+    }
+
+    /** A farm at chunk ({@code chunkX}, {@code chunkZ}) at sea level. */
+    public static FarmMission atSeaLevel(int chunkX, int chunkZ) {
+        return new FarmMission(chunkX, chunkZ, SEA_LEVEL);
+    }
+
+    /** The mission as given and kept: "a farm at chunk (1, 3) at y=63". */
+    public String name() {
+        return String.format(Locale.ROOT, "a farm at chunk (%d, %d) at y=%d", chunkX, chunkZ, level);
+    }
+
+    /** Its steps, in order: flatten to the level below, floor it in cobblestone there, the farm template at the level. */
+    public List<Step> steps() {
+        String chunk = String.format(Locale.ROOT, "chunk (%d, %d), x %d..%d z %d..%d", chunkX, chunkZ, minX(), minX() + 15, minZ(), minZ() + 15);
+        return List.of(
+                new Step(0, Kind.FLATTEN, level - 1, "flatten " + chunk + " to y=" + (level - 1)),
+                new Step(1, Kind.FLOOR, level - 1, "floor " + chunk + " in cobblestone at y=" + (level - 1)),
+                new Step(2, Kind.FARM_TEMPLATE, level, "the farm template on " + chunk + " at y=" + level));
+    }
+
+    /** The chunk's least x. */
+    public int minX() {
+        return chunkX * 16;
+    }
+
+    /** The chunk's least z. */
+    public int minZ() {
+        return chunkZ * 16;
+    }
+}

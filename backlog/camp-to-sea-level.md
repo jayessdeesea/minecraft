@@ -32,18 +32,17 @@ moved into it, and only then is the old hill dug down.
    armed, held a day - which holds every flatten off.
 
 ## The base's layers (operator, 2026-11-21)
-The camp's ground is dug below sea level and built back in two known layers, so every template stands
-on one floor the force can count on: no cave under a farm, no water hole draining, no sand or gravel falling.
-- **Sea level (y=63) is cobblestone**, every cell of the base, natural stone included: built ground
-  reads as the force's at a glance.
-- **Sea level + 1 (y=64) by what the chunk is for:** dirt on a wheat chunk or a tree chunk, so it grows
-  (a wheat chunk's water holes sit on the cobblestone and hold); cobblestone on a supply point, built on;
-  cobblestone on paths and camp ground too, so the whole base is walked at y=65 with no step onto a chunk.
-- **Never a hole left open below sea level:** each cell is dug and its cobblestone put back in the one
-  step, as a miner backfills a vein - beside the river an open cell floods the flatten.
-- **Chunk by chunk:** the sea-level layer laid as the flatten passes; the +1 layer when the bid cycle gives
-  the chunk its template, since dirt or cobblestone follows from it. Some 6,400 cells a layer over the camp's
-  area of influence: the cobblestone from the mine, the dirt from the flatten's own spoil.
+The camp's ground is dug below sea level and built back in known layers, so every template stands on one floor the
+force can count on: no cave under a farm, no water hole draining, no sand or gravel falling.
+- **Sea level - 1 (y=62) is cobblestone**, every cell of the base, natural stone included.
+- **Sea level (y=63) by what the chunk is for:** dirt on a wheat chunk or a tree chunk, so it grows (a wheat
+  chunk's water holes sit on the cobblestone and hold); cobblestone on a supply point, built on; cobblestone on
+  paths and camp ground too, so the whole base is walked at y=64, the world's own sea-level ground.
+- **Never a hole left open below sea level:** each cell dug and its cobblestone put back in the one step.
+- **Chunk by chunk, as missions** (`command.FarmMission`): a chunk flattened to y=62 - its edges sloped a block a
+  block out where nothing's built beside it, never into a template (`command.FlattenPlan`, `command.Slopes`) - then
+  floored in cobblestone at 62, then its template at 63. The doctrine is built; the steps' tasks and their wiring are
+  backlog/duty-orders.md's and the farm mission's to come.
 - **Lit:** cobblestone in the dark spawns hostiles - the supply point's and the paths' torches.
 
 ## Done when
@@ -52,5 +51,5 @@ on one floor the force can count on: no cave under a farm, no water hole drainin
 - Squad simulation: a camp moved - its old chest, on a 6-high mound, emptied into the new camp's chest (on
   flat ground: built, KeepSimulationTest).
 - The old hill down to y=62.
-- The camp's first ring in its layers: cobblestone at y=63 throughout, dirt at y=64 under the wheat and tree
+- The camp's first ring in its layers: cobblestone at y=62 throughout, dirt at y=63 under the wheat and tree
   chunks and cobblestone elsewhere; no cell left open below sea level as it's laid.
