@@ -784,7 +784,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         standards.add(new Foothold.Standard(4, "every soldier armoured",
                 armour == everyone.size() * Kit.ARMOUR_SLOTS, armour + " of " + everyone.size() * Kit.ARMOUR_SLOTS + " armour slots filled (copper or iron, from ore)",
                 "MINE"));
-        measureRoutes(at);
+        measureRoutes(TerrainSurveyor.groundAt(world, at)); // from where a body there stands: from the centre as kept, "no route on foot" every run since field600
         sweepWanted(wall, farm.orElse(null));
         return Optional.of(new Foothold(new Position(at.x(), at.y(), at.z()), List.copyOf(standards), supplyPoint.or(() -> chestOf(campWorkshop)).or(() -> chestOf(keepWorkshop))));
     }
