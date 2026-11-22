@@ -1,6 +1,6 @@
 #!/bin/sh
 # Asks the live server for each weapon's attack damage and speed, by putting it in Hal's main hand.
-cd /c/Users/jayes/OneDrive/Documents/src/minecraft/minecraft || exit 1
+cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 1
 for w in wooden_sword wooden_axe copper_sword copper_axe stone_sword stone_axe golden_sword golden_axe iron_sword iron_axe diamond_sword diamond_axe netherite_sword netherite_axe mace wooden_spear stone_spear copper_spear iron_spear golden_spear diamond_spear netherite_spear trident; do
   docker compose exec -T minecraft console "item replace entity Hal weapon.mainhand with minecraft:$w"
   sleep 0.3

@@ -238,12 +238,20 @@ remember across a restart - each camp wall's layout - is kept under `minecraft.s
 (`garrison-state/`, git-ignored).
 
 **Keeping a garrison running while you change the code** (`tools/ops/`, POSIX `sh`, e.g. Git Bash; runs live in
-`GARRISON_RUNS`, default `C:/mc-state/garrison`, off OneDrive):
-- `commit.sh <message file>` commits the tracked changes behind a full verify (`verify.sh`), only on BUILD SUCCESS,
-  and pushes; `git add` new files first, and touch nothing in the tree while it runs.
-- `deploy.sh <run> <previous run>` builds what's committed, checks the fat jar, stops the previous run by the PID in
-  its log and starts the new one from a copy of the jar (`start-garrison.sh`), logging to `garrison-<run>.log`. Its
+`GARRISON_RUNS`, default `C:/mc-state/garrison`, outside any cloud-sync folder):
+- `quick.sh [mvn arguments]` runs every module's tests but those tagged `slow` - the simulations, the stuck evals and
+  the combat matrices, nearly all of the suite's time - for the loop while a change is being made.
+- `commit.sh <message file>` commits the tracked changes (`git add` new files first), verifies that commit with the
+  whole suite (`verify.sh`) in a worktree of its own (`VERIFY_WORKTREE`, default `C:/mc-worktrees/verify`), and
+  pushes it only on BUILD SUCCESS. The tree is free to work in meanwhile; a commit that fails is taken back, its
+  changes left staged. It says when the commit count makes a profile due.
+- `deploy.sh [<run> [<previous run>]]` builds what's committed and pushed, checks the fat jar, stops the previous run
+  by the PID in its log and starts the new one from a copy of the jar (`start-garrison.sh`), logging to
+  `garrison-<run>.log`. With no names, the previous run is the newest log and the new one the next number. Its
   arguments - your name, the camp, the mission - are yours, one a line in `garrison.args` there, not in the repo.
+- `round-report.sh [garrison log]` is a live round's digest of the newest log: the alerts by soldier and kind, the
+  deaths, blocks the tables don't know, the missions and objectives, who was taken off a task most often and what
+  was thrown away - then the chat probe (`--no-chat` leaves it out).
 - `chatprobe.sh <garrison log>` asks the operator's chat a fixed set of questions - questions only - and records each
   reply with the register reads it made; each should read and name what's true, with no command given.
 

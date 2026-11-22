@@ -10,6 +10,7 @@ import io.github.jayessdeesea.minecraft.command.ReactToContact;
 import io.github.jayessdeesea.minecraft.command.Report;
 import io.github.jayessdeesea.minecraft.command.Risk;
 import io.github.jayessdeesea.minecraft.command.SoldierStatus;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  *
  * <p>{@code -Dcombat.seeds=200} for a wider sweep.
  */
+@Tag("slow")
 class CombatScenarioTest {
 
     private static final int DEFAULT_SEEDS = 40;

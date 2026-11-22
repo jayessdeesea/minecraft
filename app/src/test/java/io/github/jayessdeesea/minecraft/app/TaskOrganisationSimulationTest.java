@@ -15,6 +15,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
@@ -44,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * out by its detachment while the rest of the squad holds with the platoon leader's objective
  * (docs/military-doctrine.md § 18).
  */
+@Tag("slow")
 class TaskOrganisationSimulationTest {
 
     @TempDir

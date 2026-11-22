@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * seeds. One that doesn't yet is in {@link #KNOWN}: reported, not failed - and failed once it passes, so it comes off
  * the list with the fix. The bow isn't in the battle simulation's fights yet: a gap, not a column.
  */
+@Tag("slow")
 class CombatMatrixTest {
 
     static final double PASS = 0.9;

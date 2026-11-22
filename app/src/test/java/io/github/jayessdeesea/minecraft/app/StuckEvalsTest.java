@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.command.ai.SquadLeaderPrompts;
 import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.core.io.ClassPathResource;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * yet is a known failure: reported, not failed. One that passes while still marked known fails, so the mark comes off
  * with the fix and the case holds it from then on.
  */
+@Tag("slow")
 class StuckEvalsTest {
 
     @TempDir

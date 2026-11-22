@@ -12,6 +12,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
@@ -32,6 +33,7 @@ import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.scripted;
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.squadLeader;
 
 /** The camp's wall in the squad simulation, where FORTIFY is ordered: paved, rebuilt in stone, quarried for, on a slope. */
+@Tag("slow")
 class WallSimulationTest {
 
     @TempDir

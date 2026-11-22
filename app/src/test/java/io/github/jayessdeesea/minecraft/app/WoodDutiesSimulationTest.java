@@ -11,6 +11,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
@@ -36,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** A squad sent for wood, worked by duty (command.WoodDuties), in the squad simulation. */
+@Tag("slow")
 class WoodDutiesSimulationTest {
 
     @TempDir

@@ -26,6 +26,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
@@ -67,6 +68,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * on simulated time, against {@link SimServer}, with a scripted platoon leader and squad leader: no
  * Docker, no model (backlog/echelon-contracts.md). A simulated hour runs in seconds.
  */
+@Tag("slow")
 class SquadSimulationTest {
 
     @TempDir

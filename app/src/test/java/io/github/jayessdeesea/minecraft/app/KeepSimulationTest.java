@@ -14,6 +14,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.*;
 
 /** The keep's ground in the squad simulation: dug down to the plan, its depot and workshop, its crew, the builders' steps and dirt. */
+@Tag("slow")
 class KeepSimulationTest {
 
     @TempDir

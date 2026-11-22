@@ -9,6 +9,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
@@ -28,6 +29,7 @@ import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.*;
 import static io.github.jayessdeesea.minecraft.app.KeepSimulationTest.*;
 
 /** The keep's builders in the squad simulation: their steps and pillars, their dirt, the highest block first, a pocket. */
+@Tag("slow")
 class BuilderSimulationTest {
 
     @TempDir

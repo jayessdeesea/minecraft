@@ -121,8 +121,10 @@ with another:
   `ThreadContext`, and `log4j2-test.xml` routes its lines to `app/target/sim/<scenario>.log`. A
   scenario's whole run is on its test's thread (`SimClock`), so the name follows every line.
 
-So the suite takes about as long as its slowest test, not the sum of them. While working on a
-change, run its own tests (`-Dtest=...`); the whole suite before a deploy or push.
+So the suite takes about as long as its slowest tests, not the sum of them. A test class that takes
+ten seconds or more is tagged `@Tag("slow")`: the simulations, the stuck evals, the combat matrices.
+While working on a change, run its own tests (`-Dtest=...`) and the quick tier - everything not
+tagged slow, `tools/ops/quick.sh`; the whole suite gates every push (`tools/ops/commit.sh`).
 
 ## Check the outcome of what the force is sent to do
 

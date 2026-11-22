@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * cell passes at {@link CombatMatrixTest#PASS} of its seeds; one that doesn't yet is in {@link #KNOWN}, reported, not
  * failed - and failed once it passes, so it comes off the list with the fix.
  */
+@Tag("slow")
 class CombatConditionMatrixTest {
 
     private static final int SEEDS = Integer.getInteger("combat.matrix.seeds", 12);

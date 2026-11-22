@@ -15,6 +15,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
@@ -42,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * farm template on the floor - each step an objective in the platoon leader's register, started when the one before is
  * measured done.
  */
+@Tag("slow")
 class FarmMissionSimulationTest {
 
     @TempDir

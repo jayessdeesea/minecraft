@@ -10,6 +10,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
@@ -34,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * is where a clearing stops, and where zombies hide. The operator (2026-11-22): build the scaffolding in the dig area,
  * so it's easy to clean up, and take it down after.
  */
+@Tag("slow")
 class FlattenTopsSimulationTest {
 
     @TempDir

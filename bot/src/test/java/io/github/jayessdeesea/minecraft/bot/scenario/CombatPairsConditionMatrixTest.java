@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.bot.scenario;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * ("fights hand to hand") and the skeleton ("takes cover") in the one cell. A cell under the pass is {@link #KNOWN}:
  * reported, not failed - and failed once it passes, so it comes off the list with the fix.
  */
+@Tag("slow")
 class CombatPairsConditionMatrixTest {
 
     private static final int SEEDS = Integer.getInteger("combat.matrix.seeds", 12);

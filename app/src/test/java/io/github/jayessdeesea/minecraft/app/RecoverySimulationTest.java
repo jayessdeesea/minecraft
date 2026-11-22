@@ -7,6 +7,7 @@ import io.github.jayessdeesea.minecraft.protocol.PlayerPosition;
 import org.apache.logging.log4j.ThreadContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
@@ -20,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static io.github.jayessdeesea.minecraft.app.SquadSimulationTest.*;
 
 /** A soldier stuck, in the squad simulation: in water, in a pit or a pocket, in a block, sealed in, stranded up or down. */
+@Tag("slow")
 class RecoverySimulationTest {
 
     @TempDir
