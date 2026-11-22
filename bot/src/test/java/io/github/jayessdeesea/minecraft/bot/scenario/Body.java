@@ -84,6 +84,9 @@ final class Body {
      */
     static boolean free(io.github.jayessdeesea.minecraft.bot.DeterministicSoldier soldier,
                         io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
+        if (soldier.eatsInCover()) {
+            return true; // in cover, no archer seeing it, nothing within a blow: as the runner lets it eat
+        }
         if (soldier.status().report() instanceof io.github.jayessdeesea.minecraft.command.Report.InContact) {
             return false;
         }

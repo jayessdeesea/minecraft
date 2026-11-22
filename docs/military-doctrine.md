@@ -645,8 +645,9 @@ doubles its damage (`WorldView.isStalagmite`; live, two soldiers dropped 13 and 
 - **A lost exchange is a withdrawal, not a flight** (`Engagement.withdrawal`, `DeterministicSoldier.withdraw`): the
   soldier breaks contact - to cover from an archer, till cover proves none by its being seen or shot in it, else the
   heading that gains most - and keeps going while the hostile is near and in sight, or follows; clear of it, it holds
-  where it is. Held there out of contact, the runner's rations are eaten (out of contact only, so a soldier in a long
-  fight goes hungry - in the combat matrix three archer cells on hills fell to 83% when the body stopped eating mid-fight,
+  where it is. Held there out of contact, the runner's rations are eaten - and in cover from an archer that can't see
+  it, nothing within a blow of it, hurt (`DeterministicSoldier.eatsInCover`; live, field666, Eli sat a minute in cover at
+  1 health with 12 rations uneaten and was shot dead) - not in the open of a fight, so a soldier in a long one goes hungry - in the combat matrix three archer cells on hills fell to 83% when the body stopped eating mid-fight,
   as no live soldier does) and it heals; past its line - the health it would close at, not begun, with the margin
   (`Engagement.line`; a stone sword's against a zombie about 11, bare hands' a whole 20) - it goes back to its work, and
   meets the hostile afresh if it's still in the way. Each step of the withdrawal is still the exchange's: one it can't

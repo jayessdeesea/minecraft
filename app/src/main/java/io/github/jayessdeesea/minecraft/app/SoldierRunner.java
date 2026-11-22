@@ -7363,7 +7363,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }));
             turns.put(Hands.Routine.RATIONS, turn(rations::active, free -> {
                 rations.tick(status.condition().map(c -> c.food()).orElse(Condition.MAX_FOOD),
-                        status.condition().map(c -> c.health() < Condition.MAX_HEALTH).orElse(false), free && !threatened,
+                        status.condition().map(c -> c.health() < Condition.MAX_HEALTH).orElse(false), free && (!threatened || soldier.eatsInCover()),
                         soldier.yaw(), soldier.pitch());
                 // Its pack kept for what's worth more: surplus seeds thrown away, between meals.
                 // A mine's cutter keeps only its backfill's bulk: the ore comes first (the rules of a mine).

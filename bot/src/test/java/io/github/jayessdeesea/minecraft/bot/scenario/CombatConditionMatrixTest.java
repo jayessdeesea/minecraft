@@ -80,12 +80,10 @@ class CombatConditionMatrixTest {
             "skeleton/12/none/pond",
             "skeleton/6/none/pond",
             "skeleton/6/chestplate/pond",
-            "pillager/12/none/forest",
             "pillager/6/none/hills",
             "pillager/6/none/forest",
             "pillager/6/none/pond",
-            "pillager/6/chestplate/hills",
-            "pillager/6/full_iron/hills");
+            "pillager/6/chestplate/hills");
 
     static boolean correct(Battle.Archetype hostile, double health, CombatScenarioTest.Fight fight) {
         Ending ending = fight.ending();

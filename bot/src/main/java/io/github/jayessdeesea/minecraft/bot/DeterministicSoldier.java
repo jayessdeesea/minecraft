@@ -63,6 +63,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
 
     /** Whether it let be the hostiles it saw this tick - "carries on" - so its work goes on: field652, Eli's mine held 5 minutes. */ public boolean lettingBe() { return lettingBe; }
     private volatile boolean lettingBe;
+    /** Whether, taking or holding cover, it can eat: no archer sees it, nothing within a blow of it - field666, Eli sat a minute at 1 health in cover, 12 rations, uneaten. */ public boolean eatsInCover() { return eatsInCover; } private volatile boolean eatsInCover;
 
     /** Whether the hit this tick returned is a knockback hit: its sprint told the server first; the server stops it (Strike). */
     public boolean takeKnockbackHit() {
@@ -406,7 +407,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
     private static final double SELF_SEEN_WITHIN = 0.5;
 
     public OptionalInt tick(WorldView world) {
-        lettingBe = false;
+        lettingBe = false; eatsInCover = false;
         if (ticksUntilAttack > 0) {
             ticksUntilAttack--;
         }
@@ -646,6 +647,7 @@ public final class DeterministicSoldier extends Mover implements Soldier {
                     stepGuarded(world, 2 * gait.position.x() - threat.x(), 2 * gait.position.z() - threat.z(), pace);
                 }
                 holdCoverTicks = UNDER_FIRE_TICKS;
+                eatsInCover = threats.stream().noneMatch(t -> !t.shoots() && gait.position.distanceTo(t.position()) <= ATTACK_REACH + 1) && !lineOfSight(world, new Position(threat.x(), threat.y() + EYE_HEIGHT, threat.z()), new Position(gait.position.x(), gait.position.y() + TARGET_HEIGHT, gait.position.z()));
             } else {
                 response = armedForMelee() ? "fights hand to hand" : "fights bare-handed";
                 // Which swing (Strike): the sword's sweep with none of the force's in its box, else one that doesn't sweep - a
@@ -712,8 +714,9 @@ public final class DeterministicSoldier extends Mover implements Soldier {
             // Shot at from out of sight: face where the arrow came from, and hold.
             look(arrows.getFirst());
         } else if (holdCoverTicks > 0) {
-            // In cover from an archer it can't fight: out of its sight isn't out of its range. Hold.
+            // In cover from an archer it can't fight: out of its sight isn't out of its range. Hold - and eat, hurt.
             holdCoverTicks--;
+            eatsInCover = true;
         } else {
             contactLog.tick(world, gait.position, lastReportedHealth, kit, List.of(), null);
             navigate(world);
