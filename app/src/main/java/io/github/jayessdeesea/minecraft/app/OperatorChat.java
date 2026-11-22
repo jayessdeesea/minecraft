@@ -3,7 +3,7 @@ package io.github.jayessdeesea.minecraft.app;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
+import io.github.jayessdeesea.minecraft.command.FarmMission;
 import io.github.jayessdeesea.minecraft.command.Flatten;
 import io.github.jayessdeesea.minecraft.command.TimeOfDay;
 import io.github.jayessdeesea.minecraft.command.ai.ChatReply;
@@ -176,7 +176,8 @@ public class OperatorChat implements DisposableBean {
         }
         String argument = reply.argument() == null ? "" : reply.argument().strip();
         Runnable order = order(reply.action(), argument);
-        String said = reply.reply().strip() + (reply.action() == ChatReply.Action.FARM ? " " + farm(argument) : "");
+        String said = reply.reply().strip() + (reply.action() == ChatReply.Action.FARM ? " " + farm(argument).name() + ": " + String.join(", then ",
+                farm(argument).steps().stream().map(FarmMission.Step::task).toList()) + "." : "");
         LOG.info("[PL -> {}] {}{}", OPERATOR, said, reply.action() == ChatReply.Action.NONE ? "" : " (" + reply.action() + " " + argument + ")");
         chain.radio("[PL -> " + OPERATOR + "] " + said);
         order.run();
@@ -188,11 +189,15 @@ public class OperatorChat implements DisposableBean {
      * so an argument it can't read fails the turn, loud, with nothing given.
      */
     private Runnable order(ChatReply.Action action, String argument) {
-        if (action != ChatReply.Action.NONE && action != ChatReply.Action.FARM && argument.isEmpty()) {
+        if (action != ChatReply.Action.NONE && argument.isEmpty()) {
             throw new IllegalStateException("the platoon leader's " + action + " has no argument");
         }
         return switch (action) {
-            case NONE, FARM -> () -> { };
+            case NONE -> () -> { };
+            case FARM -> {
+                FarmMission farm = farm(argument);
+                yield () -> chain.onOperatorFarm(OPERATOR, farm);
+            }
             case MISSION -> () -> chain.onOperatorMission(OPERATOR, argument);
             case ESCORT -> () -> chain.onOperatorEscort(OPERATOR, argument);
             case FLATTEN -> {
@@ -204,31 +209,11 @@ public class OperatorChat implements DisposableBean {
     }
 
     /**
-     * What a farm at {@code argument} ("x z", or "x z y") would be, and that it can't be placed yet: a chunk farm laid
-     * out on the chunk the point is in, at sea level unless a level is given - computed, not left to the model.
+     * The farm mission {@code argument} gives - "x z", or "x z y": a farm on the chunk the block is in, at sea level unless a
+     * level is given (command.FarmMission) - computed, not left to the model; one it can't read fails the turn, loud.
      */
-    static String farm(String argument) {
-        String[] words = argument.split("[\\s,]+");
-        if (words.length != 2 && words.length != 3) {
-            throw new IllegalStateException("the platoon leader's FARM isn't \"x z\" or \"x z y\": " + argument);
-        }
-        int x;
-        int z;
-        int level;
-        try {
-            x = Integer.parseInt(words[0]);
-            z = Integer.parseInt(words[1]);
-            level = words.length == 3 ? Integer.parseInt(words[2]) : ChunkFarm.SEA_LEVEL;
-        } catch (NumberFormatException e) {
-            throw new IllegalStateException("the platoon leader's FARM isn't \"x z\" or \"x z y\": " + argument, e);
-        }
-        ChunkFarm farm = new ChunkFarm(Math.floorDiv(x, ChunkFarm.SIDE), Math.floorDiv(z, ChunkFarm.SIDE), level);
-        int x0 = farm.chunkX() * ChunkFarm.SIDE;
-        int z0 = farm.chunkZ() * ChunkFarm.SIDE;
-        return String.format(Locale.ROOT, "It would be a chunk farm on chunk (%d, %d) - x %d to %d, z %d to %d, fenced on the"
-                        + " chunk's lines - at y=%d%s, put on the platoon leader's sites through its bids and build order. CANTCO:"
-                        + " the bid cycle isn't built yet.", farm.chunkX(), farm.chunkZ(), x0, x0 + ChunkFarm.SIDE, z0, z0 + ChunkFarm.SIDE,
-                farm.level(), words.length == 3 ? "" : " (sea level)");
+    static FarmMission farm(String argument) {
+        return FarmMission.parse(argument).orElseThrow(() -> new IllegalStateException("the platoon leader's FARM isn't \"x z\" or \"x z y\": " + argument));
     }
 
     @Override

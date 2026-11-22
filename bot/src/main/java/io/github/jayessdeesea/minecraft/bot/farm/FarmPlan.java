@@ -68,6 +68,19 @@ public record FarmPlan(BlockPos water, List<BlockPos> plot, List<BlockPos> trenc
     }
 
     /**
+     * This farm with its chunk farms' ground that makes farmland now taken into its plot, each once its whole level is
+     * laid - its fixtures' footings too: a chunk flattened a block below its level and floored has no ground when it's
+     * taken in, and its dirt is laid before any of it is tilled. In the squad simulation, ground tilled first left a
+     * field torch's footing ringed by farmland, and its filler found no way to stand by it.
+     */
+    public FarmPlan withChunkGround(WorldView world) {
+        LinkedHashSet<BlockPos> cells = new LinkedHashSet<>(plot);
+        chunks.stream().filter(c -> c.footings().stream().allMatch(f -> world.isSolid(f.x(), f.y(), f.z()) && !world.isWater(f.x(), f.y(), f.z())))
+                .forEach(c -> c.ground().stream().filter(g -> ChunkFarm.farmable(world, g)).forEach(cells::add));
+        return cells.size() == plot.size() ? this : new FarmPlan(water, List.copyOf(cells), trenches, chunks);
+    }
+
+    /**
      * The best farm within {@code radius} blocks (x and z) of {@code around}: round the water
      * source with the most cells to plant, the nearest of equals - or none with at least
      * {@link #MIN_CELLS}.

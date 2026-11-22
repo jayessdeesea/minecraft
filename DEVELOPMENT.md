@@ -186,6 +186,12 @@ absolute coordinates ("hold x=-40 z=0"): the platoon leader re-reads the mission
 its rock dug out and the gaps filled with dirt.
 It starts as `minecraft.flatten` in `application.yml`; the WILCO on the net names the site taken over.
 
+`!farm <x> <z> [y]` gives the platoon leader a farm on the chunk block (x, z) is in, at y - sea level (63)
+unless given: `!farm 40 -20` is a farm on chunk (2, -2). The WILCO on the net names the mission and its three
+steps - the chunk flattened a block below y, floored in cobblestone there, the farm template on it - and the log
+follows it, `[Mission] a farm at chunk (2, -2) at y=63: ... - DONE` as each step is measured done and
+`[Objectives] Alpha: ... under way` as a squad is put on the next (docs/echelons/platoon-leader/decisions.md).
+
 `!escort` attaches Alpha to you as a protective detail, and `!escort <player>` to another
 player: the soldiers ring the player and go after hostiles that come near them
 (docs/military-doctrine.md § 10). `!mission <text>` ends it.

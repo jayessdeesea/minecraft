@@ -38,11 +38,15 @@ force can count on: no cave under a farm, no water hole draining, no sand or gra
 - **Sea level (y=63) by what the chunk is for:** dirt on a wheat chunk or a tree chunk, so it grows (a wheat
   chunk's water holes sit on the cobblestone and hold); cobblestone on a supply point, built on; cobblestone on
   paths and camp ground too, so the whole base is walked at y=64, the world's own sea-level ground.
-- **Never a hole left open below sea level:** each cell dug and its cobblestone put back in the one step.
-- **Chunk by chunk, as missions** (`command.FarmMission`): a chunk flattened to y=62 - its edges sloped a block a
-  block out where nothing's built beside it, never into a template (`command.FlattenPlan`, `command.Slopes`) - then
-  floored in cobblestone at 62, then its template at 63. The doctrine is built; the steps' tasks and their wiring are
-  backlog/duty-orders.md's and the farm mission's to come.
+- **Chunk by chunk, as missions.** Built for a wheat chunk, the operator's farm mission (`!farm`; flattened to a block
+  below, floored in cobblestone, the template on it - docs/echelons/platoon-leader/decisions.md, docs/military-doctrine.md
+  § 17). Left:
+  - the same steps for the other chunks - the supply point, a tree chunk, paths and camp ground, cobblestone at 63 in
+    place of the template's dirt - and the platoon leader giving them for the camp's ring, not only the operator;
+  - the slope's fills: the ground round a chunk in a hollow raised a block a block out (`FlattenPlan.fill` outside the
+    chunk is measured, not worked); and a hollow under the floor - a cave, a pond's bed - filled, not bridged;
+  - the template's dirt supplied: its farmers lay what they carry (the flatten's dig gives most of it), with no draw
+    of dirt from the stores when they carry none.
 - **Lit:** cobblestone in the dark spawns hostiles - the supply point's and the paths' torches.
 
 ## Done when

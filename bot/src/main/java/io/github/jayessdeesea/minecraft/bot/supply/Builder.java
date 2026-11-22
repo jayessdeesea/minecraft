@@ -250,6 +250,11 @@ public final class Builder {
                     inventory.selectHotbar(hotbar);
                 }, new Expect("building material in hand", this::materialInHand), ANSWER_TICKS),
                 new Step("place a block at " + cell, () -> {
+                    // Never a tool or weapon used on the block: another routine's rearm can take the block from the hand
+                    // between the steps - in the squad simulation a paver's footing put its sword back as a farmer's fill began.
+                    if (!materialInHand()) {
+                        throw new IllegalStateException("the block left the hand before it went in");
+                    }
                     BlockFace face = support(world, cell).orElseThrow(() -> new IllegalStateException("nothing to build against"));
                     BlockPos against = cell.offset(face.dx, face.dy, face.dz);
                     BlockFace toward = face.opposite();
@@ -347,10 +352,20 @@ public final class Builder {
     }
 
     static boolean withinReach(Position soldier, BlockPos cell) {
+        return withinReach(soldier, cell, 0);
+    }
+
+    /**
+     * How much nearer than reach a stand is chosen: a soldier is brought within 0.3 of a stand's centre, not onto it, and
+     * in the squad simulation a filler stood 0.3 off a stand at the edge of reach, out of it, and gave its cell up.
+     */
+    static final double STAND_MARGIN = 0.45;
+
+    private static boolean withinReach(Position soldier, BlockPos cell, double margin) {
         double dx = cell.x() + 0.5 - soldier.x();
         double dy = cell.y() + 0.5 - (soldier.y() + EYE_HEIGHT);
         double dz = cell.z() + 0.5 - soldier.z();
-        return Math.sqrt(dx * dx + dy * dy + dz * dz) <= REACH;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz) <= REACH - margin;
     }
 
     /** Whether the soldier's body - 0.6 wide, two cells tall - is in {@code cell}. */
@@ -378,7 +393,7 @@ public final class Builder {
                     int z = cell.z() + dz;
                     Position spot = new Position(x + 0.5, y, z + 0.5);
                     if (!world.isSolid(x, y - 1, z) || world.isSolid(x, y, z) || world.isSolid(x, y + 1, z) || world.isHazard(x, y, z)
-                            || !withinReach(spot, cell) || overlaps(spot, cell)) {
+                            || !withinReach(spot, cell, STAND_MARGIN) || overlaps(spot, cell)) {
                         continue;
                     }
                     double distance = Math.hypot(spot.x() - soldier.x(), spot.z() - soldier.z()) + Math.abs(spot.y() - soldier.y());

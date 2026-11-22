@@ -1,5 +1,6 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.command.FarmMission;
 import io.github.jayessdeesea.minecraft.command.Objective;
 import io.github.jayessdeesea.minecraft.command.ObjectiveRecord;
 import io.github.jayessdeesea.minecraft.command.Progress;
@@ -40,9 +41,17 @@ final class ObjectiveBook {
         if (was != null) {
             keep(was.now(ObjectiveRecord.State.RELIEVED, was.squad(), Optional.of("given " + objective.mission()), now));
         }
-        ObjectiveRecord row = registers.get().add(new ObjectiveRecord(0, objective.mission(), 0, OrderTrace.taskName(objective.task()),
-                Math.floorDiv((int) Math.floor(objective.location().x()), 16), Math.floorDiv((int) Math.floor(objective.location().z()), 16),
-                Optional.of(squad), ObjectiveRecord.State.UNDER_WAY, now, Optional.empty()));
+        // A mission's step, PLANNED when the mission was given: its own row under way, not a new one.
+        Optional<ObjectiveRecord> planned = registers.get().objectives().stream().filter(r -> step(r, objective)
+                && r.state() != ObjectiveRecord.State.DONE && r.state() != ObjectiveRecord.State.UNDER_WAY).findFirst(); // relieved, it's taken up again
+        ObjectiveRecord row = planned.map(r -> r.now(ObjectiveRecord.State.UNDER_WAY, Optional.of(squad), Optional.empty(), now)).orElse(null);
+        if (row != null) {
+            registers.get().update(row);
+        } else {
+            row = registers.get().add(new ObjectiveRecord(0, objective.mission(), 0, OrderTrace.taskName(objective.task()),
+                    Math.floorDiv((int) Math.floor(objective.location().x()), 16), Math.floorDiv((int) Math.floor(objective.location().z()), 16),
+                    Optional.of(squad), ObjectiveRecord.State.UNDER_WAY, now, Optional.empty()));
+        }
         open.put(squad, row);
         LOG.info("[Objectives] {}: {} ({}) under way in chunk ({}, {})", squad, row.mission(), row.task(), row.chunkX(), row.chunkZ());
     }
@@ -93,6 +102,13 @@ final class ObjectiveBook {
             text.append(String.format(java.util.Locale.ROOT, "- %s: %s (%s) in chunk (%d, %d) - %s for %d s%s%n", o.squad().orElse("no squad"),
                     o.mission(), o.task(), o.chunkX(), o.chunkZ(), o.state(), Math.max(0, now - o.changedAt()) / 1000, o.why().map(w -> ": " + w).orElse("")));
         }
+        java.util.List<ObjectiveRecord> planned = registers.get().objectives().stream().filter(o -> o.state() == ObjectiveRecord.State.PLANNED).toList();
+        if (!planned.isEmpty()) {
+            text.append("Steps planned, each started when the one before it is measured done:\n");
+        }
+        for (ObjectiveRecord o : planned) {
+            text.append(String.format(java.util.Locale.ROOT, "- %s, step %d: %s%n", o.mission(), o.step() + 1, o.task()));
+        }
         text.append("Chunks kept, what the force has made of each:\n");
         java.util.List<io.github.jayessdeesea.minecraft.command.ChunkRecord> chunks = registers.get().chunks();
         if (chunks.isEmpty()) {
@@ -126,6 +142,50 @@ final class ObjectiveBook {
     }
 
     private static boolean same(ObjectiveRecord row, Objective objective) {
-        return row.mission().equals(objective.mission()) && row.task().equals(OrderTrace.taskName(objective.task()));
+        return row.mission().equals(objective.mission()) && row.task().equals(OrderTrace.taskName(objective.task())) || step(row, objective);
+    }
+
+    /** Whether {@code row} is the mission's step {@code objective} is given for: said as the mission and the step's task. */
+    private static boolean step(ObjectiveRecord row, Objective objective) {
+        return objective.mission().equals(row.mission() + ": " + row.task());
+    }
+
+    /**
+     * {@code mission}'s steps written PLANNED at {@code now}, each on its chunk with no squad yet (operator, 2026-11-21: the
+     * platoon leader tracks the outcomes and the subtasks) - unless it's open already.
+     */
+    synchronized void planned(FarmMission mission, long now) {
+        if (registers.get().objectives().stream().anyMatch(r -> r.mission().equals(mission.name()) && r.state() != ObjectiveRecord.State.DONE)) {
+            return;
+        }
+        for (FarmMission.Step step : mission.steps()) {
+            registers.get().add(new ObjectiveRecord(0, mission.name(), step.index(), step.task(), mission.chunkX(), mission.chunkZ(), Optional.empty(),
+                    ObjectiveRecord.State.PLANNED, now, Optional.empty()));
+        }
+        LOG.info("[Objectives] {}: {} step(s) PLANNED in chunk ({}, {})", mission.name(), mission.steps().size(), mission.chunkX(), mission.chunkZ());
+    }
+
+    /** {@code mission}'s {@code step} measured done at {@code now}, {@code why} what was measured: its row DONE, its squad's no longer open. */
+    synchronized void done(FarmMission mission, FarmMission.Step step, String why, long now) {
+        registers.get().objectives().stream().filter(r -> r.mission().equals(mission.name()) && r.step() == step.index()
+                && r.state() != ObjectiveRecord.State.DONE).forEach(r -> {
+            ObjectiveRecord row = r.now(ObjectiveRecord.State.DONE, r.squad(), Optional.of(why), now);
+            registers.get().update(row);
+            r.squad().filter(sq -> open.containsKey(sq) && open.get(sq).id() == r.id()).ifPresent(open::remove);
+            LOG.info("[Objectives] {}: {} DONE - {}", r.squad().orElse("no squad"), r.mission() + ": " + r.task(), why);
+        });
+    }
+
+    /** Each mission with a step not done - a step's squad relieved, the step stays open - and its first step not done. */
+    synchronized java.util.Map<String, Integer> openMissions() {
+        java.util.Map<String, Integer> missions = new java.util.LinkedHashMap<>();
+        registers.get().objectives().stream().filter(r -> r.state() != ObjectiveRecord.State.DONE && FarmMission.named(r.mission()).isPresent())
+                .sorted(java.util.Comparator.comparingLong(ObjectiveRecord::id)).forEach(r -> missions.merge(r.mission(), r.step(), Math::min));
+        return missions;
+    }
+
+    /** The registers it keeps its rows in. */
+    Registers registers() {
+        return registers.get();
     }
 }

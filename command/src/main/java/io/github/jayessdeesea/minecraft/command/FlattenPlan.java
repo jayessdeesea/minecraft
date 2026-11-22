@@ -24,8 +24,8 @@ public record FlattenPlan(List<Column> dig, List<Column> fill, List<String> step
     public record Column(int x, int z, int from, int to) {
     }
 
-    /** How far out a slope reaches at the most: past this, the ground's its own. */
-    public static final int SLOPE_MOST = 16;
+    /** How far out a slope reaches at the most: past this, the ground's its own - as far as a flatten's bench ({@link Flatten#BENCH}). */
+    public static final int SLOPE_MOST = Flatten.BENCH;
 
     /**
      * The plan for chunk ({@code chunkX}, {@code chunkZ}) brought to {@code level}, its edges by {@code slopes}, the ground's
@@ -33,24 +33,17 @@ public record FlattenPlan(List<Column> dig, List<Column> fill, List<String> step
      * something of at a height - never dug into or filled over.
      */
     public static FlattenPlan of(int chunkX, int chunkZ, int level, Slopes slopes, IntBinaryOperator topAt, BiPredicate<Integer, Integer> kept) {
-        int x0 = chunkX * 16, z0 = chunkZ * 16, x1 = x0 + 15, z1 = z0 + 15;
         List<Column> dig = new ArrayList<>();
         List<Column> fill = new ArrayList<>();
-        for (int x = x0 - SLOPE_MOST; x <= x1 + SLOPE_MOST; x++) {
-            for (int z = z0 - SLOPE_MOST; z <= z1 + SLOPE_MOST; z++) {
-                int out = Math.max(Math.max(x0 - x, x - x1), Math.max(z0 - z, z - z1)); // 0 inside, then blocks out
-                if (out > 0 && !slopes.reaches(x < x0, x > x1, z < z0, z > z1) || kept.test(x, z)) {
-                    continue;
-                }
-                int top = topAt.applyAsInt(x, z);
-                int highest = level + Math.max(0, out), lowest = level - Math.max(0, out);
-                if (top > highest) {
-                    dig.add(new Column(x, z, top, highest));
-                } else if (top < lowest) {
-                    fill.add(new Column(x, z, top, lowest));
-                }
+        for (Column c : reach(chunkX, chunkZ, level, slopes, kept)) {
+            int top = topAt.applyAsInt(c.x(), c.z());
+            if (top > c.to()) {
+                dig.add(new Column(c.x(), c.z(), top, c.to()));
+            } else if (top < c.from()) {
+                fill.add(new Column(c.x(), c.z(), top, c.from()));
             }
         }
+        int x0 = chunkX * 16, z0 = chunkZ * 16, x1 = x0 + 15, z1 = z0 + 15;
         List<String> steps = new ArrayList<>();
         side(steps, "north", !slopes.north(), x0, x1, z0 - 1, true, level, topAt);
         side(steps, "south", !slopes.south(), x0, x1, z1 + 1, true, level, topAt);
@@ -74,8 +67,36 @@ public record FlattenPlan(List<Column> dig, List<Column> fill, List<String> step
         }
     }
 
+    /**
+     * Every column the flatten of chunk ({@code chunkX}, {@code chunkZ}) to {@code level} works, as {@link #of} takes them:
+     * inside and its slopes, not {@code kept} - each with the band its top is brought into, {@code from} the lowest
+     * to {@code to} the highest: the level inside, a block wider each block out. What's over {@code to} is dug.
+     */
+    public static List<Column> reach(int chunkX, int chunkZ, int level, Slopes slopes, BiPredicate<Integer, Integer> kept) {
+        int x0 = chunkX * 16, z0 = chunkZ * 16, x1 = x0 + 15, z1 = z0 + 15;
+        List<Column> reach = new ArrayList<>();
+        for (int x = x0 - SLOPE_MOST; x <= x1 + SLOPE_MOST; x++) {
+            for (int z = z0 - SLOPE_MOST; z <= z1 + SLOPE_MOST; z++) {
+                int out = Math.max(Math.max(x0 - x, x - x1), Math.max(z0 - z, z - z1)); // 0 inside, then blocks out
+                if (out > 0 && !slopes.reaches(x < x0, x > x1, z < z0, z > z1) || kept.test(x, z)) {
+                    continue;
+                }
+                reach.add(new Column(x, z, level - Math.max(0, out), level + Math.max(0, out)));
+            }
+        }
+        return List.copyOf(reach);
+    }
+
     /** Whether there's nothing left to dig or fill. */
     public boolean flat() {
         return dig.isEmpty() && fill.isEmpty();
+    }
+
+    /**
+     * Whether there's nothing left to dig: nothing stands over the level inside, nor over the slope outside - the
+     * flatten's own work. Its fills are the floor's inside, every cell of the level laid ({@link Objective.Task.Floor}).
+     */
+    public boolean cut() {
+        return dig.isEmpty();
     }
 }

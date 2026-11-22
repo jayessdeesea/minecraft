@@ -80,6 +80,7 @@ public final class FarmSite {
                 dig.add(h);
             }
         }
+        farm.footings().stream().filter(c -> !world.isSolid(c.x(), c.y(), c.z()) || world.isWater(c.x(), c.y(), c.z())).forEach(fill::add);
         return List.of(List.copyOf(dig), List.copyOf(fill));
     }
 
@@ -101,6 +102,11 @@ public final class FarmSite {
             }
             if (world.wheatAge(c.x(), level + 1, c.z()).isEmpty()) {
                 sow++;
+            }
+        }
+        for (BlockPos c : farm.footings()) {
+            if (!world.isSolid(c.x(), c.y(), c.z()) || world.isWater(c.x(), c.y(), c.z())) {
+                fill++; // what its fence, torches and chest stand on
             }
         }
         for (BlockPos h : farm.holes()) {

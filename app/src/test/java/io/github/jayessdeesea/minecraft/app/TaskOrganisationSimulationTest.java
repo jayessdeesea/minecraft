@@ -107,11 +107,14 @@ class TaskOrganisationSimulationTest {
         ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> objective), squadLeader(roles, orders),
                 SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
                         new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, shelterAtNight, clock);
-        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, camp, state.toString())
-                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit))
-                .run();
+        SoldierRunner runner = new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, camp, state.toString());
+        Optional.ofNullable(chunkFarm).ifPresent(runner.campFarms()::take); // as a farm mission gives it, its ground already at its level
+        runner.simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit)).run();
         return server;
     }
+
+    /** The chunk farm the camp's farm is given, as a farm mission gives it - the camp's farm sites none of its own; none for most scenarios. */
+    private ChunkFarm chunkFarm;
 
     private static final String MINER_ALICE = """
             [{"soldier": "Alice", "role": "MINER", "x": 8, "y": 40, "z": 8}]""";
@@ -262,11 +265,12 @@ class TaskOrganisationSimulationTest {
     }
 
     /**
-     * With a bucket, the camp's farm takes in a chunk farm beside the camp: its farmer digs the water holes in the
+     * A chunk farm given the camp's farm beside the camp, its farmer with a bucket digs the water holes in the
      * farmland's layer and fills them from the pond, a bucket at a time.
      */
     @Test
     void aFarmerWithABucketWatersTheChunkFarmsHoles() {
+        chunkFarm = new ChunkFarm(-1, 0, GROUND);
         SimClock clock = new SimClock();
         SimServer server = run(clock, TaskOrganisationSimulationTest::pondOfThreeByTheCamp, """
                 [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
@@ -290,6 +294,7 @@ class TaskOrganisationSimulationTest {
      */
     @Test
     void aChunkFarmIsFencedItsGatesOpenedAndItsChestStood() {
+        chunkFarm = new ChunkFarm(-1, 0, GROUND);
         SimClock clock = new SimClock();
         SimServer server = run(clock, TaskOrganisationSimulationTest::pondOfThreeByTheCamp, """
                 [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
@@ -314,6 +319,7 @@ class TaskOrganisationSimulationTest {
      */
     @Test
     void aChunkFarmsTenderWithLogsAndNoIronStillFencesIt() {
+        chunkFarm = new ChunkFarm(-1, 0, GROUND);
         SimClock clock = new SimClock();
         SimServer server = run(clock, TaskOrganisationSimulationTest::pondOfThreeByTheCamp, """
                 [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
@@ -334,6 +340,7 @@ class TaskOrganisationSimulationTest {
      */
     @Test
     void aChunkFarmHasItsTorchesInTheField() {
+        chunkFarm = new ChunkFarm(-1, 0, GROUND);
         SimClock clock = new SimClock();
         SimServer server = run(clock, TaskOrganisationSimulationTest::pondOfThreeByTheCamp, """
                 [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
@@ -366,6 +373,7 @@ class TaskOrganisationSimulationTest {
      */
     @Test
     void aWaterHoleOverACaveIsFlooredThenFilled() {
+        chunkFarm = new ChunkFarm(-1, 0, GROUND);
         SimClock clock = new SimClock();
         SimServer server = run(clock, TaskOrganisationSimulationTest::caveUnderAHole, """
                 [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",
@@ -390,6 +398,7 @@ class TaskOrganisationSimulationTest {
      */
     @Test
     void theChunkFarmsTenderPutsItsWheatInTheFarmsChest() {
+        chunkFarm = new ChunkFarm(-1, 0, GROUND);
         SimClock clock = new SimClock();
         SimServer server = run(clock, TaskOrganisationSimulationTest::pondAndAFarmChest, """
                 [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40},
@@ -742,6 +751,7 @@ class TaskOrganisationSimulationTest {
      */
     @Test
     void aChunkFarmsTenderLevelsItsGround() {
+        chunkFarm = new ChunkFarm(-1, 0, GROUND);
         SimClock clock = new SimClock();
         SimServer server = run(clock, TaskOrganisationSimulationTest::brokenChunkGround, """
                 [{"soldier": "Alice", "role": "FARMER", "x": 40, "y": %d, "z": 40}]""".formatted(GROUND + 1), "[]",

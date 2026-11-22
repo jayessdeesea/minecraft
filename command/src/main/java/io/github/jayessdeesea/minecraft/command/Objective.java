@@ -72,6 +72,21 @@ public record Objective(String mission, Position location, String intent, Task t
          */
         record Keep() implements Task {
         }
+
+        /**
+         * Pave {@code layer} - one block high - in cobblestone, cell by cell (operator, 2026-11-21: a farm's floor at a
+         * level below it, natural stone included): a solid cell not cobblestone dug out and its cobblestone put back in
+         * the one step, so no hole stands open; an open one built. Done when every cell is cobblestone. The platoon
+         * leader's farm mission gives it ({@link FarmMission}), never the model.
+         */
+        record Floor(Box layer) implements Task {
+            public Floor {
+                Objects.requireNonNull(layer, "layer");
+                if (layer.minY() != layer.maxY()) {
+                    throw new IllegalArgumentException("a floor is one layer: " + layer);
+                }
+            }
+        }
     }
 
     public Objective {

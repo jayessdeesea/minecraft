@@ -82,7 +82,8 @@ grid, inside the area of influence (32 blocks out from the camp's edge):
   64 blocks (4 chunks; operator, 2026-11-21):
   flat is the requirement - enough of the chunk at one level (`ChunkFarm.MIN_CELLS`) - sea level the preference, costed
   as the earthwork to it, then the nearer; and the first of each built as soon as one qualifies, a tree chunk growing
-  from its second stage, before its fence. A grove sited for a camp the force has left is given up for the camp's
+  from its second stage, before its fence. Built for the tree chunk (`TreeChunk.site`); a wheat chunk is the farm
+  mission's, on the chunk the operator names (`ChunkFarm.site` is left unused till the bids choose one). A grove sited for a camp the force has left is given up for the camp's
   nearest: live (field630), foresters walked 200 to 330 blocks to plant at one by the old keep, (-30, -73).
 - **Felled, replanted, swept** (operator, 2026-11-21): the rotation fells every tree of an area whole and replants each
   stump at once, under its own decaying leaves (`TreeFarm.plantable` lets them be), then comes back a couple of minutes on
@@ -226,8 +227,11 @@ Producing.
 
 Built toward it: the layout, the holes' floors, the field torches, the tender (docs/military-doctrine.md § 4).
 Built: a site's stage and the work left to each from the world (`bot.farm.FarmSite`, its supply to Producing; logged
-`[Farm]` as it moves); the camp's chunk farm levelled to its template by its tender. Left, in order: the planner's sequence for the soldier, from its template; the bids and the
-platoon leader's choice; the build order carrying the template; several farms at once; the 90% measure.
+`[Farm]` as it moves); the camp's chunk farm levelled to its template by its tender; a wheat chunk put on a chunk the
+operator names, by the farm mission - flattened, floored, the template on it, a step at a time, the camp's farm taking
+it in (docs/echelons/platoon-leader/decisions.md). The camp's farm no longer sites a chunk farm of its own. Left, in
+order: the planner's sequence for the soldier, from its template; the bids and the platoon leader's choice of sites by
+itself; several missions worked at once; the 90% measure.
 
 ## More farmland: the farm by phase (operator, 2026-11-19)
 Overnight (field480-489) the farm fed about a third of the force: some 85 harvests a game day, about 28 loaves,

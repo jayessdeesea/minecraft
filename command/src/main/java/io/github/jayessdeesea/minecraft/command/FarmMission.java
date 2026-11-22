@@ -3,6 +3,9 @@ package io.github.jayessdeesea.minecraft.command;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * The operator's "a farm at chunk (x, z)", at a level - sea level unless one's given (operator, 2026-11-21) - and the
@@ -47,6 +50,50 @@ public record FarmMission(int chunkX, int chunkZ, int level) {
                 new Step(0, Kind.FLATTEN, level - 1, "flatten " + chunk + " to y=" + (level - 1)),
                 new Step(1, Kind.FLOOR, level - 1, "floor " + chunk + " in cobblestone at y=" + (level - 1)),
                 new Step(2, Kind.FARM_TEMPLATE, level, "the farm template on " + chunk + " at y=" + level));
+    }
+
+    /** A step as given down the chain, the mission's name and the step's task: "a farm at chunk (1, 3) at y=63: flatten ...". */
+    public String said(Step step) {
+        return name() + ": " + step.task();
+    }
+
+    private static final Pattern NAME = Pattern.compile("a farm at chunk \\((-?\\d+), (-?\\d+)\\) at y=(-?\\d+)");
+
+    /** The mission {@code name} names, as {@link #name} says it: empty for any other. */
+    public static Optional<FarmMission> named(String name) {
+        Matcher m = NAME.matcher(name);
+        return m.matches() ? Optional.of(new FarmMission(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3))))
+                : Optional.empty();
+    }
+
+    /**
+     * The mission {@code text} gives - "x z" or "x z y", a block's x and z and the level, what the operator types after
+     * {@code !farm}: a farm on the chunk the block is in, at sea level unless a level is given. Empty for anything else.
+     */
+    public static Optional<FarmMission> parse(String text) {
+        String[] words = text.strip().split("[\\s,]+");
+        if (words.length != 2 && words.length != 3) {
+            return Optional.empty();
+        }
+        try {
+            int level = words.length == 3 ? Integer.parseInt(words[2]) : SEA_LEVEL;
+            if (level <= Flatten.LOWEST + 1 || level >= Flatten.HIGHEST) {
+                return Optional.empty();
+            }
+            return Optional.of(new FarmMission(Math.floorDiv(Integer.parseInt(words[0]), 16), Math.floorDiv(Integer.parseInt(words[1]), 16), level));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
+    }
+
+    /** The chunk's layer at {@code y}: its 16 by 16 cells. */
+    public Box layer(int y) {
+        return new Box(minX(), y, minZ(), minX() + 15, y, minZ() + 15);
+    }
+
+    /** The ground a step's squad is sent to: the chunk's middle, over the step's level. */
+    public Position centre(Step step) {
+        return new Position(minX() + 8.5, step.level() + 1, minZ() + 8.5);
     }
 
     /** The chunk's least x. */

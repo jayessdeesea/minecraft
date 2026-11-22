@@ -73,6 +73,7 @@ import io.github.jayessdeesea.minecraft.command.Escort;
 import io.github.jayessdeesea.minecraft.command.Foothold;
 import io.github.jayessdeesea.minecraft.command.Formation;
 import io.github.jayessdeesea.minecraft.command.Formations;
+import io.github.jayessdeesea.minecraft.command.FlattenPlan;
 import io.github.jayessdeesea.minecraft.command.LevelPlan;
 import io.github.jayessdeesea.minecraft.command.Groundwork;
 import io.github.jayessdeesea.minecraft.command.Interval;
@@ -316,47 +317,6 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<BlockPos, String> furnaces = new ConcurrentHashMap<>();
     /** Logs and stand cells a soldier is working, shared so soldiers pick different trees. */
     private final Set<BlockPos> treeClaims = ConcurrentHashMap.newKeySet();
-    /** How long a site's dig, as scanned, serves every squad's cycle before it's scanned again. */
-    static final long SITE_CLEAR_MILLIS = 1_000;
-
-    /** The site's dig as last scanned, by what was kept out of it: its ground, the exceptions, when, the cells. */
-    private final Map<Set<Cell>, Object[]> siteClears = new LinkedHashMap<>();
-
-    /**
-     * {@code Clearing.toClear} of {@code ground}'s dig with {@code except} kept out, scanned once a
-     * {@link #SITE_CLEAR_MILLIS} for every squad's cycle. Commit 496's profile: four squads each
-     * scanned the big site - 33 by 129 columns from the dig's bottom to the top of the world, a
-     * million cells - twice a cycle, and it was most of the garrison's CPU.
-     */
-    private List<BlockPos> siteClear(Flatten ground, Set<Cell> except) {
-        long now = clockwork.millis();
-        synchronized (siteClears) {
-            Object[] seen = siteClears.get(except);
-            if (seen != null && seen[0].equals(ground) && now - (long) seen[1] < SITE_CLEAR_MILLIS) {
-                @SuppressWarnings("unchecked")
-                List<BlockPos> cells = (List<BlockPos>) seen[2];
-                return cells;
-            }
-        }
-        // The site and its benched edge (clearing rule 6): each row of the ring round it, d out, dug down
-        // to d over the floor, so the edge is a walkable slope - live, soldiers put steps in the edge
-        // column to climb the hillside the site was cut into, each one a level of its own.
-        List<BlockPos> cells = new ArrayList<>(Clearing.toClear(world, ground.dig(), except));
-        for (int d = 1; d <= Flatten.BENCH; d++) {
-            for (Box row : ground.bench(d)) {
-                cells.addAll(Clearing.toClear(world, row, except));
-            }
-        }
-        cells = List.copyOf(cells);
-        synchronized (siteClears) {
-            siteClears.put(Set.copyOf(except), new Object[]{ground, now, cells});
-            // Only the last few kept: one for each squad's two scans.
-            while (siteClears.size() > 8) {
-                siteClears.remove(siteClears.keySet().iterator().next());
-            }
-        }
-        return cells;
-    }
 
     /** Each soldier's last step put down - its cell, how many times in a row, since when - its own tick's. */
     private final Map<String, Object[]> lastStep = new ConcurrentHashMap<>();
@@ -483,6 +443,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final Map<String, List<BlockPos>> filling = new ConcurrentHashMap<>();
     /** The dirt in its squad's closed wall each soldier replaces with stone - squad loop writes, tick reads. */
     private final Map<String, List<BlockPos>> repointing = new ConcurrentHashMap<>();
+    /** Each paver's strip of its squad's floor (Objective.Task.Floor) - squad loop writes, tick reads. */
+    private final Map<String, List<BlockPos>> paving = new ConcurrentHashMap<>();
     /** The blocks of each soldier's {@code Order.Dig} - squad loop writes, tick reads. */
     private final Map<String, List<BlockPos>> clearing = new ConcurrentHashMap<>();
     /** Each soldier's dig's box - squad loop writes, tick reads: the keep's builders stand only in theirs. */
@@ -755,8 +717,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         campWalled = wall == null || wallLeft == 0 && wallSoft == 0;
         long hungry =everyone.stream().filter(s -> s.condition().map(SoldierErrands::wantsFood).orElse(false)).count();
         // The camp's farm (CampFarm), with its chunk farm.
-        FarmPlan keptFarm = campFarms.kept(world, at, camp[0] + "," + camp[1], roster.squads().stream().mapToInt(sq -> sq.soldiers().size()).sum(),
-                true); // now, its bucket made as its farmer's tool (operator, 2026-11-20: the high-density farms as soon as can be)
+        FarmPlan keptFarm = campFarms.kept(world, at, camp[0] + "," + camp[1], roster.squads().stream().mapToInt(sq -> sq.soldiers().size()).sum());
         campFarm = keptFarm;
         Optional<FarmPlan> farm = Optional.ofNullable(keptFarm);
         long growing = farm.map(f -> f.plot().stream().filter(c -> world.wheatAge(c.x(), c.y() + 1, c.z()).isPresent()).count()).orElse(0L);
@@ -776,6 +737,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         + "; " + hungry + " of " + everyone.size() + " soldiers hungry with nothing to eat", "FARM", farm.map(f -> new Position(f.water().x() + 0.5, f.water().y(), f.water().z() + 0.5))));
         Optional<TreeFarm> grove = campTrees.grove(world, at, campFarm, clockwork.millis()).or(() -> TreeFarm.site(world, at, CAMP_RADIUS)); // close (CampTrees); right after food (operator, 2026-11-14), with the keep's
         chunkLedger.measure(world, campFarm, campTrees.chunk(), clockwork.millis()); // the platoon leader's chunk register, as the world shows it
+        chainOfCommand.farmMissions.measure(world, campFarm, campFarms, clockwork.millis()); // the operator's farm, its step under way measured
         TreeFarm keepTrees = campTrees.chunk().isPresent() ? null : keepGrove; // not walked 200 blocks to while the camp has its own
         long trees = grove.map(g -> g.plot().stream().filter(c -> TreeFarm.planted(world, c)).count()).orElse(0L)
                 + (keepTrees == null ? 0 : keepTrees.plot().stream().filter(c -> TreeFarm.planted(world, c)).count());
@@ -924,7 +886,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     /** The platoon leader's chunk register, measured each foothold check (ChunkLedger); its file the state directory's, the garrison's from config. */
     private final ChunkLedger chunkLedger;
     /** The camp's farm, sited, grown and kept. */
-    private final CampFarm campFarms;
+    private final CampFarm campFarms; /** The camp's farm, which a farm mission's chunk farm is given to. */ CampFarm campFarms() { return campFarms; }
     /** Whether a farmer keeping a farm carries a bucket: the camp's chunk farm is taken in then. */
     private volatile boolean bucketOnFarm;
     /** The camp's ground, found once. */
@@ -1386,6 +1348,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
     private final ChunkCache chunkCache = new ChunkCache();
     private final EntityTracker entityTracker = new EntityTracker();
     private final WorldModel world = new WorldModel(chunkCache, entityTracker);
+    /** The ground to flatten's dig, scanned once a second for every squad (SiteClears). */
+    private final SiteClears siteClears = new SiteClears(world, () -> clockwork.millis());
 
     @Override
     public void run(String... args) {
@@ -2279,6 +2243,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
      */
     private Map<String, Order> keepwork(String squad, SquadState state, List<SoldierStatus> hands) {
         Flatten ground = chainOfCommand.flatten();
+        Optional<List<FlattenPlan.Column>> missionReach = chainOfCommand.farmMissions.reach(ground, campFarm); // a farm mission's chunk and its slopes
         Set<Cell> kept = groundExcept();
         Set<Cell> digExcept = new HashSet<>(kept);
         Box slab = ground.slab();
@@ -2342,7 +2307,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         // nobody since another squad's builder had the pickaxe, and the one who had it never sent.
         Set<Cell> beyondHolder = new HashSet<>();
         KeepPlan held = keepPlan;
-        for (BlockPos c : siteClear(ground, digExcept)) {
+        for (BlockPos c : siteClears.cells(ground, digExcept, missionReach)) {
             if (!world.isOre(c.x(), c.y(), c.z())) {
                 continue;
             }
@@ -2367,7 +2332,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
         }
         keepOreAsideBySquad.put(squad, oreAside.size());
         digExcept.addAll(oreAside);
-        List<BlockPos> wholeDig = siteClear(ground, digExcept);
+        List<BlockPos> wholeDig = siteClears.cells(ground, digExcept, missionReach);
         List<BlockPos> toDig = wholeDig.stream().filter(c -> c.x() >= digShare.minX() && c.x() <= digShare.maxX()
                 && c.z() >= digShare.minZ() && c.z() <= digShare.maxZ()).toList();
         // The ground's tops, not the soldiers' own steps: a step put down to climb from the floor to
@@ -5905,6 +5870,16 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             } else {
                 repointing.remove(soldierName);
             }
+            // A floor's paver (Objective.Task.Floor): its strip of the layer, and short of cobblestone, a draw from the stockpile holding some.
+            Optional<Objective.Task.Floor> floorTask = taskOf(squadName, Objective.Task.Floor.class).filter(o -> !squadInContact).map(o -> (Objective.Task.Floor) o.task());
+            int strip = i;
+            floorTask.map(f -> chainOfCommand.farmMissions.share(f.layer(), campFarm, strip, statuses.size())).ifPresentOrElse(c -> paving.put(soldierName, c), () -> paving.remove(soldierName));
+            if (floorTask.isPresent() && statuses.get(i).condition().flatMap(c -> c.kit()).filter(k -> k.stone() == 0).isPresent()
+                    && chainOfCommand.stockpile().map(st -> st.stone() > 0).orElse(false) && stockpileFor(soldierName).isPresent()) {
+                drawingStone.add(soldierName);
+            } else if (floorTask.isPresent()) {
+                drawingStone.remove(soldierName);
+            }
             if (!wallLeft.isEmpty() && !squadInContact && !state.relieved(soldierName, "wall the camp", now)) {
                 walling.put(soldierName, wallLeft);
                 wallCentres.put(soldierName, state.wallCentre);
@@ -6710,6 +6685,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                                         chainOfCommand.onOperatorEscort(operator, principal);
                                 case OperatorOrders.Order.Flatten(String operator, Flatten site) ->
                                         chainOfCommand.onOperatorFlatten(operator, site);
+                                case OperatorOrders.Order.Farm(String operator, var farm) -> chainOfCommand.onOperatorFarm(operator, farm);
                                 case OperatorOrders.Order.Remark(String operator, String remark) ->
                                         chainOfCommand.onOperatorRemark(operator, remark);
                                 case OperatorOrders.Order.Unknown(String operator, String command) ->
@@ -7691,10 +7667,12 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             }));
             BlockPos wallCentre = wallCentres.getOrDefault(name,
                     BlockPos.containing(status.position().x(), status.position().y(), status.position().z()));
-            List<BlockPos> repoint = repointing.getOrDefault(name, List.of());
+            List<BlockPos> repoint = repointing.getOrDefault(name, List.of()), paveShare = paving.getOrDefault(name, List.of());
             turns.put(Hands.Routine.MASON, turn(mason::active, free -> {
                 // Its dirt replaced while there's no open cell it can build: live, one cell nobody could reach held a whole wall's stone back.
-                if (!repoint.isEmpty() && inventory.count(ItemClass.COBBLESTONE) > 0
+                if (!paveShare.isEmpty()) { // a floor's strip, paved (Objective.Task.Floor)
+                    mason.pave(status.position(), world, paveShare, free && !threatened && !(foodCalls || forage != null));
+                } else if (!repoint.isEmpty() && inventory.count(ItemClass.COBBLESTONE) > 0
                         && (wall.isEmpty() || mason.nothingToBuild() || mason.active() && mason.repointing())) {
                     mason.repoint(status.position(), world, wallCentre, WALL_RADIUS, repoint, free && !threatened && !(foodCalls || forage != null));
                 } else {

@@ -140,6 +140,22 @@ public record ChunkFarm(int chunkX, int chunkZ, int level) {
         return cells;
     }
 
+    /**
+     * The cells of its level its fixtures stand on: its fence lines - posts and gates - its field torches' and its chest's,
+     * so its ground at its level is whole, the holes apart. A chunk flattened a block below its level has them to fill
+     * as it has its {@link #ground} (operator, 2026-11-21: dirt at the level, on the floor).
+     */
+    public List<BlockPos> footings() {
+        List<BlockPos> cells = new ArrayList<>();
+        fence().forEach(p -> cells.add(p.offset(0, -1, 0)));
+        gates().forEach(g -> cells.add(g.offset(0, -1, 0)));
+        for (int[] t : FIELD_TORCHES) {
+            cells.add(new BlockPos(x0() + t[0], level, z0() + t[1]));
+        }
+        cells.add(chest().offset(0, -1, 0));
+        return cells;
+    }
+
     /** Whether {@code c} makes farmland as the world stands: tillable or tilled, open above. */
     static boolean farmable(WorldView world, BlockPos c) {
         return (world.isTillable(c.x(), c.y(), c.z()) || world.isFarmland(c.x(), c.y(), c.z())) && !world.isWater(c.x(), c.y(), c.z())

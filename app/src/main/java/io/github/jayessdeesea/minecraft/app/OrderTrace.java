@@ -160,6 +160,7 @@ final class OrderTrace {
             case Objective.Task.Mine() -> report instanceof Report.Mining;
             case Objective.Task.Patrol() -> report instanceof Report.Patrolling;
             case Objective.Task.Keep() -> report instanceof Report.Working;
+            case Objective.Task.Floor(var layer) -> report instanceof Report.Working || report instanceof Report.Fortifying;
         };
     }
 
@@ -176,6 +177,7 @@ final class OrderTrace {
             case Objective.Task.Mine() -> "MINE";
             case Objective.Task.Patrol() -> "PATROL";
             case Objective.Task.Keep() -> "KEEP";
+            case Objective.Task.Floor(var layer) -> "FLOOR";
         };
     }
 

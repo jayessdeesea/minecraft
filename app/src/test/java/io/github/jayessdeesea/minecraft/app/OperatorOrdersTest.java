@@ -34,6 +34,17 @@ class OperatorOrdersTest {
                 orders.orderFrom(new ChatMessage(pat, "!flatten here")));
     }
 
+    /** {@code !farm x z [y]}: a farm on the chunk the point is in, sea level unless a level is given; one it can't read is SAY AGAIN. */
+    @Test
+    void farmNamesTheChunkAndTheLevel() {
+        UUID pat = OperatorOrders.offlineUuid("Pat");
+        assertEquals(Optional.of(new OperatorOrders.Order.Farm("Pat", new io.github.jayessdeesea.minecraft.command.FarmMission(2, -2, 63))),
+                orders.orderFrom(new ChatMessage(pat, "!farm 40 -20")));
+        assertEquals(Optional.of(new OperatorOrders.Order.Farm("Pat", new io.github.jayessdeesea.minecraft.command.FarmMission(2, -2, 70))),
+                orders.orderFrom(new ChatMessage(pat, "!farm 40 -20 70")));
+        assertEquals(Optional.of(new OperatorOrders.Order.Unknown("Pat", "!farm here")), orders.orderFrom(new ChatMessage(pat, "!farm here")));
+    }
+
     @Test
     void escortProtectsTheOperatorOrTheNamedPlayer() {
         UUID jake = OperatorOrders.offlineUuid("Jake");

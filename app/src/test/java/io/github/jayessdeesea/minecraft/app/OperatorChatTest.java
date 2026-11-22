@@ -89,9 +89,9 @@ class OperatorChatTest {
     }
 
     /**
-     * Three turns through the endpoint, as the page sends them: the time asked, a farm asked for - answered what it would
-     * be and that it can't be placed yet - and a flatten ordered, given through the operator's own order. Each turn is
-     * on the net, and the last is sent with the two before it.
+     * Three turns through the endpoint, as the page sends them: the time asked, a farm asked for - given as the farm mission,
+     * its steps said - and a flatten ordered, given through the operator's own order, the mission's flatten first while
+     * it's under way. Each turn is on the net, and the last is sent with the two before it.
      */
     @Test
     void aThreeTurnConversation() throws Exception {
@@ -100,7 +100,7 @@ class OperatorChatTest {
         List<Map<String, String>> turns = new ArrayList<>();
         synchronized (replies) {
             replies.add("{\"reply\": \"Midday: 12:00. Dusk in 5 min 58 s.\", \"action\": \"NONE\", \"argument\": \"\"}");
-            replies.add("{\"reply\": \"I can't place a farm yet.\", \"action\": \"FARM\", \"argument\": \"40 -20\"}");
+            replies.add("{\"reply\": \"WILCO, a farm there.\", \"action\": \"FARM\", \"argument\": \"40 -20\"}");
             replies.add("{\"reply\": \"WILCO, flattening it.\", \"action\": \"FLATTEN\", \"argument\": \"0 0 16 16 64\"}");
         }
 
@@ -112,11 +112,13 @@ class OperatorChatTest {
         assertEquals("NONE", first.get("action").asText());
         assertTrue(sent.getFirst().getInstructions().getLast().getText().contains("Minecraft time 12:00 (tick 6000 of the day's 24000)"),
                 "the time from the overworld clock, worked out for it");
-        assertEquals("I can't place a farm yet. It would be a chunk farm on chunk (2, -2) - x 32 to 48, z -32 to -16, fenced on the"
-                + " chunk's lines - at y=63 (sea level), put on the platoon leader's sites through its bids and build order. CANTCO:"
-                + " the bid cycle isn't built yet.", second.get("reply").asText());
+        assertEquals("WILCO, a farm there. a farm at chunk (2, -2) at y=63: flatten chunk (2, -2), x 32..47 z -32..-17 to y=62, then floor"
+                + " chunk (2, -2), x 32..47 z -32..-17 in cobblestone at y=62, then the farm template on chunk (2, -2), x 32..47 z -32..-17 at y=63.",
+                second.get("reply").asText());
+        assertEquals(java.util.Optional.of(new io.github.jayessdeesea.minecraft.command.FarmMission(2, -2, 63)),
+                chain.farmMissions.current().map(Map.Entry::getKey), "given through the operator's !farm");
         assertEquals("FLATTEN", third.get("action").asText());
-        assertEquals(Flatten.parse("0 0 16 16 64").orElseThrow(), chain.flatten(), "given through the operator's !flatten");
+        assertEquals(new Flatten(32, -32, 47, -17, 62), chain.flatten(), "the mission's flatten first while it's under way");
 
         List<Message> last = sent.getLast().getInstructions();
         assertEquals(List.of("What time of day is it in Minecraft?", first.get("reply").asText(), "Place a farm at x = 40, z = -20",
@@ -125,6 +127,7 @@ class OperatorChatTest {
         assertTrue(radio.stream().anyMatch(l -> l.contains("[Operator -> PL] What time of day is it in Minecraft?")), radio.toString());
         assertTrue(radio.stream().anyMatch(l -> l.contains("[PL -> Operator] Midday: 12:00.")), radio.toString());
         assertTrue(radio.stream().anyMatch(l -> l.contains("[PL -> Operator] WILCO") && l.contains("flatten")), radio.toString());
+        assertTrue(radio.stream().anyMatch(l -> l.contains("[PL -> Operator] WILCO") && l.contains("a farm at chunk (2, -2) at y=63 - 3 steps")), radio.toString());
     }
 
     /** The clock as JSON for the page's strip: unknown until sent, then the time of day and the ticks to dawn and dusk. */

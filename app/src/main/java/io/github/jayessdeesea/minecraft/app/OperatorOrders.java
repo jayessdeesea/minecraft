@@ -21,7 +21,10 @@ import java.util.stream.Collectors;
  *   <li>{@code !mission <text>} - a new mission for the platoon leader (and the end of any escort);</li>
  *   <li>{@code !escort} - the squad escorts the operator; {@code !escort <player>} - that player;</li>
  *   <li>{@code !flatten <x1> <z1> <x2> <z2> <y>} - the ground worked by day: that rectangle taken down
- *   to y, everything over it dug out (operator, 2026-11-15; command.Flatten).</li>
+ *   to y, everything over it dug out (operator, 2026-11-15; command.Flatten);</li>
+ *   <li>{@code !farm <x> <z> [y]} - a farm on the chunk block (x, z) is in, at y - sea level unless given: the
+ *   platoon leader's farm mission, its chunk flattened a block below, floored in cobblestone, the template on it
+ *   (operator, 2026-11-21; command.FarmMission).</li>
  * </ul>
  * Anything else an operator says is a remark for the platoon leader, but a word starting with {@code !}
  * that isn't one of these is an order not understood - answered SAY AGAIN on the radio, never
@@ -41,6 +44,7 @@ public class OperatorOrders {
     static final String MISSION = "!mission";
     static final String ESCORT = "!escort";
     static final String FLATTEN = "!flatten";
+    static final String FARM = "!farm";
 
     /** An order from the operator. */
     public sealed interface Order {
@@ -54,6 +58,10 @@ public class OperatorOrders {
 
         /** The ground to flatten by day: {@code site}. */
         record Flatten(String operator, io.github.jayessdeesea.minecraft.command.Flatten site) implements Order {
+        }
+
+        /** A farm at a chunk: {@code farm}. */
+        record Farm(String operator, io.github.jayessdeesea.minecraft.command.FarmMission farm) implements Order {
         }
 
         /** Anything else an operator says: not an order, but worth the platoon leader's hearing. */
@@ -81,7 +89,7 @@ public class OperatorOrders {
         String command = words[0];
         String argument = words.length > 1 ? words[1].strip() : "";
         String operator = operators.get(chat.sender());
-        if (!command.equals(MISSION) && !command.equals(ESCORT) && !command.equals(FLATTEN)) {
+        if (!command.equals(MISSION) && !command.equals(ESCORT) && !command.equals(FLATTEN) && !command.equals(FARM)) {
             // An operator talking, not ordering - passed up; anyone else's chat is just chat.
             if (operator == null || chat.message().isBlank()) {
                 return Optional.empty();
@@ -101,6 +109,11 @@ public class OperatorOrders {
             return Optional.of(io.github.jayessdeesea.minecraft.command.Flatten.parse(argument)
                     .<Order>map(site -> new Order.Flatten(operator, site))
                     .orElseGet(() -> new Order.Unknown(operator, FLATTEN + " " + argument)));
+        }
+        if (command.equals(FARM)) {
+            return Optional.of(io.github.jayessdeesea.minecraft.command.FarmMission.parse(argument)
+                    .<Order>map(farm -> new Order.Farm(operator, farm))
+                    .orElseGet(() -> new Order.Unknown(operator, FARM + " " + argument)));
         }
         if (argument.isEmpty()) {
             LOG.warn("Ignoring an empty mission from {}", operator);
