@@ -240,7 +240,7 @@ public final class Pathfinder {
      */
     public static Result find(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
                               boolean pickaxe, boolean build, Set<BlockPos> avoid, boolean holds) {
-        Search placing = search(world, start, goal, maxExpanded, falls, blocks, pickaxe, build, avoid);
+        Search placing = search(world, start, goal, maxExpanded, falls, blocks, pickaxe, build, avoid, Double.MAX_VALUE);
         // Blocks placed to reach a goal above, up a jump, are the work - a mason onto its wall's top; only placed
         // to cross what's in the way are they a route to walk round.
         // On ground the force holds a goal above is weighed against the walk too: a wall's top has no walk to it, so a mason
@@ -250,14 +250,20 @@ public final class Pathfinder {
                 || !holds && goal.y() - goal.verticalTolerance() > start.y() + 1) {
             return placing.result();
         }
-        Search walking = search(world, start, goal, maxExpanded, falls, 0, pickaxe, false, avoid);
         double perBlock = DETOUR_PER_BLOCK + (holds ? TAKEDOWN_COST : 0);
+        // The walk searched only as far as it could still be taken: commit 1088's profile, a second full search for every
+        // route placing a block on the camp's ground was a quarter of the garrison's time.
+        Search walking = search(world, start, goal, maxExpanded, falls, 0, pickaxe, false, avoid, placing.cost() + perBlock * placing.placed());
         return walking.result().reachesGoal() && !walking.rough() && walking.cost() <= placing.cost() + perBlock * placing.placed()
                 ? walking.result() : placing.result();
     }
 
+    /**
+     * A* from {@code start} to {@code goal}, given up past {@code maxExpanded} cells, or once the cheapest open cell can
+     * only lead to a route dearer than {@code costLimit} - the estimate is a straight line, never more than the walk.
+     */
     private static Search search(WorldView world, BlockPos start, Goal goal, int maxExpanded, FallAllowance falls, int blocks,
-                                 boolean pickaxe, boolean build, Set<BlockPos> avoid) {
+                                 boolean pickaxe, boolean build, Set<BlockPos> avoid, double costLimit) {
         if (goal.contains(start)) {
             return new Search(new Result(List.of(), true), 0, 0, false);
         }
@@ -278,7 +284,7 @@ public final class Pathfinder {
         double closestEstimate = goal.estimate(start);
         int expanded = 0;
 
-        while (!open.isEmpty() && expanded < maxExpanded) {
+        while (!open.isEmpty() && expanded < maxExpanded && open.peek().priority() <= costLimit) {
             BlockPos current = open.poll().cell();
             expanded++;
             if (goal.contains(current)) {
