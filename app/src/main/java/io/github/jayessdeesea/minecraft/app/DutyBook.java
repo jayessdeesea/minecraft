@@ -1,8 +1,10 @@
 package io.github.jayessdeesea.minecraft.app;
 
+import io.github.jayessdeesea.minecraft.bot.engineer.Workshop;
 import io.github.jayessdeesea.minecraft.bot.farm.ChunkFarm;
 import io.github.jayessdeesea.minecraft.bot.farm.FarmPlan;
 import io.github.jayessdeesea.minecraft.bot.world.ItemClassRegistry.ItemClass;
+import io.github.jayessdeesea.minecraft.command.BakerDuty;
 import io.github.jayessdeesea.minecraft.command.Box;
 import io.github.jayessdeesea.minecraft.command.DutyOrder;
 import io.github.jayessdeesea.minecraft.command.FarmDuties;
@@ -211,6 +213,38 @@ final class DutyBook {
      */
     boolean plantsNothing(String soldier, io.github.jayessdeesea.minecraft.bot.farm.TreeFarm grove, io.github.jayessdeesea.minecraft.bot.world.WorldView world) {
         return is(soldier, DutyOrder.Duty.PLANTER) && (grove == null || io.github.jayessdeesea.minecraft.bot.supply.Forester.planted(world, grove));
+    }
+
+    /** The table {@code soldier}'s order names it to work at - a baker's - as the cell it stands in. */
+    Optional<io.github.jayessdeesea.minecraft.bot.nav.BlockPos> table(String soldier) {
+        return of(soldier).flatMap(DutyOrder::table).map(t -> io.github.jayessdeesea.minecraft.bot.nav.BlockPos.containing(t.x(), t.y(), t.z()));
+    }
+
+    /**
+     * The workshop {@code soldier} makes its kit at: if its order names a table, the one of {@code known} that table is
+     * - none if none is, and it bakes at the table or not at all - else its {@code own}.
+     */
+    Optional<Workshop> workshop(String soldier, Optional<Workshop> own, Workshop... known) {
+        return table(soldier).map(t -> java.util.Arrays.stream(known).filter(w -> w != null && w.table().equals(t)).findFirst()).orElse(own);
+    }
+
+    /** Whether {@code soldier}, carrying {@code wheat}, draws its order's: a baker short of its batch (command.BakerDuty). */
+    boolean drawsWheat(String soldier, int wheat) {
+        return of(soldier).filter(o -> BakerDuty.draws(o, wheat)).isPresent();
+    }
+
+    /** What {@code soldier}'s draw of wheat is made up to: its order's (command.BakerDuty), none with no baker's order. */
+    int wheatDrawnTo(String soldier) {
+        return of(soldier).filter(o -> o.duty() == DutyOrder.Duty.BAKER && o.batch() > 0).map(BakerDuty::drawTo).orElse(0);
+    }
+
+    /**
+     * Whether {@code soldier}, carrying {@code wheat} and {@code rations}, goes and bakes: a baker by its order's batch
+     * (command.BakerDuty), anyone else by the standing batch (command.Subsistence).
+     */
+    boolean bakeTrip(String soldier, int wheat, int rations) {
+        return of(soldier).filter(o -> o.duty() == DutyOrder.Duty.BAKER).map(o -> BakerDuty.bakes(o, wheat, rations))
+                .orElseGet(() -> io.github.jayessdeesea.minecraft.command.Subsistence.bakeTrip(wheat, rations));
     }
 
     /** Whether {@code soldier}'s order is {@code duty}. */

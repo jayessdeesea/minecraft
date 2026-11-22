@@ -7047,8 +7047,8 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // The smelter's is the main depot's: its furnace, its chests.
             boolean smelter = name.equals(keepSmelter);
             Workshop mainShop = keepWorkshop;
-            Optional<Workshop> workshop = smelter && mainShop != null ? Optional.of(mainShop)
-                    : Optional.ofNullable(workshops.get(name)).or(() -> Optional.ofNullable(campWorkshop));
+            Optional<Workshop> workshop = dutyBook.workshop(name, smelter && mainShop != null ? Optional.of(mainShop) // a baker's, its order's table's (DutyBook)
+                    : Optional.ofNullable(workshops.get(name)).or(() -> Optional.ofNullable(campWorkshop)), campWorkshop, mainShop, workshops.get(name));
             // Raw ore through the common stockpile (bot.supply.MetalPool): what its next piece can't
             // be made from goes in; what the stockpile completes it with is drawn - and the armourer
             // waits for the draw rather than walking off to dig.
@@ -7119,7 +7119,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             int carriedRations = status.condition().flatMap(c -> c.kit()).map(Kit::rations).orElse(0);
             // And still wanted while a loaf is under way: its wheat in the table's grid isn't carried.
             // Live, a soldier with 4 wheat put 3 in the grid, wanted no bread with the 1 left, and started and dropped the loaf 518 times.
-            if (Subsistence.bakeTrip(inventory.count(ItemClass.WHEAT), carriedRations) && ((dutyBook.of(name).filter(DutyOrder::farm).isEmpty() ? field != null : bakes) || carriedRations < Subsistence.BASIC_LOAD)
+            if (dutyBook.bakeTrip(name, inventory.count(ItemClass.WHEAT), carriedRations) && ((dutyBook.of(name).filter(DutyOrder::farm).isEmpty() ? field != null : bakes) || carriedRations < Subsistence.BASIC_LOAD)
                     || armourer.making(Recipe.BREAD)) {
                 tools.add(Recipe.BREAD);
             }
@@ -7395,7 +7395,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                         session.attack(target);
                     })));
             turns.put(Hands.Routine.ARMOURER, turn(armourer::active,
-                    free -> armourer.tick(status.position(), world, free ? craftable : Set.of(), threatened, workshop)));
+                    free -> armourer.tick(status.position(), world, free ? craftable : Set.of(), threatened, workshop, dutyBook.table(name))));
             turns.put(Hands.Routine.BUILDER, turn(() -> fort != null && fort.allInside() && !builder.done(), free -> {
                 if (free && atBuildPlace) {
                     boolean wasDone = builder.done();
@@ -7433,7 +7433,7 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
             // climbed out for wood for a pickaxe, and stood at the top.
             boolean atMine = working != null && mineOfChest(chestCentre(working)).isPresent();
             // Or a producer with its yield and no dump yet, the camp's chest not standing (field503: 83 harvests, nothing stockpiled).
-            boolean undumped = dutyBook.of(name).filter(o -> o.dump().isEmpty()).isPresent() && inventory.count(ItemClass.WHEAT) + inventory.count(ItemClass.LOG) >= BREAD_WHEAT;
+            boolean undumped = dutyBook.of(name).filter(o -> o.dump().isEmpty()).isPresent() && inventory.count(ItemClass.WHEAT) + inventory.count(ItemClass.LOG) >= Subsistence.BREAD_WHEAT;
             boolean fitStore = (atMine ? stashOre && (inventory.count(ItemClass.CHEST) > 0 || inventory.count(ItemClass.LOG) >= STASH_LOGS)
                     : fullLoad || depotLogs || Depositor.surplusFood(inventory) || poolOre || undumped) && supplyPoint.isEmpty() && shop.isPresent() && shop.get().chest().isPresent()
                     && !shop.get().chestStands(world) && !threatened && fort == null && !chestFits.barred(name, fitNow);
@@ -7516,11 +7516,10 @@ public class SoldierRunner implements CommandLineRunner, DisposableBean {
                 } else if (drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile) || depositor.drawing(ItemClass.FOOD)) {
                     depositor.tickDraw(status.position(), stockpile, ItemClass.FOOD, Subsistence.RESUPPLY, free && !threatened
                             && drawsFood(carried, chainOfCommand.stockpile(), status.position(), stockpile));
-                } else if (depositor.drawing(ItemClass.WHEAT) || bakes && inventory.count(ItemClass.WHEAT) < BAKER_BATCH_WHEAT
-                        && dutyBook.of(name).flatMap(DutyOrder::source).isPresent()) {
-                    // The baker's wheat, from the chest its duty order names (command.DutyOrder: the squad leader's, not the soldier's).
+                } else if (depositor.drawing(ItemClass.WHEAT) || dutyBook.drawsWheat(name, inventory.count(ItemClass.WHEAT))) {
+                    // The baker's wheat: from the chest its duty order names, when and how much by its batch (command.BakerDuty: the squad leader's, not the soldier's).
                     depositor.tickDraw(status.position(), dutyBook.of(name).flatMap(DutyOrder::source).or(depositor::chestAt), ItemClass.WHEAT,
-                            BAKER_WHEAT, free && !threatened && fort == null && bakes && inventory.count(ItemClass.WHEAT) < BAKER_BATCH_WHEAT);
+                            dutyBook.wheatDrawnTo(name), free && !threatened && fort == null && dutyBook.drawsWheat(name, inventory.count(ItemClass.WHEAT)));
                 } else if (depositor.drawing(ItemClass.STRING) || bedString(inventory) > 0
                         && chestHolding(ItemClass.STRING, status.position()).isPresent()) {
                     // A bed's string from the depot, for a soldier without one (operator, 2026-11-18: beds, for a

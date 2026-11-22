@@ -117,6 +117,56 @@ class FarmDutiesSimulationTest {
         assertEquals(0, harvested.getOrDefault("Dana", 0), "the baker harvests none: " + harvested);
     }
 
+    /** The camp's table, at (1, 64, -2), on the pond's ground: the one a farm's baker's order names. */
+    static int campTable(int x, int y, int z) {
+        return x == 1 && z == -2 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE : pond(x, y, z);
+    }
+
+    /** Alpha's four on the farm - Dana its baker - each with {@code kit}, run on {@code server}. */
+    private void farmSquad(SimClock clock, SimServer server, List<int[]> kit) {
+        List<String> squad = List.of("Alice", "Bob", "Carl", "Dana");
+        Roster roster = new Roster("Alpha:" + String.join(",", squad));
+        Position farm = new Position(10.5, GROUND + 1, 2.5);
+        Objective toFarm = new Objective("Farm", farm, "Bread for the depot", new Objective.Task.Farm());
+        ChainOfCommand chain = new ChainOfCommand(SquadSimulationTest.scripted(s -> toFarm), squadLeader(farm),
+                SquadLeaderPrompts.read(new ClassPathResource("prompts/squad-leader-system-prompt.md"),
+                        new ClassPathResource("prompts/squad-leader-user-prompt.md")), roster, false, clock);
+        new SoldierRunner(chain, new OperatorOrders(""), "", roster, false, "0,0", state.toString())
+                .simulated(clock, server.connector(new PlayerPosition(0.5, GROUND + 1, 0.5), kit)).run();
+    }
+
+    /** A baker's kit, as live: a full basic load - the batches past it are the stores' - and logs for its workshop's chest. */
+    private static List<int[]> bakersKit(int wheat) {
+        return List.of(new int[]{36, SimServer.ITEM_WOODEN_SWORD, 1}, new int[]{37, SimServer.itemOf(ItemClassRegistry.ItemClass.HOE), 1},
+                new int[]{38, SimServer.ITEM_BREAD, 64}, new int[]{39, SimServer.ITEM_OAK_LOG, 8},
+                new int[]{12, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), wheat}, new int[]{10, SimServer.itemOf(ItemClassRegistry.ItemClass.SEEDS), 32});
+    }
+
+    /** The scenario's log, as the runner wrote it. */
+    private static List<String> log(String scenario) throws java.io.IOException {
+        return java.nio.file.Files.readAllLines(Path.of("target", "sim", scenario + ".log"));
+    }
+
+    /**
+     * The duty orders' eval (backlog/duty-orders.md): the baker bakes at the table its order names, not the one nearest it -
+     * a table beside the dump's chest it draws at. Where it's worked is its squad leader's.
+     */
+    @Test
+    void aBakerBakesAtTheTableItsOrderNames() throws java.io.IOException {
+        SimClock clock = new SimClock();
+        SimServer server = new SimServer(clock, (x, y, z) -> x == 5 && z == 1 && y == GROUND + 1 ? SimServer.CRAFTING_TABLE : campTable(x, y, z), 24_000);
+        server.stockedChest(3, GROUND + 1, 1, SimServer.itemOf(ItemClassRegistry.ItemClass.WHEAT), 64);
+        java.nio.file.Files.writeString(state.resolve("chests_stores_by_chest.json"), "[[3,64,1,0,0,0,0,0,0,0,0,64,0,0]]");
+        farmSquad(clock, server, bakersKit(15));
+
+        clock.advance(10 * 60_000);
+
+        List<String> baked = List.copyOf(server.log).stream().filter(l -> l.startsWith("Dana crafted bread")).toList();
+        assertTrue(!baked.isEmpty(), "the baker baked: " + log("aBakerBakesAtTheTableItsOrderNames").stream().filter(l -> l.contains("Dana crafts")).toList());
+        assertEquals(List.of(), baked.stream().filter(l -> !l.endsWith(" at " + SimServer.key(1, GROUND + 1, -2))).toList(),
+                "every loaf at its order's table, " + SimServer.key(1, GROUND + 1, -2) + ", none at the one by the chest, " + SimServer.key(5, GROUND + 1, 1));
+    }
+
     /**
      * A baker with wheat for less than a batch, and more in a chest, draws the rest and bakes: live (field657), Pete
      * carried 15 wheat beside chests of 544 and baked nothing - it baked only a batch of 8 loaves' worth (24) and drew

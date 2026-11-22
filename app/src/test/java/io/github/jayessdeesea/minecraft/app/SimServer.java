@@ -801,7 +801,7 @@ final class SimServer {
                         }
                     }
                     store(new int[]{r.item().map(SimItems::itemNamed).orElseGet(() -> itemOf(r.makes())), r.yield()});
-                    log.add(name + " crafted " + r.name());
+                    log.add(name + " crafted " + r.name() + (window == 0 ? "" : " at " + open)); // at a table: its cell, by key
                 }
             } else if (window == 0 && slot >= 5 && slot <= 8 || window == 0 && slot == 45) {
                 throw new UnsupportedOperationException("simulated: shift-click out of slot " + slot);

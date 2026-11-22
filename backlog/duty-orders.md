@@ -24,17 +24,16 @@ few minutes for fifteen runs, had no standing rule answering it.
   No thresholds of its own on what to fetch, from where or when.
 
 ## The plan
-1. **The baker's order whole** - built: its source chest, table, batch and dump named, re-pointed when the source
-   runs dry (docs/military-doctrine.md). Left of it: the bake itself at the order's table (the soldier's crafting
-   still picks its workshop), and the draw and bake thresholds read from the order's batch, not the runner's.
-2. **Each duty's yield**: what a share should make in ten minutes - a baker its batches while wheat's stored, a
+The baker's order is built whole - its source, table, batch and dump, and its draw, bake and table read from it
+(docs/military-doctrine.md, `command.BakerDuty`). Left:
+1. **Each duty's yield**: what a share should make in ten minutes - a baker its batches while wheat's stored, a
    harvester the ripe cells of its plot, a woodcutter its logs. Measured from the errand ledger's counts
    (`ErrandLedger`), not from a product merely changing (`ShareWatch` today).
-3. **The squad leader's answer to a miss**, a standing rule per cause, each said on the net: the source empty -
+2. **The squad leader's answer to a miss**, a standing rule per cause, each said on the net: the source empty -
    the next source; the table or chest unreachable - the next, or a CANTCO up; the soldier taken by other work for
    the spell - reported as the cause, not re-ordered; no cause found - a gap report to the platoon leader naming the
    duty, the yield short and what was checked.
-4. Then the harvester's and the woodcutter's orders the same way: the harvester's plot and its seed chest, the
+3. Then the harvester's and the woodcutter's orders the same way: the harvester's plot and its seed chest, the
    woodcutter's sector, its planter and the tree chunk's chest.
 
 ## The eval (operator, 2026-11-21: an eval to make sure this will work)
@@ -53,5 +52,4 @@ Each cell's yield and its time to detection logged, so a regression shows as a n
 - The eval's cells pass, the misses each detected within one spell (`ShareWatch.DUE_MILLIS`) and answered by
   their rule.
 - Live: bread made each day the stores hold wheat; no "behind its share" alarm raised twice running for one cause.
-- docs/echelons/squad-leader/ says what a duty order carries and how a miss is answered; the runner holds no
-  baker thresholds of its own.
+- docs/echelons/squad-leader/ says what a duty order carries and how a miss is answered.

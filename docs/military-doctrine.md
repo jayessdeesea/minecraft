@@ -1204,9 +1204,8 @@ harvesters, each on a share of the plot of its own - a run of the plot's whole c
 cell is in two shares and its walk stays short; shared among everyone farming the plot or one
 overlapping it, whatever their squad or the water it's round, so two squads on one stretch of farm
 have one set of shares and one baker (`DutyBook.onOneFarm`) - which it harvests and replants in one pass, keeping its seed and taking its wheat to the stockpile.
-With three or more on the farm, the last on the roster is its baker: it draws the stockpile's wheat a
-stack at a time - whenever it carries less than a batch's, 8 loaves (`SoldierErrands.BAKER_BATCH_WHEAT`; live,
-field657, drawing only below a loaf's, its baker sat on 15) - and bakes it, keeping only its own basic load of the
+With three or more on the farm, the last on the roster is its baker: it draws wheat by its duty order (below) and
+bakes it, keeping only its own basic load of the
 bread, not the share any other soldier carries (`Depositor.keepsFood`; field664, its baker carried 162, the stores none), and the bread past its own load goes in. A harvester below its basic
 load still bakes for itself - that's its own upkeep. With two, both harvest and bake as they go.
 A chunk farm on the farm has one tender (operator, 2026-11-19: a single soldier at a time works a
@@ -1223,7 +1222,10 @@ its yield goes to - where the squad's yield is stockpiled (its workshop's chest)
 (docs/echelons/platoon-leader/decisions.md); a chunk farm's tender's, the farm's chest. A baker's names its makings too
 (operator, 2026-11-21: the soldier is how; where, what and how much are the squad leader's): the chest it draws wheat from -
 the nearest the stores book knows holding some, re-pointed to the next when it runs dry - the camp's table it bakes at, and
-its batch of 8 loaves (`DutyOrder.making`); the baker draws from that chest only. A producer puts its
+its batch of 8 loaves (`DutyOrder.making`). The baker executes it and decides none of it (`command.BakerDuty`): it draws
+from that chest only, whenever it carries less than a batch's wheat (live, field657, drawing only below a loaf's, its baker
+sat on 15), up to the most whole batches a stack holds; it bakes once it carries a batch's; and it bakes at that table only -
+no other table is used, and one out of sight is walked to by its workshop's stand (`Crafter.workAt`). A producer puts its
 load in at its order's dump while a chest stands there, else stockpiles as any soldier does (`DutyBook.dump`). The squad
 leader writes it each cycle, and says it when it changes: `[Alpha -> Alice] DUTY: harvester over x
 6..8, z -4..4, the dump at (3, 64, 2)`; `[Alpha -> Dana] DUTY: baker, the dump at (3, 64, 1), drawing from
